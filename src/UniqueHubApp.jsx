@@ -3747,7 +3747,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       setLoading(true);
       const c = await supaLoadConversations(user.id);
       setConvs(c);
-      /* Only show accepted team members (agency_members with linked user_id) */
       const { data: members } = await supabase.from("agency_members").select("user_id").not("user_id", "is", null);
       const memberIds = (members || []).map(m => m.user_id).filter(id => id !== user.id);
       if (memberIds.length > 0) {
@@ -3762,6 +3761,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   }, [user?.id]);
 
   /* Load messages + subscribe when conversation selected */
+  const markReadTimer = useRef(null);
   useEffect(() => {
     if (!selConv?.id || !supabase) return;
     let channel;
@@ -3775,8 +3775,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           if (prev.find(m => m.id === newMsg.id)) return prev;
           return [...prev, newMsg];
         });
-        supaMarkRead(selConv.id, user.id);
-        /* Refresh sender profile inline */
+        /* Debounce markRead — wait 2s of no new messages before writing */
+        clearTimeout(markReadTimer.current);
+        markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 2000);
         if (!newMsg.profiles) {
           supabase.from("profiles").select("name, email").eq("id", newMsg.sender_id).single().then(({ data }) => {
             if (data) setMsgs(prev => prev.map(m => m.id === newMsg.id ? { ...m, profiles: data } : m));
@@ -3797,17 +3798,25 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       }
     }).subscribe();
     typingChanRef.current = typingChan;
-    return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); };
+    return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); clearTimeout(markReadTimer.current); };
   }, [selConv?.id]);
 
   /* Auto-scroll */
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
-  /* Realtime subscription for conversation list updates */
+  /* Realtime: update conversation list locally instead of full reload */
   useEffect(() => {
     if (!supabase || !user?.id) return;
-    const channel = supabase.channel("chat-list").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
-      supaLoadConversations(user.id).then(c => setConvs(c));
+    const channel = supabase.channel("chat-list").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+      const nm = payload.new;
+      /* Update the affected conversation's lastMsg in place — no DB queries */
+      setConvs(prev => {
+        const idx = prev.findIndex(c => c.id === nm.conversation_id);
+        if (idx === -1) return prev; /* unknown conv, ignore for now */
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id ? 1 : updated[idx].unread };
+        return updated;
+      });
     }).subscribe();
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
@@ -3840,7 +3849,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     setInput("");
   };
 
+  const lastTypingEmit = useRef(0);
   const emitTyping = () => {
+    const now = Date.now();
+    if (now - lastTypingEmit.current < 2000) return; /* throttle: max once per 2s */
+    lastTypingEmit.current = now;
     if (typingChanRef.current && selConv?.id) {
       typingChanRef.current.send({ type: "broadcast", event: "typing", payload: { user_id: user.id } });
     }
