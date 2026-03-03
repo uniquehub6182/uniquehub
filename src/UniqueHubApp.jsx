@@ -1212,7 +1212,7 @@ function LoginPage({ onAuth }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients }) {
+function HomePage({ user, goSub, goTab, clients, notifCount }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
@@ -1444,7 +1444,7 @@ function HomePage({ user, goSub, goTab, clients }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => goSub("notifs")} className="ib" style={{ position: "relative" }}>{IC.bell}<Badge n={5} style={{ position: "absolute", top: -4, right: -4 }} /></button>
+          <button onClick={() => goSub("notifs")} className="ib" style={{ position: "relative" }}>{IC.bell}<Badge n={notifCount || 0} style={{ position: "absolute", top: -4, right: -4 }} /></button>
           <button onClick={() => goSub("settings")} className="ib">{IC.settings("currentColor")}</button>
         </div>
       </div>
@@ -4024,7 +4024,7 @@ function ChatPage({ user }) {
 
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
-function NotifsPage({ onBack }) {
+function NotifsPage({ onBack, readIds, setReadIds }) {
   const notifs = [
     { id: 1, t: "Novo conteúdo pendente — Casa Nova", cat: "content", tm: "Agora", icon: IC.content(B.accent) },
     { id: 2, t: "Alice fez check-in às 08:30", cat: "team", tm: "30min", icon: IC.checkin(B.green) },
@@ -4034,12 +4034,16 @@ function NotifsPage({ onBack }) {
     { id: 6, t: "Bella Estética aprovou 2 posts", cat: "content", tm: "5h", icon: IC.check },
     { id: 7, t: "Relatório de Janeiro disponível", cat: "report", tm: "1d", icon: IC.reports(B.blue) },
   ];
-  const [readIds, setReadIds] = useState([]);
   const toggle = id => setReadIds(r => r.includes(id) ? r.filter(x => x !== id) : [...r, id]);
+  const unreadCount = notifs.filter(n => !readIds.includes(n.id)).length;
+  const markAll = () => setReadIds(notifs.map(n => n.id));
 
   return (
     <div className="pg">
-      <Head title="Notificações" onBack={onBack} />
+      <Head title="Notificações" onBack={onBack} right={unreadCount > 0 ?
+        <button onClick={markAll} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Marcar todas como lidas</button>
+      : null} />
+      {unreadCount === 0 && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Nenhuma notificação pendente</p>}
       {notifs.map((n, i) => (
         <Card key={n.id} delay={i * 0.03} onClick={() => toggle(n.id)} style={{ marginTop: i ? 6 : 0, opacity: readIds.includes(n.id) ? 0.5 : 1, cursor: "pointer", borderLeft: `3px solid ${readIds.includes(n.id) ? B.border : B.accent}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -7397,6 +7401,59 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [sharedDemands, setSharedDemands] = useState([]);
   const [demandsLoaded, setDemandsLoaded] = useState(false);
 
+  /* ── Notification state ── */
+  const [notifReadIds, setNotifReadIds] = useState([]);
+  const TOTAL_NOTIFS = 7; /* matches NotifsPage mock data count */
+  const notifCount = TOTAL_NOTIFS - notifReadIds.length;
+
+  /* ── Realtime badge counts ── */
+  const [chatUnread, setChatUnread] = useState(0);
+  const [demandBadge, setDemandBadge] = useState(0);
+
+  /* ── Load chat unread count ── */
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const loadChatUnread = async () => {
+      const { data: memberships } = await supabase.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", user.id);
+      if (!memberships?.length) { setChatUnread(0); return; }
+      let total = 0;
+      for (const m of memberships) {
+        const q = supabase.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", m.conversation_id).neq("sender_id", user.id);
+        if (m.last_read_at) q.gt("created_at", m.last_read_at);
+        const { count } = await q;
+        total += (count || 0);
+      }
+      setChatUnread(total);
+    };
+    loadChatUnread();
+    /* Realtime: new messages → recalculate */
+    const chan = supabase.channel("nav-chat-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+      if (payload.new.sender_id !== user.id) setChatUnread(c => c + 1);
+    }).subscribe();
+    return () => { supabase.removeChannel(chan); };
+  }, [user?.id]);
+
+  /* ── Load demand badge count (new demands not yet viewed) ── */
+  const [demandLastSeen, setDemandLastSeen] = useState(() => localStorage.getItem("uh_demand_seen") || new Date().toISOString());
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const loadDemandBadge = async () => {
+      const { count } = await supabase.from("demands").select("id", { count: "exact", head: true }).gt("created_at", demandLastSeen);
+      setDemandBadge(count || 0);
+    };
+    loadDemandBadge();
+    /* Realtime: new demands → increment */
+    const chan = supabase.channel("nav-demand-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "demands" }, () => {
+      setDemandBadge(c => c + 1);
+    }).subscribe();
+    return () => { supabase.removeChannel(chan); };
+  }, [user?.id, demandLastSeen]);
+
+  /* Clear demand badge when visiting content tab */
+  const clearDemandBadge = () => { const now = new Date().toISOString(); setDemandLastSeen(now); localStorage.setItem("uh_demand_seen", now); setDemandBadge(0); };
+  /* Clear chat badge when visiting chat tab */
+  const clearChatBadge = () => setChatUnread(0);
+
   useEffect(() => {
     if (!supabase || clientsLoaded) return;
     supaLoadClients().then(rows => {
@@ -7444,7 +7501,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     });
   }, [clientsLoaded, demandsLoaded]);
 
-  const goTab = k => { setTab(k); setSub(null); setMore(false); };
+  const goTab = k => { setTab(k); setSub(null); setMore(false); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); };
   const goSub = k => { setSub(k); setMore(false); };
 
   return (
@@ -7469,7 +7526,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 .bnav{background:${dark?"#0A0F12":"#192126"}!important}
 ` }} />
       <div className="content">
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} />}
         {!sub && tab === "chat" && <ChatPage user={user} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
@@ -7478,7 +7535,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
-        {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} />}
+        {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={setNotifReadIds} />}
         {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} />}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
@@ -7503,8 +7560,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
             }} className={`bt${a ? " a" : ""}`} style={a ? { background: accentColor, borderRadius: 14, padding: "8px 14px", gap: 5, margin: "0 2px" } : {}}>
               {t.i(a ? "#192126" : "rgba(255,255,255,0.45)")}
               {a && <span style={{ fontSize: 11, fontWeight: 700, color: "#192126" }}>{t.l}</span>}
-              {t.k === "content" && <Badge n={3} style={{ position: "absolute", top: -2, right: a ? -4 : "calc(50% - 10px)" }} />}
-              {t.k === "chat" && <Badge n={4} style={{ position: "absolute", top: -2, right: a ? -4 : "calc(50% - 10px)" }} />}
+              {t.k === "content" && <Badge n={demandBadge} style={{ position: "absolute", top: -2, right: a ? -4 : "calc(50% - 10px)" }} />}
+              {t.k === "chat" && <Badge n={chatUnread} style={{ position: "absolute", top: -2, right: a ? -4 : "calc(50% - 10px)" }} />}
             </button>
           );
         })}
