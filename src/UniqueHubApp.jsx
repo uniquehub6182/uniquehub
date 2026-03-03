@@ -63,6 +63,10 @@ const supaUpdateClient = async (id, updates) => {
     if (updates.status !== undefined) payload.status = updates.status;
     if (updates.score !== undefined) payload.score = updates.score;
     if (updates.monthly !== undefined) payload.monthly_value = parseBRL(updates.monthly);
+    if (updates.cnpj !== undefined) payload.cnpj = updates.cnpj;
+    if (updates.address !== undefined) payload.address = updates.address;
+    if (updates.segment !== undefined) payload.segment = updates.segment;
+    if (updates.notes !== undefined) payload.notes = updates.notes;
     if (Object.keys(payload).length === 0) return null;
     const { data, error } = await supabase.from("clients").update(payload).eq("id", id).select().single();
     if (error) { console.error("Supa update client error:", error); return null; }
@@ -87,8 +91,9 @@ const mergeSupaClient = (row, existing) => ({
   monthly: row.monthly_value ? `R$ ${Number(row.monthly_value).toLocaleString("pt-BR")}` : "R$ 0",
   pending: existing?.pending || 0, score: row.score || 0,
   contact: row.contact_name || "", phone: row.contact_phone || "",
-  email: row.contact_email || "", cnpj: existing?.cnpj || "", address: existing?.address || "",
-  segment: row.segment || existing?.segment || "", since: existing?.since || new Date(row.created_at).toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}),
+  email: row.contact_email || "", cnpj: row.cnpj || existing?.cnpj || "", address: row.address || existing?.address || "",
+  segment: row.segment || existing?.segment || "", notes: row.notes || existing?.notes || "",
+  since: existing?.since || new Date(row.created_at).toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}),
   socials: existing?.socials || { instagram:{connected:false}, facebook:{connected:false}, google:{connected:false}, tiktok:{connected:false}, linkedin:{connected:false}, youtube:{connected:false} },
   files: existing?.files || [],
 });
@@ -1770,25 +1775,55 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <p className="sl" style={{ marginBottom:6 }}>Contato principal</p>
         <Card>
           {[
-            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Nome", value:sel.contact },
-            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Telefone", value:sel.phone },
-            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"E-mail", value:sel.email },
+            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Nome", field:"contact" },
+            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Telefone", field:"phone" },
+            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"E-mail", field:"email" },
           ].map((item,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center" }}>{item.icon}</div>
-              <div><p style={{ fontSize:10, color:B.muted }}>{item.label}</p><p style={{ fontSize:13, fontWeight:600 }}>{item.value || "—"}</p></div>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{item.icon}</div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:10, color:B.muted, marginBottom:2 }}>{item.label}</p>
+                <input value={sel[item.field]||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={`Adicionar ${item.label.toLowerCase()}`} className="tinput" style={{ padding:"4px 8px", fontSize:13, fontWeight:600, border:"none", background:"transparent", width:"100%" }} onBlur={e=>{ if(e.target.value) showToast("Salvo ✓"); }} />
+              </div>
             </div>
           ))}
         </Card>
+
+        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Nome da empresa</p>
+        <Card>
+          <input value={sel.name||""} onChange={e=>updateClient(sel.id,{name:e.target.value})} className="tinput" style={{ fontWeight:700, fontSize:15, border:"none", background:"transparent", width:"100%", padding:"2px 0" }} />
+        </Card>
+
+        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Plano e Status</p>
+        <Card>
+          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+            {["Traction","Growth 360","Partner"].map(p=>(
+              <button key={p} onClick={()=>updateClient(sel.id,{plan:p})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.plan===p?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel.plan===p?`${B.accent}15`:B.bgCard, color:sel.plan===p?B.accent:B.muted }}>{p}</button>
+            ))}
+          </div>
+          <div style={{ display:"flex", gap:6 }}>
+            {["ativo","pausado","cancelado"].map(s=>{
+              const sc = s==="ativo"?B.green:s==="pausado"?B.orange:B.red;
+              return <button key={s} onClick={()=>updateClient(sel.id,{status:s})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.status===s?`2px solid ${sc}`:`1.5px solid ${B.border}`, background:sel.status===s?`${sc}15`:B.bgCard, color:sel.status===s?sc:B.muted, textTransform:"capitalize" }}>{s}</button>;
+            })}
+          </div>
+        </Card>
+
         <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados da empresa</p>
         <Card>
-          {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Endereço",value:sel.address},{label:"Cliente desde",value:sel.since}].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none" }}>
-              <span style={{ fontSize:11, color:B.muted }}>{item.label}</span>
-              <span style={{ fontSize:13, fontWeight:600, textAlign:"right", maxWidth:"60%" }}>{item.value||"—"}</span>
+          {[{label:"CNPJ",field:"cnpj",ph:"00.000.000/0000-00"},{label:"Segmento",field:"segment",ph:"Ex: Restaurante, Imobiliária..."},{label:"Endereço",field:"address",ph:"Rua, nº, bairro, cidade"},{label:"Cliente desde",field:"since",ph:"MM/YYYY"}].map((item,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none", gap:10 }}>
+              <span style={{ fontSize:11, color:B.muted, flexShrink:0 }}>{item.label}</span>
+              <input value={sel[item.field]||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" style={{ textAlign:"right", fontSize:13, fontWeight:600, border:"none", background:"transparent", maxWidth:"60%", padding:"2px 0" }} />
             </div>
           ))}
         </Card>
+
+        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Valor mensal</p>
+        <Card>
+          <input value={sel.monthly||""} onChange={e=>updateClient(sel.id,{monthly:e.target.value})} placeholder="R$ 0" className="tinput" style={{ fontWeight:700, fontSize:15, border:"none", background:"transparent", width:"100%", padding:"2px 0" }} />
+        </Card>
+
         <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Observações</p>
         <Card><textarea value={sel.notes||""} onChange={e=>updateClient(sel.id,{notes:e.target.value})} placeholder="Anotações internas sobre o cliente..." className="tinput" style={{ minHeight:80, resize:"vertical" }} /></Card>
       </>}
