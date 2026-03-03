@@ -151,14 +151,16 @@ const supaDeleteDemand = async (id) => {
 
 /* ── Supabase Storage: upload files for demands ── */
 const supaUploadFile = async (file, demandId) => {
-  if (!supabase) return null;
+  if (!supabase) return { error: "Supabase offline" };
   try {
+    const maxSize = 100 * 1024 * 1024; /* 100MB */
+    if (file.size > maxSize) return { error: `Arquivo muito grande (${(file.size/1024/1024).toFixed(0)}MB). Máximo: 100MB` };
     const path = `${demandId}/${Date.now()}_${file.name.replace(/\s+/g,"_")}`;
     const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true, cacheControl: "3600" });
-    if (error) { console.error("Upload error:", error.message); return null; }
+    if (error) { console.error("Upload error:", error.message); return { error: error.message }; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
     return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
-  } catch (e) { console.error("Upload catch:", e); return null; }
+  } catch (e) { console.error("Upload catch:", e); return { error: e.message }; }
 };
 const supaDeleteFile = async (path) => {
   if (!supabase) return;
@@ -2755,11 +2757,13 @@ function ContentPage({ user, clients: propClients }) {
                   const uploaded = [];
                   for (const file of files) {
                     const result = await supaUploadFile(file, sel.supaId || sel.id);
-                    if (result) uploaded.push(result);
-                    else showToast(`Falha no upload: ${file.name}`);
+                    if (result.error) { showToast(`❌ ${file.name}: ${result.error}`); }
+                    else uploaded.push(result);
                   }
-                  if (uploaded.length > 0) updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  if (uploaded.length > 0) showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  if (uploaded.length > 0) {
+                    updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  }
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("designUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
@@ -2834,11 +2838,13 @@ function ContentPage({ user, clients: propClients }) {
                   const uploaded = [];
                   for (const file of files) {
                     const result = await supaUploadFile(file, sel.supaId || sel.id);
-                    if (result) uploaded.push(result);
-                    else showToast(`Falha no upload: ${file.name}`);
+                    if (result.error) { showToast(`❌ ${file.name}: ${result.error}`); }
+                    else uploaded.push(result);
                   }
-                  if (uploaded.length > 0) updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  if (uploaded.length > 0) showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  if (uploaded.length > 0) {
+                    updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  }
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("productionUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.orange}40`, background:`${B.orange}04`, cursor:"pointer", color:B.orange, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
@@ -2896,11 +2902,13 @@ function ContentPage({ user, clients: propClients }) {
                   const uploaded = [];
                   for (const file of files) {
                     const result = await supaUploadFile(file, sel.supaId || sel.id);
-                    if (result) uploaded.push(result);
-                    else showToast(`Falha no upload: ${file.name}`);
+                    if (result.error) { showToast(`❌ ${file.name}: ${result.error}`); }
+                    else uploaded.push(result);
                   }
-                  if (uploaded.length > 0) updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  if (uploaded.length > 0) showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  if (uploaded.length > 0) {
+                    updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  }
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("editingUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.cyan}40`, background:`${B.cyan}04`, cursor:"pointer", color:B.cyan, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
