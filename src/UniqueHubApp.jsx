@@ -2211,29 +2211,33 @@ function PostPreview({ format, client, slides, compact, children }) {
 }
 
 function ContentPage({ user, clients: propClients }) {
-  const CDATA = propClients || CLIENTS_DATA_INIT;
-  const [demands, setDemands] = useState(DEMANDS_INIT);
+  const CDATA = propClients || [];
+  const [demands, setDemands] = useState([]);
   const [loadedDemands, setLoadedDemands] = useState(false);
 
   /* Load demands from Supabase on mount */
   useEffect(() => {
     if (!supabase || loadedDemands) return;
     supaLoadDemands().then(rows => {
-      if (rows && rows.length > 0) {
-        const dbDemands = rows.map(r => {
-          const existing = DEMANDS_INIT.find(d => d.title === r.title);
-          if (existing) return { ...existing, supaId: r.id };
-          const dem = mergeSupaDemand(r);
-          if (r.client_id && CDATA) {
-            const cl = CDATA.find(c => c.supaId === r.client_id || c.id === r.client_id);
-            if (cl) dem.client = cl.name;
-          }
-          return dem;
-        });
-        /* Keep mock demands that aren't in DB, add DB-only demands */
-        const dbTitles = new Set(dbDemands.map(d => d.title));
-        const keptMock = DEMANDS_INIT.filter(d => !dbTitles.has(d.title));
-        setDemands([...dbDemands, ...keptMock]);
+      if (rows) {
+        if (rows.length > 0) {
+          const dbDemands = rows.map(r => {
+            const existing = DEMANDS_INIT.find(d => d.title === r.title);
+            if (existing) return { ...existing, supaId: r.id };
+            const dem = mergeSupaDemand(r);
+            if (r.client_id && CDATA) {
+              const cl = CDATA.find(c => c.supaId === r.client_id || c.id === r.client_id);
+              if (cl) dem.client = cl.name;
+            }
+            return dem;
+          });
+          setDemands(dbDemands);
+        } else {
+          setDemands([]);
+        }
+      } else {
+        /* Supabase offline — fallback */
+        setDemands(DEMANDS_INIT);
       }
       setLoadedDemands(true);
     });
@@ -4133,7 +4137,7 @@ function CalendarPage({ onBack, clients: propClients }) {
 
   const EQUIPMENTS = ["Câmera DSLR","Câmera Mirrorless","Tripé","Gimbal","Drone","Ring Light","Softbox","Microfone Lapela","Microfone Boom","Luz LED Portátil","Rebatedor","Fundo Chroma","Cartão de Memória Extra","Bateria Extra","Notebook p/ Review","HD Externo"];
 
-  const [events, setEvents] = useState([
+  const EVENTS_MOCK = [
     { id:1, type:"meeting", title:"Reunião semanal — TechSmart", time:"09:00", color:B.blue, day:3, month:2, year:2026, createdBy:"Matheus", meetingMode:"online", meetingScope:"client", client:"TechSmart", participants:["Matheus","Alice"], location:"Google Meet", notes:"Alinhamento de pauta mensal" },
     { id:2, type:"deadline", title:"Entrega posts — Casa Nova", time:"12:00", color:B.red, day:3, month:2, year:2026, createdBy:"Alice", notes:"8 posts para feed + 5 stories" },
     { id:3, type:"recording", title:"Gravar vídeos — Studio Fitness", time:"14:00", color:B.orange, day:4, month:2, year:2026, createdBy:"Victoria", client:"Studio Fitness", participants:["Victoria","Matheus"], location:"Academia Studio Fitness, Petrópolis", equipment:["Câmera Mirrorless","Gimbal","Microfone Lapela","Luz LED Portátil","Bateria Extra"], notes:"3 reels de exercícios + 1 depoimento de aluno" },
@@ -4147,20 +4151,21 @@ function CalendarPage({ onBack, clients: propClients }) {
     { id:11, type:"event", title:"Workshop de Redes Sociais", time:"19:00", color:B.purple, day:17, month:2, year:2026, createdBy:"Matheus", participants:["Matheus","Alice","Allan"], location:"Espaço Coworking, Centro Petrópolis", notes:"Workshop aberto para clientes e prospects, 2h de duração" },
     { id:12, type:"meeting", title:"Reunião alinhamento equipe", time:"09:00", color:B.blue, day:20, month:2, year:2026, createdBy:"Matheus", meetingMode:"presencial", meetingScope:"internal", participants:["Matheus","Alice","Allan","Victoria"], location:"Escritório Unique", notes:"Revisão de processos e feedback" },
     { id:13, type:"deadline", title:"Publicar campanha março", time:"10:00", color:B.red, day:1, month:2, year:2026, createdBy:"Alice" },
-  ]);
+  ];
+  const [events, setEvents] = useState([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
 
   useEffect(() => {
     if (!supabase || eventsLoaded) return;
     supaLoadEvents().then(rows => {
-      if (rows && rows.length > 0) {
-        setEvents(prev => {
-          const dbEvents = rows.map(r => mergeSupaEvent(r));
-          /* Merge: keep mock events that don't exist in DB, add DB events */
-          const dbTitles = new Set(dbEvents.map(e => e.title));
-          const kept = prev.filter(e => !dbTitles.has(e.title));
-          return [...dbEvents, ...kept];
-        });
+      if (rows) {
+        if (rows.length > 0) {
+          setEvents(rows.map(r => mergeSupaEvent(r)));
+        } else {
+          setEvents([]);
+        }
+      } else {
+        setEvents(EVENTS_MOCK);
       }
       setEventsLoaded(true);
     });
@@ -5257,7 +5262,7 @@ function NewsPage({ onBack }) {
 }
 
 function IdeasPage({ onBack }) {
-  const [ideas, setIdeas] = useState([
+  const IDEAS_MOCK = [
     { id:1, title:"Série 'Antes & Depois' para todos os clientes", desc:"Criar uma série padronizada de posts mostrando resultados reais dos serviços de cada cliente. Funciona bem para Bella Estética (procedimentos), Casa Nova (reformas), Studio Fitness (transformações).", author:"Matheus", date:"28/02/2026", votes:8, status:"approved", client:"Todos", tags:["Conteúdo","Série","Resultados"], comments:[
       { by:"Alice", text:"Já tenho templates prontos, posso adaptar para cada cliente!", date:"28/02" },
       { by:"Victoria", text:"Para Studio Fitness tenho material filmado que serve perfeitamente.", date:"01/03" },
@@ -5282,24 +5287,26 @@ function IdeasPage({ onBack }) {
     { id:8, title:"Google Ads para Pet Love Shop — campanhas locais", desc:"O Pet Love tem boa avaliação no Google (4.8★). Proposta: campanhas de Google Ads locais focadas em 'pet shop Petrópolis', 'banho e tosa perto de mim'. Budget sugerido: R$ 500/mês.", author:"Matheus", date:"15/02/2026", votes:4, status:"review", client:"Pet Love Shop", tags:["Google Ads","SEO Local","Tráfego Pago"], comments:[
       { by:"Alice", text:"A Ana Paula mencionou interesse em tráfego pago na última reunião.", date:"16/02" },
     ] },
-  ]);
+  ];
+  const [ideas, setIdeas] = useState([]);
   const [ideasLoaded, setIdeasLoaded] = useState(false);
 
   useEffect(() => {
     if (!supabase || ideasLoaded) return;
     supaLoadIdeas().then(rows => {
-      if (rows && rows.length > 0) {
-        const dbIdeas = rows.map(r => ({
-          id: r.id, supaId: r.id, title: r.title, desc: r.description || "",
-          author: r.author || "Matheus", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
-          votes: r.votes || 0, status: r.status || "pending",
-          client: r.client_name || "Todos", tags: r.tags || [], comments: [],
-        }));
-        setIdeas(prev => {
-          const dbTitles = new Set(dbIdeas.map(i => i.title));
-          const kept = prev.filter(i => !dbTitles.has(i.title));
-          return [...dbIdeas, ...kept];
-        });
+      if (rows) {
+        if (rows.length > 0) {
+          setIdeas(rows.map(r => ({
+            id: r.id, supaId: r.id, title: r.title, desc: r.description || "",
+            author: r.author || "Matheus", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
+            votes: r.votes || 0, status: r.status || "pending",
+            client: r.client_name || "Todos", tags: r.tags || [], comments: [],
+          })));
+        } else {
+          setIdeas([]);
+        }
+      } else {
+        setIdeas(IDEAS_MOCK);
       }
       setIdeasLoaded(true);
     });
@@ -6526,17 +6533,24 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [showNavEdit, setShowNavEdit] = useState(false);
 
   /* ── Shared clients state loaded from Supabase ── */
-  const [sharedClients, setSharedClients] = useState(CLIENTS_DATA_INIT);
+  const [sharedClients, setSharedClients] = useState([]);
   const [clientsLoaded, setClientsLoaded] = useState(false);
   useEffect(() => {
     if (!supabase || clientsLoaded) return;
     supaLoadClients().then(rows => {
-      if (rows && rows.length > 0) {
-        const merged = rows.map(r => {
-          const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
-          return mergeSupaClient(r, existing);
-        });
-        setSharedClients(merged);
+      if (rows) {
+        if (rows.length > 0) {
+          const merged = rows.map(r => {
+            const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
+            return mergeSupaClient(r, existing);
+          });
+          setSharedClients(merged);
+        } else {
+          setSharedClients([]);
+        }
+      } else {
+        /* Supabase offline — fallback to mock */
+        setSharedClients(CLIENTS_DATA_INIT);
       }
       setClientsLoaded(true);
     });
