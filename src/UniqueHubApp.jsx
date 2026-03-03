@@ -337,14 +337,18 @@ const supaLoadConversations = async (userId) => {
     const { data: memberships } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
     if (!memberships?.length) return [];
     const convIds = memberships.map(m => m.conversation_id);
-    /* Batch: all conversations + all members + all last messages in 3 queries instead of N*3 */
-    const [convRes, memRes, profileRes] = await Promise.all([
+    /* Batch: all conversations + all members in 2 queries */
+    const [convRes, memRes] = await Promise.all([
       supabase.from("conversations").select("*").in("id", convIds),
       supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds),
-      supabase.from("profiles").select("id, name, email"),
     ]);
     const convs = convRes.data || [];
     const allMembers = memRes.data || [];
+    /* Get only the profiles we need */
+    const uniqueUserIds = [...new Set(allMembers.map(m => m.user_id))];
+    const profileRes = uniqueUserIds.length > 0
+      ? await supabase.from("profiles").select("id, name, email").in("id", uniqueUserIds)
+      : { data: [] };
     const allProfiles = profileRes.data || [];
     const profileMap = {};
     allProfiles.forEach(p => { profileMap[p.id] = p; });
@@ -3675,8 +3679,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
 }
 
 /* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
-/* ═══ Audio helpers (module-level to prevent remount) ═══ */
+/* ═══ Chat sub-components (module-level to prevent remount) ═══ */
 const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
+
 const AudioPlayer = ({ src, isMe, accent, muted }) => {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -3707,6 +3712,23 @@ const AudioPlayer = ({ src, isMe, accent, muted }) => {
     </div>
   );
 };
+
+/* Checkmark (module-level) */
+const Checkmark = ({ read }) => (
+  <span style={{ display:"inline-flex", marginLeft:3, verticalAlign:"middle" }}>
+    <svg width="14" height="10" viewBox="0 0 16 11" fill="none">
+      <path d="M1 5.5L5.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 5.5L9.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}/>
+    </svg>
+  </span>
+);
+/* TypingDots (module-level) */
+const TypingDots = () => (
+  <div style={{ display:"flex", gap:3, padding:"8px 14px", background:"var(--bg-card,#fff)", borderRadius:"4px 14px 14px 14px", width:"fit-content", boxShadow:"0 1px 2px rgba(0,0,0,0.06)" }}>
+    {[0,1,2].map(i => <div key={i} style={{ width:7, height:7, borderRadius:"50%", background:"#999", animation:`typingBounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+  </div>
+);
+const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
 
 function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const [view, setView] = useState("list");
@@ -3745,10 +3767,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     if (!user?.id || !supabase) return;
     const load = async () => {
       setLoading(true);
-      const c = await supaLoadConversations(user.id);
+      /* Parallel: conversations + team members at once */
+      const [c, membersRes] = await Promise.all([
+        supaLoadConversations(user.id),
+        supabase.from("agency_members").select("user_id").not("user_id", "is", null),
+      ]);
       setConvs(c);
-      const { data: members } = await supabase.from("agency_members").select("user_id").not("user_id", "is", null);
-      const memberIds = (members || []).map(m => m.user_id).filter(id => id !== user.id);
+      const memberIds = (membersRes.data || []).map(m => m.user_id).filter(id => id !== user.id);
       if (memberIds.length > 0) {
         const { data: profs } = await supabase.from("profiles").select("id, name, email, role").in("id", memberIds);
         setAllProfiles(profs || []);
@@ -3773,6 +3798,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         const newMsg = payload.new;
         setMsgs(prev => {
           if (prev.find(m => m.id === newMsg.id)) return prev;
+          /* Replace optimistic message from same sender with real one */
+          if (newMsg.sender_id === user.id) {
+            const optIdx = prev.findIndex(m => m._optimistic && m.sender_id === user.id && m.content === (newMsg.content || ""));
+            if (optIdx !== -1) {
+              const updated = [...prev];
+              updated[optIdx] = { ...newMsg, profiles: prev[optIdx].profiles };
+              return updated;
+            }
+          }
           return [...prev, newMsg];
         });
         /* Debounce markRead — wait 2s of no new messages before writing */
@@ -3845,8 +3879,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
 
   const sendMsg = async () => {
     if (!input.trim() || !selConv) return;
-    await supaSendMessage(selConv.id, user.id, input.trim());
+    const text = input.trim();
     setInput("");
+    /* Optimistic: show immediately */
+    const optimistic = { id: `opt-${Date.now()}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true };
+    setMsgs(prev => [...prev, optimistic]);
+    /* Send to DB in background */
+    supaSendMessage(selConv.id, user.id, text).catch(() => {});
   };
 
   const lastTypingEmit = useRef(0);
@@ -3876,22 +3915,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     return false;
   };
 
-  /* Checkmark SVG */
-  const Checkmark = ({ read }) => (
-    <span style={{ display:"inline-flex", marginLeft:3, verticalAlign:"middle" }}>
-      <svg width="14" height="10" viewBox="0 0 16 11" fill="none">
-        <path d="M1 5.5L5.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5 5.5L9.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}/>
-      </svg>
-    </span>
-  );
-
-  /* Typing dots */
-  const TypingDots = () => (
-    <div style={{ display:"flex", gap:3, padding:"8px 14px", background:B.bgCard, borderRadius:"4px 14px 14px 14px", width:"fit-content", boxShadow:"0 1px 2px rgba(0,0,0,0.06)" }}>
-      {[0,1,2].map(i => <div key={i} style={{ width:7, height:7, borderRadius:"50%", background:B.muted, animation:`typingBounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
-    </div>
-  );
+  /* Checkmark + TypingDots are at module level now */
 
   /* Audio recording */
   const startRecording = async () => {
