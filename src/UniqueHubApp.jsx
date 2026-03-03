@@ -93,15 +93,17 @@ const supaCreateDemand = async (d, clientId) => {
   try {
     const isUUID = (v) => typeof v === "string" && /^[0-9a-f]{8}-/.test(v);
     const payload = {
-      cliente_id: isUUID(clientId) ? clientId : null, tittle: d.title, description: d.steps?.idea?.text || "",
-      type: d.type || "social", stage: d.stage || "idea", priority: d.priority || "média",
-      format: d.format || null, networks: d.network || null, sponsored: d.sponsored || false,
-      schedule_date: d.scheduling?.date ? (() => { const p = d.scheduling.date.split("/"); return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : null; })() : null,
-      schedule_time: d.scheduling?.time || null,
-      traffic_budget: d.traffic?.budget ? parseFloat(d.traffic.budget.replace(/[^\d.,]/g,"").replace(",",".")) || null : null,
+      cliente_id: isUUID(clientId) ? clientId : null,
+      tittle: d.title || "Nova demanda",
+      type: d.type || "social",
+      stage: d.stage || "idea",
+      priority: d.priority || "média",
+      format: d.format || null,
+      networks: d.network || null,
+      sponsored: d.sponsored || false,
     };
     const { data, error } = await supabase.from("demands").insert(payload).select().single();
-    if (error) { console.error("Supa create demand error:", error); return { data: null, err: error.message }; }
+    if (error) { return { data: null, err: JSON.stringify(error) }; }
     return { data, err: null };
   } catch (e) { return { data: null, err: e.message }; }
 };
