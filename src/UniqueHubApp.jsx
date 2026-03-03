@@ -2215,18 +2215,20 @@ function ContentPage({ user, clients: propClients }) {
     if (!supabase || loadedDemands) return;
     supaLoadDemands().then(rows => {
       if (rows && rows.length > 0) {
-        const merged = rows.map(r => {
+        const dbDemands = rows.map(r => {
           const existing = DEMANDS_INIT.find(d => d.title === r.title);
           if (existing) return { ...existing, supaId: r.id };
           const dem = mergeSupaDemand(r);
-          /* Resolve client name from shared clients */
           if (r.client_id && CDATA) {
             const cl = CDATA.find(c => c.supaId === r.client_id || c.id === r.client_id);
             if (cl) dem.client = cl.name;
           }
           return dem;
         });
-        setDemands(merged);
+        /* Keep mock demands that aren't in DB, add DB-only demands */
+        const dbTitles = new Set(dbDemands.map(d => d.title));
+        const keptMock = DEMANDS_INIT.filter(d => !dbTitles.has(d.title));
+        setDemands([...dbDemands, ...keptMock]);
       }
       setLoadedDemands(true);
     });
