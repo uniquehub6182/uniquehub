@@ -2266,7 +2266,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
           {imgFiles.length > 0 ? (
             <img src={imgFiles[Math.min(cur, imgFiles.length-1)]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
           ) : vidFiles.length > 0 ? (<>
-            <video ref={vidRef} src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} playsInline loop onClick={togglePlay} />
+            <video ref={vidRef} src={vidFiles[0]?.url+"#t=0.1"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} preload="metadata" playsInline loop onClick={togglePlay} />
             <div onClick={togglePlay} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1, cursor:"pointer", background: playing ? "transparent" : "rgba(0,0,0,0.25)", transition:"background .3s" }}>
               {!playing && <div style={{ width:compact?40:60, height:compact?40:60, borderRadius:"50%", background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
                 <svg width={compact?18:28} height={compact?18:28} viewBox="0 0 24 24" fill="#111" style={{ marginLeft:compact?2:3 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -3247,7 +3247,7 @@ function ContentPage({ user, clients: propClients }) {
             return (
               <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"9/16", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
                 {firstImg ? <img src={firstImg.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> :
-                 firstVid ? <video src={firstVid.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline /> : null}
+                 firstVid ? <video src={firstVid.url+"#t=0.1"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} preload="metadata" muted playsInline /> : null}
                 <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.2)" }}>
                   <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="#111" style={{ marginLeft:3 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
