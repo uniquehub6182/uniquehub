@@ -97,7 +97,7 @@ const supaCreateDemand = async (d, clientId) => {
       stage: d.stage || "idea",
       priority: d.priority || "média",
       format: d.format || null,
-      networks: d.network || null,
+      networks: d.network ? [d.network] : [],
       sponsored: d.sponsored || false,
     };
     const { data, error } = await supabase.from("demands").insert(payload).select().single();
