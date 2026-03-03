@@ -20,7 +20,7 @@ const PLAN_MAP_TO_DB = { "Básico": "essencial", "Essencial": "essencial", "Prof
 const PLAN_MAP_FROM_DB = { "essencial": "Essencial", "profissional": "Profissional", "premium": "Premium" };
 
 const supaCreateClient = async (c) => {
-  if (!supabase) return null;
+  if (!supabase) return { data: null, err: "no supabase" };
   try {
     const payload = {
       name: c.name, contact_name: c.contact || null, contact_email: c.email || null,
@@ -29,9 +29,9 @@ const supaCreateClient = async (c) => {
       status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null,
     };
     const { data, error } = await supabase.from("clients").insert(payload).select().single();
-    if (error) { console.error("Supa create client error:", error); return null; }
-    return data;
-  } catch (e) { console.error("Supa create client catch:", e); return null; }
+    if (error) { console.error("Supa create client error:", error); return { data: null, err: error.message || error.code }; }
+    return { data, err: null };
+  } catch (e) { console.error("Supa create client catch:", e); return { data: null, err: e.message }; }
 };
 
 const supaUpdateClient = async (id, updates) => {
@@ -1286,11 +1286,13 @@ function ClientsPage({ onBack, onNavigate }) {
       socials: { instagram:{connected:false}, facebook:{connected:false}, google:{connected:false}, tiktok:{connected:false}, linkedin:{connected:false}, youtube:{connected:false}, twitter:{connected:false}, pinterest:{connected:false} },
     };
     /* Save to Supabase */
-    const saved = await supaCreateClient(nc);
-    if (saved) { nc.id = saved.id; nc.supaId = saved.id; }
-    else if (supabase) { showToast("Erro ao salvar no servidor, salvo localmente"); }
+    const result = await supaCreateClient(nc);
+    if (result?.data) { nc.id = result.data.id; nc.supaId = result.data.id; }
+    else if (supabase) { showToast("DB erro: " + (result?.err || "desconhecido")); }
     setClients(p => [...p, nc]);
-    setCreating(false); setForm({}); showToast("Cliente cadastrado! ✓");
+    setCreating(false); setForm({}); 
+    if (result?.data) showToast("Cliente cadastrado no banco! ✓");
+    else if (!supabase) showToast("Cliente cadastrado localmente! ✓");
   };
 
   const updateClient = (id, data) => {
