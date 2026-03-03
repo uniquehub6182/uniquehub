@@ -279,7 +279,7 @@ const supaLoadTeam = async () => {
 const supaCreateMember = async (m) => {
   if (!supabase) return null;
   try {
-    const payload = { name: m.name||"", role: m.role||"", job_title: m.role||"", email: m.email||"", phone: m.phone||"", since: m.since||"", skills: m.skills||[], status: "pendente" };
+    const payload = { name: m.name||"", role: m.role||"", job_title: m.role||"", email: m.email||"", phone: m.phone||"", since: m.since||"", skills: m.skills||[], status: m.status||"pendente", ...(m.user_id ? { user_id: m.user_id } : {}) };
     const { data, error } = await supabase.from("agency_members").insert(payload).select();
     if (error) { console.error("supaCreateMember error:", error); return null; }
     return data?.[0] || null;
@@ -4744,8 +4744,13 @@ function TeamPage({ onBack }) {
     if (!form.name?.trim()) return showToast("Informe o nome");
     if (!form.email?.trim() || !form.email.includes("@")) return showToast("Informe o e-mail (essencial para o convite)");
     const m = { name:form.name.trim(), role:form.role||"Social Media", email:form.email||"", phone:form.phone||"", since:new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}), skills:form.skills?form.skills.split(",").map(s=>s.trim()).filter(Boolean):[] };
+    /* Auto-link if profile with this email already exists */
+    if (supabase) {
+      const { data: existingProfile } = await supabase.from("profiles").select("id").eq("email", form.email.trim()).limit(1);
+      if (existingProfile?.[0]?.id) { m.user_id = existingProfile[0].id; m.status = "offline"; }
+    }
     const row = await supaCreateMember(m);
-    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:"pendente",supaId:row.id}]); setAdding(false); setForm({}); showToast("Membro adicionado ✓"); }
+    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",supaId:row.id}]); setAdding(false); setForm({}); showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); }
     else { showToast("Erro ao adicionar membro"); }
   };
 
