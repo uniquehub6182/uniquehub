@@ -145,6 +145,23 @@ const supaDeleteDemand = async (id) => {
   if (!supabase) return;
   try { await supabase.from("demands").delete().eq("id", id); } catch(e) {}
 };
+
+/* ── Supabase Storage: upload files for demands ── */
+const supaUploadFile = async (file, demandId) => {
+  if (!supabase) return null;
+  try {
+    const ext = file.name.split(".").pop();
+    const path = `${demandId}/${Date.now()}_${file.name.replace(/\s+/g,"_")}`;
+    const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true });
+    if (error) { console.error("Upload error:", error); return null; }
+    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+    return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
+  } catch (e) { console.error("Upload catch:", e); return null; }
+};
+const supaDeleteFile = async (path) => {
+  if (!supabase) return;
+  try { await supabase.storage.from("demand-files").remove([path]); } catch(e) {}
+};
 const mergeSupaDemand = (row) => ({
   id: row.id, supaId: row.id, type: row.type || "social",
   client: "Sem cliente", title: row.title || "",
@@ -2663,34 +2680,201 @@ function ContentPage({ user, clients: propClients }) {
               </div>
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Enviar material criado</label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {(sel.steps?.design?.files||[]).map((f,i) => (
+                {(sel.steps?.design?.files||[]).map((f,i) => {
+                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || f);
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(f.name || f);
+                  const fName = f.name || f;
+                  const fUrl = f.url || null;
+                  return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
-                    <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>
-                    <span style={{ fontSize:12, fontWeight:600, flex:1 }}>{f}</span>
-                    <button onClick={() => { const nf = [...(sel.steps?.design?.files||[])]; nf.splice(i,1); updateStep("design",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                    {isImg && fUrl ? <img src={fUrl} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                     <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024).toFixed(0)} KB</p>}
+                    </div>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
+                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.design?.files||[])]; nf.splice(i,1); updateStep("design",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
                   </div>
-                ))}
-                <button onClick={() => {
-                  const fName = prompt("Nome do arquivo (ex: arte_feed_v1.psd):");
-                  if (fName) updateStep("design", { files: [...(sel.steps?.design?.files||[]), fName], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} Enviar arquivo
+                  );
+                })}
+                <input type="file" id="designUpload" multiple accept="image/*,video/*,.psd,.ai,.pdf" style={{ display:"none" }} onChange={async (e)=>{
+                  const files = Array.from(e.target.files);
+                  if (!files.length) return;
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const uploaded = [];
+                  for (const file of files) {
+                    const result = await supaUploadFile(file, sel.supaId || sel.id);
+                    if (result) uploaded.push(result);
+                    else uploaded.push({ name: file.name, size: file.size, type: file.type });
+                  }
+                  updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  e.target.value = "";
+                }} />
+                <button onClick={()=>document.getElementById("designUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} Selecionar arquivos
                 </button>
               </div>
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Formatos: PSD, AI, PNG, JPG, MP4, MOV</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI, PDF — múltiplos arquivos</p>
             </> : sel.steps?.design?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <Av name={sel.steps.design.by||"Designer"} sz={22} fs={9} />
                 <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.design.by||"Designer"}</span>
                 <span style={{ fontSize:10, color:B.muted }}>{sel.steps.design.date}</span>
               </div>
+              {/* Thumbnail grid for images */}
+              {sel.steps.design.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
+                  {sel.steps.design.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
+                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}` }}>
+                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    </a>
+                  ))}
+                </div>
+              )}
               <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {sel.steps.design.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
-                  <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>
-                  <span style={{ fontSize:12, fontWeight:600, flex:1 }}>{f}</span>
-                  <span style={{ color:B.muted, display:"flex", cursor:"pointer" }}>{IC.download}</span>
-                </div>))}
+                {sel.steps.design.files.map((f,i)=>{
+                  const fName = f.name || f;
+                  const fUrl = f.url || null;
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
+                    {isVid ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                     <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
+                    <span style={{ fontSize:12, fontWeight:600, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</span>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
+                  </div>);
+                })}
               </div>
+            </>}
+          </>)}
+
+          {/* ── 3b. PRODUÇÃO (Vídeo — Audiovisual) ── */}
+          {sel.type === "video" && renderSection("production", <>
+            {sel.stage === "production" ? <>
+              {sel.steps?.briefing?.text && <div style={{ background:`${STAGE_CFG.briefing.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.briefing.c}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.briefing.c, marginBottom:4 }}>📋 Briefing:</p>
+                <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text || "—"}</p>
+              </div>}
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>Enviar material gravado</label>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {(sel.steps?.production?.files||[]).map((f,i) => {
+                  const fName = f.name || f;
+                  const fUrl = f.url || null;
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
+                  const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fName);
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
+                    {isImg && fUrl ? <img src={fUrl} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                     <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024/1024).toFixed(1)} MB</p>}
+                    </div>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
+                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.production?.files||[])]; nf.splice(i,1); updateStep("production",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                  </div>);
+                })}
+                <input type="file" id="productionUpload" multiple accept="video/*,image/*,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
+                  const files = Array.from(e.target.files);
+                  if (!files.length) return;
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const uploaded = [];
+                  for (const file of files) {
+                    const result = await supaUploadFile(file, sel.supaId || sel.id);
+                    if (result) uploaded.push(result);
+                    else uploaded.push({ name: file.name, size: file.size, type: file.type });
+                  }
+                  updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  e.target.value = "";
+                }} />
+                <button onClick={()=>document.getElementById("productionUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.orange}40`, background:`${B.orange}04`, cursor:"pointer", color:B.orange, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} Selecionar vídeos / fotos
+                </button>
+              </div>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>MP4, MOV, JPG, PNG, Premiere, After Effects</p>
+            </> : sel.steps?.production?.files?.length > 0 && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps.production.by||"Audiovisual"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.production.by||"Audiovisual"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.production.date}</span>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                {sel.steps.production.files.map((f,i)=>{
+                  const fName = f.name || f; const fUrl = f.url || null;
+                  return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <span style={{ fontSize:12, fontWeight:600, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</span>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
+                  </div>);
+                })}
+              </div>
+            </>}
+          </>)}
+
+          {/* ── 3c. EDIÇÃO (Vídeo — Editor) ── */}
+          {sel.type === "video" && renderSection("editing", <>
+            {sel.stage === "editing" ? <>
+              {sel.steps?.production?.files?.length > 0 && <div style={{ background:`${B.orange}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.orange}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.orange, marginBottom:6 }}>🎬 Material gravado:</p>
+                {sel.steps.production.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span></div>))}
+              </div>}
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Notas de edição</label>
+              <textarea value={sel.steps?.editing?.text||""} onChange={e=>updateStep("editing",{text:e.target.value, by:user?.name||"Allan", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Cortes, transições, trilha sonora, legendas..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+              <label className="sl" style={{ display:"block", marginBottom:6, marginTop:10 }}>Enviar vídeo editado</label>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {(sel.steps?.editing?.files||[]).map((f,i) => {
+                  const fName = f.name || f; const fUrl = f.url || null;
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024/1024).toFixed(1)} MB</p>}
+                    </div>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
+                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.editing?.files||[])]; nf.splice(i,1); updateStep("editing",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                  </div>);
+                })}
+                <input type="file" id="editingUpload" multiple accept="video/*,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
+                  const files = Array.from(e.target.files);
+                  if (!files.length) return;
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const uploaded = [];
+                  for (const file of files) {
+                    const result = await supaUploadFile(file, sel.supaId || sel.id);
+                    if (result) uploaded.push(result);
+                    else uploaded.push({ name: file.name, size: file.size, type: file.type });
+                  }
+                  updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  e.target.value = "";
+                }} />
+                <button onClick={()=>document.getElementById("editingUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.cyan}40`, background:`${B.cyan}04`, cursor:"pointer", color:B.cyan, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} Enviar vídeo editado
+                </button>
+              </div>
+            </> : sel.steps?.editing?.text && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps.editing.by||"Editor"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.editing.by||"Editor"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.editing.date}</span>
+              </div>
+              <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps.editing.text}</p>
+              {sel.steps?.editing?.files?.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6 }}>
+                {sel.steps.editing.files.map((f,i)=>{
+                  const fName = f.name||f; const fUrl = f.url||null;
+                  return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <span style={{ fontSize:12, fontWeight:600, flex:1 }}>{fName}</span>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
+                  </div>);
+                })}
+              </div>}
             </>}
           </>)}
 
@@ -2700,7 +2884,7 @@ function ContentPage({ user, clients: propClients }) {
               {/* Show design files for reference */}
               {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
-                {sel.steps.design.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{f}</span></div>))}
+                {sel.steps.design.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
               </div>}
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Legenda do post</label>
               <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
