@@ -5676,7 +5676,7 @@ function NewsPage({ onBack }) {
   const catLabel = (cat) => ({ trends:"Tendência", updates:"Atualização", tips:"Dica", cases:"Case", tools:"Ferramenta" }[cat] || cat);
 
   /* ── ARTICLE FORM (create/edit) ── */
-  const ArticleForm = ({ isEdit }) => (
+  const newsFormJSX = (isEdit) => (
     <Card style={{ marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
         <p style={{ fontSize:14, fontWeight:700 }}>{isEdit ? "Editando artigo" : "Novo artigo"}</p>
@@ -5712,7 +5712,7 @@ function NewsPage({ onBack }) {
   if (creating) return (
     <div className="pg">{ToastEl}
       <Head title="Novo artigo" onBack={()=>{setCreating(false);setForm({});}} />
-      <ArticleForm isEdit={false} />
+      {newsFormJSX(false)}
     </div>
   );
 
@@ -5722,7 +5722,7 @@ function NewsPage({ onBack }) {
     if (editingArticle) return (
       <div className="pg">{ToastEl}
         <Head title="Editar artigo" onBack={()=>{setEditingArticle(false);setForm({});}} />
-        <ArticleForm isEdit={true} />
+        {newsFormJSX(true)}
       </div>
     );
     return (
