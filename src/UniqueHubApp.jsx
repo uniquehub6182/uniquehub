@@ -1014,7 +1014,8 @@ function HomePage({ user, goSub, goTab, clients }) {
   const CDATA = clients || CLIENTS_DATA_INIT;
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
-  const totalRevenue = "R$ 18.400";
+  const totalRevNum = CDATA.reduce((a, c) => a + (parseFloat((c.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0), 0);
+  const totalRevenue = `R$ ${totalRevNum.toLocaleString("pt-BR")}`;
   const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
   const today = new Date();
@@ -2094,10 +2095,14 @@ function AcademyPage({ onBack }) {
 /* ═══════════════════════ FINANCIAL PAGE ═══════════════════════ */
 function FinancialPage({ onBack, clients: propClients }) {
   const CDATA = propClients || CLIENTS_DATA_INIT;
+  const totalRevReal = CDATA.reduce((a, c) => a + (parseFloat((c.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0), 0);
+  const payingClients = CDATA.filter(c => c.status === "ativo" && c.plan !== "Trial").length;
+  const trialClients = CDATA.filter(c => c.status === "trial" || c.plan === "Trial").length;
+  const ticketMedio = payingClients > 0 ? Math.round(totalRevReal / payingClients) : 0;
   const months = [
-    { m: "Fev 2026", revenue: "R$ 18.400", clients: 7, paying: 6, trial: 1, ticket: "R$ 2.628", growth: "+12%", expenses: "R$ 8.200", profit: "R$ 10.200" },
-    { m: "Jan 2026", revenue: "R$ 16.400", clients: 6, paying: 5, trial: 1, ticket: "R$ 2.733", growth: "+8%", expenses: "R$ 7.800", profit: "R$ 8.600" },
-    { m: "Dez 2025", revenue: "R$ 15.200", clients: 6, paying: 5, trial: 1, ticket: "R$ 2.533", growth: "+5%", expenses: "R$ 7.500", profit: "R$ 7.700" },
+    { m: "Mar 2026", revenue: `R$ ${totalRevReal.toLocaleString("pt-BR")}`, clients: CDATA.length, paying: payingClients, trial: trialClients, ticket: `R$ ${ticketMedio.toLocaleString("pt-BR")}`, growth: "+12%", expenses: "R$ 8.200", profit: `R$ ${(totalRevReal - 8200).toLocaleString("pt-BR")}` },
+    { m: "Fev 2026", revenue: "R$ 18.400", clients: 7, paying: 6, trial: 1, ticket: "R$ 2.628", growth: "+8%", expenses: "R$ 7.800", profit: "R$ 10.200" },
+    { m: "Jan 2026", revenue: "R$ 16.400", clients: 6, paying: 5, trial: 1, ticket: "R$ 2.733", growth: "+5%", expenses: "R$ 7.500", profit: "R$ 8.600" },
   ];
   const [sel, setSel] = useState(null);
   const cur = sel || months[0];
