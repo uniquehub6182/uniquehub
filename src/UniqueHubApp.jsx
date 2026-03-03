@@ -307,7 +307,93 @@ const supaLinkInvite = async (inviteId, userId) => {
     if (dupes?.length) { for (const d of dupes) { await supabase.from("agency_members").delete().eq("id", d.id); } }
   } catch(e) {}
 };
-const TOP = "44px";
+
+/* ── Supabase: Chat CRUD ── */
+const supaLoadConversations = async (userId) => {
+  if (!supabase || !userId) return [];
+  try {
+    const { data: memberships } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
+    if (!memberships?.length) return [];
+    const convIds = memberships.map(m => m.conversation_id);
+    const { data: convs } = await supabase.from("conversations").select("*").in("id", convIds);
+    const result = [];
+    for (const c of (convs || [])) {
+      const { data: members } = await supabase.from("conversation_members").select("user_id, last_read_at").eq("conversation_id", c.id);
+      const { data: lastMsgs } = await supabase.from("messages").select("*").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(1);
+      const { data: memberProfiles } = await supabase.from("profiles").select("id, name, email").in("id", (members||[]).map(m=>m.user_id));
+      const myMembership = (members||[]).find(m => m.user_id === userId);
+      const lastMsg = lastMsgs?.[0] || null;
+      const unread = lastMsg && myMembership?.last_read_at ? new Date(lastMsg.created_at) > new Date(myMembership.last_read_at) ? 1 : 0 : 0;
+      result.push({ ...c, members: memberProfiles || [], lastMsg, unread, myLastRead: myMembership?.last_read_at });
+    }
+    return result;
+  } catch(e) { console.error("loadConvs:", e); return []; }
+};
+const supaLoadMessages = async (convId, limit = 50) => {
+  if (!supabase || !convId) return [];
+  try {
+    const { data } = await supabase.from("messages").select("*, profiles:sender_id(name, email)").eq("conversation_id", convId).order("created_at", { ascending: true }).limit(limit);
+    return data || [];
+  } catch(e) { return []; }
+};
+const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fileType) => {
+  if (!supabase) return null;
+  try {
+    const payload = { conversation_id: convId, sender_id: senderId, content: content || "" };
+    if (fileUrl) { payload.file_url = fileUrl; payload.file_name = fileName; payload.file_type = fileType; }
+    const { data } = await supabase.from("messages").insert(payload).select("*, profiles:sender_id(name, email)");
+    return data?.[0] || null;
+  } catch(e) { return null; }
+};
+const supaFindOrCreateDM = async (userId, otherId) => {
+  if (!supabase) return null;
+  try {
+    const { data: myConvs } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
+    const { data: theirConvs } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", otherId);
+    const mySet = new Set((myConvs||[]).map(m=>m.conversation_id));
+    const shared = (theirConvs||[]).filter(m=>mySet.has(m.conversation_id)).map(m=>m.conversation_id);
+    for (const cid of shared) {
+      const { data: conv } = await supabase.from("conversations").select("*").eq("id", cid).eq("type", "dm").single();
+      if (conv) return conv.id;
+    }
+    const { data: newConv } = await supabase.from("conversations").insert({ type: "dm", created_by: userId }).select();
+    if (!newConv?.[0]) return null;
+    await supabase.from("conversation_members").insert([
+      { conversation_id: newConv[0].id, user_id: userId },
+      { conversation_id: newConv[0].id, user_id: otherId },
+    ]);
+    return newConv[0].id;
+  } catch(e) { console.error("findOrCreateDM:", e); return null; }
+};
+const supaCreateGroup = async (name, creatorId, memberIds) => {
+  if (!supabase) return null;
+  try {
+    const { data: conv } = await supabase.from("conversations").insert({ type: "group", name, created_by: creatorId }).select();
+    if (!conv?.[0]) return null;
+    const allIds = [...new Set([creatorId, ...memberIds])];
+    await supabase.from("conversation_members").insert(allIds.map(uid => ({ conversation_id: conv[0].id, user_id: uid })));
+    return conv[0].id;
+  } catch(e) { return null; }
+};
+const supaMarkRead = async (convId, userId) => {
+  if (!supabase) return;
+  try { await supabase.from("conversation_members").update({ last_read_at: new Date().toISOString() }).eq("conversation_id", convId).eq("user_id", userId); } catch(e) {}
+};
+const supaTogglePin = async (msgId, pinned) => {
+  if (!supabase) return;
+  try { await supabase.from("messages").update({ pinned: !pinned }).eq("id", msgId); } catch(e) {}
+};
+const supaUploadChatFile = async (file) => {
+  if (!supabase) return null;
+  try {
+    const ext = file.name.split(".").pop();
+    const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("chat-files").upload(path, file);
+    if (error) return null;
+    const { data: urlData } = supabase.storage.from("chat-files").getPublicUrl(path);
+    return { url: urlData.publicUrl, name: file.name, type: file.type };
+  } catch(e) { return null; }
+};
 const LOGO_B64 = "data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABjAc8DASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAYIBQcJBAMB/8QAUxAAAQMCAwQCCgwJCwQDAAAAAQACAwQFBgcRCBIhMUFRExQiNWFydYGxsgkWMjQ3OEJxc3ShsxUYOVJigoWR0RcjMzZVk5XBw8TSJFRW4VNXov/EABsBAQACAwEBAAAAAAAAAAAAAAADBAEFBgIH/8QAMhEBAAEDAgMGBAUFAQAAAAAAAAECAwQFEQYhMRIzQVFxsRNhgcEiMqGy8BUlNXKCkf/aAAwDAQACEQMRAD8At8iIeA1KAijN2vU0kroqR+5EOG+Obv4LHdvVv/eVH94VyWVxhiWbs0UUzVt4xtt9FerJpidoTdFgrDd5JpRS1RBcfcP6T4Cs6t/p+oWdQsxeszy/WJ8ktFcVxvAi+dRNFTwulmeGsbzKjVffamZxbT/zMfg90VX1PWcXTYj4s7zPSI6sXLtNHVKUUI7erf8AvKj+8K+tNdq+BwPbDpB0h53tVoqONMWatqrdUR9EUZVPkmSLw2m5RV7NB3Eo90zX7Qvcusxsm1k24u2qt6ZWKaoqjeBERTsiIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAvhciRbqkjgRE70Ffdee597qn6F/oKgyu4r9J9mKukoVC0PmYw8nOAUuqbXRGjfGyBjSGndcBxB+dROl99ReOPSpxUf0Enin0Lg+Esazes35uUxPSOcfKVTHpiYndBI3mORr2nQtIIU9jdvMa7rAKgCntP73j8QehScEVTvep8Pw/cxZ6oziesM1X2u09xFz8Ll+WO1du6zTFzYWnQac3FY6rdvVczj0vcftUytbBHbqdreXYwf38VV0rGp1jVLt7I5xHPb67RHpEMW6fiXJmoZb6Fjd0UsWnhbqsddbHC+N0tI3scgGu4OTv4Lx3K81bK97YHhscbt0DdB1061nrbUiroo59NC4cR1FdFbuaVqtdzDpo50/KI+W8TCaJt3JmnZDaSZ9LUsmZ7ph10/yU5jeJI2yN5OAIUOvsYius7W8id7941Unsri61U5P5mn7lq+E6q8fKv4dU7xT7xO368kePvFU0vWiKFZzZk2bKzCUeJb5RV9XSvq2Uojo2sdJvOa4g6Pc0adwenqXdraaoq/4G2rsCYvxhasMW+w4lhq7nUspoZJ4YBG1zjoC4iUnT5gVYBARFpHNjaWwZlvjaqwnebLiCqrKZkb3yUkULoyHtDhoXSNPI9SDdyLXGRucOHs3aO6VWH7ddKJltkjjlFcyNpcXhxG7uPd+aeei2OgIiICIvnUzxU1NLU1EjY4YmF8j3Hg1oGpJ8yD6Iqe4l21BBiiSGwYOjrLJFLuiapqnRzTtB90AAQzUcgdfCrP5aYytGP8ABNuxXZHP7UrYydyQd3E8HRzHadIIIQSNERAREQEREBERAREQEREBERARFpP+X+n/ABhP5I/atL2Xtrtf8I9ujd/ouya9j3PN7pBuxERARFpTDGftPe8/qrKduF5YJaeoqYDcDWhzT2Fjna9j3Bz3dPdcNUG60REBERARFrfaeqqqhyExdV0VTNS1EVEHRywyFj2HfbxDhxCDZCLRew3cbhdMioqu519VXVBuVQ0y1MzpH6Dd0GriTot6ICIiAiIgLz3PvdU/Qv8AQV6F57n3uqfoX+gqvl9xX6T7MVdJQyl99ReOPSpxUe95PEPoUHpffUXjj0qcVHveTxD6FxXBvcX/AKe0quN0lAlPaf3vH4g9CgSntP73j8QehR8EfnvelP3YxesoWylnqqt8cEZed469Q49KmdJG6GliicQXMYGkj5l+xxxQMIjY2NvM6DTzrFV1+p4iWU7TM7r5N/8Aa2+FhYmgU1Xsi7+Kr+co6z/OiSimmzzmUdrhpWzg/wDyO9KlOHGltoi16ST9qic8jppnyuADnuLjpy4qYWLvTT+KfSVoeEuzXqN2uOm07f8AsIsf88o9iXvvL8zfQFn8PHW0QfMfSVgcS995PFb6FncOd54f1vWKu6JP99yY/wBv3Q9Wu9qZBV29kG+Aqm8t0/3cysSq7eyDfAVTeW6f7uZd2tqgbNfw94K8rw+supC5b7Nfw94K8rw+supCAucm3H8Yu9fVqX7lq6NrnJtx/GLvX1al+5ag3J7G33gxp9apPUkVt1Uj2NvvBjT61SepItJZ+Zi5g23OnGFBb8c4mo6Snu88cMEF1nZHG0POjWtDtAB1BB0kRc7ZdpDGluyftOErPfbg+9PfPJc7xUzOlqGtdIdyKN79SO50JdzGoA04rTlbiXEdbWmtrL/damqJ1M0tZI95PPXeJ1QddV5bxQw3S01lsqdewVcD4JNDod17S06eYrnnkZtJ41wNeKakxDc6zEGHXPDZ4KuQyzQt14uie7utR+aTodNOHNdDLPcqG8WmkuttqWVNFWQtnp5mHuXscNWkeYoOfGJtlHNi34nkttotdNdrcZCILgyrijYWa8C9rnBzTpzAB8GqutkLgI5a5XWrCktW2rqYA+Wplb7kyvcXODdfkjXQdemq53YjzPzKixDcooswcVsYyrla1rbxUANAedABvroZs419ddMjcJXC51tRW1k9va+aoqJTJJI7U8XOcSSfnQbARVP2ntqCfDt1qsG5dPgfX05MVddXND2wv5GOIHgXDkXHUA8ACeIqHiHGuL8QVjqy94nvFwmc4u3p6x7gCeoa6NHgGgQdbEXLnLDOjMLAF2gqrXiCsqqNjh2W3VkzpaeVo5t3Se54dLdCFIM7M7MUYizCq71hLGOJbVaauCCSOiguc0Tad/YmiRm61wHB4dxA48+lB0mRV42FcQX7EOUl4rb/AHu5Xaqju0kbJq2qfM9rRDGQ0OeSQNSTp4VTS6ZoZlsudUxmYWLGtbM8AC8VAAG8f00HVJFBNnqurbnklhC4XKsqK2sntkT5p55DJJI4jiXOPEnwlS6/vfHYrhJG9zHspZHNc06EENOhBQe1Fyk/lTzN/wDsTFv+M1H/ADXTLKCqqa3KrCtZW1E1TUz2imklmleXvkcYmkuc48SSekoJSiq/tPbTftNudRg/AbaeqvUJLK2vkG/FSP6WMbydIOnXg3loTrpTrE+P8b4mqnVN+xXeK97nb2ktW/caePuWA7reZ4ADmg6youT2E8xsd4Uq2VNgxZd6JzDr2NtU50TvGjcS13nCutst7R0OYtQzCmLY6ehxMGE08sQ3Ya8AanQfJkA47vI8SNOSCxao8fyin7U/2ivCqPH8op+1P9ogvCiIgKkGV35Qe6+Ubl9zIrvqkGV35Qe6+Ubl9zIgu+iLXGGs5sI4gzVuOW1BFdBere6ZszpYGthJiOjtHbxJ8HBBsdEQnQEnoQFrHar+LzjL6h/qMXoykzlwjmdd7tbMORXRk9qa11QauBsbTq4tG6Q468WnqXn2q/i84y+of6jEEP2CPgAh8qVPpat/KsOyNjTDOBNmFl8xVdYbdRNutS1pfqXyO7nuWNHFzvAAvLX7Xr7jWSxYHyxvV9hidxkfIWu0692Nj9OjmelBahFWDDm1/Zo7my3Y8wVeMMyH3UgJmDOPNzHNY/T5gfmVjsN32z4kstPebDcae42+pbvRTwP3mu/gR0g8R0oMiiIgLz3PvdU/Qv8AQV6F57n3uqfoX+gqvl9xX6T7MVdJQyl99ReOPSpxU+95PEPoUHpffUXjj0qcVPveXxD6FxXBvcX/AKe0quN0lAlPaf3vH4g9CgSntP73j8QehR8EfnvelP3YxessBiiucZO04nENA1k06T1LG223VFcT2LdaxvNzuS+Nc8yVkzydSZCftUussQhtkDQNCW7x+c8VVw8f+vapcrvzPYp8PlvtEfeXmmPjXJ3Q+piMNRJCSCWOLdR06KV4bJNoi16C4faovXnerpz1yO9KlGHGltoi16S4/avXClMU6ncinpET7wzj95LB4m77SeK30LO4c7zw/O71isFibvtJ4rfQs7hzvPD+t6xV7RP89k/9fuh6td7UyCrt7IN8BVN5bp/u5lYlV72/4JZshmSRsLmwXinkkP5rS2Ruv73Aedd2tqd7Nfw94K8rw+supC5UZFXOms2cmELnVvDKeC705kceTQXgEnwDXVdV0Bc5NuP4xd6+rUv3LV0bXNbbLudPdNojEj6Z4e2mMNK4jlvsiaHDzHUeZBvL2NvvBjT61SepIq1bRvw8Y28tVHrlWa9jdglbhbGFSWkRSVtPG13W5rHkj/8ATf3qsu0b8PGNvLVR65Qb32Hsl8N4nstVj3FlviujGVRprfRzjehBYAXSPbycdSAAeA0PPhpZXGWTGWeKLFPaazB9npBI0hlRQ0cdPNE7Tg5rmAHUdR1HWCoRsI/F5t/1+q+8W90HI/HeHqjCeNLzhqqfvy2yslpi/TTf3XEB3nGh86v/ALDd2qbps92yKpeXm31dRSRuPPcD99o8wfp8wCpXtN/D9jTypJ/krh7AXwCftep9DEFB8Uf1lun1yb1yr0U2NZ8BbC9pvtFIY7g60x0tG4c2yyvLQ4eFoLnfqqi+KP6y3T65N65VrM3qaefYFwTLECWU81JJLp0NIlZqf1nN/egqlYbXcMQ4gorPb4zPX3CpZTwtJ91I9wA1PzniV0cyi2esvcDYfgp62x2+/wB3cz/q66vp2zb7zzDGvBDGjo0GvWSVRTZwuVDac9cH19yeyOmZc42ue/k0v1Y0nqAc4HVdSkGq8zcg8tsbWKWi9rlvs1cGEU1dbaZkD4ndBIaAHjXmHfZzXODG2HLjhHFt0wzdmBtbbal0Eu77l2h4OHgI0I8BC65rmftf3Ghue0Niiagcx0cUsdO9zTqDJHE1r/3OBHmQWW9j1+Be+eWpfuIlRi799qz6d/rFXn9j1+Be+eWpfuIlRi799qz6d/rFB092aPgDwV5Ji9CmuI/6vXL6pL6hUI2ZHskyBwW5jg4C1Rt1HWNQftCmuKZI4cMXWaV4ZGyimc5x5ABhJKDkKV0fu2MZcB7IFvxJTODayHDlJFSE9E0kbGMPmLt7zLnArzbQFNPUbDVgfC1xbBR2uSXTobutb6XBBSa3wT3m+QU0lVG2etqWsdPUyhrQ57tC97jyGp1JK6LZQWrIzLXD9NQWjFGDpa8Rjtq4y3KmdPO/TujvF2rW89GjgB+9c5LbRVNyuNNb6KPstTUythhZvBu89x0aNToBqSOa2b+LrnT/AOB139/B/wA0Fus98NZJZm4bqo3YrwZQ4gZG51FcorlTskEmnBshDu7YTwIOumuo0K5/26sr7BfoK+hqDT19vqRJDLE8HckY7UEEcDxHMLY34uudP/gdd/fwf80/F1zp/wDA67+/g/5oOi2WuJI8YYAsWJ42hn4SoYqhzB8h7mjeb5najzKiOcNLiyt2y71S4GnfBiKSuaKGRkrYyHdrN17p3Adzvc1cvZusF4wvkjhmw3+kfSXKkgkbPA5wJjJle4AkEjkR0qsJ/KKftT/aIPf7UNsz+3K3/FqX+Ke1DbM/tyt/xal/irpIgpb7UNsz+3K3/FqX+KiOzHT4ipdsiCmxbK6W/RyVzbg90jXl0wp5N4lzeB49IXQBUgyu/KD3XyjcvuZEF31THJT4++Mfprl64VzlTLJT4++Mfprl64QXNX5J/Ru+Yr9X5J/Ru+YoKa+x8/CFj/6OL72Rb92q/i84y+of6jFoH2Pgh2YOPnNIIMURBHT/ADsi39tV/F5xl9Q/1GIKl7JWU8+bFSypxVUVMmDcOyObFSNeWtnqJCHuYCOQ03S4jiRujXqvrY7RarFbYrZZrdS2+ihbuxwU0QjY0fMFpnYXipY9ni1uptN+SsqnTkc9/shHH9UNW80Eex7grDGOrHLZsUWinuFM9pDS9v8AORE/KY/mx3hCqZlNWXfZ82k5MsrlcJanC19lYKZ8nLWThDNpyDt4djfpwPPoCuoqa7fgZFmhl9U0vCu3HDUc9GzsLPtLkFykREBfC5d7qn6F/oK+6/HtD2FjhqHDQqO9R8S3VRHjEwxMbxsglMQKmIngA8elTqVu/E9mum80hQmvpnUlXJA75J4HrHQVILPeIZYWQ1L9yVo03ncnefrXz7hbKtYl27iZE9mZ8/ON4mFPHqimZpqYL8HVnbfa3YXb+vPThp169SmcbdyNrdfcgBOyxbu92RmnXvBYW+XiNsLqekeHvdwc8cmjweFbzGxcLh61cvTc37XSOW/LpEefXqlpppsxM7o9Md6Z5HS4qdUzd2nib1MA+xQ21UjqytZEAd3XV56gpqtfwXYr2u35jlO0R+u/vDzjR1lBKrjUyn9M+lTCyt3bVTj9DX9/FRK4xmKvnjPMPPpUmslZTvtsTTKxro27rg5wHJUuFaqLWoXqbk7TtMc/Xm8Y/Kud2DxL33k+ZvoWew73nh/W9YqN3mVs1zne1wc3e0BHgCkuHwW2iAHqJ+0qxoFcXNbyK6ek9r90PVmd7sy96i+a+EKbHuXd6wlVPbG24UxZHI4aiOUEOjf5nBp8ylCLvltyIxXYLthbEVbYL5SSUdxoZTFNE4ciOkHpBGhB5EEFWdyj2wqqyYdp7NjqxVN3kpIxHFcKSVolkaBoOyNdoC79IEa9I14myOdOS2C81aRhvlNJS3SFu7BcqXRszB+a7UaPb4D5iFWDEmxfjWmnd+AMT2S4w73c9tCSnfp4QA8fagkePttCKexy02CcLVVLcJWlrau4yMLYNflBjdd49WpA6weSqMBc79e9GtqLhc7hUa6AF8s8r3fvLiT9qsdZNjHMGon0u2IMPUEWvF0T5Z3aeAbjR9qshkfs+YJyvmbc4BLeb8G6fhGraAYtRoexMHBmvXqT4dEGX2a8vH5aZT26wVYZ+E5S6ruJadR2d+mrdendaGt16d3Vc/No34eMbeWqj1yupiqJmdslYjxdmHf8T0+LrVTQ3SvlqmQyU8hcwPcSASOGoQbE2Efi82/6/VfeLe615s85fVuWOWlNhOvuFPcJoaiaYzQMLWkPdqBoePBbDQcutpv4fsaeVJP8lcPYC+AT9r1PoYoVmvsnYixnmPfsU02LbVSw3OsdUMhkp5C5gPQSOGq3bs4ZcV2VmXXtXuFyprjN27LU9mgY5rdHho00PHXuUHM/FH9Zbp9cm9croZlfhGkx3sfWXCda4MjuNkEbJCNexyBxcx+n6Lg0+ZaYu2xjiitulXWNxpZ2ied8oaaaThvOJ0+1WsykwvUYKy2sWFaqqiq57ZSiB80TS1ryCTqAePSg5aYuw9eMJYmrcP3ykko7jQymOVh6xycD0gjQg9IIVl8oNsCtsVggs2O7LU3l1NGI4bhSyNEz2gaASNdoHH9IEE9IJ4qyOeGSmD816FhvEUlFdoGbtNc6YDsrBz3XA8Hs16D4dCNVVy/7GOP6arLbLiCwXCmJOj53yQPA6NW7rhr8xQSDMzbLlr7FNb8CYdqbbWTsLDX10jXOg16WMbqC7qJPDqKqRVOqJJ3TVTpHTTHsjnyalzy7jvEnnrz1Vu8tNjOtZdYKzMDEFI6ijcHPobaXOdNp8kyODd0deg16iOa0ttbUdLb8/cQ0FDTxU1JTCnighiaGsjY2njAaAOQAQWd9juGuT14B5fhyT7mJVCz1wjWYIzXxBYKuJ7GMq3y0ziOEkDyXRuHXwOnzgjoVvfY7fgevHlyT7mJbLz3yYwvm1aYo7qZKC60rSKO5QNBkjB47jgfds147uo8BGpQVM2btpiXLTDXtUxDZ6i7WiF7pKOSnkDZqfeOpZo7g5pcSeYI1PPkMxnptW1GNcK1GFcGWOrtcNxYYayqqXtdM5juBjjazUDe5E6k6EgAc14bvsaZkQVZZbb3hytp+iSSaWF3nbuH0raeQ+yfTYRxHTYmxpdaW71lG8S0dFTMPYGSDiHvLhq8g8QNANdDx5IKLHgdCun+FcM0WMtmiz4WuGop7lhungc4DiwmFu68eFrgD5lW5+xTipzy442s2pOvvaVXCwDZZsOYIsmH6idlRNbaCGlfKwENeWMDSQDyB0QcrMcYYveCMXV2HL3TvpbhQTbp04Bw5te09LSNCD4VZrKrbGntWHYLXjyw1V1qqaMMZcKORoknA4DsjHaDe05uB49SsjnRk9g7NW2shv9K+C4QNIpbjTaNniH5up4Obr8l2vg0PFVYxJsX43pql3tfxLY7jT73cmq7JTv048wGvGvLpQZbNLbIqrlZJbbgKwT2qonYWPuFc9rpIdefY2N1G91OJOnUsfsq7RGNIMR23AuIKWuxVSVszYaaVh36ym16S4+7jA4neOrQCddBovnhvYvxtU1DPbBiayW6De7vtUSVD93hyBDBrz6VZ7JXJXBeVdI51kpX1d0lZuz3Kq0dM8dLW6DRjfAPOSg2UqPH8op+1P9orwrQH8gl4/Gb/AJWvw/Qdo9udsdpdhf2XTsPY9N7lrrxQb/REQFSDK78oPdfKNy+5kV31oHCOQt4sm0pWZrS3+gloqiqq5xRtheJQJo3tA3uWo3hr8yDfypSLhDlxt91tVe3tpaC7zODZ5DowNqYhuuJPIdk7kno0PUrrLVW0Hkjh7Ny2QOqp32290bC2kuEbA7Rp49jkbw3ma8eYIOunMghtVay2j8yrflzl1XT9sNN8r4XU1ppWnWSSZw3Q8N57rddSfABzIWlqDKHajw/TNs1hzRoX2yIbkTpayQua3loN+JxaAOgHh0KaZSbOTrTiyPG+ZmJZ8YYjheJKbsr3vhgcDq12r+6eQeXIDq5aBqz2ORj4MYYzpp2OjmZRwNcxw0LSJHggjoIKsPtV/F5xl9Q/1GKO7P8AkndstMwsUYkrb5Q11Neg/scMMTmujJlLxqTz4EhbEzhwpU44yzvmE6SripJ7lT9hZNK0uaw7wOpA49CCoWxHm9RYKqJsF4tnNDZrvN2xbq2bVsUU/uHNLjwDXboGvIOHHnqL0RvZIxskbmvY4Atc06gg9IVf8L7M1hfk1BgPGdTFXVtLVz1NHc6Fpjkp+yacG72uo4cWkaHh0jVQylyI2gMEtNBl9mtDJawSIoaqaSMMb4I3Nka3o9yUFqL1dLbZLVUXW711PQ0NMwyTTzvDGMaOkkqmNmnn2jNq+nvtJTze1HDjo3NkkaQDFE4uYD1Olk1OnPd16lJvxbs18d1kD82c0H1FFG7eNLSSPm0OvyQ4NjaSOndPzFWPy3wLhnL3Dcdgwvb20lI078jid6SZ/S97ubnejkNAgkqIiAiIg8N2t0VfFx0ZK0dy/wDyPgUXrKCrpXESwu0HygNWnzqbIQCNDyXPatw5jajV8Tfs1+cePrCG5Zpr5+KAcV6aO31VW7SKI6fnO4AedS/tOk3t7tePXr3V9wABoOAWkxuCoive/c3jyiPvKKnF85eO1UEVBDut7qR3u3df/pexEXbY9i3j24tWo2pjpC1ERTG0MJiO2yTkVdO3ecBo9o5nwqNkEHQgg+FT9fGWkppX78kEb3dZauW1fhWjMvTfs1dmZ6x4eqvcx+1O8InbLdPWyt0a5sWvdPI4aeBTCKNsUTY2DRrRoAv1rQ1oa0AAcgF+ra6NotrS6Jimd6p6z9o+SS1ai3AiIt0lEREBERAREQEREBERAREQEREBc0tsf4xmKfHg+4jXS1a1xjkRlTi/EVViHEWFBXXOrLTPP2/Ux75DQ0dyyQNHADkEGsvY7fgevHlyT7mJWXUay8wHhTL6zzWjCFpFsoppzUSRCeWXekLQ0nWRzjyaOGunBSVAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERB/9k=";
 const THEME_MAP = { "default": "#BBF246", "blue": "#3B82F6", "purple": "#8B5CF6", "pink": "#EC4899", "orange": "#F59E0B", "red": "#EF4444", "cyan": "#06B6D4" };
 function getB(isDark, accent) {
@@ -612,32 +698,6 @@ const DEMANDS_INIT = [
     scheduling:{date:"20/03",time:"10:00"}, traffic:{}
   },
 ];
-
-/* ═══════════════════════ CHAT DATA ═══════════════════════ */
-const CHAT_CONTACTS = [
-  ...AGENCY_TEAM.map(t=>({...t,type:"team"})),
-  ...CLIENTS_DATA_INIT.map(c=>({id:100+c.id,name:c.name,role:"Cliente · "+c.plan,photo:null,status:c.status==="ativo"?"online":"offline",type:"client"})),
-];
-const CHAT_GROUPS = [
-  {id:"g1",name:"Equipe Geral",members:AGENCY_TEAM.map(t=>t.name),type:"group",lastMsg:"Matheus: Vamos alinhar a pauta de amanhã",time:"10:32",unread:3},
-  {id:"g2",name:"Social Media",members:["Alice","Allan","Matheus"],type:"group",lastMsg:"Alice: Criativos do TechSmart prontos",time:"09:15",unread:1},
-];
-const CHAT_MSGS_INIT = {
-  "g1":[
-    {id:1,from:"Matheus",text:"Bom dia equipe! Vamos alinhar a pauta de amanhã",time:"10:30",read:true},
-    {id:2,from:"Alice",text:"Bom dia! Já estou com os criativos da Casa Nova prontos",time:"10:31",read:true},
-    {id:3,from:"Victoria",text:"Oi! O vídeo do reels do TechSmart ficou pronto, vou subir agora",time:"10:32",read:false},
-  ],
-  "1":[
-    {id:1,from:"Alice",text:"Oi Matheus, terminei o briefing do carrossel da Casa Nova",time:"09:00",read:true},
-    {id:2,from:"Matheus",text:"Perfeito! Manda pra Victoria começar a arte",time:"09:05",read:true},
-  ],
-  "101":[
-    {id:1,from:"Casa Nova Imóveis",text:"Bom dia! Vi o post do condomínio, ficou ótimo!",time:"14:00",read:true},
-    {id:2,from:"me",text:"Que bom que gostou! Tem mais 2 posts pra aprovação essa semana",time:"14:05",read:true},
-    {id:3,from:"Casa Nova Imóveis",text:"Perfeito, pode mandar que aprovo rápido",time:"14:10",read:false},
-  ],
-};
 
 /* ═══════════════════════ UTILITY COMPONENTS ═══════════════════════ */
 const Logo = ({ size = 32 }) => (
@@ -3563,77 +3623,156 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
   );
 }
 
-/* ═══════════════════════ CHAT PAGE (WhatsApp-like) ═══════════════════════ */
+/* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
 function ChatPage({ user }) {
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [view, setView] = useState("list"); // list, chat
-  const [selContact, setSelContact] = useState(null);
-  const [msgs, setMsgs] = useState(CHAT_MSGS_INIT);
+  const [view, setView] = useState("list");
+  const [convs, setConvs] = useState([]);
+  const [selConv, setSelConv] = useState(null);
+  const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
-  const [typing, setTyping] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
-  const [showCalling, setShowCalling] = useState(null);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pinnedOpen, setPinnedOpen] = useState(false);
   const msgEndRef = useRef(null);
+  const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior:"smooth" }); }, [msgs, selContact]);
+  /* Load conversations + profiles on mount */
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    const load = async () => {
+      setLoading(true);
+      const c = await supaLoadConversations(user.id);
+      setConvs(c);
+      const { data: profs } = await supabase.from("profiles").select("id, name, email, role");
+      setAllProfiles((profs || []).filter(p => p.id !== user.id));
+      setLoading(false);
+    };
+    load();
+  }, [user?.id]);
 
-  const getContactMsgs = (contact) => {
-    const key = contact?.id?.toString() || "";
-    return msgs[key] || [];
+  /* Load messages + subscribe when conversation selected */
+  useEffect(() => {
+    if (!selConv?.id || !supabase) return;
+    let channel;
+    const load = async () => {
+      const m = await supaLoadMessages(selConv.id, 100);
+      setMsgs(m);
+      supaMarkRead(selConv.id, user.id);
+      channel = supabase.channel(`msgs-${selConv.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
+        const newMsg = payload.new;
+        setMsgs(prev => {
+          if (prev.find(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+        supaMarkRead(selConv.id, user.id);
+        /* Refresh sender profile inline */
+        if (!newMsg.profiles) {
+          supabase.from("profiles").select("name, email").eq("id", newMsg.sender_id).single().then(({ data }) => {
+            if (data) setMsgs(prev => prev.map(m => m.id === newMsg.id ? { ...m, profiles: data } : m));
+          });
+        }
+      }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
+        setMsgs(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
+      }).subscribe();
+    };
+    load();
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, [selConv?.id]);
+
+  /* Auto-scroll */
+  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  /* Realtime subscription for conversation list updates */
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const channel = supabase.channel("chat-list").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
+      supaLoadConversations(user.id).then(c => setConvs(c));
+    }).subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user?.id]);
+
+  const getOtherName = (conv) => {
+    if (conv.type === "group") return conv.name || "Grupo";
+    const other = (conv.members || []).find(m => m.id !== user.id);
+    return other?.name || "Conversa";
   };
 
-  const getLastMsg = (contact) => {
-    const m = getContactMsgs(contact);
-    return m.length > 0 ? m[m.length - 1] : null;
+  const fmtTime = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   };
 
-  const allChats = [
-    ...CHAT_GROUPS.map(g => ({ ...g, _lastMsg: getLastMsg(g) || { text: g.lastMsg, time: g.time } })),
-    ...CHAT_CONTACTS.filter(c => {
-      const m = getContactMsgs(c);
-      return m.length > 0;
-    }).map(c => ({ ...c, _lastMsg: getLastMsg(c) })),
-  ];
+  const fmtDate = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return "Hoje";
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Ontem";
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  };
 
-  const filteredContacts = CHAT_CONTACTS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
-  const teamContacts = filteredContacts.filter(c => c.type === "team");
-  const clientContacts = filteredContacts.filter(c => c.type === "client");
-
-  const sendMsg = () => {
-    if (!input.trim() || !selContact) return;
-    const key = selContact.id.toString();
-    const newMsg = { id: Date.now(), from: "me", text: input.trim(), time: new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}), read: false };
-    setMsgs(prev => ({ ...prev, [key]: [...(prev[key]||[]), newMsg] }));
+  const sendMsg = async () => {
+    if (!input.trim() || !selConv) return;
+    await supaSendMessage(selConv.id, user.id, input.trim());
     setInput("");
-    // Simulate typing response
-    setTyping(true);
-    setTimeout(() => {
-      setTyping(false);
-      const responses = ["Entendido! 👍","Vou verificar e te retorno","Ok, anotado!","Perfeito, obrigado!","Combinado!"];
-      const reply = { id: Date.now()+1, from: selContact.name, text: responses[Math.floor(Math.random()*responses.length)], time: new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}), read: false };
-      setMsgs(prev => {
-        const cur = prev[key] || [];
-        const marked = cur.map(m => m.from === "me" ? { ...m, read: true } : m);
-        return { ...prev, [key]: [...marked, reply] };
-      });
-    }, 1500 + Math.random() * 2000);
   };
 
-  const sendFile = (type) => {
-    if (!selContact) return;
-    const key = selContact.id.toString();
-    const fileNames = { foto:"📷 Foto enviada", video:"🎬 Vídeo enviado", doc:"📄 Documento enviado", audio:"🎵 Áudio enviado" };
-    const newMsg = { id: Date.now(), from: "me", text: fileNames[type] || "Arquivo enviado", time: new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}), read: false, isFile: true, fileType: type };
-    setMsgs(prev => ({ ...prev, [key]: [...(prev[key]||[]), newMsg] }));
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selConv) return;
+    showToast("Enviando arquivo...");
+    const result = await supaUploadChatFile(file);
+    if (result) {
+      await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+      showToast("Arquivo enviado ✓");
+    } else { showToast("Erro ao enviar arquivo"); }
     setShowAttach(false);
-    showToast("Arquivo enviado!");
+    if (fileRef.current) fileRef.current.value = "";
   };
 
-  /* ── TERMS OF USE ── */
+  const togglePin = async (msg) => {
+    await supaTogglePin(msg.id, msg.pinned);
+    setMsgs(prev => prev.map(m => m.id === msg.id ? { ...m, pinned: !m.pinned } : m));
+    showToast(msg.pinned ? "Mensagem desafixada" : "Mensagem fixada ✓");
+  };
+
+  const startDM = async (profileId) => {
+    const convId = await supaFindOrCreateDM(user.id, profileId);
+    if (convId) {
+      const refreshed = await supaLoadConversations(user.id);
+      setConvs(refreshed);
+      const found = refreshed.find(c => c.id === convId);
+      if (found) { setSelConv(found); setView("chat"); }
+    }
+    setShowNewChat(false);
+  };
+
+  const createGroup = async () => {
+    if (!groupName.trim() || groupMembers.length < 1) return showToast("Nome e pelo menos 1 membro");
+    const convId = await supaCreateGroup(groupName.trim(), user.id, groupMembers);
+    if (convId) {
+      const refreshed = await supaLoadConversations(user.id);
+      setConvs(refreshed);
+      const found = refreshed.find(c => c.id === convId);
+      if (found) { setSelConv(found); setView("chat"); }
+      showToast("Grupo criado ✓");
+    }
+    setShowNewGroup(false); setGroupName(""); setGroupMembers([]);
+  };
+
+  const pinnedMsgs = msgs.filter(m => m.pinned);
+
+  /* ── TERMS ── */
   if (!termsAccepted) return (
     <div className="pg" style={{ paddingTop: TOP, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"80vh" }}>
       <div style={{ width:70, height:70, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
@@ -3644,99 +3783,84 @@ function ChatPage({ user }) {
       <Card style={{ marginTop:16, width:"100%" }}>
         <div style={{ maxHeight:200, overflowY:"auto", fontSize:12, lineHeight:1.7, color:B.muted }}>
           <p style={{ fontWeight:700, color:B.text, marginBottom:6 }}>Termos de Uso — Chat UniqueHub Agency</p>
-          <p>1. <b>Confidencialidade:</b> Todas as conversas são confidenciais e de uso exclusivo profissional. É proibido compartilhar o conteúdo das conversas com terceiros não autorizados.</p>
-          <p style={{ marginTop:6 }}>2. <b>Conduta profissional:</b> O chat deve ser utilizado exclusivamente para assuntos de trabalho. Conteúdo ofensivo, discriminatório ou impróprio resultará em suspensão do acesso.</p>
-          <p style={{ marginTop:6 }}>3. <b>Arquivos e dados:</b> Arquivos compartilhados pelo chat são de propriedade da empresa e dos clientes. Não distribua sem autorização.</p>
-          <p style={{ marginTop:6 }}>4. <b>Comunicação com clientes:</b> Ao conversar com clientes, mantenha o tom profissional e alinhado com a identidade da Unique Marketing 360.</p>
-          <p style={{ marginTop:6 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança pelo período determinado pela empresa.</p>
-          <p style={{ marginTop:6 }}>6. <b>Privacidade:</b> Respeitamos sua privacidade. Os dados são tratados conforme a LGPD.</p>
+          <p>1. <b>Confidencialidade:</b> Todas as conversas são confidenciais e de uso exclusivo profissional.</p>
+          <p style={{ marginTop:6 }}>2. <b>Conduta profissional:</b> O chat deve ser utilizado exclusivamente para assuntos de trabalho.</p>
+          <p style={{ marginTop:6 }}>3. <b>Arquivos e dados:</b> Arquivos compartilhados pelo chat são de propriedade da empresa e dos clientes.</p>
+          <p style={{ marginTop:6 }}>4. <b>Comunicação com clientes:</b> Mantenha o tom profissional alinhado com a identidade da Unique Marketing 360.</p>
+          <p style={{ marginTop:6 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança conforme LGPD.</p>
         </div>
       </Card>
       <button onClick={() => setTermsAccepted(true)} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
-      <p style={{ fontSize:10, color:B.muted, marginTop:10, textAlign:"center" }}>Ao aceitar, você concorda com todas as regras acima.</p>
     </div>
   );
 
-  /* ── CALLING OVERLAY ── */
-  const CallingOverlay = showCalling ? (
-    <>
-      <div className="overlay" style={{ zIndex:200 }} />
-      <div style={{ position:"fixed", inset:0, zIndex:201, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:40 }}>
-        <Av name={selContact?.name} sz={80} fs={32} />
-        <p style={{ fontSize:20, fontWeight:800, color:"#fff", marginTop:16 }}>{selContact?.name}</p>
-        <p style={{ fontSize:14, color:"rgba(255,255,255,0.6)", marginTop:4 }}>{showCalling === "audio" ? "Chamada de voz..." : "Chamada de vídeo..."}</p>
-        <div style={{ display:"flex", gap:20, marginTop:40 }}>
-          <button onClick={() => setShowCalling(null)} style={{ width:60, height:60, borderRadius:30, background:B.red, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-          </button>
-        </div>
-      </div>
-    </>
-  ) : null;
-
   /* ── CHAT CONVERSATION ── */
-  if (view === "chat" && selContact) {
-    const contactMsgs = getContactMsgs(selContact);
-    const isOnline = selContact.status === "online" || selContact.type === "group";
-
+  if (view === "chat" && selConv) {
+    const convName = getOtherName(selConv);
+    const isGroup = selConv.type === "group";
     return (
       <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
-        {ToastEl}{CallingOverlay}
+        {ToastEl}
+        <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:`calc(${TOP} + 4px) 12px 10px`, background:B.bgCard, borderBottom:`1px solid ${B.border}`, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
-          <button onClick={() => { setView("list"); setSelContact(null); }} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
-          <div style={{ position:"relative" }}>
-            <Av name={selContact.name} sz={38} fs={14} />
-            {isOnline && <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:5, background:B.green, border:"2px solid #fff" }} />}
-          </div>
+          <button onClick={() => { setView("list"); setSelConv(null); setMsgs([]); }} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
+          <Av name={convName} sz={38} fs={14} />
           <div style={{ flex:1 }}>
-            <p style={{ fontSize:14, fontWeight:700 }}>{selContact.name}</p>
-            <p style={{ fontSize:10, color: isOnline ? B.green : B.muted }}>{typing ? "digitando..." : isOnline ? (selContact.type==="group" ? `${selContact.members?.length || 4} membros` : "Online") : "Offline"}</p>
+            <p style={{ fontSize:14, fontWeight:700 }}>{convName}</p>
+            <p style={{ fontSize:10, color:B.muted }}>{isGroup ? `${(selConv.members||[]).length} membros` : "Chat direto"}</p>
           </div>
-          <button onClick={() => setShowCalling("audio")} className="ib" style={{ width:34, height:34 }}>{IC.phone}</button>
-          <button onClick={() => setShowCalling("video")} className="ib" style={{ width:34, height:34 }}>{IC.vid}</button>
+          {pinnedMsgs.length > 0 && <button onClick={() => setPinnedOpen(!pinnedOpen)} className="ib" style={{ width:34, height:34, position:"relative" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M12 17v5"/><path d="M5 17h14"/><path d="M15.5 3.5L18 6l-6.5 6.5L8 9l6.5-6.5z"/></svg>
+            <span style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:8, background:B.accent, color:B.text, fontSize:9, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center" }}>{pinnedMsgs.length}</span>
+          </button>}
         </div>
+        {/* Pinned messages panel */}
+        {pinnedOpen && pinnedMsgs.length > 0 && <div style={{ padding:"8px 16px", background:`${B.accent}08`, borderBottom:`1px solid ${B.border}`, maxHeight:150, overflowY:"auto" }}>
+          <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:6 }}>📌 Mensagens fixadas</p>
+          {pinnedMsgs.map(m => (
+            <div key={m.id} style={{ padding:"6px 10px", borderRadius:8, background:B.bgCard, marginBottom:4, fontSize:12 }}>
+              <span style={{ fontWeight:700, color:B.accent, marginRight:6 }}>{m.profiles?.name || "..."}</span>
+              <span>{m.content || m.file_name || "Arquivo"}</span>
+            </div>
+          ))}
+        </div>}
         {/* Messages */}
         <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:4 }}>
-          <div style={{ textAlign:"center", marginBottom:12 }}><span style={{ fontSize:10, color:B.muted, background:"rgba(0,0,0,0.04)", padding:"3px 10px", borderRadius:6 }}>Hoje</span></div>
-          {contactMsgs.map(m => {
-            const isMe = m.from === "me";
+          {msgs.length === 0 && <div style={{ textAlign:"center", padding:40, color:B.muted, fontSize:13 }}>Nenhuma mensagem ainda. Comece a conversa!</div>}
+          {msgs.map((m, mi) => {
+            const isMe = m.sender_id === user.id;
+            const senderName = m.profiles?.name || "...";
+            const prevMsg = msgs[mi - 1];
+            const showDate = !prevMsg || fmtDate(m.created_at) !== fmtDate(prevMsg?.created_at);
             return (
-              <div key={m.id} style={{ display:"flex", justifyContent: isMe?"flex-end":"flex-start", marginBottom:2 }}>
-                {!isMe && selContact.type === "group" && <Av name={m.from} sz={24} fs={9} />}
-                <div style={{ maxWidth:"78%", padding:"8px 12px", borderRadius: isMe?"14px 4px 14px 14px":"4px 14px 14px 14px", background: isMe?B.accent:B.bgCard, color: isMe?B.textOnAccent:B.text, boxShadow:"0 1px 2px rgba(0,0,0,0.06)", marginLeft: !isMe && selContact.type==="group" ? 6 : 0 }}>
-                  {!isMe && selContact.type === "group" && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{m.from}</p>}
-                  {m.isFile ? (
-                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ display:"flex" }}>{m.fileType==="foto"?IC.img:m.fileType==="video"?IC.vid:m.fileType==="audio"?IC.play:IC.doc}</span>
-                      <span style={{ fontSize:13 }}>{m.text}</span>
-                    </div>
-                  ) : <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-line" }}>{m.text}</p>}
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4, marginTop:3 }}>
-                    <span style={{ fontSize:9, color: isMe?"rgba(0,0,0,0.4)":B.muted }}>{m.time}</span>
-                    {isMe && <span style={{ display:"flex", alignItems:"center" }}>
-                      {m.read ? IC.tickRead() : IC.tickDelivered()}
-                    </span>}
+              <React.Fragment key={m.id}>
+                {showDate && <div style={{ textAlign:"center", marginBottom:8, marginTop:4 }}><span style={{ fontSize:10, color:B.muted, background:"rgba(0,0,0,0.04)", padding:"3px 10px", borderRadius:6 }}>{fmtDate(m.created_at)}</span></div>}
+                <div style={{ display:"flex", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2 }}>
+                  {!isMe && isGroup && <Av name={senderName} sz={24} fs={9} />}
+                  <div onClick={() => togglePin(m)} style={{ maxWidth:"78%", padding:"8px 12px", borderRadius:isMe?"14px 4px 14px 14px":"4px 14px 14px 14px", background:isMe?B.accent:B.bgCard, color:isMe?B.textOnAccent:B.text, boxShadow:"0 1px 2px rgba(0,0,0,0.06)", marginLeft:!isMe&&isGroup?6:0, cursor:"pointer", border:m.pinned?`2px solid ${B.orange}`:"2px solid transparent" }}>
+                    {!isMe && isGroup && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{senderName}</p>}
+                    {m.pinned && <span style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.5)":B.orange }}>📌 </span>}
+                    {m.file_url ? (
+                      <div>
+                        {m.file_type?.startsWith("image/") ? <img src={m.file_url} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, marginBottom:4 }} alt="" /> : null}
+                        <a href={m.file_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:isMe?"#000":"#1a7af8", textDecoration:"underline", display:"flex", alignItems:"center", gap:4 }}>
+                          {IC.doc}<span>{m.file_name || "Arquivo"}</span>
+                        </a>
+                      </div>
+                    ) : <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-line" }}>{m.content}</p>}
+                    <p style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.4)":B.muted, textAlign:"right", marginTop:3 }}>{fmtTime(m.created_at)}</p>
                   </div>
                 </div>
-              </div>
+              </React.Fragment>
             );
           })}
-          {/* Typing indicator */}
-          {typing && <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            {selContact.type !== "group" && <Av name={selContact.name} sz={24} fs={9} />}
-            <div style={{ padding:"10px 16px", borderRadius:"4px 14px 14px 14px", background:B.bgCard, boxShadow:"0 1px 2px rgba(0,0,0,0.06)" }}>
-              <div style={{ display:"flex", gap:4 }}>
-                {[0,1,2].map(i=><div key={i} style={{ width:7, height:7, borderRadius:4, background:B.muted, animation:`skPulse 1.2s ease ${i*0.2}s infinite` }} />)}
-              </div>
-            </div>
-          </div>}
           <div ref={msgEndRef} />
         </div>
         {/* Attachment dropdown */}
         {showAttach && <div style={{ padding:"8px 16px", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
-          {[{k:"foto",l:"Foto",ic:IC.camera,c:B.blue},{k:"video",l:"Vídeo",ic:IC.vid,c:B.purple},{k:"doc",l:"Documento",ic:IC.doc,c:B.green},{k:"audio",l:"Áudio",ic:IC.play,c:B.orange}].map(f=>(
-            <button key={f.k} onClick={()=>sendFile(f.k)} style={{ flex:1, padding:"10px 0", borderRadius:12, background:`${f.c}10`, border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontFamily:"inherit" }}>
+          {[{k:"image/*",l:"Foto",ic:IC.camera,c:B.blue},{k:"video/*",l:"Vídeo",ic:IC.vid,c:B.purple},{k:".pdf,.doc,.docx,.xls,.xlsx",l:"Documento",ic:IC.doc,c:B.green}].map(f=>(
+            <button key={f.k} onClick={()=>{ if(fileRef.current){fileRef.current.accept=f.k; fileRef.current.click();} }} style={{ flex:1, padding:"10px 0", borderRadius:12, background:`${f.c}10`, border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontFamily:"inherit" }}>
               <span style={{ color:f.c, display:"flex" }}>{f.ic}</span>
               <span style={{ fontSize:10, fontWeight:600, color:f.c }}>{f.l}</span>
             </button>
@@ -3744,9 +3868,9 @@ function ChatPage({ user }) {
         </div>}
         {/* Input */}
         <div style={{ padding:"8px 12px 24px", display:"flex", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}` }}>
-          <button onClick={() => setShowAttach(!showAttach)} className="ib" style={{ width:40, height:40, flexShrink:0, background: showAttach?`${B.accent}15`:B.bgCard }}>{IC.plus}</button>
+          <button onClick={() => setShowAttach(!showAttach)} className="ib" style={{ width:40, height:40, flexShrink:0, background:showAttach?`${B.accent}15`:B.bgCard }}>{IC.plus}</button>
           <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." className="tinput" style={{ flex:1 }} />
-          <button onClick={sendMsg} className="send-btn" style={{ opacity: input.trim()?1:0.4 }}>
+          <button onClick={sendMsg} className="send-btn" style={{ opacity:input.trim()?1:0.4 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
           </button>
         </div>
@@ -3754,108 +3878,136 @@ function ChatPage({ user }) {
     );
   }
 
-  /* ── CONTACT LIST / CONVERSATIONS ── */
+  /* ── NEW CHAT MODAL ── */
+  const NewChatModal = showNewChat ? (
+    <>
+      <div className="overlay" onClick={() => setShowNewChat(false)} />
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:20, maxHeight:"70vh", overflowY:"auto" }}>
+        <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Nova conversa</h3>
+        <button onClick={() => { setShowNewChat(false); setShowNewGroup(true); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit", borderBottom:`1px solid ${B.border}` }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.accent }}>{IC.users}</span></div>
+          <span style={{ fontSize:14, fontWeight:600 }}>Criar grupo</span>
+        </button>
+        <p className="sl" style={{ marginTop:12, marginBottom:6 }}>Membros da equipe</p>
+        {allProfiles.map(p => (
+          <button key={p.id} onClick={() => startDM(p.id)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
+            <Av name={p.name} sz={38} fs={14} />
+            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.email}</p></div>
+          </button>
+        ))}
+        {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro cadastrado ainda</p>}
+      </div>
+    </>
+  ) : null;
+
+  /* ── NEW GROUP MODAL ── */
+  const NewGroupModal = showNewGroup ? (
+    <>
+      <div className="overlay" onClick={() => setShowNewGroup(false)} />
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:20, maxHeight:"70vh", overflowY:"auto" }}>
+        <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Novo grupo</h3>
+        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nome do grupo" className="tinput" style={{ marginBottom:12 }} />
+        <p className="sl" style={{ marginBottom:6 }}>Selecione os membros</p>
+        {allProfiles.map(p => {
+          const sel = groupMembers.includes(p.id);
+          return (
+            <button key={p.id} onClick={() => setGroupMembers(prev => sel ? prev.filter(x => x !== p.id) : [...prev, p.id])} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
+              <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${sel ? B.accent : B.border}`, background:sel ? B.accent : "none", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {sel && <span style={{ color:B.text, display:"flex" }}>{IC.check}</span>}
+              </div>
+              <Av name={p.name} sz={34} fs={12} />
+              <span style={{ fontSize:13, fontWeight:600 }}>{p.name}</span>
+            </button>
+          );
+        })}
+        <button onClick={createGroup} className="pill full accent" style={{ marginTop:16 }}>Criar grupo ({groupMembers.length} selecionados)</button>
+      </div>
+    </>
+  ) : null;
+
+  /* ── CONVERSATION LIST ── */
+  const sortedConvs = [...convs].sort((a, b) => {
+    const ta = a.lastMsg?.created_at || a.created_at;
+    const tb = b.lastMsg?.created_at || b.created_at;
+    return new Date(tb) - new Date(ta);
+  });
+  const filteredConvs = sortedConvs.filter(c => getOtherName(c).toLowerCase().includes(search.toLowerCase()));
+  const groups = filteredConvs.filter(c => c.type === "group");
+  const dms = filteredConvs.filter(c => c.type === "dm");
+  const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
+
   return (
     <div className="pg" style={{ paddingTop: TOP }}>
-      {ToastEl}
+      {ToastEl}{NewChatModal}{NewGroupModal}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, paddingTop:8 }}>
         <h2 style={{ fontSize:18, fontWeight:800, flex:1 }}>Chat</h2>
-        <Tag color={B.accent}>{CHAT_GROUPS.reduce((a,g)=>a+g.unread,0)} novas</Tag>
+        {totalUnread > 0 && <Tag color={B.accent}>{totalUnread} {totalUnread === 1 ? "nova" : "novas"}</Tag>}
+        <button onClick={() => setShowNewChat(true)} className="ib" style={{ width:36, height:36, background:`${B.accent}15` }}>{IC.plus}</button>
       </div>
       {/* Search */}
       <div style={{ position:"relative", marginBottom:12 }}>
         <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</span>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." className="tinput" style={{ paddingLeft:40 }} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conversa..." className="tinput" style={{ paddingLeft:40 }} />
       </div>
-      {/* Groups */}
-      {!search && <>
+      {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando conversas...</p>}
+      {!loading && groups.length > 0 && <>
         <p className="sl" style={{ marginBottom:6 }}>Grupos</p>
-        {CHAT_GROUPS.map((g,i) => {
-          const last = getLastMsg(g);
-          const lastIsMe = last && last.from === "me";
-          const displayMsg = last ? last.text : g.lastMsg;
-          const displayTime = last ? last.time : g.time;
+        {groups.map((c, i) => {
+          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content || "Sem mensagens");
           return (
-          <Card key={g.id} delay={i*0.03} onClick={() => { setSelContact(g); setView("chat"); }} style={{ marginTop: i?6:0, cursor:"pointer" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ position:"relative" }}>
+            <Card key={c.id} delay={i*0.03} onClick={() => { setSelConv(c); setView("chat"); }} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <div style={{ width:42, height:42, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <span style={{ color:B.accent, display:"flex" }}>{IC.users}</span>
                 </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:14, fontWeight:c.unread?700:500 }}>{c.name || "Grupo"}</p>
+                  <p style={{ fontSize:12, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lastText}</p>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <p style={{ fontSize:10, color:c.unread?B.accent:B.muted }}>{fmtTime(c.lastMsg?.created_at)}</p>
+                  {c.unread > 0 && <div style={{ width:18, height:18, borderRadius:9, background:B.accent, color:B.text, fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginTop:4, marginLeft:"auto" }}>!</div>}
+                </div>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:14, fontWeight: g.unread>0?700:500 }}>{g.name}</p>
-                <p style={{ fontSize:12, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:3 }}>
-                  {lastIsMe && <span style={{ display:"inline-flex", flexShrink:0, alignItems:"center" }}>
-                    {last.read ? IC.tickRead() : IC.tickDelivered()}
-                  </span>}
-                  <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{displayMsg}</span>
-                </p>
-              </div>
-              <div style={{ textAlign:"right", flexShrink:0 }}>
-                <p style={{ fontSize:10, color: g.unread>0?B.accent:B.muted }}>{displayTime}</p>
-                {g.unread > 0 && <div style={{ width:18, height:18, borderRadius:9, background:B.accent, color:B.text, fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginTop:4, marginLeft:"auto" }}>{g.unread}</div>}
-              </div>
-            </div>
-          </Card>
+            </Card>
           );
         })}
       </>}
-      {/* Team */}
-      <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Equipe</p>
-      {teamContacts.map((c,i) => {
-        const last = getLastMsg(c);
-        const lastIsMe = last && last.from === "me";
-        return (
-          <Card key={c.id} delay={(i+2)*0.03} onClick={() => { setSelContact(c); setView("chat"); }} style={{ marginTop: i?6:0, cursor:"pointer" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ position:"relative" }}>
-                <Av src={c.photo} name={c.name} sz={42} fs={16} />
-                <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:5, background: c.status==="online"?B.green:B.muted, border:"2px solid #fff" }} />
+      {!loading && dms.length > 0 && <>
+        <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Conversas</p>
+        {dms.map((c, i) => {
+          const other = (c.members || []).find(m => m.id !== user.id);
+          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content || "Sem mensagens");
+          const lastIsMe = c.lastMsg?.sender_id === user.id;
+          return (
+            <Card key={c.id} delay={(i+groups.length)*0.03} onClick={() => { setSelConv(c); setView("chat"); }} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <Av name={other?.name || "?"} sz={42} fs={16} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:14, fontWeight:c.unread?700:500 }}>{other?.name || "Usuário"}</p>
+                  <p style={{ fontSize:12, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lastIsMe ? "Você: " : ""}{lastText}</p>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <p style={{ fontSize:10, color:c.unread?B.accent:B.muted }}>{fmtTime(c.lastMsg?.created_at)}</p>
+                  {c.unread > 0 && <div style={{ width:18, height:18, borderRadius:9, background:B.accent, color:B.text, fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginTop:4, marginLeft:"auto" }}>!</div>}
+                </div>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:14, fontWeight:600 }}>{c.name}</p>
-                <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:3 }}>
-                  {lastIsMe && <span style={{ display:"inline-flex", flexShrink:0, alignItems:"center" }}>
-                    {last.read ? IC.tickRead() : IC.tickDelivered()}
-                  </span>}
-                  <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{last ? last.text : c.role}</span>
-                </p>
-              </div>
-              {last && <p style={{ fontSize:10, color:B.muted }}>{last.time}</p>}
-            </div>
-          </Card>
-        );
-      })}
-      {/* Clients */}
-      <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Clientes</p>
-      {clientContacts.map((c,i) => {
-        const last = getLastMsg(c);
-        const lastIsMe = last && last.from === "me";
-        return (
-          <Card key={c.id} delay={(i+6)*0.03} onClick={() => { setSelContact(c); setView("chat"); }} style={{ marginTop: i?6:0, cursor:"pointer" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ position:"relative" }}>
-                <Av name={c.name} sz={42} fs={16} />
-                <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:5, background: c.status==="online"?B.green:B.muted, border:"2px solid #fff" }} />
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:14, fontWeight:600 }}>{c.name}</p>
-                <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:3 }}>
-                  {lastIsMe && <span style={{ display:"inline-flex", flexShrink:0, alignItems:"center" }}>
-                    {last.read ? IC.tickRead() : IC.tickDelivered()}
-                  </span>}
-                  <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{last ? last.text : c.role}</span>
-                </p>
-              </div>
-              <Tag color={B.accent}>Cliente</Tag>
-            </div>
-          </Card>
-        );
-      })}
+            </Card>
+          );
+        })}
+      </>}
+      {!loading && convs.length === 0 && <div style={{ textAlign:"center", padding:40 }}>
+        <div style={{ width:60, height:60, borderRadius:16, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
+          <span style={{ color:B.accent }}>{IC.chat}</span>
+        </div>
+        <p style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Nenhuma conversa</p>
+        <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>Inicie uma conversa com sua equipe</p>
+        <button onClick={() => setShowNewChat(true)} className="pill accent">Nova conversa</button>
+      </div>}
     </div>
   );
 }
+
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
 function NotifsPage({ onBack }) {
