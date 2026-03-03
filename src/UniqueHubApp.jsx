@@ -16,12 +16,15 @@ const supaLoadClients = async () => {
   } catch (e) { console.error("Supa clients catch:", e); return null; }
 };
 
+const PLAN_MAP_TO_DB = { "Básico": "essencial", "Essencial": "essencial", "Profissional": "profissional", "Premium": "premium" };
+const PLAN_MAP_FROM_DB = { "essencial": "Essencial", "profissional": "Profissional", "premium": "Premium" };
+
 const supaCreateClient = async (c) => {
   if (!supabase) return null;
   try {
     const payload = {
       name: c.name, contact_name: c.contact || null, contact_email: c.email || null,
-      contact_phone: c.phone || null, plan: (c.plan || "essencial").toLowerCase().replace("á","a"),
+      contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "essencial",
       monthly_value: parseFloat((c.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0,
       status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null,
     };
@@ -39,7 +42,7 @@ const supaUpdateClient = async (id, updates) => {
     if (updates.contact !== undefined) payload.contact_name = updates.contact;
     if (updates.email !== undefined) payload.contact_email = updates.email;
     if (updates.phone !== undefined) payload.contact_phone = updates.phone;
-    if (updates.plan !== undefined) payload.plan = updates.plan.toLowerCase().replace("á","a");
+    if (updates.plan !== undefined) payload.plan = PLAN_MAP_TO_DB[updates.plan] || updates.plan.toLowerCase();
     if (updates.status !== undefined) payload.status = updates.status;
     if (updates.score !== undefined) payload.score = updates.score;
     if (updates.monthly !== undefined) payload.monthly_value = parseFloat((updates.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0;
@@ -62,7 +65,7 @@ const supaDeleteClient = async (id) => {
 /* Helper: merge Supabase client row into app format */
 const mergeSupaClient = (row, existing) => ({
   id: row.id, supaId: row.id, name: row.name,
-  plan: (row.plan || "essencial").charAt(0).toUpperCase() + (row.plan || "essencial").slice(1),
+  plan: PLAN_MAP_FROM_DB[row.plan] || "Essencial",
   status: row.status || "ativo",
   monthly: row.monthly_value ? `R$ ${Number(row.monthly_value).toLocaleString("pt-BR")}` : "R$ 0",
   pending: existing?.pending || 0, score: row.score || 0,
@@ -1285,6 +1288,7 @@ function ClientsPage({ onBack, onNavigate }) {
     /* Save to Supabase */
     const saved = await supaCreateClient(nc);
     if (saved) { nc.id = saved.id; nc.supaId = saved.id; }
+    else if (supabase) { showToast("Erro ao salvar no servidor, salvo localmente"); }
     setClients(p => [...p, nc]);
     setCreating(false); setForm({}); showToast("Cliente cadastrado! ✓");
   };
@@ -1393,7 +1397,7 @@ function ClientsPage({ onBack, onNavigate }) {
       <Card>
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Plano</label>
         <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-          {["Básico","Essencial","Premium"].map(p=>(
+          {["Essencial","Profissional","Premium"].map(p=>(
             <button key={p} onClick={()=>f("plan",p)} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}</button>
           ))}
         </div>
