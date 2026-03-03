@@ -1425,6 +1425,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [fileForm, setFileForm] = useState({});
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [editClient, setEditClient] = useState(false);
   const { showToast, ToastEl } = useToast();
   const filtered = clients.filter(c => {
     if (filter !== "all" && c.status !== filter) return false;
@@ -1748,7 +1749,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     return (
     <div className="pg">
       {ToastEl}
-      <Head title={sel.name} onBack={() => { setSel(null); setProfileTab("info"); }} />
+      <Head title={sel.name} onBack={() => { setSel(null); setProfileTab("info"); setEditClient(false); }} />
       <Card style={{ textAlign:"center", marginBottom:10 }}>
         <Av name={sel.name} sz={64} fs={24} />
         <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{sel.name}</h3>
@@ -1772,60 +1773,89 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       </div>
 
       {profileTab === "info" && <>
-        <p className="sl" style={{ marginBottom:6 }}>Contato principal</p>
-        <Card>
-          {[
-            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Nome", field:"contact" },
-            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Telefone", field:"phone" },
-            { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"E-mail", field:"email" },
-          ].map((item,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{item.icon}</div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:10, color:B.muted, marginBottom:2 }}>{item.label}</p>
-                <input value={sel[item.field]||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={`Adicionar ${item.label.toLowerCase()}`} className="tinput" style={{ padding:"4px 8px", fontSize:13, fontWeight:600, border:"none", background:"transparent", width:"100%" }} onBlur={e=>{ if(e.target.value) showToast("Salvo ✓"); }} />
+        {!editClient ? (<>
+          {/* ── READ-ONLY VIEW ── */}
+          <p className="sl" style={{ marginBottom:6 }}>Contato principal</p>
+          <Card>
+            {[
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Nome", value:sel.contact },
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Telefone", value:sel.phone },
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"E-mail", value:sel.email },
+            ].map((item,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{item.icon}</div>
+                <div><p style={{ fontSize:10, color:B.muted }}>{item.label}</p><p style={{ fontSize:13, fontWeight:600 }}>{item.value || "—"}</p></div>
               </div>
-            </div>
-          ))}
-        </Card>
-
-        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Nome da empresa</p>
-        <Card>
-          <input value={sel.name||""} onChange={e=>updateClient(sel.id,{name:e.target.value})} className="tinput" style={{ fontWeight:700, fontSize:15, border:"none", background:"transparent", width:"100%", padding:"2px 0" }} />
-        </Card>
-
-        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Plano e Status</p>
-        <Card>
-          <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-            {["Traction","Growth 360","Partner"].map(p=>(
-              <button key={p} onClick={()=>updateClient(sel.id,{plan:p})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.plan===p?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel.plan===p?`${B.accent}15`:B.bgCard, color:sel.plan===p?B.accent:B.muted }}>{p}</button>
             ))}
-          </div>
-          <div style={{ display:"flex", gap:6 }}>
-            {["ativo","pausado","cancelado"].map(s=>{
-              const sc = s==="ativo"?B.green:s==="pausado"?B.orange:B.red;
-              return <button key={s} onClick={()=>updateClient(sel.id,{status:s})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.status===s?`2px solid ${sc}`:`1.5px solid ${B.border}`, background:sel.status===s?`${sc}15`:B.bgCard, color:sel.status===s?sc:B.muted, textTransform:"capitalize" }}>{s}</button>;
-            })}
-          </div>
-        </Card>
-
-        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados da empresa</p>
-        <Card>
-          {[{label:"CNPJ",field:"cnpj",ph:"00.000.000/0000-00"},{label:"Segmento",field:"segment",ph:"Ex: Restaurante, Imobiliária..."},{label:"Endereço",field:"address",ph:"Rua, nº, bairro, cidade"},{label:"Cliente desde",field:"since",ph:"MM/YYYY"}].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none", gap:10 }}>
-              <span style={{ fontSize:11, color:B.muted, flexShrink:0 }}>{item.label}</span>
-              <input value={sel[item.field]||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" style={{ textAlign:"right", fontSize:13, fontWeight:600, border:"none", background:"transparent", maxWidth:"60%", padding:"2px 0" }} />
+          </Card>
+          <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados da empresa</p>
+          <Card>
+            {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Endereço",value:sel.address},{label:"Valor mensal",value:sel.monthly},{label:"Cliente desde",value:sel.since}].map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:11, color:B.muted }}>{item.label}</span>
+                <span style={{ fontSize:13, fontWeight:600, textAlign:"right", maxWidth:"60%" }}>{item.value||"—"}</span>
+              </div>
+            ))}
+          </Card>
+          {sel.notes && <><p className="sl" style={{ marginTop:16, marginBottom:6 }}>Observações</p><Card><p style={{ fontSize:13, lineHeight:1.5 }}>{sel.notes}</p></Card></>}
+          <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar informações
+          </button>
+        </>) : (<>
+          {/* ── EDIT MODE ── */}
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando cliente</p>
+              <button onClick={()=>{setEditClient(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
             </div>
-          ))}
-        </Card>
 
-        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Valor mensal</p>
-        <Card>
-          <input value={sel.monthly||""} onChange={e=>updateClient(sel.id,{monthly:e.target.value})} placeholder="R$ 0" className="tinput" style={{ fontWeight:700, fontSize:15, border:"none", background:"transparent", width:"100%", padding:"2px 0" }} />
-        </Card>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome da empresa</label>
+            <input value={sel.name||""} onChange={e=>updateClient(sel.id,{name:e.target.value})} className="tinput" style={{ marginBottom:10, fontWeight:700, fontSize:15 }} />
 
-        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Observações</p>
-        <Card><textarea value={sel.notes||""} onChange={e=>updateClient(sel.id,{notes:e.target.value})} placeholder="Anotações internas sobre o cliente..." className="tinput" style={{ minHeight:80, resize:"vertical" }} /></Card>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do contato</label>
+            <input value={sel.contact||""} onChange={e=>updateClient(sel.id,{contact:e.target.value})} placeholder="Nome completo" className="tinput" style={{ marginBottom:10 }} />
+
+            <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label><input value={sel.phone||""} onChange={e=>updateClient(sel.id,{phone:e.target.value})} placeholder="(00) 00000-0000" className="tinput" /></div>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label><input value={sel.email||""} onChange={e=>updateClient(sel.id,{email:e.target.value})} placeholder="email@empresa.com" className="tinput" /></div>
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Plano</label>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {["Traction","Growth 360","Partner"].map(p=>(
+                <button key={p} onClick={()=>updateClient(sel.id,{plan:p})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.plan===p?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel.plan===p?`${B.accent}15`:B.bgCard, color:sel.plan===p?B.accent:B.muted }}>{p}</button>
+              ))}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Status</label>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {["ativo","pausado","cancelado"].map(s=>{
+                const sc = s==="ativo"?B.green:s==="pausado"?B.orange:B.red;
+                return <button key={s} onClick={()=>updateClient(sel.id,{status:s})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.status===s?`2px solid ${sc}`:`1.5px solid ${B.border}`, background:sel.status===s?`${sc}15`:B.bgCard, color:sel.status===s?sc:B.muted, textTransform:"capitalize" }}>{s}</button>;
+              })}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Valor mensal</label>
+            <input value={sel.monthly||""} onChange={e=>updateClient(sel.id,{monthly:e.target.value})} placeholder="R$ 0" className="tinput" style={{ marginBottom:10, fontWeight:700 }} />
+
+            <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>CNPJ</label><input value={sel.cnpj||""} onChange={e=>updateClient(sel.id,{cnpj:e.target.value})} placeholder="00.000.000/0000-00" className="tinput" /></div>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Segmento</label><input value={sel.segment||""} onChange={e=>updateClient(sel.id,{segment:e.target.value})} placeholder="Ex: Restaurante" className="tinput" /></div>
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Endereço</label>
+            <input value={sel.address||""} onChange={e=>updateClient(sel.id,{address:e.target.value})} placeholder="Rua, nº, bairro, cidade" className="tinput" style={{ marginBottom:10 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente desde</label>
+            <input value={sel.since||""} onChange={e=>updateClient(sel.id,{since:e.target.value})} placeholder="MM/AAAA" className="tinput" style={{ marginBottom:10 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações</label>
+            <textarea value={sel.notes||""} onChange={e=>updateClient(sel.id,{notes:e.target.value})} placeholder="Anotações internas sobre o cliente..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+          </Card>
+        </>)}
       </>}
 
       {profileTab === "socials" && <>
@@ -1904,25 +1934,43 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             <div style={{ width:44, height:44, borderRadius:14, background:`${sel.status==="ativo"?B.green:B.red}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sel.status==="ativo"?B.green:B.red} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
-            <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Contrato {contract.type}</p><p style={{ fontSize:11, color:B.muted }}>Status: <span style={{ fontWeight:700, color:sel.status==="ativo"?B.green:sel.status==="cancelado"?B.red:B.orange }}>{sel.status==="ativo"?"Ativo":sel.status==="pausado"?"Pausado":"Cancelado"}</span></p></div>
+            <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Contrato {sel.contractType||contract.type}</p><p style={{ fontSize:11, color:B.muted }}>Status: <span style={{ fontWeight:700, color:sel.status==="ativo"?B.green:sel.status==="cancelado"?B.red:B.orange }}>{sel.status==="ativo"?"Ativo":sel.status==="pausado"?"Pausado":"Cancelado"}</span></p></div>
             <Tag color={B.accent}>{sel.plan}</Tag>
           </div>
         </Card>
-        <p className="sl" style={{ marginBottom:6 }}>Detalhes do contrato</p>
-        <Card>
-          {[{label:"Tipo",field:"contractType",ph:"Ex: Sem fidelidade, 6 meses...",fallback:contract.type},
-            {label:"Início",field:"contractStart",ph:"DD/MM/AAAA",fallback:contract.startDate},
-            {label:"Vigência",field:"contractEnd",ph:"Ex: 12 meses, Sem fidelidade",fallback:contract.endDate},
-            {label:"Valor",field:"monthly",ph:"R$ 0",fallback:sel.monthly},
-            {label:"Pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
-            {label:"Posts/mês",field:"contractPosts",ph:"8/mês",fallback:contract.posts}
-          ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none", gap:10 }}>
-              <span style={{ fontSize:11, color:B.muted, flexShrink:0 }}>{item.label}</span>
-              <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" style={{ textAlign:"right", fontSize:13, fontWeight:600, border:"none", background:"transparent", maxWidth:"60%", padding:"2px 0" }} />
+        {!editClient ? (<>
+          <p className="sl" style={{ marginBottom:6 }}>Detalhes do contrato</p>
+          <Card>
+            {[{label:"Tipo",value:sel.contractType||contract.type},{label:"Início",value:sel.contractStart||contract.startDate},{label:"Vigência",value:sel.contractEnd||contract.endDate},{label:"Valor",value:sel.monthly},{label:"Pagamento",value:sel.contractPayment||contract.payment},{label:"Posts/mês",value:sel.contractPosts||contract.posts}].map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:13, fontWeight:600 }}>{item.value||"—"}</span></div>
+            ))}
+          </Card>
+          <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar contrato
+          </button>
+        </>) : (<>
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando contrato</p>
+              <button onClick={()=>{setEditClient(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
             </div>
-          ))}
-        </Card>
+            {[{label:"Tipo de contrato",field:"contractType",ph:"Ex: Sem fidelidade, 6 meses...",fallback:contract.type},
+              {label:"Data de início",field:"contractStart",ph:"DD/MM/AAAA",fallback:contract.startDate},
+              {label:"Vigência",field:"contractEnd",ph:"Ex: 12 meses, Sem fidelidade",fallback:contract.endDate},
+              {label:"Valor mensal",field:"monthly",ph:"R$ 0",fallback:sel.monthly},
+              {label:"Forma de pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
+              {label:"Posts por mês",field:"contractPosts",ph:"8/mês",fallback:contract.posts}
+            ].map((item,i)=>(
+              <div key={i} style={{ marginBottom:10 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>{item.label}</label>
+                <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" />
+              </div>
+            ))}
+          </Card>
+        </>)}
         <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Serviços — {sel.plan}</p>
         <Card>
           {contract.services.map((s,i)=>(
@@ -1978,18 +2026,36 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </Card>
         ))}
         <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados de cobrança</p>
-        <Card>
-          {[{label:"Pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
-            {label:"Vencimento",field:"billingDueDay",ph:"Dia 05",fallback:"Dia 05"},
-            {label:"CNPJ",field:"cnpj",ph:"00.000.000/0000-00",fallback:sel.cnpj},
-            {label:"E-mail NF",field:"billingEmail",ph:"email@empresa.com",fallback:sel.billingEmail||sel.email}
-          ].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none", gap:10 }}>
-              <span style={{ fontSize:11, color:B.muted, flexShrink:0 }}>{item.label}</span>
-              <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" style={{ textAlign:"right", fontSize:12, fontWeight:600, border:"none", background:"transparent", maxWidth:"55%", padding:"2px 0" }} />
+        {!editClient ? (<>
+          <Card>
+            {[{label:"Pagamento",value:sel.contractPayment||contract.payment},{label:"Vencimento",value:sel.billingDueDay||"Dia 05"},{label:"CNPJ",value:sel.cnpj},{label:"E-mail NF",value:sel.billingEmail||sel.email}].map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:12, fontWeight:600, textAlign:"right", maxWidth:"55%" }}>{item.value||"—"}</span></div>
+            ))}
+          </Card>
+          <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar cobrança
+          </button>
+        </>) : (<>
+          <Card>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando cobrança</p>
+              <button onClick={()=>{setEditClient(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
             </div>
-          ))}
-        </Card>
+            {[{label:"Forma de pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
+              {label:"Dia de vencimento",field:"billingDueDay",ph:"Dia 05",fallback:"Dia 05"},
+              {label:"CNPJ",field:"cnpj",ph:"00.000.000/0000-00",fallback:sel.cnpj},
+              {label:"E-mail para NF",field:"billingEmail",ph:"email@empresa.com",fallback:sel.billingEmail||sel.email}
+            ].map((item,i)=>(
+              <div key={i} style={{ marginBottom:i<3?10:0 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>{item.label}</label>
+                <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" />
+              </div>
+            ))}
+          </Card>
+        </>)}
       </>}
 
       {profileTab === "actions" && <>
