@@ -2243,9 +2243,9 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
     <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
       <div style={{ aspectRatio:aspect, background: hasReal ? "#111" : `linear-gradient(135deg, ${cA} 0%, ${cB} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
         {imgFiles.length > 0 ? (
-          <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+          <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain" }} />
         ) : vidFiles.length > 0 ? (<>
-          <video src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline />
+          <video src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain" }} muted playsInline />
           <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}>
             <div style={{ width:compact?36:52, height:compact?36:52, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width={compact?16:24} height={compact?16:24} viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -2748,8 +2748,8 @@ function ContentPage({ user, clients: propClients }) {
               {sel.steps.design.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps.design.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
-                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}` }}>
-                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}`, background:"#111" }}>
+                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
                     </a>
                   ))}
                 </div>
@@ -3209,8 +3209,8 @@ function ContentPage({ user, clients: propClients }) {
             if (!firstImg && !firstVid) return null;
             return (
               <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"16/9", background:"#111" }}>
-                {firstImg ? <img src={firstImg.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> :
-                 firstVid ? <video src={firstVid.url} style={{ width:"100%", height:"100%", objectFit:"cover" }} muted playsInline /> : null}
+                {firstImg ? <img src={firstImg.url} alt="" style={{ width:"100%", height:"100%", objectFit:"contain" }} /> :
+                 firstVid ? <video src={firstVid.url} style={{ width:"100%", height:"100%", objectFit:"contain" }} muted playsInline /> : null}
                 <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <div style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
