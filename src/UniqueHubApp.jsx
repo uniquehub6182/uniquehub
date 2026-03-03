@@ -277,8 +277,10 @@ const supaCreateMember = async (m) => {
   if (!supabase) return null;
   try {
     const payload = { name: m.name||"", role: m.role||"", job_title: m.role||"", email: m.email||"", phone: m.phone||"", since: m.since||"", skills: m.skills||[], status: "pendente" };
-    const { data } = await supabase.from("agency_members").insert(payload).select(); return data?.[0] || null;
-  } catch(e) { return null; }
+    const { data, error } = await supabase.from("agency_members").insert(payload).select();
+    if (error) { console.error("supaCreateMember error:", error); return null; }
+    return data?.[0] || null;
+  } catch(e) { console.error("supaCreateMember catch:", e); return null; }
 };
 const supaUpdateMember = async (id, updates) => {
   if (!supabase) return;
@@ -4562,7 +4564,8 @@ function TeamPage({ onBack }) {
     if (!form.email?.trim() || !form.email.includes("@")) return showToast("Informe o e-mail (essencial para o convite)");
     const m = { name:form.name.trim(), role:form.role||"Social Media", email:form.email||"", phone:form.phone||"", since:new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}), skills:form.skills?form.skills.split(",").map(s=>s.trim()).filter(Boolean):[] };
     const row = await supaCreateMember(m);
-    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:"offline",supaId:row.id}]); setAdding(false); setForm({}); showToast("Membro adicionado ✓"); }
+    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:"pendente",supaId:row.id}]); setAdding(false); setForm({}); showToast("Membro adicionado ✓"); }
+    else { showToast("Erro ao adicionar membro"); }
   };
 
   const saveMember = async () => {
@@ -4588,7 +4591,7 @@ function TeamPage({ onBack }) {
       <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
         {ROLES.map(r=>( <button key={r} onClick={()=>setForm(p=>({...p,role:r}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.role||(isEdit?sel?.role:""))===r?B.accent:B.border}`, background:(form.role||(isEdit?sel?.role:""))===r?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{r}</button> ))}
       </div>
-      <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail *</label>
       <input value={form.email||""} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="email@uniquemkt.com.br" className="tinput" style={{ marginBottom:12 }} />
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
       <input value={form.phone||""} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="(24) 99999-0000" className="tinput" style={{ marginBottom:12 }} />
