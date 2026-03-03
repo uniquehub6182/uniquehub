@@ -327,7 +327,8 @@ const supaLoadConversations = async (userId) => {
       const myMembership = (members||[]).find(m => m.user_id === userId);
       const lastMsg = lastMsgs?.[0] || null;
       const unread = lastMsg && myMembership?.last_read_at ? new Date(lastMsg.created_at) > new Date(myMembership.last_read_at) ? 1 : 0 : 0;
-      result.push({ ...c, members: memberProfiles || [], lastMsg, unread, myLastRead: myMembership?.last_read_at });
+      const otherMembership = (members||[]).find(m => m.user_id !== userId);
+      result.push({ ...c, members: memberProfiles || [], lastMsg, unread, myLastRead: myMembership?.last_read_at, _otherLastRead: otherMembership?.last_read_at || null });
     }
     return result;
   } catch(e) { console.error("loadConvs:", e); return []; }
@@ -3628,7 +3629,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
 
 /* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
 function ChatPage({ user }) {
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
   const [view, setView] = useState("list");
   const [convs, setConvs] = useState([]);
   const [selConv, setSelConv] = useState(null);
@@ -3643,6 +3644,9 @@ function ChatPage({ user }) {
   const [allProfiles, setAllProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const typingTimeout = useRef(null);
+  const typingChanRef = useRef(null);
   const msgEndRef = useRef(null);
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
@@ -3694,7 +3698,17 @@ function ChatPage({ user }) {
       }).subscribe();
     };
     load();
-    return () => { if (channel) supabase.removeChannel(channel); };
+    /* Typing presence channel */
+    const typingChan = supabase.channel(`typing-${selConv.id}`);
+    typingChan.on("broadcast", { event: "typing" }, ({ payload: p }) => {
+      if (p?.user_id !== user.id) {
+        setOtherTyping(true);
+        clearTimeout(typingTimeout.current);
+        typingTimeout.current = setTimeout(() => setOtherTyping(false), 3000);
+      }
+    }).subscribe();
+    typingChanRef.current = typingChan;
+    return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); };
   }, [selConv?.id]);
 
   /* Auto-scroll */
@@ -3736,6 +3750,46 @@ function ChatPage({ user }) {
     await supaSendMessage(selConv.id, user.id, input.trim());
     setInput("");
   };
+
+  const emitTyping = () => {
+    if (typingChanRef.current && selConv?.id) {
+      typingChanRef.current.send({ type: "broadcast", event: "typing", payload: { user_id: user.id } });
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    emitTyping();
+  };
+
+  /* Check if other user has read a message (for DMs only) */
+  const isRead = (msg) => {
+    if (msg.sender_id !== user.id || !selConv) return false;
+    const otherMember = (selConv.members || []).find(m => m.id !== user.id);
+    if (!otherMember) return false;
+    const otherLastRead = selConv.myLastRead; /* We track our own, but for others we need conversation_members */
+    /* For now, check if the other user's last_read_at >= message created_at */
+    const otherMembership = selConv._otherLastRead;
+    if (otherMembership && new Date(otherMembership) >= new Date(msg.created_at)) return true;
+    return false;
+  };
+
+  /* Checkmark SVG */
+  const Checkmark = ({ read }) => (
+    <span style={{ display:"inline-flex", marginLeft:3, verticalAlign:"middle" }}>
+      <svg width="14" height="10" viewBox="0 0 16 11" fill="none">
+        <path d="M1 5.5L5.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 5.5L9.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}/>
+      </svg>
+    </span>
+  );
+
+  /* Typing dots */
+  const TypingDots = () => (
+    <div style={{ display:"flex", gap:3, padding:"8px 14px", background:B.bgCard, borderRadius:"4px 14px 14px 14px", width:"fit-content", boxShadow:"0 1px 2px rgba(0,0,0,0.06)" }}>
+      {[0,1,2].map(i => <div key={i} style={{ width:7, height:7, borderRadius:"50%", background:B.muted, animation:`typingBounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+    </div>
+  );
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -3800,7 +3854,7 @@ function ChatPage({ user }) {
           <p style={{ marginTop:6 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança conforme LGPD.</p>
         </div>
       </Card>
-      <button onClick={() => setTermsAccepted(true)} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
+      <button onClick={() => { setTermsAccepted(true); localStorage.setItem("uh_chat_terms", "1"); }} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
     </div>
   );
 
@@ -3820,6 +3874,12 @@ function ChatPage({ user }) {
             <p style={{ fontSize:14, fontWeight:700 }}>{convName}</p>
             <p style={{ fontSize:10, color:B.muted }}>{isGroup ? `${(selConv.members||[]).length} membros` : "Chat direto"}</p>
           </div>
+          <button onClick={() => showToast("Chamada de voz em breve")} className="ib" style={{ width:34, height:34 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </button>
+          <button onClick={() => showToast("Videochamada em breve")} className="ib" style={{ width:34, height:34 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          </button>
           {pinnedMsgs.length > 0 && <button onClick={() => setPinnedOpen(!pinnedOpen)} className="ib" style={{ width:34, height:34, position:"relative" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M12 17v5"/><path d="M5 17h14"/><path d="M15.5 3.5L18 6l-6.5 6.5L8 9l6.5-6.5z"/></svg>
             <span style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:8, background:B.accent, color:B.text, fontSize:9, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center" }}>{pinnedMsgs.length}</span>
@@ -3859,12 +3919,13 @@ function ChatPage({ user }) {
                         </a>
                       </div>
                     ) : <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-line" }}>{m.content}</p>}
-                    <p style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.4)":B.muted, textAlign:"right", marginTop:3 }}>{fmtTime(m.created_at)}</p>
+                    <p style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.4)":B.muted, textAlign:"right", marginTop:3 }}>{fmtTime(m.created_at)}{isMe && <Checkmark read={isRead(m)} />}</p>
                   </div>
                 </div>
               </React.Fragment>
             );
           })}
+          {otherTyping && <TypingDots />}
           <div ref={msgEndRef} />
         </div>
         {/* Attachment dropdown */}
@@ -3879,7 +3940,7 @@ function ChatPage({ user }) {
         {/* Input */}
         <div style={{ padding:"8px 12px 24px", display:"flex", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}` }}>
           <button onClick={() => setShowAttach(!showAttach)} className="ib" style={{ width:40, height:40, flexShrink:0, background:showAttach?`${B.accent}15`:B.bgCard }}>{IC.plus}</button>
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." className="tinput" style={{ flex:1 }} />
+          <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." className="tinput" style={{ flex:1 }} />
           <button onClick={sendMsg} className="send-btn" style={{ opacity:input.trim()?1:0.4 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
           </button>
@@ -7402,9 +7463,18 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [demandsLoaded, setDemandsLoaded] = useState(false);
 
   /* ── Notification state ── */
-  const [notifReadIds, setNotifReadIds] = useState([]);
+  const [notifReadIds, setNotifReadIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("uh_notif_read") || "[]"); } catch { return []; }
+  });
   const TOTAL_NOTIFS = 7; /* matches NotifsPage mock data count */
   const notifCount = TOTAL_NOTIFS - notifReadIds.length;
+  const updateNotifReadIds = (fn) => {
+    setNotifReadIds(prev => {
+      const next = typeof fn === "function" ? fn(prev) : fn;
+      localStorage.setItem("uh_notif_read", JSON.stringify(next));
+      return next;
+    });
+  };
 
   /* ── Realtime badge counts ── */
   const [chatUnread, setChatUnread] = useState(0);
@@ -7535,7 +7605,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
-        {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={setNotifReadIds} />}
+        {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
         {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} />}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
@@ -7634,6 +7704,7 @@ input,textarea,select{font-size:16px !important}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
