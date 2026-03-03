@@ -16,8 +16,9 @@ const supaLoadClients = async () => {
   } catch (e) { console.error("Supa clients catch:", e); return null; }
 };
 
-const PLAN_MAP_TO_DB = { "Básico": "essencial", "Essencial": "essencial", "Profissional": "profissional", "Premium": "premium" };
-const PLAN_MAP_FROM_DB = { "essencial": "Essencial", "profissional": "Profissional", "premium": "Premium" };
+const PLAN_MAP_TO_DB = { "Traction": "traction", "Growth 360": "growth360", "Partner": "partner" };
+const PLAN_MAP_FROM_DB = { "traction": "Traction", "growth360": "Growth 360", "partner": "Partner" };
+const PLAN_VALUES = { "Traction": "R$ 1.480", "Growth 360": "R$ 2.480", "Partner": "R$ 4.480" };
 
 const supaCreateClient = async (c) => {
   if (!supabase) return { data: null, err: "no supabase" };
@@ -1393,7 +1394,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const saveClient = async () => {
     if (!form.name?.trim()) return showToast("Informe o nome da empresa");
     const nc = {
-      id: Date.now(), name: form.name.trim(), plan: form.plan || "Básico", status: form.status || "trial",
+      id: Date.now(), name: form.name.trim(), plan: form.plan || "Traction", status: form.status || "trial",
       monthly: form.monthly || "R$ 0", pending: 0, score: 0,
       contact: form.contact || "", phone: form.phone || "", email: form.email || "",
       cnpj: form.cnpj || "", address: form.address || "", segment: form.segment || "", since: new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}),
@@ -1513,8 +1514,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       <Card>
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Plano</label>
         <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-          {["Essencial","Profissional","Premium"].map(p=>(
-            <button key={p} onClick={()=>f("plan",p)} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}</button>
+          {["Traction","Growth 360","Partner"].map(p=>(
+            <button key={p} onClick={()=>{f("plan",p);f("monthly",PLAN_VALUES[p]);}} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}<span style={{display:"block",fontSize:9,opacity:0.6,marginTop:2}}>{PLAN_VALUES[p]}</span></button>
           ))}
         </div>
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Valor mensal</label>
@@ -1541,15 +1542,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       { id:3, month:"Dez/2025", value:sel.monthly, status:"pago", paidAt:"04/12/2025" },
     ];
     const contract = sel.contract || {
-      type: sel.plan === "Premium" ? "Anual" : sel.plan === "Essencial" ? "Semestral" : "Mensal",
+      type: sel.plan === "Partner" ? "Anual" : sel.plan === "Growth 360" ? "Semestral" : "Mensal",
       startDate: sel.since ? `01/${sel.since}` : "01/01/2025",
-      endDate: sel.plan === "Premium" ? "01/03/2027" : sel.plan === "Essencial" ? "01/09/2026" : "Renovação automática",
-      services: sel.plan === "Premium"
-        ? ["Social Media (3 redes)", "Tráfego Pago (Meta + Google)", "Design Gráfico", "Audiovisual (4 vídeos/mês)", "Relatórios Mensais", "Reunião Semanal"]
-        : sel.plan === "Essencial"
-        ? ["Social Media (2 redes)", "Design Gráfico", "Tráfego Pago (Meta)", "Relatórios Mensais", "Reunião Quinzenal"]
-        : ["Social Media (1 rede)", "Design Gráfico", "Relatório Mensal"],
-      posts: sel.plan === "Premium" ? "20/mês" : sel.plan === "Essencial" ? "12/mês" : "8/mês",
+      endDate: sel.plan === "Partner" ? "01/03/2027" : sel.plan === "Growth 360" ? "01/09/2026" : "Renovação automática",
+      services: sel.plan === "Partner"
+        ? ["Social Media (até 6 redes)", "Tráfego Pago (Meta + Google + TikTok)", "Design Gráfico", "Audiovisual (4 vídeos/mês)", "Relatórios Semanais", "Reunião Semanal", "Consultoria Estratégica"]
+        : sel.plan === "Growth 360"
+        ? ["Social Media (até 4 redes)", "Tráfego Pago (Meta + Google)", "Design Gráfico", "Audiovisual (2 vídeos/mês)", "Relatórios Quinzenais", "Reunião Quinzenal"]
+        : ["Social Media (até 2 redes)", "Design Gráfico", "Tráfego Pago (Meta)", "Relatório Mensal"],
+      posts: sel.plan === "Partner" ? "20/mês" : sel.plan === "Growth 360" ? "12/mês" : "8/mês",
       payment: "Boleto bancário",
       status: "ativo",
     };
@@ -1594,9 +1595,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     };
 
     const PLANS = [
-      { key:"Básico", price:"R$ 1.500", services:["Social Media (1 rede)","Design Gráfico","Relatório Mensal"], posts:"8/mês" },
-      { key:"Essencial", price:"R$ 2.500", services:["Social Media (2 redes)","Design Gráfico","Tráfego Pago (Meta)","Relatórios Mensais","Reunião Quinzenal"], posts:"12/mês" },
-      { key:"Premium", price:"R$ 4.000", services:["Social Media (3 redes)","Tráfego Pago (Meta + Google)","Design Gráfico","Audiovisual (4 vídeos/mês)","Relatórios Mensais","Reunião Semanal"], posts:"20/mês" },
+      { key:"Traction", price:"R$ 1.480", services:["Social Media (até 2 redes)","Design Gráfico","Tráfego Pago (Meta)","Relatório Mensal"], posts:"8/mês" },
+      { key:"Growth 360", price:"R$ 2.480", services:["Social Media (até 4 redes)","Tráfego Pago (Meta + Google)","Design Gráfico","Audiovisual (2 vídeos/mês)","Relatórios Quinzenais","Reunião Quinzenal"], posts:"12/mês" },
+      { key:"Partner", price:"R$ 4.480", services:["Social Media (até 6 redes)","Tráfego Pago (Meta + Google + TikTok)","Design Gráfico","Audiovisual (4 vídeos/mês)","Relatórios Semanais","Reunião Semanal","Consultoria Estratégica"], posts:"20/mês" },
     ];
 
     const changePlan = (newPlan) => {
@@ -5044,9 +5045,9 @@ function ReportsPage({ onBack, clients: propClients }) {
         <p className="sl" style={{ marginBottom:6 }}>Receita por plano</p>
         <Card style={{ marginBottom:12 }}>
           {[
-            { l:"Premium", clients:CLIENT_METRICS.filter(c=>c.plan==="Premium"), c:B.accent },
-            { l:"Essencial", clients:CLIENT_METRICS.filter(c=>c.plan==="Essencial"), c:B.blue },
-            { l:"Básico", clients:CLIENT_METRICS.filter(c=>c.plan==="Básico"), c:B.muted },
+            { l:"Partner", clients:CLIENT_METRICS.filter(c=>c.plan==="Partner"), c:B.accent },
+            { l:"Growth 360", clients:CLIENT_METRICS.filter(c=>c.plan==="Growth 360"), c:B.blue },
+            { l:"Traction", clients:CLIENT_METRICS.filter(c=>c.plan==="Traction"), c:B.muted },
           ].map((plan,i) => {
             const rev = plan.clients.reduce((a,c)=>a+c.monthlyValue,0);
             return (
