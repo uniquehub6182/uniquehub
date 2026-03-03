@@ -406,6 +406,21 @@ const supaTogglePin = async (msgId, pinned) => {
   if (!supabase) return;
   try { await supabase.from("messages").update({ pinned: !pinned }).eq("id", msgId); } catch(e) {}
 };
+const supaToggleReaction = async (msgId, emoji, userId, currentReactions) => {
+  if (!supabase) return null;
+  try {
+    const reactions = { ...(currentReactions || {}) };
+    const users = reactions[emoji] || [];
+    if (users.includes(userId)) {
+      reactions[emoji] = users.filter(u => u !== userId);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+    } else {
+      reactions[emoji] = [...users, userId];
+    }
+    const { data } = await supabase.from("messages").update({ reactions }).eq("id", msgId).select();
+    return data?.[0]?.reactions || reactions;
+  } catch(e) { return null; }
+};
 const supaUploadChatFile = async (file) => {
   if (!supabase) return null;
   try {
@@ -3666,6 +3681,16 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const typingTimeout = useRef(null);
   const typingChanRef = useRef(null);
   const msgEndRef = useRef(null);
+  /* Audio recording */
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecRef = useRef(null);
+  const audioChunks = useRef([]);
+  const recordTimer = useRef(null);
+  /* Reactions */
+  const [reactMsgId, setReactMsgId] = useState(null);
+  const longPressTimer = useRef(null);
+  const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
@@ -3809,6 +3834,98 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     </div>
   );
 
+  /* Audio recording */
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4" });
+      audioChunks.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks.current, { type: mr.mimeType });
+        if (blob.size < 1000) { showToast("Áudio muito curto"); return; }
+        const ext = mr.mimeType.includes("webm") ? "webm" : "m4a";
+        const file = new File([blob], `audio_${Date.now()}.${ext}`, { type: mr.mimeType });
+        showToast("Enviando áudio...");
+        const result = await supaUploadChatFile(file);
+        if (result && selConv) {
+          await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+          showToast("Áudio enviado ✓");
+        } else { showToast("Erro ao enviar áudio"); }
+      };
+      mr.start();
+      mediaRecRef.current = mr;
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordTimer.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch(e) { showToast("Permita acesso ao microfone"); }
+  };
+  const stopRecording = () => {
+    if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+      mediaRecRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(recordTimer.current);
+  };
+  const cancelRecording = () => {
+    if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+      mediaRecRef.current.ondataavailable = null;
+      mediaRecRef.current.onstop = () => { mediaRecRef.current.stream?.getTracks().forEach(t => t.stop()); };
+      mediaRecRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(recordTimer.current);
+    showToast("Gravação cancelada");
+  };
+  const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
+
+  /* Reactions */
+  const handleMsgPress = (msgId) => {
+    longPressTimer.current = setTimeout(() => { setReactMsgId(msgId); }, 500);
+  };
+  const handleMsgRelease = () => { clearTimeout(longPressTimer.current); };
+  const addReaction = async (msgId, emoji) => {
+    const msg = msgs.find(m => m.id === msgId);
+    const newReactions = await supaToggleReaction(msgId, emoji, user.id, msg?.reactions);
+    if (newReactions !== null) {
+      setMsgs(prev => prev.map(m => m.id === msgId ? { ...m, reactions: newReactions } : m));
+    }
+    setReactMsgId(null);
+  };
+
+  /* Audio player inline */
+  const AudioPlayer = ({ src, isMe }) => {
+    const [playing, setPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const audioRef = useRef(null);
+    const play = () => {
+      if (!audioRef.current) return;
+      if (playing) { audioRef.current.pause(); setPlaying(false); }
+      else { audioRef.current.play(); setPlaying(true); }
+    };
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:180 }}>
+        <audio ref={audioRef} src={src} preload="metadata"
+          onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+          onTimeUpdate={() => { const a = audioRef.current; if(a) setProgress(a.duration ? (a.currentTime/a.duration)*100 : 0); }}
+          onEnded={() => { setPlaying(false); setProgress(0); }}
+        />
+        <button onClick={play} style={{ width:32, height:32, borderRadius:16, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.06)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          {playing ?
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> :
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          }
+        </button>
+        <div style={{ flex:1, height:4, borderRadius:2, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.08)", overflow:"hidden" }}>
+          <div style={{ width:`${progress}%`, height:"100%", borderRadius:2, background:isMe?"#192126":B.accent, transition:"width 0.1s" }} />
+        </div>
+        <span style={{ fontSize:10, color:isMe?"rgba(0,0,0,0.5)":B.muted, flexShrink:0 }}>{fmtRecTime(Math.round(duration))}</span>
+      </div>
+    );
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !selConv) return;
@@ -3926,18 +4043,42 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 {showDate && <div style={{ textAlign:"center", marginBottom:8, marginTop:4 }}><span style={{ fontSize:10, color:B.muted, background:"rgba(0,0,0,0.04)", padding:"3px 10px", borderRadius:6 }}>{fmtDate(m.created_at)}</span></div>}
                 <div style={{ display:"flex", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2 }}>
                   {!isMe && isGroup && <Av name={senderName} sz={24} fs={9} />}
-                  <div onClick={() => togglePin(m)} style={{ maxWidth:"78%", padding:"8px 12px", borderRadius:isMe?"14px 4px 14px 14px":"4px 14px 14px 14px", background:isMe?B.accent:B.bgCard, color:isMe?B.textOnAccent:B.text, boxShadow:"0 1px 2px rgba(0,0,0,0.06)", marginLeft:!isMe&&isGroup?6:0, cursor:"pointer", border:m.pinned?`2px solid ${B.orange}`:"2px solid transparent" }}>
-                    {!isMe && isGroup && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{senderName}</p>}
-                    {m.pinned && <span style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.5)":B.orange }}>📌 </span>}
-                    {m.file_url ? (
-                      <div>
-                        {m.file_type?.startsWith("image/") ? <img src={m.file_url} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, marginBottom:4 }} alt="" /> : null}
-                        <a href={m.file_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:isMe?"#000":"#1a7af8", textDecoration:"underline", display:"flex", alignItems:"center", gap:4 }}>
-                          {IC.doc}<span>{m.file_name || "Arquivo"}</span>
-                        </a>
+                  <div style={{ maxWidth:"78%", position:"relative" }}>
+                    {/* Reaction picker */}
+                    {reactMsgId === m.id && (
+                      <div style={{ position:"absolute", [isMe?"right":"left"]:0, bottom:"calc(100% + 4px)", display:"flex", gap:2, padding:"4px 6px", background:B.bgCard, borderRadius:20, boxShadow:"0 4px 16px rgba(0,0,0,0.15)", zIndex:10 }}>
+                        {REACT_EMOJIS.map(e => <button key={e} onClick={() => addReaction(m.id, e)} style={{ fontSize:20, background:"none", border:"none", cursor:"pointer", padding:"2px 4px", borderRadius:8, transition:"transform 0.1s" }} onMouseOver={ev=>ev.target.style.transform="scale(1.3)"} onMouseOut={ev=>ev.target.style.transform="scale(1)"}>{e}</button>)}
+                        <button onClick={() => setReactMsgId(null)} style={{ fontSize:12, background:"none", border:"none", cursor:"pointer", color:B.muted, padding:"2px 6px" }}>✕</button>
                       </div>
-                    ) : <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-line" }}>{m.content}</p>}
-                    <p style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.4)":B.muted, textAlign:"right", marginTop:3 }}>{fmtTime(m.created_at)}{isMe && <Checkmark read={isRead(m)} />}</p>
+                    )}
+                    <div onPointerDown={() => handleMsgPress(m.id)} onPointerUp={handleMsgRelease} onPointerLeave={handleMsgRelease}
+                      onClick={() => { if (!reactMsgId) togglePin(m); }}
+                      style={{ padding:"8px 12px", borderRadius:isMe?"14px 4px 14px 14px":"4px 14px 14px 14px", background:isMe?B.accent:B.bgCard, color:isMe?B.textOnAccent:B.text, boxShadow:"0 1px 2px rgba(0,0,0,0.06)", marginLeft:!isMe&&isGroup?6:0, cursor:"pointer", border:m.pinned?`2px solid ${B.orange}`:"2px solid transparent" }}>
+                      {!isMe && isGroup && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{senderName}</p>}
+                      {m.pinned && <span style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.5)":B.orange }}>📌 </span>}
+                      {m.file_url && m.file_type?.startsWith("audio/") ? (
+                        <AudioPlayer src={m.file_url} isMe={isMe} />
+                      ) : m.file_url ? (
+                        <div>
+                          {m.file_type?.startsWith("image/") ? <img src={m.file_url} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, marginBottom:4 }} alt="" /> : null}
+                          <a href={m.file_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:isMe?"#000":"#1a7af8", textDecoration:"underline", display:"flex", alignItems:"center", gap:4 }}>
+                            {IC.doc}<span>{m.file_name || "Arquivo"}</span>
+                          </a>
+                        </div>
+                      ) : <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-line" }}>{m.content}</p>}
+                      <p style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.4)":B.muted, textAlign:"right", marginTop:3 }}>{fmtTime(m.created_at)}{isMe && <Checkmark read={isRead(m)} />}</p>
+                    </div>
+                    {/* Reactions display */}
+                    {m.reactions && Object.keys(m.reactions).length > 0 && (
+                      <div style={{ display:"flex", gap:3, flexWrap:"wrap", marginTop:2, justifyContent:isMe?"flex-end":"flex-start" }}>
+                        {Object.entries(m.reactions).map(([emoji, users]) => (
+                          <button key={emoji} onClick={() => addReaction(m.id, emoji)}
+                            style={{ display:"flex", alignItems:"center", gap:2, padding:"2px 6px", borderRadius:10, border:`1px solid ${(users||[]).includes(user.id)?B.accent:B.border}`, background:(users||[]).includes(user.id)?`${B.accent}15`:B.bgCard, cursor:"pointer", fontSize:12 }}>
+                            <span>{emoji}</span><span style={{ fontSize:10, fontWeight:600, color:B.muted }}>{(users||[]).length}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </React.Fragment>
@@ -3957,11 +4098,34 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>}
         {/* Input */}
         <div style={{ padding:"8px 12px 24px", display:"flex", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}` }}>
-          <button onClick={() => setShowAttach(!showAttach)} className="ib" style={{ width:40, height:40, flexShrink:0, background:showAttach?`${B.accent}15`:B.bgCard }}>{IC.plus}</button>
-          <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." className="tinput" style={{ flex:1 }} />
-          <button onClick={sendMsg} className="send-btn" style={{ opacity:input.trim()?1:0.4 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-          </button>
+          {isRecording ? (
+            <>
+              <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+              <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, padding:"0 12px" }}>
+                <div style={{ width:8, height:8, borderRadius:4, background:B.red, animation:"typingBounce 1s ease-in-out infinite" }} />
+                <span style={{ fontSize:13, fontWeight:600, color:B.red }}>Gravando {fmtRecTime(recordingTime)}</span>
+              </div>
+              <button onClick={stopRecording} className="send-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setShowAttach(!showAttach)} className="ib" style={{ width:40, height:40, flexShrink:0, background:showAttach?`${B.accent}15`:B.bgCard }}>{IC.plus}</button>
+              <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." className="tinput" style={{ flex:1 }} />
+              {input.trim() ? (
+                <button onClick={sendMsg} className="send-btn">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                </button>
+              ) : (
+                <button onClick={startRecording} className="send-btn" style={{ background:`${B.accent}80` }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
