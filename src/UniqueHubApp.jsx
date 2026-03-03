@@ -19,6 +19,22 @@ const supaLoadClients = async () => {
 const PLAN_MAP_TO_DB = { "Traction": "traction", "Growth 360": "growth360", "Partner": "partner" };
 const PLAN_MAP_FROM_DB = { "traction": "Traction", "growth360": "Growth 360", "partner": "Partner" };
 const PLAN_VALUES = { "Traction": "R$ 1.480", "Growth 360": "R$ 2.480", "Partner": "R$ 4.480" };
+/* Parse BRL "R$ 4.480" or "R$ 2.480,50" → number */
+const parseBRL = (s) => {
+  if (!s) return 0;
+  const clean = String(s).replace(/[^\d.,]/g, "");
+  /* If has both dot and comma: dot=thousand, comma=decimal (BR format) */
+  if (clean.includes(".") && clean.includes(",")) return parseFloat(clean.replace(/\./g, "").replace(",", ".")) || 0;
+  /* If only comma: it's decimal separator */
+  if (clean.includes(",")) return parseFloat(clean.replace(",", ".")) || 0;
+  /* If only dot: check if it's thousand separator (e.g. "4.480" = 4480) or decimal */
+  if (clean.includes(".")) {
+    const parts = clean.split(".");
+    if (parts[parts.length - 1].length === 3) return parseFloat(clean.replace(/\./g, "")) || 0;
+    return parseFloat(clean) || 0;
+  }
+  return parseFloat(clean) || 0;
+};
 
 const supaCreateClient = async (c) => {
   if (!supabase) return { data: null, err: "no supabase" };
@@ -26,7 +42,7 @@ const supaCreateClient = async (c) => {
     const payload = {
       name: c.name, contact_name: c.contact || null, contact_email: c.email || null,
       contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "essencial",
-      monthly_value: parseFloat((c.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0,
+      monthly_value: parseBRL(c.monthly),
       status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null,
     };
     const { data, error } = await supabase.from("clients").insert(payload).select().single();
@@ -46,7 +62,7 @@ const supaUpdateClient = async (id, updates) => {
     if (updates.plan !== undefined) payload.plan = PLAN_MAP_TO_DB[updates.plan] || updates.plan.toLowerCase();
     if (updates.status !== undefined) payload.status = updates.status;
     if (updates.score !== undefined) payload.score = updates.score;
-    if (updates.monthly !== undefined) payload.monthly_value = parseFloat((updates.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0;
+    if (updates.monthly !== undefined) payload.monthly_value = parseBRL(updates.monthly);
     if (Object.keys(payload).length === 0) return null;
     const { data, error } = await supabase.from("clients").update(payload).eq("id", id).select().single();
     if (error) { console.error("Supa update client error:", error); return null; }
@@ -1015,7 +1031,7 @@ function HomePage({ user, goSub, goTab, clients }) {
   const CDATA = clients || CLIENTS_DATA_INIT;
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
-  const totalRevNum = CDATA.reduce((a, c) => a + (parseFloat((c.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0), 0);
+  const totalRevNum = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
   const totalRevenue = `R$ ${totalRevNum.toLocaleString("pt-BR")}`;
   const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
@@ -1856,7 +1872,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       {profileTab === "financial" && <>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
           <Card style={{ textAlign:"center", padding:12, background:`${B.green}08`, border:`1px solid ${B.green}15` }}><p style={{ fontSize:20, fontWeight:900, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:10, color:B.muted }}>Mensal</p></Card>
-          <Card style={{ textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:900, color:B.text }}>R$ {(parseFloat((sel.monthly||"0").replace(/[^\d,]/g,"").replace(",","."))*12).toLocaleString("pt-BR",{minimumFractionDigits:0})}</p><p style={{ fontSize:10, color:B.muted }}>Anual estimada</p></Card>
+          <Card style={{ textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:900, color:B.text }}>R$ {(parseBRL(sel.monthly)*12).toLocaleString("pt-BR",{minimumFractionDigits:0})}</p><p style={{ fontSize:10, color:B.muted }}>Anual estimada</p></Card>
         </div>
         <p className="sl" style={{ marginBottom:6 }}>Plano e status</p>
         <Card style={{ marginBottom:10 }}>
@@ -2098,7 +2114,7 @@ function AcademyPage({ onBack }) {
 /* ═══════════════════════ FINANCIAL PAGE ═══════════════════════ */
 function FinancialPage({ onBack, clients: propClients }) {
   const CDATA = propClients || CLIENTS_DATA_INIT;
-  const totalRevReal = CDATA.reduce((a, c) => a + (parseFloat((c.monthly || "0").replace(/[^\d.,]/g,"").replace(",",".")) || 0), 0);
+  const totalRevReal = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
   const payingClients = CDATA.filter(c => c.status === "ativo" && c.plan !== "Trial").length;
   const trialClients = CDATA.filter(c => c.status === "trial" || c.plan === "Trial").length;
   const ticketMedio = payingClients > 0 ? Math.round(totalRevReal / payingClients) : 0;
@@ -4710,7 +4726,7 @@ function ReportsPage({ onBack, clients: propClients }) {
     const fbF = parseFollowers(c.socials?.facebook?.followers);
     const ttF = parseFollowers(c.socials?.tiktok?.followers);
     const totalFollowers = igF + fbF + ttF;
-    const monthly = parseFloat(c.monthly?.replace(/[^\d]/g,"")) || 0;
+    const monthly = parseBRL(c.monthly);
     const filesCount = (c.files||[]).length;
     const growth = Math.floor(Math.random()*15+3);
     const reach = Math.floor(totalFollowers * (1.5 + Math.random()*3));
