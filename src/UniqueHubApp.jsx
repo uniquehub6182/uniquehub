@@ -132,12 +132,8 @@ const supaUpdateDemand = async (id, updates) => {
   if (!supabase) return null;
   try {
     const payload = {};
-    if (updates.stage !== undefined) payload.stage = updates.stage;
-    if (updates.title !== undefined) payload.title = updates.title;
-    if (updates.priority !== undefined) payload.priority = updates.priority;
-    if (updates.steps !== undefined) payload.steps = updates.steps;
-    if (updates.scheduling !== undefined) payload.scheduling = updates.scheduling;
-    if (updates.traffic !== undefined) payload.traffic = updates.traffic;
+    const map = { stage:1, title:1, priority:1, steps:1, scheduling:1, traffic:1, format:1, networks:1, sponsored:1, description:1, client_id:1 };
+    for (const k of Object.keys(updates)) { if (map[k] !== undefined) payload[k] = updates[k]; }
     if (Object.keys(payload).length === 0) return null;
     const { error } = await supabase.from("demands").update(payload).eq("id", id);
     if (error) console.error("Supa update demand error:", error);
@@ -2316,6 +2312,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
   const [creating, setCreating] = useState(false);
   const [createType, setCreateType] = useState(null);
   const [form, setForm] = useState({});
+  const [editMode, setEditMode] = useState(false);
   const { showToast, ToastEl } = useToast();
 
   const filtered = demands.filter(d => {
@@ -2498,7 +2495,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
     const updateField = (field, val) => {
       setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, [field]: val } : x));
       setSel(prev => ({ ...prev, [field]: val }));
-      if (sel.supaId && (field === "scheduling" || field === "traffic")) supaUpdateDemand(sel.supaId, { [field]: val });
+      if (sel.supaId) {
+        const supaField = field === "network" ? "networks" : field;
+        const supaVal = field === "network" ? (val ? val.split(", ") : []) : val;
+        supaUpdateDemand(sel.supaId, { [supaField]: supaVal });
+      }
     };
 
     /* Role label for each stage */
@@ -2533,18 +2534,89 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
     return (
       <div className="pg" style={{ paddingTop: TOP }}>
         {ToastEl}
-        <Head title="" onBack={() => setSel(null)} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
+        <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
+          {!editMode && <button onClick={()=>setEditMode(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:`${B.accent}10`,border:`1.5px solid ${B.accent}30`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.accent}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar
+          </button>}
+          {editMode && <button onClick={()=>{setEditMode(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.textOnAccent}}>
+            {IC.check} Salvar
+          </button>}
           <Tag color={priorityColor(sel.priority)}>{sel.priority}</Tag>
           <button onClick={async ()=>{
             if (!confirm(`Excluir "${sel.title}"?`)) return;
             if (sel.supaId) await supaDeleteDemand(sel.supaId);
             setDemands(p=>p.filter(d=>d.id!==sel.id));
-            setSel(null); showToast("Demanda excluída ✓");
+            setSel(null); setEditMode(false); showToast("Demanda excluída ✓");
           }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:`${B.red}08`,border:`1.5px solid ${B.red}20`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.red}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
         </div>} />
-        {/* Title + Client + Network */}
+
+        {/* ═══ EDIT MODE ═══ */}
+        {editMode ? (
+          <Card style={{ marginBottom:14 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Título</label>
+            <input value={sel.title} onChange={e=>updateField("title",e.target.value)} className="tinput" style={{ marginBottom:10, fontWeight:700, fontSize:15 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente</label>
+            <select value={CDATA.find(c=>c.name===sel.client)?.supaId||""} onChange={e=>{
+              const cl = CDATA.find(c=>c.supaId===e.target.value);
+              if (cl) { updateField("client", cl.name); if(sel.supaId) supaUpdateDemand(sel.supaId,{client_id:cl.supaId}); }
+            }} className="tinput" style={{ marginBottom:10 }}>
+              <option value="">Selecionar cliente</option>
+              {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+            </select>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Prioridade</label>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {["baixa","média","alta"].map(p=>(
+                <button key={p} onClick={()=>updateField("priority",p)} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, border:sel.priority===p?`2px solid ${priorityColor(p)}`:`1.5px solid ${B.border}`, background:sel.priority===p?`${priorityColor(p)}15`:B.bgCard, color:sel.priority===p?priorityColor(p):B.muted, textTransform:"capitalize" }}>{p === "alta" ? "🔴 Alta" : p === "média" ? "🟡 Média" : "🟢 Baixa"}</button>
+              ))}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Redes</label>
+            <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
+              {["Instagram","Facebook","TikTok","LinkedIn","YouTube","Twitter"].map(n=>{
+                const nets = sel.network ? sel.network.split(", ") : [];
+                const on = nets.includes(n);
+                return <button key={n} onClick={()=>{
+                  const updated = on ? nets.filter(x=>x!==n) : [...nets, n];
+                  updateField("network", updated.join(", "));
+                }} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 10px", borderRadius:10, cursor:"pointer", fontFamily:"inherit", border:`1.5px solid ${on?(NETWORK_CFG[n]?.c||B.accent):B.border}`, background:on?`${NETWORK_CFG[n]?.c||B.accent}10`:B.bgCard, color:on?(NETWORK_CFG[n]?.c||B.text):B.muted, fontSize:11, fontWeight:600 }}>
+                  <NetworkIcon name={n} sz={14} active={on} />{n}
+                </button>;
+              })}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Formato</label>
+            <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
+              {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
+                <button key={f} onClick={()=>updateField("format",f)} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
+              ))}
+            </div>
+
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+              <span style={{ fontSize:13, fontWeight:600 }}>Patrocinado?</span>
+              <Toggle on={sel.sponsored||false} onToggle={()=>updateField("sponsored",!sel.sponsored)} />
+            </div>
+
+            <div style={{ display:"flex", gap:10 }}>
+              <div style={{ flex:1 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>Data</label>
+                <input value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} placeholder="DD/MM" className="tinput" />
+              </div>
+              <div style={{ flex:1 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label>
+                <input value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" />
+              </div>
+            </div>
+
+            {sel.sponsored && <div style={{ marginTop:10 }}>
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento tráfego</label>
+              <input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" />
+            </div>}
+          </Card>
+        ) : (
         <div style={{ textAlign:"center", marginBottom:14 }}>
           <Av name={sel.client} sz={48} fs={18} />
           <h2 style={{ fontSize:17, fontWeight:800, marginTop:8 }}>{sel.title}</h2>
@@ -2557,8 +2629,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
             </span>}
             {sel.format && <Tag color={B.cyan}>{sel.format}</Tag>}
             {sel.sponsored && <Tag color={B.orange}>Patrocinado</Tag>}
+            {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
           </div>
         </div>
+        )}
         {/* ═══ POST PREVIEW ═══ */}
         {sel.type === "social" && (() => {
           const selNetworks = sel.network ? sel.network.split(", ") : [];
@@ -3174,7 +3248,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
         const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
 
         return (
-        <Card key={d.id} delay={i*0.03} onClick={() => setSel(d)} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0 }}>
+        <Card key={d.id} delay={i*0.03} onClick={() => {setSel(d);setEditMode(false);}} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0 }}>
           {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
