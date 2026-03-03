@@ -1542,15 +1542,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       { id:3, month:"Dez/2025", value:sel.monthly, status:"pago", paidAt:"04/12/2025" },
     ];
     const contract = sel.contract || {
-      type: sel.plan === "Partner" ? "Anual" : sel.plan === "Growth 360" ? "Semestral" : "Mensal",
+      type: "Sem fidelidade",
       startDate: sel.since ? `01/${sel.since}` : "01/01/2025",
-      endDate: sel.plan === "Partner" ? "01/03/2027" : sel.plan === "Growth 360" ? "01/09/2026" : "Renovação automática",
+      endDate: "Sem fidelidade",
       services: sel.plan === "Partner"
-        ? ["Social Media (até 6 redes)", "Tráfego Pago (Meta + Google + TikTok)", "Design Gráfico", "Audiovisual (4 vídeos/mês)", "Relatórios Semanais", "Reunião Semanal", "Consultoria Estratégica"]
+        ? ["Tudo do Plano Growth 360º","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"]
         : sel.plan === "Growth 360"
-        ? ["Social Media (até 4 redes)", "Tráfego Pago (Meta + Google)", "Design Gráfico", "Audiovisual (2 vídeos/mês)", "Relatórios Quinzenais", "Reunião Quinzenal"]
-        : ["Social Media (até 2 redes)", "Design Gráfico", "Tráfego Pago (Meta)", "Relatório Mensal"],
-      posts: sel.plan === "Partner" ? "20/mês" : sel.plan === "Growth 360" ? "12/mês" : "8/mês",
+        ? ["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"]
+        : ["Gestão de Tráfego OU Social Media","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"],
+      posts: sel.plan === "Partner" ? "Ilimitado" : sel.plan === "Growth 360" ? "12/mês" : "8/mês",
       payment: "Boleto bancário",
       status: "ativo",
     };
@@ -1595,9 +1595,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     };
 
     const PLANS = [
-      { key:"Traction", price:"R$ 1.480", services:["Social Media (até 2 redes)","Design Gráfico","Tráfego Pago (Meta)","Relatório Mensal"], posts:"8/mês" },
-      { key:"Growth 360", price:"R$ 2.480", services:["Social Media (até 4 redes)","Tráfego Pago (Meta + Google)","Design Gráfico","Audiovisual (2 vídeos/mês)","Relatórios Quinzenais","Reunião Quinzenal"], posts:"12/mês" },
-      { key:"Partner", price:"R$ 4.480", services:["Social Media (até 6 redes)","Tráfego Pago (Meta + Google + TikTok)","Design Gráfico","Audiovisual (4 vídeos/mês)","Relatórios Semanais","Reunião Semanal","Consultoria Estratégica"], posts:"20/mês" },
+      { key:"Traction", price:"R$ 1.480", services:["Gestão de Tráfego OU Social Media","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"], posts:"8/mês", desc:"Estrutura essencial para profissionalizar sua presença digital", target:"Startups & PMEs" },
+      { key:"Growth 360", price:"R$ 2.480", services:["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"], posts:"12/mês", desc:"Operação de marketing completa focada em ROI e Market Share", target:"Scale-ups & Expansão" },
+      { key:"Partner", price:"R$ 4.480", services:["Tudo do Plano Growth 360º","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"], posts:"Ilimitado", desc:"Solução definitiva com acesso à diretoria e produção de elite", target:"Grandes Contas & Business" },
     ];
 
     const changePlan = (newPlan) => {
@@ -1666,7 +1666,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   </button>
                 )}
               </div>
-              <p style={{ fontSize:11, color:B.muted, marginBottom:6 }}>{plan.posts} posts</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:4 }}>{plan.desc}</p>
+              <Tag color={B.purple} style={{ marginBottom:8 }}>{plan.target}</Tag>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:6 }}>Sem fidelidade · Início imediato</p>
               {plan.services.map((s,j) => (
                 <div key={j} style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 0" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
