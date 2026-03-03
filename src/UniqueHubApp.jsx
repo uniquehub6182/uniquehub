@@ -3675,6 +3675,39 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
 }
 
 /* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
+/* ═══ Audio helpers (module-level to prevent remount) ═══ */
+const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
+const AudioPlayer = ({ src, isMe, accent, muted }) => {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef(null);
+  const play = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); setPlaying(false); }
+    else { audioRef.current.play().catch(() => {}); setPlaying(true); }
+  };
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:180 }}>
+      <audio ref={audioRef} src={src} preload="metadata"
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onTimeUpdate={() => { const a = audioRef.current; if(a) setProgress(a.duration ? (a.currentTime/a.duration)*100 : 0); }}
+        onEnded={() => { setPlaying(false); setProgress(0); }}
+      />
+      <button onClick={play} style={{ width:32, height:32, borderRadius:16, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.06)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        {playing ?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> :
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        }
+      </button>
+      <div style={{ flex:1, height:4, borderRadius:2, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.08)", overflow:"hidden" }}>
+        <div style={{ width:`${progress}%`, height:"100%", borderRadius:2, background:isMe?"#192126":accent, transition:"width 0.1s" }} />
+      </div>
+      <span style={{ fontSize:10, color:isMe?"rgba(0,0,0,0.5)":muted, flexShrink:0 }}>{fmtRecTime(Math.round(duration))}</span>
+    </div>
+  );
+};
+
 function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const [view, setView] = useState("list");
   const [convs, setConvs] = useState([]);
@@ -3891,7 +3924,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     clearInterval(recordTimer.current);
     showToast("Gravação cancelada");
   };
-  const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
 
   /* Reactions */
   const handleMsgPress = (msgId) => {
@@ -3907,37 +3939,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     setReactMsgId(null);
   };
 
-  /* Audio player inline */
-  const AudioPlayer = ({ src, isMe }) => {
-    const [playing, setPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const audioRef = useRef(null);
-    const play = () => {
-      if (!audioRef.current) return;
-      if (playing) { audioRef.current.pause(); setPlaying(false); }
-      else { audioRef.current.play(); setPlaying(true); }
-    };
-    return (
-      <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:180 }}>
-        <audio ref={audioRef} src={src} preload="metadata"
-          onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-          onTimeUpdate={() => { const a = audioRef.current; if(a) setProgress(a.duration ? (a.currentTime/a.duration)*100 : 0); }}
-          onEnded={() => { setPlaying(false); setProgress(0); }}
-        />
-        <button onClick={play} style={{ width:32, height:32, borderRadius:16, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.06)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          {playing ?
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> :
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          }
-        </button>
-        <div style={{ flex:1, height:4, borderRadius:2, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.08)", overflow:"hidden" }}>
-          <div style={{ width:`${progress}%`, height:"100%", borderRadius:2, background:isMe?"#192126":B.accent, transition:"width 0.1s" }} />
-        </div>
-        <span style={{ fontSize:10, color:isMe?"rgba(0,0,0,0.5)":B.muted, flexShrink:0 }}>{fmtRecTime(Math.round(duration))}</span>
-      </div>
-    );
-  };
+  /* AudioPlayer is now at module level */
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -4070,7 +4072,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       {!isMe && isGroup && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{senderName}</p>}
                       {m.pinned && <span style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.5)":B.orange }}>📌 </span>}
                       {m.file_url && m.file_type?.startsWith("audio/") ? (
-                        <AudioPlayer src={m.file_url} isMe={isMe} />
+                        <AudioPlayer src={m.file_url} isMe={isMe} accent={B.accent} muted={B.muted} />
                       ) : m.file_url ? (
                         <div>
                           {m.file_type?.startsWith("image/") ? <img src={m.file_url} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, marginBottom:4 }} alt="" /> : null}
