@@ -91,7 +91,15 @@ const supaLoadDemands = async () => {
 const supaCreateDemand = async (d, clientId) => {
   if (!supabase) return { data: null, err: "no supabase" };
   try {
+    const isUUID = (v) => typeof v === "string" && /^[0-9a-f]{8}-/.test(v);
+    if (!isUUID(clientId)) {
+      /* Try to find client UUID by name */
+      const { data: cl } = await supabase.from("clients").select("id").eq("name", d.client).limit(1).single();
+      if (cl) clientId = cl.id;
+      else return { data: null, err: "Cliente não encontrado no banco" };
+    }
     const payload = {
+      client_id: clientId,
       title: d.title || "Nova demanda",
       type: d.type || "social",
       stage: d.stage || "idea",
