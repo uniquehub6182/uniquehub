@@ -1335,11 +1335,11 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     /* Save to Supabase */
     const result = await supaCreateClient(nc);
     if (result?.data) { nc.id = result.data.id; nc.supaId = result.data.id; }
-    else if (supabase) { showToast("DB erro: " + (result?.err || "desconhecido")); }
+    else if (supabase) { showToast("Erro: " + (result?.err || "desconhecido")); }
     setClients(p => [...p, nc]);
     setCreating(false); setForm({}); 
-    if (result?.data) showToast("Cliente cadastrado no banco! ✓");
-    else if (!supabase) showToast("Cliente cadastrado localmente! ✓");
+    if (result?.data) showToast("Cliente cadastrado! ✓");
+    else if (!supabase) showToast("Cliente cadastrado! ✓");
   };
 
   const updateClient = (id, data) => {
@@ -2239,9 +2239,9 @@ function ContentPage({ user, clients: propClients }) {
     /* Find client ID for Supabase */
     const clientObj = CDATA.find(c => c.name === form.client);
     const result = await supaCreateDemand(newD, clientObj?.supaId || clientObj?.id);
-    let toastMsg = "LOCAL (supa=" + (!!supabase) + " data=" + (!!result?.data) + " err=" + (result?.err || "none") + ")";
-    if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; toastMsg = "Demanda criada no banco! ✓"; }
-    else if (result?.err) { toastMsg = "DB: " + result.err; }
+    let toastMsg = "Demanda criada!";
+    if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; toastMsg = "Demanda criada! ✓"; }
+    else if (result?.err) { toastMsg = "Erro: " + result.err; }
     setDemands(prev => [newD, ...prev]);
     setCreating(false); setCreateType(null); setForm({});
     showToast(toastMsg);
