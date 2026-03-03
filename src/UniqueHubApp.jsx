@@ -1899,19 +1899,28 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       </>}
 
       {profileTab === "contract" && <>
-        <Card style={{ marginBottom:10, borderLeft:`4px solid ${contract.status==="ativo"?B.green:B.red}` }}>
+        <Card style={{ marginBottom:10, borderLeft:`4px solid ${sel.status==="ativo"?B.green:sel.status==="cancelado"?B.red:B.orange}` }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:44, height:44, borderRadius:14, background:`${contract.status==="ativo"?B.green:B.red}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={contract.status==="ativo"?B.green:B.red} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <div style={{ width:44, height:44, borderRadius:14, background:`${sel.status==="ativo"?B.green:B.red}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sel.status==="ativo"?B.green:B.red} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
-            <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Contrato {contract.type}</p><p style={{ fontSize:11, color:B.muted }}>Status: <span style={{ fontWeight:700, color:contract.status==="ativo"?B.green:B.red }}>{contract.status==="ativo"?"Ativo":"Encerrado"}</span></p></div>
+            <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Contrato {contract.type}</p><p style={{ fontSize:11, color:B.muted }}>Status: <span style={{ fontWeight:700, color:sel.status==="ativo"?B.green:sel.status==="cancelado"?B.red:B.orange }}>{sel.status==="ativo"?"Ativo":sel.status==="pausado"?"Pausado":"Cancelado"}</span></p></div>
             <Tag color={B.accent}>{sel.plan}</Tag>
           </div>
         </Card>
         <p className="sl" style={{ marginBottom:6 }}>Detalhes do contrato</p>
         <Card>
-          {[{label:"Tipo",value:contract.type},{label:"Início",value:contract.startDate},{label:"Vigência",value:contract.endDate},{label:"Valor",value:sel.monthly},{label:"Pagamento",value:contract.payment},{label:"Posts",value:contract.posts}].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:13, fontWeight:600 }}>{item.value}</span></div>
+          {[{label:"Tipo",field:"contractType",ph:"Ex: Sem fidelidade, 6 meses...",fallback:contract.type},
+            {label:"Início",field:"contractStart",ph:"DD/MM/AAAA",fallback:contract.startDate},
+            {label:"Vigência",field:"contractEnd",ph:"Ex: 12 meses, Sem fidelidade",fallback:contract.endDate},
+            {label:"Valor",field:"monthly",ph:"R$ 0",fallback:sel.monthly},
+            {label:"Pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
+            {label:"Posts/mês",field:"contractPosts",ph:"8/mês",fallback:contract.posts}
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none", gap:10 }}>
+              <span style={{ fontSize:11, color:B.muted, flexShrink:0 }}>{item.label}</span>
+              <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" style={{ textAlign:"right", fontSize:13, fontWeight:600, border:"none", background:"transparent", maxWidth:"60%", padding:"2px 0" }} />
+            </div>
           ))}
         </Card>
         <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Serviços — {sel.plan}</p>
@@ -1970,8 +1979,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         ))}
         <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados de cobrança</p>
         <Card>
-          {[{label:"Pagamento",value:contract.payment},{label:"Vencimento",value:"Dia 05"},{label:"CNPJ",value:sel.cnpj},{label:"E-mail NF",value:sel.email}].map((item,i)=>(
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:12, fontWeight:600, textAlign:"right", maxWidth:"55%" }}>{item.value||"—"}</span></div>
+          {[{label:"Pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
+            {label:"Vencimento",field:"billingDueDay",ph:"Dia 05",fallback:"Dia 05"},
+            {label:"CNPJ",field:"cnpj",ph:"00.000.000/0000-00",fallback:sel.cnpj},
+            {label:"E-mail NF",field:"billingEmail",ph:"email@empresa.com",fallback:sel.billingEmail||sel.email}
+          ].map((item,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none", gap:10 }}>
+              <span style={{ fontSize:11, color:B.muted, flexShrink:0 }}>{item.label}</span>
+              <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" style={{ textAlign:"right", fontSize:12, fontWeight:600, border:"none", background:"transparent", maxWidth:"55%", padding:"2px 0" }} />
+            </div>
           ))}
         </Card>
       </>}
