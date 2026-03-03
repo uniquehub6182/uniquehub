@@ -135,6 +135,9 @@ const supaUpdateDemand = async (id, updates) => {
     if (updates.stage !== undefined) payload.stage = updates.stage;
     if (updates.title !== undefined) payload.title = updates.title;
     if (updates.priority !== undefined) payload.priority = updates.priority;
+    if (updates.steps !== undefined) payload.steps = updates.steps;
+    if (updates.scheduling !== undefined) payload.scheduling = updates.scheduling;
+    if (updates.traffic !== undefined) payload.traffic = updates.traffic;
     if (Object.keys(payload).length === 0) return null;
     const { error } = await supabase.from("demands").update(payload).eq("id", id);
     if (error) console.error("Supa update demand error:", error);
@@ -170,9 +173,9 @@ const mergeSupaDemand = (row) => ({
   format: row.format || "Feed",
   sponsored: row.sponsored || false, assignees: ["Matheus"],
   createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
-  steps: { idea: { by: "Matheus", text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
-  scheduling: { date: row.schedule_date || "", time: row.schedule_time || "" },
-  traffic: { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
+  steps: (row.steps && Object.keys(row.steps).length > 0) ? row.steps : { idea: { by: "Matheus", text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
+  scheduling: (row.scheduling && Object.keys(row.scheduling).length > 0) ? row.scheduling : { date: row.schedule_date || "", time: row.schedule_time || "" },
+  traffic: (row.traffic && Object.keys(row.traffic).length > 0) ? row.traffic : { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
   ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [], refs:"", dateStart:"", dateEnd:"", location:"", needs:[], clientTeam:[], budget:"", budgetBreakdown:[] } } : {}),
 });
 
@@ -2241,25 +2244,29 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   const realSlides = isCarousel && imgFiles.length > 1 ? imgFiles.length : total;
   return (
     <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
-      <div style={{ aspectRatio:aspect, background: hasReal ? "#111" : `linear-gradient(135deg, ${cA} 0%, ${cB} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
-        {imgFiles.length > 0 ? (
-          <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain" }} />
-        ) : vidFiles.length > 0 ? (<>
-          <video src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"contain" }} muted playsInline />
-          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}>
-            <div style={{ width:compact?36:52, height:compact?36:52, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width={compact?16:24} height={compact?16:24} viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      {hasReal ? (
+        <div style={{ position:"relative", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+          {imgFiles.length > 0 ? (
+            <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ display:"block", width:"100%", height:"auto", maxHeight: compact ? 220 : 400 }} />
+          ) : vidFiles.length > 0 ? (<>
+            <video src={vidFiles[0]?.url} style={{ display:"block", width:"100%", height:"auto", maxHeight: compact ? 220 : 400 }} muted playsInline />
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}>
+              <div style={{ width:compact?36:52, height:compact?36:52, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width={compact?16:24} height={compact?16:24} viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
             </div>
-          </div>
-        </>) : (<>
+          </>) : null}
+          {isCarousel && imgFiles.length > 1 && <div style={{ position:"absolute", top:compact?6:10, right:compact?6:10, padding:"2px 8px", borderRadius:10, background:"rgba(0,0,0,0.55)", zIndex:2 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{Math.min(cur+1,imgFiles.length)}/{imgFiles.length}</span>
+          </div>}
+        </div>
+      ) : (
+        <div style={{ aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
           <span style={{ fontSize:compact?28:40, opacity:0.25 }}>{isCarousel?(cur===0?"📸":cur===total-1?"📲":"🖼️"):(format==="Reels"||format==="Stories"?"🎬":"📸")}</span>
           {isCarousel && <p style={{ fontSize:compact?11:14, color:"rgba(255,255,255,0.7)", marginTop:4, fontWeight:700 }}>Slide {cur+1} de {total}</p>}
           <p style={{ fontSize:compact?12:15, color:"rgba(255,255,255,0.8)", marginTop:compact?2:4, fontWeight:700 }}>{client}</p>
-        </>)}
-        {hasReal && isCarousel && imgFiles.length > 1 && <div style={{ position:"absolute", top:compact?6:10, right:compact?6:10, padding:"2px 8px", borderRadius:10, background:"rgba(0,0,0,0.55)", zIndex:2 }}>
-          <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{Math.min(cur+1,imgFiles.length)}/{imgFiles.length}</span>
-        </div>}
-      </div>
+        </div>
+      )}
       {isCarousel && (hasReal?imgFiles.length:total) > 1 && cur > 0 && <button onClick={e=>{e.stopPropagation();setCur(p=>p-1);}} style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
         <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>}
@@ -2494,10 +2501,12 @@ function ContentPage({ user, clients: propClients }) {
       const newSteps = { ...(sel.steps||{}), [stepKey]: { ...(sel.steps?.[stepKey]||{}), ...data } };
       setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: newSteps } : x));
       setSel(prev => ({ ...prev, steps: newSteps }));
+      if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: newSteps });
     };
     const updateField = (field, val) => {
       setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, [field]: val } : x));
       setSel(prev => ({ ...prev, [field]: val }));
+      if (sel.supaId && (field === "scheduling" || field === "traffic")) supaUpdateDemand(sel.supaId, { [field]: val });
     };
 
     /* Role label for each stage */
@@ -2748,8 +2757,8 @@ function ContentPage({ user, clients: propClients }) {
               {sel.steps.design.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps.design.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
-                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}`, background:"#111" }}>
-                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
+                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", border:`1px solid ${B.border}` }}>
+                      <img src={f.url} alt={f.name} style={{ display:"block", width:"100%", height:"auto" }} />
                     </a>
                   ))}
                 </div>
@@ -3208,9 +3217,9 @@ function ContentPage({ user, clients: propClients }) {
             const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
             if (!firstImg && !firstVid) return null;
             return (
-              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"16/9", background:"#111" }}>
-                {firstImg ? <img src={firstImg.url} alt="" style={{ width:"100%", height:"100%", objectFit:"contain" }} /> :
-                 firstVid ? <video src={firstVid.url} style={{ width:"100%", height:"100%", objectFit:"contain" }} muted playsInline /> : null}
+              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+                {firstImg ? <img src={firstImg.url} alt="" style={{ display:"block", width:"100%", height:"auto", maxHeight:200 }} /> :
+                 firstVid ? <video src={firstVid.url} style={{ display:"block", width:"100%", height:"auto", maxHeight:200 }} muted playsInline /> : null}
                 <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <div style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
