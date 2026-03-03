@@ -126,15 +126,16 @@ const supaUpdateDemand = async (id, updates) => {
 
 const mergeSupaDemand = (row) => ({
   id: row.id, supaId: row.id, type: row.type || "social",
-  client: row.clients?.name || "Sem cliente", title: row.title || "",
+  client: "Sem cliente", title: row.title || "",
   stage: row.stage || "idea", priority: row.priority || "média",
-  network: row.networks || "Instagram", format: row.format || "Feed",
-  sponsored: row.sponsored || false, assignees: [],
+  network: Array.isArray(row.networks) ? row.networks.join(", ") : (row.networks || "Instagram"),
+  format: row.format || "Feed",
+  sponsored: row.sponsored || false, assignees: ["Matheus"],
   createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
-  steps: row.description ? { idea: { by: "Matheus", text: row.description, date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } } : {},
-  scheduling: { date: row.schedule_date ? new Date(row.schedule_date + "T12:00:00").toLocaleDateString("pt-BR") : "", time: row.schedule_time || "" },
+  steps: { idea: { by: "Matheus", text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
+  scheduling: { date: row.schedule_date || "", time: row.schedule_time || "" },
   traffic: { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
-  ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [] } } : {}),
+  ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [], refs:"", dateStart:"", dateEnd:"", location:"", needs:[], clientTeam:[], budget:"", budgetBreakdown:[] } } : {}),
 });
 
 /* ── Supabase Events (Calendar) Helpers ── */
