@@ -3420,7 +3420,7 @@ function ChatPage({ user }) {
     const isOnline = selContact.status === "online" || selContact.type === "group";
 
     return (
-      <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:B.bg }}>
+      <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
         {ToastEl}{CallingOverlay}
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:`calc(${TOP} + 4px) 12px 10px`, background:B.bgCard, borderBottom:`1px solid ${B.border}`, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
@@ -6388,7 +6388,7 @@ function AIPage({ onBack, user }) {
 
   /* ═══ NEW CHAT (empty state) ═══ */
   if (view === "chat" && messages.length === 0 && !loading) return (
-    <div className="pg" style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 80px)" }}>
+    <div className="pg" style={{ display:"flex", flexDirection:"column", height:"100%" }}>
       {ToastEl}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -6429,7 +6429,7 @@ function AIPage({ onBack, user }) {
 
   /* ═══ ACTIVE CHAT VIEW ═══ */
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:B.bg }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
       {ToastEl}
       <div style={{ padding:`52px 16px 10px`, display:"flex", alignItems:"center", justifyContent:"space-between", background:B.bgCard, borderBottom:`1px solid ${B.border}` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -6978,11 +6978,11 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};overflow:hidden;height:100%;color:${dark?"#E8EAED":"#192126"}}
+html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};margin:0;padding:0;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden;position:fixed;width:100%;top:0;left:0}
 input,textarea,select{font-size:16px !important}
-.app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.screen{width:100%;max-width:430px;margin:0 auto;min-height:100vh;height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:90px}
+.app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
+.screen{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:90px}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
