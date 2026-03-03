@@ -153,10 +153,9 @@ const supaDeleteDemand = async (id) => {
 const supaUploadFile = async (file, demandId) => {
   if (!supabase) return null;
   try {
-    const ext = file.name.split(".").pop();
     const path = `${demandId}/${Date.now()}_${file.name.replace(/\s+/g,"_")}`;
-    const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true });
-    if (error) { console.error("Upload error:", error); return null; }
+    const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true, cacheControl: "3600" });
+    if (error) { console.error("Upload error:", error.message); return null; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
     return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
   } catch (e) { console.error("Upload catch:", e); return null; }
@@ -2232,30 +2231,47 @@ function StageBar({ type, current, compact }) {
 /* ── Carousel/Image Preview Component ── */
 function PostPreview({ format, client, slides, compact, children, uploadedFiles }) {
   const [cur, setCur] = useState(0);
-  const isCarousel = format === "Carrossel";
-  const total = isCarousel ? (slides || 5) : 1;
+  const [playing, setPlaying] = useState(false);
+  const vidRef = React.useRef(null);
   const detailColors = {"Casa Nova Imóveis":["#1a5276","#2e86c1"],"Bella Estética":["#6c3483","#af7ac5"],"TechSmart":["#1b4f72","#2980b9"],"Padaria Real":["#7e5109","#d4ac0d"],"Studio Fitness":["#1e8449","#2ecc71"]};
   const [cA,cB] = detailColors[client] || ["#1C2228","#C8FA5F"];
-  /* Aspect ratios reais: Feed/Carrossel=1080x1350(4:5), Stories/Reels/Shorts=1080x1920(9:16) */
-  const isVertical = ["Stories","Reels","Shorts"].includes(format);
-  const aspect = isVertical ? "9/16" : "4/5";
   const arrowSz = compact ? 28 : 36;
+
   const imgFiles = (uploadedFiles||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
   const vidFiles = (uploadedFiles||[]).filter(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
   const hasReal = imgFiles.length > 0 || vidFiles.length > 0;
-  const realSlides = isCarousel && imgFiles.length > 1 ? imgFiles.length : total;
+
+  /* Carrossel = formato Carrossel OU múltiplas imagens uploaded */
+  const isCarousel = format === "Carrossel" || imgFiles.length > 1;
+  const total = isCarousel ? Math.max(imgFiles.length, slides || 2) : 1;
+  const slideCount = imgFiles.length > 1 ? imgFiles.length : total;
+
+  /* Aspect ratio por formato */
+  const isVertical = ["Stories","Reels","Shorts"].includes(format) || vidFiles.length > 0;
+  const aspect = isVertical ? "9/16" : "4/5";
+
+  const togglePlay = (e) => {
+    e.stopPropagation();
+    if (!vidRef.current) return;
+    if (playing) { vidRef.current.pause(); setPlaying(false); }
+    else { vidRef.current.play(); setPlaying(true); }
+  };
+
   return (
     <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
       {hasReal ? (
         <div style={{ position:"relative", aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
           {imgFiles.length > 0 ? (
-            <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+            <img src={imgFiles[Math.min(cur, imgFiles.length-1)]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
           ) : vidFiles.length > 0 ? (<>
-            <video src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline />
-            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}>
-              <div style={{ width:compact?36:52, height:compact?36:52, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <svg width={compact?16:24} height={compact?16:24} viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              </div>
+            <video ref={vidRef} src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} playsInline loop onClick={togglePlay} />
+            <div onClick={togglePlay} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1, cursor:"pointer", background: playing ? "transparent" : "rgba(0,0,0,0.25)", transition:"background .3s" }}>
+              {!playing && <div style={{ width:compact?40:60, height:compact?40:60, borderRadius:"50%", background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                <svg width={compact?18:28} height={compact?18:28} viewBox="0 0 24 24" fill="#111" style={{ marginLeft:compact?2:3 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>}
+              {playing && <div style={{ position:"absolute", bottom:compact?8:14, right:compact?8:14, width:compact?28:36, height:compact?28:36, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width={compact?10:14} height={compact?10:14} viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              </div>}
             </div>
           </>) : null}
           {isCarousel && imgFiles.length > 1 && <div style={{ position:"absolute", top:compact?6:10, right:compact?6:10, padding:"2px 8px", borderRadius:10, background:"rgba(0,0,0,0.55)", zIndex:2 }}>
@@ -2269,14 +2285,16 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
           <p style={{ fontSize:compact?12:15, color:"rgba(255,255,255,0.8)", marginTop:compact?2:4, fontWeight:700 }}>{client}</p>
         </div>
       )}
-      {isCarousel && (hasReal?imgFiles.length:total) > 1 && cur > 0 && <button onClick={e=>{e.stopPropagation();setCur(p=>p-1);}} style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+      {/* Carousel arrows */}
+      {isCarousel && slideCount > 1 && cur > 0 && <button onClick={e=>{e.stopPropagation();setCur(p=>p-1);}} style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
         <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>}
-      {isCarousel && cur < (hasReal?imgFiles.length:total)-1 && <button onClick={e=>{e.stopPropagation();setCur(p=>p+1);}} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+      {isCarousel && cur < slideCount-1 && <button onClick={e=>{e.stopPropagation();setCur(p=>p+1);}} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
         <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>}
-      {isCarousel && <div style={{ position:"absolute", bottom:compact?6:10, left:"50%", transform:"translateX(-50%)", display:"flex", gap:compact?3:5 }}>
-        {Array.from({length:hasReal?imgFiles.length:total}).map((_,di) => <div key={di} style={{ width:di===cur?(compact?12:18):(compact?5:8), height:compact?5:8, borderRadius:4, background:di===cur?"#fff":"rgba(255,255,255,0.35)", transition:"all .25s" }} />)}
+      {/* Carousel dots */}
+      {isCarousel && slideCount > 1 && <div style={{ position:"absolute", bottom:compact?6:10, left:"50%", transform:"translateX(-50%)", display:"flex", gap:compact?3:5 }}>
+        {Array.from({length:slideCount}).map((_,di) => <div key={di} style={{ width:di===cur?(compact?12:18):(compact?5:8), height:compact?5:8, borderRadius:4, background:di===cur?"#fff":"rgba(255,255,255,0.35)", transition:"all .25s" }} />)}
       </div>}
       {children}
     </div>
@@ -2730,7 +2748,7 @@ function ContentPage({ user, clients: propClients }) {
                   </div>
                   );
                 })}
-                <input type="file" id="designUpload" multiple accept={["Reels","Shorts","Vídeo"].includes(sel.format) ? "video/*,.prproj,.aep" : "image/*,.psd,.ai,.pdf"} style={{ display:"none" }} onChange={async (e)=>{
+                <input type="file" id="designUpload" multiple accept="image/*,video/*,.psd,.ai,.pdf,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
@@ -2738,17 +2756,17 @@ function ContentPage({ user, clients: propClients }) {
                   for (const file of files) {
                     const result = await supaUploadFile(file, sel.supaId || sel.id);
                     if (result) uploaded.push(result);
-                    else uploaded.push({ name: file.name, size: file.size, type: file.type });
+                    else showToast(`Falha no upload: ${file.name}`);
                   }
-                  updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  if (uploaded.length > 0) updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  if (uploaded.length > 0) showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("designUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} {["Reels","Shorts","Vídeo"].includes(sel.format) ? "Selecionar vídeos" : "Selecionar imagens"}
+                  {IC.upload} Selecionar arquivos
                 </button>
               </div>
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>{["Reels","Shorts","Vídeo"].includes(sel.format) ? "MP4, MOV, Premiere, After Effects" : "PNG, JPG, PSD, AI, PDF — múltiplos arquivos"}</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>
             </> : sel.steps?.design?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <Av name={sel.steps.design.by||"Designer"} sz={22} fs={9} />
@@ -2817,10 +2835,10 @@ function ContentPage({ user, clients: propClients }) {
                   for (const file of files) {
                     const result = await supaUploadFile(file, sel.supaId || sel.id);
                     if (result) uploaded.push(result);
-                    else uploaded.push({ name: file.name, size: file.size, type: file.type });
+                    else showToast(`Falha no upload: ${file.name}`);
                   }
-                  updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  if (uploaded.length > 0) updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  if (uploaded.length > 0) showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("productionUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.orange}40`, background:`${B.orange}04`, cursor:"pointer", color:B.orange, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
@@ -2879,10 +2897,10 @@ function ContentPage({ user, clients: propClients }) {
                   for (const file of files) {
                     const result = await supaUploadFile(file, sel.supaId || sel.id);
                     if (result) uploaded.push(result);
-                    else uploaded.push({ name: file.name, size: file.size, type: file.type });
+                    else showToast(`Falha no upload: ${file.name}`);
                   }
-                  updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                  if (uploaded.length > 0) updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  if (uploaded.length > 0) showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("editingUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.cyan}40`, background:`${B.cyan}04`, cursor:"pointer", color:B.cyan, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
@@ -3214,7 +3232,7 @@ function ContentPage({ user, clients: propClients }) {
 
           {/* ── Video preview with uploaded media ── */}
           {d.type === "video" && (() => {
-            const vFiles = d.steps?.editing?.files || d.steps?.production?.files || [];
+            const vFiles = [...(d.steps?.design?.files||[]), ...(d.steps?.editing?.files||[]), ...(d.steps?.production?.files||[])];
             const firstImg = vFiles.find(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
             const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
             if (!firstImg && !firstVid) return null;
@@ -3222,9 +3240,9 @@ function ContentPage({ user, clients: propClients }) {
               <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"9/16", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
                 {firstImg ? <img src={firstImg.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> :
                  firstVid ? <video src={firstVid.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline /> : null}
-                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <div style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.2)" }}>
+                  <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#111" style={{ marginLeft:3 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   </div>
                 </div>
                 <span style={{ position:"absolute", top:10, left:10, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff" }}>🎬 Vídeo</span>
