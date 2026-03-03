@@ -2227,7 +2227,7 @@ function StageBar({ type, current, compact }) {
 
 /* ═══════════════════════ CONTENT / DEMAND PAGE ═══════════════════════ */
 /* ── Carousel/Image Preview Component ── */
-function PostPreview({ format, client, slides, compact, children }) {
+function PostPreview({ format, client, slides, compact, children, uploadedFiles }) {
   const [cur, setCur] = useState(0);
   const isCarousel = format === "Carrossel";
   const total = isCarousel ? (slides || 5) : 1;
@@ -2235,21 +2235,39 @@ function PostPreview({ format, client, slides, compact, children }) {
   const [cA,cB] = detailColors[client] || ["#1C2228","#C8FA5F"];
   const aspect = compact ? "1/0.6" : (isCarousel ? "1/0.75" : "1/0.65");
   const arrowSz = compact ? 28 : 36;
+  const imgFiles = (uploadedFiles||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+  const vidFiles = (uploadedFiles||[]).filter(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
+  const hasReal = imgFiles.length > 0 || vidFiles.length > 0;
+  const realSlides = isCarousel && imgFiles.length > 1 ? imgFiles.length : total;
   return (
     <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
-      <div style={{ aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-        <span style={{ fontSize:compact?28:40, opacity:0.25 }}>{isCarousel?(cur===0?"📸":cur===total-1?"📲":"🖼️"):(format==="Reels"||format==="Stories"?"🎬":"📸")}</span>
-        {isCarousel && <p style={{ fontSize:compact?11:14, color:"rgba(255,255,255,0.7)", marginTop:4, fontWeight:700 }}>Slide {cur+1} de {total}</p>}
-        <p style={{ fontSize:compact?12:15, color:"rgba(255,255,255,0.8)", marginTop:compact?2:4, fontWeight:700 }}>{client}</p>
+      <div style={{ aspectRatio:aspect, background: hasReal ? "#111" : `linear-gradient(135deg, ${cA} 0%, ${cB} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
+        {imgFiles.length > 0 ? (
+          <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+        ) : vidFiles.length > 0 ? (<>
+          <video src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline />
+          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}>
+            <div style={{ width:compact?36:52, height:compact?36:52, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width={compact?16:24} height={compact?16:24} viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+          </div>
+        </>) : (<>
+          <span style={{ fontSize:compact?28:40, opacity:0.25 }}>{isCarousel?(cur===0?"📸":cur===total-1?"📲":"🖼️"):(format==="Reels"||format==="Stories"?"🎬":"📸")}</span>
+          {isCarousel && <p style={{ fontSize:compact?11:14, color:"rgba(255,255,255,0.7)", marginTop:4, fontWeight:700 }}>Slide {cur+1} de {total}</p>}
+          <p style={{ fontSize:compact?12:15, color:"rgba(255,255,255,0.8)", marginTop:compact?2:4, fontWeight:700 }}>{client}</p>
+        </>)}
+        {hasReal && isCarousel && imgFiles.length > 1 && <div style={{ position:"absolute", top:compact?6:10, right:compact?6:10, padding:"2px 8px", borderRadius:10, background:"rgba(0,0,0,0.55)", zIndex:2 }}>
+          <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{Math.min(cur+1,imgFiles.length)}/{imgFiles.length}</span>
+        </div>}
       </div>
-      {isCarousel && cur > 0 && <button onClick={e=>{e.stopPropagation();setCur(p=>p-1);}} style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+      {isCarousel && (hasReal?imgFiles.length:total) > 1 && cur > 0 && <button onClick={e=>{e.stopPropagation();setCur(p=>p-1);}} style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
         <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>}
-      {isCarousel && cur < total-1 && <button onClick={e=>{e.stopPropagation();setCur(p=>p+1);}} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+      {isCarousel && cur < (hasReal?imgFiles.length:total)-1 && <button onClick={e=>{e.stopPropagation();setCur(p=>p+1);}} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
         <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>}
       {isCarousel && <div style={{ position:"absolute", bottom:compact?6:10, left:"50%", transform:"translateX(-50%)", display:"flex", gap:compact?3:5 }}>
-        {Array.from({length:total}).map((_,di) => <div key={di} style={{ width:di===cur?(compact?12:18):(compact?5:8), height:compact?5:8, borderRadius:4, background:di===cur?"#fff":"rgba(255,255,255,0.35)", transition:"all .25s" }} />)}
+        {Array.from({length:hasReal?imgFiles.length:total}).map((_,di) => <div key={di} style={{ width:di===cur?(compact?12:18):(compact?5:8), height:compact?5:8, borderRadius:4, background:di===cur?"#fff":"rgba(255,255,255,0.35)", transition:"all .25s" }} />)}
       </div>}
       {children}
     </div>
@@ -2550,7 +2568,7 @@ function ContentPage({ user, clients: propClients }) {
             <Card style={{ marginBottom:10, padding:0, overflow:"hidden" }}>
               <p className="sl" style={{ padding:"12px 14px 8px" }}>Preview do post</p>
               <div style={{ margin:"0 14px", borderRadius:12, overflow:"hidden" }}>
-                <PostPreview format={sel.format} client={sel.client} slides={selSlides}>
+                <PostPreview format={sel.format} client={sel.client} slides={selSlides} uploadedFiles={[...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])]}>
                   <div style={{ position:"absolute", top:10, left:10 }}>
                     <span style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff" }}>{sel.format}{isSelCarousel?` · ${selSlides} slides`:""}</span>
                   </div>
@@ -2678,7 +2696,9 @@ function ContentPage({ user, clients: propClients }) {
                 <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.briefing.c, marginBottom:4 }}>📋 Briefing da Social Media:</p>
                 <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text || "—"}</p>
               </div>
-              <label className="sl" style={{ display:"block", marginBottom:6 }}>Enviar material criado</label>
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>
+                {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
+              </label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {(sel.steps?.design?.files||[]).map((f,i) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || f);
@@ -2692,14 +2712,14 @@ function ContentPage({ user, clients: propClients }) {
                      <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
-                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024).toFixed(0)} KB</p>}
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{f.size > 1048576 ? `${(f.size/1048576).toFixed(1)} MB` : `${(f.size/1024).toFixed(0)} KB`}</p>}
                     </div>
                     {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
                     <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.design?.files||[])]; nf.splice(i,1); updateStep("design",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
                   </div>
                   );
                 })}
-                <input type="file" id="designUpload" multiple accept="image/*,video/*,.psd,.ai,.pdf" style={{ display:"none" }} onChange={async (e)=>{
+                <input type="file" id="designUpload" multiple accept={["Reels","Shorts","Vídeo"].includes(sel.format) ? "video/*,.prproj,.aep" : "image/*,.psd,.ai,.pdf"} style={{ display:"none" }} onChange={async (e)=>{
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
@@ -2714,10 +2734,10 @@ function ContentPage({ user, clients: propClients }) {
                   e.target.value = "";
                 }} />
                 <button onClick={()=>document.getElementById("designUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} Selecionar arquivos
+                  {IC.upload} {["Reels","Shorts","Vídeo"].includes(sel.format) ? "Selecionar vídeos" : "Selecionar imagens"}
                 </button>
               </div>
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI, PDF — múltiplos arquivos</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>{["Reels","Shorts","Vídeo"].includes(sel.format) ? "MP4, MOV, Premiere, After Effects" : "PNG, JPG, PSD, AI, PDF — múltiplos arquivos"}</p>
             </> : sel.steps?.design?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <Av name={sel.steps.design.by||"Designer"} sz={22} fs={9} />
@@ -2923,9 +2943,9 @@ function ContentPage({ user, clients: propClients }) {
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Observação (opcional)</label>
               <input value={sel.steps?.review?.note||""} onChange={e=>updateStep("review",{note:e.target.value})} placeholder="Feedback sobre o material..." className="tinput" style={{ marginBottom:10 }} />
               <div style={{ display:"flex", gap:8 }}>
-                <button onClick={() => { updateStep("review",{status:"approved",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); setTimeout(()=>advanceStage(sel),100); }} className="pill full" style={{ background:B.green, color:"#fff", border:"none" }}>✓ Aprovar</button>
-                <button onClick={() => rejectToStage(sel,"design")} className="pill full outline" style={{ color:B.orange, borderColor:`${B.orange}30` }}>↩ Ajustar Arte</button>
-                <button onClick={() => rejectToStage(sel,"caption")} className="pill full outline" style={{ color:B.orange, borderColor:`${B.orange}30` }}>↩ Legenda</button>
+                <button onClick={() => { updateStep("review",{status:"approved",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); setTimeout(()=>advanceStage(sel),100); }} style={{ flex:1, padding:"12px 0", borderRadius:14, background:B.green, color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Aprovar</button>
+                <button onClick={() => rejectToStage(sel,"design")} style={{ flex:1, padding:"12px 0", borderRadius:14, background:B.orange, color:"#fff", border:"none", fontFamily:"inherit", fontSize:12, fontWeight:700, cursor:"pointer" }}>↩ Arte</button>
+                <button onClick={() => rejectToStage(sel,"caption")} style={{ flex:1, padding:"12px 0", borderRadius:14, background:B.red, color:"#fff", border:"none", fontFamily:"inherit", fontSize:12, fontWeight:700, cursor:"pointer" }}>↩ Legenda</button>
               </div>
             </> : sel.steps?.review?.status && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
@@ -3157,7 +3177,7 @@ function ContentPage({ user, clients: propClients }) {
           {/* ── Post Preview Image / Carousel ── */}
           {d.type === "social" && (
             <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden" }}>
-              <PostPreview format={d.format} client={d.client} slides={slides} compact>
+              <PostPreview format={d.format} client={d.client} slides={slides} compact uploadedFiles={[...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])]}>
                 {/* Format badge overlay */}
                 <div style={{ position:"absolute", top:10, left:10, display:"flex", gap:4 }}>
                   <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(6px)" }}>{d.format}{isCarousel?` · ${slides}`:""}</span>
@@ -3181,10 +3201,31 @@ function ContentPage({ user, clients: propClients }) {
             </div>
           )}
 
+          {/* ── Video preview with uploaded media ── */}
+          {d.type === "video" && (() => {
+            const vFiles = d.steps?.editing?.files || d.steps?.production?.files || [];
+            const firstImg = vFiles.find(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
+            if (!firstImg && !firstVid) return null;
+            return (
+              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"16/9", background:"#111" }}>
+                {firstImg ? <img src={firstImg.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> :
+                 firstVid ? <video src={firstVid.url} style={{ width:"100%", height:"100%", objectFit:"cover" }} muted playsInline /> : null}
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <div style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                </div>
+                <span style={{ position:"absolute", top:10, left:10, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff" }}>🎬 Vídeo</span>
+                <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${pColor}dd`, color:"#fff" }}>{d.priority === "alta" ? "🔴 Alta" : d.priority === "média" ? "🟡 Média" : "🟢 Baixa"}</span>
+              </div>
+            );
+          })()}
+
           {/* ── Card body ── */}
           <div style={{ padding:"12px 14px 14px" }}>
             {/* Campaign/Video type header (no preview image) */}
-            {d.type !== "social" && (
+            {d.type !== "social" && !(d.type === "video" && (d.steps?.editing?.files?.some(f=>f.url) || d.steps?.production?.files?.some(f=>f.url))) && (
               <div style={{ display:"flex", alignItems:"flex-start", gap:6, marginBottom:8 }}>
                 <div style={{ width:32, height:32, borderRadius:10, background:`${pColor}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>{d.type==="campaign"?"🎯":"🎬"}</div>
                 <div style={{ flex:1, minWidth:0 }}>
