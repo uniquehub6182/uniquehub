@@ -2303,38 +2303,8 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients }) {
+function ContentPage({ user, clients: propClients, demands, setDemands }) {
   const CDATA = propClients || [];
-  const [demands, setDemands] = useState([]);
-  const [loadedDemands, setLoadedDemands] = useState(false);
-
-  /* Load demands from Supabase on mount */
-  useEffect(() => {
-    if (!supabase || loadedDemands) return;
-    supaLoadDemands().then(rows => {
-      if (rows) {
-        if (rows.length > 0) {
-          const dbDemands = rows.map(r => {
-            const existing = DEMANDS_INIT.find(d => d.title === r.title);
-            if (existing) return { ...existing, supaId: r.id };
-            const dem = mergeSupaDemand(r);
-            if (r.client_id && CDATA) {
-              const cl = CDATA.find(c => c.supaId === r.client_id || c.id === r.client_id);
-              if (cl) dem.client = cl.name;
-            }
-            return dem;
-          });
-          setDemands(dbDemands);
-        } else {
-          setDemands([]);
-        }
-      } else {
-        /* Supabase offline — fallback */
-        setDemands(DEMANDS_INIT);
-      }
-      setLoadedDemands(true);
-    });
-  }, [loadedDemands]);
   const [filter, setFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
@@ -6836,6 +6806,11 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   /* ── Shared clients state loaded from Supabase ── */
   const [sharedClients, setSharedClients] = useState([]);
   const [clientsLoaded, setClientsLoaded] = useState(false);
+
+  /* ── Shared demands state loaded from Supabase ── */
+  const [sharedDemands, setSharedDemands] = useState([]);
+  const [demandsLoaded, setDemandsLoaded] = useState(false);
+
   useEffect(() => {
     if (!supabase || clientsLoaded) return;
     supaLoadClients().then(rows => {
@@ -6850,12 +6825,38 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
           setSharedClients([]);
         }
       } else {
-        /* Supabase offline — fallback to mock */
         setSharedClients(CLIENTS_DATA_INIT);
       }
       setClientsLoaded(true);
     });
   }, [clientsLoaded]);
+
+  /* Load demands once after clients are ready */
+  useEffect(() => {
+    if (!supabase || demandsLoaded || !clientsLoaded) return;
+    supaLoadDemands().then(rows => {
+      if (rows) {
+        if (rows.length > 0) {
+          const dbDemands = rows.map(r => {
+            const existing = DEMANDS_INIT.find(d => d.title === r.title);
+            if (existing) return { ...existing, supaId: r.id };
+            const dem = mergeSupaDemand(r);
+            if (r.client_id && sharedClients) {
+              const cl = sharedClients.find(c => c.supaId === r.client_id || c.id === r.client_id);
+              if (cl) dem.client = cl.name;
+            }
+            return dem;
+          });
+          setSharedDemands(dbDemands);
+        } else {
+          setSharedDemands([]);
+        }
+      } else {
+        setSharedDemands(DEMANDS_INIT);
+      }
+      setDemandsLoaded(true);
+    });
+  }, [clientsLoaded, demandsLoaded]);
 
   const goTab = k => { setTab(k); setSub(null); setMore(false); };
   const goSub = k => { setSub(k); setMore(false); };
@@ -6883,7 +6884,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 ` }} />
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} />}
-        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} />}
+        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} />}
         {!sub && tab === "chat" && <ChatPage user={user} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
 
@@ -6978,11 +6979,11 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};margin:0;padding:0;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden;position:fixed;width:100%;top:0;left:0}
+html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};margin:0;padding:0;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden;touch-action:none}
 input,textarea,select{font-size:16px !important}
 .app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
 .screen{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:90px}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none;touch-action:pan-y;padding-bottom:100px}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
