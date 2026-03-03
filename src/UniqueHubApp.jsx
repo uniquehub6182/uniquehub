@@ -2236,11 +2236,12 @@ function ContentPage({ user, clients: propClients }) {
     /* Find client ID for Supabase */
     const clientObj = CDATA.find(c => c.name === form.client);
     const result = await supaCreateDemand(newD, clientObj?.supaId || clientObj?.id);
-    if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; }
-    else if (supabase && result?.err) { showToast("DB: " + result.err); }
+    let toastMsg = "Demanda criada!";
+    if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; toastMsg = "Demanda criada no banco! ✓"; }
+    else if (supabase && result?.err) { toastMsg = "DB: " + result.err; }
     setDemands(prev => [newD, ...prev]);
     setCreating(false); setCreateType(null); setForm({});
-    showToast(result?.data ? "Demanda criada no banco! ✓" : "Demanda criada!");
+    showToast(toastMsg);
   };
 
   /* ── CREATE SHEET ── */
