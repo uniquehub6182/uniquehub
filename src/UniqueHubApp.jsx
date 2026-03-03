@@ -2236,9 +2236,9 @@ function ContentPage({ user, clients: propClients }) {
     /* Find client ID for Supabase */
     const clientObj = CDATA.find(c => c.name === form.client);
     const result = await supaCreateDemand(newD, clientObj?.supaId || clientObj?.id);
-    let toastMsg = "Demanda criada!";
+    let toastMsg = "LOCAL (supa=" + (!!supabase) + " data=" + (!!result?.data) + " err=" + (result?.err || "none") + ")";
     if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; toastMsg = "Demanda criada no banco! ✓"; }
-    else if (supabase && result?.err) { toastMsg = "DB: " + result.err; }
+    else if (result?.err) { toastMsg = "DB: " + result.err; }
     setDemands(prev => [newD, ...prev]);
     setCreating(false); setCreateType(null); setForm({});
     showToast(toastMsg);
