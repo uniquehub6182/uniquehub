@@ -92,7 +92,7 @@ const supaCreateDemand = async (d, clientId) => {
   if (!supabase) return { data: null, err: "no supabase" };
   try {
     const payload = {
-      tittle: d.title || "Nova demanda",
+      title: d.title || "Nova demanda",
       type: d.type || "social",
       stage: d.stage || "idea",
       priority: d.priority || "média",
@@ -111,7 +111,7 @@ const supaUpdateDemand = async (id, updates) => {
   try {
     const payload = {};
     if (updates.stage !== undefined) payload.stage = updates.stage;
-    if (updates.title !== undefined) payload.tittle = updates.title;
+    if (updates.title !== undefined) payload.title = updates.title;
     if (updates.priority !== undefined) payload.priority = updates.priority;
     if (Object.keys(payload).length === 0) return null;
     const { error } = await supabase.from("demands").update(payload).eq("id", id);
@@ -121,7 +121,7 @@ const supaUpdateDemand = async (id, updates) => {
 
 const mergeSupaDemand = (row) => ({
   id: row.id, supaId: row.id, type: row.type || "social",
-  client: row.clients?.name || "Sem cliente", title: row.tittle || row.title || "",
+  client: row.clients?.name || "Sem cliente", title: row.title || "",
   stage: row.stage || "idea", priority: row.priority || "média",
   network: row.networks || "Instagram", format: row.format || "Feed",
   sponsored: row.sponsored || false, assignees: [],
@@ -2145,12 +2145,12 @@ function ContentPage({ user, clients: propClients }) {
     supaLoadDemands().then(rows => {
       if (rows && rows.length > 0) {
         const merged = rows.map(r => {
-          const existing = DEMANDS_INIT.find(d => d.title === (r.tittle || r.title));
+          const existing = DEMANDS_INIT.find(d => d.title === r.title);
           if (existing) return { ...existing, supaId: r.id };
           const dem = mergeSupaDemand(r);
           /* Resolve client name from shared clients */
-          if (r.cliente_id && CDATA) {
-            const cl = CDATA.find(c => c.supaId === r.cliente_id || c.id === r.cliente_id);
+          if (r.client_id && CDATA) {
+            const cl = CDATA.find(c => c.supaId === r.client_id || c.id === r.client_id);
             if (cl) dem.client = cl.name;
           }
           return dem;
