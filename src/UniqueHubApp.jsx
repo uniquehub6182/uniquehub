@@ -2236,7 +2236,9 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   const total = isCarousel ? (slides || 5) : 1;
   const detailColors = {"Casa Nova Imóveis":["#1a5276","#2e86c1"],"Bella Estética":["#6c3483","#af7ac5"],"TechSmart":["#1b4f72","#2980b9"],"Padaria Real":["#7e5109","#d4ac0d"],"Studio Fitness":["#1e8449","#2ecc71"]};
   const [cA,cB] = detailColors[client] || ["#1C2228","#C8FA5F"];
-  const aspect = compact ? "1/0.6" : (isCarousel ? "1/0.75" : "1/0.65");
+  /* Aspect ratios reais: Feed/Carrossel=1080x1350(4:5), Stories/Reels/Shorts=1080x1920(9:16) */
+  const isVertical = ["Stories","Reels","Shorts"].includes(format);
+  const aspect = isVertical ? "9/16" : "4/5";
   const arrowSz = compact ? 28 : 36;
   const imgFiles = (uploadedFiles||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
   const vidFiles = (uploadedFiles||[]).filter(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
@@ -2245,11 +2247,11 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   return (
     <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
       {hasReal ? (
-        <div style={{ position:"relative", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+        <div style={{ position:"relative", aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
           {imgFiles.length > 0 ? (
-            <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ display:"block", width:"100%", height:"auto", maxHeight: compact ? 220 : 400 }} />
+            <img src={imgFiles[isCarousel ? Math.min(cur, imgFiles.length-1) : 0]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
           ) : vidFiles.length > 0 ? (<>
-            <video src={vidFiles[0]?.url} style={{ display:"block", width:"100%", height:"auto", maxHeight: compact ? 220 : 400 }} muted playsInline />
+            <video src={vidFiles[0]?.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline />
             <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}>
               <div style={{ width:compact?36:52, height:compact?36:52, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <svg width={compact?16:24} height={compact?16:24} viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -2757,8 +2759,8 @@ function ContentPage({ user, clients: propClients }) {
               {sel.steps.design.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps.design.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
-                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", border:`1px solid ${B.border}` }}>
-                      <img src={f.url} alt={f.name} style={{ display:"block", width:"100%", height:"auto" }} />
+                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
+                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     </a>
                   ))}
                 </div>
@@ -3217,9 +3219,9 @@ function ContentPage({ user, clients: propClients }) {
             const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
             if (!firstImg && !firstVid) return null;
             return (
-              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
-                {firstImg ? <img src={firstImg.url} alt="" style={{ display:"block", width:"100%", height:"auto", maxHeight:200 }} /> :
-                 firstVid ? <video src={firstVid.url} style={{ display:"block", width:"100%", height:"auto", maxHeight:200 }} muted playsInline /> : null}
+              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"9/16", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+                {firstImg ? <img src={firstImg.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> :
+                 firstVid ? <video src={firstVid.url} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} muted playsInline /> : null}
                 <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <div style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
