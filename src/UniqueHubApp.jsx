@@ -4142,6 +4142,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [twoFA, setTwoFA] = useState(false);
   const { showToast, ToastEl } = useToast();
 
+  /* Permissions state (must be before any conditional returns) */
+  const [permRole, setPermRole] = useState(null);
+  const [permMap, setPermMap] = useState({});
+  const [permLoaded, setPermLoaded] = useState(false);
+  const [permSaving, setPermSaving] = useState(false);
+
   /* Profile editing */
   const [editProfile, setEditProfile] = useState(false);
   const [pName, setPName] = useState(user?.name || "");
@@ -4628,10 +4634,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"ideas", l:"Ideias", ic:IC.ideas },
     { k:"settings", l:"Configurações", ic:IC.settings },
   ];
-  const [permRole, setPermRole] = useState(null);
-  const [permMap, setPermMap] = useState({});
-  const [permLoaded, setPermLoaded] = useState(false);
-  const [permSaving, setPermSaving] = useState(false);
 
   const loadPerms = async () => { const m = await supaLoadPermissions(); setPermMap(m); setPermLoaded(true); };
   const togglePerm = (area) => {
