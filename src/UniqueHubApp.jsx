@@ -267,6 +267,27 @@ const supaDeleteNews = async (id) => {
   if (!supabase) return;
   try { await supabase.from("news").delete().eq("id", id); } catch(e) {}
 };
+
+/* ── Supabase: Team CRUD ── */
+const supaLoadTeam = async () => {
+  if (!supabase) return [];
+  try { const { data } = await supabase.from("agency_members").select("*").order("created_at"); return data || []; } catch(e) { return []; }
+};
+const supaCreateMember = async (m) => {
+  if (!supabase) return null;
+  try {
+    const payload = { name: m.name||"", role: m.role||"", job_title: m.role||"", email: m.email||"", phone: m.phone||"", since: m.since||"", skills: m.skills||[], status: "offline" };
+    const { data } = await supabase.from("agency_members").insert(payload).select(); return data?.[0] || null;
+  } catch(e) { return null; }
+};
+const supaUpdateMember = async (id, updates) => {
+  if (!supabase) return;
+  try { await supabase.from("agency_members").update(updates).eq("id", id); } catch(e) {}
+};
+const supaDeleteMember = async (id) => {
+  if (!supabase) return;
+  try { await supabase.from("agency_members").delete().eq("id", id); } catch(e) {}
+};
 const TOP = "44px";
 const LOGO_B64 = "data:image/png;base64,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";
 const THEME_MAP = { "default": "#BBF246", "blue": "#3B82F6", "purple": "#8B5CF6", "pink": "#EC4899", "orange": "#F59E0B", "red": "#EF4444", "cyan": "#06B6D4" };
@@ -4484,53 +4505,88 @@ function NavEditSheet({ picks, setPicks, onClose }) {
 function TeamPage({ onBack }) {
   const [sel, setSel] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [editMember, setEditMember] = useState(false);
   const [form, setForm] = useState({});
-  const [members, setMembers] = useState(AGENCY_TEAM.map(m => ({
-    ...m,
-    email: `${m.name.toLowerCase()}@uniquemkt.com.br`,
-    phone: m.name === "Matheus" ? "(24) 99999-0001" : m.name === "Alice" ? "(24) 99999-0002" : m.name === "Allan" ? "(24) 99999-0003" : "(24) 99999-0004",
-    since: m.name === "Matheus" ? "01/2023" : m.name === "Alice" ? "06/2024" : m.name === "Allan" ? "03/2025" : "08/2025",
-    skills: m.role === "CEO / Estrategista" ? ["Planejamento","Tráfego Pago","Design","Gestão"] : m.role === "Social Media" ? ["Copywriting","Planejamento","Instagram","TikTok"] : ["Filmagem","Edição","Motion Graphics","Fotografia"],
-    tasks: { total: Math.floor(Math.random()*30+10), done: Math.floor(Math.random()*20+5), pending: Math.floor(Math.random()*8+1) },
-  })));
+  const [members, setMembers] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const { showToast, ToastEl } = useToast();
 
-  const addMember = () => {
+  useEffect(() => {
+    if (loaded) return;
+    supaLoadTeam().then(rows => {
+      if (rows.length) setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", supaId:r.id })));
+      setLoaded(true);
+    });
+  }, [loaded]);
+
+  const ROLES = ["Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)","CEO / Estrategista"];
+
+  const addMember = async () => {
     if (!form.name?.trim()) return showToast("Informe o nome");
-    const nm = { id: Date.now(), name: form.name.trim(), role: form.role || "Social Media", photo: null, status: "offline", email: form.email || "", phone: form.phone || "", since: new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}), skills: [], tasks: { total:0, done:0, pending:0 } };
-    setMembers(p => [...p, nm]);
-    setAdding(false); setForm({});
-    showToast("Membro adicionado! ✓");
+    const m = { name:form.name.trim(), role:form.role||"Social Media", email:form.email||"", phone:form.phone||"", since:new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}), skills:form.skills?form.skills.split(",").map(s=>s.trim()).filter(Boolean):[] };
+    const row = await supaCreateMember(m);
+    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:"offline",supaId:row.id}]); setAdding(false); setForm({}); showToast("Membro adicionado ✓"); }
   };
 
+  const saveMember = async () => {
+    if (!sel?.supaId) return;
+    const u = { name:form.name||sel.name, role:form.role||sel.role, job_title:form.role||sel.role, email:form.email??sel.email, phone:form.phone??sel.phone, since:form.since??sel.since, skills:form.skills?form.skills.split(",").map(s=>s.trim()).filter(Boolean):sel.skills };
+    await supaUpdateMember(sel.supaId, u);
+    const updated = {...sel,...u};
+    setMembers(p=>p.map(m=>m.id===sel.id?updated:m));
+    setSel(updated); setEditMember(false); setForm({}); showToast("Membro atualizado ✓");
+  };
+
+  const deleteMember = async (m) => {
+    if (!confirm(`Remover "${m.name}" da equipe?`)) return;
+    if (m.supaId) await supaDeleteMember(m.supaId);
+    setMembers(p=>p.filter(x=>x.id!==m.id)); setSel(null); showToast("Membro removido ✓");
+  };
+
+  const memberFormJSX = (isEdit) => (
+    <Card>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome *</label>
+      <input value={form.name||""} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Nome completo" className="tinput" style={{ marginBottom:12 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Cargo</label>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+        {ROLES.map(r=>( <button key={r} onClick={()=>setForm(p=>({...p,role:r}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.role||(isEdit?sel?.role:""))===r?B.accent:B.border}`, background:(form.role||(isEdit?sel?.role:""))===r?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{r}</button> ))}
+      </div>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label>
+      <input value={form.email||""} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="email@uniquemkt.com.br" className="tinput" style={{ marginBottom:12 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
+      <input value={form.phone||""} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="(24) 99999-0000" className="tinput" style={{ marginBottom:12 }} />
+      {isEdit && <><label className="sl" style={{ display:"block", marginBottom:4 }}>Na equipe desde</label>
+      <input value={form.since||""} onChange={e=>setForm(p=>({...p,since:e.target.value}))} placeholder="01/2023" className="tinput" style={{ marginBottom:12 }} /></>}
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Habilidades (separadas por vírgula)</label>
+      <input value={form.skills||""} onChange={e=>setForm(p=>({...p,skills:e.target.value}))} placeholder="Design, Copywriting, Tráfego" className="tinput" />
+    </Card>
+  );
+
   if (adding) return (
-    <div className="pg">
-      {ToastEl}
-      <Head title="Novo Membro" onBack={() => { setAdding(false); setForm({}); }} />
-      <Card>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome *</label>
-        <input value={form.name||""} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Nome completo" className="tinput" style={{ marginBottom:12 }} />
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Cargo</label>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
-          {["Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)"].map(r=>(
-            <button key={r} onClick={()=>setForm(p=>({...p,role:r}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.role===r?B.accent:B.border}`, background:form.role===r?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{r}</button>
-          ))}
-        </div>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label>
-        <input value={form.email||""} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="email@uniquemkt.com.br" className="tinput" style={{ marginBottom:12 }} />
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
-        <input value={form.phone||""} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="(24) 99999-0000" className="tinput" />
-      </Card>
+    <div className="pg">{ToastEl}
+      <Head title="Novo Membro" onBack={()=>{setAdding(false);setForm({});}} />
+      {memberFormJSX(false)}
       <button onClick={addMember} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>Adicionar Membro</button>
     </div>
   );
 
   if (sel) {
     const m = sel;
+    if (editMember) return (
+      <div className="pg">{ToastEl}
+        <Head title="Editar Membro" onBack={()=>{setEditMember(false);setForm({});}} />
+        {memberFormJSX(true)}
+        <button onClick={saveMember} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>Salvar</button>
+      </div>
+    );
     return (
       <div className="pg">
         {ToastEl}
-        <Head title="" onBack={() => setSel(null)} />
+        <Head title="" onBack={()=>{setSel(null);setEditMember(false);}} right={
+          <button onClick={()=>deleteMember(m)} className="ib" style={{ color:B.red }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        } />
         <Card style={{ textAlign:"center", marginBottom:12 }}>
           <div style={{ position:"relative", display:"inline-block" }}>
             <Av name={m.name} sz={72} fs={28} />
@@ -4538,13 +4594,7 @@ function TeamPage({ onBack }) {
           </div>
           <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{m.name}</h3>
           <p style={{ fontSize:13, color:B.accent, fontWeight:600 }}>{m.role}</p>
-          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{m.status === "online" ? "Online agora" : "Offline"}</p>
         </Card>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:12 }}>
-          <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:B.blue }}>{m.tasks.total}</p><p style={{ fontSize:9, color:B.muted }}>Total</p></Card>
-          <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:B.green }}>{m.tasks.done}</p><p style={{ fontSize:9, color:B.muted }}>Concluídas</p></Card>
-          <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:B.orange }}>{m.tasks.pending}</p><p style={{ fontSize:9, color:B.muted }}>Pendentes</p></Card>
-        </div>
         <p className="sl" style={{ marginBottom:6 }}>Informações</p>
         <Card>
           {[{l:"E-mail",v:m.email},{l:"Telefone",v:m.phone},{l:"Na equipe desde",v:m.since},{l:"Cargo",v:m.role}].map((item,i)=>(
@@ -4554,7 +4604,7 @@ function TeamPage({ onBack }) {
             </div>
           ))}
         </Card>
-        {m.skills.length > 0 && <>
+        {m.skills && m.skills.length > 0 && <>
           <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Habilidades</p>
           <Card>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -4562,6 +4612,10 @@ function TeamPage({ onBack }) {
             </div>
           </Card>
         </>}
+        <button onClick={()=>{setEditMember(true);setForm({name:m.name,role:m.role,email:m.email,phone:m.phone,since:m.since,skills:(m.skills||[]).join(", ")});}} style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar membro
+        </button>
       </div>
     );
   }
@@ -4570,15 +4624,16 @@ function TeamPage({ onBack }) {
     <div className="pg">
       {ToastEl}
       <Head title="Equipe" onBack={onBack} right={
-        <button onClick={() => setAdding(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>{IC.plus} Novo</button>
+        <button onClick={()=>{setAdding(true);setForm({});}} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent }}>{IC.plus} Novo</button>
       } />
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
           <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
           <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{members.filter(m=>m.status==="online").length}</p><p style={{ fontSize:10, opacity:.7 }}>Online</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{members.reduce((a,m)=>a+m.tasks.pending,0)}</p><p style={{ fontSize:10, opacity:.7 }}>Tarefas</p></div>
         </div>
       </Card>
+      {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
+      {loaded && members.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Nenhum membro cadastrado</p>}
       {members.map((m,i) => (
         <Card key={m.id} delay={i*0.03} onClick={() => setSel(m)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -4591,8 +4646,7 @@ function TeamPage({ onBack }) {
               <p style={{ fontSize:11, color:B.accent, fontWeight:500 }}>{m.role}</p>
             </div>
             <div style={{ textAlign:"right" }}>
-              <p style={{ fontSize:12, fontWeight:700, color:B.blue }}>{m.tasks.pending} <span style={{ fontWeight:400, color:B.muted }}>pendentes</span></p>
-              <p style={{ fontSize:10, color:B.muted }}>Desde {m.since}</p>
+              <p style={{ fontSize:10, color:B.muted }}>Desde {m.since||"—"}</p>
             </div>
           </div>
         </Card>
