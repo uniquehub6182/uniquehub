@@ -3885,7 +3885,7 @@ function ChatPage({ user }) {
   const NewChatModal = showNewChat ? (
     <>
       <div className="overlay" onClick={() => setShowNewChat(false)} />
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"60vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)" }}>
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
         <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
         <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Nova conversa</h3>
         <button onClick={() => { setShowNewChat(false); setShowNewGroup(true); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit", borderBottom:`1px solid ${B.border}` }}>
@@ -3908,7 +3908,7 @@ function ChatPage({ user }) {
   const NewGroupModal = showNewGroup ? (
     <>
       <div className="overlay" onClick={() => setShowNewGroup(false)} />
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"60vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)" }}>
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
         <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
         <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Novo grupo</h3>
         <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nome do grupo" className="tinput" style={{ marginBottom:12 }} />
