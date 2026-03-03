@@ -714,6 +714,17 @@ function LoginPage({ onAuth }) {
   const [showRPw, setShowRPw] = useState(false);
   const [remember, setRemember] = useState(false);
   const [inviteData, setInviteData] = useState(null);
+  const [fromInviteLink, setFromInviteLink] = useState(false);
+
+  /* Auto-detect invite link ?convite=email */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const conviteEmail = params.get("convite");
+    if (conviteEmail) {
+      setMode("register"); setREmail(conviteEmail); setFromInviteLink(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const emailDomain = "@uniquemkt.com.br";
   const emailValid = supabase ? email.includes("@") : email.endsWith(emailDomain);
@@ -935,6 +946,10 @@ function LoginPage({ onAuth }) {
 
         {/* Step 2 — Contato */}
         {step === 2 && <div style={{ width: "100%", animation: "fadeUp .3s" }}>
+          {fromInviteLink && <div style={{ padding:10, borderRadius:10, background:`${B.accent}08`, border:`1.5px solid ${B.accent}20`, marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ color:B.accent, display:"flex" }}>{IC.check}</span>
+            <p style={{ fontSize:11, color:B.muted }}>E-mail pré-preenchido pelo convite da equipe</p>
+          </div>}
           <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>Contato</h3>
           <p style={{ fontSize: 12, color: B.muted, marginBottom: 16 }}>Como podemos te encontrar</p>
           <div style={{ marginBottom: 12 }}>
@@ -4639,6 +4654,15 @@ function TeamPage({ onBack }) {
             <span style={{ fontSize:11, fontWeight:700, color:B.orange }}>Aguardando cadastro</span>
           </div> : <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{m.status === "online" ? "Online agora" : "Offline"}</p>}
         </Card>
+        {m.status==="pendente" && <button onClick={()=>{
+          const link = `${window.location.origin}?convite=${encodeURIComponent(m.email)}`;
+          navigator.clipboard.writeText(link).then(()=>showToast("Link copiado ✓")).catch(()=>{
+            const ta=document.createElement("textarea"); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); showToast("Link copiado ✓");
+          });
+        }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.orange}10`, border:`1.5px solid ${B.orange}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.orange, marginBottom:12 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          Copiar link de convite
+        </button>}
         <p className="sl" style={{ marginBottom:6 }}>Informações</p>
         <Card>
           {[{l:"E-mail",v:m.email},{l:"Telefone",v:m.phone},{l:"Na equipe desde",v:m.since},{l:"Cargo",v:m.role}].map((item,i)=>(
