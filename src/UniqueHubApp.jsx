@@ -6,6 +6,9 @@ const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
 
+/* ═══════════════════════ LAYOUT ═══════════════════════ */
+const TOP = "env(safe-area-inset-top, 16px)";
+
 /* ═══════════════════════ SUPABASE HELPERS ═══════════════════════ */
 const supaLoadClients = async () => {
   if (!supabase) return null;
@@ -7497,29 +7500,6 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   );
 }
 
-/* ═══════════════════════ ERROR BOUNDARY ═══════════════════════ */
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error("UniqueHub Error:", error, info); }
-  render() {
-    if (this.state.hasError) return (
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8",padding:24}}>
-        <div style={{textAlign:"center",maxWidth:360}}>
-          <div style={{fontSize:48,marginBottom:12}}>⚠️</div>
-          <h2 style={{fontFamily:"Figtree,sans-serif",fontSize:18,fontWeight:700,color:"#192126",marginBottom:8}}>Algo deu errado</h2>
-          <p style={{fontFamily:"Figtree,sans-serif",fontSize:13,color:"#8B8F92",marginBottom:16}}>{this.state.error?.message || "Erro desconhecido"}</p>
-          <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
-            style={{padding:"10px 24px",borderRadius:12,background:"#BBF246",border:"none",fontWeight:600,fontSize:14,cursor:"pointer",fontFamily:"Figtree,sans-serif"}}>
-            Recarregar
-          </button>
-        </div>
-      </div>
-    );
-    return this.props.children;
-  }
-}
-
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
   const [user, setUser] = useState(null);
@@ -7531,28 +7511,22 @@ export default function App() {
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      try {
-        if (session?.user) {
-          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
-          setUser({
-            id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
-            email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
-            supaRole: profile?.role || "member", photo: profile?.photo_url || TEAM_PHOTOS.matheus,
-            nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
-            phone: profile?.phone || "", cpf: "", birth: "", social: "", blood: "", remember: true,
-          });
-        }
-      } catch (e) { console.error("Session restore error:", e); }
+      if (session?.user) {
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+        setUser({
+          id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
+          email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
+          supaRole: profile?.role || "member", photo: profile?.photo_url || TEAM_PHOTOS.matheus,
+          nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
+          phone: profile?.phone || "", cpf: "", birth: "", social: "", blood: "", remember: true,
+        });
+      }
       setAuthLoading(false);
-    }).catch((e) => { console.error("getSession error:", e); setAuthLoading(false); });
-    let sub;
-    try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === "SIGNED_OUT") setUser(null);
-      });
-      sub = subscription;
-    } catch (e) { console.error("onAuthStateChange error:", e); }
-    return () => sub?.unsubscribe();
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") setUser(null);
+    });
+    return () => subscription?.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
@@ -7571,7 +7545,6 @@ export default function App() {
   );
 
   return (
-    <ErrorBoundary>
     <>
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
@@ -7609,6 +7582,5 @@ input,textarea,select{font-size:16px !important}
       {!user && <LoginPage onAuth={setUser} />}
       {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} />}
     </>
-    </ErrorBoundary>
   );
 }
