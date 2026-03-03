@@ -2570,26 +2570,25 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
       <div className="pg" style={{ paddingTop: TOP }}>
         {ToastEl}
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
-          {!editMode && <button onClick={()=>setEditMode(true)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:`${B.accent}10`,border:`1.5px solid ${B.accent}30`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.accent}}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar
-          </button>}
-          {editMode && <button onClick={()=>{setEditMode(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.textOnAccent}}>
-            {IC.check} Salvar
-          </button>}
-          <Tag color={priorityColor(sel.priority)}>{sel.priority}</Tag>
           <button onClick={async ()=>{
             if (!confirm(`Excluir "${sel.title}"?`)) return;
             if (sel.supaId) await supaDeleteDemand(sel.supaId);
             setDemands(p=>p.filter(d=>d.id!==sel.id));
             setSel(null); setEditMode(false); showToast("Demanda excluída ✓");
-          }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:`${B.red}08`,border:`1.5px solid ${B.red}20`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.red}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          }} className="ib" style={{padding:8,border:`1.5px solid ${B.border}`}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
         </div>} />
 
         {/* ═══ EDIT MODE ═══ */}
         {editMode ? (
           <Card style={{ marginBottom:14 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando demanda</p>
+              <button onClick={()=>{setEditMode(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
+            </div>
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Título</label>
             <input value={sel.title} onChange={e=>updateField("title",e.target.value)} className="tinput" style={{ marginBottom:10, fontWeight:700, fontSize:15 }} />
 
@@ -2666,6 +2665,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
             {sel.sponsored && <Tag color={B.orange}>Patrocinado</Tag>}
             {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
           </div>
+          <button onClick={()=>setEditMode(true)} style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"10px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar demanda
+          </button>
         </div>
         )}
         {/* ═══ POST PREVIEW ═══ */}
