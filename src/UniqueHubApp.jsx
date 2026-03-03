@@ -77,6 +77,60 @@ const mergeSupaClient = (row, existing) => ({
 });
 
 /* ═══════════════════════ CONSTANTS ═══════════════════════ */
+
+/* ── Supabase Demand Helpers ── */
+const supaLoadDemands = async () => {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from("demands").select("*, clients(name)").order("created_at", { ascending: false });
+    if (error) { console.error("Supa demands error:", error); return null; }
+    return data;
+  } catch (e) { console.error("Supa demands catch:", e); return null; }
+};
+
+const supaCreateDemand = async (d, clientId) => {
+  if (!supabase) return { data: null, err: "no supabase" };
+  try {
+    const isUUID = (v) => typeof v === "string" && /^[0-9a-f]{8}-/.test(v);
+    const payload = {
+      client_id: isUUID(clientId) ? clientId : null, title: d.title, description: d.steps?.idea?.text || "",
+      type: d.type || "social", stage: d.stage || "idea", priority: d.priority || "média",
+      format: d.format || null, network: d.network || null, sponsored: d.sponsored || false,
+      schedule_date: d.scheduling?.date ? (() => { const p = d.scheduling.date.split("/"); return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : null; })() : null,
+      schedule_time: d.scheduling?.time || null,
+      traffic_budget: d.traffic?.budget ? parseFloat(d.traffic.budget.replace(/[^\d.,]/g,"").replace(",",".")) || null : null,
+    };
+    const { data, error } = await supabase.from("demands").insert(payload).select("*, clients(name)").single();
+    if (error) { console.error("Supa create demand error:", error); return { data: null, err: error.message }; }
+    return { data, err: null };
+  } catch (e) { return { data: null, err: e.message }; }
+};
+
+const supaUpdateDemand = async (id, updates) => {
+  if (!supabase) return null;
+  try {
+    const payload = {};
+    if (updates.stage !== undefined) payload.stage = updates.stage;
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.priority !== undefined) payload.priority = updates.priority;
+    if (Object.keys(payload).length === 0) return null;
+    const { error } = await supabase.from("demands").update(payload).eq("id", id);
+    if (error) console.error("Supa update demand error:", error);
+  } catch (e) { console.error(e); }
+};
+
+const mergeSupaDemand = (row) => ({
+  id: row.id, supaId: row.id, type: row.type || "social",
+  client: row.clients?.name || "Sem cliente", title: row.title,
+  stage: row.stage || "idea", priority: row.priority || "média",
+  network: row.network || "Instagram", format: row.format || "Feed",
+  sponsored: row.sponsored || false, assignees: [],
+  createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
+  steps: row.description ? { idea: { by: "Matheus", text: row.description, date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } } : {},
+  scheduling: { date: row.schedule_date ? new Date(row.schedule_date + "T12:00:00").toLocaleDateString("pt-BR") : "", time: row.schedule_time || "" },
+  traffic: { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
+  ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [] } } : {}),
+});
 const TOP = "44px";
 const LOGO_B64 = "data:image/png;base64,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";
 const THEME_MAP = { "default": "#BBF246", "blue": "#3B82F6", "purple": "#8B5CF6", "pink": "#EC4899", "orange": "#F59E0B", "red": "#EF4444", "cyan": "#06B6D4" };
@@ -885,12 +939,13 @@ function LoginPage({ onAuth }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab }) {
-  const totalClients = CLIENTS_DATA_INIT.length;
-  const activeClients = CLIENTS_DATA_INIT.filter(c => c.status === "ativo").length;
+function HomePage({ user, goSub, goTab, clients }) {
+  const CDATA = clients || CLIENTS_DATA_INIT;
+  const totalClients = CDATA.length;
+  const activeClients = CDATA.filter(c => c.status === "ativo").length;
   const totalRevenue = "R$ 18.400";
-  const pendingApprovals = CLIENTS_DATA_INIT.reduce((a, c) => a + c.pending, 0);
-  const avgScore = Math.round(CLIENTS_DATA_INIT.reduce((a, c) => a + c.score, 0) / totalClients);
+  const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
+  const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
   const today = new Date();
   const hours = today.getHours();
   const greeting = hours < 12 ? "Bom dia" : hours < 18 ? "Boa tarde" : "Boa noite";
@@ -1051,7 +1106,7 @@ function HomePage({ user, goSub, goTab }) {
             <p className="sl">Clientes</p>
             <button onClick={() => goSub("clients")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
           </div>
-          {CLIENTS_DATA_INIT.slice(0, 4).map((c, j) => (
+          {CDATA.slice(0, 4).map((c, j) => (
             <Card key={c.id} delay={0.04 + j * 0.03} onClick={() => goSub("clients")} style={{ marginTop:j?6:0, cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <Av name={c.name} sz={38} fs={14} />
@@ -1237,25 +1292,12 @@ const SOCIAL_PLATFORMS = [
   { key:"pinterest", name:"Pinterest", icon:null, c:"#E60023", urlBase:"pinterest.com/" },
 ];
 
-function ClientsPage({ onBack, onNavigate }) {
-  const [clients, setClients] = useState(CLIENTS_DATA_INIT);
-  const [loadedFromDb, setLoadedFromDb] = useState(false);
+function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients }) {
+  const [localClients, localSetClients] = useState(CLIENTS_DATA_INIT);
+  const clients = propClients || localClients;
+  const setClients = propSetClients || localSetClients;
   const [filter, setFilter] = useState("all");
 
-  /* Load clients from Supabase on mount */
-  useEffect(() => {
-    if (!supabase || loadedFromDb) return;
-    supaLoadClients().then(rows => {
-      if (rows && rows.length > 0) {
-        const merged = rows.map(r => {
-          const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
-          return mergeSupaClient(r, existing);
-        });
-        setClients(merged);
-      }
-      setLoadedFromDb(true);
-    });
-  }, [loadedFromDb]);
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
   const [creating, setCreating] = useState(false);
@@ -1979,7 +2021,8 @@ function AcademyPage({ onBack }) {
 }
 
 /* ═══════════════════════ FINANCIAL PAGE ═══════════════════════ */
-function FinancialPage({ onBack }) {
+function FinancialPage({ onBack, clients: propClients }) {
+  const CDATA = propClients || CLIENTS_DATA_INIT;
   const months = [
     { m: "Fev 2026", revenue: "R$ 18.400", clients: 7, paying: 6, trial: 1, ticket: "R$ 2.628", growth: "+12%", expenses: "R$ 8.200", profit: "R$ 10.200" },
     { m: "Jan 2026", revenue: "R$ 16.400", clients: 6, paying: 5, trial: 1, ticket: "R$ 2.733", growth: "+8%", expenses: "R$ 7.800", profit: "R$ 8.600" },
@@ -2016,7 +2059,7 @@ function FinancialPage({ onBack }) {
         <div style={{ marginTop: 10, padding: "10px 14px", background: `${B.green}06`, borderRadius: 10, textAlign: "center" }}><p style={{ fontSize: 10, color: B.muted }}>Lucro líquido</p><p style={{ fontSize: 20, fontWeight: 900, color: B.green }}>{cur.profit}</p></div>
       </Card>
       <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Receita por cliente</p>
-      {CLIENTS_DATA_INIT.map((c, i) => (
+      {CDATA.map((c, i) => (
         <Card key={c.id} delay={0.15 + i * 0.03} style={{ marginTop: i ? 6 : 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av name={c.name} sz={34} fs={13} /><div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</p><Tag color={c.status === "ativo" ? B.green : B.orange}>{c.plan}</Tag></div><p style={{ fontSize: 14, fontWeight: 700 }}>{c.monthly}</p></div>
         </Card>
@@ -2091,8 +2134,25 @@ function PostPreview({ format, client, slides, compact, children }) {
   );
 }
 
-function ContentPage({ user }) {
+function ContentPage({ user, clients: propClients }) {
+  const CDATA = propClients || CLIENTS_DATA_INIT;
   const [demands, setDemands] = useState(DEMANDS_INIT);
+  const [loadedDemands, setLoadedDemands] = useState(false);
+
+  /* Load demands from Supabase on mount */
+  useEffect(() => {
+    if (!supabase || loadedDemands) return;
+    supaLoadDemands().then(rows => {
+      if (rows && rows.length > 0) {
+        const merged = rows.map(r => {
+          const existing = DEMANDS_INIT.find(d => d.title === r.title);
+          return existing ? { ...existing, supaId: r.id } : mergeSupaDemand(r);
+        });
+        setDemands(merged);
+      }
+      setLoadedDemands(true);
+    });
+  }, [loadedDemands]);
   const [filter, setFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
@@ -2140,6 +2200,7 @@ function ContentPage({ user }) {
       const next = stages[idx + 1];
       setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
       setSel(prev => syncMilestones({ ...prev, stage: next }, next));
+      if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
       showToast(`Avançou para: ${STAGE_CFG[next].l}`);
     }
   };
@@ -2147,11 +2208,12 @@ function ContentPage({ user }) {
   const rejectToStage = (d, targetStage) => {
     setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: targetStage }, targetStage) : x));
     setSel(prev => syncMilestones({ ...prev, stage: targetStage }, targetStage));
+    if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage });
     showToast(`Voltou para: ${STAGE_CFG[targetStage].l}`);
   };
 
   /* ── Create New Demand ── */
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!createType) return;
     const newD = {
       id: Date.now(), type: createType, client: form.client || "Novo Cliente", title: form.title || "Nova demanda",
@@ -2162,9 +2224,14 @@ function ContentPage({ user }) {
       scheduling: { date: form.schedDate || "", time: form.schedTime || "" }, traffic: { budget: form.budget || "" },
       ...(createType === "campaign" ? { campaign: { desc: form.desc || "", refs: form.refs || "", dateStart: form.dateStart || "", dateEnd: form.dateEnd || "", location: form.location || "", needs: [], clientTeam: [], budget: form.budget || "", budgetBreakdown: [], milestones: [] } } : {}),
     };
+    /* Find client ID for Supabase */
+    const clientObj = CDATA.find(c => c.name === form.client);
+    const result = await supaCreateDemand(newD, clientObj?.supaId || clientObj?.id);
+    if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; }
+    else if (supabase && result?.err) { showToast("DB: " + result.err); }
     setDemands(prev => [newD, ...prev]);
     setCreating(false); setCreateType(null); setForm({});
-    showToast("Demanda criada!");
+    showToast(result?.data ? "Demanda criada no banco! ✓" : "Demanda criada!");
   };
 
   /* ── CREATE SHEET ── */
@@ -2195,7 +2262,7 @@ function ContentPage({ user }) {
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
           <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:12 }}>
             <option value="">Selecionar cliente...</option>
-            {CLIENTS_DATA_INIT.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+            {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
           </select>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Título da demanda</label>
           <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:12 }} />
@@ -3958,7 +4025,8 @@ function TeamPage({ onBack }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack }) {
+function CalendarPage({ onBack, clients: propClients }) {
+  const CDATA = propClients || CLIENTS_DATA_INIT;
   const today = new Date();
   const [curMonth, setCurMonth] = useState(today.getMonth());
   const [curYear, setCurYear] = useState(today.getFullYear());
@@ -4187,7 +4255,7 @@ function CalendarPage({ onBack }) {
           <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-              {CLIENTS_DATA_INIT.map(c=>(
+              {CDATA.map(c=>(
                 <button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{c.name}</button>
               ))}
             </div>
@@ -4330,7 +4398,8 @@ function CalendarPage({ onBack }) {
   );
 }
 
-function LibraryPage({ onBack }) {
+function LibraryPage({ onBack, clients: propClients }) {
+  const CDATA = propClients || CLIENTS_DATA_INIT;
   const [filterClient, setFilterClient] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [search, setSearch] = useState("");
@@ -4363,7 +4432,7 @@ function LibraryPage({ onBack }) {
   };
 
   // Gather all files from all clients
-  const allFiles = CLIENTS_DATA_INIT.flatMap(c => (c.files||[]).map(f => ({ ...f, clientName: c.name, clientId: c.id })));
+  const allFiles = CDATA.flatMap(c => (c.files||[]).map(f => ({ ...f, clientName: c.name, clientId: c.id })));
 
   const filtered = allFiles.filter(f => {
     if (filterClient !== "all" && f.clientName !== filterClient) return false;
@@ -4449,7 +4518,7 @@ function LibraryPage({ onBack }) {
       {/* Client filter */}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:6, overflowX:"auto", paddingBottom:4 }}>
         <button onClick={()=>setFilterClient("all")} className={`htab${filterClient==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todos os clientes</button>
-        {CLIENTS_DATA_INIT.filter(c=>(c.files||[]).length>0).map(c => (
+        {CDATA.filter(c=>(c.files||[]).length>0).map(c => (
           <button key={c.id} onClick={()=>setFilterClient(c.name)} className={`htab${filterClient===c.name?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.name} ({(c.files||[]).length})</button>
         ))}
       </div>
@@ -4504,7 +4573,8 @@ function LibraryPage({ onBack }) {
   );
 }
 
-function ReportsPage({ onBack }) {
+function ReportsPage({ onBack, clients: propClients }) {
+  const CDATA = propClients || CLIENTS_DATA_INIT;
   const [period, setPeriod] = useState("fev");
   const [tab, setTab] = useState("overview");
   const [selClient, setSelClient] = useState(null);
@@ -4517,7 +4587,7 @@ function ReportsPage({ onBack }) {
   ];
 
   // Simulated monthly data per client
-  const CLIENT_METRICS = CLIENTS_DATA_INIT.map(c => {
+  const CLIENT_METRICS = CDATA.map(c => {
     const parseFollowers = (s) => { if (!s) return 0; const n = parseFloat(s); return s.includes("k") ? n*1000 : n; };
     const igF = parseFollowers(c.socials?.instagram?.followers);
     const fbF = parseFollowers(c.socials?.facebook?.followers);
@@ -6319,6 +6389,23 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
 
+  /* ── Shared clients state loaded from Supabase ── */
+  const [sharedClients, setSharedClients] = useState(CLIENTS_DATA_INIT);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
+  useEffect(() => {
+    if (!supabase || clientsLoaded) return;
+    supaLoadClients().then(rows => {
+      if (rows && rows.length > 0) {
+        const merged = rows.map(r => {
+          const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
+          return mergeSupaClient(r, existing);
+        });
+        setSharedClients(merged);
+      }
+      setClientsLoaded(true);
+    });
+  }, [clientsLoaded]);
+
   const goTab = k => { setTab(k); setSub(null); setMore(false); };
   const goSub = k => { setSub(k); setMore(false); };
 
@@ -6344,20 +6431,20 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 .bnav{background:${dark?"#0A0F12":"#192126"}!important}
 ` }} />
       <div className="content">
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} />}
-        {!sub && tab === "content" && <ContentPage user={user} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} />}
+        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} />}
         {!sub && tab === "chat" && <ChatPage user={user} />}
-        {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} />}
+        {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
-        {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} />}
+        {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
-        {sub === "financial" && <FinancialPage onBack={() => setSub(null)} />}
+        {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} />}
         {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} />}
-        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} />}
-        {sub === "library" && <LibraryPage onBack={() => setSub(null)} />}
-        {sub === "reports" && <ReportsPage onBack={() => setSub(null)} />}
+        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} />}
+        {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
+        {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} />}
