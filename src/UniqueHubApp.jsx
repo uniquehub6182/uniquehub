@@ -3900,6 +3900,7 @@ function ChatPage({ user }) {
           </button>
         ))}
         {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro cadastrado ainda</p>}
+        <div style={{ height:60 }} />
       </div>
     </>
   ) : null;
@@ -3926,6 +3927,7 @@ function ChatPage({ user }) {
           );
         })}
         <button onClick={createGroup} className="pill full accent" style={{ marginTop:16 }}>Criar grupo ({groupMembers.length} selecionados)</button>
+        <div style={{ height:60 }} />
       </div>
     </>
   ) : null;
