@@ -4557,7 +4557,7 @@ function TeamPage({ onBack }) {
     });
   }, [loaded]);
 
-  const ROLES = ["Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)","CEO / Estrategista"];
+  const ROLES = ["CEO / Proprietário","Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)"];
 
   const addMember = async () => {
     if (!form.name?.trim()) return showToast("Informe o nome");
