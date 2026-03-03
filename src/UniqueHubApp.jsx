@@ -41,7 +41,7 @@ const supaCreateClient = async (c) => {
   try {
     const payload = {
       name: c.name, contact_name: c.contact || null, contact_email: c.email || null,
-      contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "essencial",
+      contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "traction",
       monthly_value: parseBRL(c.monthly),
       status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null,
     };
@@ -82,7 +82,7 @@ const supaDeleteClient = async (id) => {
 /* Helper: merge Supabase client row into app format */
 const mergeSupaClient = (row, existing) => ({
   id: row.id, supaId: row.id, name: row.name,
-  plan: PLAN_MAP_FROM_DB[row.plan] || "Essencial",
+  plan: PLAN_MAP_FROM_DB[row.plan] || "Traction",
   status: row.status || "ativo",
   monthly: row.monthly_value ? `R$ ${Number(row.monthly_value).toLocaleString("pt-BR")}` : "R$ 0",
   pending: existing?.pending || 0, score: row.score || 0,
