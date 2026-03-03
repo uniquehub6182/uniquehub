@@ -3654,8 +3654,15 @@ function ChatPage({ user }) {
       setLoading(true);
       const c = await supaLoadConversations(user.id);
       setConvs(c);
-      const { data: profs } = await supabase.from("profiles").select("id, name, email, role");
-      setAllProfiles((profs || []).filter(p => p.id !== user.id));
+      /* Only show accepted team members (agency_members with linked user_id) */
+      const { data: members } = await supabase.from("agency_members").select("user_id").not("user_id", "is", null);
+      const memberIds = (members || []).map(m => m.user_id).filter(id => id !== user.id);
+      if (memberIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, name, email, role").in("id", memberIds);
+        setAllProfiles(profs || []);
+      } else {
+        setAllProfiles([]);
+      }
       setLoading(false);
     };
     load();
@@ -3899,7 +3906,7 @@ function ChatPage({ user }) {
             <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.email}</p></div>
           </button>
         ))}
-        {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro cadastrado ainda</p>}
+        {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro ativo na equipe. Convide membros em Equipe e peça que acessem o link de convite.</p>}
         <div style={{ height:60 }} />
       </div>
     </>
