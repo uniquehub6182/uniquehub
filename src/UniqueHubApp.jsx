@@ -312,6 +312,25 @@ const supaLinkInvite = async (inviteId, userId) => {
 };
 
 /* ── Supabase: Chat CRUD ── */
+
+/* ── Supabase: Role Permissions CRUD ── */
+const supaLoadPermissions = async () => {
+  if (!supabase) return {};
+  try {
+    const { data } = await supabase.from("role_permissions").select("*");
+    const map = {};
+    (data || []).forEach(r => { map[r.role] = r.permissions || {}; });
+    return map;
+  } catch(e) { return {}; }
+};
+const supaSavePermissions = async (role, permissions) => {
+  if (!supabase) return;
+  try {
+    await supabase.from("role_permissions").upsert({ role, permissions, updated_at: new Date().toISOString() }, { onConflict: "role" });
+  } catch(e) { console.error("savePerms:", e); }
+};
+
+/* ── Supabase: Chat CRUD (continued) ── */
 const supaLoadConversations = async (userId) => {
   if (!supabase || !userId) return [];
   try {
@@ -4590,6 +4609,98 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
   }
 
+  /* ═══ PERMISSIONS ═══ */
+  const PERM_ROLES = ["Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)"];
+  const PERM_AREAS = [
+    { k:"home", l:"Home / Dashboard", ic:IC.home },
+    { k:"content", l:"Demandas / Conteúdo", ic:IC.content },
+    { k:"chat", l:"Chat", ic:IC.chat },
+    { k:"clients", l:"Clientes", ic:IC.clients },
+    { k:"team", l:"Equipe", ic:IC.team },
+    { k:"financial", l:"Financeiro", ic:IC.financial },
+    { k:"calendar", l:"Calendário", ic:IC.calendar },
+    { k:"reports", l:"Relatórios", ic:IC.reports },
+    { k:"academy", l:"Academy", ic:IC.academy },
+    { k:"library", l:"Biblioteca", ic:IC.library },
+    { k:"checkin", l:"Check-in", ic:IC.checkin },
+    { k:"gamify", l:"Gamificação", ic:IC.trophy },
+    { k:"news", l:"News", ic:IC.news },
+    { k:"ideas", l:"Ideias", ic:IC.ideas },
+    { k:"settings", l:"Configurações", ic:IC.settings },
+  ];
+  const [permRole, setPermRole] = useState(null);
+  const [permMap, setPermMap] = useState({});
+  const [permLoaded, setPermLoaded] = useState(false);
+  const [permSaving, setPermSaving] = useState(false);
+
+  const loadPerms = async () => { const m = await supaLoadPermissions(); setPermMap(m); setPermLoaded(true); };
+  const togglePerm = (area) => {
+    setPermMap(prev => {
+      const rolePerms = { ...(prev[permRole] || {}) };
+      rolePerms[area] = !rolePerms[area];
+      return { ...prev, [permRole]: rolePerms };
+    });
+  };
+  const savePerms = async () => {
+    if (!permRole) return;
+    setPermSaving(true);
+    await supaSavePermissions(permRole, permMap[permRole] || {});
+    setPermSaving(false);
+    showToast("Permissões salvas ✓");
+  };
+
+  if (sub === "permissions") {
+    if (!permLoaded) { loadPerms(); return <div className="pg"><Head title="Permissões" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
+    if (!permRole) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Permissões" onBack={() => { setSub(null); setPermLoaded(false); }} />
+        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Selecione o cargo para configurar o acesso às áreas do app.</p>
+        <p className="sl" style={{ marginBottom:8, fontSize:10, color:B.muted }}>CEO / Proprietário tem acesso total (não editável)</p>
+        {PERM_ROLES.map((r, i) => {
+          const perms = permMap[r] || {};
+          const blockedCount = PERM_AREAS.filter(a => perms[a.k] === false).length;
+          return (
+            <Card key={r} delay={i * 0.03} onClick={() => setPermRole(r)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={r} sz={38} fs={13} />
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:600 }}>{r}</p>
+                  <p style={{ fontSize:11, color:blockedCount > 0 ? B.orange : B.green }}>{blockedCount > 0 ? `${blockedCount} área${blockedCount>1?"s":""} bloqueada${blockedCount>1?"s":""}` : "Acesso total"}</p>
+                </div>
+                {IC.chev()}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    );
+    /* Role selected → show toggles */
+    const rolePerms = permMap[permRole] || {};
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={permRole} onBack={() => setPermRole(null)} right={
+          <button onClick={savePerms} disabled={permSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar"}</button>
+        } />
+        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Ative ou desative o acesso a cada área do app para o cargo <strong>{permRole}</strong>.</p>
+        {PERM_AREAS.map((a, i) => {
+          const allowed = rolePerms[a.k] !== false;
+          return (
+            <Card key={a.k} style={{ marginTop:i?6:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:allowed?`${B.accent}10`:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", color:allowed?B.accent:B.red }}>{typeof a.ic === "function" ? a.ic(allowed?B.accent:B.red) : a.ic}</div>
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{a.l}</p></div>
+                <Toggle on={allowed} onToggle={() => togglePerm(a.k)} />
+              </div>
+            </Card>
+          );
+        })}
+        <button onClick={savePerms} disabled={permSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar Permissões"}</button>
+      </div>
+    );
+  }
+
   /* ═══ ABOUT ═══ */
   if (sub === "about") return (
     <div className="pg">
@@ -4664,6 +4775,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       {[
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
         { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: 2 },
+        ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema e modo escuro" },
         { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
         { k: "navmenu", l: "Personalizar Menu", ic: IC.more(B.accent), desc: "Escolha os itens do menu", act: () => onNavEdit && onNavEdit() },
@@ -7444,7 +7556,7 @@ function PlaceholderPage({ title, onBack, icon }) {
 /* ═══════════════════════ MAIN APP ═══════════════════════ */
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor }) {
   const [tab, setTab] = useState("home");
-  const { ToastEl } = useToast();
+  const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = THEME_MAP[themeColor] || "#BBF246";
   B = getB(dark, accentColor);
   const [sub, setSub] = useState(null);
@@ -7453,6 +7565,28 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
   const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
+
+  /* ── Role-based permissions ── */
+  const [rolePermsMap, setRolePermsMap] = useState({});
+  useEffect(() => {
+    if (!supabase) return;
+    supaLoadPermissions().then(m => setRolePermsMap(m));
+  }, []);
+  /* Get user's job title from agency_members to check permissions */
+  const [userJobTitle, setUserJobTitle] = useState(null);
+  useEffect(() => {
+    if (!supabase || !user?.id || user?.supaRole === "admin") return;
+    supabase.from("agency_members").select("role").eq("user_id", user.id).limit(1).then(({ data }) => {
+      if (data?.[0]?.role) setUserJobTitle(data[0].role);
+    });
+  }, [user?.id]);
+  const canAccess = (areaKey) => {
+    if (!user || user.supaRole === "admin") return true;
+    if (!userJobTitle) return true; /* default allow until loaded */
+    const perms = rolePermsMap[userJobTitle];
+    if (!perms) return true; /* no config = allow all */
+    return perms[areaKey] !== false;
+  };
 
   /* ── Shared clients state loaded from Supabase ── */
   const [sharedClients, setSharedClients] = useState([]);
@@ -7571,8 +7705,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     });
   }, [clientsLoaded, demandsLoaded]);
 
-  const goTab = k => { setTab(k); setSub(null); setMore(false); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); };
-  const goSub = k => { setSub(k); setMore(false); };
+  const goTab = k => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); };
+  const goSub = k => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); };
 
   return (
     <div className="app" style={{ background: B.bg, color: B.text }}>
