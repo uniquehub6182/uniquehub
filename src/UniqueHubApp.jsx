@@ -3628,8 +3628,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
 }
 
 /* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
-function ChatPage({ user }) {
-  const [termsAccepted, setTermsAccepted] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
+function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const [view, setView] = useState("list");
   const [convs, setConvs] = useState([]);
   const [selConv, setSelConv] = useState(null);
@@ -3837,7 +3836,7 @@ function ChatPage({ user }) {
   const pinnedMsgs = msgs.filter(m => m.pinned);
 
   /* ── TERMS ── */
-  if (!termsAccepted) return (
+  if (!chatTermsOk) return (
     <div className="pg" style={{ paddingTop: TOP, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"80vh" }}>
       <div style={{ width:70, height:70, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
         <span style={{ color:B.accent }}>{IC.shield}</span>
@@ -3854,7 +3853,7 @@ function ChatPage({ user }) {
           <p style={{ marginTop:6 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança conforme LGPD.</p>
         </div>
       </Card>
-      <button onClick={() => { setTermsAccepted(true); localStorage.setItem("uh_chat_terms", "1"); }} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
+      <button onClick={() => { setChatTermsOk(true); localStorage.setItem("uh_chat_terms", "1"); }} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
     </div>
   );
 
@@ -7453,6 +7452,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [navPicks, setNavPicks] = useState(DEFAULT_NAV);
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
+  const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
 
   /* ── Shared clients state loaded from Supabase ── */
   const [sharedClients, setSharedClients] = useState([]);
@@ -7598,7 +7598,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} />}
-        {!sub && tab === "chat" && <ChatPage user={user} />}
+        {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
