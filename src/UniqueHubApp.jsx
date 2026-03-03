@@ -337,17 +337,30 @@ const supaLoadConversations = async (userId) => {
     const { data: memberships } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
     if (!memberships?.length) return [];
     const convIds = memberships.map(m => m.conversation_id);
-    const { data: convs } = await supabase.from("conversations").select("*").in("id", convIds);
+    /* Batch: all conversations + all members + all last messages in 3 queries instead of N*3 */
+    const [convRes, memRes, profileRes] = await Promise.all([
+      supabase.from("conversations").select("*").in("id", convIds),
+      supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds),
+      supabase.from("profiles").select("id, name, email"),
+    ]);
+    const convs = convRes.data || [];
+    const allMembers = memRes.data || [];
+    const allProfiles = profileRes.data || [];
+    const profileMap = {};
+    allProfiles.forEach(p => { profileMap[p.id] = p; });
+    /* Get last message per conversation in one query using distinct */
+    const { data: recentMsgs } = await supabase.from("messages").select("*").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(convIds.length * 2);
+    const lastMsgMap = {};
+    (recentMsgs || []).forEach(m => { if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
     const result = [];
-    for (const c of (convs || [])) {
-      const { data: members } = await supabase.from("conversation_members").select("user_id, last_read_at").eq("conversation_id", c.id);
-      const { data: lastMsgs } = await supabase.from("messages").select("*").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(1);
-      const { data: memberProfiles } = await supabase.from("profiles").select("id, name, email").in("id", (members||[]).map(m=>m.user_id));
-      const myMembership = (members||[]).find(m => m.user_id === userId);
-      const lastMsg = lastMsgs?.[0] || null;
+    for (const c of convs) {
+      const members = allMembers.filter(m => m.conversation_id === c.id);
+      const memberProfiles = members.map(m => profileMap[m.user_id]).filter(Boolean);
+      const myMembership = members.find(m => m.user_id === userId);
+      const lastMsg = lastMsgMap[c.id] || null;
       const unread = lastMsg && myMembership?.last_read_at ? new Date(lastMsg.created_at) > new Date(myMembership.last_read_at) ? 1 : 0 : 0;
-      const otherMembership = (members||[]).find(m => m.user_id !== userId);
-      result.push({ ...c, members: memberProfiles || [], lastMsg, unread, myLastRead: myMembership?.last_read_at, _otherLastRead: otherMembership?.last_read_at || null });
+      const otherMembership = members.find(m => m.user_id !== userId);
+      result.push({ ...c, members: memberProfiles, lastMsg, unread, myLastRead: myMembership?.last_read_at, _otherLastRead: otherMembership?.last_read_at || null });
     }
     return result;
   } catch(e) { console.error("loadConvs:", e); return []; }
@@ -7784,16 +7797,22 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   useEffect(() => {
     if (!supabase || !user?.id) return;
     const loadChatUnread = async () => {
-      const { data: memberships } = await supabase.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", user.id);
-      if (!memberships?.length) { setChatUnread(0); return; }
-      let total = 0;
-      for (const m of memberships) {
-        const q = supabase.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", m.conversation_id).neq("sender_id", user.id);
-        if (m.last_read_at) q.gt("created_at", m.last_read_at);
-        const { count } = await q;
-        total += (count || 0);
-      }
-      setChatUnread(total);
+      try {
+        const { data: memberships } = await supabase.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", user.id);
+        if (!memberships?.length) { setChatUnread(0); return; }
+        const convIds = memberships.map(m => m.conversation_id);
+        /* Single query: get all messages not from me, then filter in JS */
+        const { data: msgs } = await supabase.from("messages").select("id, conversation_id, created_at").in("conversation_id", convIds).neq("sender_id", user.id).order("created_at", { ascending: false }).limit(200);
+        if (!msgs?.length) { setChatUnread(0); return; }
+        const lastReadMap = {};
+        memberships.forEach(m => { lastReadMap[m.conversation_id] = m.last_read_at; });
+        let total = 0;
+        for (const m of msgs) {
+          const lr = lastReadMap[m.conversation_id];
+          if (!lr || new Date(m.created_at) > new Date(lr)) total++;
+        }
+        setChatUnread(total);
+      } catch(e) { setChatUnread(0); }
     };
     loadChatUnread();
     /* Realtime: new messages → recalculate */
