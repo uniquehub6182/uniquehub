@@ -91,9 +91,7 @@ const supaLoadDemands = async () => {
 const supaCreateDemand = async (d, clientId) => {
   if (!supabase) return { data: null, err: "no supabase" };
   try {
-    const isUUID = (v) => typeof v === "string" && /^[0-9a-f]{8}-/.test(v);
     const payload = {
-      cliente_id: isUUID(clientId) ? clientId : null,
       tittle: d.title || "Nova demanda",
       type: d.type || "social",
       stage: d.stage || "idea",
