@@ -82,7 +82,7 @@ const mergeSupaClient = (row, existing) => ({
 const supaLoadDemands = async () => {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from("demands").select("*, clients(name)").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
     if (error) { console.error("Supa demands error:", error); return null; }
     return data;
   } catch (e) { console.error("Supa demands catch:", e); return null; }
@@ -93,14 +93,14 @@ const supaCreateDemand = async (d, clientId) => {
   try {
     const isUUID = (v) => typeof v === "string" && /^[0-9a-f]{8}-/.test(v);
     const payload = {
-      client_id: isUUID(clientId) ? clientId : null, title: d.title, description: d.steps?.idea?.text || "",
+      cliente_id: isUUID(clientId) ? clientId : null, tittle: d.title, description: d.steps?.idea?.text || "",
       type: d.type || "social", stage: d.stage || "idea", priority: d.priority || "média",
-      format: d.format || null, network: d.network || null, sponsored: d.sponsored || false,
+      format: d.format || null, networks: d.network || null, sponsored: d.sponsored || false,
       schedule_date: d.scheduling?.date ? (() => { const p = d.scheduling.date.split("/"); return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : null; })() : null,
       schedule_time: d.scheduling?.time || null,
       traffic_budget: d.traffic?.budget ? parseFloat(d.traffic.budget.replace(/[^\d.,]/g,"").replace(",",".")) || null : null,
     };
-    const { data, error } = await supabase.from("demands").insert(payload).select("*, clients(name)").single();
+    const { data, error } = await supabase.from("demands").insert(payload).select().single();
     if (error) { console.error("Supa create demand error:", error); return { data: null, err: error.message }; }
     return { data, err: null };
   } catch (e) { return { data: null, err: e.message }; }
@@ -111,7 +111,7 @@ const supaUpdateDemand = async (id, updates) => {
   try {
     const payload = {};
     if (updates.stage !== undefined) payload.stage = updates.stage;
-    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.title !== undefined) payload.tittle = updates.title;
     if (updates.priority !== undefined) payload.priority = updates.priority;
     if (Object.keys(payload).length === 0) return null;
     const { error } = await supabase.from("demands").update(payload).eq("id", id);
@@ -121,9 +121,9 @@ const supaUpdateDemand = async (id, updates) => {
 
 const mergeSupaDemand = (row) => ({
   id: row.id, supaId: row.id, type: row.type || "social",
-  client: row.clients?.name || "Sem cliente", title: row.title,
+  client: row.clients?.name || "Sem cliente", title: row.tittle || row.title || "",
   stage: row.stage || "idea", priority: row.priority || "média",
-  network: row.network || "Instagram", format: row.format || "Feed",
+  network: row.networks || "Instagram", format: row.format || "Feed",
   sponsored: row.sponsored || false, assignees: [],
   createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
   steps: row.description ? { idea: { by: "Matheus", text: row.description, date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } } : {},
@@ -2145,8 +2145,15 @@ function ContentPage({ user, clients: propClients }) {
     supaLoadDemands().then(rows => {
       if (rows && rows.length > 0) {
         const merged = rows.map(r => {
-          const existing = DEMANDS_INIT.find(d => d.title === r.title);
-          return existing ? { ...existing, supaId: r.id } : mergeSupaDemand(r);
+          const existing = DEMANDS_INIT.find(d => d.title === (r.tittle || r.title));
+          if (existing) return { ...existing, supaId: r.id };
+          const dem = mergeSupaDemand(r);
+          /* Resolve client name from shared clients */
+          if (r.cliente_id && CDATA) {
+            const cl = CDATA.find(c => c.supaId === r.cliente_id || c.id === r.cliente_id);
+            if (cl) dem.client = cl.name;
+          }
+          return dem;
         });
         setDemands(merged);
       }
