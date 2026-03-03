@@ -141,6 +141,10 @@ const supaUpdateDemand = async (id, updates) => {
   } catch (e) { console.error(e); }
 };
 
+const supaDeleteDemand = async (id) => {
+  if (!supabase) return;
+  try { await supabase.from("demands").delete().eq("id", id); } catch(e) {}
+};
 const mergeSupaDemand = (row) => ({
   id: row.id, supaId: row.id, type: row.type || "social",
   client: "Sem cliente", title: row.title || "",
@@ -1028,7 +1032,7 @@ function LoginPage({ onAuth }) {
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
 function HomePage({ user, goSub, goTab, clients }) {
-  const CDATA = clients || CLIENTS_DATA_INIT;
+  const CDATA = (clients && clients.length > 0) ? clients : [];
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
   const totalRevNum = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
@@ -1929,6 +1933,12 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           { l:"Contrato", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, c:B.cyan, desc:`Plano ${sel.plan} — ${contract.type}`, act:()=>setProfileTab("contract") },
           { l:"Financeiro", ic:IC.financial, c:B.green, desc:`${sel.monthly}/mês`, act:()=>setProfileTab("financial") },
           { l:"Alterar plano", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, c:B.orange, desc:"Upgrade ou downgrade", act:()=>setShowPlanPicker(true) },
+          { l:"Excluir cliente", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, c:B.red, desc:"Remover permanentemente", act:async ()=>{
+            if (!confirm(`Excluir ${sel.name}? Essa ação não pode ser desfeita.`)) return;
+            if (sel.supaId) await supaDeleteClient(sel.supaId);
+            setClients(p=>p.filter(c=>c.id!==sel.id));
+            setSel(null); showToast("Cliente excluído ✓");
+          } },
         ].map((a,i) => (
           <Card key={i} delay={i*0.03} onClick={a.act} style={{ marginTop:i?6:0, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -2487,7 +2497,17 @@ function ContentPage({ user, clients: propClients }) {
     return (
       <div className="pg" style={{ paddingTop: TOP }}>
         {ToastEl}
-        <Head title="" onBack={() => setSel(null)} right={<Tag color={priorityColor(sel.priority)}>{sel.priority}</Tag>} />
+        <Head title="" onBack={() => setSel(null)} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Tag color={priorityColor(sel.priority)}>{sel.priority}</Tag>
+          <button onClick={async ()=>{
+            if (!confirm(`Excluir "${sel.title}"?`)) return;
+            if (sel.supaId) await supaDeleteDemand(sel.supaId);
+            setDemands(p=>p.filter(d=>d.id!==sel.id));
+            setSel(null); showToast("Demanda excluída ✓");
+          }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,background:`${B.red}08`,border:`1.5px solid ${B.red}20`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.red}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>} />
         {/* Title + Client + Network */}
         <div style={{ textAlign:"center", marginBottom:14 }}>
           <Av name={sel.client} sz={48} fs={18} />
