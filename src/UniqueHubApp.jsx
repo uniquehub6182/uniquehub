@@ -130,6 +130,8 @@ const supaCreateDemand = async (d, clientId) => {
       stage: d.stage || "idea",
       priority: d.priority || "média",
     };
+    /* Save steps with creator info */
+    if (d.steps) payload.steps = d.steps;
     const { data, error } = await supabase.from("demands").insert(payload).select().single();
     if (error) { return { data: null, err: JSON.stringify(error) }; }
     return { data, err: null };
@@ -176,9 +178,10 @@ const mergeSupaDemand = (row) => ({
   stage: row.stage || "idea", priority: row.priority || "média",
   network: Array.isArray(row.networks) ? row.networks.join(", ") : (row.networks || "Instagram"),
   format: row.format || "Feed",
-  sponsored: row.sponsored || false, assignees: ["Matheus"],
+  sponsored: row.sponsored || false,
+  assignees: row.steps?.idea?.by ? [row.steps.idea.by] : (row.created_by_name ? [row.created_by_name] : ["Equipe"]),
   createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
-  steps: (row.steps && Object.keys(row.steps).length > 0) ? row.steps : { idea: { by: "Matheus", text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
+  steps: (row.steps && Object.keys(row.steps).length > 0) ? row.steps : { idea: { by: row.created_by_name || "Equipe", text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
   scheduling: (row.scheduling && Object.keys(row.scheduling).length > 0) ? row.scheduling : { date: row.schedule_date || "", time: row.schedule_time || "" },
   traffic: (row.traffic && Object.keys(row.traffic).length > 0) ? row.traffic : { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
   ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [], refs:"", dateStart:"", dateEnd:"", location:"", needs:[], clientTeam:[], budget:"", budgetBreakdown:[] } } : {}),
@@ -218,7 +221,7 @@ const mergeSupaEvent = (row) => {
     id: row.id, supaId: row.id, type: row.type || "task", title: row.title,
     time: row.time || "09:00", color: row.color || "#3B82F6",
     day: d.getDate(), month: d.getMonth(), year: d.getFullYear(),
-    createdBy: "Matheus", notes: row.description || "", client: row.client_name || "",
+    createdBy: row.created_by_name || "Equipe", notes: row.description || "", client: row.client_name || "",
     completed: row.completed || false,
   };
 };
@@ -236,7 +239,7 @@ const supaCreateIdea = async (idea) => {
   if (!supabase) return null;
   try {
     const payload = {
-      title: idea.title, description: idea.desc || null, author: idea.author || "Matheus",
+      title: idea.title, description: idea.desc || null, author: idea.author || "Equipe",
       client_name: idea.client || "Todos", tags: idea.tags || [], votes: 0, status: "pending",
     };
     const { data, error } = await supabase.from("ideas").insert(payload).select().single();
@@ -1385,6 +1388,7 @@ function LoginPage({ onAuth }) {
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
 function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
+  const isAdmin = user?.supaRole === "admin";
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
   const totalRevNum = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
@@ -1426,7 +1430,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
         <EditHandle i={i} />
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
           {[
-            { label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", color:B.green, icon:"💰" },
+            ...(isAdmin ? [{ label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", color:B.green, icon:"💰" }] : []),
             { label:"Clientes", value:totalClients, sub:`${activeClients} ativos`, color:B.accent, icon:"👥" },
             { label:"Pendentes", value:pendingApprovals, sub:"aguardando ação", color:B.orange, icon:"⏳" },
             { label:"Score", value:avgScore, sub:"satisfação média", color:B.purple, icon:"⭐" },
@@ -1508,7 +1512,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
               { k:"ai", l:"IA", icon:"🤖", c:B.purple },
               { k:"calendar", l:"Agenda", icon:"📅", c:B.accent },
               { k:"gamify", l:"Ranking", icon:"🏆", c:"#F59E0B" },
-              { k:"financial", l:"Financeiro", icon:"💰", c:B.green },
+              ...(isAdmin ? [{ k:"financial", l:"Financeiro", icon:"💰", c:B.green }] : []),
               { k:"reports", l:"Relatórios", icon:"📊", c:B.red },
             ].map((s,j) => (
               <Card key={j} delay={j*0.03} onClick={() => ["home","content","chat"].includes(s.k) ? goTab(s.k) : goSub(s.k)} style={{ cursor:"pointer", padding:12, textAlign:"center" }}>
@@ -1563,7 +1567,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
                     {c.pending > 0 && <Tag color={B.orange}>{c.pending} pendente{c.pending > 1 ? "s" : ""}</Tag>}
                   </div>
                 </div>
-                <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>
+                <p style={{ fontSize:13, fontWeight:700 }}>{isAdmin ? c.monthly : ""}</p>
               </div>
             </Card>
           ))}
@@ -1601,8 +1605,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
     ),
   };
 
-  const DEFAULT_ORDER2 = ["summary","pipeline","activity","shortcuts","team","clients","financial"];
-  React.useEffect(() => { if (blockOrder.length < 7) setBlockOrder(DEFAULT_ORDER2); }, []);
+  const DEFAULT_ORDER2 = isAdmin
+    ? ["summary","pipeline","activity","shortcuts","team","clients","financial"]
+    : ["summary","pipeline","activity","shortcuts","team","clients"];
+  React.useEffect(() => { if (blockOrder.length < 7 && isAdmin) setBlockOrder(DEFAULT_ORDER2); else if (!isAdmin && blockOrder.includes("financial")) setBlockOrder(prev => prev.filter(k => k !== "financial")); }, []);
 
   return (
     <div className="pg" style={{ paddingTop: "52px" }}>
@@ -1892,11 +1898,12 @@ const SOCIAL_PLATFORMS = [
   { key:"pinterest", name:"Pinterest", icon:null, c:"#E60023", urlBase:"pinterest.com/" },
 ];
 
-function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients }) {
+function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user }) {
   const [localClients, localSetClients] = useState(CLIENTS_DATA_INIT);
   const clients = propClients || localClients;
   const setClients = propSetClients || localSetClients;
   const [filter, setFilter] = useState("all");
+  const isAdmin = user?.supaRole === "admin";
 
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
@@ -2243,14 +2250,14 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <Tag color={B.blue}>Desde {sel.since}</Tag>
         </div>
       </Card>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, marginBottom:10 }}>
-        <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:8, color:B.muted }}>Mensal</p></Card>
+      <div style={{ display:"grid", gridTemplateColumns:isAdmin?"repeat(4,1fr)":"repeat(3,1fr)", gap:6, marginBottom:10 }}>
+        {isAdmin && <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:8, color:B.muted }}>Mensal</p></Card>}
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{sel.pending}</p><p style={{ fontSize:8, color:B.muted }}>Pendentes</p></Card>
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.blue }}>{connectedCount}</p><p style={{ fontSize:8, color:B.muted }}>Redes</p></Card>
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
       </div>
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
-        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"contract",l:"Contrato"},{k:"financial",l:"Financeiro"},{k:"actions",l:"Ações"}].map(t=>(
+        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
           <button key={t.k} onClick={()=>setProfileTab(t.k)} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
         ))}
       </div>
@@ -2547,15 +2554,17 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           { l:"Abrir chat", ic:IC.chat, c:B.blue, desc:"Conversar com o cliente", act:()=>onNavigate?.("chat") },
           { l:"Biblioteca", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>, c:B.purple, desc:`${files.length} arquivos do cliente`, act:()=>setProfileTab("library") },
           { l:"Redes Sociais", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, c:B.pink, desc:`${connectedCount} redes conectadas`, act:()=>setProfileTab("socials") },
-          { l:"Contrato", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, c:B.cyan, desc:`Plano ${sel.plan} — ${contract.type}`, act:()=>setProfileTab("contract") },
-          { l:"Financeiro", ic:IC.financial, c:B.green, desc:`${sel.monthly}/mês`, act:()=>setProfileTab("financial") },
-          { l:"Alterar plano", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, c:B.orange, desc:"Upgrade ou downgrade", act:()=>setShowPlanPicker(true) },
-          { l:"Excluir cliente", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, c:B.red, desc:"Remover permanentemente", act:async ()=>{
+          ...(isAdmin ? [
+            { l:"Contrato", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, c:B.cyan, desc:`Plano ${sel.plan} — ${contract.type}`, act:()=>setProfileTab("contract") },
+            { l:"Financeiro", ic:IC.financial, c:B.green, desc:`${sel.monthly}/mês`, act:()=>setProfileTab("financial") },
+            { l:"Alterar plano", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, c:B.orange, desc:"Upgrade ou downgrade", act:()=>setShowPlanPicker(true) },
+            { l:"Excluir cliente", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, c:B.red, desc:"Remover permanentemente", act:async ()=>{
             if (!confirm(`Excluir ${sel.name}? Essa ação não pode ser desfeita.`)) return;
             if (sel.supaId) await supaDeleteClient(sel.supaId);
             setClients(p=>p.filter(c=>c.id!==sel.id));
             setSel(null); showToast("Cliente excluído ✓");
           } },
+          ] : []),
         ].map((a,i) => (
           <Card key={i} delay={i*0.03} onClick={a.act} style={{ marginTop:i?6:0, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -2616,7 +2625,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
             </div>
             <div style={{ textAlign:"right" }}>
-              <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>
+              {isAdmin && <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>}
               {c.pending > 0 && <p style={{ fontSize:10, color:B.orange, fontWeight:600 }}>{c.pending} pendente{c.pending>1?"s":""}</p>}
             </div>
           </div>
@@ -4117,6 +4126,27 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); clearTimeout(markReadTimer.current); };
   }, [selConv?.id]);
 
+  /* Polling fallback: refresh messages every 8s in case Realtime fails */
+  React.useEffect(() => {
+    if (!selConv?.id || !supabase) return;
+    const poll = setInterval(async () => {
+      const freshMsgs = await supaLoadMessages(selConv.id, 100);
+      if (freshMsgs && freshMsgs.length > 0) {
+        setMsgs(prev => {
+          /* Only update if there are new messages we don't have */
+          const prevIds = new Set(prev.filter(m => !m._optimistic).map(m => m.id));
+          const hasNew = freshMsgs.some(m => !prevIds.has(m.id));
+          if (!hasNew && freshMsgs.length <= prev.filter(m => !m._optimistic).length) return prev;
+          /* Merge: keep optimistic msgs that aren't in the fresh set */
+          const freshIds = new Set(freshMsgs.map(m => m.id));
+          const stillOptimistic = prev.filter(m => m._optimistic && !freshIds.has(m.id));
+          return [...freshMsgs, ...stillOptimistic];
+        });
+      }
+    }, 8000);
+    return () => clearInterval(poll);
+  }, [selConv?.id]);
+
   /* Auto-scroll */
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
@@ -4136,6 +4166,18 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     }).subscribe();
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
+
+  /* Polling fallback: refresh conversation list every 15s */
+  React.useEffect(() => {
+    if (!user?.id || !supabase) return;
+    const poll = setInterval(async () => {
+      if (view === "list") { /* Only poll when viewing the list */
+        const fresh = await supaLoadConversations(user.id);
+        if (fresh && fresh.length > 0) setConvs(fresh);
+      }
+    }, 15000);
+    return () => clearInterval(poll);
+  }, [user?.id, view]);
 
   const getOtherName = (conv) => {
     if (conv.type === "group") return conv.name || "Grupo";
@@ -4166,8 +4208,20 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     /* Optimistic: show immediately */
     const optimistic = { id: `opt-${Date.now()}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true };
     setMsgs(prev => [...prev, optimistic]);
-    /* Send to DB in background */
-    supaSendMessage(selConv.id, user.id, text).catch(() => {});
+    /* Send to DB */
+    try {
+      const result = await supaSendMessage(selConv.id, user.id, text);
+      if (!result) {
+        console.error("Chat: sendMsg returned null — check RLS policies or Realtime config");
+        showToast("Erro ao enviar — verifique conexão");
+        /* Mark optimistic as failed */
+        setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+      }
+    } catch(err) {
+      console.error("Chat: sendMsg error:", err);
+      showToast("Erro ao enviar mensagem");
+      setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+    }
   };
 
   const lastTypingEmit = useRef(0);
@@ -7598,9 +7652,12 @@ function AIPage({ onBack, user }) {
   const [selPreset, setSelPreset] = useState(null);
   const [aiKeys, setAiKeys] = useState({});
   const [aiReady, setAiReady] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
   const { showToast, ToastEl } = useToast();
+
+  const AI_HISTORY_KEY = `ai_history_${user?.id || "anon"}`;
 
   const PRESETS = [
     { emoji: "✍️", label: "Criar legenda", prompt: "Crie uma legenda criativa para um post de Instagram sobre " },
@@ -7613,8 +7670,23 @@ function AIPage({ onBack, user }) {
     { emoji: "📅", label: "Calendário editorial", prompt: "Monte um calendário editorial de 1 mês para uma empresa de " },
   ];
 
+  /* Load AI keys + conversation history from Supabase */
   React.useEffect(() => {
-    supaGetAIKeys().then(k => { setAiKeys(k); setAiReady(true); });
+    const init = async () => {
+      const k = await supaGetAIKeys();
+      setAiKeys(k);
+      setAiReady(true);
+      /* Load saved AI conversations */
+      const saved = await supaGetSetting(AI_HISTORY_KEY);
+      if (saved) {
+        try {
+          const parsed = typeof saved === "string" ? JSON.parse(saved) : saved;
+          if (Array.isArray(parsed)) setConversations(parsed);
+        } catch(e) { console.error("AI history parse error:", e); }
+      }
+      setHistoryLoaded(true);
+    };
+    init();
   }, []);
 
   React.useEffect(() => {
@@ -7643,20 +7715,34 @@ function AIPage({ onBack, user }) {
     const ts = now.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit",year:"numeric"}) + " " + now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
     setConversations(prev => {
       const exists = prev.find(c => c.id === chatId);
+      let updated;
       if (exists) {
-        return prev.map(c => c.id === chatId ? { ...c, messages: msgs, title, updatedAt: ts } : c);
+        updated = prev.map(c => c.id === chatId ? { ...c, messages: msgs, title, updatedAt: ts } : c);
+      } else {
+        updated = [{ id: chatId, title, messages: msgs, updatedAt: ts, pinned: false }, ...prev];
       }
-      return [{ id: chatId, title, messages: msgs, updatedAt: ts, pinned: false }, ...prev];
+      /* Persist to Supabase (keep last 50 conversations, trim messages to last 30 per conversation) */
+      const toSave = updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) }));
+      supaSetSetting(AI_HISTORY_KEY, JSON.stringify(toSave)).catch(() => {});
+      return updated;
     });
   };
 
   const deleteChat = (id) => {
-    setConversations(prev => prev.filter(c => c.id !== id));
+    setConversations(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      supaSetSetting(AI_HISTORY_KEY, JSON.stringify(updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) })))).catch(() => {});
+      return updated;
+    });
     showToast("Conversa excluída ✓");
   };
 
   const togglePin = (id) => {
-    setConversations(prev => prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c));
+    setConversations(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c);
+      supaSetSetting(AI_HISTORY_KEY, JSON.stringify(updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) })))).catch(() => {});
+      return updated;
+    });
   };
 
   const SYSTEM_PROMPT = `Você é o Assistente IA da UniqueHub Agency, uma agência de marketing 360 em Petrópolis/RJ. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`;
@@ -8463,10 +8549,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
-        {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
+        {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
-        {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
+        {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
