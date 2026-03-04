@@ -6697,25 +6697,105 @@ function LibraryPage({ onBack, clients: propClients }) {
     const f = viewFile;
     const fi = fileIcon(f.name);
     const cat = LIB_CATS.find(c => c.key === getFileCat(f));
+    const ext = f.name.split(".").pop()?.toLowerCase();
+    const isImage = ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
+    const isVideo = ["mp4","mov","avi","mkv","webm"].includes(ext);
+    const isPdf = ext === "pdf";
+    const hasUrl = !!f.url;
+
+    const handleDownload = () => {
+      if (hasUrl) {
+        const a = document.createElement("a");
+        a.href = f.url;
+        a.download = f.name;
+        a.target = "_blank";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast("Download iniciado ✓");
+      } else {
+        showToast("Arquivo de demonstração — sem URL real para download");
+      }
+    };
+
+    const handleOpen = () => {
+      if (hasUrl) {
+        window.open(f.url, "_blank", "noopener");
+      } else {
+        showToast("Arquivo de demonstração — sem URL real");
+      }
+    };
+
+    const handleCopyLink = () => {
+      if (hasUrl) {
+        navigator.clipboard.writeText(f.url).then(() => showToast("Link copiado! ✓")).catch(() => showToast("Erro ao copiar"));
+      } else {
+        showToast("Arquivo de demonstração — sem link para copiar");
+      }
+    };
+
     return (
       <div className="pg">
         {ToastEl}
         <Head title="" onBack={() => setViewFile(null)} />
+
+        {/* Preview area */}
+        {hasUrl && isImage && (
+          <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
+            <img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain", background:`${B.dark}` }} />
+          </Card>
+        )}
+        {hasUrl && isVideo && (
+          <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
+            <video src={f.url+"#t=0.1"} controls playsInline preload="metadata" style={{ width:"100%", maxHeight:300, background:B.dark }} />
+          </Card>
+        )}
+
+        {/* File icon + name when no preview */}
         <Card style={{ textAlign:"center", marginBottom:12 }}>
-          <div style={{ width:64, height:64, borderRadius:20, background:`${fi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, margin:"0 auto 12px", transform:"scale(1.5)" }}>{fi.ic}</div>
-          <h3 style={{ fontSize:15, fontWeight:800, marginTop:16, wordBreak:"break-all" }}>{f.name}</h3>
+          {!(hasUrl && (isImage || isVideo)) && (
+            <div style={{ width:64, height:64, borderRadius:20, background:`${fi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, margin:"0 auto 12px", transform:"scale(1.5)" }}>{fi.ic}</div>
+          )}
+          <h3 style={{ fontSize:15, fontWeight:800, marginTop: (hasUrl && (isImage||isVideo)) ? 0 : 16, wordBreak:"break-all" }}>{f.name}</h3>
           <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
-            <Tag color={fi.c}>{f.name.split(".").pop()?.toUpperCase()}</Tag>
+            <Tag color={fi.c}>{ext?.toUpperCase()}</Tag>
             <Tag color={cat?.c || B.muted}>{cat?.icon} {cat?.label || "Outros"}</Tag>
           </div>
         </Card>
+
+        {/* ACTION BUTTONS */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <button onClick={handleDownload} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Baixar
+          </button>
+          <button onClick={handleOpen} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Abrir
+          </button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <button onClick={handleCopyLink} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:12, borderRadius:14, background:`${B.blue}08`, border:`1.5px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.blue }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            Copiar link
+          </button>
+          <button onClick={() => { if (hasUrl && navigator.share) { navigator.share({ title:f.name, url:f.url }).catch(()=>{}); } else { handleCopyLink(); } }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:12, borderRadius:14, background:`${B.green}08`, border:`1.5px solid ${B.green}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Compartilhar
+          </button>
+        </div>
+
+        {/* File info */}
         <Card>
+          <p className="sl" style={{ marginBottom:8 }}>Informações</p>
           {[
             { l:"Cliente", v:f.clientName },
             { l:"Categoria", v:f.category || "Outros" },
             { l:"Tamanho", v:f.size },
             { l:"Data", v:f.date },
-            { l:"Extensão", v:f.name.split(".").pop()?.toUpperCase() },
+            { l:"Extensão", v:ext?.toUpperCase() },
+            ...(hasUrl ? [{ l:"Armazenamento", v:"Supabase Storage" }] : [{ l:"Armazenamento", v:"Demonstração" }]),
           ].map((item,i) => (
             <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
               <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
