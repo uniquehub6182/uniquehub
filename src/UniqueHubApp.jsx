@@ -1590,6 +1590,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount }) {
 /* ═══════════════════════ CHECK-IN SYSTEM ═══════════════════════ */
 function CheckinPage({ onBack, user }) {
   const isAdmin = user?.supaRole === "admin";
+  const [adminView, setAdminView] = useState(false); /* false = meu ponto, true = equipe */
   const [activeCheckin, setActiveCheckin] = useState(null);
   const [history, setHistory] = useState([]);
   const [elapsed, setElapsed] = useState(0);
@@ -1599,24 +1600,31 @@ function CheckinPage({ onBack, user }) {
   const [teamData, setTeamData] = useState([]);
   const { showToast, ToastEl } = useToast();
 
-  /* Load data on mount */
+  /* Load personal data on mount (always) */
   useEffect(() => {
     if (!user?.id) return;
     const load = async () => {
       setLoading(true);
-      if (isAdmin) {
-        const today = new Date(); today.setHours(0,0,0,0);
-        const data = await supaGetTeamCheckins(today.toISOString());
-        setTeamData(data);
-      } else {
-        const [active, hist] = await Promise.all([supaGetActiveCheckin(user.id), supaGetCheckinHistory(user.id)]);
-        setActiveCheckin(active);
-        setHistory(hist);
-      }
+      const [active, hist] = await Promise.all([supaGetActiveCheckin(user.id), supaGetCheckinHistory(user.id)]);
+      setActiveCheckin(active);
+      setHistory(hist);
       setLoading(false);
     };
     load();
-  }, [user?.id, isAdmin]);
+  }, [user?.id]);
+
+  /* Load team data when admin switches to team view */
+  useEffect(() => {
+    if (!isAdmin || !adminView || !user?.id) return;
+    const load = async () => {
+      setLoading(true);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const data = await supaGetTeamCheckins(today.toISOString());
+      setTeamData(data);
+      setLoading(false);
+    };
+    load();
+  }, [adminView, isAdmin, user?.id]);
 
   /* Timer */
   useEffect(() => {
@@ -1683,11 +1691,20 @@ function CheckinPage({ onBack, user }) {
 
   if (loading) return (<div className="pg"><Head title="Check-in" onBack={onBack} /><Card style={{textAlign:"center",padding:40}}><p style={{color:B.muted,fontSize:13}}>Carregando...</p></Card></div>);
 
-  /* ── Admin View ── */
-  if (isAdmin) return (
+  /* ── Admin Toggle ── */
+  const adminToggle = isAdmin ? (
+    <div style={{display:"flex",gap:6,marginBottom:14}}>
+      <button className={`htab${!adminView?" a":""}`} onClick={() => setAdminView(false)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Meu Ponto</button>
+      <button className={`htab${adminView?" a":""}`} onClick={() => setAdminView(true)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Equipe</button>
+    </div>
+  ) : null;
+
+  /* ── Admin Team View ── */
+  if (isAdmin && adminView) return (
     <div className="pg">
       {ToastEl}
       <Head title="Ponto — Equipe" onBack={onBack} />
+      {adminToggle}
       <div style={{display:"flex",gap:6,marginBottom:14}}>
         {["today","week","month"].map(p => (
           <button key={p} className={`htab${adminTab===p?" a":""}`} onClick={() => loadAdminData(p)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{p==="today"?"Hoje":p==="week"?"Semana":"Mês"}</button>
@@ -1727,6 +1744,7 @@ function CheckinPage({ onBack, user }) {
     <div className="pg">
       {ToastEl}
       <Head title="Check-in" onBack={onBack} />
+      {adminToggle}
       <Card style={{ background: B.dark, color: "#fff", border: "none", textAlign: "center", padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
           <span style={{ color: B.accent, display: "flex" }}>{IC.clock}</span>
@@ -5287,8 +5305,26 @@ function TeamPage({ onBack }) {
 
   useEffect(() => {
     if (loaded) return;
-    supaLoadTeam().then(rows => {
-      if (rows.length) setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", supaId:r.id })));
+    supaLoadTeam().then(async (rows) => {
+      if (rows.length) {
+        /* Auto-link: check if any "pendente" members now have a registered profile */
+        const pending = rows.filter(r => r.status === "pendente" && !r.user_id && r.email);
+        if (pending.length > 0 && supabase) {
+          const emails = pending.map(p => p.email);
+          const { data: profiles } = await supabase.from("profiles").select("id, email").in("email", emails);
+          if (profiles?.length) {
+            for (const p of profiles) {
+              const match = pending.find(m => m.email === p.email);
+              if (match) {
+                await supabase.from("agency_members").update({ user_id: p.id, status: "offline" }).eq("id", match.id);
+                match.user_id = p.id;
+                match.status = "offline";
+              }
+            }
+          }
+        }
+        setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", user_id:r.user_id||null, supaId:r.id })));
+      }
       setLoaded(true);
     });
   }, [loaded]);
@@ -5371,14 +5407,14 @@ function TeamPage({ onBack }) {
         <Card style={{ textAlign:"center", marginBottom:12 }}>
           <div style={{ position:"relative", display:"inline-block" }}>
             <Av name={m.name} sz={72} fs={28} />
-            <div style={{ position:"absolute", bottom:2, right:2, width:14, height:14, borderRadius:7, background:m.status==="online"?B.green:m.status==="pendente"?B.orange:B.muted, border:"3px solid #fff" }} />
+            <div style={{ position:"absolute", bottom:2, right:2, width:14, height:14, borderRadius:7, background:m.status==="pendente"?B.orange:B.green, border:"3px solid #fff" }} />
           </div>
           <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{m.name}</h3>
           <p style={{ fontSize:13, color:B.accent, fontWeight:600 }}>{m.role}</p>
           {m.status==="pendente" ? <div style={{ marginTop:8, padding:"6px 14px", borderRadius:8, background:`${B.orange}12`, display:"inline-flex", alignItems:"center", gap:6 }}>
             <div style={{ width:8, height:8, borderRadius:4, background:B.orange }} />
             <span style={{ fontSize:11, fontWeight:700, color:B.orange }}>Aguardando cadastro</span>
-          </div> : <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{m.status === "online" ? "Online agora" : "Offline"}</p>}
+          </div> : <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Cadastrado no sistema</p>}
         </Card>
         {m.status==="pendente" && <button onClick={()=>{
           const link = `${window.location.origin}?convite=${encodeURIComponent(m.email)}`;
@@ -5423,7 +5459,8 @@ function TeamPage({ onBack }) {
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
           <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{members.filter(m=>m.status==="online").length}</p><p style={{ fontSize:10, opacity:.7 }}>Online</p></div>
+          <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{members.filter(m=>m.status!=="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Cadastrados</p></div>
+          <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{members.filter(m=>m.status==="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Pendentes</p></div>
         </div>
       </Card>
       {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
@@ -5433,7 +5470,7 @@ function TeamPage({ onBack }) {
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ position:"relative" }}>
               <Av name={m.name} sz={44} fs={16} />
-              <div style={{ position:"absolute", bottom:0, right:0, width:12, height:12, borderRadius:6, background:m.status==="online"?B.green:m.status==="pendente"?B.orange:B.muted, border:"2px solid #fff" }} />
+              <div style={{ position:"absolute", bottom:0, right:0, width:12, height:12, borderRadius:6, background:m.status==="pendente"?B.orange:B.green, border:"2px solid #fff" }} />
             </div>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:14, fontWeight:700 }}>{m.name}</p>
