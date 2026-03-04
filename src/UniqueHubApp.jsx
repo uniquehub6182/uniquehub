@@ -335,7 +335,7 @@ const supaSetSetting = async (key, value) => {
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
   try {
-    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key","anthropic_key","ai_provider"]);
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key"]);
     const map = {};
     (data || []).forEach(r => { map[r.key] = r.value; });
     return map;
@@ -4700,7 +4700,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [dndEnd, setDndEnd] = useState("07:00");
 
   /* AI Config */
-  const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", anthropic_key:"", ai_provider:"openai" });
+  const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", ai_provider:"openai" });
   const [aiCfgLoaded, setAiCfgLoaded] = useState(false);
   const [aiCfgSaving, setAiCfgSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState({});
@@ -5217,8 +5217,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const saveAI = async () => {
       setAiCfgSaving(true);
       await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
-      await supaSetSetting("anthropic_key", aiCfgKeys.anthropic_key || "");
-      await supaSetSetting("ai_provider", aiCfgKeys.ai_provider || "openai");
       setAiCfgSaving(false);
       showToast("Configuração salva ✓");
     };
@@ -5226,17 +5224,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       <div className="pg">
         {ToastEl}
         <Head title="Assistente IA" onBack={() => setSub(null)} />
-        <Card style={{ marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:8 }}>Provedor padrão</p>
-          <div style={{ display:"flex", gap:8 }}>
-            {[{k:"openai",l:"OpenAI",emoji:"🟢"},{k:"anthropic",l:"Claude",emoji:"🟣"}].map(p => (
-              <button key={p.k} onClick={() => setAiCfgKeys(prev => ({...prev, ai_provider:p.k}))} style={{ flex:1, padding:"14px 0", borderRadius:12, border:`2px solid ${aiCfgKeys.ai_provider===p.k?B.accent:B.border}`, background:aiCfgKeys.ai_provider===p.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
-                <span style={{ fontSize:24, display:"block", marginBottom:4 }}>{p.emoji}</span>
-                <p style={{ fontSize:13, fontWeight:700, color:aiCfgKeys.ai_provider===p.k?B.accent:B.text }}>{p.l}</p>
-              </button>
-            ))}
-          </div>
-        </Card>
         <Card style={{ marginBottom:12 }}>
           <p className="sl" style={{ marginBottom:4 }}>Chave OpenAI</p>
           <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em platform.openai.com → API Keys</p>
@@ -5246,22 +5233,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           </div>
           {aiCfgKeys.openai_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada</p>}
         </Card>
-        <Card style={{ marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:4 }}>Chave Anthropic (Claude)</p>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em console.anthropic.com → API Keys</p>
-          <div style={{ display:"flex", gap:6 }}>
-            <input type={showApiKey.anthropic?"text":"password"} value={aiCfgKeys.anthropic_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, anthropic_key:e.target.value}))} placeholder="sk-ant-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
-            <button onClick={() => setShowApiKey(p=>({...p,anthropic:!p.anthropic}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.anthropic?"🙈":"👁️"}</button>
-          </div>
-          {aiCfgKeys.anthropic_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada</p>}
-        </Card>
         <Card style={{ background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:6 }}>Modelos utilizados</p>
-          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12 }}>🟢 OpenAI</span><span style={{ fontSize:12, color:B.muted }}>GPT-4o-mini</span></div>
-            <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12 }}>🟣 Anthropic</span><span style={{ fontSize:12, color:B.muted }}>Claude Sonnet 4</span></div>
-          </div>
-          <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>O custo depende do uso. GPT-4o-mini é o mais econômico (~$0.15/1M tokens input).</p>
+          <p className="sl" style={{ marginBottom:6 }}>Modelo utilizado</p>
+          <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12 }}>🟢 OpenAI</span><span style={{ fontSize:12, color:B.muted }}>GPT-4o-mini</span></div>
+          <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>Modelo mais econômico (~$0.15/1M tokens input). Ideal para copywriting, legendas e estratégias.</p>
         </Card>
         <button onClick={saveAI} disabled={aiCfgSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar Configuração"}</button>
       </div>
@@ -7616,7 +7591,6 @@ function AIPage({ onBack, user }) {
   const [loading, setLoading] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [selPreset, setSelPreset] = useState(null);
-  const [aiProvider, setAiProvider] = useState("openai");
   const [aiKeys, setAiKeys] = useState({});
   const [aiReady, setAiReady] = useState(false);
   const scrollRef = React.useRef(null);
@@ -7635,7 +7609,7 @@ function AIPage({ onBack, user }) {
   ];
 
   React.useEffect(() => {
-    supaGetAIKeys().then(k => { setAiKeys(k); setAiProvider(k.ai_provider || "openai"); setAiReady(true); });
+    supaGetAIKeys().then(k => { setAiKeys(k); setAiReady(true); });
   }, []);
 
   React.useEffect(() => {
@@ -7684,8 +7658,7 @@ function AIPage({ onBack, user }) {
 
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
-    const provider = aiProvider;
-    const key = provider === "openai" ? aiKeys.openai_key : aiKeys.anthropic_key;
+    const key = aiKeys.openai_key;
     if (!key) { showToast("Chave de API não configurada. Vá em Config → Assistente IA"); return; }
 
     const userMsg = { role: "user", content: text.trim() };
@@ -7701,27 +7674,14 @@ function AIPage({ onBack, user }) {
 
     try {
       const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
-      let aiText = "";
-
-      if (provider === "openai") {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-          body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message || "Erro OpenAI");
-        aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
-      } else {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: SYSTEM_PROMPT, messages: apiMessages })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message || "Erro Anthropic");
-        aiText = data.content?.map(i => i.text || "").filter(Boolean).join("\n") || "Sem resposta.";
-      }
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+        body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message || "Erro OpenAI");
+      const aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
       const finalMsgs = [...newMsgs, { role: "assistant", content: aiText }];
       setMessages(finalMsgs);
       saveToHistory(chatId, finalMsgs);
@@ -7870,11 +7830,6 @@ function AIPage({ onBack, user }) {
           <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
           <h2 style={{ fontSize:18, fontWeight:800 }}>Nova conversa</h2>
         </div>
-        <div style={{ display:"flex", gap:2, background:B.bg, borderRadius:8, padding:2, border:`1px solid ${B.border}` }}>
-          {[{k:"openai",l:"🟢"},{k:"anthropic",l:"🟣"}].map(p=>(
-            <button key={p.k} onClick={()=>setAiProvider(p.k)} title={p.k==="openai"?"OpenAI":"Claude"} style={{ padding:"4px 10px", borderRadius:6, border:"none", background:aiProvider===p.k?B.accent:"transparent", cursor:"pointer", fontSize:14, opacity:aiProvider===p.k?1:0.4 }}>{p.l}</button>
-          ))}
-        </div>
       </div>
 
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"0 12px" }}>
@@ -7884,10 +7839,10 @@ function AIPage({ onBack, user }) {
         <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.nick || user?.name || "equipe"}!</h3>
         <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
 
-        {aiReady && !aiKeys[aiProvider==="openai"?"openai_key":"anthropic_key"] && (
+        {aiReady && !aiKeys.openai_key && (
           <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:16, width:"100%", textAlign:"left" }}>
             <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {aiProvider==="openai"?"OpenAI":"Anthropic"}.</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave OpenAI.</p>
           </Card>
         )}
 
@@ -7924,12 +7879,7 @@ function AIPage({ onBack, user }) {
           <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
           <div>
             <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
-            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● {aiProvider==="openai"?"OpenAI":"Claude"}</p>
-          </div>
-          <div style={{ display:"flex", gap:2, background:B.bg, borderRadius:6, padding:2, marginLeft:6 }}>
-            {[{k:"openai",l:"🟢"},{k:"anthropic",l:"🟣"}].map(p=>(
-              <button key={p.k} onClick={()=>setAiProvider(p.k)} style={{ padding:"2px 6px", borderRadius:4, border:"none", background:aiProvider===p.k?B.accent:"transparent", cursor:"pointer", fontSize:12, opacity:aiProvider===p.k?1:0.35 }}>{p.l}</button>
-            ))}
+            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● OpenAI</p>
           </div>
         </div>
         <div style={{ display:"flex", gap:6 }}>
