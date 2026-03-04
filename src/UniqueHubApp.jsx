@@ -5772,18 +5772,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         />
       </Card>
 
-      {/* ── NAVBAR ── */}
-      <SectionLabel icon="📱" title="Barra de Navegação" />
-      <Card>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-          <div>
-            <p style={{ fontSize:13, fontWeight:600 }}>Mostrar nomes</p>
-            <p style={{ fontSize:10, color:B.muted }}>Exibir texto abaixo dos ícones</p>
-          </div>
-          <Toggle on={UP.navLabels !== false} onToggle={() => setP("navLabels", UP.navLabels === false ? true : false)} />
-        </div>
-      </Card>
-
       {/* ── ANIMAÇÕES ── */}
       <SectionLabel icon="🎬" title="Animações" />
       <Card>
@@ -5797,7 +5785,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </Card>
 
       {/* ── RESET ── */}
-      <button onClick={() => { updateUiPrefs({ fontSize:"normal", cardRadius:"round", cardStyle:"elevated", density:"normal", bgPattern:"solid", navLabels:true, animations:true }); showToast("Configurações resetadas ✓"); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
+      <button onClick={() => { updateUiPrefs({ fontSize:"normal", cardRadius:"round", cardStyle:"elevated", density:"normal", bgPattern:"solid", animations:true }); showToast("Configurações resetadas ✓"); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
         Restaurar padrão
       </button>
@@ -9941,9 +9929,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
 .overlay{background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"}!important}
 .txtbtn{color:${B.muted}!important}
-.bnav{background:${dark?"#0A0F12":"#192126"}!important;border-radius:${uiPrefs.cardRadius==="pill"?"24px 24px 0 0":"0"}!important}
-.bnav span{font-size:${uiPrefs.navLabels===false?"0px":"9px"}!important;opacity:${uiPrefs.navLabels===false?"0":"1"}!important;height:${uiPrefs.navLabels===false?"0":"auto"}!important;overflow:hidden}
-*{transition-duration:var(--uh-anim)!important}
+.bnav{background:${dark?"#0A0F12":"#192126"}!important}
+.card,.tinput,.pill,.htab,.grid-btn,.tag{transition:all var(--uh-anim) ease!important}
 ${uiPrefs.bgPattern==="dots"?`.app::before,.screen::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(${dark?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)"} 1px,transparent 1px);background-size:20px 20px}`:""}
 ${uiPrefs.bgPattern==="gradient"?`.app,.screen{background:linear-gradient(135deg,${B.bg},${B.accent}08,${B.bg})!important}`:""}
 ` }} />
