@@ -3292,8 +3292,9 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients, demands, setDemands }) {
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam }) {
   const CDATA = propClients || [];
+  const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
@@ -3678,7 +3679,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
           <p className="sl" style={{ marginBottom:8 }}>Equipe responsável</p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             {(sel.assignees||[]).map(a=>{
-              const m = AGENCY_TEAM.find(t=>t.name===a);
+              const m = TEAM.find(t=>t.name===a);
               return (<div key={a} style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 10px 4px 4px", borderRadius:20, background:`${B.accent}08`, border:`1px solid ${B.accent}15` }}>
                 <Av src={m?.photo} name={a} sz={24} fs={10} /><span style={{ fontSize:11, fontWeight:600 }}>{a}</span>
                 {m?.role && <span style={{ fontSize:9, color:B.muted }}>· {m.role}</span>}
@@ -4339,7 +4340,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               {schedDate && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, color:B.muted, fontWeight:600 }}>{IC.clock} {schedDate}{schedTime ? ` às ${schedTime}` : ""}</span>}
               {d.type === "social" && !hasBudget && <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:`${B.muted}08`, color:B.muted }}>Orgânico</span>}
               <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:4 }}>
-                {(d.assignees||[]).slice(0,3).map((a,j)=>{ const m=AGENCY_TEAM.find(t=>t.name===a); return <div key={j} style={{ width:22, height:22, borderRadius:11, background:m?.photo?"transparent":`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft:j?-6:0, border:`2px solid ${B.bgCard}`, overflow:"hidden", zIndex:3-j }}>{m?.photo?<img src={m.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>:<span style={{ fontSize:8, fontWeight:800, color:B.accent }}>{a[0]}</span>}</div>;})}{(d.assignees||[]).length > 3 && <span style={{ fontSize:9, color:B.muted }}>+{(d.assignees||[]).length-3}</span>}
+                {(d.assignees||[]).slice(0,3).map((a,j)=>{ const m=TEAM.find(t=>t.name===a); return <div key={j} style={{ width:22, height:22, borderRadius:11, background:m?.photo?"transparent":`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft:j?-6:0, border:`2px solid ${B.bgCard}`, overflow:"hidden", zIndex:3-j }}>{m?.photo?<img src={m.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>:<span style={{ fontSize:8, fontWeight:800, color:B.accent }}>{a[0]}</span>}</div>;})}{(d.assignees||[]).length > 3 && <span style={{ fontSize:9, color:B.muted }}>+{(d.assignees||[]).length-3}</span>}
               </div>
             </div>
           </div>
@@ -6045,7 +6046,7 @@ function NavEditSheet({ picks, setPicks, onClose }) {
 
 /* ═══════════════════════ PLACEHOLDER PAGES ═══════════════════════ */
 /* ═══════════════════════ TEAM PAGE ═══════════════════════ */
-function TeamPage({ onBack, user }) {
+function TeamPage({ onBack, user, onTeamChange }) {
   const [sel, setSel] = useState(null);
   const [adding, setAdding] = useState(false);
   const [editMember, setEditMember] = useState(false);
@@ -6093,7 +6094,7 @@ function TeamPage({ onBack, user }) {
       if (existingProfile?.[0]?.id) { m.user_id = existingProfile[0].id; m.status = "offline"; }
     }
     const row = await supaCreateMember(m);
-    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",supaId:row.id}]); setAdding(false); setForm({}); showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); }
+    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",user_id:row.user_id||null,supaId:row.id}]); setAdding(false); setForm({}); showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); if(onTeamChange) onTeamChange(); }
     else { showToast("Erro ao adicionar membro"); }
   };
 
@@ -6103,13 +6104,13 @@ function TeamPage({ onBack, user }) {
     await supaUpdateMember(sel.supaId, u);
     const updated = {...sel,...u};
     setMembers(p=>p.map(m=>m.id===sel.id?updated:m));
-    setSel(updated); setEditMember(false); setForm({}); showToast("Membro atualizado ✓");
+    setSel(updated); setEditMember(false); setForm({}); showToast("Membro atualizado ✓"); if(onTeamChange) onTeamChange();
   };
 
   const deleteMember = async (m) => {
     if (!confirm(`Remover "${m.name}" da equipe? ${m.user_id ? "A conta de acesso será excluída permanentemente." : ""}`)) return;
     if (m.supaId) await supaDeleteMember(m.supaId, m.user_id);
-    setMembers(p=>p.filter(x=>x.id!==m.id)); setSel(null); showToast("Membro removido ✓");
+    setMembers(p=>p.filter(x=>x.id!==m.id)); setSel(null); showToast("Membro removido ✓"); if(onTeamChange) onTeamChange();
   };
 
   const memberFormJSX = (isEdit) => (
@@ -6242,8 +6243,9 @@ function TeamPage({ onBack, user }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack, clients: propClients }) {
+function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   const CDATA = propClients || CLIENTS_DATA_INIT;
+  const TEAM = propTeam || [];
   const today = new Date();
   const [curMonth, setCurMonth] = useState(today.getMonth());
   const [curYear, setCurYear] = useState(today.getFullYear());
@@ -6389,7 +6391,7 @@ function CalendarPage({ onBack, clients: propClients }) {
           <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Participantes ({ev.participants.length})</p>
           <Card>
             {ev.participants.map((name,i) => {
-              const m = AGENCY_TEAM.find(t=>t.name===name);
+              const m = TEAM.find(t=>t.name===name);
               return (
                 <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
                   <Av name={name} sz={32} fs={12} />
@@ -6508,7 +6510,7 @@ function CalendarPage({ onBack, clients: propClients }) {
           <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Participantes da equipe</label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-              {AGENCY_TEAM.map(m=>{
+              {TEAM.map(m=>{
                 const selected = (form.participants||[]).includes(m.name);
                 return (
                   <button key={m.id} onClick={()=>setForm(p=>({...p,participants:toggleArr(p.participants||[],m.name)}))} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:10, border:`1.5px solid ${selected?B.accent:B.border}`, background:selected?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit" }}>
@@ -6894,8 +6896,9 @@ function LibraryPage({ onBack, clients: propClients }) {
   );
 }
 
-function ReportsPage({ onBack, clients: propClients }) {
+function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const CDATA = propClients || CLIENTS_DATA_INIT;
+  const TEAM = propTeam || [];
   const [period, setPeriod] = useState("fev");
   const [tab, setTab] = useState("overview");
   const [selClient, setSelClient] = useState(null);
@@ -6955,7 +6958,7 @@ function ReportsPage({ onBack, clients: propClients }) {
   const maxContent = Math.max(...contentChart.map(c=>c.posts+c.stories+c.reels));
 
   // Team productivity
-  const teamData = AGENCY_TEAM.map(m => ({
+  const teamData = TEAM.map(m => ({
     ...m,
     tasksCompleted: Math.floor(Math.random()*25+10),
     tasksTotal: Math.floor(Math.random()*30+15),
@@ -9139,7 +9142,7 @@ function HelpPage({ onBack }) {
   );
 }
 
-function SearchPage({ onBack }) {
+function SearchPage({ onBack, team, clients }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const inputRef = React.useRef(null);
@@ -9148,15 +9151,18 @@ function SearchPage({ onBack }) {
 
   const q = query.toLowerCase().trim();
 
-  const clientResults = q ? CLIENTS_DATA_INIT.filter(c =>
+  const CDATA = clients || CLIENTS_DATA_INIT;
+  const TDATA = team || [];
+
+  const clientResults = q ? CDATA.filter(c =>
     c.name.toLowerCase().includes(q) || c.contact?.toLowerCase().includes(q) || c.segment?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)
   ) : [];
 
-  const teamResults = q ? AGENCY_TEAM.filter(m =>
-    m.name.toLowerCase().includes(q) || m.role?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q)
+  const teamResults = q ? TDATA.filter(m =>
+    m.name?.toLowerCase().includes(q) || m.role?.toLowerCase().includes(q) || m.job_title?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q)
   ) : [];
 
-  const fileResults = q ? CLIENTS_DATA_INIT.flatMap(c =>
+  const fileResults = q ? CDATA.flatMap(c =>
     (c.files||[]).filter(f => f.name.toLowerCase().includes(q) || f.category?.toLowerCase().includes(q)).map(f => ({...f, clientName:c.name}))
   ).slice(0, 15) : [];
 
@@ -9460,7 +9466,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     });
     /* Also load team for dashboard */
     supaLoadTeam().then(rows => {
-      if (rows) setSharedTeam(rows.filter(r => r.user_id));
+      if (rows) setSharedTeam(rows);
     });
   }, [clientsLoaded]);
 
@@ -9517,7 +9523,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 ` }} />
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} />}
-        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} />}
+        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
@@ -9527,16 +9533,16 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
         {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} />}
-        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} />}
+        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
-        {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} />}
+        {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
-        {sub === "search" && <SearchPage onBack={() => setSub(null)} />}
-        {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} />}
+        {sub === "search" && <SearchPage onBack={() => setSub(null)} team={sharedTeam} clients={sharedClients} />}
+        {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
       </div>
 
       <nav className="bnav">
