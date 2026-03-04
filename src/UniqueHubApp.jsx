@@ -6984,7 +6984,7 @@ function NewsPage({ onBack }) {
             {a.pinned && <Tag color={B.red}>Destaque</Tag>}
           </div>
           <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{a.title}</h3>
-          <p style={{ fontSize:11, color:B.muted }}>{a.sourceUrl ? <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : a.source} · {a.date}</p>
+          <p style={{ fontSize:11, color:B.muted }}>{a.sourceUrl ? <a href={a.sourceUrl.startsWith("http") ? a.sourceUrl : `https://${a.sourceUrl}`} target="_blank" rel="noopener noreferrer" style={{ color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : a.source} · {a.date}</p>
         </Card>
         <Card style={{ marginBottom:12 }}>
           {(a.body||"").split("\n\n").map((p,i) => (
@@ -7052,7 +7052,7 @@ function NewsPage({ onBack }) {
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
                   <span style={{ fontSize:9, color:B.muted }}>{a.readTime}</span>
-                  {a.source && (a.sourceUrl ? <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:9, color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : <span style={{ fontSize:9, color:B.accent, fontWeight:600 }}>{a.source}</span>)}
+                  {a.source && (a.sourceUrl ? <a href={a.sourceUrl.startsWith("http") ? a.sourceUrl : `https://${a.sourceUrl}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:9, color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : <span style={{ fontSize:9, color:B.accent, fontWeight:600 }}>{a.source}</span>)}
                 </div>
                 <span style={{ fontSize:9, color:B.muted }}>{a.date}</span>
               </div>
