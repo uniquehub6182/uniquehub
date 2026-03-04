@@ -3758,7 +3758,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   /* Reactions */
   const [reactMsgId, setReactMsgId] = useState(null);
   const longPressTimer = useRef(null);
-  const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
@@ -7832,9 +7831,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [chatUnread, setChatUnread] = useState(0);
   const [demandBadge, setDemandBadge] = useState(0);
 
-  /* ── Load chat unread count ── */
+  /* ── Load chat unread count (deferred to not block initial render) ── */
   useEffect(() => {
     if (!supabase || !user?.id) return;
+    let badgeTimer;
     const loadChatUnread = async () => {
       try {
         const { data: memberships } = await supabase.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", user.id);
@@ -7853,28 +7853,31 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         setChatUnread(total);
       } catch(e) { setChatUnread(0); }
     };
-    loadChatUnread();
+    badgeTimer = setTimeout(() => {
+      loadChatUnread();
+    }, 1500); /* defer 1.5s to not block initial render */
     /* Realtime: new messages → recalculate */
     const chan = supabase.channel("nav-chat-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
       if (payload.new.sender_id !== user.id) setChatUnread(c => c + 1);
     }).subscribe();
-    return () => { supabase.removeChannel(chan); };
+    return () => { clearTimeout(badgeTimer); supabase.removeChannel(chan); };
   }, [user?.id]);
 
   /* ── Load demand badge count (new demands not yet viewed) ── */
   const [demandLastSeen, setDemandLastSeen] = useState(() => localStorage.getItem("uh_demand_seen") || new Date().toISOString());
   useEffect(() => {
     if (!supabase || !user?.id) return;
+    let badgeTimer2;
     const loadDemandBadge = async () => {
       const { count } = await supabase.from("demands").select("id", { count: "exact", head: true }).gt("created_at", demandLastSeen);
       setDemandBadge(count || 0);
     };
-    loadDemandBadge();
+    badgeTimer2 = setTimeout(() => { loadDemandBadge(); }, 1500); /* defer */
     /* Realtime: new demands → increment */
     const chan = supabase.channel("nav-demand-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "demands" }, () => {
       setDemandBadge(c => c + 1);
     }).subscribe();
-    return () => { supabase.removeChannel(chan); };
+    return () => { clearTimeout(badgeTimer2); supabase.removeChannel(chan); };
   }, [user?.id, demandLastSeen]);
 
   /* Clear demand badge when visiting content tab */
@@ -8011,19 +8014,23 @@ export default function App() {
   /* Check for existing Supabase session on mount */
   useEffect(() => {
     if (!supabase) return;
+    let timeout = setTimeout(() => { setAuthLoading(false); }, 3000); /* safety: max 3s */
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
-        setUser({
-          id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
-          email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
-          supaRole: profile?.role || "member", photo: profile?.photo_url || TEAM_PHOTOS.matheus,
-          nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
-          phone: profile?.phone || "", cpf: "", birth: "", social: "", blood: "", remember: true,
-        });
+        try {
+          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+          setUser({
+            id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
+            email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
+            supaRole: profile?.role || "member", photo: profile?.photo_url || TEAM_PHOTOS.matheus,
+            nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
+            phone: profile?.phone || "", cpf: "", birth: "", social: "", blood: "", remember: true,
+          });
+        } catch(e) { console.error("Profile load failed:", e); }
       }
+      clearTimeout(timeout);
       setAuthLoading(false);
-    });
+    }).catch(() => { clearTimeout(timeout); setAuthLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") setUser(null);
     });
