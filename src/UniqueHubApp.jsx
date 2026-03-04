@@ -303,9 +303,24 @@ const supaUpdateMember = async (id, updates) => {
   if (!supabase) return;
   try { await supabase.from("agency_members").update(updates).eq("id", id); } catch(e) {}
 };
-const supaDeleteMember = async (id) => {
+const supaDeleteMember = async (id, userId) => {
   if (!supabase) return;
-  try { await supabase.from("agency_members").delete().eq("id", id); } catch(e) {}
+  try {
+    /* Delete agency_members row */
+    await supabase.from("agency_members").delete().eq("id", id);
+    /* If user has auth account, delete it entirely via RPC */
+    if (userId) {
+      /* Clean up related data first */
+      await supabase.from("xp_events").delete().eq("user_id", userId);
+      await supabase.from("checkins").delete().eq("user_id", userId);
+      await supabase.from("messages").delete().eq("sender_id", userId);
+      await supabase.from("conversation_members").delete().eq("user_id", userId);
+      await supabase.from("profiles").delete().eq("id", userId);
+      /* Delete auth user via database function */
+      const { error } = await supabase.rpc("delete_user_account", { target_user_id: userId });
+      if (error) console.error("delete_user_account error:", error);
+    }
+  } catch(e) { console.error("supaDeleteMember:", e); }
 };
 /* ── Supabase: Invite check (Team→Registration link) ── */
 const supaCheckInvite = async (email) => {
@@ -1468,7 +1483,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
               { k:"checkin", l:"Check-in", icon:"📍", c:B.green },
               { k:"clients", l:"Clientes", icon:"👥", c:B.blue },
               { k:"content", l:"Conteúdo", icon:"📋", c:B.orange },
-              { k:"ai", l:"IA", icon:"🤖", c:B.purple },
+              { k:"gamify", l:"Ranking", icon:"🏆", c:B.orange },
               { k:"calendar", l:"Agenda", icon:"📅", c:B.accent },
               { k:"gamify", l:"Ranking", icon:"🏆", c:"#F59E0B" },
               { k:"financial", l:"Financeiro", icon:"💰", c:B.green },
@@ -5286,7 +5301,6 @@ const ALL_TABS = [
   { k: "reports", l: "Relatórios", i: IC.reports },
   { k: "news", l: "News", i: IC.news },
   { k: "ideas", l: "Ideias", i: IC.ideas },
-  { k: "ai", l: "IA", i: IC.ai },
   { k: "gamify", l: "Ranking", i: IC.gamify },
   { k: "help", l: "Ajuda", i: IC.help },
   { k: "search", l: "Buscar", i: IC.search },
@@ -5297,7 +5311,7 @@ const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
   { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
-  { k: "ai", l: "Assistente IA" }, { k: "gamify", l: "Ranking" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
+  { k: "gamify", l: "Ranking" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
 ];
 
 function MoreSheet({ onClose, goSub }) {
@@ -5429,8 +5443,8 @@ function TeamPage({ onBack }) {
   };
 
   const deleteMember = async (m) => {
-    if (!confirm(`Remover "${m.name}" da equipe?`)) return;
-    if (m.supaId) await supaDeleteMember(m.supaId);
+    if (!confirm(`Remover "${m.name}" da equipe? ${m.user_id ? "A conta de acesso será excluída permanentemente." : ""}`)) return;
+    if (m.supaId) await supaDeleteMember(m.supaId, m.user_id);
     setMembers(p=>p.filter(x=>x.id!==m.id)); setSel(null); showToast("Membro removido ✓");
   };
 
@@ -8039,7 +8053,6 @@ function SearchPage({ onBack }) {
     { k:"academy", l:"Academy", d:"Cursos e treinamentos", ic:IC.academy },
     { k:"news", l:"News", d:"Notícias e tendências", ic:IC.news },
     { k:"ideas", l:"Ideias", d:"Brainstorm da equipe", ic:IC.ideas },
-    { k:"ai", l:"Assistente IA", d:"Chat com inteligência artificial", ic:IC.ai },
     { k:"gamify", l:"Ranking", d:"Gamificação e recompensas", ic:IC.gamify },
     { k:"checkin", l:"Check-in", d:"Ponto digital", ic:IC.checkin },
     { k:"settings", l:"Configurações", d:"Perfil e preferências", ic:IC.settings },
@@ -8399,7 +8412,6 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
-        {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} />}
         {sub === "team" && <TeamPage onBack={() => setSub(null)} />}
