@@ -7691,9 +7691,9 @@ function AIPage({ onBack, user }) {
       setMessages(finalMsgs);
       saveToHistory(chatId, finalMsgs);
     } catch (err) {
-      const finalMsgs = [...newMsgs, { role: "assistant", content: "⚠️ Erro ao conectar com a IA. Verifique sua conexão e tente novamente." }];
+      console.error("AI error:", err);
+      const finalMsgs = [...newMsgs, { role: "assistant", content: `⚠️ Erro: ${err.message || "Falha ao conectar com a IA"}` }];
       setMessages(finalMsgs);
-      saveToHistory(chatId, finalMsgs);
     }
     setLoading(false);
   };
