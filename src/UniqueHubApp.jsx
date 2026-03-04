@@ -20,6 +20,23 @@ class DemandDetailBoundary extends React.Component {
   }
 }
 
+class SettingsBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("SettingsPage crash:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement("div", { style: { padding: 30, textAlign: "center" } },
+        React.createElement("p", { style: { fontSize: 40, marginBottom: 12 } }, "⚠️"),
+        React.createElement("h3", { style: { fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#f44" } }, "Erro nas Configurações"),
+        React.createElement("p", { style: { fontSize: 12, color: "#888", marginBottom: 10, fontFamily: "monospace", wordBreak: "break-all" } }, String(this.state.error)),
+        React.createElement("button", { onClick: () => this.setState({ hasError: false, error: null }), style: { marginTop: 10, padding: "8px 20px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer", fontFamily: "inherit" } }, "Tentar novamente")
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ═══════════════════════ SUPABASE ═══════════════════════ */
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -5386,7 +5403,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <p style={{ fontSize:16, fontWeight:700, marginTop:8 }}>{user?.name || "—"}</p>
         <p style={{ fontSize:12, color:B.muted }}>{user?.email || "—"}</p>
       </Card>
-      <p style={{ fontSize:12, color:B.muted, marginTop:8 }}>Perfil carregou OK. Debug: sub={sub}, editProfile={String(editProfile)}</p>
+      <p style={{ fontSize:12, color:B.muted, marginTop:8, textAlign:"center" }}>BUILD v3.04A - Perfil OK</p>
     </div>
   );
 
@@ -5968,7 +5985,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         </Card>
       ))}
       <button onClick={onLogout} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 14, width: "100%", background: `${B.red}08`, borderRadius: 14, border: `1px solid ${B.red}20`, cursor: "pointer", color: B.red, fontFamily: "inherit", marginTop: 20, fontSize: 14 }}>{IC.logout()} Sair da Conta</button>
-      <p style={{ fontSize: 11, color: B.muted, textAlign: "center", marginTop: 12 }}>UniqueHub Agency v1.0</p>
+      <p style={{ fontSize: 11, color: B.muted, textAlign: "center", marginTop: 12 }}>UniqueHub Agency v1.0 (build 3.04A)</p>
     </div>
   );
 }
@@ -9557,7 +9574,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
-        {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} />}
+        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
