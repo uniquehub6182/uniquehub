@@ -2837,6 +2837,15 @@ function AcademyPage({ onBack }) {
 }
 
 /* ═══════════════════════ FINANCIAL PAGE ═══════════════════════ */
+/* ── Reusable Field (outside component to avoid re-mount on state change) ── */
+const FinField = ({ label, value, onChange, placeholder, type, mono, helpText }) => (
+  <div style={{ marginBottom:10 }}>
+    <label className="sl" style={{ display:"block", marginBottom:4 }}>{label}</label>
+    <input type={type||"text"} value={value||""} onChange={e => onChange(e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : {}} />
+    {helpText && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{helpText}</p>}
+  </div>
+);
+
 function FinancialPage({ onBack, clients: propClients }) {
   const CDATA = propClients || CLIENTS_DATA_INIT;
   const totalRevReal = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
@@ -2883,14 +2892,6 @@ function FinancialPage({ onBack, clients: propClients }) {
     if (ok) showToast("Configurações salvas ✓");
     else showToast("Erro ao salvar. Verifique a tabela app_settings no Supabase.");
   };
-
-  const Field = ({ label, value, onChange, placeholder, type, mono, helpText }) => (
-    <div style={{ marginBottom:10 }}>
-      <label className="sl" style={{ display:"block", marginBottom:4 }}>{label}</label>
-      <input type={type||"text"} value={value||""} onChange={e => onChange(e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : {}} />
-      {helpText && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{helpText}</p>}
-    </div>
-  );
 
   const TABS = [
     { k:"dashboard", l:"Dashboard", icon:"📊" },
@@ -2976,21 +2977,21 @@ function FinancialPage({ onBack, clients: propClients }) {
       {finTab === "agency" && <>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Dados da Agência</p>
-          <Field label="Razão Social" value={fc.razaoSocial} onChange={v => upd("razaoSocial", v)} placeholder="Unique Marketing 360 Ltda" />
-          <Field label="Nome Fantasia" value={fc.agencyName} onChange={v => upd("agencyName", v)} placeholder="Unique Marketing 360" />
-          <Field label="CNPJ" value={fc.cnpj} onChange={v => upd("cnpj", v)} placeholder="00.000.000/0001-00" mono />
+          <FinField label="Razão Social" value={fc.razaoSocial} onChange={v => upd("razaoSocial", v)} placeholder="Unique Marketing 360 Ltda" />
+          <FinField label="Nome Fantasia" value={fc.agencyName} onChange={v => upd("agencyName", v)} placeholder="Unique Marketing 360" />
+          <FinField label="CNPJ" value={fc.cnpj} onChange={v => upd("cnpj", v)} placeholder="00.000.000/0001-00" mono />
           <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:1 }}><Field label="Inscrição Estadual" value={fc.ie} onChange={v => upd("ie", v)} placeholder="Isento" /></div>
-            <div style={{ flex:1 }}><Field label="Inscrição Municipal" value={fc.im} onChange={v => upd("im", v)} placeholder="000000" /></div>
+            <div style={{ flex:1 }}><FinField label="Inscrição Estadual" value={fc.ie} onChange={v => upd("ie", v)} placeholder="Isento" /></div>
+            <div style={{ flex:1 }}><FinField label="Inscrição Municipal" value={fc.im} onChange={v => upd("im", v)} placeholder="000000" /></div>
           </div>
         </Card>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Endereço</p>
-          <Field label="Endereço completo" value={fc.address} onChange={v => upd("address", v)} placeholder="Rua, número, complemento" />
+          <FinField label="Endereço completo" value={fc.address} onChange={v => upd("address", v)} placeholder="Rua, número, complemento" />
           <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:2 }}><Field label="Cidade" value={fc.city} onChange={v => upd("city", v)} placeholder="Petrópolis" /></div>
-            <div style={{ flex:1 }}><Field label="UF" value={fc.state} onChange={v => upd("state", v)} placeholder="RJ" /></div>
-            <div style={{ flex:1 }}><Field label="CEP" value={fc.cep} onChange={v => upd("cep", v)} placeholder="00000-000" mono /></div>
+            <div style={{ flex:2 }}><FinField label="Cidade" value={fc.city} onChange={v => upd("city", v)} placeholder="Petrópolis" /></div>
+            <div style={{ flex:1 }}><FinField label="UF" value={fc.state} onChange={v => upd("state", v)} placeholder="RJ" /></div>
+            <div style={{ flex:1 }}><FinField label="CEP" value={fc.cep} onChange={v => upd("cep", v)} placeholder="00000-000" mono /></div>
           </div>
         </Card>
         <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
@@ -3000,8 +3001,8 @@ function FinancialPage({ onBack, clients: propClients }) {
               <button key={r.k} onClick={() => upd("taxRegime", r.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.taxRegime===r.k?B.accent:B.border}`, background:fc.taxRegime===r.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.taxRegime===r.k?B.accent:B.muted }}>{r.l}</button>
             ))}
           </div>
-          {fc.taxRegime === "simples" && <Field label="Alíquota Simples Nacional (%)" value={fc.simplesRate} onChange={v => upd("simplesRate", parseFloat(v)||0)} type="number" helpText="Alíquota efetiva da faixa atual no Anexo III ou V" />}
-          <Field label="Alíquota ISS (%)" value={fc.issRate} onChange={v => upd("issRate", parseFloat(v)||0)} type="number" helpText="ISS sobre serviços de marketing/publicidade da sua cidade" />
+          {fc.taxRegime === "simples" && <FinField label="Alíquota Simples Nacional (%)" value={fc.simplesRate} onChange={v => upd("simplesRate", parseFloat(v)||0)} type="number" helpText="Alíquota efetiva da faixa atual no Anexo III ou V" />}
+          <FinField label="Alíquota ISS (%)" value={fc.issRate} onChange={v => upd("issRate", parseFloat(v)||0)} type="number" helpText="ISS sobre serviços de marketing/publicidade da sua cidade" />
         </Card>
       </>}
 
@@ -3009,10 +3010,10 @@ function FinancialPage({ onBack, clients: propClients }) {
       {finTab === "bank" && <>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Conta Bancária</p>
-          <Field label="Banco" value={fc.bankName} onChange={v => upd("bankName", v)} placeholder="Nubank, Itaú, Bradesco..." />
+          <FinField label="Banco" value={fc.bankName} onChange={v => upd("bankName", v)} placeholder="Nubank, Itaú, Bradesco..." />
           <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:1 }}><Field label="Agência" value={fc.bankAgency} onChange={v => upd("bankAgency", v)} placeholder="0001" mono /></div>
-            <div style={{ flex:1 }}><Field label="Conta" value={fc.bankAccount} onChange={v => upd("bankAccount", v)} placeholder="12345-6" mono /></div>
+            <div style={{ flex:1 }}><FinField label="Agência" value={fc.bankAgency} onChange={v => upd("bankAgency", v)} placeholder="0001" mono /></div>
+            <div style={{ flex:1 }}><FinField label="Conta" value={fc.bankAccount} onChange={v => upd("bankAccount", v)} placeholder="12345-6" mono /></div>
           </div>
           <p className="sl" style={{ marginBottom:6 }}>Tipo de conta</p>
           <div style={{ display:"flex", gap:6, marginBottom:6 }}>
@@ -3029,7 +3030,7 @@ function FinancialPage({ onBack, clients: propClients }) {
               <button key={t.k} onClick={() => upd("pixType", t.k)} style={{ padding:"8px 12px", borderRadius:10, border:`1.5px solid ${fc.pixType===t.k?B.accent:B.border}`, background:fc.pixType===t.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.pixType===t.k?B.accent:B.muted }}>{t.l}</button>
             ))}
           </div>
-          <Field label="Chave PIX" value={fc.pixKey} onChange={v => upd("pixKey", v)} placeholder={fc.pixType==="cnpj"?"00.000.000/0001-00":fc.pixType==="email"?"email@agencia.com.br":fc.pixType==="phone"?"(24) 99999-9999":"chave"} mono />
+          <FinField label="Chave PIX" value={fc.pixKey} onChange={v => upd("pixKey", v)} placeholder={fc.pixType==="cnpj"?"00.000.000/0001-00":fc.pixType==="email"?"email@agencia.com.br":fc.pixType==="phone"?"(24) 99999-9999":"chave"} mono />
         </Card>
         <Card style={{ background:`${B.green}06`, border:`1px solid ${B.green}20` }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:18 }}>🔒</span><p style={{ fontSize:11, color:B.green, lineHeight:1.5 }}>Estes dados ficam armazenados de forma segura e são usados apenas para gerar faturas e boletos para seus clientes.</p></div>
@@ -3040,27 +3041,27 @@ function FinancialPage({ onBack, clients: propClients }) {
       {finTab === "billing" && <>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Configurações Padrão</p>
-          <Field label="Dia de vencimento padrão" value={fc.defaultDueDay} onChange={v => upd("defaultDueDay", parseInt(v)||5)} type="number" helpText="Dia do mês para vencimento das faturas (1-28)" />
+          <FinField label="Dia de vencimento padrão" value={fc.defaultDueDay} onChange={v => upd("defaultDueDay", parseInt(v)||5)} type="number" helpText="Dia do mês para vencimento das faturas (1-28)" />
           <p className="sl" style={{ marginBottom:6 }}>Forma de pagamento padrão</p>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
             {["PIX","Boleto","Transferência","Cartão","Dinheiro"].map(m => (
               <button key={m} onClick={() => upd("defaultPayMethod", m)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.defaultPayMethod===m?B.accent:B.border}`, background:fc.defaultPayMethod===m?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.defaultPayMethod===m?B.accent:B.muted }}>{m}</button>
             ))}
           </div>
-          <Field label="Dias de trial / cortesia" value={fc.trialDays} onChange={v => upd("trialDays", parseInt(v)||0)} type="number" helpText="Período de teste grátis para novos clientes" />
+          <FinField label="Dias de trial / cortesia" value={fc.trialDays} onChange={v => upd("trialDays", parseInt(v)||0)} type="number" helpText="Período de teste grátis para novos clientes" />
         </Card>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Multa e Juros por Atraso</p>
           <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:1 }}><Field label="Multa (%)" value={fc.lateFeePercent} onChange={v => upd("lateFeePercent", parseFloat(v)||0)} type="number" helpText="Multa fixa sobre o valor (máx. legal: 2%)" /></div>
-            <div style={{ flex:1 }}><Field label="Juros ao mês (%)" value={fc.lateInterestPercent} onChange={v => upd("lateInterestPercent", parseFloat(v)||0)} type="number" helpText="Juros mora mensal (máx. legal: 1%)" /></div>
+            <div style={{ flex:1 }}><FinField label="Multa (%)" value={fc.lateFeePercent} onChange={v => upd("lateFeePercent", parseFloat(v)||0)} type="number" helpText="Multa fixa sobre o valor (máx. legal: 2%)" /></div>
+            <div style={{ flex:1 }}><FinField label="Juros ao mês (%)" value={fc.lateInterestPercent} onChange={v => upd("lateInterestPercent", parseFloat(v)||0)} type="number" helpText="Juros mora mensal (máx. legal: 1%)" /></div>
           </div>
         </Card>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Numeração de Faturas</p>
           <div style={{ display:"flex", gap:8 }}>
-            <div style={{ flex:1 }}><Field label="Prefixo" value={fc.invoicePrefix} onChange={v => upd("invoicePrefix", v.toUpperCase().slice(0,5))} placeholder="UMK" helpText="Prefixo das faturas (ex: UMK-001)" /></div>
-            <div style={{ flex:1 }}><Field label="Próximo número" value={fc.invoiceNextNum} onChange={v => upd("invoiceNextNum", parseInt(v)||1)} type="number" helpText="Número sequencial da próxima fatura" /></div>
+            <div style={{ flex:1 }}><FinField label="Prefixo" value={fc.invoicePrefix} onChange={v => upd("invoicePrefix", v.toUpperCase().slice(0,5))} placeholder="UMK" helpText="Prefixo das faturas (ex: UMK-001)" /></div>
+            <div style={{ flex:1 }}><FinField label="Próximo número" value={fc.invoiceNextNum} onChange={v => upd("invoiceNextNum", parseInt(v)||1)} type="number" helpText="Número sequencial da próxima fatura" /></div>
           </div>
           <Card style={{ background:`${B.accent}06`, padding:12, border:`1px solid ${B.accent}15`, marginTop:8 }}>
             <p style={{ fontSize:11, color:B.muted }}>Próxima fatura:</p>
@@ -3090,7 +3091,7 @@ function FinancialPage({ onBack, clients: propClients }) {
         </Card>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Mensal</p>
-          <Field label="Meta mensal (R$)" value={fc.monthlyGoal} onChange={v => upd("monthlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita mensal recorrente" />
+          <FinField label="Meta mensal (R$)" value={fc.monthlyGoal} onChange={v => upd("monthlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita mensal recorrente" />
           {fc.monthlyGoal > 0 && (() => {
             const pct = Math.min(100, Math.round((totalRevReal / fc.monthlyGoal) * 100));
             return (
@@ -3109,7 +3110,7 @@ function FinancialPage({ onBack, clients: propClients }) {
         </Card>
         <Card style={{ marginBottom:12 }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Anual</p>
-          <Field label="Meta anual (R$)" value={fc.yearlyGoal} onChange={v => upd("yearlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita acumulada no ano" />
+          <FinField label="Meta anual (R$)" value={fc.yearlyGoal} onChange={v => upd("yearlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita acumulada no ano" />
           {fc.yearlyGoal > 0 && (() => {
             const yearEst = totalRevReal * 12;
             const pct = Math.min(100, Math.round((yearEst / fc.yearlyGoal) * 100));
@@ -3134,7 +3135,7 @@ function FinancialPage({ onBack, clients: propClients }) {
             { label:"Nº de clientes pagantes", key:"goalClients", ph:"15" },
             { label:"Taxa de inadimplência máx. (%)", key:"goalChurnMax", ph:"10" },
           ].map((g, i) => (
-            <Field key={i} label={g.label} value={fc[g.key]||""} onChange={v => upd(g.key, v)} placeholder={g.ph} type="number" />
+            <FinField key={i} label={g.label} value={fc[g.key]||""} onChange={v => upd(g.key, v)} placeholder={g.ph} type="number" />
           ))}
         </Card>
       </>}
