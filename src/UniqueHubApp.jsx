@@ -4782,25 +4782,28 @@ function NotifsPage({ onBack, readIds, setReadIds }) {
     { id: 6, t: "Bella Estética aprovou 2 posts", cat: "content", tm: "5h", icon: IC.check },
     { id: 7, t: "Relatório de Janeiro disponível", cat: "report", tm: "1d", icon: IC.reports(B.blue) },
   ];
-  const toggle = id => setReadIds(r => r.includes(id) ? r.filter(x => x !== id) : [...r, id]);
+  const markRead = id => setReadIds(prev => prev.includes(id) ? prev : [...prev, id]);
   const unreadCount = notifs.filter(n => !readIds.includes(n.id)).length;
   const markAll = () => setReadIds(notifs.map(n => n.id));
 
   return (
     <div className="pg">
-      <Head title="Notificações" onBack={onBack} right={unreadCount > 0 ?
+      <Head title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} right={unreadCount > 0 ?
         <button onClick={markAll} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Marcar todas como lidas</button>
       : null} />
-      {unreadCount === 0 && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Nenhuma notificação pendente</p>}
-      {notifs.map((n, i) => (
-        <Card key={n.id} delay={i * 0.03} onClick={() => toggle(n.id)} style={{ marginTop: i ? 6 : 0, opacity: readIds.includes(n.id) ? 0.5 : 1, cursor: "pointer", borderLeft: `3px solid ${readIds.includes(n.id) ? B.border : B.accent}` }}>
+      {unreadCount === 0 && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Nenhuma notificação pendente 🎉</p>}
+      {notifs.map((n, i) => {
+        const isRead = readIds.includes(n.id);
+        return (
+        <Card key={n.id} delay={i * 0.03} onClick={() => !isRead && markRead(n.id)} style={{ marginTop: i ? 6 : 0, opacity: isRead ? 0.4 : 1, cursor: isRead ? "default" : "pointer", borderLeft: `3px solid ${isRead ? B.border : B.accent}`, transition: "opacity .3s" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: B.accent }}>{typeof n.icon === "function" ? n.icon : n.icon}</div>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: readIds.includes(n.id) ? 500 : 600 }}>{n.t}</p><p style={{ fontSize: 10, color: B.muted }}>{n.tm}</p></div>
-            {!readIds.includes(n.id) && <div style={{ width: 8, height: 8, borderRadius: 4, background: B.accent, flexShrink: 0 }} />}
+            <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: isRead ? 400 : 600 }}>{n.t}</p><p style={{ fontSize: 10, color: B.muted }}>{n.tm}{isRead ? " · Lida" : ""}</p></div>
+            {!isRead && <div style={{ width: 8, height: 8, borderRadius: 4, background: B.accent, flexShrink: 0 }} />}
           </div>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -4867,6 +4870,14 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [permMap, setPermMap] = useState({});
   const [permLoaded, setPermLoaded] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
+
+  /* Pending approvals count */
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    supaLoadTeam().then(rows => {
+      setPendingCount((rows || []).filter(r => r.status === "pendente").length);
+    });
+  }, [sub]);
 
   /* Profile editing */
   const [editProfile, setEditProfile] = useState(false);
@@ -5344,31 +5355,106 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   /* ═══ PERMISSIONS ═══ */
   const PERM_ROLES = ["Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)"];
   const PERM_AREAS = [
-    { k:"home", l:"Home / Dashboard", ic:IC.home },
-    { k:"content", l:"Demandas / Conteúdo", ic:IC.content },
-    { k:"chat", l:"Chat", ic:IC.chat },
-    { k:"clients", l:"Clientes", ic:IC.clients },
-    { k:"team", l:"Equipe", ic:IC.team },
-    { k:"financial", l:"Financeiro", ic:IC.financial },
-    { k:"calendar", l:"Calendário", ic:IC.calendar },
-    { k:"reports", l:"Relatórios", ic:IC.reports },
-    { k:"academy", l:"Academy", ic:IC.academy },
-    { k:"library", l:"Biblioteca", ic:IC.library },
-    { k:"checkin", l:"Check-in", ic:IC.checkin },
-    { k:"gamify", l:"Gamificação", ic:IC.trophy },
-    { k:"news", l:"News", ic:IC.news },
-    { k:"ideas", l:"Ideias", ic:IC.ideas },
-    { k:"settings", l:"Configurações", ic:IC.settings },
+    { k:"home", l:"Home / Dashboard", ic:IC.home, subs:[
+      { k:"home.view", l:"Visualizar dashboard" },
+      { k:"home.metrics", l:"Ver métricas financeiras" },
+      { k:"home.export", l:"Exportar dados" },
+    ]},
+    { k:"content", l:"Demandas / Conteúdo", ic:IC.content, subs:[
+      { k:"content.view", l:"Visualizar demandas" },
+      { k:"content.create", l:"Criar novas demandas" },
+      { k:"content.edit", l:"Editar demandas" },
+      { k:"content.delete", l:"Excluir demandas" },
+      { k:"content.approve", l:"Aprovar/rejeitar etapas" },
+      { k:"content.upload", l:"Upload de arquivos" },
+    ]},
+    { k:"chat", l:"Chat", ic:IC.chat, subs:[
+      { k:"chat.view", l:"Visualizar conversas" },
+      { k:"chat.send", l:"Enviar mensagens" },
+      { k:"chat.group", l:"Criar grupos" },
+    ]},
+    { k:"clients", l:"Clientes", ic:IC.clients, subs:[
+      { k:"clients.view", l:"Visualizar clientes" },
+      { k:"clients.edit", l:"Editar dados do cliente" },
+      { k:"clients.financial", l:"Ver financeiro do cliente" },
+      { k:"clients.files", l:"Gerenciar arquivos" },
+      { k:"clients.delete", l:"Excluir clientes" },
+    ]},
+    { k:"team", l:"Equipe", ic:IC.team, subs:[
+      { k:"team.view", l:"Visualizar membros" },
+      { k:"team.edit", l:"Editar membros" },
+      { k:"team.add", l:"Adicionar/remover membros" },
+    ]},
+    { k:"financial", l:"Financeiro", ic:IC.financial, subs:[
+      { k:"financial.view", l:"Visualizar receitas" },
+      { k:"financial.invoices", l:"Ver e gerar faturas" },
+      { k:"financial.edit", l:"Editar valores" },
+      { k:"financial.export", l:"Exportar relatórios" },
+    ]},
+    { k:"calendar", l:"Calendário", ic:IC.calendar, subs:[
+      { k:"calendar.view", l:"Visualizar eventos" },
+      { k:"calendar.create", l:"Criar/editar eventos" },
+    ]},
+    { k:"reports", l:"Relatórios", ic:IC.reports, subs:[
+      { k:"reports.view", l:"Visualizar relatórios" },
+      { k:"reports.generate", l:"Gerar relatórios" },
+    ]},
+    { k:"academy", l:"Academy", ic:IC.academy, subs:[
+      { k:"academy.view", l:"Ver cursos" },
+      { k:"academy.manage", l:"Gerenciar cursos" },
+    ]},
+    { k:"library", l:"Biblioteca", ic:IC.library, subs:[
+      { k:"library.view", l:"Visualizar biblioteca" },
+      { k:"library.upload", l:"Upload de materiais" },
+    ]},
+    { k:"checkin", l:"Check-in", ic:IC.checkin, subs:[
+      { k:"checkin.own", l:"Fazer próprio check-in" },
+      { k:"checkin.viewAll", l:"Ver check-ins de todos" },
+    ]},
+    { k:"gamify", l:"Gamificação", ic:IC.trophy, subs:[
+      { k:"gamify.view", l:"Ver ranking" },
+      { k:"gamify.award", l:"Conceder XP/badges" },
+    ]},
+    { k:"news", l:"News", ic:IC.news, subs:[
+      { k:"news.view", l:"Ler notícias" },
+      { k:"news.create", l:"Criar/editar artigos" },
+    ]},
+    { k:"ideas", l:"Ideias", ic:IC.ideas, subs:[
+      { k:"ideas.view", l:"Visualizar ideias" },
+      { k:"ideas.create", l:"Enviar ideias" },
+    ]},
+    { k:"settings", l:"Configurações", ic:IC.settings, subs:[
+      { k:"settings.own", l:"Configurações próprias" },
+      { k:"settings.admin", l:"Configurações da agência" },
+    ]},
   ];
 
   const loadPerms = async () => { const m = await supaLoadPermissions(); setPermMap(m); setPermLoaded(true); };
   const togglePerm = (area) => {
     setPermMap(prev => {
       const rolePerms = { ...(prev[permRole] || {}) };
-      rolePerms[area] = !rolePerms[area];
+      rolePerms[area] = rolePerms[area] === false ? true : false;
       return { ...prev, [permRole]: rolePerms };
     });
   };
+  const toggleAreaMaster = (area) => {
+    setPermMap(prev => {
+      const rolePerms = { ...(prev[permRole] || {}) };
+      const a = PERM_AREAS.find(x => x.k === area);
+      const allSubs = a?.subs || [];
+      const allBlocked = allSubs.every(s => rolePerms[s.k] === false);
+      /* If all blocked, enable all. Otherwise block all. Also toggle master. */
+      if (allBlocked) {
+        rolePerms[area] = true;
+        allSubs.forEach(s => { delete rolePerms[s.k]; });
+      } else {
+        rolePerms[area] = false;
+        allSubs.forEach(s => { rolePerms[s.k] = false; });
+      }
+      return { ...prev, [permRole]: rolePerms };
+    });
+  };
+  const [expandedPerm, setExpandedPerm] = useState(null);
   const savePerms = async () => {
     if (!permRole) return;
     setPermSaving(true);
@@ -5388,13 +5474,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         {PERM_ROLES.map((r, i) => {
           const perms = permMap[r] || {};
           const blockedCount = PERM_AREAS.filter(a => perms[a.k] === false).length;
+          const subBlockedCount = PERM_AREAS.reduce((acc, a) => acc + (a.subs || []).filter(s => perms[s.k] === false).length, 0);
+          const totalBlocked = blockedCount + subBlockedCount;
           return (
             <Card key={r} delay={i * 0.03} onClick={() => setPermRole(r)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <Av name={r} sz={38} fs={13} />
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:14, fontWeight:600 }}>{r}</p>
-                  <p style={{ fontSize:11, color:blockedCount > 0 ? B.orange : B.green }}>{blockedCount > 0 ? `${blockedCount} área${blockedCount>1?"s":""} bloqueada${blockedCount>1?"s":""}` : "Acesso total"}</p>
+                  <p style={{ fontSize:11, color:totalBlocked > 0 ? B.orange : B.green }}>{totalBlocked > 0 ? `${totalBlocked} restrição${totalBlocked>1?"ões":""}` : "Acesso total"}</p>
                 </div>
                 {IC.chev()}
               </div>
@@ -5403,25 +5491,48 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         })}
       </div>
     );
-    /* Role selected → show toggles */
+    /* Role selected → show toggles with sub-options */
     const rolePerms = permMap[permRole] || {};
     return (
       <div className="pg">
         {ToastEl}
-        <Head title={permRole} onBack={() => setPermRole(null)} right={
+        <Head title={permRole} onBack={() => { setPermRole(null); setExpandedPerm(null); }} right={
           <button onClick={savePerms} disabled={permSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar"}</button>
         } />
-        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Ative ou desative o acesso a cada área do app para o cargo <strong>{permRole}</strong>.</p>
+        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Configure o acesso detalhado para <strong>{permRole}</strong>. Clique em cada área para ver as sub-opções.</p>
         {PERM_AREAS.map((a, i) => {
-          const allowed = rolePerms[a.k] !== false;
+          const masterAllowed = rolePerms[a.k] !== false;
+          const isExpanded = expandedPerm === a.k;
+          const subBlocked = (a.subs || []).filter(s => rolePerms[s.k] === false).length;
           return (
-            <Card key={a.k} style={{ marginTop:i?6:0 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:allowed?`${B.accent}10`:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", color:allowed?B.accent:B.red }}>{typeof a.ic === "function" ? a.ic(allowed?B.accent:B.red) : a.ic}</div>
-                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{a.l}</p></div>
-                <Toggle on={allowed} onToggle={() => togglePerm(a.k)} />
-              </div>
-            </Card>
+            <div key={a.k} style={{ marginTop:i?6:0 }}>
+              <Card style={{ borderBottomLeftRadius: isExpanded?0:undefined, borderBottomRightRadius: isExpanded?0:undefined }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:masterAllowed?`${B.accent}10`:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", color:masterAllowed?B.accent:B.red }}>{typeof a.ic === "function" ? a.ic(masterAllowed?B.accent:B.red) : a.ic}</div>
+                  <div style={{ flex:1, cursor:"pointer" }} onClick={() => setExpandedPerm(isExpanded ? null : a.k)}>
+                    <p style={{ fontSize:13, fontWeight:600 }}>{a.l}</p>
+                    {subBlocked > 0 && masterAllowed && <p style={{ fontSize:10, color:B.orange }}>{subBlocked} sub-opção{subBlocked>1?"ões":""} restrita{subBlocked>1?"s":""}</p>}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    {a.subs?.length > 0 && <button onClick={() => setExpandedPerm(isExpanded ? null : a.k)} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", transform:isExpanded?"rotate(90deg)":"none", transition:"transform .2s" }}>{IC.chev()}</button>}
+                    <Toggle on={masterAllowed} onToggle={() => toggleAreaMaster(a.k)} />
+                  </div>
+                </div>
+              </Card>
+              {isExpanded && a.subs?.length > 0 && (
+                <div style={{ background:`${B.accent}04`, border:`1px solid ${B.border}`, borderTop:"none", borderBottomLeftRadius:16, borderBottomRightRadius:16, padding:"4px 0" }}>
+                  {a.subs.map((s, j) => {
+                    const subAllowed = rolePerms[s.k] !== false && masterAllowed;
+                    return (
+                      <div key={s.k} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px 10px 60px", opacity: masterAllowed ? 1 : 0.35 }}>
+                        <div style={{ flex:1 }}><p style={{ fontSize:12, color: subAllowed ? B.text : B.muted }}>{s.l}</p></div>
+                        <Toggle on={subAllowed} onToggle={() => masterAllowed && togglePerm(s.k)} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
         <button onClick={savePerms} disabled={permSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar Permissões"}</button>
@@ -5512,9 +5623,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </Card>
       {[
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
-        { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: 2 },
+        { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" },
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
-        ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai, desc: "Chaves de API e provedor" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema e modo escuro" },
         { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
         { k: "navmenu", l: "Personalizar Menu", ic: IC.more(B.accent), desc: "Escolha os itens do menu", act: () => onNavEdit && onNavEdit() },
@@ -5523,10 +5634,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       ].map((s, i) => (
         <Card key={s.k} delay={i * 0.04} onClick={() => s.act ? s.act() : setSub(s.k)} style={{ marginTop: 8, cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.accent }}>{typeof s.ic === "function" ? s.ic : s.ic}</div>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.accent }}>{typeof s.ic === "function" ? s.ic(B.accent) : s.ic}</div>
             <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{s.l}</p><p style={{ fontSize: 11, color: B.muted }}>{s.desc}</p></div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {s.badge && <div style={{ width: 20, height: 20, borderRadius: 10, background: B.red, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.badge}</div>}
+              {s.badge === "pending" && pendingCount > 0 && <div style={{ width: 20, height: 20, borderRadius: 10, background: B.red, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{pendingCount}</div>}
+              {typeof s.badge === "number" && s.badge > 0 && <div style={{ width: 20, height: 20, borderRadius: 10, background: B.red, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.badge}</div>}
               {IC.chev()}
             </div>
           </div>
@@ -8552,7 +8664,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     try { return JSON.parse(localStorage.getItem("uh_notif_read") || "[]"); } catch { return []; }
   });
   const TOTAL_NOTIFS = 7; /* matches NotifsPage mock data count */
-  const notifCount = TOTAL_NOTIFS - notifReadIds.length;
+  const notifCount = Math.max(0, TOTAL_NOTIFS - notifReadIds.length);
   const updateNotifReadIds = (fn) => {
     setNotifReadIds(prev => {
       const next = typeof fn === "function" ? fn(prev) : fn;
