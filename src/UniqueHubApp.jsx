@@ -1026,6 +1026,9 @@ function useToast() {
 
 /* ═══════════════════════ LOGIN / AUTH ═══════════════════════ */
 function LoginPage({ onAuth }) {
+  const [showOB, setShowOB] = useState(true);
+  const [obSlide, setObSlide] = useState(0);
+  const obTouchRef = useRef(null);
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState(1);
   /* Login fields */
@@ -1053,6 +1056,8 @@ function LoginPage({ onAuth }) {
   const [remember, setRemember] = useState(false);
   const [inviteData, setInviteData] = useState(null);
   const [fromInviteLink, setFromInviteLink] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [regSuccess, setRegSuccess] = useState("");
 
   /* Auto-detect invite link ?convite=email */
   useEffect(() => {
@@ -1115,8 +1120,6 @@ function LoginPage({ onAuth }) {
 
   const cargos = ["CEO","Gerente","Head de Marketing","Social Media","Designer","Gestor de Tráfego","Audiovisual / Vídeo","Redator(a)","Atendimento","Analista de Dados","Estagiário(a)"];
 
-  const [loginLoading, setLoginLoading] = useState(false);
-
   const handleLogin = async () => {
     if (!email.trim() || !pw.trim()) { setError("Preencha email e senha"); return; }
     /* Try Supabase auth if available */
@@ -1149,7 +1152,6 @@ function LoginPage({ onAuth }) {
     onAuth({ name: member?.name || emailLocal, email, role: member?.role || "Colaborador", photo: member?.photo || null, phone: member?.phone || "", nick: member?.name || emailLocal, birth: "", social: "", blood: "", bio: "", remember });
   };
 
-  const [regSuccess, setRegSuccess] = useState("");
   const handleRegister = async () => {
     if (supabase) {
       setLoginLoading(true); setError(""); setRegSuccess("");
@@ -1199,6 +1201,91 @@ function LoginPage({ onAuth }) {
 
   const stepLabels = ["Dados","Contato","Função","Segurança"];
   const stepValid = [step1Valid, step2Valid, step3Valid, step4Valid];
+
+  /* ── ONBOARDING SLIDES ── */
+  const obSlides = [
+    { title:"Gerencie sua agência", desc:"Dashboard completo, clientes, demandas, financeiro e muito mais — tudo num só lugar.",
+      color:"#BBF246", bg:"linear-gradient(160deg,#0B0F14,#0F1A15,#0B0F14)",
+      svg:(sz)=><svg width={sz} height={sz} viewBox="0 0 200 200" fill="none">
+        <rect x="20" y="50" width="160" height="120" rx="16" fill="#1C2228" stroke="#BBF246" strokeWidth="1.5"/>
+        <rect x="32" y="66" width="56" height="36" rx="8" fill="#BBF24618"/><rect x="36" y="72" width="24" height="4" rx="2" fill="#BBF24660"/><rect x="36" y="80" width="38" height="3" rx="1.5" fill="#ffffff20"/><rect x="36" y="87" width="20" height="3" rx="1.5" fill="#ffffff15"/>
+        <rect x="96" y="66" width="72" height="36" rx="8" fill="#BBF24610"/><rect x="104" y="78" width="6" height="18" rx="3" fill="#BBF24680"/><rect x="114" y="72" width="6" height="24" rx="3" fill="#BBF246B0"/><rect x="124" y="82" width="6" height="14" rx="3" fill="#BBF24660"/><rect x="134" y="76" width="6" height="20" rx="3" fill="#BBF24690"/><rect x="144" y="80" width="6" height="16" rx="3" fill="#BBF24650"/>
+        <rect x="32" y="110" width="136" height="48" rx="8" fill="#BBF24608"/><circle cx="52" cy="128" r="10" fill="#BBF24620" stroke="#BBF24650" strokeWidth="1"/><rect x="68" y="123" width="40" height="4" rx="2" fill="#ffffff20"/><rect x="68" y="131" width="28" height="3" rx="1.5" fill="#ffffff12"/><circle cx="52" cy="148" r="6" fill="#BBF24615"/><rect x="68" y="145" width="32" height="3" rx="1.5" fill="#ffffff12"/>
+        <circle cx="100" cy="30" r="14" fill="#BBF246" opacity="0.15"/><path d="M95 30l4 4 8-8" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>},
+    { title:"Controle total na palma da mão", desc:"Check-in, chat com a equipe, calendário, biblioteca, relatórios e IA — acesse de qualquer lugar.",
+      color:"#60A5FA", bg:"linear-gradient(160deg,#0A1228,#0D1837,#0A1228)",
+      svg:(sz)=><svg width={sz} height={sz} viewBox="0 0 200 200" fill="none">
+        <rect x="52" y="16" width="96" height="172" rx="20" fill="#1C2228" stroke="#60A5FA30" strokeWidth="1.5"/>
+        <rect x="60" y="40" width="80" height="120" rx="4" fill="#0A1228"/>
+        <rect x="68" y="50" width="64" height="28" rx="8" fill="#60A5FA10" stroke="#60A5FA25" strokeWidth="0.5"/><circle cx="82" cy="64" r="8" fill="#60A5FA20"/><path d="M79 64l2 2 5-5" stroke="#60A5FA" strokeWidth="1.5" strokeLinecap="round"/><rect x="96" y="58" width="28" height="3" rx="1.5" fill="#ffffff20"/><rect x="96" y="64" width="18" height="2.5" rx="1" fill="#ffffff12"/>
+        <rect x="68" y="84" width="30" height="30" rx="8" fill="#60A5FA15"/><rect x="68" y="84" width="30" height="12" rx="8" fill="#60A5FA25"/><rect x="73" y="100" width="20" height="2.5" rx="1" fill="#ffffff15"/>
+        <rect x="102" y="84" width="30" height="30" rx="8" fill="#60A5FA10"/><circle cx="117" cy="96" r="6" fill="#60A5FA20"/><rect x="107" y="106" width="20" height="2.5" rx="1" fill="#ffffff15"/>
+        <rect x="68" y="120" width="64" height="24" rx="8" fill="#60A5FA08"/><rect x="76" y="128" width="48" height="3" rx="1.5" fill="#ffffff15"/><rect x="76" y="134" width="32" height="2.5" rx="1" fill="#ffffff10"/>
+        <rect x="70" y="148" width="12" height="4" rx="2" fill="#60A5FA40"/><rect x="86" y="148" width="12" height="4" rx="2" fill="#60A5FA25"/><rect x="102" y="148" width="12" height="4" rx="2" fill="#60A5FA15"/><rect x="118" y="148" width="12" height="4" rx="2" fill="#60A5FA25"/>
+        <rect x="86" y="24" width="28" height="4" rx="2" fill="#0A1228"/>
+      </svg>},
+    { title:"Pronto para começar?", desc:"Entre na plataforma que vai transformar a gestão da sua agência de marketing.",
+      color:"#BBF246", bg:"linear-gradient(160deg,#0B0F14,#121A10,#0B0F14)",
+      svg:(sz)=><svg width={sz} height={sz} viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="85" r="50" fill="#BBF24608" stroke="#BBF24625" strokeWidth="1"/>
+        <circle cx="100" cy="85" r="35" fill="#BBF24012" stroke="#BBF24618" strokeWidth="0.5"/>
+        <path d="M85 85l10 10 22-22" stroke="#BBF246" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="100" cy="85" r="60" fill="none" stroke="#BBF24610" strokeWidth="0.5" strokeDasharray="4 4"/>
+        <rect x="30" y="155" width="140" height="12" rx="6" fill="#BBF24615"/><rect x="56" y="155" width="88" height="12" rx="6" fill="#BBF24630"/>
+        <text x="100" y="184" textAnchor="middle" fontSize="9" fill="#BBF24680" fontFamily="Inter,sans-serif" fontWeight="600">UNIQUE MARKETING 360</text>
+      </svg>},
+  ];
+
+  if (showOB) {
+    const s = obSlides[obSlide];
+    const goNext = () => { if(obSlide < 2) setObSlide(obSlide+1); };
+    const goPrev = () => { if(obSlide > 0) setObSlide(obSlide-1); };
+    return (
+      <div style={{ position:"fixed", inset:0, background:s.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"0 0 40px", fontFamily:"'Inter',-apple-system,sans-serif", overflow:"hidden", touchAction:"pan-y" }}
+        onTouchStart={e => { obTouchRef.current = e.touches[0].clientX; }}
+        onTouchEnd={e => { if(!obTouchRef.current) return; const diff = obTouchRef.current - e.changedTouches[0].clientX; if(Math.abs(diff)>50){ if(diff>0) goNext(); else goPrev(); } obTouchRef.current=null; }}
+      >
+        {/* Top spacer + skip */}
+        <div style={{ width:"100%", display:"flex", justifyContent:"flex-end", padding:"50px 24px 0" }}>
+          {obSlide < 2 && <button onClick={() => setShowOB(false)} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:"inherit", padding:"6px 12px" }}>Pular</button>}
+        </div>
+
+        {/* Illustration */}
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", width:"100%" }}>
+          <div key={obSlide} style={{ animation:"fadeUp .4s ease", display:"flex", justifyContent:"center" }}>
+            {s.svg(220)}
+          </div>
+        </div>
+
+        {/* Text + buttons */}
+        <div style={{ width:"100%", padding:"0 32px", textAlign:"center" }}>
+          <h1 key={"t"+obSlide} style={{ fontSize:26, fontWeight:800, color:"#F0F2F5", marginBottom:10, lineHeight:1.2, animation:"fadeUp .4s ease" }}>{s.title}</h1>
+          <p key={"d"+obSlide} style={{ fontSize:14, color:"rgba(255,255,255,0.45)", lineHeight:1.6, marginBottom:32, animation:"fadeUp .5s ease" }}>{s.desc}</p>
+
+          {/* Dots */}
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:24 }}>
+            {obSlides.map((_, i) => <div key={i} style={{ width:i===obSlide?24:8, height:8, borderRadius:4, background:i===obSlide?s.color:"rgba(255,255,255,0.15)", transition:"all .3s" }} />)}
+          </div>
+
+          {obSlide < 2 ? (
+            <button onClick={goNext} style={{ width:"100%", padding:"16px 0", borderRadius:14, border:"none", background:s.color, color:"#0B0F14", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              Próximo
+            </button>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              <button onClick={() => { setShowOB(false); setMode("login"); }} style={{ width:"100%", padding:"16px 0", borderRadius:14, border:"none", background:s.color, color:"#0B0F14", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                Entrar
+              </button>
+              <button onClick={() => { setShowOB(false); setMode("register"); }} style={{ width:"100%", padding:"16px 0", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.12)", background:"transparent", color:"#F0F2F5", fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                Criar conta
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   /* ── PENDING SCREEN ── */
   if (mode === "pending") return (
