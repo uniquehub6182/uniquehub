@@ -1483,7 +1483,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
               { k:"checkin", l:"Check-in", icon:"📍", c:B.green },
               { k:"clients", l:"Clientes", icon:"👥", c:B.blue },
               { k:"content", l:"Conteúdo", icon:"📋", c:B.orange },
-              { k:"gamify", l:"Ranking", icon:"🏆", c:B.orange },
+              { k:"ai", l:"IA", icon:"🤖", c:B.purple },
               { k:"calendar", l:"Agenda", icon:"📅", c:B.accent },
               { k:"gamify", l:"Ranking", icon:"🏆", c:"#F59E0B" },
               { k:"financial", l:"Financeiro", icon:"💰", c:B.green },
@@ -5301,6 +5301,7 @@ const ALL_TABS = [
   { k: "reports", l: "Relatórios", i: IC.reports },
   { k: "news", l: "News", i: IC.news },
   { k: "ideas", l: "Ideias", i: IC.ideas },
+  { k: "ai", l: "IA", i: IC.ai },
   { k: "gamify", l: "Ranking", i: IC.gamify },
   { k: "help", l: "Ajuda", i: IC.help },
   { k: "search", l: "Buscar", i: IC.search },
@@ -5311,7 +5312,7 @@ const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
   { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
-  { k: "gamify", l: "Ranking" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
+  { k: "ai", l: "Assistente IA" }, { k: "gamify", l: "Ranking" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
 ];
 
 function MoreSheet({ onClose, goSub }) {
@@ -8053,6 +8054,7 @@ function SearchPage({ onBack }) {
     { k:"academy", l:"Academy", d:"Cursos e treinamentos", ic:IC.academy },
     { k:"news", l:"News", d:"Notícias e tendências", ic:IC.news },
     { k:"ideas", l:"Ideias", d:"Brainstorm da equipe", ic:IC.ideas },
+    { k:"ai", l:"Assistente IA", d:"Chat com inteligência artificial", ic:IC.ai },
     { k:"gamify", l:"Ranking", d:"Gamificação e recompensas", ic:IC.gamify },
     { k:"checkin", l:"Check-in", d:"Ponto digital", ic:IC.checkin },
     { k:"settings", l:"Configurações", d:"Perfil e preferências", ic:IC.settings },
@@ -8412,6 +8414,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
+        {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} />}
         {sub === "team" && <TeamPage onBack={() => setSub(null)} />}
