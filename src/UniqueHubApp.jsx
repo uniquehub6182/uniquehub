@@ -8302,43 +8302,183 @@ function HelpPage({ onBack }) {
   const [contactForm, setContactForm] = useState(false);
   const [cMsg, setCMsg] = useState("");
   const [cTopic, setCTopic] = useState("");
+  const [searchQ, setSearchQ] = useState("");
+  const [helpTab, setHelpTab] = useState("faq"); /* faq | guides | shortcuts | videos */
   const { showToast, ToastEl } = useToast();
 
   const FAQ = [
     { cat:"Primeiros Passos", icon:IC.home, color:B.accent, questions:[
+      { q:"Como começo a usar o UniqueHub?", a:"Após o login, você será direcionado à Home/Dashboard. Explore o menu inferior para navegar entre as áreas. Recomendamos começar cadastrando seus clientes, depois crie a primeira demanda de conteúdo. Use Configurações > Personalizar Menu para organizar o menu como preferir." },
       { q:"Como adicionar um novo cliente?", a:"Vá em Clientes no menu principal, toque no botão '+ Novo Cliente' no topo da página. Preencha os dados do cliente como nome, contato, plano e segmento, depois toque em 'Salvar'. O cliente aparecerá automaticamente na lista." },
       { q:"Como fazer check-in de ponto?", a:"Acesse Check-in no menu ou pelo atalho na Home. Toque em 'Registrar Entrada' ao chegar e 'Registrar Saída' ao sair. O sistema registra automaticamente o horário e calcula as horas trabalhadas." },
       { q:"Como personalizar meu menu de navegação?", a:"Vá em Configurações > Personalizar Menu. Lá você pode arrastar os itens para reordenar e escolher quais aparecem na barra de navegação inferior (máximo 5 itens)." },
       { q:"Como alterar minha foto de perfil?", a:"Vá em Configurações > Perfil. Toque no ícone da câmera sobre sua foto de perfil atual e selecione uma nova imagem da sua galeria." },
+      { q:"Como funciona o sistema de login?", a:"O UniqueHub usa autenticação via Supabase. Ao criar uma conta, seus dados ficam vinculados ao e-mail informado. Após o cadastro, um administrador precisa aprovar sua conta em Configurações > Aprovações para que você tenha acesso completo." },
+      { q:"Posso usar o app no celular e no computador?", a:"Sim! O UniqueHub é responsivo e funciona em qualquer dispositivo com navegador. Sua sessão é sincronizada — alterações feitas no celular aparecem no computador em tempo real." },
     ]},
-    { cat:"Clientes & Conteúdo", icon:IC.clients, color:B.blue, questions:[
-      { q:"Como criar uma demanda de conteúdo?", a:"Na aba Conteúdo, selecione o pipeline desejado (Social, Campanhas ou Vídeo) e toque no '+'. Preencha o briefing com título, cliente, rede social e descrição. A demanda entrará na primeira coluna do pipeline." },
-      { q:"Como mover uma demanda entre etapas?", a:"No pipeline de conteúdo, toque na demanda desejada para abrir os detalhes. Use os botões de 'Avançar Etapa' ou 'Voltar Etapa' para mover entre as colunas do pipeline." },
-      { q:"Como acessar os arquivos de um cliente?", a:"Vá em Clientes, toque no cliente desejado e selecione a aba 'Biblioteca'. Todos os arquivos do cliente estarão organizados por categoria (Manual de Marca, Posts, Stories, Vídeos, etc.)." },
+    { cat:"Demandas & Conteúdo", icon:IC.content, color:B.blue, questions:[
+      { q:"Como criar uma demanda de conteúdo?", a:"Na aba Conteúdo, selecione o pipeline desejado (Social, Campanhas ou Vídeo) e toque no '+'. Preencha o briefing com título, cliente, rede social e descrição. A demanda entrará na primeira etapa 'Ideia'." },
+      { q:"Quais são as etapas do workflow?", a:"O pipeline Social tem 7 etapas: Ideia → Briefing → Design → Legenda → Revisão → Aprovação do Cliente → Publicado. O pipeline de Vídeo tem etapas extras: Produção e Edição. Cada etapa é responsabilidade de um cargo diferente (Head, Social Media, Designer, etc.)." },
+      { q:"Como mover uma demanda entre etapas?", a:"Abra a demanda e preencha o conteúdo da etapa atual (ex: texto do briefing, upload de arte, etc.). Depois use o botão 'Avançar' para mover para a próxima etapa. Gerentes podem rejeitar e enviar de volta a etapas anteriores." },
+      { q:"Como fazer upload de arquivos na demanda?", a:"Na etapa de Design ou Produção, use o botão 'Selecionar arquivos'. Você pode enviar múltiplas imagens, vídeos, PSDs e PDFs de uma vez. Os arquivos ficam vinculados à demanda e podem ser baixados por qualquer membro." },
+      { q:"Como definir agendamento de publicação?", a:"Na etapa de Legenda, preencha os campos 'Data' e 'Horário' de agendamento. A data aparecerá no card da demanda e na etapa de publicação para referência." },
+      { q:"Posso criar demandas de campanha?", a:"Sim! No pipeline 'Campanhas', crie demandas com tipo campanha. Elas possuem campos especiais: orçamento, milestones, datas de início/fim, breakdown de custos e referências visuais." },
+      { q:"Como filtrar demandas?", a:"Na lista de demandas, use os filtros no topo: por pipeline (Social/Campanha/Vídeo), por status de etapa, por cliente, por prioridade (Alta/Média/Baixa) ou use a busca por texto." },
+      { q:"O que acontece quando a demanda é rejeitada?", a:"Na etapa de Revisão, o gerente pode rejeitar e enviar de volta para 'Arte' (refazer design) ou 'Legenda' (refazer texto). A demanda volta à etapa escolhida e o responsável é notificado." },
+      { q:"Como funciona a pré-visualização do post?", a:"Na etapa de Legenda, após upload da arte e texto da legenda, o sistema gera automaticamente uma pré-visualização do post como ficaria na rede social selecionada (Instagram Feed, Stories, Reels)." },
+    ]},
+    { cat:"Clientes", icon:IC.clients, color:"#10B981", questions:[
+      { q:"Como acessar os arquivos de um cliente?", a:"Vá em Clientes, toque no cliente desejado e selecione a aba 'Biblioteca'. Todos os arquivos do cliente estarão organizados por categoria (Manual de Marca, Posts, Stories, Vídeos, etc.). Você pode fazer upload diretamente nesta seção." },
       { q:"Como enviar um contrato?", a:"No perfil do cliente, acesse a aba 'Contrato'. Lá você pode visualizar e gerenciar os termos contratuais, valores e datas de vigência." },
+      { q:"Como gerenciar faturas de um cliente?", a:"Na aba do cliente, acesse a seção de faturas. Você pode gerar novas faturas, marcar como pagas, ver o histórico de pagamentos e identificar faturas pendentes ou atrasadas." },
+      { q:"Como adicionar anotações sobre um cliente?", a:"No perfil do cliente, use o campo de observações para adicionar notas importantes. As anotações são visíveis para toda a equipe e ficam salvas no histórico." },
+      { q:"Posso fazer upload de arquivos reais nos clientes?", a:"Sim! Na aba 'Biblioteca' do cliente, clique em '+ Adicionar'. Selecione o arquivo do seu dispositivo, escolha a categoria (Manual de marca, Posts, Vídeos, etc.) e envie. O arquivo é armazenado no servidor e fica disponível para download." },
+      { q:"Como editar informações do cliente?", a:"Abra o perfil do cliente e toque no ícone de edição (lápis). Você pode alterar nome, contato, e-mail, segmento, plano mensal e todas as outras informações. Salve para aplicar as alterações." },
     ]},
     { cat:"Financeiro", icon:IC.dollar, color:B.green, questions:[
       { q:"Como visualizar o faturamento mensal?", a:"Acesse Financeiro no menu principal ou pelo card na Home. O dashboard mostra receita total, quantidade de pagantes, ticket médio e status de cada cliente (pago, pendente, atrasado)." },
-      { q:"Como registrar um pagamento recebido?", a:"No Financeiro, localize o cliente na lista e toque em 'Marcar como Pago'. O sistema atualizará automaticamente o status e os totais do mês." },
+      { q:"Como registrar um pagamento recebido?", a:"No Financeiro, localize o cliente na lista e toque em 'Marcar como Pago'. O sistema atualizará automaticamente o status e os totais do mês. A data do pagamento é registrada." },
       { q:"Como gerar relatórios financeiros?", a:"Vá em Relatórios > Financeiro. Selecione o período desejado e visualize a evolução de receita, receita por plano e detalhamento por cliente." },
+      { q:"O que significam os status de pagamento?", a:"🟢 Pago: Cliente pagou a mensalidade. 🟡 Pendente: Fatura emitida mas ainda não paga. 🔴 Atrasado: Pagamento com data vencida. O sistema calcula automaticamente com base na data de vencimento." },
+      { q:"Como gerar uma nova fatura?", a:"No perfil do cliente, seção de faturas, use o botão '+ Nova fatura'. O sistema gera automaticamente uma fatura com o valor do plano mensal do cliente, data atual e status 'pendente'." },
     ]},
     { cat:"Equipe & Chat", icon:IC.chat, color:B.purple, questions:[
-      { q:"Como usar o chat interno?", a:"Acesse Chat no menu principal. Você pode enviar mensagens para toda a equipe no chat geral ou tocar no nome de um membro para iniciar uma conversa privada. O chat suporta texto e mostra indicadores de leitura." },
+      { q:"Como usar o chat interno?", a:"Acesse Chat no menu principal. Você pode enviar mensagens para toda a equipe no chat geral ou tocar no nome de um membro para iniciar uma conversa privada. O chat suporta texto e mostra indicadores de leitura (✓✓ azul = lido)." },
       { q:"Como ver quem está online?", a:"Na Home, a seção 'Equipe online' mostra todos os membros com indicador verde (online) ou cinza (offline). Também é possível ver o status na página Equipe." },
       { q:"Como adicionar um membro à equipe?", a:"Vá em Equipe e toque em '+ Novo Membro'. Preencha nome, cargo, e-mail e telefone. Alternativamente, o membro pode se cadastrar pela tela de login e aguardar aprovação em Configurações > Aprovações." },
+      { q:"Como criar um grupo no chat?", a:"No Chat, toque no ícone '+ Novo' e selecione 'Grupo'. Defina o nome do grupo e adicione os participantes. Todos no grupo receberão as mensagens enviadas." },
+      { q:"Como funcionam os indicadores de leitura?", a:"✓ (cinza) = mensagem enviada. ✓✓ (azul) = mensagem lida pelo destinatário. Os indicadores atualizam em tempo real a cada poucos segundos." },
+      { q:"Como aprovar um novo membro?", a:"Apenas CEO e Gerentes podem aprovar cadastros. Vá em Configurações > Aprovações para ver solicitações pendentes. O badge vermelho indica quantas aprovações estão pendentes." },
     ]},
     { cat:"Calendário & Agenda", icon:IC.clock, color:B.orange, questions:[
       { q:"Como criar um evento no calendário?", a:"Acesse Calendário, selecione o dia desejado e toque em '+ Novo'. Escolha o tipo (Reunião, Gravação, Evento, Lembrete ou Deadline), preencha os detalhes e salve." },
-      { q:"Quais tipos de evento posso criar?", a:"O calendário suporta 5 tipos: Reunião (online/presencial, interna/com cliente), Gravação (com lista de equipamentos), Evento (externo), Lembrete (pessoal) e Deadline (prazo de entrega)." },
+      { q:"Quais tipos de evento posso criar?", a:"O calendário suporta 5 tipos: 📋 Reunião (online/presencial, interna/com cliente), 🎬 Gravação (com lista de equipamentos e localização), 🎉 Evento (externo), ⏰ Lembrete (pessoal) e 📅 Deadline (prazo de entrega)." },
       { q:"Como adicionar participantes a um evento?", a:"Ao criar ou editar uma Reunião ou Gravação, use o campo 'Participantes' para selecionar membros da equipe. Você pode adicionar múltiplos participantes." },
+      { q:"Os eventos são sincronizados entre membros?", a:"Sim! Todos os eventos criados são visíveis para toda a equipe. Cada membro pode ver os compromissos do dia na Home e no Calendário completo." },
     ]},
-    { cat:"Conta & Segurança", icon:IC.lock, color:B.red, questions:[
+    { cat:"Gamificação & Ranking", icon:IC.trophy, color:"#F59E0B", questions:[
+      { q:"Como funciona o sistema de XP?", a:"Cada ação no app gera pontos de experiência (XP): check-in diário, demandas concluídas, posts publicados, cursos completados, etc. O XP acumulado define seu nível e posição no ranking." },
+      { q:"Quais são os níveis?", a:"São 8 níveis: Nv.1 Iniciante (0-500 XP) → Nv.2 Aprendiz (500-1.200) → Nv.3 Pleno (1.200-2.500) → Nv.4 Sênior (2.500-4.500) → Nv.5 Especialista (4.500-7.000) → Nv.6 Líder (7.000-10.000) → Nv.7 Master (10.000-15.000) → Nv.8 Lenda (15.000+)." },
+      { q:"Como ganhar XP?", a:"Faça check-in diário (+10 XP), conclua demandas (+25 XP), publique posts (+15 XP), complete cursos na Academy (+50 XP), receba aprovação de cliente (+20 XP). Administradores também podem conceder XP manualmente pelo Ranking." },
+      { q:"O ranking é visível para todos?", a:"Sim! Todos os membros da agência podem ver o ranking completo, incluindo XP total, streak de check-ins, tarefas do mês e badges conquistados." },
+      { q:"O que são badges?", a:"Badges são conquistas especiais ganhas por atingir marcos: primeiro post publicado, 7 dias consecutivos de check-in, 1.000 XP acumulados, etc. Eles aparecem no seu perfil de ranking." },
+    ]},
+    { cat:"Academy & Cursos", icon:IC.academy, color:"#8B5CF6", questions:[
+      { q:"Como acessar os cursos?", a:"Vá em Academy no menu. Você verá todos os cursos disponíveis organizados por categoria (Marketing Digital, Design, Vídeo, Copywriting, Estratégia, etc.)." },
+      { q:"Como completar um módulo?", a:"Abra o curso desejado, selecione o módulo e leia/assista o conteúdo. Ao finalizar, marque como concluído. Seu progresso é salvo automaticamente e você ganha XP pela conclusão." },
+      { q:"Posso sugerir novos cursos?", a:"Sim! Use a seção de Ideias para sugerir temas de cursos. Administradores revisam as sugestões e podem criar novos cursos baseados no feedback da equipe." },
+    ]},
+    { cat:"News & Notícias", icon:IC.news, color:"#EC4899", questions:[
+      { q:"O que é a seção News?", a:"News é o feed interno de notícias e tendências da agência. Administradores publicam artigos sobre novidades do mercado, dicas, tutoriais e atualizações importantes para a equipe." },
+      { q:"Como criar um artigo?", a:"Na seção News, toque em '+ Novo'. Preencha título, corpo do texto, categoria, fonte (com link clicável), tempo de leitura e tags. Você pode marcar o artigo como 'Destaque' para fixar no topo." },
+      { q:"Posso salvar artigos para ler depois?", a:"Sim! Toque no ícone de bookmark no artigo para salvar. Você pode filtrar por 'Salvos' na lista de artigos para encontrá-los facilmente." },
+    ]},
+    { cat:"Configurações & Segurança", icon:IC.lock, color:B.red, questions:[
       { q:"Como alterar minha senha?", a:"Vá em Configurações > Segurança > Alterar Senha. Digite sua senha atual, depois a nova senha (que deve ter 8+ caracteres, maiúscula, minúscula, número e caractere especial) e confirme." },
       { q:"Como ativar a autenticação em dois fatores?", a:"Vá em Configurações > Segurança e ative o toggle de 'Autenticação 2 Fatores'. Siga as instruções para configurar o app de autenticação." },
       { q:"Como encerrar sessões em outros dispositivos?", a:"Vá em Configurações > Segurança > Sessões Ativas. Você pode encerrar sessões individualmente ou usar 'Encerrar todas as outras sessões' para manter apenas o dispositivo atual." },
       { q:"Como aprovar um novo cadastro?", a:"Apenas CEO e Gerentes podem aprovar cadastros. Vá em Configurações > Aprovações para ver solicitações pendentes. Toque em Aprovar ou Recusar para cada solicitação." },
+      { q:"Como configurar permissões por cargo?", a:"Vá em Configurações > Permissões (apenas admins). Selecione o cargo e configure o acesso a cada área do app. Cada área possui sub-opções granulares (ex: Clientes → Visualizar, Editar, Excluir, Ver financeiro)." },
+      { q:"Como configurar o Assistente IA?", a:"Vá em Configurações > Assistente IA (apenas admins). Insira sua chave da API OpenAI (obtida em platform.openai.com). O assistente usa GPT-4o-mini para gerar legendas, estratégias e ideias de conteúdo." },
+      { q:"Como mudar o tema do app?", a:"Vá em Configurações > Aparência. Ative o Modo Escuro e/ou escolha uma cor de destaque diferente para personalizar a interface ao seu gosto." },
+      { q:"Como configurar notificações?", a:"Vá em Configurações > Notificações. Ative ou desative notificações por categoria: Chat, Conteúdo, Clientes, Equipe, Financeiro. Cada categoria tem sub-opções para controle granular." },
+    ]},
+    { cat:"Relatórios & Métricas", icon:IC.reports, color:"#3B82F6", questions:[
+      { q:"Que tipos de relatório existem?", a:"O UniqueHub oferece relatórios de: Performance de conteúdo (demandas por etapa, tempo médio), Financeiro (receita mensal, comparativo), Equipe (check-ins, produtividade), Clientes (satisfação, retenção)." },
+      { q:"Como exportar um relatório?", a:"Na seção Relatórios, após selecionar o tipo e período, use o botão 'Exportar' para gerar o relatório em formato compatível. Os dados podem ser usados para apresentações ou análises externas." },
     ]},
   ];
+
+  const GUIDES = [
+    { title:"Guia Completo: Workflow de Conteúdo", desc:"Entenda cada etapa do pipeline de demandas, do briefing à publicação", icon:"📝", steps:[
+      "1. Ideia — O Head/CEO cria a demanda com título, cliente e rede social",
+      "2. Briefing — Social Media detalha o que precisa ser criado (formato, referências, textos de apoio)",
+      "3. Design — Designer/Audiovisual faz upload das artes e materiais visuais",
+      "4. Legenda — Social Media escreve a legenda, hashtags e define data/hora de agendamento",
+      "5. Revisão Interna — Gerente revisa tudo e aprova, ou rejeita enviando de volta para etapas anteriores",
+      "6. Aprovação do Cliente — Cliente externo valida o material final",
+      "7. Publicado — Post é publicado na rede social e a demanda é concluída"
+    ]},
+    { title:"Guia: Gerenciando Clientes", desc:"Do cadastro ao acompanhamento completo de cada cliente", icon:"👥", steps:[
+      "1. Cadastre o cliente com nome, contato, e-mail, segmento e plano mensal",
+      "2. Acesse a aba de Contrato para definir termos e vigência",
+      "3. Use a Biblioteca para organizar os arquivos (manual de marca, posts, vídeos)",
+      "4. Acompanhe faturas e pagamentos na aba Financeiro do cliente",
+      "5. Crie demandas vinculadas ao cliente para organizar o conteúdo",
+      "6. Use observações para registrar informações importantes sobre o cliente"
+    ]},
+    { title:"Guia: Onboarding de Novo Membro", desc:"Passo a passo para integrar um novo colaborador na agência", icon:"🚀", steps:[
+      "1. Novo membro acessa o app e cria conta com e-mail, nome e cargo",
+      "2. Administrador recebe notificação e acessa Configurações > Aprovações",
+      "3. Após aprovação, membro ganha acesso ao app com permissões do seu cargo",
+      "4. Admin pode ajustar permissões específicas em Configurações > Permissões",
+      "5. Novo membro personaliza seu menu e faz o primeiro check-in",
+      "6. Equipe recebe notificação da entrada do novo membro"
+    ]},
+    { title:"Guia: Sistema de Gamificação", desc:"Como funciona o XP, níveis, badges e ranking da equipe", icon:"🏆", steps:[
+      "1. Cada ação no app gera XP: check-in (+10), demanda concluída (+25), post publicado (+15)",
+      "2. XP acumulado define seu nível de 1 (Iniciante) a 8 (Lenda)",
+      "3. O Ranking mostra a classificação de todos os membros em tempo real",
+      "4. Badges são conquistas especiais por atingir marcos (primeiro post, streak de 7 dias, etc.)",
+      "5. Administradores podem conceder XP bonus diretamente pelo Ranking",
+      "6. Mantenha uma sequência de check-ins para subir no ranking mais rápido!"
+    ]},
+    { title:"Guia: Assistente de IA", desc:"Use inteligência artificial para otimizar seu trabalho", icon:"🤖", steps:[
+      "1. Configure a chave OpenAI em Configurações > Assistente IA (apenas admin)",
+      "2. Acesse o Assistente IA pelo menu para iniciar uma conversa",
+      "3. Peça ajuda para: gerar legendas, criar estratégias, brainstorm de ideias, análise de concorrência",
+      "4. O assistente conhece o contexto da agência e pode personalizar as sugestões",
+      "5. Copie as sugestões diretamente para as demandas de conteúdo",
+      "6. Quanto mais contexto você der, melhores serão as respostas"
+    ]},
+    { title:"Guia: Financeiro da Agência", desc:"Controle total de faturamento, faturas e indicadores financeiros", icon:"💰", steps:[
+      "1. Cada cliente tem um plano mensal (valor e tipo: Basic, Pro, Premium, Enterprise)",
+      "2. O dashboard Financeiro mostra receita total, pagantes, ticket médio e inadimplência",
+      "3. Gere faturas automáticas pelo perfil do cliente",
+      "4. Marque pagamentos recebidos para atualizar o status (pendente → pago)",
+      "5. Use Relatórios > Financeiro para comparar meses e identificar tendências",
+      "6. Cards na Home mostram um resumo rápido da saúde financeira da agência"
+    ]},
+  ];
+
+  const SHORTCUTS = [
+    { section:"Navegação Rápida", items:[
+      { keys:"Home → Cards", desc:"Clique nos cards de Receita, Clientes, Pendentes ou Score para ir direto à área correspondente" },
+      { keys:"Menu → Personalizar", desc:"Arraste os itens para reordenar ou trocar os 5 slots do menu inferior" },
+      { keys:"Busca Global", desc:"Use a busca (lupa) para encontrar clientes, membros, arquivos e menus por nome" },
+    ]},
+    { section:"Conteúdo", items:[
+      { keys:"Pipeline → Filtros", desc:"Toque nas abas Social/Campanhas/Vídeo para alternar pipelines" },
+      { keys:"Demanda → Avançar", desc:"Preencha a etapa atual e use o botão verde para avançar no workflow" },
+      { keys:"Upload Múltiplo", desc:"Na etapa de Design, selecione vários arquivos de uma vez (imagens, vídeos, PSD)" },
+    ]},
+    { section:"Chat", items:[
+      { keys:"Conversa → Leitura", desc:"Toque em uma conversa para abrir e marcar como lida automaticamente" },
+      { keys:"Nova Conversa", desc:"Toque no '+' para iniciar conversa privada ou criar grupo" },
+    ]},
+    { section:"Gestão", items:[
+      { keys:"Cliente → Abas", desc:"Navegue entre Geral, Contrato, Faturas e Biblioteca dentro de cada cliente" },
+      { keys:"Equipe → Perfil", desc:"Toque no membro para ver detalhes, skills e dados de contato" },
+      { keys:"Calendário → Tipos", desc:"Crie eventos com tipo específico (Reunião, Gravação, Evento, Lembrete, Deadline)" },
+    ]},
+  ];
+
+  const VIDEOS = [
+    { title:"Tour pelo Dashboard", desc:"Conheça a Home e os cards de métricas", dur:"3 min", icon:"🏠" },
+    { title:"Criando sua primeira Demanda", desc:"Do briefing à publicação em 5 minutos", dur:"5 min", icon:"📝" },
+    { title:"Gerenciando Clientes", desc:"Cadastro, arquivos, faturas e contrato", dur:"4 min", icon:"👥" },
+    { title:"Pipeline de Conteúdo Avançado", desc:"Workflow completo com revisão e rejeição", dur:"6 min", icon:"🔄" },
+    { title:"Chat e Comunicação", desc:"Mensagens, grupos e indicadores de leitura", dur:"3 min", icon:"💬" },
+    { title:"Calendário e Eventos", desc:"Tipos de evento e agendamento", dur:"4 min", icon:"📅" },
+    { title:"Financeiro e Faturas", desc:"Dashboard financeiro e controle de pagamentos", dur:"5 min", icon:"💰" },
+    { title:"Gamificação e Ranking", desc:"Sistema de XP, níveis e badges", dur:"3 min", icon:"🏆" },
+    { title:"Configurações e Permissões", desc:"Personalização, segurança e controle de acesso", dur:"4 min", icon:"⚙️" },
+    { title:"Assistente de IA", desc:"Configuração e uso do assistente inteligente", dur:"4 min", icon:"🤖" },
+  ];
+
+  /* ── SEARCH ── */
+  const allQuestions = FAQ.flatMap((cat, ci) => cat.questions.map((q, qi) => ({ ...q, catIdx:ci, qIdx:qi, catName:cat.cat, color:cat.color })));
+  const searchResults = searchQ.trim().length >= 2 ? allQuestions.filter(q => q.q.toLowerCase().includes(searchQ.toLowerCase()) || q.a.toLowerCase().includes(searchQ.toLowerCase())) : [];
 
   /* ── CONTACT FORM ── */
   if (contactForm) return (
@@ -8348,37 +8488,62 @@ function HelpPage({ onBack }) {
       <Card style={{ background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginBottom:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ color:B.accent, display:"flex" }}>{IC.chat}</span>
-          <p style={{ fontSize:12, color:B.accent, fontWeight:500 }}>Tempo médio de resposta: 2 horas úteis</p>
+          <div><p style={{ fontSize:12, color:B.accent, fontWeight:600 }}>Suporte Unique Marketing 360</p><p style={{ fontSize:10, color:B.muted }}>Tempo médio de resposta: 2 horas úteis</p></div>
         </div>
       </Card>
       <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Assunto</label>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-          {["Bug / Erro","Dúvida","Sugestão","Financeiro","Outro"].map(t => (
+          {["Bug / Erro","Dúvida de uso","Sugestão de melhoria","Problema financeiro","Problema de acesso","Outro"].map(t => (
             <button key={t} onClick={() => setCTopic(t)} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${cTopic===t?B.accent:B.border}`, background:cTopic===t?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:cTopic===t?B.dark:B.muted }}>{t}</button>
           ))}
         </div>
       </Card>
       <Card style={{ marginBottom:12 }}>
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Mensagem</label>
-        <textarea value={cMsg} onChange={e => setCMsg(e.target.value)} placeholder="Descreva sua dúvida ou problema com o máximo de detalhes..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
+        <textarea value={cMsg} onChange={e => setCMsg(e.target.value)} placeholder="Descreva sua dúvida ou problema com o máximo de detalhes possível. Inclua prints se necessário..." className="tinput" style={{ minHeight:120, resize:"vertical" }} />
       </Card>
-      <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent">Enviar Mensagem</button>
+      <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:12 }}>
+        <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>💡 Dica: Quanto mais detalhes você incluir (tela onde ocorreu o erro, passos para reproduzir, etc.), mais rápido podemos resolver.</p>
+      </Card>
+      <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent" style={{ padding:"14px 0" }}>Enviar Mensagem</button>
     </div>
   );
 
+  /* ── GUIDE DETAIL ── */
+  if (selCat !== null && helpTab === "guides") {
+    const guide = GUIDES[selCat];
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={() => setSelCat(null)} />
+        <Card style={{ marginBottom:12, textAlign:"center", padding:20 }}>
+          <span style={{ fontSize:36 }}>{guide.icon}</span>
+          <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>{guide.title}</h3>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{guide.desc}</p>
+        </Card>
+        {guide.steps.map((step, i) => (
+          <Card key={i} delay={i*0.03} style={{ marginBottom:6, borderLeft:`3px solid ${B.accent}` }}>
+            <p style={{ fontSize:13, lineHeight:1.6 }}>{step}</p>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   /* ── FAQ DETAIL ── */
-  if (selCat !== null) {
+  if (selCat !== null && helpTab === "faq") {
     const cat = FAQ[selCat];
     return (
       <div className="pg">
         {ToastEl}
         <Head title={cat.cat} onBack={() => { setSelCat(null); setSelQ(null); }} />
+        <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>{cat.questions.length} perguntas frequentes</p>
         {cat.questions.map((item, i) => (
-          <Card key={i} delay={i*0.03} style={{ marginBottom:8 }}>
-            <div onClick={() => setSelQ(selQ === i ? null : i)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
-              <p style={{ fontSize:13, fontWeight:600, flex:1, paddingRight:8 }}>{item.q}</p>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" style={{ transition:"transform .2s", transform:selQ===i?"rotate(180deg)":"rotate(0)" }}><polyline points="6 9 12 15 18 9"/></svg>
+          <Card key={i} delay={i*0.03} style={{ marginBottom:8, borderLeft: selQ===i ? `3px solid ${cat.color}` : "none" }}>
+            <div onClick={() => setSelQ(selQ === i ? null : i)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", gap:8 }}>
+              <p style={{ fontSize:13, fontWeight:600, flex:1 }}>{item.q}</p>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" style={{ transition:"transform .2s", transform:selQ===i?"rotate(180deg)":"rotate(0)", flexShrink:0 }}><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             {selQ === i && <p style={{ fontSize:12, color:B.text, lineHeight:1.7, marginTop:10, paddingTop:10, borderTop:`1px solid ${B.border}` }}>{item.a}</p>}
           </Card>
@@ -8388,44 +8553,156 @@ function HelpPage({ onBack }) {
   }
 
   /* ── MAIN HELP ── */
+  const tabs = [
+    { k:"faq", l:"FAQ", icon:"❓" },
+    { k:"guides", l:"Guias", icon:"📖" },
+    { k:"shortcuts", l:"Atalhos", icon:"⚡" },
+    { k:"videos", l:"Tutoriais", icon:"🎬" },
+  ];
+
   return (
     <div className="pg">
       {ToastEl}
-      <Head title="Ajuda" onBack={onBack} />
+      <Head title="Central de Ajuda" onBack={onBack} />
 
+      {/* Hero */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12, textAlign:"center", padding:20 }}>
         <div style={{ width:48, height:48, borderRadius:16, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:B.accent }}>{IC.help(B.accent)}</div>
         <h3 style={{ fontSize:16, fontWeight:800 }}>Como podemos ajudar?</h3>
-        <p style={{ fontSize:11, opacity:.6, marginTop:4 }}>Encontre respostas rápidas ou fale com o suporte</p>
+        <p style={{ fontSize:11, opacity:.6, marginTop:4 }}>FAQ completo, guias passo a passo e suporte direto</p>
       </Card>
 
-      <p className="sl" style={{ marginBottom:8 }}>Categorias</p>
-      {FAQ.map((cat, i) => (
-        <Card key={i} delay={i*0.03} onClick={() => setSelCat(i)} style={{ marginBottom:8, cursor:"pointer" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:12, background:`${cat.color}10`, display:"flex", alignItems:"center", justifyContent:"center", color:cat.color }}>{typeof cat.icon === "function" ? cat.icon(cat.color) : cat.icon}</div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:14, fontWeight:600 }}>{cat.cat}</p>
-              <p style={{ fontSize:11, color:B.muted }}>{cat.questions.length} perguntas</p>
-            </div>
-            {IC.chev()}
-          </div>
-        </Card>
-      ))}
-
-      <div style={{ marginTop:16 }}>
-        <p className="sl" style={{ marginBottom:8 }}>Não encontrou sua resposta?</p>
-        <Card onClick={() => setContactForm(true)} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}25` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.chat}</div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:14, fontWeight:600 }}>Falar com Suporte</p>
-              <p style={{ fontSize:11, color:B.muted }}>Resposta em até 2 horas úteis</p>
-            </div>
-            {IC.chev()}
-          </div>
-        </Card>
+      {/* Search */}
+      <div style={{ position:"relative", marginBottom:12 }}>
+        <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar nas perguntas frequentes..." className="tinput" style={{ paddingLeft:36 }} />
+        <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
       </div>
+
+      {/* Search Results */}
+      {searchQ.trim().length >= 2 && (
+        <div style={{ marginBottom:16 }}>
+          <p className="sl" style={{ marginBottom:8 }}>{searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""} encontrado{searchResults.length !== 1 ? "s" : ""}</p>
+          {searchResults.length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:13, color:B.muted }}>Nenhum resultado. Tente termos diferentes ou fale com o suporte.</p></Card>}
+          {searchResults.slice(0, 8).map((r, i) => (
+            <Card key={i} style={{ marginBottom:6, borderLeft:`3px solid ${r.color}`, cursor:"pointer" }} onClick={() => { setSearchQ(""); setHelpTab("faq"); setSelCat(r.catIdx); setSelQ(r.qIdx); }}>
+              <p style={{ fontSize:13, fontWeight:600 }}>{r.q}</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{r.catName}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs */}
+      {!searchQ.trim() && <>
+        <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto", paddingBottom:4 }}>
+          {tabs.map(t => (
+            <button key={t.k} onClick={() => setHelpTab(t.k)} className={`htab${helpTab===t.k?" a":""}`} style={{ fontSize:12, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
+              <span>{t.icon}</span>{t.l}
+            </button>
+          ))}
+        </div>
+
+        {/* FAQ Tab */}
+        {helpTab === "faq" && <>
+          <p className="sl" style={{ marginBottom:8 }}>{FAQ.length} categorias · {allQuestions.length} perguntas</p>
+          {FAQ.map((cat, i) => (
+            <Card key={i} delay={i*0.02} onClick={() => setSelCat(i)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${cat.color}10`, display:"flex", alignItems:"center", justifyContent:"center", color:cat.color }}>{typeof cat.icon === "function" ? cat.icon(cat.color) : cat.icon}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:600 }}>{cat.cat}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{cat.questions.length} perguntas</p>
+                </div>
+                {IC.chev()}
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Guides Tab */}
+        {helpTab === "guides" && <>
+          <p className="sl" style={{ marginBottom:8 }}>{GUIDES.length} guias disponíveis</p>
+          {GUIDES.map((g, i) => (
+            <Card key={i} delay={i*0.03} onClick={() => setSelCat(i)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{g.icon}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:600 }}>{g.title}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{g.desc}</p>
+                </div>
+                <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{g.steps.length} passos</span>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Shortcuts Tab */}
+        {helpTab === "shortcuts" && <>
+          {SHORTCUTS.map((sec, si) => (
+            <div key={si} style={{ marginBottom:16 }}>
+              <p className="sl" style={{ marginBottom:8 }}>{sec.section}</p>
+              {sec.items.map((item, i) => (
+                <Card key={i} delay={(si*3+i)*0.02} style={{ marginBottom:6 }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                    <div style={{ padding:"4px 8px", borderRadius:6, background:`${B.accent}12`, fontSize:10, fontWeight:700, color:B.accent, whiteSpace:"nowrap", flexShrink:0, marginTop:1 }}>{item.keys}</div>
+                    <p style={{ fontSize:12, color:B.text, lineHeight:1.5 }}>{item.desc}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ))}
+        </>}
+
+        {/* Videos Tab */}
+        {helpTab === "videos" && <>
+          <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:12 }}>
+            <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>🎬 Tutoriais em vídeo estarão disponíveis em breve! Por enquanto, use os Guias passo a passo para aprender cada funcionalidade.</p>
+          </Card>
+          <p className="sl" style={{ marginBottom:8 }}>{VIDEOS.length} tutoriais planejados</p>
+          {VIDEOS.map((v, i) => (
+            <Card key={i} delay={i*0.02} style={{ marginBottom:6, opacity:0.6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{v.icon}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{v.title}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{v.desc}</p>
+                </div>
+                <span style={{ fontSize:10, color:B.muted, fontWeight:600, background:`${B.muted}10`, padding:"3px 8px", borderRadius:6 }}>{v.dur}</span>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Support CTA */}
+        <div style={{ marginTop:20, marginBottom:8 }}>
+          <p className="sl" style={{ marginBottom:8 }}>Precisa de mais ajuda?</p>
+          <Card onClick={() => setContactForm(true)} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}25`, marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.chat}</div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:14, fontWeight:600 }}>Falar com Suporte</p>
+                <p style={{ fontSize:11, color:B.muted }}>Resposta em até 2 horas úteis</p>
+              </div>
+              {IC.chev()}
+            </div>
+          </Card>
+          <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>📧</div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:14, fontWeight:600 }}>E-mail direto</p>
+                <p style={{ fontSize:11, color:B.accent, fontWeight:600 }}>suporte@uniquemkt.com.br</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Version info */}
+        <div style={{ textAlign:"center", padding:"20px 0 8px", opacity:0.4 }}>
+          <p style={{ fontSize:10 }}>UniqueHub v1.0.0 · Unique Marketing 360</p>
+          <p style={{ fontSize:9, marginTop:2 }}>Petrópolis, RJ — Brasil</p>
+        </div>
+      </>}
     </div>
   );
 }
