@@ -1332,7 +1332,7 @@ function LoginPage({ onAuth }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
@@ -1478,16 +1478,17 @@ function HomePage({ user, goSub, goTab, clients, notifCount }) {
             <button onClick={() => goSub("team")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
           </div>
           <div style={{ display:"flex", gap:10, overflowX:"auto", paddingBottom:4 }} className="hscroll">
-            {AGENCY_TEAM.map((m, j) => (
+            {(team && team.length > 0 ? team : []).map((m, j) => (
               <Card key={m.id} delay={j*0.04} style={{ minWidth:110, flex:"0 0 auto", textAlign:"center", padding:"16px 12px" }}>
                 <div style={{ position:"relative", display:"inline-block", marginBottom:8 }}>
-                  <Av src={m.photo} name={m.name} sz={44} fs={16} />
-                  <div style={{ position:"absolute", bottom:0, right:-2, width:12, height:12, borderRadius:6, background:m.status==="online"?B.green:B.muted, border:`2.5px solid ${B.bgCard}` }} />
+                  <Av name={m.name} sz={44} fs={16} />
+                  <div style={{ position:"absolute", bottom:0, right:-2, width:12, height:12, borderRadius:6, background:B.green, border:`2.5px solid ${B.bgCard}` }} />
                 </div>
                 <p style={{ fontSize:12, fontWeight:700 }}>{m.name}</p>
-                <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{m.role}</p>
+                <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{m.role || m.job_title || "—"}</p>
               </Card>
             ))}
+            {(!team || team.length === 0) && <p style={{ fontSize:12, color:B.muted, padding:20 }}>Nenhum membro cadastrado</p>}
           </div>
         </div>
       </div>
@@ -8069,6 +8070,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   /* ── Shared clients state loaded from Supabase ── */
   const [sharedClients, setSharedClients] = useState([]);
+  const [sharedTeam, setSharedTeam] = useState([]);
   const [clientsLoaded, setClientsLoaded] = useState(false);
 
   /* ── Shared demands state loaded from Supabase ── */
@@ -8165,6 +8167,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       }
       setClientsLoaded(true);
     });
+    /* Also load team for dashboard */
+    supaLoadTeam().then(rows => {
+      if (rows) setSharedTeam(rows.filter(r => r.user_id));
+    });
   }, [clientsLoaded]);
 
   /* Load demands once after clients are ready */
@@ -8219,7 +8225,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 .bnav{background:${dark?"#0A0F12":"#192126"}!important}
 ` }} />
       <div className="content">
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} />}
