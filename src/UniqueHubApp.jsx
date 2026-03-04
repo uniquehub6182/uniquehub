@@ -329,8 +329,12 @@ const supaGetSetting = async (key) => {
   try { const { data } = await supabase.from("app_settings").select("value").eq("key", key).single(); return data?.value || null; } catch(e) { return null; }
 };
 const supaSetSetting = async (key, value) => {
-  if (!supabase) return;
-  try { await supabase.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch(e) { console.error("setSetting:", e); }
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) { console.error("setSetting:", error); return false; }
+    return true;
+  } catch(e) { console.error("setSetting:", e); return false; }
 };
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
@@ -5216,9 +5220,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
     const saveAI = async () => {
       setAiCfgSaving(true);
-      await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
+      const ok = await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
       setAiCfgSaving(false);
-      showToast("Configuração salva ✓");
+      if (ok) showToast("Configuração salva ✓");
+      else showToast("Erro ao salvar. Rode o SQL app_settings_migration no Supabase.");
     };
     return (
       <div className="pg">
