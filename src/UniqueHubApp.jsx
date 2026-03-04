@@ -5581,58 +5581,53 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       { k:"rose",l:"Rose",c:"#F43F5E" },{ k:"amber",l:"Âmbar",c:"#D97706" },{ k:"teal",l:"Teal",c:"#14B8A6" },
       { k:"sky",l:"Céu",c:"#0EA5E9" },{ k:"fuchsia",l:"Fúcsia",c:"#D946EF" },{ k:"slate",l:"Grafite",c:"#64748B" },
     ];
-    const SectionLabel = ({ icon, title }) => (
+    const SL = ({ icon, title }) => (
       <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:18, marginBottom:8 }}>
         <span style={{ fontSize:15 }}>{icon}</span>
         <p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{title}</p>
       </div>
     );
-    const OptionRow = ({ options, current, onPick, renderOption }) => (
+    const OR = ({ options, current, onPick, renderOption }) => (
       <div style={{ display:"flex", gap:6 }}>
         {options.map(o => {
-          const active = current === o.k;
-          return <button key={o.k} onClick={() => onPick(o.k)} style={{ flex:1, padding:"10px 6px", borderRadius:12, border:"1.5px solid "+(active?B.accent:B.border), background:active?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center", transition:"all 0.15s" }}>
-            {renderOption ? renderOption(o, active) : <div>
-              {o.icon && <span style={{ fontSize:18, display:"block", marginBottom:4 }}>{o.icon}</span>}
-              <span style={{ fontSize:10, fontWeight:active?700:500, color:active?B.accent:B.muted, display:"block" }}>{o.l}</span>
-            </div>}
+          const a = current === o.k;
+          return <button key={o.k} onClick={() => onPick(o.k)} style={{ flex:1, padding:"10px 6px", borderRadius:12, border:"1.5px solid "+(a?B.accent:B.border), background:a?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
+            {renderOption(o, a)}
           </button>;
         })}
       </div>
     );
+    const TogRow = ({ label, desc, on, onToggle }) => (
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0" }}>
+        <div><p style={{ fontSize:13, fontWeight:600 }}>{label}</p>{desc && <p style={{ fontSize:10, color:B.muted }}>{desc}</p>}</div>
+        <Toggle on={on} onToggle={onToggle} />
+      </div>
+    );
+    const Slider = ({ value, min, max, step, onChange, label, unit }) => (
+      <div style={{ marginBottom:4 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+          <span style={{ fontSize:11, color:B.muted }}>{label}</span>
+          <span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{value}{unit||""}</span>
+        </div>
+        <input type="range" min={min} max={max} step={step||1} value={value} onChange={e => onChange(Number(e.target.value))} style={{ width:"100%", accentColor:B.accent, height:4 }} />
+      </div>
+    );
 
-    /* Live preview card */
-    const previewRadius = ({sharp:"4px",round:"14px",pill:"24px"})[UP.cardRadius||"round"]||"14px";
-    const previewShadow = UP.cardStyle==="flat"?"none":UP.cardStyle==="outlined"?"none":UP.cardStyle==="glass"?"0 4px 24px rgba(0,0,0,0.1)":"0 2px 12px rgba(0,0,0,0.08)";
-    const previewBorder = UP.cardStyle==="outlined"?"1.5px solid "+B.border:UP.cardStyle==="glass"?"1px solid rgba(255,255,255,0.15)":"none";
-    const previewBg = UP.cardStyle==="glass"?(dark?"rgba(28,34,40,0.7)":"rgba(255,255,255,0.6)"):B.bgCard;
+    /* Navbar preview values */
+    const navW = UP.navWidth || 320;
+    const navSt = UP.navStyle || "pill";
+    const navPos = UP.navPosition || "float";
+    const navSz = UP.navSize || "md";
+    const navBlur = UP.navBlur !== false;
+    const navLabels = UP.navLabels !== false;
 
     return (
     <div className="pg">
       {ToastEl}
       <Head title="Aparência" onBack={() => setSub(null)} />
 
-      {/* ── LIVE PREVIEW ── */}
-      <div style={{ marginBottom:16, padding:16, borderRadius:previewRadius, background:previewBg, boxShadow:previewShadow, border:previewBorder, backdropFilter:UP.cardStyle==="glass"?"blur(16px)":"none" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-          <div style={{ width:36, height:36, borderRadius:previewRadius==="24px"?18:previewRadius==="14px"?10:4, background:B.accent+"20", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize:16 }}>👁️</span>
-          </div>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:13, fontWeight:700 }}>Preview ao vivo</p>
-            <p style={{ fontSize:10, color:B.muted }}>Veja como ficam suas escolhas</p>
-          </div>
-          <div style={{ padding:"4px 10px", borderRadius:previewRadius==="24px"?12:previewRadius==="14px"?6:2, background:B.accent, color:"#000", fontSize:9, fontWeight:700 }}>ATIVO</div>
-        </div>
-        <div style={{ display:"flex", gap:6 }}>
-          {[B.accent, B.blue, B.green].map((c,i) => (
-            <div key={i} style={{ flex:1, height:6, borderRadius:previewRadius==="24px"?3:previewRadius==="14px"?3:1, background:c, opacity:1-i*0.25 }} />
-          ))}
-        </div>
-      </div>
-
       {/* ── MODO ── */}
-      <SectionLabel icon="🌓" title="Modo" />
+      <SL icon="🌓" title="Modo" />
       <Card style={{ marginBottom:4 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -5642,16 +5637,16 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               <p style={{ fontSize:10, color:B.muted }}>{dark ? "Ativar tema claro" : "Ativar tema escuro"}</p>
             </div>
           </div>
-          <Toggle on={dark} onToggle={() => { setDark(!dark); showToast(dark ? "Modo claro ativado" : "Modo escuro ativado"); }} />
+          <Toggle on={dark} onToggle={() => { setDark(!dark); showToast(dark ? "Modo claro" : "Modo escuro ✓"); }} />
         </div>
       </Card>
 
       {/* ── COR DO TEMA ── */}
-      <SectionLabel icon="🎨" title="Cor do Tema" />
+      <SL icon="🎨" title="Cor do Tema" />
       <Card>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:8 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:8, marginBottom:12 }}>
           {allThemes.map(t => (
-            <button key={t.k} onClick={() => { setThemeColor(t.k); showToast("Tema "+t.l+" ✓"); }} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 2px", borderRadius:12, border:themeColor===t.k?"2px solid "+t.c:"2px solid transparent", background:themeColor===t.k?(t.c+"12"):"transparent", cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+            <button key={t.k} onClick={() => { setThemeColor(t.k); showToast(t.l+" ✓"); }} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 2px", borderRadius:12, border:themeColor===t.k?"2px solid "+t.c:"2px solid transparent", background:themeColor===t.k?(t.c+"12"):"transparent", cursor:"pointer", fontFamily:"inherit" }}>
               <div style={{ width:28, height:28, borderRadius:14, background:t.c, position:"relative", boxShadow:themeColor===t.k?"0 0 0 3px "+(dark?"#0F1419":"#fff")+", 0 0 0 5px "+t.c:"none" }}>
                 {themeColor===t.k && <span style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:12, fontWeight:800 }}>✓</span>}
               </div>
@@ -5659,133 +5654,260 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </button>
           ))}
         </div>
-      </Card>
-
-      {/* ── TAMANHO DA FONTE ── */}
-      <SectionLabel icon="🔤" title="Tamanho da Fonte" />
-      <Card>
-        <OptionRow
-          current={UP.fontSize || "normal"}
-          onPick={v => setP("fontSize", v)}
-          options={[
-            { k:"small", l:"Pequeno", icon:"A" },
-            { k:"normal", l:"Normal", icon:"A" },
-            { k:"large", l:"Grande", icon:"A" },
-            { k:"xlarge", l:"Extra", icon:"A" },
-          ]}
-          renderOption={(o, active) => (
-            <div>
-              <span style={{ fontSize:o.k==="small"?12:o.k==="normal"?15:o.k==="large"?19:23, fontWeight:700, color:active?B.accent:B.muted, display:"block", lineHeight:1.2, marginBottom:2 }}>A</span>
-              <span style={{ fontSize:9, fontWeight:active?700:500, color:active?B.accent:B.muted }}>{o.l}</span>
+        <div style={{ borderTop:"1px solid "+B.border, paddingTop:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor personalizada</p>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <input type="color" value={THEME_MAP[themeColor]||"#BBF246"} onChange={e => { const c = e.target.value; setThemeColor("custom"); updateUiPrefs({ customColor: c }); }} style={{ width:36, height:36, borderRadius:10, border:"2px solid "+B.border, cursor:"pointer", padding:0 }} />
+            <div style={{ flex:1 }}>
+              <input value={UP.customColor||THEME_MAP[themeColor]||"#BBF246"} onChange={e => { if(/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) { setThemeColor("custom"); updateUiPrefs({ customColor: e.target.value }); } }} className="tinput" placeholder="#BBF246" style={{ fontFamily:"monospace", fontSize:12 }} />
             </div>
-          )}
-        />
+          </div>
+        </div>
       </Card>
 
-      {/* ── FORMATO DOS CARDS ── */}
-      <SectionLabel icon="⬜" title="Formato dos Cards" />
+      {/* ── TIPOGRAFIA ── */}
+      <SL icon="🔤" title="Tipografia" />
       <Card>
-        <OptionRow
-          current={UP.cardRadius || "round"}
-          onPick={v => setP("cardRadius", v)}
-          options={[
-            { k:"sharp", l:"Reto" },
-            { k:"round", l:"Arredondado" },
-            { k:"pill", l:"Pílula" },
-          ]}
-          renderOption={(o, active) => (
-            <div>
-              <div style={{ width:32, height:22, borderRadius:o.k==="sharp"?"2px":o.k==="round"?"6px":"11px", border:"2px solid "+(active?B.accent:B.muted), margin:"0 auto 4px", opacity:active?1:0.5 }} />
-              <span style={{ fontSize:10, fontWeight:active?700:500, color:active?B.accent:B.muted }}>{o.l}</span>
-            </div>
-          )}
+        <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho da fonte</p>
+        <OR current={UP.fontSize||"normal"} onPick={v => setP("fontSize", v)}
+          options={[{k:"small",l:"P"},{k:"normal",l:"M"},{k:"large",l:"G"},{k:"xlarge",l:"XG"}]}
+          renderOption={(o, a) => <div>
+            <span style={{ fontSize:o.k==="small"?11:o.k==="normal"?14:o.k==="large"?18:22, fontWeight:700, color:a?B.accent:B.muted, display:"block", lineHeight:1.3 }}>Aa</span>
+            <span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+          </div>}
         />
+        <div style={{ marginTop:12 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Família da fonte</p>
+          <OR current={UP.fontFamily||"system"} onPick={v => setP("fontFamily", v)}
+            options={[{k:"system",l:"Sistema"},{k:"inter",l:"Inter"},{k:"mono",l:"Mono"},{k:"serif",l:"Serif"}]}
+            renderOption={(o, a) => <div>
+              <span style={{ fontFamily:o.k==="system"?"inherit":o.k==="inter"?"'Inter',sans-serif":o.k==="mono"?"'SF Mono','Fira Code',monospace":"Georgia,serif", fontSize:13, fontWeight:600, color:a?B.accent:B.muted, display:"block", lineHeight:1.3, marginBottom:2 }}>Ag</span>
+              <span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+            </div>}
+          />
+        </div>
+        <div style={{ marginTop:12 }}>
+          <TogRow label="Texto em negrito" desc="Peso extra nos títulos" on={UP.boldTitles!==false} onToggle={() => setP("boldTitles", UP.boldTitles===false?true:false)} />
+        </div>
       </Card>
 
-      {/* ── ESTILO DOS CARDS ── */}
-      <SectionLabel icon="✨" title="Estilo dos Cards" />
+      {/* ── CARDS ── */}
+      <SL icon="🃏" title="Cards" />
       <Card>
-        <OptionRow
-          current={UP.cardStyle || "elevated"}
-          onPick={v => setP("cardStyle", v)}
-          options={[
-            { k:"flat", l:"Flat" },
-            { k:"elevated", l:"Elevado" },
-            { k:"glass", l:"Glass" },
-            { k:"outlined", l:"Contorno" },
-          ]}
-          renderOption={(o, active) => {
-            const miniShadow = o.k==="elevated"?"0 2px 6px rgba(0,0,0,0.15)":"none";
-            const miniBorder = o.k==="outlined"?"1.5px solid "+B.muted:o.k==="glass"?"1px solid rgba(255,255,255,0.2)":"1px solid transparent";
-            const miniBg = o.k==="glass"?"rgba(128,128,128,0.15)":o.k==="flat"?B.border+"40":active?B.accent+"10":"rgba(128,128,128,0.08)";
-            return <div>
-              <div style={{ width:30, height:20, borderRadius:4, background:miniBg, boxShadow:miniShadow, border:miniBorder, margin:"0 auto 4px", backdropFilter:o.k==="glass"?"blur(4px)":"none" }} />
-              <span style={{ fontSize:9, fontWeight:active?700:500, color:active?B.accent:B.muted }}>{o.l}</span>
-            </div>;
-          }}
+        <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Formato das bordas</p>
+        <OR current={UP.cardRadius||"round"} onPick={v => setP("cardRadius", v)}
+          options={[{k:"sharp",l:"Reto"},{k:"round",l:"Redondo"},{k:"pill",l:"Pílula"}]}
+          renderOption={(o, a) => <div>
+            <div style={{ width:30, height:20, borderRadius:o.k==="sharp"?"2px":o.k==="round"?"6px":"10px", border:"2px solid "+(a?B.accent:B.muted), margin:"0 auto 4px", opacity:a?1:0.5 }} />
+            <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+          </div>}
         />
+        <div style={{ marginTop:12 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Estilo</p>
+          <OR current={UP.cardStyle||"elevated"} onPick={v => setP("cardStyle", v)}
+            options={[{k:"flat",l:"Flat"},{k:"elevated",l:"Elevado"},{k:"glass",l:"Glass"},{k:"outlined",l:"Contorno"}]}
+            renderOption={(o, a) => {
+              const sh = o.k==="elevated"?"0 2px 6px rgba(0,0,0,0.15)":"none";
+              const bd = o.k==="outlined"?"1.5px solid "+B.muted:o.k==="glass"?"1px solid rgba(255,255,255,0.2)":"1px solid transparent";
+              const bg = o.k==="glass"?"rgba(128,128,128,0.15)":o.k==="flat"?B.border+"40":a?B.accent+"10":"rgba(128,128,128,0.08)";
+              return <div>
+                <div style={{ width:28, height:18, borderRadius:4, background:bg, boxShadow:sh, border:bd, margin:"0 auto 4px" }} />
+                <span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+              </div>;
+            }}
+          />
+        </div>
       </Card>
 
       {/* ── DENSIDADE ── */}
-      <SectionLabel icon="📐" title="Densidade" />
+      <SL icon="📐" title="Densidade" />
       <Card>
-        <OptionRow
-          current={UP.density || "normal"}
-          onPick={v => setP("density", v)}
-          options={[
-            { k:"compact", l:"Compacto" },
-            { k:"normal", l:"Normal" },
-            { k:"spacious", l:"Espaçoso" },
-          ]}
-          renderOption={(o, active) => {
-            const gap = o.k==="compact"?2:o.k==="normal"?4:6;
+        <OR current={UP.density||"normal"} onPick={v => setP("density", v)}
+          options={[{k:"compact",l:"Compacto"},{k:"normal",l:"Normal"},{k:"spacious",l:"Espaçoso"}]}
+          renderOption={(o, a) => {
+            const g = o.k==="compact"?2:o.k==="normal"?4:6;
             return <div>
-              <div style={{ display:"flex", flexDirection:"column", gap:gap, alignItems:"center", marginBottom:4 }}>
-                {[1,2,3].map(i => <div key={i} style={{ width:20, height:o.k==="compact"?3:o.k==="normal"?4:5, borderRadius:2, background:active?B.accent:B.muted, opacity:active?0.7:0.3 }} />)}
+              <div style={{ display:"flex", flexDirection:"column", gap:g, alignItems:"center", marginBottom:4 }}>
+                {[1,2,3].map(i => <div key={i} style={{ width:18, height:o.k==="compact"?2:o.k==="normal"?3:4, borderRadius:2, background:a?B.accent:B.muted, opacity:a?0.7:0.3 }} />)}
               </div>
-              <span style={{ fontSize:10, fontWeight:active?700:500, color:active?B.accent:B.muted }}>{o.l}</span>
+              <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
             </div>;
           }}
         />
       </Card>
 
       {/* ── FUNDO ── */}
-      <SectionLabel icon="🖼️" title="Fundo" />
+      <SL icon="🖼️" title="Fundo" />
       <Card>
-        <OptionRow
-          current={UP.bgPattern || "solid"}
-          onPick={v => setP("bgPattern", v)}
-          options={[
-            { k:"solid", l:"Sólido" },
-            { k:"gradient", l:"Gradiente" },
-            { k:"dots", l:"Pontilhado" },
-          ]}
-          renderOption={(o, active) => {
-            const prev = o.k==="solid"?B.bg:o.k==="gradient"?"linear-gradient(135deg,"+B.bg+","+B.accent+"15)":B.bg;
+        <OR current={UP.bgPattern||"solid"} onPick={v => setP("bgPattern", v)}
+          options={[{k:"solid",l:"Sólido"},{k:"gradient",l:"Gradiente"},{k:"dots",l:"Pontos"},{k:"grid",l:"Grid"}]}
+          renderOption={(o, a) => {
             return <div>
-              <div style={{ width:32, height:22, borderRadius:4, background:prev, border:"1px solid "+B.border, margin:"0 auto 4px", position:"relative", overflow:"hidden" }}>
-                {o.k==="dots" && <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient("+B.muted+" 1px, transparent 1px)", backgroundSize:"4px 4px", opacity:0.3 }} />}
+              <div style={{ width:30, height:20, borderRadius:4, background:o.k==="gradient"?"linear-gradient(135deg,"+B.bg+","+B.accent+"20)":B.bg, border:"1px solid "+B.border, margin:"0 auto 4px", position:"relative", overflow:"hidden" }}>
+                {o.k==="dots" && <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient("+B.muted+" 1px, transparent 1px)", backgroundSize:"4px 4px", opacity:0.4 }} />}
+                {o.k==="grid" && <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient("+B.muted+"15 1px, transparent 1px), linear-gradient(90deg, "+B.muted+"15 1px, transparent 1px)", backgroundSize:"6px 6px", opacity:0.5 }} />}
               </div>
-              <span style={{ fontSize:10, fontWeight:active?700:500, color:active?B.accent:B.muted }}>{o.l}</span>
+              <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+            </div>;
+          }}
+        />
+        {UP.bgPattern==="gradient" && <div style={{ marginTop:10 }}>
+          <Slider label="Intensidade" value={UP.bgGradientIntensity||15} min={5} max={40} step={5} unit="%" onChange={v => setP("bgGradientIntensity", v)} />
+        </div>}
+      </Card>
+
+      {/* ══════════════════════════════════════ */}
+      {/* ── BARRA DE NAVEGAÇÃO ── */}
+      {/* ══════════════════════════════════════ */}
+      <SL icon="📱" title="Barra de Navegação" />
+
+      {/* Navbar mini preview */}
+      <div style={{ marginBottom:10, padding:16, background:dark?"#1a1f24":B.bg, borderRadius:14, border:"1px solid "+B.border, position:"relative", minHeight:80, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+        <div style={{
+          width:navSz==="sm"?"60%":navSz==="lg"?"92%":"75%",
+          maxWidth:navSz==="sm"?180:navSz==="lg"?300:240,
+          padding:navSz==="sm"?"5px 4px":navSz==="lg"?"10px 8px":"7px 6px",
+          borderRadius:navSt==="pill"?20:navSt==="bar"?0:navSt==="minimal"?10:14,
+          background:navBlur?(dark?"rgba(10,15,18,0.8)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126"),
+          backdropFilter:navBlur?"blur(12px)":"none",
+          boxShadow:navPos==="float"?"0 4px 16px rgba(0,0,0,0.3)":"none",
+          display:"flex", alignItems:"center", justifyContent:"space-around",
+          borderTop:navSt==="bar"?"2px solid "+B.accent:"none",
+          position:navPos==="fixed"?"relative":"relative",
+          margin:navPos==="float"?"0 auto":"0",
+        }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:navLabels?2:0 }}>
+              <div style={{ width:i===2?navSz==="sm"?14:navSz==="lg"?22:18:navSz==="sm"?10:navSz==="lg"?16:12, height:i===2?navSz==="sm"?14:navSz==="lg"?22:18:navSz==="sm"?10:navSz==="lg"?16:12, borderRadius:i===2?10:4, background:i===2?B.accent:"rgba(255,255,255,0.3)" }} />
+              {navLabels && <div style={{ width:i===2?16:12, height:2, borderRadius:1, background:i===2?B.accent:"rgba(255,255,255,0.2)", marginTop:1 }} />}
+            </div>
+          ))}
+        </div>
+        <span style={{ position:"absolute", top:6, right:8, fontSize:8, color:B.muted }}>PREVIEW</span>
+      </div>
+
+      <Card>
+        <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho</p>
+        <OR current={navSz} onPick={v => setP("navSize", v)}
+          options={[{k:"sm",l:"Pequeno"},{k:"md",l:"Médio"},{k:"lg",l:"Grande"}]}
+          renderOption={(o, a) => <div>
+            <div style={{ width:o.k==="sm"?24:o.k==="md"?32:40, height:o.k==="sm"?8:o.k==="md"?10:13, borderRadius:o.k==="sm"?4:o.k==="md"?5:7, background:a?B.accent:B.muted, margin:"0 auto 4px", opacity:a?0.8:0.3 }} />
+            <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+          </div>}
+        />
+      </Card>
+
+      <Card style={{ marginTop:6 }}>
+        <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Estilo</p>
+        <OR current={navSt} onPick={v => setP("navStyle", v)}
+          options={[{k:"pill",l:"Pílula"},{k:"rounded",l:"Redondo"},{k:"bar",l:"Barra"},{k:"minimal",l:"Minimal"}]}
+          renderOption={(o, a) => {
+            const r = o.k==="pill"?"10px":o.k==="rounded"?"6px":o.k==="bar"?"0":"4px";
+            const bt = o.k==="bar"?"2px solid "+(a?B.accent:B.muted):"none";
+            return <div>
+              <div style={{ width:32, height:10, borderRadius:r, background:a?B.accent+"30":B.muted+"20", border:"1px solid "+(a?B.accent+"40":B.muted+"20"), borderTop:bt, margin:"0 auto 4px" }} />
+              <span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+            </div>;
+          }}
+        />
+      </Card>
+
+      <Card style={{ marginTop:6 }}>
+        <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Posição</p>
+        <OR current={navPos} onPick={v => setP("navPosition", v)}
+          options={[{k:"float",l:"Flutuante"},{k:"fixed",l:"Fixa"}]}
+          renderOption={(o, a) => {
+            return <div>
+              <div style={{ width:32, height:22, borderRadius:4, border:"1px solid "+(a?B.accent+"40":B.muted+"30"), margin:"0 auto 4px", position:"relative", overflow:"hidden", background:a?B.accent+"05":"transparent" }}>
+                <div style={{ position:"absolute", left:4, right:4, height:4, borderRadius:o.k==="float"?2:0, background:a?B.accent:B.muted, opacity:a?0.7:0.3, bottom:o.k==="float"?3:0 }} />
+              </div>
+              <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+            </div>;
+          }}
+        />
+      </Card>
+
+      <Card style={{ marginTop:6 }}>
+        <Slider label="Largura" value={UP.navWidth||320} min={220} max={400} step={10} unit="px" onChange={v => setP("navWidth", v)} />
+        <div style={{ marginTop:8, borderTop:"1px solid "+B.border, paddingTop:8 }}>
+          <TogRow label="Efeito blur" desc="Transparência com desfoque" on={navBlur} onToggle={() => setP("navBlur", !navBlur)} />
+        </div>
+        <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}>
+          <TogRow label="Mostrar nomes" desc="Texto abaixo dos ícones" on={navLabels} onToggle={() => setP("navLabels", !navLabels)} />
+        </div>
+      </Card>
+
+      {/* ── ESTILO DOS ÍCONES ── */}
+      <SL icon="💎" title="Ícones" />
+      <Card>
+        <OR current={UP.iconWeight||"normal"} onPick={v => setP("iconWeight", v)}
+          options={[{k:"thin",l:"Fino"},{k:"normal",l:"Normal"},{k:"bold",l:"Grosso"}]}
+          renderOption={(o, a) => <div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={a?B.accent:B.muted} strokeWidth={o.k==="thin"?1.2:o.k==="normal"?2:3} strokeLinecap="round" style={{ display:"block", margin:"0 auto 4px" }}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+          </div>}
+        />
+        <div style={{ marginTop:10 }}>
+          <Slider label="Tamanho dos ícones" value={UP.iconSize||22} min={18} max={28} step={2} unit="px" onChange={v => setP("iconSize", v)} />
+        </div>
+      </Card>
+
+      {/* ── HEADER ── */}
+      <SL icon="🏷️" title="Cabeçalho" />
+      <Card>
+        <OR current={UP.headerStyle||"default"} onPick={v => setP("headerStyle", v)}
+          options={[{k:"default",l:"Padrão"},{k:"centered",l:"Centrado"},{k:"accent",l:"Colorido"}]}
+          renderOption={(o, a) => {
+            return <div>
+              <div style={{ width:36, height:16, borderRadius:3, margin:"0 auto 4px", position:"relative", overflow:"hidden", border:"1px solid "+(a?B.accent+"30":B.muted+"20") }}>
+                <div style={{ position:"absolute", top:0, left:0, right:0, height:5, background:o.k==="accent"?B.accent:(a?B.accent+"20":B.muted+"15") }} />
+                <div style={{ position:"absolute", top:6, left:o.k==="centered"?10:3, width:16, height:2, borderRadius:1, background:a?B.accent:B.muted, opacity:0.5 }} />
+              </div>
+              <span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
+            </div>;
+          }}
+        />
+      </Card>
+
+      {/* ── LISTAS ── */}
+      <SL icon="📋" title="Listas" />
+      <Card>
+        <OR current={UP.listStyle||"cards"} onPick={v => setP("listStyle", v)}
+          options={[{k:"cards",l:"Cards"},{k:"rows",l:"Linhas"},{k:"minimal",l:"Minimal"}]}
+          renderOption={(o, a) => {
+            return <div>
+              <div style={{ display:"flex", flexDirection:"column", gap:o.k==="cards"?3:1, alignItems:"center", marginBottom:4 }}>
+                {[1,2].map(i => <div key={i} style={{ width:24, height:o.k==="cards"?8:o.k==="rows"?5:4, borderRadius:o.k==="cards"?3:1, background:a?B.accent:B.muted, opacity:a?(i===1?0.7:0.4):(i===1?0.3:0.15), border:o.k==="rows"?"none":"none", borderBottom:o.k==="rows"?"1px solid "+(a?B.accent+"30":B.muted+"20"):"none" }} />)}
+              </div>
+              <span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
             </div>;
           }}
         />
       </Card>
 
       {/* ── ANIMAÇÕES ── */}
-      <SectionLabel icon="🎬" title="Animações" />
+      <SL icon="🎬" title="Animações" />
       <Card>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div>
-            <p style={{ fontSize:13, fontWeight:600 }}>Animações da interface</p>
-            <p style={{ fontSize:10, color:B.muted }}>Transições e efeitos visuais</p>
-          </div>
-          <Toggle on={UP.animations !== false} onToggle={() => setP("animations", UP.animations === false ? true : false)} />
+        <TogRow label="Animações da interface" desc="Transições e efeitos visuais" on={UP.animations!==false} onToggle={() => setP("animations", UP.animations===false?true:false)} />
+        {UP.animations!==false && <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}>
+          <OR current={UP.animSpeed||"normal"} onPick={v => setP("animSpeed", v)}
+            options={[{k:"fast",l:"Rápido"},{k:"normal",l:"Normal"},{k:"slow",l:"Suave"}]}
+            renderOption={(o, a) => <span style={{ fontSize:10, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>}
+          />
+        </div>}
+      </Card>
+
+      {/* ── ACESSIBILIDADE ── */}
+      <SL icon="♿" title="Acessibilidade" />
+      <Card>
+        <TogRow label="Alto contraste" desc="Aumentar contraste dos textos" on={UP.highContrast===true} onToggle={() => setP("highContrast", !UP.highContrast)} />
+        <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}>
+          <TogRow label="Reduzir transparência" desc="Remover efeitos de blur/glass" on={UP.reduceTransparency===true} onToggle={() => setP("reduceTransparency", !UP.reduceTransparency)} />
         </div>
       </Card>
 
       {/* ── RESET ── */}
-      <button onClick={() => { updateUiPrefs({ fontSize:"normal", cardRadius:"round", cardStyle:"elevated", density:"normal", bgPattern:"solid", animations:true }); showToast("Configurações resetadas ✓"); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
+      <button onClick={() => { updateUiPrefs({ fontSize:"normal", fontFamily:"system", boldTitles:true, cardRadius:"round", cardStyle:"elevated", density:"normal", bgPattern:"solid", bgGradientIntensity:15, animations:true, animSpeed:"normal", navSize:"md", navStyle:"pill", navPosition:"float", navWidth:320, navBlur:true, navLabels:true, iconWeight:"normal", iconSize:22, headerStyle:"default", listStyle:"cards", highContrast:false, reduceTransparency:false }); showToast("Restaurado ✓"); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
         Restaurar padrão
       </button>
@@ -9729,7 +9851,7 @@ function PlaceholderPage({ title, onBack, icon }) {
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs }) {
   const [tab, setTab] = useState("home");
   const { showToast: mainToast, ToastEl } = useToast();
-  const accentColor = THEME_MAP[themeColor] || "#BBF246";
+  const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor);
   const [sub, setSub] = useState(null);
   const [more, setMore] = useState(false);
@@ -9908,14 +10030,20 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 --uh-radius-sm:${({sharp:"2px",round:"8px",pill:"16px"})[uiPrefs.cardRadius||"round"]||"8px"};
 --uh-pad:${({compact:"10px",normal:"14px",spacious:"20px"})[uiPrefs.density||"normal"]||"14px"};
 --uh-gap:${({compact:"6px",normal:"10px",spacious:"16px"})[uiPrefs.density||"normal"]||"10px"};
---uh-card-shadow:${({flat:"none",elevated:"0 2px 12px "+( dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.08)"),glass:"0 4px 24px "+(dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"),outlined:"none"})[uiPrefs.cardStyle||"elevated"]||"0 1px 3px rgba(25,33,38,0.06)"};
+--uh-card-shadow:${({flat:"none",elevated:"0 2px 12px "+(dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.08)"),glass:"0 4px 24px "+(dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"),outlined:"none"})[uiPrefs.cardStyle||"elevated"]||"0 1px 3px rgba(25,33,38,0.06)"};
 --uh-card-border:${uiPrefs.cardStyle==="outlined"?"1.5px solid "+B.border:(uiPrefs.cardStyle==="glass"?"1px solid "+(dark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.5)"):"none")};
---uh-card-bg:${uiPrefs.cardStyle==="glass"?(dark?"rgba(28,34,40,0.7)":"rgba(255,255,255,0.6)"):B.bgCard};
---uh-card-blur:${uiPrefs.cardStyle==="glass"?"backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);":""};
---uh-anim:${uiPrefs.animations===false?"0s":"0.2s"};
+--uh-card-bg:${(uiPrefs.reduceTransparency||uiPrefs.cardStyle!=="glass")?B.bgCard:(dark?"rgba(28,34,40,0.7)":"rgba(255,255,255,0.6)")};
+--uh-anim:${uiPrefs.animations===false?"0s":({fast:"0.12s",normal:"0.2s",slow:"0.35s"})[uiPrefs.animSpeed||"normal"]||"0.2s"};
+--uh-font:${({system:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",inter:"'Inter',-apple-system,sans-serif",mono:"'SF Mono','Fira Code','Cascadia Code',monospace",serif:"Georgia,'Times New Roman',serif"})[uiPrefs.fontFamily||"system"]||"inherit"};
+--uh-icon-w:${({thin:"1.2",normal:"2",bold:"3"})[uiPrefs.iconWeight||"normal"]||"2"};
+--uh-icon-sz:${uiPrefs.iconSize||22}px;
+--uh-nav-w:${uiPrefs.navWidth||320}px;
+--uh-nav-pad:${({sm:"5px 4px",md:"8px 6px",lg:"11px 8px"})[uiPrefs.navSize||"md"]||"8px 6px"};
+--uh-nav-rad:${({pill:"20px",rounded:"14px",bar:"0",minimal:"10px"})[uiPrefs.navStyle||"pill"]||"20px"};
 }
-.app,.screen{background:${B.bg}!important;color:${B.text}!important}
-.card{background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border);border-radius:var(--uh-radius)!important;padding:var(--uh-pad)!important;${uiPrefs.cardStyle==="glass"?"backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);":""}transition:all var(--uh-anim) ease}
+body,*{font-family:var(--uh-font)!important}
+.app,.screen{background:${B.bg}!important;color:${B.text}!important${uiPrefs.highContrast?";filter:contrast(1.15)":""}}
+.card{background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border);border-radius:var(--uh-radius)!important;padding:var(--uh-pad)!important;${uiPrefs.cardStyle==="glass"&&!uiPrefs.reduceTransparency?"backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);":""}transition:all var(--uh-anim) ease}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border-color:${B.border}!important;border-radius:var(--uh-radius-sm)!important;font-size:var(--uh-fs)!important}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent,.pill.full.accent{background:${B.accent}!important;color:${B.textOnAccent}!important;border-radius:var(--uh-radius)!important}
 .pill.outline{color:${B.text}!important;border-color:${B.border}!important}
@@ -9929,10 +10057,16 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
 .overlay{background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"}!important}
 .txtbtn{color:${B.muted}!important}
-.bnav{background:${dark?"#0A0F12":"#192126"}!important}
+.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.82)":"rgba(25,33,38,0.88)"):(dark?"#0A0F12":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;":""}border-radius:var(--uh-nav-rad)!important;width:calc(100% - 48px)!important;max-width:var(--uh-nav-w)!important;padding:var(--uh-nav-pad)!important;${uiPrefs.navStyle==="bar"?"border-top:2px solid "+B.accent+"!important;box-shadow:none!important;bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
+.bnav .bt{font-size:inherit!important}
+.bnav .bt svg{width:var(--uh-icon-sz)!important;height:var(--uh-icon-sz)!important;stroke-width:var(--uh-icon-w)!important}
+.bnav .bt span{font-size:${uiPrefs.navLabels===false?"0":"9px"}!important;height:${uiPrefs.navLabels===false?"0":"auto"}!important;overflow:hidden;opacity:${uiPrefs.navLabels===false?"0":"1"}}
 .card,.tinput,.pill,.htab,.grid-btn,.tag{transition:all var(--uh-anim) ease!important}
 ${uiPrefs.bgPattern==="dots"?`.app::before,.screen::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(${dark?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)"} 1px,transparent 1px);background-size:20px 20px}`:""}
-${uiPrefs.bgPattern==="gradient"?`.app,.screen{background:linear-gradient(135deg,${B.bg},${B.accent}08,${B.bg})!important}`:""}
+${uiPrefs.bgPattern==="grid"?`.app::before,.screen::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(${dark?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)"} 1px,transparent 1px),linear-gradient(90deg,${dark?"rgba(255,255,255,0.03)":"rgba(0,0,0,0.03)"} 1px,transparent 1px);background-size:24px 24px}`:""}
+${uiPrefs.bgPattern==="gradient"?`.app,.screen{background:linear-gradient(135deg,${B.bg},${B.accent}${Math.round((uiPrefs.bgGradientIntensity||15)/100*255).toString(16).padStart(2,"0")},${B.bg})!important}`:""}
+${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
+${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} />}
@@ -10065,8 +10199,8 @@ input,textarea,select{font-size:16px !important}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.bnav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:calc(100% - 64px);max-width:320px;display:flex;align-items:center;justify-content:space-around;background:${dark?"#0A0F12":"#192126"};border-radius:20px;padding:8px 6px;z-index:50;box-shadow:0 8px 32px rgba(25,33,38,0.4)}
-.bnav .bt{font-size:inherit!important;border-radius:12px!important}
+.bnav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:space-around;z-index:50;box-shadow:0 8px 32px rgba(25,33,38,0.4)}
+.bnav .bt{font-size:inherit}
 .bt{flex:1;display:flex;align-items:center;justify-content:center;gap:0;padding:10px 0;background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.45);font-family:inherit;position:relative;border-radius:14px;transition:all .25s ease}.bt.a{flex:1.4}
 .htabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}.htabs::-webkit-scrollbar{display:none}
 .htab{padding:7px 14px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;background:${dark?"#1C2228":"#fff"};color:${dark?"#8B9099":"#8B8F92"};border:none;cursor:pointer;font-family:inherit;box-shadow:0 1px 2px ${dark?"rgba(0,0,0,0.2)":"rgba(0,0,0,0.04)"}}.htab.a{background:${THEME_MAP[themeColor]||"#BBF246"};color:#192126;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
