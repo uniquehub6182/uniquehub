@@ -707,6 +707,7 @@ const IC = {
   news: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
   ideas: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>,
   help: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  match4biz: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M16 8l-4 4-4-4"/></svg>,
   search: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   growth: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
   chev: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>,
@@ -1620,6 +1621,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
               { k:"ai", l:"IA", icon:"🤖", c:B.purple },
               { k:"calendar", l:"Agenda", icon:"📅", c:B.accent },
               { k:"gamify", l:"Ranking", icon:"🏆", c:"#F59E0B" },
+              { k:"match4biz", l:"Match4Biz", icon:"💘", c:B.pink||"#EC4899" },
               ...(isAdmin ? [{ k:"financial", l:"Financeiro", icon:"💰", c:B.green }] : []),
               { k:"reports", l:"Relatórios", icon:"📊", c:B.red },
             ].map((s,j) => (
@@ -6328,6 +6330,7 @@ const ALL_TABS = [
   { k: "ideas", l: "Ideias", i: IC.ideas },
   { k: "ai", l: "IA", i: IC.ai },
   { k: "gamify", l: "Ranking", i: IC.gamify },
+  { k: "match4biz", l: "Match4Biz", i: IC.match4biz },
   { k: "help", l: "Ajuda", i: IC.help },
   { k: "search", l: "Buscar", i: IC.search },
   { k: "settings", l: "Config", i: IC.settings },
@@ -6337,7 +6340,7 @@ const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
   { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
-  { k: "ai", l: "Assistente IA" }, { k: "gamify", l: "Ranking" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
+  { k: "ai", l: "Assistente IA" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
 ];
 
 function MoreSheet({ onClose, goSub }) {
@@ -9692,7 +9695,288 @@ function PlaceholderPage({ title, onBack, icon }) {
   );
 }
 
-/* ═══════════════════════ MAIN APP ═══════════════════════ */
+/* ═══════════════════════ MATCH4BIZ (AGENCY PANEL) ═══════════════════════ */
+function Match4BizPage({ onBack, clients, user }) {
+  const [view, setView] = useState("dashboard");
+  const [selMatch, setSelMatch] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [msgInput, setMsgInput] = useState("");
+  const { showToast, ToastEl } = useToast();
+
+  /* Mock match data — replace with Supabase later */
+  const [matches, setMatches] = useState([
+    { id:1, a:{ name:"Café Aroma Petrópolis", seg:"Alimentação", logo:"☕" }, b:{ name:"Distribuidora Serra Fluminense", seg:"Distribuição", logo:"📦" }, status:"negotiating", date:"2025-03-01", value:null, msgs:[
+      { from:"a", text:"Olá! Temos interesse em distribuir nosso café para sua rede.", ts:"2025-03-01T10:00" },
+      { from:"b", text:"Ótimo! Qual o volume mínimo por pedido?", ts:"2025-03-01T14:30" },
+      { from:"a", text:"A partir de 50kg por entrega, com frete incluso para Petrópolis.", ts:"2025-03-02T09:00" },
+    ]},
+    { id:2, a:{ name:"Studio Bella Estética", seg:"Beleza", logo:"💆" }, b:{ name:"Natura Cosméticos RJ", seg:"Cosméticos", logo:"🌿" }, status:"closed_won", date:"2025-02-15", value:12500, msgs:[
+      { from:"a", text:"Gostaríamos de revender produtos Natura no studio.", ts:"2025-02-15T11:00" },
+      { from:"b", text:"Temos um programa de parceria. Envio a proposta.", ts:"2025-02-15T16:00" },
+      { from:"agency", text:"Intermediei a negociação. Contrato assinado!", ts:"2025-02-20T10:00" },
+    ]},
+    { id:3, a:{ name:"Pet Shop Amigo Fiel", seg:"Pet", logo:"🐕" }, b:{ name:"Ração Premium Sul", seg:"Alimentação Animal", logo:"🦴" }, status:"closed_lost", date:"2025-02-10", value:null, msgs:[
+      { from:"a", text:"Precisamos de fornecedor de ração premium.", ts:"2025-02-10T09:00" },
+      { from:"b", text:"Infelizmente não atendemos a região de Petrópolis.", ts:"2025-02-11T08:00" },
+    ]},
+    { id:4, a:{ name:"Padaria Central", seg:"Alimentação", logo:"🥖" }, b:{ name:"Laticínios Vale do Imperador", seg:"Laticínios", logo:"🧀" }, status:"new", date:"2025-03-03", value:null, msgs:[] },
+    { id:5, a:{ name:"Fit Arena Gym", seg:"Fitness", logo:"💪" }, b:{ name:"Suplementos MaxPower", seg:"Suplementos", logo:"🏋️" }, status:"talking", date:"2025-02-28", value:null, msgs:[
+      { from:"a", text:"Queremos oferecer suplementos para nossos alunos.", ts:"2025-02-28T10:00" },
+      { from:"b", text:"Ótima ideia! Temos condições especiais para academias.", ts:"2025-02-28T15:00" },
+    ]},
+    { id:6, a:{ name:"Clínica Saúde Total", seg:"Saúde", logo:"🏥" }, b:{ name:"Farmácia Popular Plus", seg:"Farmácia", logo:"💊" }, status:"closed_won", date:"2025-01-20", value:8000, msgs:[
+      { from:"b", text:"Podemos fazer parceria de indicação?", ts:"2025-01-20T11:00" },
+      { from:"a", text:"Sim! Encaminhamos pacientes e vocês dão desconto.", ts:"2025-01-21T09:00" },
+      { from:"agency", text:"Acordo formalizado. Comissão de 5% para a Unique.", ts:"2025-01-25T14:00" },
+    ]},
+  ]);
+
+  const statusMap = {
+    new:{ l:"Novo", c:B.blue, bg:`${B.blue}15` },
+    talking:{ l:"Conversando", c:B.cyan||B.blue, bg:`${B.cyan||B.blue}15` },
+    negotiating:{ l:"Negociando", c:B.orange, bg:`${B.orange}15` },
+    closed_won:{ l:"Fechado ✓", c:B.green, bg:`${B.green}15` },
+    closed_lost:{ l:"Não rolou", c:B.red, bg:`${B.red}15` },
+  };
+
+  const filtered = filter === "all" ? matches : matches.filter(m => m.status === filter);
+  const totalMatches = matches.length;
+  const wonDeals = matches.filter(m => m.status === "closed_won");
+  const totalRevenue = wonDeals.reduce((s,m) => s + (m.value||0), 0);
+  const conversionRate = totalMatches > 0 ? Math.round((wonDeals.length / totalMatches) * 100) : 0;
+  const activeDeals = matches.filter(m => ["new","talking","negotiating"].includes(m.status)).length;
+
+  const updateStatus = (id, newStatus) => {
+    setMatches(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, status: newStatus }));
+    showToast("Status atualizado ✓");
+  };
+
+  const updateValue = (id, val) => {
+    const numVal = parseFloat(val) || 0;
+    setMatches(prev => prev.map(m => m.id === id ? { ...m, value: numVal } : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, value: numVal }));
+  };
+
+  const sendMsg = (id) => {
+    if (!msgInput.trim()) return;
+    const msg = { from:"agency", text:msgInput.trim(), ts:new Date().toISOString() };
+    setMatches(prev => prev.map(m => m.id === id ? { ...m, msgs:[...m.msgs, msg] } : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, msgs:[...prev.msgs, msg] }));
+    setMsgInput("");
+  };
+
+  /* ── MATCH DETAIL ── */
+  if (view === "detail" && selMatch) {
+    const m = matches.find(x => x.id === selMatch.id) || selMatch;
+    const st = statusMap[m.status] || statusMap.new;
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Detalhe do Match" onBack={() => { setView("list"); setSelMatch(null); }} />
+
+        {/* Companies */}
+        <Card>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.a.logo}</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>{m.a.name}</p>
+              <p style={{ fontSize:10, color:B.muted }}>{m.a.seg}</p>
+            </div>
+          </div>
+          <div style={{ textAlign:"center", margin:"10px 0", color:B.accent }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginTop:2 }}>MATCH</p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.purple}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.b.logo}</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>{m.b.name}</p>
+              <p style={{ fontSize:10, color:B.muted }}>{m.b.seg}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Status + Value */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>STATUS DO NEGÓCIO</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {Object.entries(statusMap).map(([k,v]) => (
+              <button key={k} onClick={() => updateStatus(m.id, k)} style={{ padding:"6px 12px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:11, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
+            ))}
+          </div>
+          {m.status === "closed_won" && (
+            <div style={{ marginTop:12 }}>
+              <p style={{ fontSize:11, fontWeight:600, color:B.muted, marginBottom:4 }}>Valor do negócio (R$)</p>
+              <input value={m.value||""} onChange={e => updateValue(m.id, e.target.value)} placeholder="0,00" className="tinput" type="number" style={{ fontSize:16, fontWeight:700 }} />
+            </div>
+          )}
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:10, padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
+            <span style={{ fontSize:11, color:B.muted }}>Data do match</span>
+            <span style={{ fontSize:11, fontWeight:600 }}>{new Date(m.date).toLocaleDateString("pt-BR")}</span>
+          </div>
+        </Card>
+
+        {/* Chat History */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>HISTÓRICO DE CONVERSA</p>
+          {m.msgs.length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma mensagem ainda</p>}
+          <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:300, overflowY:"auto" }}>
+            {m.msgs.map((msg, i) => {
+              const isAgency = msg.from === "agency";
+              const sender = msg.from === "a" ? m.a.name : msg.from === "b" ? m.b.name : "Unique Marketing";
+              const senderIcon = msg.from === "a" ? m.a.logo : msg.from === "b" ? m.b.logo : "🏢";
+              return (
+                <div key={i} style={{ padding:"8px 10px", borderRadius:12, background:isAgency?`${B.accent}08`:`${B.muted}08`, border:isAgency?`1px solid ${B.accent}15`:"none" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                    <span style={{ fontSize:12 }}>{senderIcon}</span>
+                    <span style={{ fontSize:10, fontWeight:700, color:isAgency?B.accent:B.text }}>{sender}</span>
+                    <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
+                  </div>
+                  <p style={{ fontSize:12, lineHeight:1.5, color:B.text }}>{msg.text}</p>
+                </div>
+              );
+            })}
+          </div>
+          {/* Agency intervention input */}
+          <div style={{ display:"flex", gap:8, marginTop:10, paddingTop:10, borderTop:`1px solid ${B.border}` }}>
+            <input value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key==="Enter" && sendMsg(m.id)} placeholder="Intervir na conversa..." className="tinput" style={{ flex:1, fontSize:12 }} />
+            <button onClick={() => sendMsg(m.id)} disabled={!msgInput.trim()} style={{ width:36, height:36, borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}20`, border:"none", cursor:msgInput.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={msgInput.trim()?B.textOnAccent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ── MATCHES LIST ── */
+  if (view === "list") {
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Todos os Matches" onBack={() => setView("dashboard")} />
+        {/* Filters */}
+        <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8, marginBottom:4 }}>
+          {[{ k:"all", l:"Todos" }, ...Object.entries(statusMap).map(([k,v]) => ({ k, l:v.l }))].map(f => (
+            <button key={f.k} onClick={() => setFilter(f.k)} style={{ padding:"6px 14px", borderRadius:10, border:filter===f.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:filter===f.k?`${B.accent}10`:"transparent", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{f.l} {f.k==="all"?`(${totalMatches})`:`(${matches.filter(m=>m.status===f.k).length})`}</button>
+          ))}
+        </div>
+        {/* Match cards */}
+        {filtered.length === 0 && <Card><p style={{ textAlign:"center", color:B.muted, fontSize:13 }}>Nenhum match encontrado</p></Card>}
+        {filtered.map((m,i) => {
+          const st = statusMap[m.status];
+          return (
+            <Card key={m.id} delay={i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?8:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <span style={{ fontSize:20 }}>{m.a.logo}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                  <span style={{ fontSize:20 }}>{m.b.logo}</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:12, fontWeight:700 }}>{m.a.name.split(" ").slice(0,2).join(" ")} × {m.b.name.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:10, color:B.muted }}>{m.a.seg} + {m.b.seg}</p>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6, display:"inline-block" }}>{st.l}</span>
+                  {m.value && <p style={{ fontSize:11, fontWeight:700, color:B.green, marginTop:4 }}>R$ {m.value.toLocaleString("pt-BR")}</p>}
+                </div>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, paddingTop:6, borderTop:`1px solid ${B.border}` }}>
+                <span style={{ fontSize:10, color:B.muted }}>{new Date(m.date).toLocaleDateString("pt-BR")}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{m.msgs.length} msg{m.msgs.length!==1?"s":""}</span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ── DASHBOARD (default) ── */
+  return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Match4Biz" onBack={onBack} />
+
+      {/* Metrics */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+        {[
+          { label:"Total Matches", value:totalMatches, icon:"🤝", color:B.accent },
+          { label:"Em andamento", value:activeDeals, icon:"⏳", color:B.orange },
+          { label:"Fechados", value:wonDeals.length, icon:"✅", color:B.green },
+          { label:"Conversão", value:`${conversionRate}%`, icon:"📈", color:B.purple },
+        ].map((m,i) => (
+          <Card key={i} delay={i*0.04} style={{ padding:14, textAlign:"center" }}>
+            <span style={{ fontSize:22, display:"block", marginBottom:4 }}>{m.icon}</span>
+            <p style={{ fontSize:20, fontWeight:800, color:m.color }}>{m.value}</p>
+            <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginTop:2 }}>{m.label}</p>
+          </Card>
+        ))}
+      </div>
+
+      {/* Revenue */}
+      <Card delay={0.15} style={{ marginTop:8 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <p style={{ fontSize:11, fontWeight:600, color:B.muted }}>Receita gerada por matches</p>
+            <p style={{ fontSize:24, fontWeight:800, color:B.green, marginTop:4 }}>R$ {totalRevenue.toLocaleString("pt-BR")}</p>
+          </div>
+          <div style={{ width:48, height:48, borderRadius:14, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>💰</div>
+        </div>
+        {wonDeals.length > 0 && (
+          <div style={{ marginTop:10, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
+            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Negócios fechados</p>
+            {wonDeals.map((d,i) => (
+              <div key={d.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderTop:i?`1px solid ${B.border}05`:"none" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:14 }}>{d.a.logo}</span>
+                  <span style={{ fontSize:11, fontWeight:600 }}>{d.a.name.split(" ").slice(0,2).join(" ")} × {d.b.name.split(" ").slice(0,2).join(" ")}</span>
+                </div>
+                <span style={{ fontSize:12, fontWeight:700, color:B.green }}>R$ {(d.value||0).toLocaleString("pt-BR")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Recent matches */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12, marginBottom:8 }}>
+        <p className="sl">Matches recentes</p>
+        <button onClick={() => setView("list")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
+      </div>
+      {matches.slice(0, 4).map((m,i) => {
+        const st = statusMap[m.status];
+        return (
+          <Card key={m.id} delay={0.2+i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?6:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"center" }}>
+                <span style={{ fontSize:18 }}>{m.a.logo}</span>
+                <span style={{ fontSize:10, margin:"0 4px", color:B.accent }}>♥</span>
+                <span style={{ fontSize:18 }}>{m.b.logo}</span>
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:12, fontWeight:600 }}>{m.a.name.split(" ").slice(0,2).join(" ")} × {m.b.name.split(" ").slice(0,2).join(" ")}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{new Date(m.date).toLocaleDateString("pt-BR")} · {m.msgs.length} msgs</p>
+              </div>
+              <span style={{ fontSize:9, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6 }}>{st.l}</span>
+            </div>
+          </Card>
+        );
+      })}
+
+      {/* CTA */}
+      <Card delay={0.35} style={{ marginTop:12, textAlign:"center", background:`${B.accent}06`, border:`1.5px dashed ${B.accent}25` }}>
+        <span style={{ fontSize:28, display:"block", marginBottom:6 }}>💡</span>
+        <p style={{ fontSize:13, fontWeight:700, color:B.text }}>Como funciona</p>
+        <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, marginTop:4 }}>Os clientes da agência fazem match entre si no app. Aqui você acompanha cada conexão, intervém quando necessário e registra os negócios fechados.</p>
+      </Card>
+    </div>
+  );
+}
+
+
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs }) {
   const [tab, setTab] = useState("home");
   const { showToast: mainToast, ToastEl } = useToast();
@@ -9967,6 +10251,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
+        {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} team={sharedTeam} clients={sharedClients} />}
@@ -9979,7 +10264,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
-              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
+              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
             }} className={`bt${a ? " a" : ""}`} style={a ? { background: accentColor, borderRadius: 14, padding: "8px 14px", gap: 5, margin: "0 2px" } : {}}>
               {t.i(a ? B.navActive : B.navInactive)}
