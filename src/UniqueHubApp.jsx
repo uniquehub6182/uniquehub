@@ -5193,6 +5193,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [permMap, setPermMap] = useState({});
   const [permLoaded, setPermLoaded] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
+  const [expandedPerm, setExpandedPerm] = useState(null);
 
   /* Pending approvals count */
   const [pendingCount, setPendingCount] = useState(0);
@@ -5794,7 +5795,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       return { ...prev, [permRole]: rolePerms };
     });
   };
-  const [expandedPerm, setExpandedPerm] = useState(null);
   const savePerms = async () => {
     if (!permRole) return;
     setPermSaving(true);
