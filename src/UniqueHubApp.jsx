@@ -1,6 +1,25 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+/* ── Error Boundary ── */
+class DemandDetailBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("DemandDetail crash:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement("div", { className: "pg", style: { padding: 20, textAlign: "center" } },
+        React.createElement("p", { style: { fontSize: 40, marginBottom: 12 } }, "⚠️"),
+        React.createElement("h3", { style: { fontSize: 16, fontWeight: 700, marginBottom: 8 } }, "Erro ao carregar demanda"),
+        React.createElement("p", { style: { fontSize: 12, color: "#888", marginBottom: 16, lineHeight: 1.6 } }, "Essa demanda tem dados incompletos. Tente excluí-la e criar novamente."),
+        React.createElement("p", { style: { fontSize: 10, color: "#ccc", fontFamily: "monospace", wordBreak: "break-all" } }, String(this.state.error)),
+        React.createElement("button", { onClick: () => { this.setState({ hasError: false, error: null }); if (this.props.onBack) this.props.onBack(); }, style: { marginTop: 16, padding: "10px 20px", borderRadius: 10, background: "#00D1A7", color: "#fff", border: "none", fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "← Voltar")
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ═══════════════════════ SUPABASE ═══════════════════════ */
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -168,29 +187,57 @@ const supaUploadFile = async (file, demandId) => {
     return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
   } catch (e) { console.error("Upload catch:", e); return { error: e.message }; }
 };
+const supaUploadClientFile = async (file, clientId) => {
+  if (!supabase) return { error: "Supabase offline" };
+  try {
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) return { error: `Arquivo muito grande (${(file.size/1024/1024).toFixed(0)}MB). Máximo: 100MB` };
+    const safeName = file.name.replace(/\s+/g, "_");
+    const path = `client_${clientId}/${Date.now()}_${safeName}`;
+    /* Try demand-files bucket first (already exists), fallback gracefully */
+    const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true, cacheControl: "3600" });
+    if (error) { console.error("Client upload error:", error.message); return { error: error.message }; }
+    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+    return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
+  } catch (e) { console.error("Client upload catch:", e); return { error: e.message }; }
+};
 const supaDeleteFile = async (path) => {
   if (!supabase) return;
   try { await supabase.storage.from("demand-files").remove([path]); } catch(e) {}
 };
-const mergeSupaDemand = (row) => ({
-  id: row.id, supaId: row.id, type: row.type || "social",
-  client: "Sem cliente", title: row.title || "",
-  stage: row.stage || "idea", priority: row.priority || "média",
-  network: Array.isArray(row.networks) ? row.networks.join(", ") : (row.networks || "Instagram"),
-  format: row.format || "Feed",
-  sponsored: row.sponsored || false,
-  assignees: (() => {
-    const byName = typeof row.steps === "object" && row.steps?.idea?.by;
-    if (byName && typeof byName === "string") return [byName];
-    if (row.created_by_name && typeof row.created_by_name === "string") return [row.created_by_name];
-    return ["Equipe"];
-  })(),
-  createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
-  steps: (typeof row.steps === "object" && row.steps !== null && Object.keys(row.steps).length > 0) ? row.steps : { idea: { by: (typeof row.steps === "object" && typeof row.steps?.idea?.by === "string" ? row.steps.idea.by : (typeof row.created_by_name === "string" ? row.created_by_name : "Equipe")), text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
-  scheduling: (row.scheduling && Object.keys(row.scheduling).length > 0) ? row.scheduling : { date: row.schedule_date || "", time: row.schedule_time || "" },
-  traffic: (row.traffic && Object.keys(row.traffic).length > 0) ? row.traffic : { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
-  ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [], refs:"", dateStart:"", dateEnd:"", location:"", needs:[], clientTeam:[], budget:"", budgetBreakdown:[] } } : {}),
-});
+const mergeSupaDemand = (row) => {
+  /* Ensure steps is always a valid object */
+  let steps;
+  if (typeof row.steps === "object" && row.steps !== null && Object.keys(row.steps).length > 0) {
+    steps = row.steps;
+  } else {
+    steps = { idea: { by: (typeof row.created_by_name === "string" ? row.created_by_name : "Equipe"), text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } };
+  }
+  /* Ensure all step sub-objects exist */
+  ["idea","briefing","design","caption","review","client","production","editing"].forEach(k => {
+    if (!steps[k] || typeof steps[k] !== "object") steps[k] = {};
+    if (steps[k].files && !Array.isArray(steps[k].files)) steps[k].files = [];
+  });
+  return {
+    id: row.id, supaId: row.id, type: row.type || "social",
+    client: "Sem cliente", title: row.title || "",
+    stage: row.stage || "idea", priority: row.priority || "média",
+    network: Array.isArray(row.networks) ? row.networks.join(", ") : (row.networks || "Instagram"),
+    format: row.format || "Feed",
+    sponsored: row.sponsored || false,
+    assignees: (() => {
+      const byName = steps?.idea?.by;
+      if (byName && typeof byName === "string") return [byName];
+      if (row.created_by_name && typeof row.created_by_name === "string") return [row.created_by_name];
+      return ["Equipe"];
+    })(),
+    createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
+    steps,
+    scheduling: (row.scheduling && typeof row.scheduling === "object" && Object.keys(row.scheduling).length > 0) ? row.scheduling : { date: row.schedule_date || "", time: row.schedule_time || "" },
+    traffic: (row.traffic && typeof row.traffic === "object" && Object.keys(row.traffic).length > 0) ? row.traffic : { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
+    ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [], refs:"", dateStart:"", dateEnd:"", location:"", needs:[], clientTeam:[], budget:"", budgetBreakdown:[] } } : {}),
+  };
+};
 
 /* ── Supabase Events (Calendar) Helpers ── */
 const supaLoadEvents = async () => {
@@ -264,7 +311,15 @@ const supaDeleteIdea = async (id) => {
 /* ── Supabase: XP / Gamification ── */
 const supaLoadAllXp = async () => {
   if (!supabase) return [];
-  try { const { data, error } = await supabase.from("xp_events").select("*").order("created_at", { ascending: false }).limit(500); if (error) return []; return data || []; } catch(e) { return []; }
+  try {
+    /* Try RPC function first (bypasses RLS, sees all users' XP) */
+    const { data: rpcData, error: rpcError } = await supabase.rpc("get_all_xp_events");
+    if (!rpcError && rpcData) return rpcData;
+    /* Fallback: direct query (limited by RLS to own user only) */
+    const { data, error } = await supabase.from("xp_events").select("*").order("created_at", { ascending: false }).limit(500);
+    if (error) return [];
+    return data || [];
+  } catch(e) { return []; }
 };
 const supaAddXp = async (userId, action, description, xpAmount) => {
   if (!supabase) return null;
@@ -2113,22 +2168,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       if (fileForm.file) {
         /* Real file upload to Supabase storage */
         showToast("Enviando arquivo...");
-        const ext = fileForm.file.name.split(".").pop();
-        const path = `clients/${sel.id}/${Date.now()}.${ext}`;
-        const result = await supaUploadFile(fileForm.file, path);
-        if (result?.error) return showToast(result.error);
-        const url = result?.url || "";
+        const result = await supaUploadClientFile(fileForm.file, sel.id);
+        if (result?.error) return showToast("Erro: " + result.error);
         const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
-        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url, storagePath: path };
+        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
         updateClient(sel.id, { files: [...files, nf] });
         setAddingFile(false); setFileForm({});
         showToast("Arquivo enviado ✓");
       } else {
-        /* No file selected, just add metadata */
-        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size: "—" };
-        updateClient(sel.id, { files: [...files, nf] });
-        setAddingFile(false); setFileForm({});
-        showToast("Arquivo adicionado ✓");
+        showToast("Selecione um arquivo para enviar");
       }
     };
 
@@ -3185,6 +3233,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
     };
 
     return (
+      <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
       <div className="pg" style={{ paddingTop: TOP }}>
         {ToastEl}
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -3738,6 +3787,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
         </div>}
         <div style={{ height:20 }} />
       </div>
+      </DemandDetailBoundary>
     );
   }
 
@@ -4756,6 +4806,57 @@ function NotifsPage({ onBack, readIds, setReadIds }) {
 }
 
 /* ═══════════════════════ SETTINGS PAGE ═══════════════════════ */
+/* ═══════════════════════ APPROVALS PAGE ═══════════════════════ */
+function ApprovalsPage({ onBack }) {
+  const [pendingMembers, setPendingMembers] = useState([]);
+  const [pendingLoaded, setPendingLoaded] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  useEffect(() => {
+    if (pendingLoaded) return;
+    supaLoadTeam().then(rows => {
+      setPendingMembers((rows || []).filter(r => r.status === "pendente"));
+      setPendingLoaded(true);
+    });
+  }, [pendingLoaded]);
+  const approveMember = async (m) => {
+    await supaUpdateMember(m.id, { status: "offline" });
+    setPendingMembers(p => p.filter(x => x.id !== m.id));
+    showToast(`${m.name} aprovado ✓`);
+  };
+  const rejectMember = async (m) => {
+    if (!confirm(`Recusar cadastro de "${m.name}"? O registro será removido.`)) return;
+    await supaDeleteMember(m.id, m.user_id);
+    setPendingMembers(p => p.filter(x => x.id !== m.id));
+    showToast(`${m.name} recusado e removido`);
+  };
+  return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Aprovações de Cadastro" onBack={onBack} />
+      <Card style={{ background: `${B.orange}06`, border: `1px solid ${B.orange}20`, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: B.orange, display: "flex" }}>{IC.shield}</span>
+          <p style={{ fontSize: 12, color: B.orange }}>Apenas CEO e Gerentes podem aprovar novos cadastros.</p>
+        </div>
+      </Card>
+      {!pendingLoaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
+      {pendingLoaded && pendingMembers.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, fontWeight:600 }}>Nenhum cadastro pendente</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Todos os membros já foram aprovados.</p></Card>}
+      {pendingMembers.map((r, i) => (
+        <Card key={r.id} delay={i * 0.04} style={{ marginTop: i ? 8 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <Av name={r.name} sz={40} fs={16} />
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</p><p style={{ fontSize: 11, color: B.muted }}>{r.email} · {r.role || r.job_title || "—"}</p><p style={{ fontSize: 10, color: B.muted }}>Solicitado em {r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</p></div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => approveMember(r)} className="pill accent" style={{ flex: 1, padding: "10px 14px" }}>{IC.check} Aprovar</button>
+            <button onClick={() => rejectMember(r)} className="pill outline" style={{ flex: 1, padding: "10px 14px", color: B.red, borderColor: `${B.red}30` }}>{IC.x} Recusar</button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit }) {
   const [sub, setSub] = useState(null);
   const [twoFA, setTwoFA] = useState(false);
@@ -5392,53 +5493,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   );
 
   /* ═══ APPROVALS ═══ */
-  if (sub === "approvals") {
-    const [pendingMembers, setPendingMembers] = React.useState([]);
-    const [pendingLoaded, setPendingLoaded] = React.useState(false);
-    React.useEffect(() => {
-      if (pendingLoaded) return;
-      supaLoadTeam().then(rows => {
-        setPendingMembers((rows || []).filter(r => r.status === "pendente"));
-        setPendingLoaded(true);
-      });
-    }, [pendingLoaded]);
-    const approveMember = async (m) => {
-      await supaUpdateMember(m.id, { status: "offline" });
-      setPendingMembers(p => p.filter(x => x.id !== m.id));
-      showToast(`${m.name} aprovado ✓`);
-    };
-    const rejectMember = async (m) => {
-      if (!confirm(`Recusar cadastro de "${m.name}"? O registro será removido.`)) return;
-      await supaDeleteMember(m.id, m.user_id);
-      setPendingMembers(p => p.filter(x => x.id !== m.id));
-      showToast(`${m.name} recusado e removido`);
-    };
-    return (
-    <div className="pg">
-      {ToastEl}
-      <Head title="Aprovações de Cadastro" onBack={() => setSub(null)} />
-      <Card style={{ background: `${B.orange}06`, border: `1px solid ${B.orange}20`, marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: B.orange, display: "flex" }}>{IC.shield}</span>
-          <p style={{ fontSize: 12, color: B.orange }}>Apenas CEO e Gerentes podem aprovar novos cadastros.</p>
-        </div>
-      </Card>
-      {!pendingLoaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
-      {pendingLoaded && pendingMembers.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, fontWeight:600 }}>Nenhum cadastro pendente</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Todos os membros já foram aprovados.</p></Card>}
-      {pendingMembers.map((r, i) => (
-        <Card key={r.id} delay={i * 0.04} style={{ marginTop: i ? 8 : 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <Av name={r.name} sz={40} fs={16} />
-            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</p><p style={{ fontSize: 11, color: B.muted }}>{r.email} · {r.role || r.job_title || "—"}</p><p style={{ fontSize: 10, color: B.muted }}>Solicitado em {r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</p></div>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => approveMember(r)} className="pill accent" style={{ flex: 1, padding: "10px 14px" }}>{IC.check} Aprovar</button>
-            <button onClick={() => rejectMember(r)} className="pill outline" style={{ flex: 1, padding: "10px 14px", color: B.red, borderColor: `${B.red}30` }}>{IC.x} Recusar</button>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );}
+  if (sub === "approvals") return <ApprovalsPage onBack={() => setSub(null)} />;
 
   /* ═══ SETTINGS MAIN ═══ */
   return (
@@ -6798,7 +6853,7 @@ function NewsPage({ onBack }) {
         setArticles(rows.map(r => ({
           id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
           body: r.body || "", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
-          readTime: r.read_time || "", source: r.source || "", pinned: r.pinned || false,
+          readTime: r.read_time || "", source: r.source || "", sourceUrl: r.source_url || "", pinned: r.pinned || false,
           tags: r.tags || [], supaId: r.id
         })));
       }
@@ -6822,20 +6877,20 @@ function NewsPage({ onBack }) {
 
   const saveArticle = async () => {
     if (!form.title?.trim()) return showToast("Informe o título");
-    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: form.source || "", read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [] };
+    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: form.source || "", source_url: form.sourceUrl || "", read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [] };
     const row = await supaCreateNews(na);
     if (row) {
-      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:row.source, pinned:row.pinned, tags:row.tags||[], supaId:row.id }, ...prev]);
+      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:row.source, sourceUrl:row.source_url||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id }, ...prev]);
       setCreating(false); setForm({}); showToast("Artigo publicado ✓");
     }
   };
 
   const updateArticle = async () => {
     if (!selArticle?.supaId) return;
-    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: form.source ?? selArticle.source, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags };
+    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: form.source ?? selArticle.source, source_url: form.sourceUrl ?? selArticle.sourceUrl ?? "", read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags };
     await supaUpdateNews(selArticle.supaId, updates);
-    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:updates.source, readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags } } : a));
-    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:updates.source, readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags };
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:updates.source, sourceUrl:updates.source_url, readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags } } : a));
+    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:updates.source, sourceUrl:updates.source_url, readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags };
     setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
   };
 
@@ -6874,6 +6929,7 @@ function NewsPage({ onBack }) {
         <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Fonte</label><input value={form.source||""} onChange={e=>setForm(p=>({...p,source:e.target.value}))} placeholder="Ex: Social Media Today" className="tinput" /></div>
         <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Tempo leitura</label><input value={form.readTime||""} onChange={e=>setForm(p=>({...p,readTime:e.target.value}))} placeholder="3 min" className="tinput" /></div>
       </div>
+      <div style={{ marginBottom:10 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Link da fonte</label><input value={form.sourceUrl||""} onChange={e=>setForm(p=>({...p,sourceUrl:e.target.value}))} placeholder="https://socialmediatoday.com/artigo..." className="tinput" /></div>
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Conteúdo</label>
       <textarea value={form.body||""} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Texto completo do artigo..." className="tinput" style={{ minHeight:120, resize:"vertical", marginBottom:10 }} />
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separadas por vírgula)</label>
@@ -6919,7 +6975,7 @@ function NewsPage({ onBack }) {
             {a.pinned && <Tag color={B.red}>Destaque</Tag>}
           </div>
           <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{a.title}</h3>
-          <p style={{ fontSize:11, color:B.muted }}>{a.source} · {a.date}</p>
+          <p style={{ fontSize:11, color:B.muted }}>{a.sourceUrl ? <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : a.source} · {a.date}</p>
         </Card>
         <Card style={{ marginBottom:12 }}>
           {(a.body||"").split("\n\n").map((p,i) => (
@@ -6934,7 +6990,7 @@ function NewsPage({ onBack }) {
             </div>
           </Card>
         )}
-        <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", ")});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+        <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", ")});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar artigo
         </button>
@@ -6987,7 +7043,7 @@ function NewsPage({ onBack }) {
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
                   <span style={{ fontSize:9, color:B.muted }}>{a.readTime}</span>
-                  {a.source && <span style={{ fontSize:9, color:B.accent, fontWeight:600 }}>{a.source}</span>}
+                  {a.source && (a.sourceUrl ? <a href={a.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:9, color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : <span style={{ fontSize:9, color:B.accent, fontWeight:600 }}>{a.source}</span>)}
                 </div>
                 <span style={{ fontSize:9, color:B.muted }}>{a.date}</span>
               </div>
