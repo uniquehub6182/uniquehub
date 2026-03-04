@@ -248,6 +248,20 @@ const supaUpdateIdea = async (id, updates) => {
   if (!supabase) return;
   try { await supabase.from("ideas").update(updates).eq("id", id); } catch(e) {}
 };
+const supaDeleteIdea = async (id) => {
+  if (!supabase) return false;
+  try { const { error } = await supabase.from("ideas").delete().eq("id", id); return !error; } catch(e) { return false; }
+};
+
+/* ── Supabase: XP / Gamification ── */
+const supaLoadAllXp = async () => {
+  if (!supabase) return [];
+  try { const { data, error } = await supabase.from("xp_events").select("*").order("created_at", { ascending: false }).limit(500); if (error) return []; return data || []; } catch(e) { return []; }
+};
+const supaAddXp = async (userId, action, description, xpAmount) => {
+  if (!supabase) return null;
+  try { const { data, error } = await supabase.from("xp_events").insert({ user_id: userId, action, description, xp_amount: xpAmount }).select().single(); if (error) { console.error("xp insert:", error); return null; } return data; } catch(e) { return null; }
+};
 
 /* ── Supabase: News CRUD ── */
 const supaLoadNews = async () => {
@@ -1667,7 +1681,7 @@ function CheckinPage({ onBack, user }) {
     setActionLoading(true);
     showToast("Registrando entrada...");
     const result = await supaCheckin(user.id);
-    if (result) { setActiveCheckin(result); showToast("Check-in registrado ✓"); }
+    if (result) { setActiveCheckin(result); showToast("Check-in registrado ✓ (+15 XP)"); supaAddXp(user.id, "checkin", "Check-in no horário", 15); }
     else showToast("Erro ao registrar check-in");
     setActionLoading(false);
   };
@@ -2014,9 +2028,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     const connectedCount = Object.values(sel.socials||{}).filter(s=>s.connected).length;
     const files = sel.files || [];
     const invoices = sel.invoices || [
-      { id:1, month:"Fev/2026", value:sel.monthly, status:"pago", paidAt:"05/02/2026" },
-      { id:2, month:"Jan/2026", value:sel.monthly, status:"pago", paidAt:"03/01/2026" },
-      { id:3, month:"Dez/2025", value:sel.monthly, status:"pago", paidAt:"04/12/2025" },
+      { id:1, month:"Mar/2026", value:sel.monthly, status:"pendente", paidAt:null },
     ];
     const contract = sel.contract || {
       type: "Sem fidelidade",
@@ -2697,9 +2709,7 @@ function FinancialPage({ onBack, clients: propClients }) {
   const trialClients = CDATA.filter(c => c.status === "trial" || c.plan === "Trial").length;
   const ticketMedio = payingClients > 0 ? Math.round(totalRevReal / payingClients) : 0;
   const months = [
-    { m: "Mar 2026", revenue: `R$ ${totalRevReal.toLocaleString("pt-BR")}`, clients: CDATA.length, paying: payingClients, trial: trialClients, ticket: `R$ ${ticketMedio.toLocaleString("pt-BR")}`, growth: "+12%", expenses: "R$ 8.200", profit: `R$ ${(totalRevReal - 8200).toLocaleString("pt-BR")}` },
-    { m: "Fev 2026", revenue: "R$ 18.400", clients: 7, paying: 6, trial: 1, ticket: "R$ 2.628", growth: "+8%", expenses: "R$ 7.800", profit: "R$ 10.200" },
-    { m: "Jan 2026", revenue: "R$ 16.400", clients: 6, paying: 5, trial: 1, ticket: "R$ 2.733", growth: "+5%", expenses: "R$ 7.500", profit: "R$ 8.600" },
+    { m: "Mar 2026", revenue: `R$ ${totalRevReal.toLocaleString("pt-BR")}`, clients: CDATA.length, paying: payingClients, trial: trialClients, ticket: `R$ ${ticketMedio.toLocaleString("pt-BR")}`, growth: "—", expenses: "R$ 0", profit: `R$ ${totalRevReal.toLocaleString("pt-BR")}` },
   ];
   const [sel, setSel] = useState(null);
   const cur = sel || months[0];
@@ -6828,6 +6838,7 @@ function IdeasPage({ onBack }) {
   const [filter, setFilter] = useState("all");
   const [selIdea, setSelIdea] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [editingIdea, setEditingIdea] = useState(null);
   const [form, setForm] = useState({});
   const [newComment, setNewComment] = useState("");
   const { showToast, ToastEl } = useToast();
@@ -6894,10 +6905,70 @@ function IdeasPage({ onBack }) {
     const idea = ideas.find(i=>i.id===selIdea);
     if (!idea) { setSelIdea(null); return null; }
     const st = statusCfg[idea.status]||statusCfg.pending;
+
+    /* Edit mode */
+    if (editingIdea) {
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Editar Ideia" onBack={()=>setEditingIdea(null)} />
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
+            <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} className="tinput" />
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição</label>
+            <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente</label>
+            <input value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput" />
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Status</label>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {["pending","review","approved","rejected"].map(s=>(
+                <button key={s} onClick={()=>setForm(p=>({...p,status:s}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.status===s?statusCfg[s].c:B.border}`, background:form.status===s?`${statusCfg[s].c}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:form.status===s?statusCfg[s].c:B.muted }}>{statusCfg[s].l}</button>
+              ))}
+            </div>
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separar por vírgula)</label>
+            <input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} className="tinput" />
+          </Card>
+          <button onClick={async ()=>{
+            if (!form.title?.trim()) return showToast("Informe o título");
+            const updates = { title:form.title.trim(), desc:form.desc||"", client:form.client||"Todos", status:form.status||"pending", tags:form.tags?.split(",").map(t=>t.trim()).filter(Boolean)||[] };
+            setIdeas(p=>p.map(i=>i.id===idea.id?{...i,...updates}:i));
+            if (idea.supaId) await supaUpdateIdea(idea.supaId, { title:updates.title, description:updates.desc, client_name:updates.client, status:updates.status, tags:updates.tags });
+            setEditingIdea(null);
+            showToast("Ideia atualizada ✓");
+          }} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>Salvar Alterações</button>
+        </div>
+      );
+    }
+
+    const deleteIdea = async () => {
+      if (!confirm(`Excluir ideia "${idea.title}"?`)) return;
+      if (idea.supaId) await supaDeleteIdea(idea.supaId);
+      setIdeas(p=>p.filter(i=>i.id!==idea.id));
+      setSelIdea(null);
+      showToast("Ideia excluída ✓");
+    };
+
     return (
       <div className="pg">
         {ToastEl}
-        <Head title="" onBack={()=>setSelIdea(null)} />
+        <Head title="" onBack={()=>setSelIdea(null)} right={
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={()=>{ setForm({ title:idea.title, desc:idea.desc, client:idea.client, status:idea.status, tags:idea.tags?.join(", ")||"" }); setEditingIdea(idea.id); }} className="ib" style={{ width:34, height:34 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onClick={deleteIdea} className="ib" style={{ width:34, height:34, color:B.red }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+        } />
         <Card style={{ marginBottom:12, borderLeft:`4px solid ${st.c}` }}>
           <div style={{ display:"flex", gap:6, marginBottom:8 }}>
             <Tag color={st.c}>{st.l}</Tag>
@@ -6997,6 +7068,15 @@ function IdeasPage({ onBack }) {
                   <span style={{ fontSize:9, color:B.muted }}>· {idea.author} · {idea.comments.length} comentário{idea.comments.length!==1?"s":""}</span>
                 </div>
               </div>
+              {/* Edit / Delete */}
+              <div style={{ display:"flex", flexDirection:"column", gap:6, flexShrink:0, paddingTop:2 }} onClick={e=>e.stopPropagation()}>
+                <button onClick={()=>{setForm({title:idea.title,desc:idea.desc,client:idea.client,status:idea.status,tags:idea.tags?.join(", ")||""});setEditingIdea(idea.id);setSelIdea(idea.id);}} className="ib" style={{width:28,height:28}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button onClick={async ()=>{if(!confirm(`Excluir ideia "${idea.title}"?`))return;if(idea.supaId)await supaDeleteIdea(idea.supaId);setIdeas(p=>p.filter(i=>i.id!==idea.id));showToast("Excluída ✓");}} className="ib" style={{width:28,height:28,color:B.red}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
             </div>
           </Card>
         );
@@ -7005,11 +7085,22 @@ function IdeasPage({ onBack }) {
   );
 }
 
-function GamifyPage({ onBack, user }) {
+function GamifyPage({ onBack, user, team }) {
   const [tab, setTab] = useState("ranking");
   const [selBadge, setSelBadge] = useState(null);
   const [selReward, setSelReward] = useState(null);
+  const [xpEvents, setXpEvents] = useState([]);
+  const [xpLoaded, setXpLoaded] = useState(false);
+  const [awardUser, setAwardUser] = useState(null);
+  const [awardForm, setAwardForm] = useState({ xp:"", desc:"" });
   const { showToast, ToastEl } = useToast();
+  const isAdmin = user?.supaRole === "admin";
+
+  /* Load XP events from Supabase */
+  useEffect(() => {
+    if (xpLoaded) return;
+    supaLoadAllXp().then(rows => { setXpEvents(rows); setXpLoaded(true); });
+  }, [xpLoaded]);
 
   /* ── LEVELS ── */
   const LEVELS = [
@@ -7025,19 +7116,42 @@ function GamifyPage({ onBack, user }) {
 
   const getLevel = xp => LEVELS.find(l => xp >= l.min && xp < l.max) || LEVELS[LEVELS.length-1];
 
-  /* ── TEAM DATA ── */
-  const teamData = [
-    { id:1, name:"Matheus", role:"CEO / Estrategista", photo:TEAM_PHOTOS.matheus, xp:4820, streak:12, tasksMonth:38, postsMonth:24, onTimeRate:96, badges:["firstPost","streak7","speed","client10","mentor","allStar","creative50","revenue"] },
-    { id:2, name:"Alice", role:"Social Media", photo:null, xp:3650, streak:8, tasksMonth:42, postsMonth:31, onTimeRate:92, badges:["firstPost","streak7","speed","creative50","volume100"] },
-    { id:3, name:"Allan", role:"Social Media", photo:null, xp:2180, streak:3, tasksMonth:28, postsMonth:19, onTimeRate:85, badges:["firstPost","streak7","creative50"] },
-    { id:4, name:"Victoria", role:"Audiovisual", photo:null, xp:3100, streak:6, tasksMonth:22, postsMonth:15, onTimeRate:94, badges:["firstPost","streak7","speed","videoMaster","client10"] },
-  ];
+  /* ── TEAM DATA (real from Supabase) ── */
+  const teamData = React.useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const members = (team || []).map(m => {
+      const userXp = xpEvents.filter(e => e.user_id === m.user_id);
+      const totalXp = userXp.reduce((a, e) => a + (e.xp_amount || 0), 0);
+      const monthXp = userXp.filter(e => new Date(e.created_at) >= monthStart);
+      const checkins = monthXp.filter(e => e.action === "checkin").length;
+      const tasks = monthXp.filter(e => e.action === "task_done").length;
+      const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
+      return { id: m.id, user_id: m.user_id, name: m.name, role: m.role || m.job_title || "—", photo: null, xp: totalXp, events: userXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: userXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 };
+    });
+    /* Include current user if not already in team list */
+    if (user?.id && !members.find(m => m.user_id === user.id)) {
+      const myXp = xpEvents.filter(e => e.user_id === user.id);
+      const totalXp = myXp.reduce((a, e) => a + (e.xp_amount || 0), 0);
+      const monthXp = myXp.filter(e => new Date(e.created_at) >= monthStart);
+      const checkins = monthXp.filter(e => e.action === "checkin").length;
+      const tasks = monthXp.filter(e => e.action === "task_done").length;
+      const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
+      members.unshift({ id: "me", user_id: user.id, name: user.name || user.nick || "Eu", role: "Admin", photo: null, xp: totalXp, events: myXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: myXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 });
+    }
+    return members;
+  }, [team, xpEvents, user]);
 
   const sorted = [...teamData].sort((a,b) => b.xp - a.xp);
-  const me = teamData.find(t => t.name === (user?.nick || user?.name)) || teamData[0];
-  const myLevel = getLevel(me.xp);
-  const xpProgress = ((me.xp - myLevel.min) / (myLevel.max - myLevel.min)) * 100;
-  const myRank = sorted.findIndex(t => t.id === me.id) + 1;
+  const me = teamData.find(t => t.user_id === user?.id) || teamData[0] || { id:0, name:"—", xp:0, events:[], badges:[] };
+  /* Derive badges from XP events (action=badge) */
+  const myBadges = (me?.events || []).filter(e => e.action === "badge").map(e => e.description);
+  const myLevel = getLevel(me?.xp || 0);
+  const xpProgress = myLevel ? ((me.xp - myLevel.min) / (myLevel.max - myLevel.min)) * 100 : 0;
+  const myRank = sorted.findIndex(t => t.user_id === me?.user_id) + 1;
+
+  /* My recent XP history */
+  const myHistory = (me?.events || []).slice(0, 15);
 
   /* ── BADGES ── */
   const ALL_BADGES = [
@@ -7078,22 +7192,14 @@ function GamifyPage({ onBack, user }) {
     { id:8, name:"Horário Flexível", desc:"1 mês de horário flexível", cost:3500, icon:"⏰", cat:"Benefício", stock:2 },
   ];
 
-  /* ── XP HISTORY ── */
-  const XP_HISTORY = [
-    { action:"Tarefa concluída no prazo", xp:"+25", time:"Hoje, 14:30", icon:"✅" },
-    { action:"Post publicado — Instagram", xp:"+30", time:"Hoje, 11:20", icon:"📱" },
-    { action:"Check-in no horário", xp:"+15", time:"Hoje, 08:02", icon:"📍" },
-    { action:"Conquista: Relâmpago", xp:"+150", time:"Ontem, 17:45", icon:"⚡" },
-    { action:"Feedback positivo do cliente", xp:"+50", time:"Ontem, 15:10", icon:"⭐" },
-    { action:"Desafio completado: Sprint", xp:"+250", time:"28/02", icon:"🏆" },
-    { action:"Post Reels — TikTok", xp:"+35", time:"28/02", icon:"🎬" },
-    { action:"Bônus: Streak 12 dias", xp:"+120", time:"27/02", icon:"🔥" },
-  ];
+  /* ── XP HISTORY (real from Supabase) ── */
+  const fmtXpTime = (d) => { const dt = new Date(d); const now = new Date(); const diff = now - dt; if (diff < 86400000) return `Hoje, ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`; if (diff < 172800000) return `Ontem, ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`; return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}); };
+  const actionIcon = (a) => ({ checkin:"📍", task_done:"✅", post_published:"📱", bonus:"🎁", badge:"🏆", reels:"🎬", feedback:"⭐" }[a] || "⚡");
 
   /* ── Badge detail modal ── */
   if (selBadge) {
     const b = ALL_BADGES.find(x => x.id === selBadge);
-    const earned = me.badges.includes(selBadge);
+    const earned = myBadges.includes(selBadge);
     return (
       <div className="pg">
         {ToastEl}
@@ -7189,6 +7295,39 @@ function GamifyPage({ onBack, user }) {
 
       {/* ═══ RANKING TAB ═══ */}
       {tab === "ranking" && <>
+        {/* Admin: Award XP Modal */}
+        {isAdmin && awardUser && (() => {
+          const target = teamData.find(m => m.user_id === awardUser);
+          if (!target) return null;
+          return (
+            <Card style={{ marginBottom:12, border:`2px solid ${B.accent}`, padding:16 }}>
+              <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Atribuir XP para {target.name}</p>
+              <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
+                {[{l:"Check-in",v:15,a:"checkin"},{l:"Tarefa",v:25,a:"task_done"},{l:"Post",v:30,a:"post_published"},{l:"Feedback",v:50,a:"feedback"},{l:"Bônus",v:100,a:"bonus"}].map(opt => (
+                  <button key={opt.l} onClick={() => setAwardForm({ xp:String(opt.v), desc:opt.l, action:opt.a })} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${awardForm.desc===opt.l?B.accent:B.border}`, background:awardForm.desc===opt.l?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>
+                    {opt.l} (+{opt.v})
+                  </button>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                <input value={awardForm.xp} onChange={e => setAwardForm(p=>({...p,xp:e.target.value}))} placeholder="XP" className="tinput" style={{ width:70 }} type="number" />
+                <input value={awardForm.desc} onChange={e => setAwardForm(p=>({...p,desc:e.target.value}))} placeholder="Descrição" className="tinput" style={{ flex:1 }} />
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                <button onClick={async () => {
+                  const xp = parseInt(awardForm.xp);
+                  if (!xp || xp <= 0) return showToast("Informe o XP");
+                  if (!awardForm.desc?.trim()) return showToast("Informe a descrição");
+                  const result = await supaAddXp(awardUser, awardForm.action||"bonus", awardForm.desc.trim(), xp);
+                  if (result) { setXpEvents(p=>[result,...p]); showToast(`+${xp} XP para ${target.name} ✓`); }
+                  else showToast("Erro ao atribuir XP");
+                  setAwardUser(null); setAwardForm({xp:"",desc:""});
+                }} className="pill full accent" style={{ flex:1, padding:"10px 0" }}>Confirmar</button>
+                <button onClick={() => { setAwardUser(null); setAwardForm({xp:"",desc:""}); }} className="pill full" style={{ flex:0, padding:"10px 16px", background:B.bgCard, border:`1px solid ${B.border}` }}>✕</button>
+              </div>
+            </Card>
+          );
+        })()}
         {sorted.map((m, i) => {
           const lv = getLevel(m.xp);
           const isMe = m.id === me.id;
@@ -7218,7 +7357,8 @@ function GamifyPage({ onBack, user }) {
                 </div>
                 <div style={{ textAlign:"right" }}>
                   <p style={{ fontSize:10, color:B.muted }}>🔥 {m.streak}d</p>
-                  <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{m.badges.length} 🏅</p>
+                  <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{m.badgeCount||0} 🏅</p>
+                  {isAdmin && !isMe && <button onClick={(e) => { e.stopPropagation(); setAwardUser(m.user_id); setAwardForm({xp:"",desc:""}); }} style={{ marginTop:4, padding:"3px 8px", borderRadius:6, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.accent }}>+ XP</button>}
                 </div>
               </div>
             </Card>
@@ -7279,13 +7419,13 @@ function GamifyPage({ onBack, user }) {
       {/* ═══ BADGES TAB ═══ */}
       {tab === "badges" && <>
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.accent }}>{me.badges.length}</p><p style={{ fontSize:10, color:B.muted }}>Conquistadas</p></Card>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.accent }}>{myBadges.length}</p><p style={{ fontSize:10, color:B.muted }}>Conquistadas</p></Card>
           <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800 }}>{ALL_BADGES.length}</p><p style={{ fontSize:10, color:B.muted }}>Total</p></Card>
-          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.purple }}>{ALL_BADGES.filter(b=>b.rarity==="Épico"||b.rarity==="Lendário").filter(b=>me.badges.includes(b.id)).length}</p><p style={{ fontSize:10, color:B.muted }}>Raras+</p></Card>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.purple }}>{ALL_BADGES.filter(b=>b.rarity==="Épico"||b.rarity==="Lendário").filter(b=>myBadges.includes(b.id)).length}</p><p style={{ fontSize:10, color:B.muted }}>Raras+</p></Card>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
           {ALL_BADGES.map((b, i) => {
-            const earned = me.badges.includes(b.id);
+            const earned = myBadges.includes(b.id);
             return (
               <Card key={b.id} delay={i*0.03} onClick={() => setSelBadge(b.id)} style={{ cursor:"pointer", textAlign:"center", padding:14, opacity:earned?1:0.4, border:earned?`1.5px solid ${rarityColor(b.rarity)}30`:"none" }}>
                 <span style={{ fontSize:28, display:"block", marginBottom:6, filter:earned?"none":"grayscale(1)" }}>{b.emoji}</span>
@@ -7334,17 +7474,18 @@ function GamifyPage({ onBack, user }) {
       {tab === "history" && <>
         <Card style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div><p style={{ fontSize:11, color:B.muted }}>XP total acumulado</p><p style={{ fontSize:22, fontWeight:900 }}>{me.xp.toLocaleString()}</p></div>
-          <div><p style={{ fontSize:11, color:B.muted, textAlign:"right" }}>Este mês</p><p style={{ fontSize:22, fontWeight:900, color:B.green, textAlign:"right" }}>+820</p></div>
+          <div><p style={{ fontSize:11, color:B.muted, textAlign:"right" }}>Este mês</p><p style={{ fontSize:22, fontWeight:900, color:B.green, textAlign:"right" }}>+{(() => { const ms = new Date(); ms.setDate(1); ms.setHours(0,0,0,0); return (me.events||[]).filter(e => new Date(e.created_at)>=ms).reduce((a,e)=>a+(e.xp_amount||0),0); })().toLocaleString()}</p></div>
         </Card>
-        {XP_HISTORY.map((h, i) => (
-          <Card key={i} delay={i*0.03} style={{ marginBottom:6, padding:12 }}>
+        {myHistory.length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum XP registrado ainda</p></Card>}
+        {myHistory.map((h, i) => (
+          <Card key={h.id||i} delay={i*0.03} style={{ marginBottom:6, padding:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:20 }}>{h.icon}</span>
+              <span style={{ fontSize:20 }}>{actionIcon(h.action)}</span>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600 }}>{h.action}</p>
-                <p style={{ fontSize:10, color:B.muted }}>{h.time}</p>
+                <p style={{ fontSize:13, fontWeight:600 }}>{h.description || h.action}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{fmtXpTime(h.created_at)}</p>
               </div>
-              <p style={{ fontSize:14, fontWeight:800, color:B.green }}>{h.xp}</p>
+              <p style={{ fontSize:14, fontWeight:800, color:h.xp_amount>=0?B.green:B.red }}>{h.xp_amount>=0?"+":""}{h.xp_amount}</p>
             </div>
           </Card>
         ))}
@@ -8241,7 +8382,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
-        {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} />}
+        {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} />}
