@@ -1096,10 +1096,12 @@ function LoginPage({ onAuth }) {
         const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
         const extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`);
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
+        let photo = profile?.photo_url || null;
+        if (!photo) { const fp = await supaGetSetting(`profile_photo_${data.user.id}`); if (fp) photo = fp; }
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
-          supaRole: profile?.role || "member", photo: profile?.photo_url || null,
+          supaRole: profile?.role || "member", photo,
           nick: profile?.nick || profile?.name || email.split("@")[0],
           phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember,
         };
@@ -5198,6 +5200,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   });
   const pfUp = (k, v) => setPf(p => ({ ...p, [k]: v }));
   const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   /* Load full profile from Supabase on mount */
   useEffect(() => {
@@ -5218,8 +5221,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           cpf: extras.cpf || "",
         };
         setPf(merged);
-        if (prof?.photo_url && prof.photo_url !== user.photo) {
-          setUser(prev => ({ ...prev, photo: prof.photo_url, name: prof.name || prev.name, nick: prof.nick || prev.nick, phone: prof.phone || prev.phone }));
+        let photo = prof?.photo_url || null;
+        if (!photo) { const fp = await supaGetSetting(`profile_photo_${user.id}`); if (fp) photo = fp; }
+        if (photo && photo !== user.photo) {
+          setUser(prev => ({ ...prev, photo, name: prof?.name || prev.name, nick: prof?.nick || prev.nick, phone: prof?.phone || prev.phone }));
         }
       }
       setProfileLoaded(true);
@@ -5247,34 +5252,48 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   const uploadPhoto = async (file) => {
     if (!supabase || !user?.id || !file) return;
-    if (file.size > 2 * 1024 * 1024) { showToast("Máximo 2MB"); return; }
-    if (!file.type.startsWith("image/")) { showToast("Apenas imagens"); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast("Máximo 5MB"); return; }
+    if (!file.type.startsWith("image/")) { showToast("Apenas imagens (JPG, PNG, etc)"); return; }
     setPhotoUploading(true);
     try {
-      /* Convert to base64 and store in profiles — works without Storage bucket */
       const reader = new FileReader();
-      reader.onload = async (e) => {
-        const b64 = e.target.result;
-        /* Compress if too large by resizing via canvas */
-        const img = new Image();
+      reader.onload = (ev) => {
+        const b64raw = ev.target.result;
+        const img = new window.Image();
         img.onload = async () => {
-          const maxSz = 256;
-          const scale = Math.min(maxSz / img.width, maxSz / img.height, 1);
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
-          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-          const compressed = canvas.toDataURL("image/jpeg", 0.8);
-          const { error } = await supabase.from("profiles").update({ photo_url: compressed }).eq("id", user.id);
-          if (error) { showToast("Erro ao salvar foto"); console.error(error); }
-          else { setUser(prev => ({ ...prev, photo: compressed })); showToast("Foto atualizada ✓"); }
+          try {
+            const maxSz = 200;
+            const scale = Math.min(maxSz / img.width, maxSz / img.height, 1);
+            const c = document.createElement("canvas");
+            c.width = Math.round(img.width * scale);
+            c.height = Math.round(img.height * scale);
+            const ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            const compressed = c.toDataURL("image/jpeg", 0.7);
+            const { error } = await supabase.from("profiles").update({ photo_url: compressed }).eq("id", user.id);
+            if (error) {
+              console.warn("profiles photo_url failed, using settings fallback:", error.message);
+              /* Fallback: save photo in settings table */
+              const ok = await supaSetSetting(`profile_photo_${user.id}`, compressed);
+              if (ok) {
+                setUser(prev => ({ ...prev, photo: compressed }));
+                showToast("Foto atualizada ✓");
+              } else {
+                showToast("Erro ao salvar foto");
+              }
+            } else {
+              setUser(prev => ({ ...prev, photo: compressed }));
+              showToast("Foto atualizada ✓");
+            }
+          } catch(err) { console.error("photo compress error:", err); showToast("Erro ao processar imagem"); }
           setPhotoUploading(false);
         };
-        img.src = b64;
+        img.onerror = () => { showToast("Erro ao carregar imagem. Tente outro formato."); setPhotoUploading(false); };
+        img.src = b64raw;
       };
       reader.onerror = () => { showToast("Erro ao ler arquivo"); setPhotoUploading(false); };
       reader.readAsDataURL(file);
-    } catch(e) { showToast("Erro no upload"); setPhotoUploading(false); }
+    } catch(e) { console.error("uploadPhoto:", e); showToast("Erro no upload"); setPhotoUploading(false); }
   };
 
   /* Security */
@@ -5364,8 +5383,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const SHIRTS = ["PP","P","M","G","GG","XGG"];
     const WORK_PREFS = [{k:"presencial",l:"Presencial",ic:"🏢"},{k:"remoto",l:"Remoto",ic:"🏠"},{k:"hibrido",l:"Híbrido",ic:"🔄"}];
     const AVAIL = [{k:"integral",l:"Integral",d:"Seg-Sex, horário comercial"},{k:"meio",l:"Meio período",d:"4-6h por dia"},{k:"freelancer",l:"Freelancer",d:"Horários flexíveis"}];
-
-    const fileInputRef = React.useRef(null);
 
     return (
     <div className="pg">
@@ -9790,10 +9807,12 @@ export default function App() {
           const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
           const extrasRaw = await supaGetSetting(`profile_extras_${session.user.id}`);
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
+          let photo = profile?.photo_url || null;
+          if (!photo) { const fp = await supaGetSetting(`profile_photo_${session.user.id}`); if (fp) photo = fp; }
           setUser({
             id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
             email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
-            supaRole: profile?.role || "member", photo: profile?.photo_url || null,
+            supaRole: profile?.role || "member", photo,
             nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
             phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember: true,
           });
