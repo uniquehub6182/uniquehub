@@ -179,9 +179,14 @@ const mergeSupaDemand = (row) => ({
   network: Array.isArray(row.networks) ? row.networks.join(", ") : (row.networks || "Instagram"),
   format: row.format || "Feed",
   sponsored: row.sponsored || false,
-  assignees: row.steps?.idea?.by ? [row.steps.idea.by] : (row.created_by_name ? [row.created_by_name] : ["Equipe"]),
+  assignees: (() => {
+    const byName = typeof row.steps === "object" && row.steps?.idea?.by;
+    if (byName && typeof byName === "string") return [byName];
+    if (row.created_by_name && typeof row.created_by_name === "string") return [row.created_by_name];
+    return ["Equipe"];
+  })(),
   createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "",
-  steps: (row.steps && Object.keys(row.steps).length > 0) ? row.steps : { idea: { by: row.created_by_name || "Equipe", text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
+  steps: (typeof row.steps === "object" && row.steps !== null && Object.keys(row.steps).length > 0) ? row.steps : { idea: { by: (typeof row.steps === "object" && typeof row.steps?.idea?.by === "string" ? row.steps.idea.by : (typeof row.created_by_name === "string" ? row.created_by_name : "Equipe")), text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } },
   scheduling: (row.scheduling && Object.keys(row.scheduling).length > 0) ? row.scheduling : { date: row.schedule_date || "", time: row.schedule_time || "" },
   traffic: (row.traffic && Object.keys(row.traffic).length > 0) ? row.traffic : { budget: row.traffic_budget ? `R$ ${Number(row.traffic_budget).toLocaleString("pt-BR")}` : "" },
   ...(row.type === "campaign" ? { campaign: { desc: row.description || "", milestones: [], refs:"", dateStart:"", dateEnd:"", location:"", needs:[], clientTeam:[], budget:"", budgetBreakdown:[] } } : {}),
@@ -1430,12 +1435,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
         <EditHandle i={i} />
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
           {[
-            ...(isAdmin ? [{ label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", color:B.green, icon:"💰" }] : []),
-            { label:"Clientes", value:totalClients, sub:`${activeClients} ativos`, color:B.accent, icon:"👥" },
-            { label:"Pendentes", value:pendingApprovals, sub:"aguardando ação", color:B.orange, icon:"⏳" },
-            { label:"Score", value:avgScore, sub:"satisfação média", color:B.purple, icon:"⭐" },
+            ...(isAdmin ? [{ label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", color:B.green, icon:"💰", act:()=>goSub("financial") }] : []),
+            { label:"Clientes", value:totalClients, sub:`${activeClients} ativos`, color:B.accent, icon:"👥", act:()=>goTab("clients") },
+            { label:"Pendentes", value:pendingApprovals, sub:"aguardando ação", color:B.orange, icon:"⏳", act:()=>goTab("content") },
+            { label:"Score", value:avgScore, sub:"satisfação média", color:B.purple, icon:"⭐", act:()=>goSub("gamify") },
           ].map((s, j) => (
-            <Card key={j} delay={j*0.04} style={{ padding:"14px 16px", position:"relative", overflow:"hidden" }}>
+            <Card key={j} delay={j*0.04} onClick={s.act} style={{ padding:"14px 16px", position:"relative", overflow:"hidden", cursor:"pointer" }}>
               <div style={{ position:"absolute", top:10, right:10, fontSize:20, opacity:0.12 }}>{s.icon}</div>
               <p style={{ fontSize:9, color:B.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{s.label}</p>
               <p style={{ fontSize:22, fontWeight:900, color:s.color, marginTop:4 }}>{s.value}</p>
@@ -2103,12 +2108,28 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
     const getFileCat = (f) => catMap[f.category] || "other";
 
-    const addFile = () => {
+    const addFile = async () => {
       if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
-      const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size: (Math.random()*10+0.5).toFixed(1)+"MB" };
-      updateClient(sel.id, { files: [...files, nf] });
-      setAddingFile(false); setFileForm({});
-      showToast("Arquivo adicionado! ✓");
+      if (fileForm.file) {
+        /* Real file upload to Supabase storage */
+        showToast("Enviando arquivo...");
+        const ext = fileForm.file.name.split(".").pop();
+        const path = `clients/${sel.id}/${Date.now()}.${ext}`;
+        const result = await supaUploadFile(fileForm.file, path);
+        if (result?.error) return showToast(result.error);
+        const url = result?.url || "";
+        const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
+        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url, storagePath: path };
+        updateClient(sel.id, { files: [...files, nf] });
+        setAddingFile(false); setFileForm({});
+        showToast("Arquivo enviado ✓");
+      } else {
+        /* No file selected, just add metadata */
+        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size: "—" };
+        updateClient(sel.id, { files: [...files, nf] });
+        setAddingFile(false); setFileForm({});
+        showToast("Arquivo adicionado ✓");
+      }
     };
 
     const removeFile = (fid) => {
@@ -2232,7 +2253,27 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             ))}
           </div>
         </Card>
-        <button onClick={addFile} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>Adicionar Arquivo</button>
+        <Card style={{ marginTop:10 }}>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Selecionar arquivo</label>
+          <div style={{ border:`2px dashed ${fileForm.file ? B.green : B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file ? `${B.green}06` : `${B.accent}04`, cursor:"pointer", position:"relative" }} onClick={() => document.getElementById("client-file-input")?.click()}>
+            <input id="client-file-input" type="file" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", opacity:0, cursor:"pointer" }} onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) {
+                setFileForm(p => ({ ...p, file: f, name: p.name || f.name }));
+                showToast(`Arquivo selecionado: ${f.name}`);
+              }
+            }} />
+            {fileForm.file ? <>
+              <p style={{ fontSize:13, fontWeight:700, color:B.green }}>{fileForm.file.name}</p>
+              <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{(fileForm.file.size / (1024 * 1024)).toFixed(1)} MB</p>
+            </> : <>
+              <p style={{ fontSize:24, marginBottom:4 }}>📁</p>
+              <p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Toque para selecionar</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, documentos (até 100MB)</p>
+            </>}
+          </div>
+        </Card>
+        <button onClick={addFile} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>{fileForm.file ? "Enviar Arquivo" : "Adicionar Arquivo"}</button>
       </div>
     );
 
@@ -3087,9 +3128,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
 
   /* ── DETAIL VIEW ── */
   if (sel) {
+    /* Safety: ensure sel has required properties */
+    if (!sel.type) sel.type = "social";
+    if (!sel.stage) sel.stage = "idea";
+    if (!sel.steps || typeof sel.steps !== "object") sel.steps = {};
+    if (!sel.assignees || !Array.isArray(sel.assignees)) sel.assignees = ["Equipe"];
     const stages = getStages(sel.type);
-    const stageIdx = stages.indexOf(sel.stage);
-    const curStageCfg = STAGE_CFG[sel.stage];
+    const stageIdx = Math.max(0, stages.indexOf(sel.stage));
+    const curStageCfg = STAGE_CFG[sel.stage] || { l: sel.stage || "Pendente", c: "#888" };
     const isCampaign = sel.type === "campaign";
 
     /* helper: update a step field in sel and demands */
@@ -3119,7 +3165,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
     const renderSection = (stageKey, children) => {
       const idx = stages.indexOf(stageKey);
       const done = idx < stageIdx; const active = idx === stageIdx; const future = idx > stageIdx;
-      const cfg = STAGE_CFG[stageKey];
+      const cfg = STAGE_CFG[stageKey] || { l: stageKey, c: "#888" };
       return (
         <div key={stageKey} style={{ marginBottom:8, borderRadius:16, border:`1.5px solid ${active ? cfg.c : done ? `${cfg.c}30` : B.border}`, background: active ? `${cfg.c}06` : B.bgCard, padding:14, opacity: future ? 0.45 : 1, position:"relative", transition:"all .3s" }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: (done||active) ? 10 : 0 }}>
@@ -3268,7 +3314,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               </div>
               <div style={{ padding:"12px 14px 14px" }}>
                 {selCaption && <p style={{ fontSize:13, color:B.text, lineHeight:1.6, whiteSpace:"pre-wrap", marginBottom:10, maxHeight:120, overflow:"auto" }}>{selCaption}</p>}
-                {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.accent, marginBottom:10 }}>{sel.steps.caption.hashtags}</p>}
+                {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.accent, marginBottom:10 }}>{sel.steps?.caption?.hashtags}</p>}
                 <div style={{ display:"flex", flexWrap:"wrap", gap:8, alignItems:"center" }}>
                   {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
                   {sel.traffic?.budget ? <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${B.orange}12`, color:B.orange }}>ADS · {sel.traffic.budget}</span> : <span style={{ fontSize:10, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${B.muted}08`, color:B.muted }}>Orgânico</span>}
@@ -3342,11 +3388,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               <textarea value={sel.steps?.idea?.text||""} onChange={e=>updateStep("idea",{text:e.target.value, by:user?.name||"Matheus", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Ex: Post carrossel mostrando os diferenciais do produto..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
             </> : sel.steps?.idea?.text && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps.idea.by} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.idea.by}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.idea.date}</span>
+                <Av name={sel.steps?.idea?.by} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.idea?.by || "Equipe"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.idea?.date}</span>
               </div>
-              <p style={{ fontSize:13, lineHeight:1.6, background:B.bgCard, padding:10, borderRadius:10, border:`1px solid ${B.border}` }}>{sel.steps.idea.text}</p>
+              <p style={{ fontSize:13, lineHeight:1.6, background:B.bgCard, padding:10, borderRadius:10, border:`1px solid ${B.border}` }}>{sel.steps?.idea?.text}</p>
             </>}
           </>)}
 
@@ -3362,13 +3408,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Inclua: dimensões, quantidade de peças, paleta de cores, referências visuais, textos obrigatórios</p>
             </> : sel.steps?.briefing?.text && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps.briefing.by} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.briefing.by}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.briefing.date}</span>
+                <Av name={sel.steps?.briefing?.by} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.briefing?.by || "Equipe"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.briefing?.date}</span>
               </div>
               <div style={{ background:B.bgCard, padding:12, borderRadius:10, border:`1px solid ${B.border}` }}>
                 <p className="sl" style={{ marginBottom:4, fontSize:10 }}>📋 Orientações para o Designer / Audiovisual:</p>
-                <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps.briefing.text}</p>
+                <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text}</p>
               </div>
             </>}
           </>)}
@@ -3427,14 +3473,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>
             </> : sel.steps?.design?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps.design.by||"Designer"} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.design.by||"Designer"}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.design.date}</span>
+                <Av name={sel.steps?.design?.by||"Designer"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.design?.by||"Designer"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.design?.date}</span>
               </div>
               {/* Thumbnail grid for images */}
-              {sel.steps.design.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+              {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
-                  {sel.steps.design.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
+                  {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
                       <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     </a>
@@ -3442,7 +3488,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
                 </div>
               )}
               <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {sel.steps.design.files.map((f,i)=>{
+                {sel.steps?.design?.files.map((f,i)=>{
                   const fName = f.name || f;
                   const fUrl = f.url || null;
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
@@ -3508,12 +3554,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>MP4, MOV, JPG, PNG, Premiere, After Effects</p>
             </> : sel.steps?.production?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps.production.by||"Audiovisual"} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.production.by||"Audiovisual"}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.production.date}</span>
+                <Av name={sel.steps?.production?.by||"Audiovisual"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.production?.by||"Audiovisual"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.production?.date}</span>
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {sel.steps.production.files.map((f,i)=>{
+                {sel.steps?.production?.files.map((f,i)=>{
                   const fName = f.name || f; const fUrl = f.url || null;
                   return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
@@ -3530,7 +3576,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
             {sel.stage === "editing" ? <>
               {sel.steps?.production?.files?.length > 0 && <div style={{ background:`${B.orange}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.orange}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.orange, marginBottom:6 }}>🎬 Material gravado:</p>
-                {sel.steps.production.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span></div>))}
+                {sel.steps?.production?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span></div>))}
               </div>}
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Notas de edição</label>
               <textarea value={sel.steps?.editing?.text||""} onChange={e=>updateStep("editing",{text:e.target.value, by:user?.name||"Allan", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Cortes, transições, trilha sonora, legendas..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
@@ -3571,13 +3617,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               </div>
             </> : sel.steps?.editing?.text && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps.editing.by||"Editor"} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.editing.by||"Editor"}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.editing.date}</span>
+                <Av name={sel.steps?.editing?.by||"Editor"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.editing?.by||"Editor"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.editing?.date}</span>
               </div>
-              <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps.editing.text}</p>
+              <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.editing?.text}</p>
               {sel.steps?.editing?.files?.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6 }}>
-                {sel.steps.editing.files.map((f,i)=>{
+                {sel.steps?.editing?.files.map((f,i)=>{
                   const fName = f.name||f; const fUrl = f.url||null;
                   return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
@@ -3595,7 +3641,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               {/* Show design files for reference */}
               {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
-                {sel.steps.design.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
+                {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
               </div>}
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Legenda do post</label>
               <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
@@ -3608,17 +3654,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               {sel.sponsored && <div style={{ marginTop:8 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento do boost</label><input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" /></div>}
             </> : sel.steps?.caption?.text && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps.caption.by} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps.caption.by}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps.caption.date}</span>
+                <Av name={sel.steps?.caption?.by} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.caption?.by}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.caption?.date}</span>
               </div>
               <div style={{ background:B.bgCard, padding:12, borderRadius:10, border:`1px solid ${B.border}` }}>
-                <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps.caption.text}</p>
-                {sel.steps.caption.hashtags && <p style={{ fontSize:11, color:B.blue, marginTop:6 }}>{sel.steps.caption.hashtags}</p>}
+                <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps?.caption?.text}</p>
+                {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.blue, marginTop:6 }}>{sel.steps?.caption?.hashtags}</p>}
               </div>
               {sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
                 <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>📎 Material do designer:</p>
-                {sel.steps.design.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {f}</span>))}
+                {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {f}</span>))}
               </div>}
               {sel.scheduling?.date && <div style={{ display:"flex", gap:10, marginTop:10, padding:10, background:`${B.accent}06`, borderRadius:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}><span style={{ color:B.accent, display:"flex" }}>{IC.calendar(B.accent)}</span><span style={{ fontSize:12, fontWeight:600 }}>{sel.scheduling.date}</span></div>
@@ -3640,10 +3686,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               </div>
             </> : sel.steps?.review?.status && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Tag color={sel.steps.review.status==="approved"?B.green:B.red}>{sel.steps.review.status==="approved"?"✓ Aprovado":"✗ Reprovado"}</Tag>
-                <span style={{ fontSize:11, color:B.muted }}>{sel.steps.review.by} · {sel.steps.review.date}</span>
+                <Tag color={sel.steps?.review?.status==="approved"?B.green:B.red}>{sel.steps?.review?.status==="approved"?"✓ Aprovado":"✗ Reprovado"}</Tag>
+                <span style={{ fontSize:11, color:B.muted }}>{sel.steps?.review?.by} · {sel.steps?.review?.date}</span>
               </div>
-              {sel.steps.review.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps.review.note}"</p>}
+              {sel.steps?.review?.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps?.review?.note}"</p>}
             </>}
           </>)}
 
@@ -3661,9 +3707,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
                   <span style={{ fontSize:11, fontWeight:600, color:B.orange }}>Aguardando aprovação</span>
                 </div>
               </div>
-            </> : sel.steps?.client?.status && sel.steps.client.status !== "pending" && <>
-              <Tag color={sel.steps.client.status==="approved"?B.green:B.red}>{sel.steps.client.status==="approved"?"✓ Aprovado pelo cliente":"✗ Cliente pediu ajustes"}</Tag>
-              {sel.steps.client.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, marginTop:6, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps.client.note}"</p>}
+            </> : sel.steps?.client?.status && sel.steps?.client?.status !== "pending" && <>
+              <Tag color={sel.steps?.client?.status==="approved"?B.green:B.red}>{sel.steps?.client?.status==="approved"?"✓ Aprovado pelo cliente":"✗ Cliente pediu ajustes"}</Tag>
+              {sel.steps?.client?.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, marginTop:6, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps?.client?.note}"</p>}
             </>}
           </>)}
 
@@ -4100,9 +4146,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           }
           return [...prev, newMsg];
         });
-        /* Debounce markRead — wait 2s of no new messages before writing */
+        /* Debounce markRead — wait 500ms of no new messages before writing */
         clearTimeout(markReadTimer.current);
-        markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 2000);
+        markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 500);
         if (!newMsg.profiles) {
           supabase.from("profiles").select("name, email").eq("id", newMsg.sender_id).single().then(({ data }) => {
             if (data) setMsgs(prev => prev.map(m => m.id === newMsg.id ? { ...m, profiles: data } : m));
@@ -4126,7 +4172,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); clearTimeout(markReadTimer.current); };
   }, [selConv?.id]);
 
-  /* Polling fallback: refresh messages every 8s in case Realtime fails */
+  /* Polling fallback: refresh messages every 4s in case Realtime fails */
   React.useEffect(() => {
     if (!selConv?.id || !supabase) return;
     const poll = setInterval(async () => {
@@ -4143,7 +4189,20 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           return [...freshMsgs, ...stillOptimistic];
         });
       }
-    }, 8000);
+      /* Also refresh read receipts for blue checkmarks */
+      try {
+        const { data: members } = await supabase.from("conversation_members").select("user_id, last_read_at").eq("conversation_id", selConv.id);
+        if (members) {
+          const other = members.find(m => m.user_id !== user.id);
+          if (other?.last_read_at) {
+            setConvs(prev => prev.map(c => c.id === selConv.id ? { ...c, _otherLastRead: other.last_read_at } : c));
+            if (selConv._otherLastRead !== other.last_read_at) {
+              selConv._otherLastRead = other.last_read_at;
+            }
+          }
+        }
+      } catch(e) {}
+    }, 4000);
     return () => clearInterval(poll);
   }, [selConv?.id]);
 
@@ -4167,7 +4226,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
 
-  /* Polling fallback: refresh conversation list every 15s */
+  /* Polling fallback: refresh conversation list every 6s */
   React.useEffect(() => {
     if (!user?.id || !supabase) return;
     const poll = setInterval(async () => {
@@ -4175,7 +4234,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         const fresh = await supaLoadConversations(user.id);
         if (fresh && fresh.length > 0) setConvs(fresh);
       }
-    }, 15000);
+    }, 6000);
     return () => clearInterval(poll);
   }, [user?.id, view]);
 
@@ -5333,7 +5392,28 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   );
 
   /* ═══ APPROVALS ═══ */
-  if (sub === "approvals") return (
+  if (sub === "approvals") {
+    const [pendingMembers, setPendingMembers] = React.useState([]);
+    const [pendingLoaded, setPendingLoaded] = React.useState(false);
+    React.useEffect(() => {
+      if (pendingLoaded) return;
+      supaLoadTeam().then(rows => {
+        setPendingMembers((rows || []).filter(r => r.status === "pendente"));
+        setPendingLoaded(true);
+      });
+    }, [pendingLoaded]);
+    const approveMember = async (m) => {
+      await supaUpdateMember(m.id, { status: "offline" });
+      setPendingMembers(p => p.filter(x => x.id !== m.id));
+      showToast(`${m.name} aprovado ✓`);
+    };
+    const rejectMember = async (m) => {
+      if (!confirm(`Recusar cadastro de "${m.name}"? O registro será removido.`)) return;
+      await supaDeleteMember(m.id, m.user_id);
+      setPendingMembers(p => p.filter(x => x.id !== m.id));
+      showToast(`${m.name} recusado e removido`);
+    };
+    return (
     <div className="pg">
       {ToastEl}
       <Head title="Aprovações de Cadastro" onBack={() => setSub(null)} />
@@ -5343,20 +5423,22 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <p style={{ fontSize: 12, color: B.orange }}>Apenas CEO e Gerentes podem aprovar novos cadastros.</p>
         </div>
       </Card>
-      {[{ name: "João Silva", email: "joao@uniquemkt.com.br", role: "Designer", date: "25/02" }, { name: "Maria Costa", email: "maria@uniquemkt.com.br", role: "Estagiária", date: "24/02" }].map((r, i) => (
-        <Card key={i} delay={i * 0.04} style={{ marginTop: i ? 8 : 0 }}>
+      {!pendingLoaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
+      {pendingLoaded && pendingMembers.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, fontWeight:600 }}>Nenhum cadastro pendente</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Todos os membros já foram aprovados.</p></Card>}
+      {pendingMembers.map((r, i) => (
+        <Card key={r.id} delay={i * 0.04} style={{ marginTop: i ? 8 : 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <Av name={r.name} sz={40} fs={16} />
-            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</p><p style={{ fontSize: 11, color: B.muted }}>{r.email} · {r.role}</p><p style={{ fontSize: 10, color: B.muted }}>Solicitado em {r.date}</p></div>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</p><p style={{ fontSize: 11, color: B.muted }}>{r.email} · {r.role || r.job_title || "—"}</p><p style={{ fontSize: 10, color: B.muted }}>Solicitado em {r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</p></div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => showToast(`${r.name} aprovado ✓`)} className="pill accent" style={{ flex: 1, padding: "10px 14px" }}>{IC.check} Aprovar</button>
-            <button onClick={() => showToast(`${r.name} recusado`)} className="pill outline" style={{ flex: 1, padding: "10px 14px", color: B.red, borderColor: `${B.red}30` }}>{IC.x} Recusar</button>
+            <button onClick={() => approveMember(r)} className="pill accent" style={{ flex: 1, padding: "10px 14px" }}>{IC.check} Aprovar</button>
+            <button onClick={() => rejectMember(r)} className="pill outline" style={{ flex: 1, padding: "10px 14px", color: B.red, borderColor: `${B.red}30` }}>{IC.x} Recusar</button>
           </div>
         </Card>
       ))}
     </div>
-  );
+  );}
 
   /* ═══ SETTINGS MAIN ═══ */
   return (
@@ -5499,7 +5581,7 @@ function NavEditSheet({ picks, setPicks, onClose }) {
 
 /* ═══════════════════════ PLACEHOLDER PAGES ═══════════════════════ */
 /* ═══════════════════════ TEAM PAGE ═══════════════════════ */
-function TeamPage({ onBack }) {
+function TeamPage({ onBack, user }) {
   const [sel, setSel] = useState(null);
   const [adding, setAdding] = useState(false);
   const [editMember, setEditMember] = useState(false);
@@ -5507,6 +5589,7 @@ function TeamPage({ onBack }) {
   const [members, setMembers] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const { showToast, ToastEl } = useToast();
+  const isAdmin = user?.supaRole === "admin";
 
   useEffect(() => {
     if (loaded) return;
@@ -5604,11 +5687,11 @@ function TeamPage({ onBack }) {
     return (
       <div className="pg">
         {ToastEl}
-        <Head title="" onBack={()=>{setSel(null);setEditMember(false);}} right={
+        <Head title="" onBack={()=>{setSel(null);setEditMember(false);}} right={isAdmin ?
           <button onClick={()=>deleteMember(m)} className="ib" style={{ color:B.red }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
-        } />
+        : null} />
         <Card style={{ textAlign:"center", marginBottom:12 }}>
           <div style={{ position:"relative", display:"inline-block" }}>
             <Av name={m.name} sz={72} fs={28} />
@@ -5647,10 +5730,10 @@ function TeamPage({ onBack }) {
             </div>
           </Card>
         </>}
-        <button onClick={()=>{setEditMember(true);setForm({name:m.name,role:m.role,email:m.email,phone:m.phone,since:m.since,skills:(m.skills||[]).join(", ")});}} style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+        {isAdmin && <button onClick={()=>{setEditMember(true);setForm({name:m.name,role:m.role,email:m.email,phone:m.phone,since:m.since,skills:(m.skills||[]).join(", ")});}} style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar membro
-        </button>
+        </button>}
       </div>
     );
   }
@@ -5658,9 +5741,9 @@ function TeamPage({ onBack }) {
   return (
     <div className="pg">
       {ToastEl}
-      <Head title="Equipe" onBack={onBack} right={
+      <Head title="Equipe" onBack={onBack} right={isAdmin ?
         <button onClick={()=>{setAdding(true);setForm({});}} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent }}>{IC.plus} Novo</button>
-      } />
+      : null} />
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
           <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
@@ -6904,6 +6987,7 @@ function NewsPage({ onBack }) {
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
                   <span style={{ fontSize:9, color:B.muted }}>{a.readTime}</span>
+                  {a.source && <span style={{ fontSize:9, color:B.accent, fontWeight:600 }}>{a.source}</span>}
                 </div>
                 <span style={{ fontSize:9, color:B.muted }}>{a.date}</span>
               </div>
@@ -7235,8 +7319,8 @@ function GamifyPage({ onBack, user, team }) {
 
   /* ── LEVELS ── */
   const LEVELS = [
-    { level:1, title:"Estagiário", min:0, max:500 },
-    { level:2, title:"Júnior", min:500, max:1200 },
+    { level:1, title:"Iniciante", min:0, max:500 },
+    { level:2, title:"Aprendiz", min:500, max:1200 },
     { level:3, title:"Pleno", min:1200, max:2500 },
     { level:4, title:"Sênior", min:2500, max:4500 },
     { level:5, title:"Especialista", min:4500, max:7000 },
@@ -7494,7 +7578,7 @@ function GamifyPage({ onBack, user, team }) {
                     <p style={{ fontSize:14, fontWeight:700 }}>{m.name}</p>
                     {isMe && <Tag color={B.accent}>Você</Tag>}
                   </div>
-                  <p style={{ fontSize:11, color:B.muted }}>{lv.title} · {m.role}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{m.role} · Nv.{lv.level} {lv.title}</p>
                   <div style={{ marginTop:4, display:"flex", alignItems:"center", gap:6 }}>
                     <div style={{ flex:1, height:4, borderRadius:2, background:`${B.muted}15`, maxWidth:120 }}>
                       <div style={{ width:`${((m.xp - lv.min)/(lv.max - lv.min))*100}%`, height:"100%", borderRadius:2, background:B.accent }} />
@@ -8566,7 +8650,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} />}
-        {sub === "team" && <TeamPage onBack={() => setSub(null)} />}
+        {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} />}
       </div>
 
       <nav className="bnav">
