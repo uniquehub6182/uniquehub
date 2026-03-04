@@ -325,6 +325,14 @@ const supaAddXp = async (userId, action, description, xpAmount) => {
   if (!supabase) return null;
   try { const { data, error } = await supabase.from("xp_events").insert({ user_id: userId, action, description, xp_amount: xpAmount }).select().single(); if (error) { console.error("xp insert:", error); return null; } return data; } catch(e) { return null; }
 };
+const supaResetXp = async (userId) => {
+  if (!supabase) return false;
+  try {
+    if (userId) { const { error } = await supabase.from("xp_events").delete().eq("user_id", userId); if (error) { console.error("resetXp user:", error); return false; } }
+    else { const { error } = await supabase.from("xp_events").delete().gte("created_at", "2000-01-01"); if (error) { console.error("resetXp all:", error); return false; } }
+    return true;
+  } catch(e) { console.error("resetXp catch:", e); return false; }
+};
 
 /* ── Supabase: News CRUD ── */
 const supaLoadNews = async () => {
@@ -7854,6 +7862,7 @@ function GamifyPage({ onBack, user, team }) {
   const [xpLoaded, setXpLoaded] = useState(false);
   const [awardUser, setAwardUser] = useState(null);
   const [awardForm, setAwardForm] = useState({ xp:"", desc:"" });
+  const [resetConfirm, setResetConfirm] = useState(null); /* null | "all" | userId */
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
 
@@ -8159,6 +8168,60 @@ function GamifyPage({ onBack, user, team }) {
             ))}
           </div>
         </Card>
+
+        {/* Admin: Reset XP section */}
+        {isAdmin && (
+          <Card style={{ marginTop:12, border:`1.5px solid ${B.red}20`, background:`${B.red}04` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              <span style={{ fontSize:16 }}>⚙️</span>
+              <p style={{ fontSize:13, fontWeight:700 }}>Gerenciar XP</p>
+            </div>
+            {!resetConfirm ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <button onClick={() => setResetConfirm("all")} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 0", borderRadius:10, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>
+                  🗑️ Zerar XP de todos os membros
+                </button>
+                <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                  {teamData.map(m => (
+                    <button key={m.user_id} onClick={() => setResetConfirm(m.user_id)} style={{ padding:"6px 10px", borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:500, color:B.text }}>
+                      Zerar {m.name.split(" ")[0]}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Remove todos os eventos de XP do Supabase. Essa ação não pode ser desfeita.</p>
+              </div>
+            ) : (
+              <div>
+                <Card style={{ background:`${B.red}10`, border:`2px solid ${B.red}`, padding:14, marginBottom:8 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:B.red, marginBottom:6 }}>⚠️ Confirmar reset</p>
+                  <p style={{ fontSize:12, lineHeight:1.5 }}>
+                    {resetConfirm === "all"
+                      ? "Isso vai APAGAR todo o histórico de XP, conquistas e progresso de TODOS os membros. Deseja continuar?"
+                      : `Isso vai apagar todo o XP de ${teamData.find(m => m.user_id === resetConfirm)?.name || "este membro"}. Deseja continuar?`
+                    }
+                  </p>
+                </Card>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={async () => {
+                    const userId = resetConfirm === "all" ? null : resetConfirm;
+                    const ok = await supaResetXp(userId);
+                    if (ok) {
+                      if (userId) { setXpEvents(prev => prev.filter(e => e.user_id !== userId)); }
+                      else { setXpEvents([]); }
+                      showToast("XP zerado com sucesso ✓");
+                    } else { showToast("Erro ao zerar XP. Verifique o Supabase."); }
+                    setResetConfirm(null);
+                  }} style={{ flex:1, padding:"12px 0", borderRadius:10, background:B.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>
+                    Sim, zerar agora
+                  </button>
+                  <button onClick={() => setResetConfirm(null)} style={{ padding:"12px 16px", borderRadius:10, background:B.bgCard, border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600 }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
       </>}
 
       {/* ═══ CHALLENGES TAB ═══ */}
