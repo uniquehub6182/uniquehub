@@ -423,6 +423,15 @@ const supaTogglePin = async (msgId, pinned) => {
   if (!supabase) return;
   try { await supabase.from("messages").update({ pinned: !pinned }).eq("id", msgId); } catch(e) {}
 };
+const supaDeleteConversation = async (convId) => {
+  if (!supabase) return false;
+  try {
+    await supabase.from("messages").delete().eq("conversation_id", convId);
+    await supabase.from("conversation_members").delete().eq("conversation_id", convId);
+    const { error } = await supabase.from("conversations").delete().eq("id", convId);
+    return !error;
+  } catch(e) { console.error("deleteConv:", e); return false; }
+};
 const supaToggleReaction = async (msgId, emoji, userId, currentReactions) => {
   if (!supabase) return null;
   try {
@@ -4295,6 +4304,14 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           {pinnedMsgs.length > 0 && <button onClick={() => setPinnedOpen(!pinnedOpen)} className="ib" style={{ width:34, height:34, position:"relative" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M12 17v5"/><path d="M5 17h14"/><path d="M15.5 3.5L18 6l-6.5 6.5L8 9l6.5-6.5z"/></svg>
             <span style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:8, background:B.accent, color:B.text, fontSize:9, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center" }}>{pinnedMsgs.length}</span>
+          </button>}
+          {user?.supaRole === "admin" && <button onClick={async () => {
+            if (!confirm(`Excluir conversa "${convName}"? Todas as mensagens serão apagadas permanentemente.`)) return;
+            const ok = await supaDeleteConversation(selConv.id);
+            if (ok) { setConvs(prev => prev.filter(c => c.id !== selConv.id)); setSelConv(null); setMsgs([]); setView("list"); showToast("Conversa excluída ✓"); }
+            else showToast("Erro ao excluir conversa");
+          }} className="ib" style={{ width:34, height:34, color:B.red }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>}
         </div>
         {/* Pinned messages panel */}
