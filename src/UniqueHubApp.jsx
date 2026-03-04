@@ -499,7 +499,7 @@ const supaGetCheckinHistory = async (userId, limit = 30) => {
 const supaGetTeamCheckins = async (startDate, endDate) => {
   if (!supabase) return [];
   try {
-    let q = supabase.from("checkins").select("*, profiles:user_id(name, email)").order("check_in_at", { ascending: false });
+    let q = supabase.from("checkins").select("*").order("check_in_at", { ascending: false });
     if (startDate) q = q.gte("check_in_at", startDate);
     if (endDate) q = q.lte("check_in_at", endDate);
     const { data, error } = await q.limit(200);
@@ -1623,10 +1623,16 @@ function CheckinPage({ onBack, user }) {
       setLoading(true);
       setTeamError(null);
       try {
-        /* First load: no date filter to ensure we see all data */
-        const { data, error } = await supabase.from("checkins").select("*, profiles:user_id(name, email)").order("check_in_at", { ascending: false }).limit(200);
-        if (error) { setTeamError(error.message || "Erro ao carregar dados"); setTeamData([]); }
-        else { setTeamData(data || []); }
+        const { data: checkins, error } = await supabase.from("checkins").select("*").order("check_in_at", { ascending: false }).limit(200);
+        if (error) { setTeamError(error.message || "Erro ao carregar dados"); setTeamData([]); setLoading(false); return; }
+        /* Fetch profile names separately */
+        const uids = [...new Set((checkins || []).map(c => c.user_id))];
+        let profileMap = {};
+        if (uids.length > 0) {
+          const { data: profs } = await supabase.from("profiles").select("id, name, email").in("id", uids);
+          (profs || []).forEach(p => { profileMap[p.id] = p; });
+        }
+        setTeamData((checkins || []).map(c => ({ ...c, profiles: profileMap[c.user_id] || { name: "—", email: "" } })));
       } catch(e) { setTeamError(String(e)); setTeamData([]); }
       setLoading(false);
     };
@@ -1681,9 +1687,15 @@ function CheckinPage({ onBack, user }) {
     if (period === "week") start.setDate(start.getDate() - start.getDay());
     else if (period === "month") { start.setDate(1); }
     try {
-      const { data, error } = await supabase.from("checkins").select("*, profiles:user_id(name, email)").gte("check_in_at", start.toISOString()).order("check_in_at", { ascending: false }).limit(200);
-      if (error) { setTeamError(error.message); setTeamData([]); }
-      else { setTeamData(data || []); }
+      const { data: checkins, error } = await supabase.from("checkins").select("*").gte("check_in_at", start.toISOString()).order("check_in_at", { ascending: false }).limit(200);
+      if (error) { setTeamError(error.message); setTeamData([]); setLoading(false); return; }
+      const uids = [...new Set((checkins || []).map(c => c.user_id))];
+      let profileMap = {};
+      if (uids.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, name, email").in("id", uids);
+        (profs || []).forEach(p => { profileMap[p.id] = p; });
+      }
+      setTeamData((checkins || []).map(c => ({ ...c, profiles: profileMap[c.user_id] || { name: "—", email: "" } })));
     } catch(e) { setTeamError(String(e)); setTeamData([]); }
     setLoading(false);
   };
