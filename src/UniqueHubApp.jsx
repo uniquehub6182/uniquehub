@@ -5377,215 +5377,168 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   );
 
   /* ═══ PROFILE ═══ */
-  if (sub === "profile") {
-    const SKILLS_LIST = ["Design Gráfico","Social Media","Copywriting","Tráfego Pago","SEO","Fotografia","Vídeo/Reels","Motion Design","Atendimento","Planejamento","Branding","E-mail Marketing","Analytics","WordPress","Figma","Canva","Adobe Suite","Premiere","After Effects","CapCut"];
-    const BLOOD_TYPES = ["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"];
-    const SHIRTS = ["PP","P","M","G","GG","XGG"];
-    const WORK_PREFS = [{k:"presencial",l:"Presencial",ic:"🏢"},{k:"remoto",l:"Remoto",ic:"🏠"},{k:"hibrido",l:"Híbrido",ic:"🔄"}];
-    const AVAIL = [{k:"integral",l:"Integral",d:"Seg-Sex, horário comercial"},{k:"meio",l:"Meio período",d:"4-6h por dia"},{k:"freelancer",l:"Freelancer",d:"Horários flexíveis"}];
-
-    return (
+  if (sub === "profile") return (
     <div className="pg">
       {ToastEl}
-      <Head title="Meu Perfil" onBack={() => { setSub(null); setEditProfile(false); }} right={
-        !editProfile ? <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 14px", borderRadius:8, background:`${B.accent}10`, border:`1.5px solid ${B.accent}25`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.accent }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar</button>
-        : <button onClick={saveProfile} disabled={profileSaving} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent }}>{profileSaving ? "Salvando..." : "Salvar"}</button>
-      } />
+      <Head title="Meu Perfil" onBack={() => { setSub(null); setEditProfile(false); }} />
 
-      {/* ── AVATAR + HEADER ── */}
       <Card style={{ textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", marginBottom:14, padding:20 }}>
         <div style={{ position:"relative", marginBottom:12 }}>
           <Av src={user?.photo} name={user?.name} sz={80} fs={30} />
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e => { if(e.target.files?.[0]) uploadPhoto(e.target.files[0]); e.target.value=""; }} />
-          <button onClick={() => fileInputRef.current?.click()} disabled={photoUploading} style={{ position:"absolute", bottom:-2, right:-2, width:30, height:30, borderRadius:15, background:B.accent, border:"3px solid "+B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:B.textOnAccent }}>
-            {photoUploading ? <span style={{fontSize:10}}>⏳</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+          <button onClick={() => fileInputRef.current?.click()} disabled={photoUploading} style={{ position:"absolute", bottom:-2, right:-2, width:30, height:30, borderRadius:15, background:B.accent, border:"3px solid "+B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#000" }}>
+            {photoUploading ? <span style={{fontSize:10}}>...</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
           </button>
         </div>
-        <p style={{ fontSize:18, fontWeight:800 }}>{user?.name}</p>
-        <p style={{ fontSize:12, color:B.muted }}>{user?.email}</p>
+        <p style={{ fontSize:18, fontWeight:800 }}>{user?.name || "Sem nome"}</p>
+        <p style={{ fontSize:12, color:B.muted }}>{user?.email || ""}</p>
         <div style={{ display:"flex", gap:6, marginTop:8 }}>
           <Tag color={B.accent}>{user?.role || "Colaborador"}</Tag>
           <Tag color={B.green}>Ativo</Tag>
         </div>
-        {pf.bio && !editProfile && <p style={{ fontSize:12, color:B.muted, marginTop:10, lineHeight:1.5, fontStyle:"italic" }}>"{pf.bio}"</p>}
       </Card>
 
-      {editProfile ? <>
-        {/* ── EDIT MODE ── */}
-        <p className="sl" style={{ marginBottom:6 }}>👤 Dados pessoais</p>
+      {editProfile ? <div>
+        <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
-          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome completo *</label>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome completo</label>
           <input value={pf.name} onChange={e => pfUp("name",e.target.value)} className="tinput" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Apelido</label>
           <input value={pf.nick} onChange={e => pfUp("nick",e.target.value)} className="tinput" placeholder="Como quer ser chamado(a)" style={{ marginBottom:10 }} />
-          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio / Sobre mim</label>
-          <textarea value={pf.bio} onChange={e => pfUp("bio",e.target.value)} className="tinput" rows={2} placeholder="Uma frase sobre você..." style={{ marginBottom:10, resize:"vertical" }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio</label>
+          <textarea value={pf.bio || ""} onChange={e => pfUp("bio",e.target.value)} className="tinput" rows={2} placeholder="Uma frase sobre você..." style={{ marginBottom:10, resize:"vertical" }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>CPF</label>
-          <input value={pf.cpf} onChange={e => { const d=e.target.value.replace(/\D/g,"").slice(0,11); let f=d; if(d.length>9) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9); else if(d.length>6) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6); else if(d.length>3) f=d.slice(0,3)+"."+d.slice(3); pfUp("cpf",f); }} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
+          <input value={pf.cpf || ""} onChange={e => { const d=e.target.value.replace(/\D/g,"").slice(0,11); let f=d; if(d.length>9) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9); else if(d.length>6) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6); else if(d.length>3) f=d.slice(0,3)+"."+d.slice(3); pfUp("cpf",f); }} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Data de nascimento</label>
-          <input value={pf.birth} onChange={e => pfUp("birth",e.target.value)} className="tinput" placeholder="DD/MM/AAAA" style={{ marginBottom:10 }} />
+          <input value={pf.birth || ""} onChange={e => pfUp("birth",e.target.value)} className="tinput" placeholder="DD/MM/AAAA" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Tipo sanguíneo</label>
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-            {BLOOD_TYPES.map(b => (
-              <button key={b} onClick={() => pfUp("blood",b)} style={{ padding:"6px 11px", borderRadius:8, border:`1.5px solid ${pf.blood===b?B.accent:B.border}`, background:pf.blood===b?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:pf.blood===b?B.dark:B.muted }}>{b}</button>
+            {["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"].map(b => (
+              <button key={b} onClick={() => pfUp("blood",b)} style={{ padding:"6px 11px", borderRadius:8, border:"1.5px solid "+(pf.blood===b?B.accent:B.border), background:pf.blood===b?B.accent+"15":B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:pf.blood===b?B.accent:B.muted }}>{b}</button>
             ))}
           </div>
         </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>📱 Contato</p>
+        <p className="sl" style={{ marginBottom:6 }}>Contato</p>
         <Card style={{ marginBottom:10 }}>
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Telefone / WhatsApp</label>
-          <input value={pf.phone} onChange={e => pfUp("phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
+          <input value={pf.phone || ""} onChange={e => pfUp("phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Instagram / Rede social</label>
-          <input value={pf.social} onChange={e => pfUp("social",e.target.value)} className="tinput" placeholder="@seuperfil" style={{ marginBottom:10 }} />
-          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Chave PIX (para reembolsos)</label>
-          <input value={pf.pix} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" />
+          <input value={pf.social || ""} onChange={e => pfUp("social",e.target.value)} className="tinput" placeholder="@seuperfil" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Chave PIX</label>
+          <input value={pf.pix || ""} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" />
         </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>💼 Trabalho</p>
+        <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
         <Card style={{ marginBottom:10 }}>
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Modelo de trabalho</label>
           <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-            {WORK_PREFS.map(w => (
-              <button key={w.k} onClick={() => pfUp("work_pref",w.k)} style={{ flex:1, padding:"10px 6px", borderRadius:10, border:`1.5px solid ${pf.work_pref===w.k?B.accent:B.border}`, background:pf.work_pref===w.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
-                <span style={{ fontSize:18, display:"block" }}>{w.ic}</span>
-                <span style={{ fontSize:10, fontWeight:600, color:pf.work_pref===w.k?B.dark:B.muted }}>{w.l}</span>
-              </button>
+            {[{k:"presencial",l:"Presencial"},{k:"remoto",l:"Remoto"},{k:"hibrido",l:"Híbrido"}].map(w => (
+              <button key={w.k} onClick={() => pfUp("work_pref",w.k)} style={{ flex:1, padding:"10px 6px", borderRadius:10, border:"1.5px solid "+(pf.work_pref===w.k?B.accent:B.border), background:pf.work_pref===w.k?B.accent+"15":B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"center", fontSize:11, fontWeight:600, color:pf.work_pref===w.k?B.accent:B.muted }}>{w.l}</button>
             ))}
           </div>
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Disponibilidade</label>
-          {AVAIL.map(a => (
-            <div key={a.k} onClick={() => pfUp("availability",a.k)} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, border:`1.5px solid ${pf.availability===a.k?B.accent:B.border}`, background:pf.availability===a.k?`${B.accent}08`:B.bgCard, cursor:"pointer", marginBottom:6 }}>
-              <div style={{ width:16, height:16, borderRadius:8, border:`2px solid ${pf.availability===a.k?B.accent:B.muted}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{pf.availability===a.k && <div style={{ width:8, height:8, borderRadius:4, background:B.accent }} />}</div>
+          {[{k:"integral",l:"Integral",d:"Seg-Sex, horário comercial"},{k:"meio",l:"Meio período",d:"4-6h por dia"},{k:"freelancer",l:"Freelancer",d:"Horários flexíveis"}].map(a => (
+            <div key={a.k} onClick={() => pfUp("availability",a.k)} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, border:"1.5px solid "+(pf.availability===a.k?B.accent:B.border), cursor:"pointer", marginBottom:6 }}>
+              <div style={{ width:16, height:16, borderRadius:8, border:"2px solid "+(pf.availability===a.k?B.accent:B.muted), display:"flex", alignItems:"center", justifyContent:"center" }}>{pf.availability===a.k && <div style={{ width:8, height:8, borderRadius:4, background:B.accent }} />}</div>
               <div><p style={{ fontSize:12, fontWeight:600 }}>{a.l}</p><p style={{ fontSize:10, color:B.muted }}>{a.d}</p></div>
             </div>
           ))}
         </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>🎯 Skills & Competências</p>
+        <p className="sl" style={{ marginBottom:6 }}>Skills</p>
         <Card style={{ marginBottom:10 }}>
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-            {SKILLS_LIST.map(s => {
-              const has = (pf.skills||[]).includes(s);
-              return <button key={s} onClick={() => pfUp("skills", has ? (pf.skills||[]).filter(x=>x!==s) : [...(pf.skills||[]),s])} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${has?B.accent:B.border}20`, background:has?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:has?600:400, color:has?B.accent:B.muted }}>{has?"✓ ":""}{s}</button>;
+            {["Design Gráfico","Social Media","Copywriting","Tráfego Pago","SEO","Fotografia","Vídeo/Reels","Motion Design","Atendimento","Planejamento","Branding","E-mail Marketing","Analytics","WordPress","Figma","Canva","Adobe Suite","Premiere","After Effects","CapCut"].map(s => {
+              const has = Array.isArray(pf.skills) && pf.skills.includes(s);
+              return <button key={s} onClick={() => pfUp("skills", has ? pf.skills.filter(x=>x!==s) : [...(pf.skills||[]),s])} style={{ padding:"5px 10px", borderRadius:8, border:"1.5px solid "+(has?B.accent:B.border), background:has?B.accent+"15":B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:has?600:400, color:has?B.accent:B.muted }}>{has?"✓ ":""}{s}</button>;
             })}
           </div>
         </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>🆘 Contato de emergência</p>
+        <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
         <Card style={{ marginBottom:10 }}>
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome</label>
-          <input value={pf.emergency_name} onChange={e => pfUp("emergency_name",e.target.value)} className="tinput" placeholder="Nome do contato" style={{ marginBottom:10 }} />
+          <input value={pf.emergency_name || ""} onChange={e => pfUp("emergency_name",e.target.value)} className="tinput" placeholder="Nome do contato" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Telefone</label>
-          <input value={pf.emergency_phone} onChange={e => pfUp("emergency_phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
+          <input value={pf.emergency_phone || ""} onChange={e => pfUp("emergency_phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Parentesco</label>
-          <input value={pf.emergency_relation} onChange={e => pfUp("emergency_relation",e.target.value)} className="tinput" placeholder="Mãe, pai, cônjuge..." />
+          <input value={pf.emergency_relation || ""} onChange={e => pfUp("emergency_relation",e.target.value)} className="tinput" placeholder="Mãe, pai, cônjuge..." />
         </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>👕 Info extra</p>
+        <p className="sl" style={{ marginBottom:6 }}>Info extra</p>
         <Card style={{ marginBottom:14 }}>
-          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Tamanho de camiseta (para brindes)</label>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Tamanho de camiseta</label>
           <div style={{ display:"flex", gap:5 }}>
-            {SHIRTS.map(s => (
-              <button key={s} onClick={() => pfUp("shirt_size",s)} style={{ flex:1, padding:"8px 4px", borderRadius:8, border:`1.5px solid ${pf.shirt_size===s?B.accent:B.border}`, background:pf.shirt_size===s?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:pf.shirt_size===s?B.dark:B.muted }}>{s}</button>
+            {["PP","P","M","G","GG","XGG"].map(s => (
+              <button key={s} onClick={() => pfUp("shirt_size",s)} style={{ flex:1, padding:"8px 4px", borderRadius:8, border:"1.5px solid "+(pf.shirt_size===s?B.accent:B.border), background:pf.shirt_size===s?B.accent+"15":B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:pf.shirt_size===s?B.accent:B.muted }}>{s}</button>
             ))}
           </div>
         </Card>
 
         <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-          <button onClick={() => setEditProfile(false)} className="pill" style={{ flex:1, background:B.bgCard, border:`1.5px solid ${B.border}`, fontWeight:600 }}>Cancelar</button>
-          <button onClick={saveProfile} disabled={profileSaving} className="pill accent" style={{ flex:1 }}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+          <button onClick={() => setEditProfile(false)} style={{ flex:1, padding:14, borderRadius:14, background:B.bgCard, border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.dark }}>Cancelar</button>
+          <button onClick={saveProfile} disabled={profileSaving} style={{ flex:1, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#000" }}>{profileSaving ? "Salvando..." : "Salvar"}</button>
         </div>
-      </> : <>
-        {/* ── VIEW MODE ── */}
+      </div> : <div>
         <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
-          {[
-            { l:"Nome completo", v:user?.name || "—", ic:"👤" },
-            { l:"Apelido", v:pf.nick || "—", ic:"😊" },
-            { l:"Data de nascimento", v:pf.birth || "—", ic:"🎂" },
-            { l:"Tipo sanguíneo", v:pf.blood || "—", ic:"🩸" },
-            { l:"CPF", v:pf.cpf || "—", ic:"🪪" },
-          ].map((f,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-              <span style={{ fontSize:16 }}>{f.ic}</span>
-              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+          {[["Nome completo",user?.name||"—"],["Apelido",pf.nick||"—"],["Data nascimento",pf.birth||"—"],["Tipo sanguíneo",pf.blood||"—"],["CPF",pf.cpf||"—"]].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
             </div>
           ))}
         </Card>
 
         <p className="sl" style={{ marginBottom:6 }}>Contato</p>
         <Card style={{ marginBottom:10 }}>
-          {[
-            { l:"E-mail", v:user?.email || "—", ic:"📧" },
-            { l:"Telefone / WhatsApp", v:pf.phone || "—", ic:"📱" },
-            { l:"Rede social", v:pf.social || "—", ic:"📸" },
-            { l:"Chave PIX", v:pf.pix || "—", ic:"💳" },
-          ].map((f,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-              <span style={{ fontSize:16 }}>{f.ic}</span>
-              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+          {[["E-mail",user?.email||"—"],["Telefone",pf.phone||"—"],["Rede social",pf.social||"—"],["Chave PIX",pf.pix||"—"]].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
             </div>
           ))}
         </Card>
 
         <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
         <Card style={{ marginBottom:10 }}>
-          {[
-            { l:"Cargo", v:user?.role || "—", ic:"💼" },
-            { l:"Modelo de trabalho", v:WORK_PREFS.find(w=>w.k===pf.work_pref)?.l || "—", ic:WORK_PREFS.find(w=>w.k===pf.work_pref)?.ic || "🔄" },
-            { l:"Disponibilidade", v:AVAIL.find(a=>a.k===pf.availability)?.l || "—", ic:"⏰" },
-          ].map((f,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-              <span style={{ fontSize:16 }}>{f.ic}</span>
-              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+          {[["Cargo",user?.role||"—"],["Modelo",pf.work_pref||"—"],["Disponibilidade",pf.availability||"—"]].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
             </div>
           ))}
         </Card>
 
-        {(pf.skills||[]).length > 0 && <>
+        {Array.isArray(pf.skills) && pf.skills.length > 0 && <div>
           <p className="sl" style={{ marginBottom:6 }}>Skills</p>
           <Card style={{ marginBottom:10 }}>
             <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-              {(pf.skills||[]).map(s => <Tag key={s} color={B.accent}>{s}</Tag>)}
+              {pf.skills.map(s => <Tag key={s} color={B.accent}>{s}</Tag>)}
             </div>
           </Card>
-        </>}
+        </div>}
 
-        {pf.emergency_name && <>
+        {pf.emergency_name ? <div>
           <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
           <Card style={{ marginBottom:10 }}>
-            {[
-              { l:"Nome", v:pf.emergency_name, ic:"🆘" },
-              { l:"Telefone", v:pf.emergency_phone || "—", ic:"📞" },
-              { l:"Parentesco", v:pf.emergency_relation || "—", ic:"👪" },
-            ].map((f,i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-                <span style={{ fontSize:14 }}>{f.ic}</span>
-                <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+            {[["Nome",pf.emergency_name],["Telefone",pf.emergency_phone||"—"],["Parentesco",pf.emergency_relation||"—"]].map((f,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+                <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
               </div>
             ))}
           </Card>
-        </>}
+        </div> : null}
 
-        {pf.shirt_size && (
-          <Card style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:16 }}>👕</span>
-              <div><p style={{ fontSize:10, color:B.muted }}>Tamanho de camiseta</p><p style={{ fontSize:13, fontWeight:600 }}>{pf.shirt_size}</p></div>
-            </div>
-          </Card>
-        )}
+        {pf.shirt_size ? <Card style={{ marginBottom:10 }}>
+          <div><p style={{ fontSize:10, color:B.muted }}>Camiseta</p><p style={{ fontSize:13, fontWeight:600 }}>{pf.shirt_size}</p></div>
+        </Card> : null}
 
-        {/* Quick edit CTA */}
-        <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:14, borderRadius:14, background:`${B.accent}08`, border:`1.5px solid ${B.accent}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent, marginBottom:10 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:14, borderRadius:14, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent, marginBottom:10 }}>
           Editar meu perfil
         </button>
-      </>}
+      </div>}
     </div>
-    );
-  }
+  );
+
 
   /* ═══ APPEARANCE ═══ */
   if (sub === "aparencia") return (
