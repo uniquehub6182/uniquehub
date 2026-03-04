@@ -10304,6 +10304,23 @@ export default function App() {
   };
   const [authLoading, setAuthLoading] = useState(!!supabase);
 
+  /* Force-kick blocked users even if app is already open */
+  const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+  useEffect(() => {
+    if (!user?.email) return;
+    const check = () => {
+      if (BLOCKED_EMAILS.some(b => user.email.toLowerCase().replace(/\s/g,"") === b)) {
+        if (supabase) supabase.auth.signOut().catch(() => {});
+        setUser(null);
+        try { localStorage.removeItem("uh_user"); sessionStorage.clear(); } catch {}
+        alert("Seu acesso foi revogado. Entre em contato com o administrador.");
+      }
+    };
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   /* Check for existing Supabase session on mount */
   useEffect(() => {
     if (!supabase) return;
