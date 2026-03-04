@@ -323,6 +323,24 @@ const supaDeleteMember = async (id, userId) => {
   } catch(e) { console.error("supaDeleteMember:", e); }
 };
 /* ── Supabase: Invite check (Team→Registration link) ── */
+/* ── Supabase: App Settings (admin-only key-value store) ── */
+const supaGetSetting = async (key) => {
+  if (!supabase) return null;
+  try { const { data } = await supabase.from("app_settings").select("value").eq("key", key).single(); return data?.value || null; } catch(e) { return null; }
+};
+const supaSetSetting = async (key, value) => {
+  if (!supabase) return;
+  try { await supabase.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" }); } catch(e) { console.error("setSetting:", e); }
+};
+const supaGetAIKeys = async () => {
+  if (!supabase) return {};
+  try {
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key","anthropic_key","ai_provider"]);
+    const map = {};
+    (data || []).forEach(r => { map[r.key] = r.value; });
+    return map;
+  } catch(e) { return {}; }
+};
 const supaCheckInvite = async (email) => {
   if (!supabase || !email) return null;
   try {
@@ -5187,6 +5205,78 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
   }
 
+  /* ═══ AI CONFIG (admin only) ═══ */
+  if (sub === "aiconfig") {
+    const [aiKeys, setAiKeys] = React.useState({ openai_key:"", anthropic_key:"", ai_provider:"openai" });
+    const [aiLoaded, setAiLoaded] = React.useState(false);
+    const [aiSaving, setAiSaving] = React.useState(false);
+    const [showKey, setShowKey] = React.useState({});
+    React.useEffect(() => {
+      if (aiLoaded) return;
+      supaGetAIKeys().then(k => { setAiKeys(prev => ({ ...prev, ...k })); setAiLoaded(true); });
+    }, [aiLoaded]);
+    const saveAI = async () => {
+      setAiSaving(true);
+      await supaSetSetting("openai_key", aiKeys.openai_key || "");
+      await supaSetSetting("anthropic_key", aiKeys.anthropic_key || "");
+      await supaSetSetting("ai_provider", aiKeys.ai_provider || "openai");
+      setAiSaving(false);
+      showToast("Configuração salva ✓");
+    };
+    const maskKey = (k) => k ? k.slice(0,8) + "•".repeat(Math.max(0,k.length-12)) + k.slice(-4) : "";
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Assistente IA" onBack={() => setSub(null)} />
+        {!aiLoaded ? <p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p> : <>
+
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:8 }}>Provedor padrão</p>
+          <div style={{ display:"flex", gap:8 }}>
+            {[{k:"openai",l:"OpenAI",emoji:"🟢"},{k:"anthropic",l:"Claude",emoji:"🟣"}].map(p => (
+              <button key={p.k} onClick={() => setAiKeys(prev => ({...prev, ai_provider:p.k}))} style={{ flex:1, padding:"14px 0", borderRadius:12, border:`2px solid ${aiKeys.ai_provider===p.k?B.accent:B.border}`, background:aiKeys.ai_provider===p.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
+                <span style={{ fontSize:24, display:"block", marginBottom:4 }}>{p.emoji}</span>
+                <p style={{ fontSize:13, fontWeight:700, color:aiKeys.ai_provider===p.k?B.accent:B.text }}>{p.l}</p>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:4 }}>Chave OpenAI</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em platform.openai.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showKey.openai?"text":"password"} value={aiKeys.openai_key||""} onChange={e => setAiKeys(prev => ({...prev, openai_key:e.target.value}))} placeholder="sk-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowKey(p=>({...p,openai:!p.openai}))} className="ib" style={{ width:36, height:36 }}>{showKey.openai?"🙈":"👁️"}</button>
+          </div>
+          {aiKeys.openai_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada</p>}
+        </Card>
+
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:4 }}>Chave Anthropic (Claude)</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em console.anthropic.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showKey.anthropic?"text":"password"} value={aiKeys.anthropic_key||""} onChange={e => setAiKeys(prev => ({...prev, anthropic_key:e.target.value}))} placeholder="sk-ant-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowKey(p=>({...p,anthropic:!p.anthropic}))} className="ib" style={{ width:36, height:36 }}>{showKey.anthropic?"🙈":"👁️"}</button>
+          </div>
+          {aiKeys.anthropic_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada</p>}
+        </Card>
+
+        <Card style={{ background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:6 }}>Modelos utilizados</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12 }}>🟢 OpenAI</span><span style={{ fontSize:12, color:B.muted }}>GPT-4o-mini</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12 }}>🟣 Anthropic</span><span style={{ fontSize:12, color:B.muted }}>Claude Sonnet 4</span></div>
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>O custo depende do uso. GPT-4o-mini é o mais econômico (~$0.15/1M tokens input).</p>
+        </Card>
+
+        <button onClick={saveAI} disabled={aiSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiSaving?0.5:1 }}>{aiSaving?"Salvando...":"Salvar Configuração"}</button>
+        </>}
+      </div>
+    );
+  }
+
   /* ═══ ABOUT ═══ */
   if (sub === "about") return (
     <div className="pg">
@@ -5262,6 +5352,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
         { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: 2 },
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai, desc: "Chaves de API e provedor" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema e modo escuro" },
         { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
         { k: "navmenu", l: "Personalizar Menu", ic: IC.more(B.accent), desc: "Escolha os itens do menu", act: () => onNavEdit && onNavEdit() },
@@ -7526,20 +7617,7 @@ function GamifyPage({ onBack, user, team }) {
 }
 
 function AIPage({ onBack, user }) {
-  const [conversations, setConversations] = useState([
-    { id:"demo1", title:"Legenda para lançamento imobiliário", messages:[
-      {role:"user",content:"Crie uma legenda criativa para um post de Instagram sobre lançamento de um condomínio de luxo em Petrópolis"},
-      {role:"assistant",content:"🏔️ Viver com vista para a Serra é um privilégio. Viver com vista para o futuro, é uma escolha.\n\nApresentamos o novo [Nome do Condomínio] — onde o luxo encontra a natureza no coração de Petrópolis.\n\n✨ Apartamentos de 120m² a 240m²\n🌿 Área verde preservada\n🏊 Lazer completo com piscina aquecida\n🔐 Segurança 24h\n\nAgende sua visita e descubra o endereço que vai redefinir seu conceito de morar bem.\n\n📍 Link na bio\n\n#Petrópolis #ImóveisLuxo #CondomínioLuxo #AltoPadrão #MorarBem #LançamentoImobiliário #SerraFluminense #VidaComEstilo"},
-    ], updatedAt:"01/03/2026 14:32", pinned:true },
-    { id:"demo2", title:"Estratégia para clínica estética", messages:[
-      {role:"user",content:"Sugira uma estratégia de marketing digital para uma clínica de estética focada em procedimentos faciais"},
-      {role:"assistant",content:"Estratégia de Marketing Digital — Clínica de Estética Facial\n\n1. CONTEÚDO EDUCATIVO (3x/semana)\nAntes e depois (com autorização), vídeos curtos explicando procedimentos, mitos vs verdades, dicas de skincare.\n\n2. REELS/TIKTOK (4x/semana)\nProcedimentos em time-lapse, dia a dia da clínica, depoimentos, trends adaptadas.\n\n3. STORIES DIÁRIOS\nBastidores, enquetes sobre procedimentos, caixinha de perguntas, provas sociais.\n\n4. TRÁFEGO PAGO\nCampanha de reconhecimento com vídeos educativos (R$30/dia), retargeting para quem engajou (R$20/dia), campanha de conversão para agendamento (R$50/dia).\n\n5. GOOGLE ADS\nPalavras-chave: harmonização facial Petrópolis, botox, preenchimento labial + extensões de local.\n\n6. PARCERIAS\nInfluenciadoras locais para permuta, colabs com dermatologistas, eventos de skincare.\n\nMeta: 40 agendamentos/mês em 90 dias."},
-    ], updatedAt:"28/02/2026 10:15", pinned:false },
-    { id:"demo3", title:"Hashtags para fitness", messages:[
-      {role:"user",content:"Sugira 30 hashtags relevantes para um post sobre academia e vida saudável"},
-      {role:"assistant",content:"Aqui estão 30 hashtags organizadas por categoria:\n\n🏋️ FITNESS\n#Fitness #Treino #Academia #Gym #Workout #FitnessMotivation #GymLife #TreinoDoDay #FocoNoTreino #VidaFit\n\n🥗 SAÚDE\n#VidaSaudável #Saúde #BemEstar #Wellness #HealthyLifestyle #QualidadeDeVida #SaúdeEBemEstar #EstiloDeVida #MenteECorpo #EquilíbrioDeVida\n\n💪 MOTIVAÇÃO\n#Motivação #Disciplina #Foco #NãoDesista #SuperaçãoDiária #MindsetPositivo #Determinação #MetaFitness #TransformaçãoCorporal #AntesEDepois"},
-    ], updatedAt:"27/02/2026 16:48", pinned:false },
-  ]);
+  const [conversations, setConversations] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [view, setView] = useState("history"); // "history" | "chat"
   const [messages, setMessages] = useState([]);
@@ -7547,6 +7625,9 @@ function AIPage({ onBack, user }) {
   const [loading, setLoading] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [selPreset, setSelPreset] = useState(null);
+  const [aiProvider, setAiProvider] = useState("openai");
+  const [aiKeys, setAiKeys] = useState({});
+  const [aiReady, setAiReady] = useState(false);
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
   const { showToast, ToastEl } = useToast();
@@ -7561,6 +7642,10 @@ function AIPage({ onBack, user }) {
     { emoji: "#️⃣", label: "Hashtags", prompt: "Sugira 30 hashtags relevantes para um post sobre " },
     { emoji: "📅", label: "Calendário editorial", prompt: "Monte um calendário editorial de 1 mês para uma empresa de " },
   ];
+
+  React.useEffect(() => {
+    supaGetAIKeys().then(k => { setAiKeys(k); setAiProvider(k.ai_provider || "openai"); setAiReady(true); });
+  }, []);
 
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -7604,8 +7689,14 @@ function AIPage({ onBack, user }) {
     setConversations(prev => prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c));
   };
 
+  const SYSTEM_PROMPT = `Você é o Assistente IA da UniqueHub Agency, uma agência de marketing 360 em Petrópolis/RJ. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`;
+
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
+    const provider = aiProvider;
+    const key = provider === "openai" ? aiKeys.openai_key : aiKeys.anthropic_key;
+    if (!key) { showToast("Chave de API não configurada. Vá em Config → Assistente IA"); return; }
+
     const userMsg = { role: "user", content: text.trim() };
     const newMsgs = [...messages, userMsg];
     setMessages(newMsgs);
@@ -7619,18 +7710,27 @@ function AIPage({ onBack, user }) {
 
     try {
       const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `Você é o Assistente IA da UniqueHub Agency, uma agência de marketing 360 em Petrópolis/RJ. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`,
-          messages: apiMessages,
-        })
-      });
-      const data = await response.json();
-      const aiText = data.content?.map(i => i.text || "").filter(Boolean).join("\n") || "Desculpe, não consegui gerar uma resposta.";
+      let aiText = "";
+
+      if (provider === "openai") {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+          body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro OpenAI");
+        aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
+      } else {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: SYSTEM_PROMPT, messages: apiMessages })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro Anthropic");
+        aiText = data.content?.map(i => i.text || "").filter(Boolean).join("\n") || "Sem resposta.";
+      }
       const finalMsgs = [...newMsgs, { role: "assistant", content: aiText }];
       setMessages(finalMsgs);
       saveToHistory(chatId, finalMsgs);
@@ -7779,6 +7879,11 @@ function AIPage({ onBack, user }) {
           <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
           <h2 style={{ fontSize:18, fontWeight:800 }}>Nova conversa</h2>
         </div>
+        <div style={{ display:"flex", gap:2, background:B.bg, borderRadius:8, padding:2, border:`1px solid ${B.border}` }}>
+          {[{k:"openai",l:"🟢"},{k:"anthropic",l:"🟣"}].map(p=>(
+            <button key={p.k} onClick={()=>setAiProvider(p.k)} title={p.k==="openai"?"OpenAI":"Claude"} style={{ padding:"4px 10px", borderRadius:6, border:"none", background:aiProvider===p.k?B.accent:"transparent", cursor:"pointer", fontSize:14, opacity:aiProvider===p.k?1:0.4 }}>{p.l}</button>
+          ))}
+        </div>
       </div>
 
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"0 12px" }}>
@@ -7787,6 +7892,13 @@ function AIPage({ onBack, user }) {
         </div>
         <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.nick || user?.name || "equipe"}!</h3>
         <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
+
+        {aiReady && !aiKeys[aiProvider==="openai"?"openai_key":"anthropic_key"] && (
+          <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:16, width:"100%", textAlign:"left" }}>
+            <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {aiProvider==="openai"?"OpenAI":"Anthropic"}.</p>
+          </Card>
+        )}
 
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, width:"100%" }}>
           {PRESETS.map((p, i) => (
@@ -7821,7 +7933,12 @@ function AIPage({ onBack, user }) {
           <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
           <div>
             <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
-            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● Online</p>
+            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● {aiProvider==="openai"?"OpenAI":"Claude"}</p>
+          </div>
+          <div style={{ display:"flex", gap:2, background:B.bg, borderRadius:6, padding:2, marginLeft:6 }}>
+            {[{k:"openai",l:"🟢"},{k:"anthropic",l:"🟣"}].map(p=>(
+              <button key={p.k} onClick={()=>setAiProvider(p.k)} style={{ padding:"2px 6px", borderRadius:4, border:"none", background:aiProvider===p.k?B.accent:"transparent", cursor:"pointer", fontSize:12, opacity:aiProvider===p.k?1:0.35 }}>{p.l}</button>
+            ))}
           </div>
         </div>
         <div style={{ display:"flex", gap:6 }}>
