@@ -2848,46 +2848,334 @@ function FinancialPage({ onBack, clients: propClients }) {
   ];
   const [sel, setSel] = useState(null);
   const cur = sel || months[0];
+  const [finTab, setFinTab] = useState("dashboard");
+  const { showToast, ToastEl } = useToast();
+
+  /* ── Config state ── */
+  const FIN_DEFAULT = {
+    agencyName:"Unique Marketing 360", cnpj:"", ie:"", im:"", razaoSocial:"", address:"", city:"Petrópolis", state:"RJ", cep:"",
+    bankName:"", bankAgency:"", bankAccount:"", bankType:"corrente", pixType:"cnpj", pixKey:"",
+    defaultDueDay:5, defaultPayMethod:"PIX", lateFeePercent:2, lateInterestPercent:1, trialDays:7,
+    currency:"BRL", taxRegime:"simples", simplesRate:6, issRate:5, invoicePrefix:"UMK", invoiceNextNum:1,
+    monthlyGoal:0, yearlyGoal:0,
+    expenseCategories:["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório/Coworking","Impostos","Outros"],
+    invoiceFooter:"Obrigado pela confiança! Qualquer dúvida entre em contato.", invoiceObs:"",
+  };
+  const [finCfg, setFinCfg] = useState(null);
+  const [finCfgLoaded, setFinCfgLoaded] = useState(false);
+  const [finCfgSaving, setFinCfgSaving] = useState(false);
+
+  useEffect(() => {
+    if (!finCfgLoaded) {
+      supaGetSetting("fin_config").then(raw => {
+        try { setFinCfg({ ...FIN_DEFAULT, ...(raw ? JSON.parse(raw) : {}) }); } catch { setFinCfg({ ...FIN_DEFAULT }); }
+        setFinCfgLoaded(true);
+      });
+    }
+  }, []);
+
+  const fc = finCfg || FIN_DEFAULT;
+  const upd = (k, v) => setFinCfg(prev => ({ ...prev, [k]: v }));
+  const saveFin = async () => {
+    setFinCfgSaving(true);
+    const ok = await supaSetSetting("fin_config", JSON.stringify(fc));
+    setFinCfgSaving(false);
+    if (ok) showToast("Configurações salvas ✓");
+    else showToast("Erro ao salvar. Verifique a tabela app_settings no Supabase.");
+  };
+
+  const Field = ({ label, value, onChange, placeholder, type, mono, helpText }) => (
+    <div style={{ marginBottom:10 }}>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>{label}</label>
+      <input type={type||"text"} value={value||""} onChange={e => onChange(e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : {}} />
+      {helpText && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{helpText}</p>}
+    </div>
+  );
+
+  const TABS = [
+    { k:"dashboard", l:"Dashboard", icon:"📊" },
+    { k:"agency", l:"Dados Fiscais", icon:"🏢" },
+    { k:"bank", l:"Bancário", icon:"🏦" },
+    { k:"billing", l:"Faturamento", icon:"📄" },
+    { k:"goals", l:"Metas", icon:"🎯" },
+    { k:"expenses", l:"Despesas", icon:"💸" },
+  ];
 
   return (
     <div className="pg">
-      <Head title="Financeiro" onBack={onBack} />
-      <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.dollar}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>FINANCEIRO — {cur.m.toUpperCase()}</p></div>
-        <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>{cur.revenue}</p>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Receita mensal</p>
-        <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-          <div><span style={{ fontSize: 14, fontWeight: 800, color: B.green }}>{cur.growth}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Crescimento</p></div>
-          <div><span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{cur.profit}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Lucro</p></div>
-        </div>
-      </Card>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 6, marginTop: 10 }}>
-        <Card delay={0.04} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.blue, marginBottom: 4 }}>{IC.users}</span><p style={{ fontSize: 20, fontWeight: 800 }}>{cur.clients}</p><p style={{ fontSize: 10, color: B.muted }}>Total clientes</p></Card>
-        <Card delay={0.06} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.green, marginBottom: 4 }}>{IC.check}</span><p style={{ fontSize: 20, fontWeight: 800, color: B.green }}>{cur.paying}</p><p style={{ fontSize: 10, color: B.muted }}>Pagantes</p></Card>
-        <Card delay={0.08} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.orange, marginBottom: 4 }}>{IC.clock}</span><p style={{ fontSize: 20, fontWeight: 800, color: B.orange }}>{cur.trial}</p><p style={{ fontSize: 10, color: B.muted }}>Trial / Gratuito</p></Card>
-        <Card delay={0.1} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.accent, marginBottom: 4 }}>{IC.trending}</span><p style={{ fontSize: 16, fontWeight: 800 }}>{cur.ticket}</p><p style={{ fontSize: 10, color: B.muted }}>Ticket médio</p></Card>
+      {ToastEl}
+      <Head title="Financeiro" onBack={onBack} right={finTab !== "dashboard" ? (
+        <button onClick={saveFin} disabled={finCfgSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:finCfgSaving?0.5:1 }}>{finCfgSaving ? "Salvando..." : "Salvar"}</button>
+      ) : null} />
+
+      {/* Tabs */}
+      <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4 }}>
+        {TABS.map(t => (
+          <button key={t.k} onClick={() => setFinTab(t.k)} className={`htab${finTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
+            <span>{t.icon}</span>{t.l}
+          </button>
+        ))}
       </div>
-      <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Despesas vs Receita</p>
-      <Card delay={0.12}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div><p style={{ fontSize: 12, color: B.muted }}>Receita</p><p style={{ fontSize: 16, fontWeight: 800, color: B.green }}>{cur.revenue}</p></div>
-          <div style={{ textAlign: "right" }}><p style={{ fontSize: 12, color: B.muted }}>Despesas</p><p style={{ fontSize: 16, fontWeight: 800, color: B.red }}>{cur.expenses}</p></div>
+
+      {/* ═══ TAB: DASHBOARD ═══ */}
+      {finTab === "dashboard" && <>
+        <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.dollar}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>FINANCEIRO — {cur.m.toUpperCase()}</p></div>
+          <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>{cur.revenue}</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Receita mensal</p>
+          <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+            <div><span style={{ fontSize: 14, fontWeight: 800, color: B.green }}>{cur.growth}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Crescimento</p></div>
+            <div><span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{cur.profit}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Lucro</p></div>
+          </div>
+        </Card>
+        {/* Goal progress if configured */}
+        {finCfgLoaded && fc.monthlyGoal > 0 && (() => {
+          const pct = Math.min(100, Math.round((totalRevReal / fc.monthlyGoal) * 100));
+          return (
+            <Card delay={0.02} style={{ marginTop:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:11, fontWeight:600 }}>🎯 Meta mensal</span>
+                <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}% · R$ {fc.monthlyGoal.toLocaleString("pt-BR")}</span>
+              </div>
+              <div style={{ height:8, borderRadius:4, background:`${B.border}` }}>
+                <div style={{ height:"100%", borderRadius:4, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
+              </div>
+            </Card>
+          );
+        })()}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 6, marginTop: 10 }}>
+          <Card delay={0.04} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.blue, marginBottom: 4 }}>{IC.users}</span><p style={{ fontSize: 20, fontWeight: 800 }}>{cur.clients}</p><p style={{ fontSize: 10, color: B.muted }}>Total clientes</p></Card>
+          <Card delay={0.06} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.green, marginBottom: 4 }}>{IC.check}</span><p style={{ fontSize: 20, fontWeight: 800, color: B.green }}>{cur.paying}</p><p style={{ fontSize: 10, color: B.muted }}>Pagantes</p></Card>
+          <Card delay={0.08} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.orange, marginBottom: 4 }}>{IC.clock}</span><p style={{ fontSize: 20, fontWeight: 800, color: B.orange }}>{cur.trial}</p><p style={{ fontSize: 10, color: B.muted }}>Trial / Gratuito</p></Card>
+          <Card delay={0.1} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.accent, marginBottom: 4 }}>{IC.trending}</span><p style={{ fontSize: 16, fontWeight: 800 }}>{cur.ticket}</p><p style={{ fontSize: 10, color: B.muted }}>Ticket médio</p></Card>
         </div>
-        <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden" }}><div style={{ width: "55%", background: B.green, borderRadius: "6px 0 0 6px" }} /><div style={{ width: "45%", background: B.red, borderRadius: "0 6px 6px 0" }} /></div>
-        <div style={{ marginTop: 10, padding: "10px 14px", background: `${B.green}06`, borderRadius: 10, textAlign: "center" }}><p style={{ fontSize: 10, color: B.muted }}>Lucro líquido</p><p style={{ fontSize: 20, fontWeight: 900, color: B.green }}>{cur.profit}</p></div>
-      </Card>
-      <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Receita por cliente</p>
-      {CDATA.map((c, i) => (
-        <Card key={c.id} delay={0.15 + i * 0.03} style={{ marginTop: i ? 6 : 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av name={c.name} sz={34} fs={13} /><div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</p><Tag color={c.status === "ativo" ? B.green : B.orange}>{c.plan}</Tag></div><p style={{ fontSize: 14, fontWeight: 700 }}>{c.monthly}</p></div>
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Despesas vs Receita</p>
+        <Card delay={0.12}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div><p style={{ fontSize: 12, color: B.muted }}>Receita</p><p style={{ fontSize: 16, fontWeight: 800, color: B.green }}>{cur.revenue}</p></div>
+            <div style={{ textAlign: "right" }}><p style={{ fontSize: 12, color: B.muted }}>Despesas</p><p style={{ fontSize: 16, fontWeight: 800, color: B.red }}>{cur.expenses}</p></div>
+          </div>
+          <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden" }}><div style={{ width: "55%", background: B.green, borderRadius: "6px 0 0 6px" }} /><div style={{ width: "45%", background: B.red, borderRadius: "0 6px 6px 0" }} /></div>
+          <div style={{ marginTop: 10, padding: "10px 14px", background: `${B.green}06`, borderRadius: 10, textAlign: "center" }}><p style={{ fontSize: 10, color: B.muted }}>Lucro líquido</p><p style={{ fontSize: 20, fontWeight: 900, color: B.green }}>{cur.profit}</p></div>
         </Card>
-      ))}
-      <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Histórico mensal</p>
-      {months.map((m, i) => (
-        <Card key={i} delay={0.3 + i * 0.03} onClick={() => setSel(m)} style={{ marginTop: i ? 6 : 0, cursor: "pointer", border: cur.m === m.m ? `1.5px solid ${B.accent}` : undefined }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{m.m}</p><p style={{ fontSize: 11, color: B.muted }}>{m.clients} clientes · {m.paying} pagantes</p></div><div style={{ textAlign: "right" }}><p style={{ fontSize: 14, fontWeight: 800, color: B.green }}>{m.revenue}</p><p style={{ fontSize: 10, color: B.green }}>{m.growth}</p></div></div>
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Receita por cliente</p>
+        {CDATA.map((c, i) => (
+          <Card key={c.id} delay={0.15 + i * 0.03} style={{ marginTop: i ? 6 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av name={c.name} sz={34} fs={13} /><div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</p><Tag color={c.status === "ativo" ? B.green : B.orange}>{c.plan}</Tag></div><p style={{ fontSize: 14, fontWeight: 700 }}>{c.monthly}</p></div>
+          </Card>
+        ))}
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Histórico mensal</p>
+        {months.map((m, i) => (
+          <Card key={i} delay={0.3 + i * 0.03} onClick={() => setSel(m)} style={{ marginTop: i ? 6 : 0, cursor: "pointer", border: cur.m === m.m ? `1.5px solid ${B.accent}` : undefined }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{m.m}</p><p style={{ fontSize: 11, color: B.muted }}>{m.clients} clientes · {m.paying} pagantes</p></div><div style={{ textAlign: "right" }}><p style={{ fontSize: 14, fontWeight: 800, color: B.green }}>{m.revenue}</p><p style={{ fontSize: 10, color: B.green }}>{m.growth}</p></div></div>
+          </Card>
+        ))}
+      </>}
+
+      {/* ═══ TAB: DADOS FISCAIS ═══ */}
+      {finTab === "agency" && <>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Dados da Agência</p>
+          <Field label="Razão Social" value={fc.razaoSocial} onChange={v => upd("razaoSocial", v)} placeholder="Unique Marketing 360 Ltda" />
+          <Field label="Nome Fantasia" value={fc.agencyName} onChange={v => upd("agencyName", v)} placeholder="Unique Marketing 360" />
+          <Field label="CNPJ" value={fc.cnpj} onChange={v => upd("cnpj", v)} placeholder="00.000.000/0001-00" mono />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><Field label="Inscrição Estadual" value={fc.ie} onChange={v => upd("ie", v)} placeholder="Isento" /></div>
+            <div style={{ flex:1 }}><Field label="Inscrição Municipal" value={fc.im} onChange={v => upd("im", v)} placeholder="000000" /></div>
+          </div>
         </Card>
-      ))}
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Endereço</p>
+          <Field label="Endereço completo" value={fc.address} onChange={v => upd("address", v)} placeholder="Rua, número, complemento" />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:2 }}><Field label="Cidade" value={fc.city} onChange={v => upd("city", v)} placeholder="Petrópolis" /></div>
+            <div style={{ flex:1 }}><Field label="UF" value={fc.state} onChange={v => upd("state", v)} placeholder="RJ" /></div>
+            <div style={{ flex:1 }}><Field label="CEP" value={fc.cep} onChange={v => upd("cep", v)} placeholder="00000-000" mono /></div>
+          </div>
+        </Card>
+        <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Regime Tributário</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
+            {[{k:"simples",l:"Simples Nacional"},{k:"presumido",l:"Lucro Presumido"},{k:"real",l:"Lucro Real"},{k:"mei",l:"MEI"}].map(r => (
+              <button key={r.k} onClick={() => upd("taxRegime", r.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.taxRegime===r.k?B.accent:B.border}`, background:fc.taxRegime===r.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.taxRegime===r.k?B.accent:B.muted }}>{r.l}</button>
+            ))}
+          </div>
+          {fc.taxRegime === "simples" && <Field label="Alíquota Simples Nacional (%)" value={fc.simplesRate} onChange={v => upd("simplesRate", parseFloat(v)||0)} type="number" helpText="Alíquota efetiva da faixa atual no Anexo III ou V" />}
+          <Field label="Alíquota ISS (%)" value={fc.issRate} onChange={v => upd("issRate", parseFloat(v)||0)} type="number" helpText="ISS sobre serviços de marketing/publicidade da sua cidade" />
+        </Card>
+      </>}
+
+      {/* ═══ TAB: BANCÁRIO ═══ */}
+      {finTab === "bank" && <>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Conta Bancária</p>
+          <Field label="Banco" value={fc.bankName} onChange={v => upd("bankName", v)} placeholder="Nubank, Itaú, Bradesco..." />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><Field label="Agência" value={fc.bankAgency} onChange={v => upd("bankAgency", v)} placeholder="0001" mono /></div>
+            <div style={{ flex:1 }}><Field label="Conta" value={fc.bankAccount} onChange={v => upd("bankAccount", v)} placeholder="12345-6" mono /></div>
+          </div>
+          <p className="sl" style={{ marginBottom:6 }}>Tipo de conta</p>
+          <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+            {["corrente","poupança"].map(t => (
+              <button key={t} onClick={() => upd("bankType", t)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${fc.bankType===t?B.accent:B.border}`, background:fc.bankType===t?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:fc.bankType===t?B.accent:B.muted, textTransform:"capitalize" }}>{t}</button>
+            ))}
+          </div>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Chave PIX</p>
+          <p className="sl" style={{ marginBottom:6 }}>Tipo da chave</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
+            {[{k:"cnpj",l:"CNPJ"},{k:"cpf",l:"CPF"},{k:"email",l:"E-mail"},{k:"phone",l:"Telefone"},{k:"random",l:"Aleatória"}].map(t => (
+              <button key={t.k} onClick={() => upd("pixType", t.k)} style={{ padding:"8px 12px", borderRadius:10, border:`1.5px solid ${fc.pixType===t.k?B.accent:B.border}`, background:fc.pixType===t.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.pixType===t.k?B.accent:B.muted }}>{t.l}</button>
+            ))}
+          </div>
+          <Field label="Chave PIX" value={fc.pixKey} onChange={v => upd("pixKey", v)} placeholder={fc.pixType==="cnpj"?"00.000.000/0001-00":fc.pixType==="email"?"email@agencia.com.br":fc.pixType==="phone"?"(24) 99999-9999":"chave"} mono />
+        </Card>
+        <Card style={{ background:`${B.green}06`, border:`1px solid ${B.green}20` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:18 }}>🔒</span><p style={{ fontSize:11, color:B.green, lineHeight:1.5 }}>Estes dados ficam armazenados de forma segura e são usados apenas para gerar faturas e boletos para seus clientes.</p></div>
+        </Card>
+      </>}
+
+      {/* ═══ TAB: FATURAMENTO ═══ */}
+      {finTab === "billing" && <>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Configurações Padrão</p>
+          <Field label="Dia de vencimento padrão" value={fc.defaultDueDay} onChange={v => upd("defaultDueDay", parseInt(v)||5)} type="number" helpText="Dia do mês para vencimento das faturas (1-28)" />
+          <p className="sl" style={{ marginBottom:6 }}>Forma de pagamento padrão</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+            {["PIX","Boleto","Transferência","Cartão","Dinheiro"].map(m => (
+              <button key={m} onClick={() => upd("defaultPayMethod", m)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.defaultPayMethod===m?B.accent:B.border}`, background:fc.defaultPayMethod===m?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.defaultPayMethod===m?B.accent:B.muted }}>{m}</button>
+            ))}
+          </div>
+          <Field label="Dias de trial / cortesia" value={fc.trialDays} onChange={v => upd("trialDays", parseInt(v)||0)} type="number" helpText="Período de teste grátis para novos clientes" />
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Multa e Juros por Atraso</p>
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><Field label="Multa (%)" value={fc.lateFeePercent} onChange={v => upd("lateFeePercent", parseFloat(v)||0)} type="number" helpText="Multa fixa sobre o valor (máx. legal: 2%)" /></div>
+            <div style={{ flex:1 }}><Field label="Juros ao mês (%)" value={fc.lateInterestPercent} onChange={v => upd("lateInterestPercent", parseFloat(v)||0)} type="number" helpText="Juros mora mensal (máx. legal: 1%)" /></div>
+          </div>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Numeração de Faturas</p>
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><Field label="Prefixo" value={fc.invoicePrefix} onChange={v => upd("invoicePrefix", v.toUpperCase().slice(0,5))} placeholder="UMK" helpText="Prefixo das faturas (ex: UMK-001)" /></div>
+            <div style={{ flex:1 }}><Field label="Próximo número" value={fc.invoiceNextNum} onChange={v => upd("invoiceNextNum", parseInt(v)||1)} type="number" helpText="Número sequencial da próxima fatura" /></div>
+          </div>
+          <Card style={{ background:`${B.accent}06`, padding:12, border:`1px solid ${B.accent}15`, marginTop:8 }}>
+            <p style={{ fontSize:11, color:B.muted }}>Próxima fatura:</p>
+            <p style={{ fontSize:16, fontWeight:800, color:B.accent, fontFamily:"monospace", marginTop:2 }}>{fc.invoicePrefix}-{String(fc.invoiceNextNum).padStart(3,"0")}</p>
+          </Card>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Mensagem na Fatura</p>
+          <div style={{ marginBottom:10 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Rodapé / Observação</label>
+            <textarea value={fc.invoiceFooter||""} onChange={e => upd("invoiceFooter", e.target.value)} placeholder="Texto que aparece no rodapé de todas as faturas..." className="tinput" style={{ minHeight:60, resize:"vertical" }} />
+            <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Mensagem exibida em todas as faturas geradas pelo sistema</p>
+          </div>
+          <div>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações internas</label>
+            <textarea value={fc.invoiceObs||""} onChange={e => upd("invoiceObs", e.target.value)} placeholder="Notas internas sobre faturamento (não aparece na fatura)..." className="tinput" style={{ minHeight:50, resize:"vertical" }} />
+          </div>
+        </Card>
+      </>}
+
+      {/* ═══ TAB: METAS ═══ */}
+      {finTab === "goals" && <>
+        <Card style={{ marginBottom:12, textAlign:"center", padding:20, background:B.dark, color:"#fff", border:"none" }}>
+          <span style={{ fontSize:30 }}>🎯</span>
+          <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>Metas Financeiras</h3>
+          <p style={{ fontSize:11, opacity:.5, marginTop:4 }}>Defina metas para acompanhar o crescimento da agência</p>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Mensal</p>
+          <Field label="Meta mensal (R$)" value={fc.monthlyGoal} onChange={v => upd("monthlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita mensal recorrente" />
+          {fc.monthlyGoal > 0 && (() => {
+            const pct = Math.min(100, Math.round((totalRevReal / fc.monthlyGoal) * 100));
+            return (
+              <div style={{ marginTop:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:11, fontWeight:600 }}>R$ {totalRevReal.toLocaleString("pt-BR")} / R$ {fc.monthlyGoal.toLocaleString("pt-BR")}</span>
+                  <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}%</span>
+                </div>
+                <div style={{ height:10, borderRadius:5, background:`${B.border}` }}>
+                  <div style={{ height:"100%", borderRadius:5, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
+                </div>
+                {pct >= 100 && <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:6, textAlign:"center" }}>🎉 Meta atingida!</p>}
+              </div>
+            );
+          })()}
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Anual</p>
+          <Field label="Meta anual (R$)" value={fc.yearlyGoal} onChange={v => upd("yearlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita acumulada no ano" />
+          {fc.yearlyGoal > 0 && (() => {
+            const yearEst = totalRevReal * 12;
+            const pct = Math.min(100, Math.round((yearEst / fc.yearlyGoal) * 100));
+            return (
+              <div style={{ marginTop:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:11, fontWeight:600 }}>Projeção: R$ {yearEst.toLocaleString("pt-BR")} / R$ {fc.yearlyGoal.toLocaleString("pt-BR")}</span>
+                  <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}%</span>
+                </div>
+                <div style={{ height:10, borderRadius:5, background:`${B.border}` }}>
+                  <div style={{ height:"100%", borderRadius:5, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
+                </div>
+                <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>Projeção baseada na receita mensal atual × 12 meses</p>
+              </div>
+            );
+          })()}
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Metas por Indicador</p>
+          {[
+            { label:"Ticket médio desejado (R$)", key:"goalTicket", ph:"2.500" },
+            { label:"Nº de clientes pagantes", key:"goalClients", ph:"15" },
+            { label:"Taxa de inadimplência máx. (%)", key:"goalChurnMax", ph:"10" },
+          ].map((g, i) => (
+            <Field key={i} label={g.label} value={fc[g.key]||""} onChange={v => upd(g.key, v)} placeholder={g.ph} type="number" />
+          ))}
+        </Card>
+      </>}
+
+      {/* ═══ TAB: CATEGORIAS DE DESPESA ═══ */}
+      {finTab === "expenses" && <>
+        <Card style={{ marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+            <p style={{ fontSize:14, fontWeight:700 }}>Categorias de Despesa</p>
+            <button onClick={() => {
+              const name = prompt("Nome da nova categoria:");
+              if (name && name.trim()) upd("expenseCategories", [...(fc.expenseCategories||[]), name.trim()]);
+            }} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}12`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>+ Nova</button>
+          </div>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Categorias usadas para classificar despesas e custos operacionais da agência.</p>
+          {(fc.expenseCategories||[]).map((cat, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>
+                {["🛠️","👤","📢","📷","🏢","📊","📦"][i % 7]}
+              </div>
+              <p style={{ fontSize:13, fontWeight:500, flex:1 }}>{cat}</p>
+              <button onClick={() => upd("expenseCategories", (fc.expenseCategories||[]).filter((_,j)=>j!==i))} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, fontSize:16, padding:4 }}>×</button>
+            </div>
+          ))}
+          {(fc.expenseCategories||[]).length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma categoria cadastrada</p>}
+        </Card>
+        <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+          <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>💡 Sugestões de categorias</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+            {["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório","Impostos","Marketing próprio","Viagens","Treinamentos","Telefone/Internet"].map(s => {
+              const exists = (fc.expenseCategories||[]).includes(s);
+              return (
+                <button key={s} disabled={exists} onClick={() => !exists && upd("expenseCategories", [...(fc.expenseCategories||[]), s])} style={{ padding:"5px 10px", borderRadius:8, border:`1px solid ${exists?B.green:B.border}30`, background:exists?`${B.green}08`:B.bgCard, cursor:exists?"default":"pointer", fontFamily:"inherit", fontSize:10, fontWeight:500, color:exists?B.green:B.muted, opacity:exists?0.6:1 }}>{exists?"✓ ":""}{s}</button>
+              );
+            })}
+          </div>
+        </Card>
+      </>}
+
+      {/* Save button for config tabs */}
+      {finTab !== "dashboard" && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
     </div>
   );
 }
@@ -4934,12 +5222,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [aiCfgSaving, setAiCfgSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState({});
 
-  /* Financial config state */
-  const [finCfg, setFinCfg] = useState(null);
-  const [finCfgLoaded, setFinCfgLoaded] = useState(false);
-  const [finCfgSaving, setFinCfgSaving] = useState(false);
-  const [finTab, setFinTab] = useState("agency");
-
   const themes = [
     { k: "default", l: "Lime", c: "#BBF246" }, { k: "blue", l: "Azul", c: "#3B82F6" }, { k: "purple", l: "Roxo", c: "#8B5CF6" },
     { k: "pink", l: "Rosa", c: "#EC4899" }, { k: "orange", l: "Laranja", c: "#F59E0B" }, { k: "red", l: "Vermelho", c: "#EF4444" }, { k: "cyan", l: "Ciano", c: "#06B6D4" }
@@ -5546,281 +5828,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
   }
 
-  /* ═══ FINANCIAL CONFIG (admin only) ═══ */
-  if (sub === "finconfig") {
-    const FIN_DEFAULT = {
-      agencyName:"Unique Marketing 360", cnpj:"", ie:"", im:"", razaoSocial:"", address:"", city:"Petrópolis", state:"RJ", cep:"",
-      bankName:"", bankAgency:"", bankAccount:"", bankType:"corrente", pixType:"cnpj", pixKey:"",
-      defaultDueDay:5, defaultPayMethod:"PIX", lateFeePercent:2, lateInterestPercent:1, trialDays:7,
-      currency:"BRL", taxRegime:"simples", simplesRate:6, issRate:5, invoicePrefix:"UMK", invoiceNextNum:1,
-      monthlyGoal:0, yearlyGoal:0,
-      expenseCategories:["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório/Coworking","Impostos","Outros"],
-      invoiceFooter:"Obrigado pela confiança! Qualquer dúvida entre em contato.",
-      invoiceObs:"",
-    };
-    if (!finCfgLoaded) {
-      supaGetSetting("fin_config").then(raw => {
-        try { setFinCfg({ ...FIN_DEFAULT, ...(raw ? JSON.parse(raw) : {}) }); } catch { setFinCfg({ ...FIN_DEFAULT }); }
-        setFinCfgLoaded(true);
-      });
-      return <div className="pg"><Head title="Financeiro" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
-    }
-    const fc = finCfg || FIN_DEFAULT;
-    const upd = (k, v) => setFinCfg(prev => ({ ...prev, [k]: v }));
-    const saveFin = async () => {
-      setFinCfgSaving(true);
-      const ok = await supaSetSetting("fin_config", JSON.stringify(fc));
-      setFinCfgSaving(false);
-      if (ok) showToast("Configurações financeiras salvas ✓");
-      else showToast("Erro ao salvar. Verifique a tabela app_settings no Supabase.");
-    };
-
-    const TABS = [
-      { k:"agency", l:"Dados Fiscais", icon:"🏢" },
-      { k:"bank", l:"Dados Bancários", icon:"🏦" },
-      { k:"billing", l:"Faturamento", icon:"📄" },
-      { k:"goals", l:"Metas", icon:"🎯" },
-      { k:"expenses", l:"Categorias", icon:"📊" },
-    ];
-
-    const Field = ({ label, value, onChange, placeholder, type, mono, mask, helpText }) => (
-      <div style={{ marginBottom:10 }}>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>{label}</label>
-        <input type={type||"text"} value={value||""} onChange={e => onChange(mask ? mask(e.target.value) : e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : {}} />
-        {helpText && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{helpText}</p>}
-      </div>
-    );
-
-    return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Financeiro" onBack={() => { setSub(null); setFinCfgLoaded(false); }} right={
-          <button onClick={saveFin} disabled={finCfgSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:finCfgSaving?0.5:1 }}>{finCfgSaving ? "Salvando..." : "Salvar"}</button>
-        } />
-
-        {/* Tabs */}
-        <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto", paddingBottom:4 }}>
-          {TABS.map(t => (
-            <button key={t.k} onClick={() => setFinTab(t.k)} className={`htab${finTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
-              <span>{t.icon}</span>{t.l}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Tab: Dados Fiscais ── */}
-        {finTab === "agency" && <>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Dados da Agência</p>
-            <Field label="Razão Social" value={fc.razaoSocial} onChange={v => upd("razaoSocial", v)} placeholder="Unique Marketing 360 Ltda" />
-            <Field label="Nome Fantasia" value={fc.agencyName} onChange={v => upd("agencyName", v)} placeholder="Unique Marketing 360" />
-            <Field label="CNPJ" value={fc.cnpj} onChange={v => upd("cnpj", v)} placeholder="00.000.000/0001-00" mono />
-            <div style={{ display:"flex", gap:8 }}>
-              <div style={{ flex:1 }}><Field label="Inscrição Estadual" value={fc.ie} onChange={v => upd("ie", v)} placeholder="Isento" /></div>
-              <div style={{ flex:1 }}><Field label="Inscrição Municipal" value={fc.im} onChange={v => upd("im", v)} placeholder="000000" /></div>
-            </div>
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Endereço</p>
-            <Field label="Endereço completo" value={fc.address} onChange={v => upd("address", v)} placeholder="Rua, número, complemento" />
-            <div style={{ display:"flex", gap:8 }}>
-              <div style={{ flex:2 }}><Field label="Cidade" value={fc.city} onChange={v => upd("city", v)} placeholder="Petrópolis" /></div>
-              <div style={{ flex:1 }}><Field label="UF" value={fc.state} onChange={v => upd("state", v)} placeholder="RJ" /></div>
-              <div style={{ flex:1 }}><Field label="CEP" value={fc.cep} onChange={v => upd("cep", v)} placeholder="00000-000" mono /></div>
-            </div>
-          </Card>
-          <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Regime Tributário</p>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
-              {[{k:"simples",l:"Simples Nacional"},{k:"presumido",l:"Lucro Presumido"},{k:"real",l:"Lucro Real"},{k:"mei",l:"MEI"}].map(r => (
-                <button key={r.k} onClick={() => upd("taxRegime", r.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.taxRegime===r.k?B.accent:B.border}`, background:fc.taxRegime===r.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.taxRegime===r.k?B.accent:B.muted }}>{r.l}</button>
-              ))}
-            </div>
-            {fc.taxRegime === "simples" && (
-              <Field label="Alíquota Simples Nacional (%)" value={fc.simplesRate} onChange={v => upd("simplesRate", parseFloat(v)||0)} type="number" helpText="Alíquota efetiva da faixa atual no Anexo III ou V" />
-            )}
-            <Field label="Alíquota ISS (%)" value={fc.issRate} onChange={v => upd("issRate", parseFloat(v)||0)} type="number" helpText="ISS sobre serviços de marketing/publicidade da sua cidade" />
-          </Card>
-        </>}
-
-        {/* ── Tab: Dados Bancários ── */}
-        {finTab === "bank" && <>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Conta Bancária</p>
-            <Field label="Banco" value={fc.bankName} onChange={v => upd("bankName", v)} placeholder="Nubank, Itaú, Bradesco..." />
-            <div style={{ display:"flex", gap:8 }}>
-              <div style={{ flex:1 }}><Field label="Agência" value={fc.bankAgency} onChange={v => upd("bankAgency", v)} placeholder="0001" mono /></div>
-              <div style={{ flex:1 }}><Field label="Conta" value={fc.bankAccount} onChange={v => upd("bankAccount", v)} placeholder="12345-6" mono /></div>
-            </div>
-            <p className="sl" style={{ marginBottom:6 }}>Tipo de conta</p>
-            <div style={{ display:"flex", gap:6, marginBottom:6 }}>
-              {["corrente","poupança"].map(t => (
-                <button key={t} onClick={() => upd("bankType", t)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${fc.bankType===t?B.accent:B.border}`, background:fc.bankType===t?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:fc.bankType===t?B.accent:B.muted, textTransform:"capitalize" }}>{t}</button>
-              ))}
-            </div>
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Chave PIX</p>
-            <p className="sl" style={{ marginBottom:6 }}>Tipo da chave</p>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
-              {[{k:"cnpj",l:"CNPJ"},{k:"cpf",l:"CPF"},{k:"email",l:"E-mail"},{k:"phone",l:"Telefone"},{k:"random",l:"Aleatória"}].map(t => (
-                <button key={t.k} onClick={() => upd("pixType", t.k)} style={{ padding:"8px 12px", borderRadius:10, border:`1.5px solid ${fc.pixType===t.k?B.accent:B.border}`, background:fc.pixType===t.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.pixType===t.k?B.accent:B.muted }}>{t.l}</button>
-              ))}
-            </div>
-            <Field label="Chave PIX" value={fc.pixKey} onChange={v => upd("pixKey", v)} placeholder={fc.pixType==="cnpj"?"00.000.000/0001-00":fc.pixType==="email"?"email@agencia.com.br":fc.pixType==="phone"?"(24) 99999-9999":"chave"} mono />
-          </Card>
-          <Card style={{ background:`${B.green}06`, border:`1px solid ${B.green}20` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <span style={{ fontSize:18 }}>🔒</span>
-              <p style={{ fontSize:11, color:B.green, lineHeight:1.5 }}>Estes dados ficam armazenados de forma segura e são usados apenas para gerar faturas e boletos para seus clientes.</p>
-            </div>
-          </Card>
-        </>}
-
-        {/* ── Tab: Faturamento ── */}
-        {finTab === "billing" && <>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Configurações Padrão</p>
-            <Field label="Dia de vencimento padrão" value={fc.defaultDueDay} onChange={v => upd("defaultDueDay", parseInt(v)||5)} type="number" helpText="Dia do mês para vencimento das faturas (1-28)" />
-            <p className="sl" style={{ marginBottom:6 }}>Forma de pagamento padrão</p>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
-              {["PIX","Boleto","Transferência","Cartão","Dinheiro"].map(m => (
-                <button key={m} onClick={() => upd("defaultPayMethod", m)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.defaultPayMethod===m?B.accent:B.border}`, background:fc.defaultPayMethod===m?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.defaultPayMethod===m?B.accent:B.muted }}>{m}</button>
-              ))}
-            </div>
-            <Field label="Dias de trial / cortesia" value={fc.trialDays} onChange={v => upd("trialDays", parseInt(v)||0)} type="number" helpText="Período de teste grátis para novos clientes" />
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Multa e Juros por Atraso</p>
-            <div style={{ display:"flex", gap:8 }}>
-              <div style={{ flex:1 }}><Field label="Multa (%)" value={fc.lateFeePercent} onChange={v => upd("lateFeePercent", parseFloat(v)||0)} type="number" helpText="Multa fixa sobre o valor (máx. legal: 2%)" /></div>
-              <div style={{ flex:1 }}><Field label="Juros ao mês (%)" value={fc.lateInterestPercent} onChange={v => upd("lateInterestPercent", parseFloat(v)||0)} type="number" helpText="Juros mora mensal (máx. legal: 1%)" /></div>
-            </div>
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Numeração de Faturas</p>
-            <div style={{ display:"flex", gap:8 }}>
-              <div style={{ flex:1 }}><Field label="Prefixo" value={fc.invoicePrefix} onChange={v => upd("invoicePrefix", v.toUpperCase().slice(0,5))} placeholder="UMK" helpText="Prefixo das faturas (ex: UMK-001)" /></div>
-              <div style={{ flex:1 }}><Field label="Próximo número" value={fc.invoiceNextNum} onChange={v => upd("invoiceNextNum", parseInt(v)||1)} type="number" helpText="Número sequencial da próxima fatura" /></div>
-            </div>
-            <Card style={{ background:`${B.accent}06`, padding:12, border:`1px solid ${B.accent}15`, marginTop:8 }}>
-              <p style={{ fontSize:11, color:B.muted }}>Próxima fatura:</p>
-              <p style={{ fontSize:16, fontWeight:800, color:B.accent, fontFamily:"monospace", marginTop:2 }}>{fc.invoicePrefix}-{String(fc.invoiceNextNum).padStart(3,"0")}</p>
-            </Card>
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Mensagem na Fatura</p>
-            <div style={{ marginBottom:10 }}>
-              <label className="sl" style={{ display:"block", marginBottom:4 }}>Rodapé / Observação</label>
-              <textarea value={fc.invoiceFooter||""} onChange={e => upd("invoiceFooter", e.target.value)} placeholder="Texto que aparece no rodapé de todas as faturas..." className="tinput" style={{ minHeight:60, resize:"vertical" }} />
-              <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Mensagem exibida em todas as faturas geradas pelo sistema</p>
-            </div>
-            <div>
-              <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações internas</label>
-              <textarea value={fc.invoiceObs||""} onChange={e => upd("invoiceObs", e.target.value)} placeholder="Notas internas sobre faturamento (não aparece na fatura)..." className="tinput" style={{ minHeight:50, resize:"vertical" }} />
-            </div>
-          </Card>
-        </>}
-
-        {/* ── Tab: Metas ── */}
-        {finTab === "goals" && <>
-          <Card style={{ marginBottom:12, textAlign:"center", padding:20, background:B.dark, color:"#fff", border:"none" }}>
-            <span style={{ fontSize:30 }}>🎯</span>
-            <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>Metas Financeiras</h3>
-            <p style={{ fontSize:11, opacity:.5, marginTop:4 }}>Defina metas para acompanhar o crescimento da agência</p>
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Mensal</p>
-            <Field label="Meta mensal (R$)" value={fc.monthlyGoal} onChange={v => upd("monthlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita mensal recorrente" />
-            {fc.monthlyGoal > 0 && (() => {
-              const totalRev = (propClients || []).reduce((a, c) => a + parseBRL(c.monthly), 0);
-              const pct = Math.min(100, Math.round((totalRev / fc.monthlyGoal) * 100));
-              return (
-                <div style={{ marginTop:8 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                    <span style={{ fontSize:11, fontWeight:600 }}>R$ {totalRev.toLocaleString("pt-BR")} / R$ {fc.monthlyGoal.toLocaleString("pt-BR")}</span>
-                    <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}%</span>
-                  </div>
-                  <div style={{ height:10, borderRadius:5, background:`${B.border}` }}>
-                    <div style={{ height:"100%", borderRadius:5, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
-                  </div>
-                  {pct >= 100 && <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:6, textAlign:"center" }}>🎉 Meta atingida!</p>}
-                </div>
-              );
-            })()}
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Anual</p>
-            <Field label="Meta anual (R$)" value={fc.yearlyGoal} onChange={v => upd("yearlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita acumulada no ano" />
-            {fc.yearlyGoal > 0 && (() => {
-              const totalRev = (propClients || []).reduce((a, c) => a + parseBRL(c.monthly), 0);
-              const yearEst = totalRev * 12;
-              const pct = Math.min(100, Math.round((yearEst / fc.yearlyGoal) * 100));
-              return (
-                <div style={{ marginTop:8 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                    <span style={{ fontSize:11, fontWeight:600 }}>Projeção: R$ {yearEst.toLocaleString("pt-BR")} / R$ {fc.yearlyGoal.toLocaleString("pt-BR")}</span>
-                    <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}%</span>
-                  </div>
-                  <div style={{ height:10, borderRadius:5, background:`${B.border}` }}>
-                    <div style={{ height:"100%", borderRadius:5, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
-                  </div>
-                  <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>Projeção baseada na receita mensal atual × 12 meses</p>
-                </div>
-              );
-            })()}
-          </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Metas por Indicador</p>
-            {[
-              { label:"Ticket médio desejado (R$)", key:"goalTicket", ph:"2.500" },
-              { label:"Nº de clientes pagantes", key:"goalClients", ph:"15" },
-              { label:"Taxa de inadimplência máx. (%)", key:"goalChurnMax", ph:"10" },
-            ].map((g, i) => (
-              <Field key={i} label={g.label} value={fc[g.key]||""} onChange={v => upd(g.key, v)} placeholder={g.ph} type="number" />
-            ))}
-          </Card>
-        </>}
-
-        {/* ── Tab: Categorias de Despesa ── */}
-        {finTab === "expenses" && <>
-          <Card style={{ marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-              <p style={{ fontSize:14, fontWeight:700 }}>Categorias de Despesa</p>
-              <button onClick={() => {
-                const name = prompt("Nome da nova categoria:");
-                if (name && name.trim()) upd("expenseCategories", [...(fc.expenseCategories||[]), name.trim()]);
-              }} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}12`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>+ Nova</button>
-            </div>
-            <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Categorias usadas para classificar despesas e custos operacionais da agência.</p>
-            {(fc.expenseCategories||[]).map((cat, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>
-                  {["🛠️","👤","📢","📷","🏢","📊","📦"][i % 7]}
-                </div>
-                <p style={{ fontSize:13, fontWeight:500, flex:1 }}>{cat}</p>
-                <button onClick={() => upd("expenseCategories", (fc.expenseCategories||[]).filter((_,j)=>j!==i))} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, fontSize:16, padding:4 }}>×</button>
-              </div>
-            ))}
-            {(fc.expenseCategories||[]).length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma categoria cadastrada</p>}
-          </Card>
-          <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
-            <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>💡 Sugestões de categorias</p>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-              {["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório","Impostos","Marketing próprio","Viagens","Treinamentos","Telefone/Internet"].map(s => {
-                const exists = (fc.expenseCategories||[]).includes(s);
-                return (
-                  <button key={s} disabled={exists} onClick={() => !exists && upd("expenseCategories", [...(fc.expenseCategories||[]), s])} style={{ padding:"5px 10px", borderRadius:8, border:`1px solid ${exists?B.green:B.border}30`, background:exists?`${B.green}08`:B.bgCard, cursor:exists?"default":"pointer", fontFamily:"inherit", fontSize:10, fontWeight:500, color:exists?B.green:B.muted, opacity:exists?0.6:1 }}>{exists?"✓ ":""}{s}</button>
-                );
-              })}
-            </div>
-          </Card>
-        </>}
-
-        <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>
-      </div>
-    );
-  }
-
   /* ═══ AI CONFIG (admin only) ═══ */
   if (sub === "aiconfig") {
     if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
@@ -5905,7 +5912,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       {[
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
         { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" },
-        ...(user?.supaRole === "admin" ? [{ k: "finconfig", l: "Financeiro", ic: IC.financial(B.accent), desc: "Dados bancários, impostos, metas" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema e modo escuro" },
