@@ -1754,7 +1754,11 @@ function CheckinPage({ onBack, user }) {
             <div style={{width:28,height:28,borderRadius:8,background:`${B.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:B.accent}}>{fmtDate(c.check_in_at).split("/")[0]}</div>
             <div style={{flex:1}}>
               <p style={{fontSize:12,fontWeight:600}}>{c.profiles?.name || "—"}</p>
-              <p style={{fontSize:10,color:B.muted}}>{fmtHour(c.check_in_at)} — {c.check_out_at ? fmtHour(c.check_out_at) : "..."}{c.check_in_lat ? " 📍" : ""}</p>
+              <p style={{fontSize:10,color:B.muted}}>{fmtHour(c.check_in_at)} — {c.check_out_at ? fmtHour(c.check_out_at) : "..."}</p>
+              <div style={{display:"flex",gap:8,marginTop:1}}>
+                {c.check_in_lat && <GeoPin lat={c.check_in_lat} lng={c.check_in_lng} label="Entrada" />}
+                {c.check_out_lat && <GeoPin lat={c.check_out_lat} lng={c.check_out_lng} label="Saída" />}
+              </div>
             </div>
             <span style={{fontSize:11,fontWeight:700,color:c.check_out_at?B.accent:B.green}}>{c.check_out_at ? fmtMin(c.duration_minutes) : "Ativo"}</span>
           </div>
@@ -1776,7 +1780,8 @@ function CheckinPage({ onBack, user }) {
         </div>
         {activeCheckin ? (<>
           <p style={{ fontSize: 44, fontWeight: 900, color: B.accent, fontVariantNumeric: "tabular-nums", letterSpacing: 2 }}>{formatTime(elapsed)}</p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Entrada às {fmtHour(activeCheckin.check_in_at)}{activeCheckin.check_in_lat ? " 📍" : ""}</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Entrada às {fmtHour(activeCheckin.check_in_at)}</p>
+          {activeCheckin.check_in_lat && <div style={{marginTop:6}}><GeoPin lat={activeCheckin.check_in_lat} lng={activeCheckin.check_in_lng} label="Entrada" /></div>}
           <div style={{ width: 10, height: 10, borderRadius: 5, background: B.green, margin: "10px auto 0", animation: "skPulse 1.5s ease infinite" }} />
         </>) : (<>
           <p style={{ fontSize: 44, fontWeight: 900, color: "rgba(255,255,255,0.15)", fontVariantNumeric: "tabular-nums" }}>00:00:00</p>
@@ -1799,7 +1804,11 @@ function CheckinPage({ onBack, user }) {
               <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.accent, fontSize: 11, fontWeight: 800 }}>{fmtDate(h.check_in_at).split("/")[0]}</div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 13, fontWeight: 600 }}>{fmtDate(h.check_in_at)}</p>
-                <p style={{ fontSize: 11, color: B.muted }}>{fmtHour(h.check_in_at)} — {fmtHour(h.check_out_at)}{h.check_in_lat ? " 📍" : ""}</p>
+                <p style={{ fontSize: 11, color: B.muted }}>{fmtHour(h.check_in_at)} — {fmtHour(h.check_out_at)}</p>
+                <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                  {h.check_in_lat && <GeoPin lat={h.check_in_lat} lng={h.check_in_lng} label="Entrada" />}
+                  {h.check_out_lat && <GeoPin lat={h.check_out_lat} lng={h.check_out_lng} label="Saída" />}
+                </div>
               </div>
               <Tag color={B.green}>{fmtMin(h.duration_minutes)}</Tag>
             </div>
@@ -3884,6 +3893,19 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
 
 /* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
 /* ═══ Chat sub-components (module-level to prevent remount) ═══ */
+
+/* GeoPin — clickable 📍 that opens Google Maps */
+const GeoPin = ({ lat, lng, label }) => {
+  if (!lat || !lng) return null;
+  const url = `https://www.google.com/maps?q=${lat},${lng}`;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} title={`${lat.toFixed(5)}, ${lng.toFixed(5)}`} style={{ display:"inline-flex", alignItems:"center", gap:2, fontSize:10, color:"#3B82F6", textDecoration:"none", fontWeight:600 }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="#3B82F6" stroke="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+      <span>{label || "ver mapa"}</span>
+    </a>
+  );
+};
+
 const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
 
 const AudioPlayer = ({ src, isMe, accent, muted }) => {
