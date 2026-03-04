@@ -1120,6 +1120,9 @@ function LoginPage({ onAuth }) {
 
   const handleLogin = async () => {
     if (!email.trim() || !pw.trim()) { setError("Preencha email e senha"); return; }
+    /* Blocked users */
+    const BLOCKED = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+    if (BLOCKED.some(b => email.trim().toLowerCase().replace(/\s/g,"") === b)) { setError("Acesso bloqueado. Entre em contato com o administrador."); return; }
     /* Try Supabase auth if available */
     if (supabase) {
       setLoginLoading(true); setError("");
@@ -1151,6 +1154,8 @@ function LoginPage({ onAuth }) {
   };
 
   const handleRegister = async () => {
+    const BLOCKED_REG = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+    if (BLOCKED_REG.some(b => rEmail.trim().toLowerCase().replace(/\s/g,"") === b)) { setError("Este email está bloqueado. Entre em contato com o administrador."); return; }
     if (supabase) {
       setLoginLoading(true); setError(""); setRegSuccess("");
       try {
@@ -10305,6 +10310,11 @@ export default function App() {
     let timeout = setTimeout(() => { setAuthLoading(false); }, 3000); /* safety: max 3s */
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        /* Block banned users even if they have active session */
+        const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+        if (BLOCKED_EMAILS.some(b => session.user.email?.toLowerCase().replace(/\s/g,"") === b)) {
+          await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return;
+        }
         try {
           const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
           const extrasRaw = await supaGetSetting(`profile_extras_${session.user.id}`);
