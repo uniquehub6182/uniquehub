@@ -3481,9 +3481,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               </label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {(sel.steps?.design?.files||[]).map((f,i) => {
-                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name || f);
-                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(f.name || f);
-                  const fName = f.name || f;
+                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
@@ -3538,7 +3538,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               )}
               <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                 {sel.steps?.design?.files.map((f,i)=>{
-                  const fName = f.name || f;
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
                   return (
@@ -3563,7 +3563,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Enviar material gravado</label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {(sel.steps?.production?.files||[]).map((f,i) => {
-                  const fName = f.name || f;
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
                   const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fName);
@@ -3609,7 +3609,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                 {sel.steps?.production?.files.map((f,i)=>{
-                  const fName = f.name || f; const fUrl = f.url || null;
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url || null;
                   return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                     <span style={{ fontSize:12, fontWeight:600, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</span>
@@ -3625,14 +3625,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
             {sel.stage === "editing" ? <>
               {sel.steps?.production?.files?.length > 0 && <div style={{ background:`${B.orange}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.orange}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.orange, marginBottom:6 }}>🎬 Material gravado:</p>
-                {sel.steps?.production?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span></div>))}
+                {sel.steps?.production?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span></div>))}
               </div>}
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Notas de edição</label>
               <textarea value={sel.steps?.editing?.text||""} onChange={e=>updateStep("editing",{text:e.target.value, by:user?.name||"Allan", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Cortes, transições, trilha sonora, legendas..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
               <label className="sl" style={{ display:"block", marginBottom:6, marginTop:10 }}>Enviar vídeo editado</label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {(sel.steps?.editing?.files||[]).map((f,i) => {
-                  const fName = f.name || f; const fUrl = f.url || null;
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url || null;
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
@@ -3673,7 +3673,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.editing?.text}</p>
               {sel.steps?.editing?.files?.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6 }}>
                 {sel.steps?.editing?.files.map((f,i)=>{
-                  const fName = f.name||f; const fUrl = f.url||null;
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url||null;
                   return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
                     <span style={{ fontSize:12, fontWeight:600, flex:1 }}>{fName}</span>
@@ -3690,7 +3690,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               {/* Show design files for reference */}
               {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
-                {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{f.name||f}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
+                {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
               </div>}
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Legenda do post</label>
               <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
@@ -3713,7 +3713,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands }) {
               </div>
               {sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
                 <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>📎 Material do designer:</p>
-                {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {f}</span>))}
+                {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {typeof f === "string" ? f : f.name || "arquivo"}</span>))}
               </div>}
               {sel.scheduling?.date && <div style={{ display:"flex", gap:10, marginTop:10, padding:10, background:`${B.accent}06`, borderRadius:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}><span style={{ color:B.accent, display:"flex" }}>{IC.calendar(B.accent)}</span><span style={{ fontSize:12, fontWeight:600 }}>{sel.scheduling.date}</span></div>
@@ -6850,12 +6850,17 @@ function NewsPage({ onBack }) {
     if (loaded) return;
     supaLoadNews().then(rows => {
       if (rows.length) {
-        setArticles(rows.map(r => ({
-          id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
-          body: r.body || "", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
-          readTime: r.read_time || "", source: r.source || "", sourceUrl: r.source_url || "", pinned: r.pinned || false,
-          tags: r.tags || [], supaId: r.id
-        })));
+        setArticles(rows.map(r => {
+          const srcParts = (r.source || "").split("||");
+          const sourceName = srcParts[0] || "";
+          const sourceUrl = srcParts[1] || "";
+          return {
+            id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
+            body: r.body || "", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
+            readTime: r.read_time || "", source: sourceName, sourceUrl, pinned: r.pinned || false,
+            tags: r.tags || [], supaId: r.id
+          };
+        }));
       }
       setLoaded(true);
     });
@@ -6877,20 +6882,24 @@ function NewsPage({ onBack }) {
 
   const saveArticle = async () => {
     if (!form.title?.trim()) return showToast("Informe o título");
-    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: form.source || "", source_url: form.sourceUrl || "", read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [] };
+    const sourceVal = form.sourceUrl ? `${form.source||""}||${form.sourceUrl}` : (form.source || "");
+    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [] };
     const row = await supaCreateNews(na);
     if (row) {
-      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:row.source, sourceUrl:row.source_url||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id }, ...prev]);
+      const parsedNewSrc = (row.source || "").split("||");
+      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:parsedNewSrc[0]||"", sourceUrl:parsedNewSrc[1]||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id }, ...prev]);
       setCreating(false); setForm({}); showToast("Artigo publicado ✓");
     }
   };
 
   const updateArticle = async () => {
     if (!selArticle?.supaId) return;
-    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: form.source ?? selArticle.source, source_url: form.sourceUrl ?? selArticle.sourceUrl ?? "", read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags };
+    const updSourceVal = form.sourceUrl ? `${form.source || selArticle.source || ""}||${form.sourceUrl}` : (form.source ?? selArticle.source ?? "");
+    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags };
     await supaUpdateNews(selArticle.supaId, updates);
-    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:updates.source, sourceUrl:updates.source_url, readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags } } : a));
-    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:updates.source, sourceUrl:updates.source_url, readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags };
+    const parsedSrc = updSourceVal.includes("||") ? updSourceVal.split("||") : [updSourceVal, ""];
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags } } : a));
+    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags };
     setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
   };
 
