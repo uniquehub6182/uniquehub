@@ -1094,12 +1094,14 @@ function LoginPage({ onAuth }) {
         if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
         /* Load profile from DB */
         const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+        const extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`);
+        const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
-          supaRole: profile?.role || "member", photo: profile?.photo_url || TEAM_PHOTOS.matheus,
+          supaRole: profile?.role || "member", photo: profile?.photo_url || null,
           nick: profile?.nick || profile?.name || email.split("@")[0],
-          phone: profile?.phone || "", cpf: "", birth: "", social: "", blood: "", remember,
+          phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember,
         };
         setLoginLoading(false); onAuth(userObj);
       } catch (e) { setError("Erro de conexão"); setLoginLoading(false); }
@@ -1109,8 +1111,7 @@ function LoginPage({ onAuth }) {
     if (!emailValid) { setError("Use um e-mail @uniquemkt.com.br"); return; }
     if (!pwStrong(pw)) { setError("Senha não atende os critérios"); return; }
     const member = AGENCY_TEAM.find(m => m.name.toLowerCase() === emailLocal.toLowerCase());
-    const defaultPhoto = TEAM_PHOTOS.matheus;
-    onAuth({ name: member?.name || emailLocal, email, role: member?.role || "Colaborador", photo: member?.photo || defaultPhoto, phone: member?.phone || "", nick: member?.name || emailLocal, cpf: "", birth: "", social: "", blood: "", remember });
+    onAuth({ name: member?.name || emailLocal, email, role: member?.role || "Colaborador", photo: member?.photo || null, phone: member?.phone || "", nick: member?.name || emailLocal, birth: "", social: "", blood: "", bio: "", remember });
   };
 
   const [regSuccess, setRegSuccess] = useState("");
@@ -1120,9 +1121,14 @@ function LoginPage({ onAuth }) {
       try {
         const { data, error: authErr } = await supabase.auth.signUp({
           email: rEmail, password: rPw,
-          options: { data: { name: rName, nick: rNick, phone: rPhone, role: "member", job_title: rCargo } }
+          options: { data: { name: rName, nick: rNick, phone: rPhone, role: "member", job_title: rCargo, cpf: rCpf, birth: rBirth, social: rSocial, blood: rBlood } }
         });
         if (authErr) { setError(authErr.message); setLoginLoading(false); return; }
+        /* Save profile extras right after signup */
+        if (data?.user?.id) {
+          const extras = { cpf: rCpf, birth: rBirth, social: rSocial, blood: rBlood };
+          await supaSetSetting(`profile_extras_${data.user.id}`, JSON.stringify(extras)).catch(() => {});
+        }
         /* Link pending invite if exists */
         if (inviteData?.id && data?.user?.id) {
           await supaLinkInvite(inviteData.id, data.user.id);
@@ -5179,12 +5185,97 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* Profile editing */
   const [editProfile, setEditProfile] = useState(false);
-  const [pName, setPName] = useState(user?.name || "");
-  const [pNick, setPNick] = useState(user?.nick || "");
-  const [pPhone, setPPhone] = useState(user?.phone || "");
-  const [pSocial, setPSocial] = useState(user?.social || "");
-  const [pBirth, setPBirth] = useState(user?.birth || "");
-  const [pBlood, setPBlood] = useState(user?.blood || "");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [pf, setPf] = useState({
+    name: user?.name || "", nick: user?.nick || "", phone: user?.phone || "",
+    social: user?.social || "", birth: user?.birth || "", blood: user?.blood || "",
+    bio: user?.bio || "", emergency_name: user?.emergency_name || "",
+    emergency_phone: user?.emergency_phone || "", emergency_relation: user?.emergency_relation || "",
+    pix: user?.pix || "", shirt_size: user?.shirt_size || "",
+    work_pref: user?.work_pref || "hibrido", availability: user?.availability || "integral",
+    skills: user?.skills || [], cpf: user?.cpf || "",
+  });
+  const pfUp = (k, v) => setPf(p => ({ ...p, [k]: v }));
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  /* Load full profile from Supabase on mount */
+  useEffect(() => {
+    if (profileLoaded || !supabase || !user?.id) return;
+    (async () => {
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const extrasRaw = await supaGetSetting(`profile_extras_${user.id}`);
+      const extras = extrasRaw ? (typeof extrasRaw === "string" ? (() => { try { return JSON.parse(extrasRaw); } catch { return {}; } })() : extrasRaw) : {};
+      if (prof || Object.keys(extras).length) {
+        const merged = {
+          name: prof?.name || user.name || "", nick: prof?.nick || user.nick || "",
+          phone: prof?.phone || user.phone || "", social: extras.social || "",
+          birth: extras.birth || "", blood: extras.blood || "", bio: extras.bio || "",
+          emergency_name: extras.emergency_name || "", emergency_phone: extras.emergency_phone || "",
+          emergency_relation: extras.emergency_relation || "", pix: extras.pix || "",
+          shirt_size: extras.shirt_size || "", work_pref: extras.work_pref || "hibrido",
+          availability: extras.availability || "integral", skills: extras.skills || [],
+          cpf: extras.cpf || "",
+        };
+        setPf(merged);
+        if (prof?.photo_url && prof.photo_url !== user.photo) {
+          setUser(prev => ({ ...prev, photo: prof.photo_url, name: prof.name || prev.name, nick: prof.nick || prev.nick, phone: prof.phone || prev.phone }));
+        }
+      }
+      setProfileLoaded(true);
+    })();
+  }, [profileLoaded, user?.id]);
+
+  const saveProfile = async () => {
+    if (!supabase || !user?.id) { showToast("Sem conexão com o banco"); return; }
+    setProfileSaving(true);
+    try {
+      /* Update profiles table (safe columns only) */
+      const { error } = await supabase.from("profiles").update({ name: pf.name, nick: pf.nick, phone: pf.phone }).eq("id", user.id);
+      if (error) console.warn("profiles update:", error.message);
+
+      /* Store extras in settings table (always works) */
+      const extras = { social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio, cpf: pf.cpf, emergency_name: pf.emergency_name, emergency_phone: pf.emergency_phone, emergency_relation: pf.emergency_relation, pix: pf.pix, shirt_size: pf.shirt_size, work_pref: pf.work_pref, availability: pf.availability, skills: pf.skills };
+      await supaSetSetting(`profile_extras_${user.id}`, JSON.stringify(extras));
+
+      setUser(prev => ({ ...prev, name: pf.name, nick: pf.nick, phone: pf.phone, social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio }));
+      setEditProfile(false);
+      showToast("Perfil salvo ✓");
+    } catch(e) { console.error("saveProfile:", e); showToast("Erro ao salvar"); }
+    setProfileSaving(false);
+  };
+
+  const uploadPhoto = async (file) => {
+    if (!supabase || !user?.id || !file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast("Máximo 2MB"); return; }
+    if (!file.type.startsWith("image/")) { showToast("Apenas imagens"); return; }
+    setPhotoUploading(true);
+    try {
+      /* Convert to base64 and store in profiles — works without Storage bucket */
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const b64 = e.target.result;
+        /* Compress if too large by resizing via canvas */
+        const img = new Image();
+        img.onload = async () => {
+          const maxSz = 256;
+          const scale = Math.min(maxSz / img.width, maxSz / img.height, 1);
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.8);
+          const { error } = await supabase.from("profiles").update({ photo_url: compressed }).eq("id", user.id);
+          if (error) { showToast("Erro ao salvar foto"); console.error(error); }
+          else { setUser(prev => ({ ...prev, photo: compressed })); showToast("Foto atualizada ✓"); }
+          setPhotoUploading(false);
+        };
+        img.src = b64;
+      };
+      reader.onerror = () => { showToast("Erro ao ler arquivo"); setPhotoUploading(false); };
+      reader.readAsDataURL(file);
+    } catch(e) { showToast("Erro no upload"); setPhotoUploading(false); }
+  };
 
   /* Security */
   const [changePw, setChangePw] = useState(false);
@@ -5253,12 +5344,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   ];
   const pwStrong = (p) => pwChecks(p).every(c => c.ok);
 
-  const saveProfile = () => {
-    setUser(prev => ({ ...prev, name: pName, nick: pNick, phone: pPhone, social: pSocial, birth: pBirth, blood: pBlood }));
-    setEditProfile(false);
-    showToast("Perfil atualizado ✓");
-  };
-
   const savePw = () => {
     if (!pwStrong(newPw)) { showToast("Senha não atende os critérios"); return; }
     if (newPw !== confirmPw) { showToast("As senhas não conferem"); return; }
@@ -5273,98 +5358,217 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   );
 
   /* ═══ PROFILE ═══ */
-  if (sub === "profile") return (
+  if (sub === "profile") {
+    const SKILLS_LIST = ["Design Gráfico","Social Media","Copywriting","Tráfego Pago","SEO","Fotografia","Vídeo/Reels","Motion Design","Atendimento","Planejamento","Branding","E-mail Marketing","Analytics","WordPress","Figma","Canva","Adobe Suite","Premiere","After Effects","CapCut"];
+    const BLOOD_TYPES = ["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"];
+    const SHIRTS = ["PP","P","M","G","GG","XGG"];
+    const WORK_PREFS = [{k:"presencial",l:"Presencial",ic:"🏢"},{k:"remoto",l:"Remoto",ic:"🏠"},{k:"hibrido",l:"Híbrido",ic:"🔄"}];
+    const AVAIL = [{k:"integral",l:"Integral",d:"Seg-Sex, horário comercial"},{k:"meio",l:"Meio período",d:"4-6h por dia"},{k:"freelancer",l:"Freelancer",d:"Horários flexíveis"}];
+
+    const fileInputRef = React.useRef(null);
+
+    return (
     <div className="pg">
       {ToastEl}
-      <Head title="Perfil" onBack={() => setSub(null)} right={
-        !editProfile ? <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 12px", borderRadius:8, background:`${B.accent}10`, border:`1.5px solid ${B.accent}25`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.accent }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar</button> : null
+      <Head title="Meu Perfil" onBack={() => { setSub(null); setEditProfile(false); }} right={
+        !editProfile ? <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 14px", borderRadius:8, background:`${B.accent}10`, border:`1.5px solid ${B.accent}25`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.accent }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar</button>
+        : <button onClick={saveProfile} disabled={profileSaving} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent }}>{profileSaving ? "Salvando..." : "Salvar"}</button>
       } />
-      <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ position: "relative" }}><Av src={user?.photo} name={user?.name} sz={72} fs={28} /><button style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, background: B.accent, border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>{IC.camera}</button></div>
-        <p style={{ fontSize: 18, fontWeight: 700, marginTop: 10 }}>{user?.name}</p>
-        <p style={{ fontSize: 12, color: B.muted }}>{user?.role}</p>
-        <Tag color={B.green} style={{ marginTop: 6 }}>Ativo</Tag>
+
+      {/* ── AVATAR + HEADER ── */}
+      <Card style={{ textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", marginBottom:14, padding:20 }}>
+        <div style={{ position:"relative", marginBottom:12 }}>
+          <Av src={user?.photo} name={user?.name} sz={80} fs={30} />
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e => { if(e.target.files?.[0]) uploadPhoto(e.target.files[0]); e.target.value=""; }} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={photoUploading} style={{ position:"absolute", bottom:-2, right:-2, width:30, height:30, borderRadius:15, background:B.accent, border:"3px solid "+B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:B.textOnAccent }}>
+            {photoUploading ? <span style={{fontSize:10}}>⏳</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+          </button>
+        </div>
+        <p style={{ fontSize:18, fontWeight:800 }}>{user?.name}</p>
+        <p style={{ fontSize:12, color:B.muted }}>{user?.email}</p>
+        <div style={{ display:"flex", gap:6, marginTop:8 }}>
+          <Tag color={B.accent}>{user?.role || "Colaborador"}</Tag>
+          <Tag color={B.green}>Ativo</Tag>
+        </div>
+        {pf.bio && !editProfile && <p style={{ fontSize:12, color:B.muted, marginTop:10, lineHeight:1.5, fontStyle:"italic" }}>"{pf.bio}"</p>}
       </Card>
 
       {editProfile ? <>
-        <p className="sl" style={{ marginBottom: 6 }}>Dados pessoais</p>
-        <Card style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Nome completo</label>
-          <input value={pName} onChange={e => setPName(e.target.value)} className="tinput" />
-        </Card>
-        <Card style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Apelido</label>
-          <input value={pNick} onChange={e => setPNick(e.target.value)} className="tinput" />
-        </Card>
-        <Card style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Data de nascimento</label>
-          <input value={pBirth} onChange={e => setPBirth(e.target.value)} className="tinput" placeholder="DD/MM/AAAA" />
-        </Card>
-
-        <p className="sl" style={{ marginTop: 12, marginBottom: 6 }}>Contato</p>
-        <Card style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Telefone / WhatsApp</label>
-          <input value={pPhone} onChange={e => setPPhone(maskPhone(e.target.value))} className="tinput" inputMode="tel" />
-        </Card>
-        <Card style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Rede social</label>
-          <input value={pSocial} onChange={e => setPSocial(e.target.value)} className="tinput" placeholder="@seuperfil" />
-        </Card>
-
-        <p className="sl" style={{ marginTop: 12, marginBottom: 6 }}>Tipo sanguíneo</p>
-        <Card style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"].map(b => (
-              <button key={b} onClick={() => setPBlood(b)} style={{ padding: "7px 12px", borderRadius: 10, border: `1.5px solid ${pBlood === b ? B.accent : B.border}`, background: pBlood === b ? `${B.accent}12` : B.bgCard, cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: pBlood === b ? B.dark : B.muted }}>{b}</button>
+        {/* ── EDIT MODE ── */}
+        <p className="sl" style={{ marginBottom:6 }}>👤 Dados pessoais</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome completo *</label>
+          <input value={pf.name} onChange={e => pfUp("name",e.target.value)} className="tinput" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Apelido</label>
+          <input value={pf.nick} onChange={e => pfUp("nick",e.target.value)} className="tinput" placeholder="Como quer ser chamado(a)" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio / Sobre mim</label>
+          <textarea value={pf.bio} onChange={e => pfUp("bio",e.target.value)} className="tinput" rows={2} placeholder="Uma frase sobre você..." style={{ marginBottom:10, resize:"vertical" }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>CPF</label>
+          <input value={pf.cpf} onChange={e => { const d=e.target.value.replace(/\D/g,"").slice(0,11); let f=d; if(d.length>9) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9); else if(d.length>6) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6); else if(d.length>3) f=d.slice(0,3)+"."+d.slice(3); pfUp("cpf",f); }} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Data de nascimento</label>
+          <input value={pf.birth} onChange={e => pfUp("birth",e.target.value)} className="tinput" placeholder="DD/MM/AAAA" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Tipo sanguíneo</label>
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+            {BLOOD_TYPES.map(b => (
+              <button key={b} onClick={() => pfUp("blood",b)} style={{ padding:"6px 11px", borderRadius:8, border:`1.5px solid ${pf.blood===b?B.accent:B.border}`, background:pf.blood===b?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:pf.blood===b?B.dark:B.muted }}>{b}</button>
             ))}
           </div>
         </Card>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setEditProfile(false)} className="pill outline" style={{ flex: 1 }}>Cancelar</button>
-          <button onClick={saveProfile} className="pill accent" style={{ flex: 1 }}>Salvar</button>
-        </div>
-      </> : <>
-        <p className="sl" style={{ marginBottom: 6 }}>Dados pessoais</p>
-        {[
-          { l: "Nome completo", v: user?.name, ic: IC.team(B.accent) },
-          { l: "Apelido", v: user?.nick || "—", ic: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-          { l: "CPF", v: user?.cpf || "—", ic: IC.shield },
-          { l: "Data de nascimento", v: user?.birth || "—", ic: IC.clock },
-          { l: "Tipo sanguíneo", v: user?.blood || "—", ic: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg> },
-        ].map((f, i) => (
-          <Card key={i} style={{ marginBottom: 6 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: B.accent, display: "flex" }}>{f.ic}</span>
-              <div><p style={{ fontSize: 11, color: B.muted }}>{f.l}</p><p style={{ fontSize: 14, fontWeight: 600 }}>{f.v}</p></div>
-            </div>
-          </Card>
-        ))}
+        <p className="sl" style={{ marginBottom:6 }}>📱 Contato</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Telefone / WhatsApp</label>
+          <input value={pf.phone} onChange={e => pfUp("phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Instagram / Rede social</label>
+          <input value={pf.social} onChange={e => pfUp("social",e.target.value)} className="tinput" placeholder="@seuperfil" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Chave PIX (para reembolsos)</label>
+          <input value={pf.pix} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" />
+        </Card>
 
-        <p className="sl" style={{ marginTop: 12, marginBottom: 6 }}>Contato</p>
-        {[
-          { l: "E-mail corporativo", v: user?.email, ic: IC.mail },
-          { l: "Telefone / WhatsApp", v: user?.phone || "—", ic: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> },
-          { l: "Rede social", v: user?.social || "—", ic: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg> },
-        ].map((f, i) => (
-          <Card key={i} style={{ marginBottom: 6 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: B.accent, display: "flex" }}>{f.ic}</span>
-              <div><p style={{ fontSize: 11, color: B.muted }}>{f.l}</p><p style={{ fontSize: 14, fontWeight: 600 }}>{f.v}</p></div>
+        <p className="sl" style={{ marginBottom:6 }}>💼 Trabalho</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Modelo de trabalho</label>
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            {WORK_PREFS.map(w => (
+              <button key={w.k} onClick={() => pfUp("work_pref",w.k)} style={{ flex:1, padding:"10px 6px", borderRadius:10, border:`1.5px solid ${pf.work_pref===w.k?B.accent:B.border}`, background:pf.work_pref===w.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
+                <span style={{ fontSize:18, display:"block" }}>{w.ic}</span>
+                <span style={{ fontSize:10, fontWeight:600, color:pf.work_pref===w.k?B.dark:B.muted }}>{w.l}</span>
+              </button>
+            ))}
+          </div>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Disponibilidade</label>
+          {AVAIL.map(a => (
+            <div key={a.k} onClick={() => pfUp("availability",a.k)} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, border:`1.5px solid ${pf.availability===a.k?B.accent:B.border}`, background:pf.availability===a.k?`${B.accent}08`:B.bgCard, cursor:"pointer", marginBottom:6 }}>
+              <div style={{ width:16, height:16, borderRadius:8, border:`2px solid ${pf.availability===a.k?B.accent:B.muted}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{pf.availability===a.k && <div style={{ width:8, height:8, borderRadius:4, background:B.accent }} />}</div>
+              <div><p style={{ fontSize:12, fontWeight:600 }}>{a.l}</p><p style={{ fontSize:10, color:B.muted }}>{a.d}</p></div>
             </div>
-          </Card>
-        ))}
+          ))}
+        </Card>
 
-        <p className="sl" style={{ marginTop: 12, marginBottom: 6 }}>Função</p>
-        <Card>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ color: B.accent, display: "flex" }}>{IC.briefcase}</span>
-            <div><p style={{ fontSize: 11, color: B.muted }}>Cargo</p><p style={{ fontSize: 14, fontWeight: 600 }}>{user?.role}</p></div>
+        <p className="sl" style={{ marginBottom:6 }}>🎯 Skills & Competências</p>
+        <Card style={{ marginBottom:10 }}>
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+            {SKILLS_LIST.map(s => {
+              const has = (pf.skills||[]).includes(s);
+              return <button key={s} onClick={() => pfUp("skills", has ? (pf.skills||[]).filter(x=>x!==s) : [...(pf.skills||[]),s])} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${has?B.accent:B.border}20`, background:has?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:has?600:400, color:has?B.accent:B.muted }}>{has?"✓ ":""}{s}</button>;
+            })}
           </div>
         </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>🆘 Contato de emergência</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome</label>
+          <input value={pf.emergency_name} onChange={e => pfUp("emergency_name",e.target.value)} className="tinput" placeholder="Nome do contato" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Telefone</label>
+          <input value={pf.emergency_phone} onChange={e => pfUp("emergency_phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Parentesco</label>
+          <input value={pf.emergency_relation} onChange={e => pfUp("emergency_relation",e.target.value)} className="tinput" placeholder="Mãe, pai, cônjuge..." />
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>👕 Info extra</p>
+        <Card style={{ marginBottom:14 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Tamanho de camiseta (para brindes)</label>
+          <div style={{ display:"flex", gap:5 }}>
+            {SHIRTS.map(s => (
+              <button key={s} onClick={() => pfUp("shirt_size",s)} style={{ flex:1, padding:"8px 4px", borderRadius:8, border:`1.5px solid ${pf.shirt_size===s?B.accent:B.border}`, background:pf.shirt_size===s?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:pf.shirt_size===s?B.dark:B.muted }}>{s}</button>
+            ))}
+          </div>
+        </Card>
+
+        <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+          <button onClick={() => setEditProfile(false)} className="pill" style={{ flex:1, background:B.bgCard, border:`1.5px solid ${B.border}`, fontWeight:600 }}>Cancelar</button>
+          <button onClick={saveProfile} disabled={profileSaving} className="pill accent" style={{ flex:1 }}>{profileSaving ? "Salvando..." : "Salvar alterações"}</button>
+        </div>
+      </> : <>
+        {/* ── VIEW MODE ── */}
+        <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
+        <Card style={{ marginBottom:10 }}>
+          {[
+            { l:"Nome completo", v:user?.name || "—", ic:"👤" },
+            { l:"Apelido", v:pf.nick || "—", ic:"😊" },
+            { l:"Data de nascimento", v:pf.birth || "—", ic:"🎂" },
+            { l:"Tipo sanguíneo", v:pf.blood || "—", ic:"🩸" },
+            { l:"CPF", v:pf.cpf || "—", ic:"🪪" },
+          ].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <span style={{ fontSize:16 }}>{f.ic}</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+            </div>
+          ))}
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Contato</p>
+        <Card style={{ marginBottom:10 }}>
+          {[
+            { l:"E-mail", v:user?.email || "—", ic:"📧" },
+            { l:"Telefone / WhatsApp", v:pf.phone || "—", ic:"📱" },
+            { l:"Rede social", v:pf.social || "—", ic:"📸" },
+            { l:"Chave PIX", v:pf.pix || "—", ic:"💳" },
+          ].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <span style={{ fontSize:16 }}>{f.ic}</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+            </div>
+          ))}
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
+        <Card style={{ marginBottom:10 }}>
+          {[
+            { l:"Cargo", v:user?.role || "—", ic:"💼" },
+            { l:"Modelo de trabalho", v:WORK_PREFS.find(w=>w.k===pf.work_pref)?.l || "—", ic:WORK_PREFS.find(w=>w.k===pf.work_pref)?.ic || "🔄" },
+            { l:"Disponibilidade", v:AVAIL.find(a=>a.k===pf.availability)?.l || "—", ic:"⏰" },
+          ].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <span style={{ fontSize:16 }}>{f.ic}</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+            </div>
+          ))}
+        </Card>
+
+        {(pf.skills||[]).length > 0 && <>
+          <p className="sl" style={{ marginBottom:6 }}>Skills</p>
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+              {(pf.skills||[]).map(s => <Tag key={s} color={B.accent}>{s}</Tag>)}
+            </div>
+          </Card>
+        </>}
+
+        {pf.emergency_name && <>
+          <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
+          <Card style={{ marginBottom:10 }}>
+            {[
+              { l:"Nome", v:pf.emergency_name, ic:"🆘" },
+              { l:"Telefone", v:pf.emergency_phone || "—", ic:"📞" },
+              { l:"Parentesco", v:pf.emergency_relation || "—", ic:"👪" },
+            ].map((f,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:14 }}>{f.ic}</span>
+                <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f.l}</p><p style={{ fontSize:13, fontWeight:600 }}>{f.v}</p></div>
+              </div>
+            ))}
+          </Card>
+        </>}
+
+        {pf.shirt_size && (
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>👕</span>
+              <div><p style={{ fontSize:10, color:B.muted }}>Tamanho de camiseta</p><p style={{ fontSize:13, fontWeight:600 }}>{pf.shirt_size}</p></div>
+            </div>
+          </Card>
+        )}
+
+        {/* Quick edit CTA */}
+        <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:14, borderRadius:14, background:`${B.accent}08`, border:`1.5px solid ${B.accent}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent, marginBottom:10 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Editar meu perfil
+        </button>
       </>}
     </div>
-  );
+    );
+  }
 
   /* ═══ APPEARANCE ═══ */
   if (sub === "aparencia") return (
@@ -9584,12 +9788,14 @@ export default function App() {
       if (session?.user) {
         try {
           const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+          const extrasRaw = await supaGetSetting(`profile_extras_${session.user.id}`);
+          const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           setUser({
             id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
             email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
-            supaRole: profile?.role || "member", photo: profile?.photo_url || TEAM_PHOTOS.matheus,
+            supaRole: profile?.role || "member", photo: profile?.photo_url || null,
             nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
-            phone: profile?.phone || "", cpf: "", birth: "", social: "", blood: "", remember: true,
+            phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember: true,
           });
         } catch(e) { console.error("Profile load failed:", e); }
       }
