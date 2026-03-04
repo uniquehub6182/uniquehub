@@ -5591,71 +5591,56 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     /* ═══ PRESET THEMES ═══ */
     const PRESETS = [
-      { k:"default", name:"UniqueHub", desc:"O visual padrão", emoji:"💚", dark:false, theme:"default",
-        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,headerStyle:"default",listStyle:"cards",animations:true,animSpeed:"normal",iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
+      { k:"default", name:"UniqueHub", desc:"O visual padrão do app", emoji:"💚", dark:false, theme:"default",
+        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
       { k:"midnight", name:"Midnight Luxe", desc:"Elegante, escuro, premium", emoji:"🖤", dark:true, theme:"amber",
-        pr:{ fontSize:"normal",fontFamily:"serif",boldTitles:true,cardRadius:"round",cardStyle:"glass",density:"normal",bgTemplate:"aurora_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:300,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:22,headerStyle:"default",listStyle:"cards",animations:true,animSpeed:"slow",iconFill:"outlined",customBg:"#0C0E14",customBgCard:"rgba(22,26,35,0.75)",customText:"#F0E6D3",customMuted:"#8B7E6A",customBorder:"rgba(212,175,105,0.1)",iconColor:"#D4AF69",blockBg:"rgba(212,175,105,0.06)",navActiveColor:null,navInactiveColor:"rgba(212,175,105,0.35)" }},
+        pr:{ fontSize:"normal",fontFamily:"serif",boldTitles:true,cardRadius:"round",cardStyle:"glass",density:"normal",bgTemplate:"aurora_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:300,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:22,iconFill:"outlined",customBg:"#0C0E14",customBgCard:"rgba(22,26,35,0.75)",customText:"#F0E6D3",customMuted:"#8B7E6A",customBorder:"rgba(212,175,105,0.1)",iconColor:"#D4AF69",blockBg:"rgba(212,175,105,0.06)",navActiveColor:null,navInactiveColor:"rgba(212,175,105,0.35)" }},
       { k:"neon", name:"Neon Pulse", desc:"Futurista, vibrante, tech", emoji:"⚡", dark:true, theme:"cyan",
-        pr:{ fontSize:"normal",fontFamily:"mono",boldTitles:true,cardRadius:"sharp",cardStyle:"outlined",density:"compact",bgTemplate:"grid_cyber",navSize:"sm",navStyle:"bar",navPosition:"fixed",navWidth:400,navBlur:false,navLabels:false,iconWeight:"bold",iconSize:20,headerStyle:"accent",listStyle:"rows",animations:true,animSpeed:"fast",iconFill:"outlined",customBg:"#0A0F14",customBgCard:"#0F1820",customText:"#00FFD0",customMuted:"#2A7A6A",customBorder:"rgba(0,255,208,0.12)",iconColor:"#06B6D4",blockBg:"rgba(0,255,208,0.04)",navActiveColor:"#0A0F14",navInactiveColor:"rgba(0,255,208,0.4)" }},
+        pr:{ fontSize:"normal",fontFamily:"mono",boldTitles:true,cardRadius:"sharp",cardStyle:"outlined",density:"compact",bgTemplate:"grid_cyber",navSize:"sm",navStyle:"bar",navPosition:"fixed",navWidth:400,navBlur:false,navLabels:false,iconWeight:"bold",iconSize:20,iconFill:"outlined",customBg:"#0A0F14",customBgCard:"#0F1820",customText:"#00FFD0",customMuted:"#2A7A6A",customBorder:"rgba(0,255,208,0.12)",iconColor:"#06B6D4",blockBg:"rgba(0,255,208,0.04)",navActiveColor:"#0A0F14",navInactiveColor:"rgba(0,255,208,0.4)" }},
       { k:"zen", name:"Nature Zen", desc:"Calmo, orgânico, minimalista", emoji:"🌿", dark:false, theme:"emerald",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"round",cardStyle:"flat",density:"spacious",bgTemplate:"soft_green",navSize:"md",navStyle:"minimal",navPosition:"float",navWidth:280,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:24,headerStyle:"default",listStyle:"minimal",animations:true,animSpeed:"slow",iconFill:"outlined",customBg:"#F0F7F0",customBgCard:"#FAFCFA",customText:"#2D4A2D",customMuted:"#7A9A7A",customBorder:"rgba(45,74,45,0.1)",iconColor:"#10B981",blockBg:"rgba(16,185,129,0.05)",navActiveColor:null,navInactiveColor:null }},
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"round",cardStyle:"flat",density:"spacious",bgTemplate:"soft_green",navSize:"md",navStyle:"minimal",navPosition:"float",navWidth:280,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:24,iconFill:"outlined",customBg:"#F0F7F0",customBgCard:"#FAFCFA",customText:"#2D4A2D",customMuted:"#7A9A7A",customBorder:"rgba(45,74,45,0.1)",iconColor:"#10B981",blockBg:"rgba(16,185,129,0.05)",navActiveColor:null,navInactiveColor:null }},
       { k:"candy", name:"Candy Pop", desc:"Divertido, colorido, jovem", emoji:"🍬", dark:false, theme:"pink",
-        pr:{ fontSize:"large",fontFamily:"inter",boldTitles:true,cardRadius:"pill",cardStyle:"elevated",density:"normal",bgTemplate:"gradient_candy",navSize:"lg",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:true,navLabels:true,iconWeight:"bold",iconSize:24,headerStyle:"accent",listStyle:"cards",animations:true,animSpeed:"normal",iconFill:"filled",customBg:null,customBgCard:"#fff",customText:"#4A154B",customMuted:"#9B59B6",customBorder:"rgba(236,72,153,0.12)",iconColor:"#EC4899",blockBg:"rgba(236,72,153,0.06)",navActiveColor:null,navInactiveColor:null }},
+        pr:{ fontSize:"large",fontFamily:"inter",boldTitles:true,cardRadius:"pill",cardStyle:"elevated",density:"normal",bgTemplate:"gradient_candy",navSize:"lg",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:true,navLabels:true,iconWeight:"bold",iconSize:24,iconFill:"filled",customBg:null,customBgCard:"#fff",customText:"#4A154B",customMuted:"#9B59B6",customBorder:"rgba(236,72,153,0.12)",iconColor:"#EC4899",blockBg:"rgba(236,72,153,0.06)",navActiveColor:null,navInactiveColor:null }},
       { k:"corporate", name:"Corporate Pro", desc:"Profissional, limpo, sério", emoji:"🏢", dark:false, theme:"slate",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"sharp",cardStyle:"outlined",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"bar",navPosition:"fixed",navWidth:400,navBlur:false,navLabels:true,iconWeight:"normal",iconSize:22,headerStyle:"default",listStyle:"rows",animations:true,animSpeed:"fast",iconFill:"outlined",customBg:"#F8F9FA",customBgCard:"#FFFFFF",customText:"#1A1D21",customMuted:"#6B7280",customBorder:"rgba(0,0,0,0.1)",iconColor:"#64748B",blockBg:"rgba(100,116,139,0.04)",navActiveColor:null,navInactiveColor:null }},
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"sharp",cardStyle:"outlined",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"bar",navPosition:"fixed",navWidth:400,navBlur:false,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#F8F9FA",customBgCard:"#FFFFFF",customText:"#1A1D21",customMuted:"#6B7280",customBorder:"rgba(0,0,0,0.1)",iconColor:"#64748B",blockBg:"rgba(100,116,139,0.04)",navActiveColor:null,navInactiveColor:null }},
       { k:"ocean", name:"Deep Ocean", desc:"Profundo, sereno", emoji:"🌊", dark:true, theme:"blue",
-        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"glass",density:"normal",bgTemplate:"ocean_deep",navSize:"md",navStyle:"rounded",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,headerStyle:"default",listStyle:"cards",animations:true,animSpeed:"normal",iconFill:"outlined",customBg:"#0A1628",customBgCard:"rgba(16,36,68,0.6)",customText:"#C8E0FF",customMuted:"#5A7AA0",customBorder:"rgba(96,165,250,0.1)",iconColor:"#60A5FA",blockBg:"rgba(96,165,250,0.05)",navActiveColor:null,navInactiveColor:"rgba(96,165,250,0.4)" }},
+        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"glass",density:"normal",bgTemplate:"ocean_deep",navSize:"md",navStyle:"rounded",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#0A1628",customBgCard:"rgba(16,36,68,0.6)",customText:"#C8E0FF",customMuted:"#5A7AA0",customBorder:"rgba(96,165,250,0.1)",iconColor:"#60A5FA",blockBg:"rgba(96,165,250,0.05)",navActiveColor:null,navInactiveColor:"rgba(96,165,250,0.4)" }},
       { k:"crystal", name:"Crystal", desc:"Translúcido, glass, premium", emoji:"💎", dark:false, theme:"indigo",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"round",cardStyle:"glass",density:"normal",bgTemplate:"gradient_crystal",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:310,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:22,headerStyle:"centered",listStyle:"cards",animations:true,animSpeed:"slow",iconFill:"outlined",customBg:null,customBgCard:"rgba(255,255,255,0.55)",customText:"#312E81",customMuted:"#818CF8",customBorder:"rgba(99,102,241,0.12)",iconColor:"#6366F1",blockBg:"rgba(99,102,241,0.04)",navActiveColor:null,navInactiveColor:null }},
-      { k:"fire", name:"Dark Fire", desc:"Intenso, ousado, agressivo", emoji:"🔥", dark:true, theme:"red",
-        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"sharp",cardStyle:"elevated",density:"compact",bgTemplate:"ember_glow",navSize:"md",navStyle:"rounded",navPosition:"float",navWidth:340,navBlur:false,navLabels:false,iconWeight:"bold",iconSize:22,headerStyle:"accent",listStyle:"rows",animations:true,animSpeed:"fast",iconFill:"filled",customBg:"#1A0808",customBgCard:"#2A1010",customText:"#FFCACA",customMuted:"#8B4444",customBorder:"rgba(248,113,113,0.12)",iconColor:"#F87171",blockBg:"rgba(248,113,113,0.06)",navActiveColor:"#1A0808",navInactiveColor:"rgba(248,113,113,0.4)" }},
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"round",cardStyle:"glass",density:"normal",bgTemplate:"gradient_crystal",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:310,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:"rgba(255,255,255,0.55)",customText:"#312E81",customMuted:"#818CF8",customBorder:"rgba(99,102,241,0.12)",iconColor:"#6366F1",blockBg:"rgba(99,102,241,0.04)",navActiveColor:null,navInactiveColor:null }},
+      { k:"fire", name:"Dark Fire", desc:"Intenso, ousado", emoji:"🔥", dark:true, theme:"red",
+        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"sharp",cardStyle:"elevated",density:"compact",bgTemplate:"ember_glow",navSize:"md",navStyle:"rounded",navPosition:"float",navWidth:340,navBlur:false,navLabels:false,iconWeight:"bold",iconSize:22,iconFill:"filled",customBg:"#1A0808",customBgCard:"#2A1010",customText:"#FFCACA",customMuted:"#8B4444",customBorder:"rgba(248,113,113,0.12)",iconColor:"#F87171",blockBg:"rgba(248,113,113,0.06)",navActiveColor:"#1A0808",navInactiveColor:"rgba(248,113,113,0.4)" }},
       { k:"moonlight", name:"Moonlight", desc:"Suave, noturno, sonhador", emoji:"🌙", dark:true, theme:"purple",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"pill",cardStyle:"glass",density:"spacious",bgTemplate:"aurora_purple",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:300,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:24,headerStyle:"default",listStyle:"cards",animations:true,animSpeed:"slow",iconFill:"outlined",customBg:"#0F0A1A",customBgCard:"rgba(26,15,46,0.6)",customText:"#E0D0FF",customMuted:"#7C6AAF",customBorder:"rgba(167,139,250,0.1)",iconColor:"#A78BFA",blockBg:"rgba(167,139,250,0.05)",navActiveColor:null,navInactiveColor:"rgba(167,139,250,0.35)" }},
-      { k:"sunrise", name:"Sunrise", desc:"Quente, clássico, acolhedor", emoji:"☀️", dark:false, theme:"orange",
-        pr:{ fontSize:"large",fontFamily:"serif",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"warm_sunset",navSize:"md",navStyle:"rounded",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,headerStyle:"default",listStyle:"cards",animations:true,animSpeed:"normal",iconFill:"outlined",customBg:null,customBgCard:"#FFFBF5",customText:"#4A2C0A",customMuted:"#A0784A",customBorder:"rgba(217,119,6,0.1)",iconColor:"#D97706",blockBg:"rgba(217,119,6,0.05)",navActiveColor:null,navInactiveColor:null }},
-      { k:"minimal", name:"Ultra Minimal", desc:"Sem distrações, puro", emoji:"◻️", dark:false, theme:"slate",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"sharp",cardStyle:"flat",density:"compact",bgTemplate:"solid",navSize:"sm",navStyle:"minimal",navPosition:"float",navWidth:260,navBlur:false,navLabels:false,iconWeight:"thin",iconSize:20,headerStyle:"centered",listStyle:"minimal",animations:false,animSpeed:"fast",iconFill:"outlined",customBg:"#FAFAFA",customBgCard:"#F5F5F5",customText:"#333333",customMuted:"#999999",customBorder:"rgba(0,0,0,0.06)",iconColor:"#999999",blockBg:"rgba(0,0,0,0.02)",navActiveColor:null,navInactiveColor:null }},
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"pill",cardStyle:"glass",density:"spacious",bgTemplate:"aurora_purple",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:300,navBlur:true,navLabels:true,iconWeight:"thin",iconSize:24,iconFill:"outlined",customBg:"#0F0A1A",customBgCard:"rgba(26,15,46,0.6)",customText:"#E0D0FF",customMuted:"#7C6AAF",customBorder:"rgba(167,139,250,0.1)",iconColor:"#A78BFA",blockBg:"rgba(167,139,250,0.05)",navActiveColor:null,navInactiveColor:"rgba(167,139,250,0.35)" }},
+      { k:"sunrise", name:"Sunrise", desc:"Quente, clássico", emoji:"☀️", dark:false, theme:"orange",
+        pr:{ fontSize:"large",fontFamily:"serif",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"warm_sunset",navSize:"md",navStyle:"rounded",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:"#FFFBF5",customText:"#4A2C0A",customMuted:"#A0784A",customBorder:"rgba(217,119,6,0.1)",iconColor:"#D97706",blockBg:"rgba(217,119,6,0.05)",navActiveColor:null,navInactiveColor:null }},
+      { k:"minimal", name:"Ultra Minimal", desc:"Sem distrações", emoji:"◻️", dark:false, theme:"slate",
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:false,cardRadius:"sharp",cardStyle:"flat",density:"compact",bgTemplate:"solid",navSize:"sm",navStyle:"minimal",navPosition:"float",navWidth:260,navBlur:false,navLabels:false,iconWeight:"thin",iconSize:20,iconFill:"outlined",customBg:"#FAFAFA",customBgCard:"#F5F5F5",customText:"#333333",customMuted:"#999999",customBorder:"rgba(0,0,0,0.06)",iconColor:"#999999",blockBg:"rgba(0,0,0,0.02)",navActiveColor:null,navInactiveColor:null }},
     ];
 
-    /* ═══ BACKGROUND TEMPLATES ═══ */
     const BG_TEMPLATES = [
-      { k:"solid", name:"Sólido", cat:"basico", css:B.bg },
-      { k:"gradient_subtle", name:"Sutil", cat:"gradiente", css:`linear-gradient(135deg,${B.bg},${B.accent}12,${B.bg})` },
-      { k:"gradient_candy", name:"Candy", cat:"gradiente", css:"linear-gradient(135deg,#fce4ec,#f3e5f5,#e8eaf6,#e0f7fa)" },
-      { k:"gradient_crystal", name:"Crystal", cat:"gradiente", css:"linear-gradient(160deg,#e8eaf6,#f3e5f5,#ede7f6,#e8eaf6)" },
-      { k:"soft_green", name:"Natureza", cat:"gradiente", css:"linear-gradient(160deg,#e8f5e9,#f1f8e9,#e8f5e9)" },
-      { k:"warm_sunset", name:"Sunset", cat:"gradiente", css:"linear-gradient(135deg,#fff8e1,#ffe0b2,#ffccbc,#fff8e1)" },
-      { k:"ocean_deep", name:"Oceano", cat:"gradiente", css:"linear-gradient(180deg,#0a1628,#0d2137,#0a1628)" },
-      { k:"ember_glow", name:"Ember", cat:"gradiente", css:"linear-gradient(135deg,#1a0a0a,#2d1212,#1a0a0a)" },
-      { k:"aurora_dark", name:"Aurora", cat:"gradiente", css:"linear-gradient(135deg,#0f1419,#1a1025,#0f1920,#0f1419)" },
-      { k:"aurora_purple", name:"Nebulosa", cat:"gradiente", css:"linear-gradient(160deg,#0f0a1a,#1a0f2e,#120a20,#0f0a1a)" },
-      { k:"mesh_warm", name:"Mesh Quente", cat:"mesh", css:`linear-gradient(135deg,${dark?"#1a1412":"#fef9f0"} 0%,${dark?"#1a1018":"#fdf2f8"} 40%,${dark?"#18101a":"#faf5ff"} 70%,${dark?"#1a1412":"#fef9f0"} 100%)` },
-      { k:"mesh_cool", name:"Mesh Frio", cat:"mesh", css:`linear-gradient(135deg,${dark?"#0f1620":"#f0f7ff"} 0%,${dark?"#0f1a1a":"#f0fdfa"} 40%,${dark?"#101420":"#eef2ff"} 70%,${dark?"#0f1620":"#f0f7ff"} 100%)` },
-      { k:"mesh_pastel", name:"Mesh Pastel", cat:"mesh", css:`linear-gradient(135deg,${dark?"#1a1520":"#fdf4ff"} 0%,${dark?"#151a20":"#fef3c7"} 50%,${dark?"#101a18":"#d1fae5"} 100%)` },
-      { k:"dots_subtle", name:"Pontos", cat:"padrao", css:B.bg, overlay:`radial-gradient(${dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.04)"} 1px,transparent 1px)`, overlaySize:"18px 18px" },
-      { k:"grid_cyber", name:"Cyber Grid", cat:"padrao", css:dark?"#0a0f14":"#f5f5f7", overlay:`linear-gradient(${dark?"rgba(0,255,200,0.04)":"rgba(0,0,0,0.03)"} 1px,transparent 1px),linear-gradient(90deg,${dark?"rgba(0,255,200,0.04)":"rgba(0,0,0,0.03)"} 1px,transparent 1px)`, overlaySize:"24px 24px" },
-      { k:"diagonal", name:"Diagonal", cat:"padrao", css:B.bg, overlay:`repeating-linear-gradient(45deg,transparent,transparent 10px,${dark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"} 10px,${dark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"} 11px)`, overlaySize:"auto" },
-      { k:"topography", name:"Topografia", cat:"padrao", css:B.bg, overlay:`url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0C8.96 0 0 8.96 0 20s8.96 20 20 20 20-8.96 20-20S31.04 0 20 0z' fill='none' stroke='${dark?"%23ffffff06":"%2300000006"}' stroke-width='1'/%3E%3C/svg%3E")`, overlaySize:"40px 40px" },
+      { k:"solid", css:B.bg },
+      { k:"gradient_candy", css:"linear-gradient(135deg,#fce4ec,#f3e5f5,#e8eaf6,#e0f7fa)" },
+      { k:"gradient_crystal", css:"linear-gradient(160deg,#e8eaf6,#f3e5f5,#ede7f6,#e8eaf6)" },
+      { k:"soft_green", css:"linear-gradient(160deg,#e8f5e9,#f1f8e9,#e8f5e9)" },
+      { k:"warm_sunset", css:"linear-gradient(135deg,#fff8e1,#ffe0b2,#ffccbc,#fff8e1)" },
+      { k:"ocean_deep", css:"linear-gradient(180deg,#0a1628,#0d2137,#0a1628)" },
+      { k:"ember_glow", css:"linear-gradient(135deg,#1a0a0a,#2d1212,#1a0a0a)" },
+      { k:"aurora_dark", css:"linear-gradient(135deg,#0f1419,#1a1025,#0f1920,#0f1419)" },
+      { k:"aurora_purple", css:"linear-gradient(160deg,#0f0a1a,#1a0f2e,#120a20,#0f0a1a)" },
+      { k:"grid_cyber", css:dark?"#0a0f14":"#f5f5f7", overlay:`linear-gradient(${dark?"rgba(0,255,200,0.04)":"rgba(0,0,0,0.03)"} 1px,transparent 1px),linear-gradient(90deg,${dark?"rgba(0,255,200,0.04)":"rgba(0,0,0,0.03)"} 1px,transparent 1px)`, overlaySize:"24px 24px" },
     ];
 
     const applyPreset = (p) => { setDark(p.dark); setThemeColor(p.theme); updateUiPrefs(p.pr); showToast(p.name+" aplicado ✓"); };
 
-    /* ═══ HELPERS ═══ */
-    const allThemes = [
-      { k:"default",l:"Lime",c:"#BBF246" },{ k:"blue",l:"Azul",c:"#3B82F6" },{ k:"purple",l:"Roxo",c:"#8B5CF6" },
-      { k:"pink",l:"Rosa",c:"#EC4899" },{ k:"orange",l:"Laranja",c:"#F59E0B" },{ k:"red",l:"Vermelho",c:"#EF4444" },
-      { k:"cyan",l:"Ciano",c:"#06B6D4" },{ k:"emerald",l:"Esmeralda",c:"#10B981" },{ k:"indigo",l:"Índigo",c:"#6366F1" },
-      { k:"rose",l:"Rose",c:"#F43F5E" },{ k:"amber",l:"Âmbar",c:"#D97706" },{ k:"teal",l:"Teal",c:"#14B8A6" },
-      { k:"sky",l:"Céu",c:"#0EA5E9" },{ k:"fuchsia",l:"Fúcsia",c:"#D946EF" },{ k:"slate",l:"Grafite",c:"#64748B" },
-    ];
-    const SL = ({ icon, title }) => <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:18, marginBottom:8 }}><span style={{ fontSize:15 }}>{icon}</span><p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{title}</p></div>;
+    /* Helpers */
     const OR = ({ options, current, onPick, renderOption }) => <div style={{ display:"flex", gap:6 }}>{options.map(o => { const a=current===o.k; return <button key={o.k} onClick={() => onPick(o.k)} style={{ flex:1, padding:"10px 6px", borderRadius:12, border:"1.5px solid "+(a?B.accent:B.border), background:a?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>{renderOption(o,a)}</button>; })}</div>;
     const TogRow = ({ label, desc, on, onToggle }) => <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0" }}><div><p style={{ fontSize:13, fontWeight:600 }}>{label}</p>{desc && <p style={{ fontSize:10, color:B.muted }}>{desc}</p>}</div><Toggle on={on} onToggle={onToggle} /></div>;
     const Sli = ({ value, min, max, step, onChange, label, unit }) => <div style={{ marginBottom:4 }}><div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ fontSize:11, color:B.muted }}>{label}</span><span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{value}{unit||""}</span></div><input type="range" min={min} max={max} step={step||1} value={value} onChange={e => onChange(Number(e.target.value))} style={{ width:"100%", accentColor:B.accent, height:4 }} /></div>;
+    const SL = ({ icon, title }) => <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:18, marginBottom:8 }}><span style={{ fontSize:15 }}>{icon}</span><p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{title}</p></div>;
 
     const navW=UP.navWidth||320, navSt=UP.navStyle||"pill", navPos=UP.navPosition||"float", navSz=UP.navSize||"md", navBlur=UP.navBlur!==false, navLabels=UP.navLabels!==false;
 
-    const tabItems = [{k:"temas",l:"Temas",ic:"🎭"},{k:"fundos",l:"Fundos",ic:"🖼️"},{k:"ajustes",l:"Ajustes",ic:"⚙️"}];
+    const tabs = [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
 
     return (
     <div className="pg">
@@ -5664,12 +5649,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
       {/* Tab bar */}
       <div style={{ display:"flex", gap:4, marginBottom:16, background:dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)", borderRadius:12, padding:3 }}>
-        {tabItems.map(t => <button key={t.k} onClick={() => setAparTab(t.k)} style={{ flex:1, padding:"9px 6px", borderRadius:10, background:aparTab===t.k?B.accent:"transparent", color:aparTab===t.k?B.textOnAccent:B.muted, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:aparTab===t.k?700:500, display:"flex", alignItems:"center", justifyContent:"center", gap:4 }}><span style={{ fontSize:13 }}>{t.ic}</span> {t.l}</button>)}
+        {tabs.map(t => <button key={t.k} onClick={() => setAparTab(t.k)} style={{ flex:1, padding:"10px 6px", borderRadius:10, background:aparTab===t.k?B.accent:"transparent", color:aparTab===t.k?B.textOnAccent:B.muted, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aparTab===t.k?700:500 }}>{t.l}</button>)}
       </div>
 
       {/* ═══ TAB TEMAS ═══ */}
       {aparTab === "temas" && <>
-        <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Combinações prontas de cores, fontes, cards e animações.</p>
+        <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Escolha um tema e tudo muda: cores, fundo, fonte, ícones e layout.</p>
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
           {PRESETS.map(p => {
             const pAccent = THEME_MAP[p.theme]||"#BBF246";
@@ -5715,34 +5700,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         </div>
       </>}
 
-      {/* ═══ TAB FUNDOS ═══ */}
-      {aparTab === "fundos" && <>
-        <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Wallpapers e texturas para o fundo do app.</p>
-        {["basico","gradiente","mesh","padrao"].map(cat => {
-          const label = ({basico:"Básico",gradiente:"Gradientes",mesh:"Mesh",padrao:"Padrões"})[cat];
-          const items = BG_TEMPLATES.filter(b => b.cat===cat);
-          return <div key={cat} style={{ marginBottom:16 }}>
-            <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>{label}</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8 }}>
-              {items.map(bg => {
-                const isA = (UP.bgTemplate||"solid")===bg.k;
-                return <button key={bg.k} onClick={() => setP("bgTemplate",bg.k)} style={{ padding:0, border:isA?"2.5px solid "+B.accent:"2px solid "+B.border, borderRadius:14, cursor:"pointer", fontFamily:"inherit", overflow:"hidden", background:"none" }}>
-                  <div style={{ height:64, background:bg.css, position:"relative", borderRadius:12 }}>
-                    {bg.overlay && <div style={{ position:"absolute", inset:0, backgroundImage:bg.overlay, backgroundSize:bg.overlaySize||"auto", opacity:0.6, borderRadius:12 }} />}
-                    {isA && <div style={{ position:"absolute", top:4, right:4, width:16, height:16, borderRadius:8, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:"#fff", fontSize:9, fontWeight:800 }}>✓</span></div>}
-                  </div>
-                  <p style={{ fontSize:9, fontWeight:isA?700:500, color:isA?B.accent:B.muted, padding:"5px 4px", textAlign:"center" }}>{bg.name}</p>
-                </button>;
-              })}
-            </div>
-          </div>;
-        })}
-      </>}
-
       {/* ═══ TAB AJUSTES ═══ */}
       {aparTab === "ajustes" && <>
+
+        {/* Modo escuro */}
         <SL icon="🌓" title="Modo" />
-        <Card style={{ marginBottom:4 }}>
+        <Card>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ color:B.accent, display:"flex" }}>{dark ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</span>
@@ -5752,87 +5715,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           </div>
         </Card>
 
-        <SL icon="🎨" title="Cor do Tema" />
-        <Card>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:8, marginBottom:10 }}>
-            {allThemes.map(t => <button key={t.k} onClick={() => { setThemeColor(t.k); showToast(t.l+" ✓"); }} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, padding:"6px 2px", borderRadius:10, border:themeColor===t.k?"2px solid "+t.c:"2px solid transparent", background:themeColor===t.k?(t.c+"12"):"transparent", cursor:"pointer", fontFamily:"inherit" }}><div style={{ width:24, height:24, borderRadius:12, background:t.c, position:"relative", boxShadow:themeColor===t.k?"0 0 0 2px "+(dark?"#0F1419":"#fff")+", 0 0 0 4px "+t.c:"none" }}>{themeColor===t.k && <span style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:10, fontWeight:800 }}>✓</span>}</div><span style={{ fontSize:7, fontWeight:600, color:themeColor===t.k?t.c:B.muted }}>{t.l}</span></button>)}
-          </div>
-          <div style={{ borderTop:"1px solid "+B.border, paddingTop:8 }}>
-            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor personalizada</p>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <input type="color" value={THEME_MAP[themeColor]||UP.customColor||"#BBF246"} onChange={e => { setThemeColor("custom"); updateUiPrefs({ customColor:e.target.value }); }} style={{ width:32, height:32, borderRadius:8, border:"2px solid "+B.border, cursor:"pointer", padding:0 }} />
-              <input value={UP.customColor||THEME_MAP[themeColor]||"#BBF246"} onChange={e => { if(/^#[0-9A-Fa-f]{6}$/.test(e.target.value)){ setThemeColor("custom"); updateUiPrefs({ customColor:e.target.value }); }}} className="tinput" placeholder="#BBF246" style={{ fontFamily:"monospace", fontSize:12, flex:1 }} />
-            </div>
-          </div>
-        </Card>
-
-        {/* Cores do App */}
-        <SL icon="🎭" title="Cores do App" />
-        <Card>
-          {[
-            { k:"customBg", l:"Fundo do app", d:B.bg },
-            { k:"customBgCard", l:"Fundo dos cards", d:B.bgCard },
-            { k:"customText", l:"Texto principal", d:B.text },
-            { k:"customMuted", l:"Texto secundário", d:B.muted },
-            { k:"iconColor", l:"Cor dos ícones", d:B.iconColor },
-            { k:"blockBg", l:"Fundo dos blocos", d:B.blockBg },
-          ].map((c,i) => (
-            <div key={c.k} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:i?"1px solid "+B.border:"none" }}>
-              <span style={{ fontSize:12, fontWeight:500, color:B.text }}>{c.l}</span>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <input type="color" value={UP[c.k]||c.d||"#888888"} onChange={e => setP(c.k, e.target.value)} style={{ width:28, height:28, borderRadius:8, border:"2px solid "+B.border, cursor:"pointer", padding:0 }} />
-                {UP[c.k] && <button onClick={() => setP(c.k, null)} style={{ width:20, height:20, borderRadius:10, background:B.border, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:B.muted }}>✕</button>}
-              </div>
-            </div>
-          ))}
-          <div style={{ marginTop:6, padding:"6px 10px", borderRadius:8, background:B.blockBg }}>
-            <p style={{ fontSize:9, color:B.muted }}>Toque ✕ para voltar ao padrão. As cores são aplicadas em tempo real.</p>
-          </div>
-        </Card>
-
-        {/* Estilo dos ícones (outlined/filled/duotone) */}
-        <SL icon="✏️" title="Estilo dos Ícones" />
-        <Card>
-          <OR current={UP.iconFill||"outlined"} onPick={v => setP("iconFill",v)} options={[{k:"outlined",l:"Contorno"},{k:"filled",l:"Preenchido"},{k:"duotone",l:"Duotone"}]} renderOption={(o,a) => {
-            return <div>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={o.k==="filled"?(a?B.accent+"30":B.muted+"20"):o.k==="duotone"?(a?B.accent+"15":B.muted+"10"):"none"} stroke={a?B.accent:B.muted} strokeWidth={o.k==="outlined"?2:o.k==="filled"?1.5:1.5} strokeLinecap="round" style={{ display:"block", margin:"0 auto 4px" }}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>
-            </div>;
-          }} />
-          <div style={{ marginTop:8 }}>
-            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor dos ícones da navbar</p>
-            <div style={{ display:"flex", gap:6 }}>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:9, color:B.muted, marginBottom:4 }}>Inativo</p>
-                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <input type="color" value={UP.navInactiveColor||"#73737a"} onChange={e => setP("navInactiveColor", e.target.value)} style={{ width:26, height:26, borderRadius:6, border:"2px solid "+B.border, cursor:"pointer", padding:0 }} />
-                  {UP.navInactiveColor && <button onClick={() => setP("navInactiveColor", null)} style={{ fontSize:8, color:B.muted, background:"none", border:"none", cursor:"pointer" }}>✕</button>}
-                </div>
-              </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:9, color:B.muted, marginBottom:4 }}>Ativo</p>
-                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <input type="color" value={UP.navActiveColor||B.textOnAccent||"#192126"} onChange={e => setP("navActiveColor", e.target.value)} style={{ width:26, height:26, borderRadius:6, border:"2px solid "+B.border, cursor:"pointer", padding:0 }} />
-                  {UP.navActiveColor && <button onClick={() => setP("navActiveColor", null)} style={{ fontSize:8, color:B.muted, background:"none", border:"none", cursor:"pointer" }}>✕</button>}
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <SL icon="🔤" title="Tipografia" />
-        <Card>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho</p>
-          <OR current={UP.fontSize||"normal"} onPick={v => setP("fontSize",v)} options={[{k:"small",l:"P"},{k:"normal",l:"M"},{k:"large",l:"G"},{k:"xlarge",l:"XG"}]} renderOption={(o,a) => <div><span style={{ fontSize:o.k==="small"?11:o.k==="normal"?14:o.k==="large"?18:22, fontWeight:700, color:a?B.accent:B.muted, display:"block", lineHeight:1.3 }}>Aa</span><span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
-          <div style={{ marginTop:10 }}>
-            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Fonte</p>
-            <OR current={UP.fontFamily||"system"} onPick={v => setP("fontFamily",v)} options={[{k:"system",l:"Sistema"},{k:"inter",l:"Inter"},{k:"mono",l:"Mono"},{k:"serif",l:"Serif"}]} renderOption={(o,a) => <div><span style={{ fontFamily:o.k==="system"?"inherit":o.k==="inter"?"'Inter',sans-serif":o.k==="mono"?"monospace":"Georgia,serif", fontSize:13, fontWeight:600, color:a?B.accent:B.muted, display:"block", marginBottom:2 }}>Ag</span><span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
-          </div>
-          <div style={{ marginTop:8, borderTop:"1px solid "+B.border, paddingTop:6 }}>
-            <TogRow label="Títulos em negrito" on={UP.boldTitles!==false} onToggle={() => setP("boldTitles",UP.boldTitles===false)} />
-          </div>
-        </Card>
-
+        {/* Cards */}
         <SL icon="🃏" title="Cards" />
         <Card>
           <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Bordas</p>
@@ -5843,13 +5726,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           </div>
         </Card>
 
-        <SL icon="📐" title="Densidade" />
-        <Card>
-          <OR current={UP.density||"normal"} onPick={v => setP("density",v)} options={[{k:"compact",l:"Compacto"},{k:"normal",l:"Normal"},{k:"spacious",l:"Espaçoso"}]} renderOption={(o,a) => { const g=o.k==="compact"?2:o.k==="normal"?4:6; return <div><div style={{ display:"flex", flexDirection:"column", gap:g, alignItems:"center", marginBottom:4 }}>{[1,2,3].map(i => <div key={i} style={{ width:18, height:o.k==="compact"?2:o.k==="normal"?3:4, borderRadius:2, background:a?B.accent:B.muted, opacity:a?0.7:0.3 }} />)}</div><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>; }} />
-        </Card>
-
+        {/* Barra de Navegação */}
         <SL icon="📱" title="Barra de Navegação" />
-        <div style={{ marginBottom:10, padding:14, background:dark?"#1a1f24":B.bg, borderRadius:14, border:"1px solid "+B.border, position:"relative", minHeight:70, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+        <div style={{ marginBottom:10, padding:14, background:dark?"#1a1f24":"#f0f0f2", borderRadius:14, border:"1px solid "+B.border, position:"relative", minHeight:70, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div style={{ width:navSz==="sm"?"55%":navSz==="lg"?"90%":"72%", maxWidth:navSz==="sm"?160:navSz==="lg"?280:220, padding:navSz==="sm"?"4px":"6px", borderRadius:navSt==="pill"?18:navSt==="bar"?0:navSt==="minimal"?8:12, background:navBlur?(dark?"rgba(10,15,18,0.8)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126"), boxShadow:navPos==="float"?"0 4px 12px rgba(0,0,0,0.3)":"none", display:"flex", alignItems:"center", justifyContent:"space-around", borderTop:navSt==="bar"?"2px solid "+B.accent:"none" }}>
             {[1,2,3,4].map(i => <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:navLabels?2:0 }}><div style={{ width:i===2?12:8, height:i===2?12:8, borderRadius:i===2?6:3, background:i===2?B.accent:"rgba(255,255,255,0.3)" }} />{navLabels && <div style={{ width:i===2?14:10, height:2, borderRadius:1, background:i===2?B.accent:"rgba(255,255,255,0.15)" }} />}</div>)}
           </div>
@@ -5857,7 +5736,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         </div>
         <Card>
           <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho</p>
-          <OR current={navSz} onPick={v => setP("navSize",v)} options={[{k:"sm",l:"P"},{k:"md",l:"M"},{k:"lg",l:"G"}]} renderOption={(o,a) => <div><div style={{ width:o.k==="sm"?20:o.k==="md"?28:36, height:o.k==="sm"?6:o.k==="md"?8:11, borderRadius:4, background:a?B.accent:B.muted, margin:"0 auto 4px", opacity:a?0.8:0.3 }} /><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
+          <OR current={navSz} onPick={v => setP("navSize",v)} options={[{k:"sm",l:"Pequeno"},{k:"md",l:"Médio"},{k:"lg",l:"Grande"}]} renderOption={(o,a) => <div><div style={{ width:o.k==="sm"?20:o.k==="md"?28:36, height:o.k==="sm"?6:o.k==="md"?8:11, borderRadius:4, background:a?B.accent:B.muted, margin:"0 auto 4px", opacity:a?0.8:0.3 }} /><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
           <div style={{ marginTop:8 }}><p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Estilo</p>
           <OR current={navSt} onPick={v => setP("navStyle",v)} options={[{k:"pill",l:"Pílula"},{k:"rounded",l:"Redondo"},{k:"bar",l:"Barra"},{k:"minimal",l:"Minimal"}]} renderOption={(o,a) => <div><div style={{ width:30, height:8, borderRadius:o.k==="pill"?"8px":o.k==="rounded"?"4px":o.k==="bar"?"0":"3px", background:a?B.accent+"30":B.muted+"20", borderTop:o.k==="bar"?"2px solid "+(a?B.accent:B.muted):"none", margin:"0 auto 4px" }} /><span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} /></div>
           <div style={{ marginTop:8 }}><p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Posição</p>
@@ -5866,34 +5745,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <Card style={{ marginTop:6 }}>
           <Sli label="Largura" value={navW} min={220} max={400} step={10} unit="px" onChange={v => setP("navWidth",v)} />
           <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Efeito blur" desc="Transparência com desfoque" on={navBlur} onToggle={() => setP("navBlur",!navBlur)} /></div>
-          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Mostrar nomes" on={navLabels} onToggle={() => setP("navLabels",!navLabels)} /></div>
+          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Mostrar nomes" desc="Texto abaixo dos ícones" on={navLabels} onToggle={() => setP("navLabels",!navLabels)} /></div>
         </Card>
 
-        <SL icon="💎" title="Ícones" />
-        <Card>
-          <OR current={UP.iconWeight||"normal"} onPick={v => setP("iconWeight",v)} options={[{k:"thin",l:"Fino"},{k:"normal",l:"Normal"},{k:"bold",l:"Grosso"}]} renderOption={(o,a) => <div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={a?B.accent:B.muted} strokeWidth={o.k==="thin"?1.2:o.k==="normal"?2:3} strokeLinecap="round" style={{ display:"block", margin:"0 auto 4px" }}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
-          <div style={{ marginTop:8 }}><Sli label="Tamanho" value={UP.iconSize||22} min={18} max={28} step={2} unit="px" onChange={v => setP("iconSize",v)} /></div>
-        </Card>
-
-        <SL icon="🏷️" title="Cabeçalho" />
-        <Card><OR current={UP.headerStyle||"default"} onPick={v => setP("headerStyle",v)} options={[{k:"default",l:"Padrão"},{k:"centered",l:"Centrado"},{k:"accent",l:"Colorido"}]} renderOption={(o,a) => <div><div style={{ width:34, height:14, borderRadius:3, margin:"0 auto 4px", border:"1px solid "+(a?B.accent+"30":B.muted+"20"), position:"relative", overflow:"hidden" }}><div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:o.k==="accent"?B.accent:a?B.accent+"20":B.muted+"15" }} /><div style={{ position:"absolute", top:5, left:o.k==="centered"?9:3, width:14, height:2, borderRadius:1, background:a?B.accent:B.muted, opacity:0.4 }} /></div><span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} /></Card>
-
-        <SL icon="📋" title="Listas" />
-        <Card><OR current={UP.listStyle||"cards"} onPick={v => setP("listStyle",v)} options={[{k:"cards",l:"Cards"},{k:"rows",l:"Linhas"},{k:"minimal",l:"Minimal"}]} renderOption={(o,a) => <div><div style={{ display:"flex", flexDirection:"column", gap:o.k==="cards"?3:1, alignItems:"center", marginBottom:4 }}>{[1,2].map(i => <div key={i} style={{ width:22, height:o.k==="cards"?7:4, borderRadius:o.k==="cards"?3:1, background:a?B.accent:B.muted, opacity:a?(i===1?0.6:0.3):(i===1?0.25:0.12) }} />)}</div><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} /></Card>
-
-        <SL icon="🎬" title="Animações" />
-        <Card>
-          <TogRow label="Animações" desc="Transições visuais" on={UP.animations!==false} onToggle={() => setP("animations",UP.animations===false)} />
-          {UP.animations!==false && <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><OR current={UP.animSpeed||"normal"} onPick={v => setP("animSpeed",v)} options={[{k:"fast",l:"Rápido"},{k:"normal",l:"Normal"},{k:"slow",l:"Suave"}]} renderOption={(o,a) => <span style={{ fontSize:10, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span>} /></div>}
-        </Card>
-
-        <SL icon="♿" title="Acessibilidade" />
-        <Card>
-          <TogRow label="Alto contraste" on={UP.highContrast===true} onToggle={() => setP("highContrast",!UP.highContrast)} />
-          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Reduzir transparência" on={UP.reduceTransparency===true} onToggle={() => setP("reduceTransparency",!UP.reduceTransparency)} /></div>
-        </Card>
-
-        <button onClick={() => { setDark(false); setThemeColor("default"); updateUiPrefs({ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",animations:true,animSpeed:"normal",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,headerStyle:"default",listStyle:"cards",highContrast:false,reduceTransparency:false,iconFill:"outlined",customBg:null,customBgCard:null,customBgInput:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }); showToast("Restaurado ✓"); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
+        {/* Reset */}
+        <button onClick={() => { applyPreset(PRESETS[0]); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
           Restaurar padrão
         </button>
