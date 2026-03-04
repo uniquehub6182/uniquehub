@@ -1121,7 +1121,7 @@ function LoginPage({ onAuth }) {
   const handleLogin = async () => {
     if (!email.trim() || !pw.trim()) { setError("Preencha email e senha"); return; }
     /* Blocked users */
-    const BLOCKED = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+    const BLOCKED = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
     if (BLOCKED.some(b => email.trim().toLowerCase().replace(/\s/g,"") === b)) { setError("Acesso bloqueado. Entre em contato com o administrador."); return; }
     /* Try Supabase auth if available */
     if (supabase) {
@@ -1154,7 +1154,7 @@ function LoginPage({ onAuth }) {
   };
 
   const handleRegister = async () => {
-    const BLOCKED_REG = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+    const BLOCKED_REG = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
     if (BLOCKED_REG.some(b => rEmail.trim().toLowerCase().replace(/\s/g,"") === b)) { setError("Este email está bloqueado. Entre em contato com o administrador."); return; }
     if (supabase) {
       setLoginLoading(true); setError(""); setRegSuccess("");
@@ -10274,7 +10274,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(!!supabase);
 
   /* Force-kick blocked users even if app is already open */
-  const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+  const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
   useEffect(() => {
     if (!user?.email) return;
     const check = () => {
@@ -10297,7 +10297,7 @@ export default function App() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         /* Block banned users even if they have active session */
-        const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
+        const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
         if (BLOCKED_EMAILS.some(b => session.user.email?.toLowerCase().replace(/\s/g,"") === b)) {
           await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return;
         }
