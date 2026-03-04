@@ -7295,13 +7295,29 @@ function GamifyPage({ onBack, user, team }) {
 
       {/* ═══ RANKING TAB ═══ */}
       {tab === "ranking" && <>
+        {/* Admin: Award XP button */}
+        {isAdmin && !awardUser && (
+          <button onClick={() => { setAwardUser(me?.user_id || user?.id); setAwardForm({xp:"",desc:""}); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", marginBottom:12, borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Atribuir XP
+          </button>
+        )}
         {/* Admin: Award XP Modal */}
         {isAdmin && awardUser && (() => {
           const target = teamData.find(m => m.user_id === awardUser);
           if (!target) return null;
           return (
             <Card style={{ marginBottom:12, border:`2px solid ${B.accent}`, padding:16 }}>
-              <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Atribuir XP para {target.name}</p>
+              <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Atribuir XP para:</p>
+              {/* Member selector */}
+              <div style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", paddingBottom:4 }} className="hscroll">
+                {teamData.map(m => (
+                  <button key={m.user_id} onClick={() => setAwardUser(m.user_id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 12px", borderRadius:10, border:`1.5px solid ${awardUser===m.user_id?B.accent:B.border}`, background:awardUser===m.user_id?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    <Av name={m.name} sz={28} fs={10} />
+                    <span style={{ fontSize:10, fontWeight:awardUser===m.user_id?700:500 }}>{m.name}</span>
+                  </button>
+                ))}
+              </div>
               <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
                 {[{l:"Check-in",v:15,a:"checkin"},{l:"Tarefa",v:25,a:"task_done"},{l:"Post",v:30,a:"post_published"},{l:"Feedback",v:50,a:"feedback"},{l:"Bônus",v:100,a:"bonus"}].map(opt => (
                   <button key={opt.l} onClick={() => setAwardForm({ xp:String(opt.v), desc:opt.l, action:opt.a })} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${awardForm.desc===opt.l?B.accent:B.border}`, background:awardForm.desc===opt.l?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>
@@ -7358,7 +7374,7 @@ function GamifyPage({ onBack, user, team }) {
                 <div style={{ textAlign:"right" }}>
                   <p style={{ fontSize:10, color:B.muted }}>🔥 {m.streak}d</p>
                   <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{m.badgeCount||0} 🏅</p>
-                  {isAdmin && !isMe && <button onClick={(e) => { e.stopPropagation(); setAwardUser(m.user_id); setAwardForm({xp:"",desc:""}); }} style={{ marginTop:4, padding:"3px 8px", borderRadius:6, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.accent }}>+ XP</button>}
+                  {isAdmin && <button onClick={(e) => { e.stopPropagation(); setAwardUser(m.user_id); setAwardForm({xp:"",desc:""}); }} style={{ marginTop:4, padding:"3px 8px", borderRadius:6, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.accent }}>+ XP</button>}
                 </div>
               </div>
             </Card>
