@@ -1951,7 +1951,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
         </div>
         {featured && (
-          <div onClick={()=>goSub("news")} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
+          <div onClick={()=>goSub("news", featured.id)} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
             <img src={catPhoto(featured.cat,0)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
             <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
             <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
@@ -1963,7 +1963,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         )}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {rest.map((a,i)=>(
-            <div key={a.id||i} onClick={()=>goSub("news")} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
+            <div key={a.id||i} onClick={()=>goSub("news", a.id)} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
               <img src={catPhoto(a.cat,i+1)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
               <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
               <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
@@ -1997,7 +1997,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             const imgFile = allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
             const initials = (d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
             return (
-              <div key={d.id||i} onClick={()=>goSub("content")} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
+              <div key={d.id||i} onClick={()=>goTab("content", d.id)} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
                 <div style={{position:"relative",height:140}}>
                   {imgFile
                     ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
@@ -3107,6 +3107,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   /* ── CLIENT LIST ── */
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -3346,6 +3347,7 @@ function FinancialPage({ onBack, clients: propClients }) {
   ];
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -3728,7 +3730,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam }) {
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed }) {
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
@@ -3746,6 +3748,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const contentScrollRef = useRef(null);
   const { showToast, ToastEl } = useToast();
+  useEffect(() => {
+    if (initialDemandId && demands?.length) {
+      const d = demands.find(x => x.id === initialDemandId);
+      if (d) { setSel(d); if (onOpenIdConsumed) onOpenIdConsumed(); }
+    }
+  }, [initialDemandId, demands]);
 
   const filtered = demands.filter(d => {
     if (filter !== "all" && d.type !== filter) return false;
@@ -5636,6 +5644,24 @@ function ApprovalsPage({ onBack }) {
   );
 }
 
+const profileFieldIcon = (k) => {
+  if (k==="user") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+  if (k==="smile") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>;
+  if (k==="calendar") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+  if (k==="heart") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>;
+  if (k==="id") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+  if (k==="mail") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
+  if (k==="phone") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.62a16 16 0 006.29 6.29l1.15-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>;
+  if (k==="phone2") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.62a16 16 0 006.29 6.29l1.15-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>;
+  if (k==="instagram") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>;
+  if (k==="pix") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="9" y2="15"/><line x1="12" y1="15" x2="14" y2="15"/></svg>;
+  if (k==="briefcase") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>;
+  if (k==="refresh") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>;
+  if (k==="clock") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+  if (k==="sos") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+  if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
+  return <span style={{fontSize:14}}>•</span>;
+};
 function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate }) {
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -5970,9 +5996,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </div> : <div>
         <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
-          {[["Nome completo",user?.name||"—","👤"],["Apelido",pf.nick||"—","😊"],["Data nascimento",pf.birth||"—","🎂"],["Tipo sanguíneo",pf.blood||"—","🩸"],["CPF",pf.cpf||"—","🪪"]].map((f,i) => (
+          {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",pf.birth||"—","calendar"],["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",pf.cpf||"—","id"]].map((f,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
-              <span style={{ fontSize:16 }}>{f[2]}</span>
+              <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
             </div>
           ))}
@@ -5980,9 +6006,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
         <p className="sl" style={{ marginBottom:6 }}>Contato</p>
         <Card style={{ marginBottom:10 }}>
-          {[["E-mail",user?.email||"—","📧"],["Telefone",pf.phone||"—","📱"],["Rede social",pf.social||"—","📸"],["Chave PIX",pf.pix||"—","💳"]].map((f,i) => (
+          {[["E-mail",user?.email||"—","mail"],["Telefone",pf.phone||"—","phone"],["Rede social",pf.social||"—","instagram"],["Chave PIX",pf.pix||"—","pix"]].map((f,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
-              <span style={{ fontSize:16 }}>{f[2]}</span>
+              <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
             </div>
           ))}
@@ -5990,9 +6016,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
         <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
         <Card style={{ marginBottom:10 }}>
-          {[["Cargo",user?.role||"—","💼"],["Modelo",pf.work_pref||"—","🔄"],["Disponibilidade",pf.availability||"—","⏰"]].map((f,i) => (
+          {[["Cargo",user?.role||"—","briefcase"],["Modelo",pf.work_pref||"—","refresh"],["Disponibilidade",pf.availability||"—","clock"]].map((f,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
-              <span style={{ fontSize:16 }}>{f[2]}</span>
+              <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
             </div>
           ))}
@@ -6010,7 +6036,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         {pf.emergency_name ? <div>
           <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
           <Card style={{ marginBottom:10 }}>
-            {[["Nome",pf.emergency_name,"🆘"],["Telefone",pf.emergency_phone||"—","📞"],["Parentesco",pf.emergency_relation||"—","👪"]].map((f,i) => (
+            {[["Nome",pf.emergency_name,"sos"],["Telefone",pf.emergency_phone||"—","phone2"],["Parentesco",pf.emergency_relation||"—","users"]].map((f,i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?"1px solid "+B.border:"none" }}>
                 <span style={{ fontSize:14 }}>{f[2]}</span>
                 <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
@@ -6095,7 +6121,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                   {bgT.overlay && <div style={{ position:"absolute", inset:0, backgroundImage:bgT.overlay, backgroundSize:bgT.overlaySize||"auto", opacity:0.5 }} />}
                   <div style={{ position:"relative", zIndex:1 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-                      <span style={{ fontSize:22 }}>{p.emoji}</span>
+                      <div style={{ width:22, height:22, borderRadius:8, background:pAccent, flexShrink:0 }} />
                       <div style={{ flex:1 }}>
                         <p style={{ fontSize:14, fontWeight:700, color:pText, fontFamily:({system:"inherit",inter:"'Inter',sans-serif",mono:"monospace",serif:"Georgia,serif"})[p.pr.fontFamily]||"inherit" }}>{p.name}</p>
                         <p style={{ fontSize:10, color:pMuted }}>{p.desc}</p>
@@ -6126,20 +6152,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       {/* ═══ TAB AJUSTES ═══ */}
       {aparTab === "ajustes" && <>
 
-        {/* Modo escuro */}
-        <SL icon="🌓" title="Modo" />
-        <Card>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ color:B.accent, display:"flex" }}>{dark ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}</span>
-              <div><span style={{ fontSize:14, fontWeight:600 }}>{dark?"Modo Claro":"Modo Escuro"}</span><p style={{ fontSize:10, color:B.muted }}>{dark?"Ativar tema claro":"Ativar tema escuro"}</p></div>
-            </div>
-            <Toggle on={dark} onToggle={() => { setDark(!dark); showToast(dark?"Claro":"Escuro ✓"); }} />
-          </div>
-        </Card>
+
 
         {/* Cards */}
-        <SL icon="🃏" title="Cards" />
+        <SL icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>} title="Cards" />
         <Card>
           <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Bordas</p>
           <OR current={UP.cardRadius||"round"} onPick={v => setP("cardRadius",v)} options={[{k:"sharp",l:"Reto"},{k:"round",l:"Redondo"},{k:"pill",l:"Pílula"}]} renderOption={(o,a) => <div><div style={{ width:28, height:18, borderRadius:o.k==="sharp"?"2px":o.k==="round"?"6px":"9px", border:"2px solid "+(a?B.accent:B.muted), margin:"0 auto 4px", opacity:a?1:0.5 }} /><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
@@ -6150,7 +6166,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         </Card>
 
         {/* Barra de Navegação */}
-        <SL icon="📱" title="Barra de Navegação" />
+        <SL icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>} title="Barra de Navegação" />
         <div style={{ marginBottom:10, padding:14, background:dark?"#1a1f24":"#f0f0f2", borderRadius:14, border:"1px solid "+B.border, position:"relative", minHeight:70, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div style={{ width:"72%", maxWidth:220, padding:"6px", borderRadius:18, background:UP.navBgColor||(navBlur?(dark?"rgba(10,15,18,0.8)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126")), boxShadow:"0 4px 12px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", justifyContent:"space-around", overflow:"visible", position:"relative" }}>
             {[1,2,3,4,5].map(i => { const circleBgPrev=UP.navCircleBg||B.accent; const circleIconPrev=UP.navCircleIcon||(dark?"#0D0D0D":"#fff"); return <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", position:"relative" }}><div style={{ width:i===2?18:10, height:i===2?18:10, borderRadius:"50%", background:i===2?circleBgPrev:"rgba(255,255,255,0.3)", transform:i===2?"translateY(-8px)":"none", boxShadow:i===2?`0 0 0 3px ${dark?"#1a1f24":"#192126"}`:"none", transition:"all .3s", display:"flex", alignItems:"center", justifyContent:"center" }}>{i===2&&<div style={{width:6,height:6,borderRadius:"50%",background:circleIconPrev,opacity:0.8}}/>}</div><div style={{fontSize:7,color:UP.navTextColor||"rgba(255,255,255,0.5)",marginTop:2,fontWeight:700}}>{i===2?"●":""}</div></div>; })}
@@ -6749,9 +6765,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <Card style={{ marginBottom:12 }}>
           <p className="sl" style={{ marginBottom:8 }}>Provedor ativo</p>
           <div style={{ display:"flex", gap:8 }}>
-            {[{k:"openai",l:"OpenAI",emoji:"🟢"},{k:"gemini",l:"Gemini",emoji:"🔵"}].map(p => (
+            {[{k:"openai",l:"OpenAI"},{k:"gemini",l:"Gemini"}].map(p => (
               <button key={p.k} onClick={() => setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px 8px", borderRadius:12, border:`1.5px solid ${curProvider===p.k?B.accent:B.border}`, background:curProvider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:13, color:curProvider===p.k?B.accent:B.muted }}>
-                {p.emoji} {p.l}
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                  {p.k==="openai"
+                    ? <svg width="18" height="18" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="currentColor" opacity="0.8"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="white"/></svg>
+                  }
+                  <span>{p.l}</span>
+                </div>
               </button>
             ))}
           </div>
@@ -7127,6 +7149,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
   }
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -7747,6 +7770,7 @@ function LibraryPage({ onBack, clients: propClients }) {
 
   /* ── MAIN LIBRARY VIEW ── */
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -7988,6 +8012,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   ];
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       <CollapseHeader icon={IC.reports} label="Métricas" title="Relatórios" collapsed={pgC} stats={[]} />
@@ -8262,13 +8287,19 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   );
 }
 
-function NewsPage({ onBack, onArticlesLoad }) {
+function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }) {
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => { if(onArticlesLoad) onArticlesLoad(articles); }, [articles]);
+  useEffect(() => {
+    if (initialArticleId && articles.length) {
+      const a = articles.find(x => x.id === initialArticleId || x.supaId === initialArticleId);
+      if (a) { setSelArticle(a); if (onOpenIdConsumed) onOpenIdConsumed(); }
+    }
+  }, [initialArticleId, articles]);
   const [creating, setCreating] = useState(false);
   const [editingArticle, setEditingArticle] = useState(false);
   const [form, setForm] = useState({});
@@ -8740,6 +8771,7 @@ function IdeasPage({ onBack, user }) {
 
   /* ── MAIN IDEAS LIST ── */
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -8974,10 +9006,11 @@ function GamifyPage({ onBack, user, team }) {
   ];
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" collapsed={pgC}
+      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" onBack={onBack} collapsed={pgC}
         stats={[{val:team.length,label:"membros"}]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
@@ -9559,7 +9592,10 @@ function AIPage({ onBack, user, agencyIdentity }) {
             <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }} className="hscroll">
               {PRESETS.map((p, i) => (
                 <button key={i} onClick={() => { startNewChat(); setTimeout(() => setInput(p.prompt), 100); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text, whiteSpace:"nowrap", flexShrink:0 }}>
-                  <span>{p.emoji}</span> {p.label}
+                  {p.k==="openai"
+                      ? <svg width="14" height="14" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="currentColor" opacity="0.9"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="white"/></svg>
+                    } {p.label}
                 </button>
               ))}
             </div>
@@ -9598,7 +9634,10 @@ function AIPage({ onBack, user, agencyIdentity }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, width:"100%" }}>
           {PRESETS.map((p, i) => (
             <Card key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:12, textAlign:"left", border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard }}>
-              <span style={{ fontSize:20, display:"block", marginBottom:4 }}>{p.emoji}</span>
+              <div style={{ marginBottom:4, display:"flex", justifyContent:"center" }}>{p.k==="openai"
+                  ? <svg width="20" height="20" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke={B.text} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  : <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill={B.text}/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill={B.bg}/></svg>
+                }</div>
               <p style={{ fontSize:12, fontWeight:700 }}>{p.label}</p>
             </Card>
           ))}
@@ -9628,7 +9667,13 @@ function AIPage({ onBack, user, agencyIdentity }) {
           <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
           <div>
             <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
-            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● {activeProvider==="gemini"?"Gemini 1.5 Flash":"OpenAI GPT-4o-mini"}</p>
+            <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+              {activeProvider==="gemini"
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="#4285F4"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="#fff"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="#10A37F" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="#10A37F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              }
+              <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>{activeProvider==="gemini"?"Gemini 1.5 Flash":"GPT-4o-mini"}</p>
+            </div>
           </div>
         </div>
         <div style={{ display:"flex", gap:6 }}>
@@ -10770,8 +10815,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     });
   }, [clientsLoaded, demandsLoaded]);
 
-  const goTab = k => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); };
-  const goSub = k => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); };
+  const [pendingOpenId, setPendingOpenId] = useState(null);
+  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); };
+  const [pendingSubId, setPendingSubId] = useState(null);
+  const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); if (initialId) setPendingSubId(initialId); };
 
   return (
     <div className="app" style={{ background: B.bg, color: B.text }}>
@@ -10857,7 +10904,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 ` }} />
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} agencyIdentity={agencyIdentity} />}
-        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
+        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
@@ -10869,7 +10916,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
-        {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} />}
+        {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
