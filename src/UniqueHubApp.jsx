@@ -2492,6 +2492,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [editClient, setEditClient] = useState(false);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   const { showToast, ToastEl } = useToast();
   const filtered = clients.filter(c => {
     if (filter !== "all" && c.status !== filter) return false;
@@ -3183,8 +3185,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   }
 
   /* ── CLIENT LIST ── */
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
-  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -3249,109 +3249,173 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
 /* ═══════════════════════ ACADEMY PAGE ═══════════════════════ */
 function AcademyPage({ onBack }) {
-  const [selCat, setSelCat] = useState(null);
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
   const [selCourse, setSelCourse] = useState(null);
-  const cats = [
-    { id: "mkt", name: "Marketing Digital", icon: IC.trending, c: B.accent, courses: [
-      { t: "Fundamentos de Marketing Digital", dur: "2h 30m", lessons: 12, progress: 100, desc: "Aprenda os conceitos essenciais de marketing digital, desde SEO até redes sociais." },
-      { t: "Estratégias de Conteúdo", dur: "1h 45m", lessons: 8, progress: 60, desc: "Como criar conteúdo que engaja e converte. Planejamento, criação e distribuição." },
-      { t: "Marketing de Influência", dur: "1h 15m", lessons: 6, progress: 0, desc: "Estratégias para trabalhar com influenciadores e maximizar ROI em parcerias." },
-    ]},
-    { id: "design", name: "Design", icon: IC.palette, c: B.purple, courses: [
-      { t: "Princípios de Design Visual", dur: "3h", lessons: 15, progress: 80, desc: "Tipografia, cores, composição e hierarquia visual para peças de marketing." },
-      { t: "Design para Redes Sociais", dur: "2h", lessons: 10, progress: 40, desc: "Criação de posts, stories, carrosséis e reels com ferramentas profissionais." },
-      { t: "Branding e Identidade Visual", dur: "2h 30m", lessons: 12, progress: 0, desc: "Como criar e manter a identidade visual de uma marca de forma consistente." },
-    ]},
-    { id: "trafego", name: "Tráfego Pago", icon: IC.target, c: B.blue, courses: [
-      { t: "Google Ads — Completo", dur: "4h", lessons: 20, progress: 45, desc: "Do zero ao avançado em Google Ads. Rede de pesquisa, display, shopping e YouTube." },
-      { t: "Meta Ads — Facebook e Instagram", dur: "3h 30m", lessons: 18, progress: 70, desc: "Campanhas de conversão, tráfego e engajamento. Pixel, públicos e otimização." },
-      { t: "Métricas e Analytics", dur: "2h", lessons: 10, progress: 0, desc: "KPIs essenciais, GA4, dashboards de performance e tomada de decisão baseada em dados." },
-    ]},
-    { id: "video", name: "Audiovisual", icon: IC.vid, c: B.orange, courses: [
-      { t: "Captação de Vídeo para Redes", dur: "2h 15m", lessons: 11, progress: 30, desc: "Técnicas de gravação, iluminação e enquadramento para conteúdo de redes sociais." },
-      { t: "Edição com CapCut e Premiere", dur: "3h", lessons: 14, progress: 0, desc: "Edição profissional de vídeos curtos e longos para redes sociais e YouTube." },
-    ]},
-    { id: "conduta", name: "Conduta e Regras", icon: IC.shield, c: B.red, courses: [
-      { t: "Código de Conduta Unique", dur: "30m", lessons: 4, progress: 100, desc: "Regras internas, valores da empresa, postura profissional e ética no trabalho." },
-      { t: "Processos e Fluxos Internos", dur: "45m", lessons: 6, progress: 85, desc: "Como funcionam os processos de aprovação, entrega, comunicação e feedback." },
-      { t: "Atendimento ao Cliente", dur: "1h", lessons: 7, progress: 50, desc: "Boas práticas de comunicação com clientes, gestão de expectativas e resolução de problemas." },
-    ]},
-    { id: "social", name: "Social Media", icon: IC.share, c: B.pink, courses: [
-      { t: "Planejamento de Conteúdo", dur: "2h", lessons: 10, progress: 65, desc: "Como montar um calendário editorial eficiente e alinhar com estratégia de marca." },
-      { t: "Copywriting para Redes", dur: "1h 30m", lessons: 8, progress: 20, desc: "Técnicas de escrita persuasiva para legendas, CTAs e anúncios." },
-    ]},
-  ];
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({});
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
 
-  if (selCourse) return (
-    <div className="pg">
-      <Head title="" onBack={() => setSelCourse(null)} />
-      <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <div style={{ width: 60, height: 60, borderRadius: 16, background: `${selCat?.c || B.accent}15`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px", color: selCat?.c || B.accent }}>{React.cloneElement(selCat?.icon || IC.star, { width: 28, height: 28 })}</div>
-        <h2 style={{ fontSize: 18, fontWeight: 800 }}>{selCourse.t}</h2>
-        <p style={{ fontSize: 12, color: B.muted, marginTop: 4 }}>{selCourse.lessons} aulas · {selCourse.dur}</p>
-      </div>
-      <Card><p style={{ fontSize: 13, lineHeight: 1.7 }}>{selCourse.desc}</p></Card>
-      <Card style={{ marginTop: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}><p style={{ fontSize: 13, fontWeight: 600 }}>Progresso</p><span style={{ fontSize: 14, fontWeight: 800, color: selCourse.progress === 100 ? B.green : B.accent }}>{selCourse.progress}%</span></div>
-        <div style={{ height: 8, borderRadius: 4, background: "#eee" }}><div style={{ height: 8, borderRadius: 4, background: selCourse.progress === 100 ? B.green : B.accent, width: `${selCourse.progress}%`, transition: "width .6s ease" }} /></div>
+  const CAT_OPTS = ["Marketing Digital","Tráfego Pago","Design","Social Media","Audiovisual","Vendas","Ferramentas","Conduta & RH","Outro"];
+  const CAT_COLORS = { "Marketing Digital":B.accent, "Tráfego Pago":B.blue, "Design":B.purple, "Social Media":B.pink, "Audiovisual":B.orange, "Vendas":B.green, "Ferramentas":B.cyan, "Conduta & RH":B.red, "Outro":B.muted };
+
+  const handleThumb = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setForm(p => ({ ...p, thumb: ev.target.result }));
+    reader.readAsDataURL(file);
+  };
+
+  const saveCourse = () => {
+    if (!form.title?.trim()) return showToast("Informe o título do curso");
+    if (editing !== null) {
+      const updated = courses.map((c, i) => i === editing ? { ...c, ...form } : c);
+      saveCourses(updated);
+      setEditing(null);
+    } else {
+      const nc = { id: Date.now(), title: form.title.trim(), category: form.category || "Outro", desc: form.desc || "", thumb: form.thumb || null, videoUrl: form.videoUrl || "", lessons: form.lessons || [], createdAt: new Date().toLocaleDateString("pt-BR") };
+      saveCourses([nc, ...courses]);
+      setCreating(false);
+    }
+    setForm({});
+    showToast(editing !== null ? "Curso atualizado ✓" : "Curso criado ✓");
+  };
+
+  const deleteCourse = (idx) => {
+    if (!confirm("Excluir este curso?")) return;
+    saveCourses(courses.filter((_, i) => i !== idx));
+    setSelCourse(null);
+    showToast("Curso excluído");
+  };
+
+  const courseForm = (
+    <div className="pg">{ToastEl}
+      <Head title={editing !== null ? "Editar Curso" : "Novo Curso"} onBack={() => { setCreating(false); setEditing(null); setForm({}); }} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
+        <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Google Ads — Avançado" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Categoria</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          {CAT_OPTS.map(c => <button key={c} onClick={()=>setForm(p=>({...p,category:c}))} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${form.category===c ? CAT_COLORS[c]||B.accent : B.border}`, background:form.category===c?`${CAT_COLORS[c]||B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>{c}</button>)}
+        </div>
       </Card>
-      <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Aulas</p>
-      {Array.from({ length: selCourse.lessons }, (_, i) => {
-        const done = i < Math.floor(selCourse.lessons * selCourse.progress / 100);
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição</label>
+        <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva o conteúdo do curso, objetivos e o que o aluno vai aprender..." className="tinput" style={{ minHeight:90, resize:"vertical" }} />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:8 }}>Capa do curso (foto)</label>
+        <div style={{ position:"relative", border:`2px dashed ${form.thumb?B.green:B.accent}30`, borderRadius:12, overflow:"hidden", background:form.thumb?undefined:`${B.accent}04`, cursor:"pointer", minHeight:120, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>document.getElementById("acad-thumb-input")?.click()}>
+          <input id="acad-thumb-input" type="file" accept="image/*" style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} onChange={handleThumb} />
+          {form.thumb ? <img src={form.thumb} alt="thumb" style={{ width:"100%", maxHeight:180, objectFit:"cover", display:"block" }} /> : <div style={{ textAlign:"center", padding:20 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p style={{ fontSize:12, color:B.accent, fontWeight:600, marginTop:6 }}>Adicionar foto de capa</p></div>}
+        </div>
+        {form.thumb && <button onClick={()=>setForm(p=>({...p,thumb:null}))} style={{ marginTop:8, fontSize:11, color:B.red, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit" }}>Remover foto</button>}
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Link do vídeo (YouTube / Vimeo)</label>
+        <input value={form.videoUrl||""} onChange={e=>setForm(p=>({...p,videoUrl:e.target.value}))} placeholder="https://youtube.com/watch?v=..." className="tinput" />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Aulas / Tópicos (uma por linha)</label>
+        <textarea value={(form.lessons||[]).join("\n")} onChange={e=>setForm(p=>({...p,lessons:e.target.value.split("\n").filter(l=>l.trim())}))} placeholder={"Introdução ao curso\nMódulo 1: Conceitos básicos\nMódulo 2: Prática\nAvaliação final"} className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+      </Card>
+      <button onClick={saveCourse} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>{editing !== null ? "Salvar Alterações" : "Criar Curso"}</button>
+    </div>
+  );
+
+  if (creating) return courseForm;
+  if (editing !== null) return courseForm;
+
+  if (selCourse !== null) {
+    const course = courses[selCourse];
+    if (!course) { setSelCourse(null); return null; }
+    const c = CAT_COLORS[course.category] || B.accent;
+    const getYTEmbed = (url) => {
+      if (!url) return null;
+      const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+      return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+    };
+    const embed = getYTEmbed(course.videoUrl);
+    return (
+      <div className="pg">{ToastEl}
+        <Head title="" onBack={()=>setSelCourse(null)} right={
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={()=>{ setForm({ title:course.title, category:course.category, desc:course.desc, thumb:course.thumb, videoUrl:course.videoUrl, lessons:course.lessons||[] }); setEditing(selCourse); setSelCourse(null); }} className="ib" style={{ width:34, height:34 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onClick={()=>deleteCourse(selCourse)} className="ib" style={{ width:34, height:34, color:B.red }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+        } />
+        {course.thumb && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12 }}><img src={course.thumb} alt="capa" style={{ width:"100%", maxHeight:180, objectFit:"cover", display:"block" }} /></div>}
+        <Card style={{ marginBottom:10, borderLeft:`4px solid ${c}` }}>
+          <Tag color={c} style={{ marginBottom:8 }}>{course.category}</Tag>
+          <h2 style={{ fontSize:18, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{course.title}</h2>
+          {course.desc && <p style={{ fontSize:13, lineHeight:1.6, color:B.text }}>{course.desc}</p>}
+          <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>Criado em {course.createdAt}</p>
+        </Card>
+        {embed && <Card style={{ marginBottom:10, padding:0, overflow:"hidden", borderRadius:12 }}><div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}><iframe src={embed} title="video" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></Card>}
+        {course.videoUrl && !embed && <Card style={{ marginBottom:10 }}><a href={course.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:600, color:B.blue, textDecoration:"none" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Assistir vídeo</a></Card>}
+        {course.lessons?.length > 0 && <>
+          <p className="sl" style={{ marginBottom:8 }}>Aulas ({course.lessons.length})</p>
+          {course.lessons.map((l, i) => (
+            <Card key={i} delay={i*0.03} style={{ marginTop:i?6:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:28, height:28, borderRadius:14, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:11, fontWeight:800, color:c }}>{i+1}</span></div>
+                <p style={{ fontSize:13, fontWeight:500 }}>{l}</p>
+              </div>
+            </Card>
+          ))}
+        </>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.academy} label="Aprendizado" title="Academy" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", gap:20 }}>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:22, fontWeight:900 }}>{courses.length}</p><p style={{ fontSize:9, opacity:.6 }}>Cursos</p></div>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{[...new Set(courses.map(c=>c.category))].length}</p><p style={{ fontSize:9, opacity:.6 }}>Categorias</p></div>
+          </div>
+          <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0 }}>{IC.plus} Novo Curso</button>
+        </div>
+      </Card>
+      {courses.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:32 }}>
+          <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.academy(B.accent)}</div>
+          <p style={{ fontSize:15, fontWeight:700 }}>Nenhum curso criado</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5 }}>Crie treinamentos com texto, fotos e vídeos para sua equipe.</p>
+          <button onClick={()=>{setForm({});setCreating(true);}} className="pill full accent" style={{ marginTop:16, padding:"12px 0" }}>Criar primeiro curso</button>
+        </Card>
+      ) : courses.map((course, i) => {
+        const c = CAT_COLORS[course.category] || B.accent;
         return (
-          <Card key={i} delay={i * 0.03} style={{ marginTop: i ? 6 : 0, opacity: done ? 0.6 : 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 16, background: done ? B.green : `${B.accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>{done ? <span style={{ color: "#fff", display: "flex" }}>{IC.check}</span> : <span style={{ fontSize: 12, fontWeight: 800, color: B.accent }}>{i + 1}</span>}</div>
-              <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600, textDecoration: done ? "line-through" : "none" }}>Aula {i + 1}</p><p style={{ fontSize: 10, color: B.muted }}>{done ? "Concluída" : "Disponível"}</p></div>
-              {!done && <span style={{ color: B.accent, display: "flex" }}>{IC.play}</span>}
+          <Card key={course.id} delay={i*0.04} onClick={()=>setSelCourse(i)} style={{ marginTop:i?8:0, cursor:"pointer" }}>
+            <div style={{ display:"flex", gap:12 }}>
+              {course.thumb ? <div style={{ width:64, height:64, borderRadius:12, overflow:"hidden", flexShrink:0 }}><img src={course.thumb} alt="thumb" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div> : <div style={{ width:64, height:64, borderRadius:12, background:`${c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:c }}>{IC.academy(c)}</div>}
+              <div style={{ flex:1, minWidth:0 }}>
+                <Tag color={c} style={{ marginBottom:4, fontSize:9 }}>{course.category}</Tag>
+                <p style={{ fontSize:14, fontWeight:700, lineHeight:1.3 }}>{course.title}</p>
+                {course.desc && <p style={{ fontSize:11, color:B.muted, marginTop:3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{course.desc}</p>}
+                <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                  {course.lessons?.length > 0 && <span style={{ fontSize:10, color:B.muted }}>{course.lessons.length} aula{course.lessons.length!==1?"s":""}</span>}
+                  {course.videoUrl && <span style={{ fontSize:10, color:B.blue }}>▶ Vídeo</span>}
+                </div>
+              </div>
+              {IC.chev()}
             </div>
           </Card>
         );
       })}
-      {selCourse.progress < 100 && <button className="pill full accent" style={{ marginTop: 14 }}>Continuar de onde parou</button>}
-    </div>
-  );
-
-  if (selCat) return (
-    <div className="pg">
-      <Head title={selCat.name} onBack={() => setSelCat(null)} />
-      {selCat.courses.map((course, i) => (
-        <Card key={i} delay={i * 0.04} onClick={() => setSelCourse(course)} style={{ marginTop: i ? 8 : 0, cursor: "pointer" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: `${selCat.c}12`, display: "flex", alignItems: "center", justifyContent: "center", color: selCat.c }}>{React.cloneElement(selCat.icon, { width: 20, height: 20 })}</div>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{course.t}</p><p style={{ fontSize: 11, color: B.muted }}>{course.lessons} aulas · {course.dur}</p><div style={{ height: 4, borderRadius: 2, background: "#eee", marginTop: 6, width: "100%" }}><div style={{ height: 4, borderRadius: 2, background: course.progress === 100 ? B.green : selCat.c, width: `${course.progress}%` }} /></div></div>
-            <span style={{ fontSize: 13, fontWeight: 800, color: course.progress === 100 ? B.green : selCat.c }}>{course.progress}%</span>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-
-  const totalCourses = cats.reduce((a, c) => a + c.courses.length, 0);
-  const completedCourses = cats.reduce((a, c) => a + c.courses.filter(x => x.progress === 100).length, 0);
-
-  return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.academy} label="Aprendizado" title="Academy" onBack={onBack} collapsed={pgC} />
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
-      <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.award}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>TREINAMENTOS</p></div>
-        <div style={{ display: "flex", justifyContent: "center", gap: 20 }}>
-          <div style={{ textAlign: "center" }}><span style={{ fontSize: 24, fontWeight: 900, color: B.accent }}>{totalCourses}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Cursos</p></div>
-          <div style={{ textAlign: "center" }}><span style={{ fontSize: 24, fontWeight: 900, color: B.green }}>{completedCourses}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Concluídos</p></div>
-          <div style={{ textAlign: "center" }}><span style={{ fontSize: 24, fontWeight: 900, color: "#fff" }}>{totalCourses - completedCourses}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Pendentes</p></div>
-        </div>
-      </Card>
-      {cats.map((cat, i) => (
-        <Card key={cat.id} delay={i * 0.04 + 0.06} onClick={() => setSelCat(cat)} style={{ marginTop: i ? 8 : 6, cursor: "pointer" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 14, background: `${cat.c}12`, display: "flex", alignItems: "center", justifyContent: "center", color: cat.c }}>{cat.icon}</div>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 700 }}>{cat.name}</p><p style={{ fontSize: 11, color: B.muted }}>{cat.courses.length} cursos · {cat.courses.filter(c => c.progress === 100).length} concluído{cat.courses.filter(c => c.progress === 100).length !== 1 ? "s" : ""}</p></div>
-            {IC.chev()}
-          </div>
-        </Card>
-      ))}
       </div>
     </div>
   );
@@ -3415,12 +3479,12 @@ function FinancialPage({ onBack, clients: propClients }) {
   };
 
   const TABS = [
-    { k:"dashboard", l:"Dashboard", icon:"📊" },
-    { k:"agency", l:"Dados Fiscais", icon:"🏢" },
-    { k:"bank", l:"Bancário", icon:"🏦" },
-    { k:"billing", l:"Faturamento", icon:"📄" },
-    { k:"goals", l:"Metas", icon:"🎯" },
-    { k:"expenses", l:"Despesas", icon:"💸" },
+    { k:"dashboard", l:"Dashboard", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
+    { k:"agency", l:"Dados Fiscais", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { k:"bank", l:"Bancário", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
+    { k:"billing", l:"Faturamento", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+    { k:"goals", l:"Metas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> },
+    { k:"expenses", l:"Despesas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
   ];
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -3607,7 +3671,7 @@ function FinancialPage({ onBack, clients: propClients }) {
       {/* ═══ TAB: METAS ═══ */}
       {finTab === "goals" && <>
         <Card style={{ marginBottom:12, textAlign:"center", padding:20, background:B.dark, color:"#fff", border:"none" }}>
-          <span style={{ fontSize:30 }}>🎯</span>
+          <div style={{ width:48, height:48, borderRadius:16, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", color:B.accent }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
           <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>Metas Financeiras</h3>
           <p style={{ fontSize:11, opacity:.5, marginTop:4 }}>Defina metas para acompanhar o crescimento da agência</p>
         </Card>
@@ -3675,8 +3739,8 @@ function FinancialPage({ onBack, clients: propClients }) {
           <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Categorias usadas para classificar despesas e custos operacionais da agência.</p>
           {(fc.expenseCategories||[]).map((cat, i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
-              <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>
-                {["🛠️","👤","📢","📷","🏢","📊","📦"][i % 7]}
+              <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
               </div>
               <p style={{ fontSize:13, fontWeight:500, flex:1 }}>{cat}</p>
               <button onClick={() => upd("expenseCategories", (fc.expenseCategories||[]).filter((_,j)=>j!==i))} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, fontSize:16, padding:4 }}>×</button>
@@ -3685,7 +3749,7 @@ function FinancialPage({ onBack, clients: propClients }) {
           {(fc.expenseCategories||[]).length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma categoria cadastrada</p>}
         </Card>
         <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
-          <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>💡 Sugestões de categorias</p>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg><p style={{ fontSize:12, fontWeight:600 }}>Sugestões de categorias</p></div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
             {["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório","Impostos","Marketing próprio","Viagens","Treinamentos","Telefone/Internet"].map(s => {
               const exists = (fc.expenseCategories||[]).includes(s);
@@ -7068,6 +7132,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
   const [form, setForm] = useState({});
   const [members, setMembers] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
 
@@ -7224,18 +7289,19 @@ function TeamPage({ onBack, user, onTeamChange }) {
     );
   }
 
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
-  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
       <CollapseHeader icon={IC.team} label="Pessoas" title="Equipe" collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-        <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
-          <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{members.filter(m=>m.status!=="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Cadastrados</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{members.filter(m=>m.status==="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Pendentes</p></div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
+            <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{members.filter(m=>m.status!=="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Cadastrados</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{members.filter(m=>m.status==="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Pendentes</p></div>
+          </div>
+          {isAdmin && <button onClick={()=>{setForm({});setAdding(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>{IC.plus} Novo</button>}
         </div>
       </Card>
       {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
@@ -7504,7 +7570,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Modalidade</label>
             <div style={{ display:"flex", gap:6 }}>
               {[{k:"online",l:"Online",ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>},{k:"presencial",l:"Presencial",ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>}].map(m=>(
-                <button key={m.k} onClick={()=>setForm(p=>({...p,meetingMode:m.k}))} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", borderRadius:10, border:`1.5px solid ${(form.meetingMode||"online")===m.k?B.blue:B.border}`, background:(form.meetingMode||"online")===m.k?`${B.blue}08`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:(form.meetingMode||"online")===m.k?B.blue:B.muted }}>{m.ic} {m.l}</button>
+                <button key={m.k} onClick={()=>setForm(p=>({...p,meetingMode:m.k}))} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", borderRadius:10, border:`1.5px solid ${(form.meetingMode||"online")===m.k?B.accent:B.border}`, background:(form.meetingMode||"online")===m.k?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:(form.meetingMode||"online")===m.k?B.accent:B.muted }}>{m.ic} {m.l}</button>
               ))}
             </div>
           </Card>
@@ -7590,7 +7656,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
           </div>
         </Card>
 
-        <button onClick={saveEvent} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:et.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", marginTop:4 }}>
+        <button onClick={saveEvent} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, marginTop:4 }}>
           {et.icon} Salvar {et.l}
         </button>
       </div>
@@ -8700,6 +8766,7 @@ function IdeasPage({ onBack, user }) {
   const [editingIdea, setEditingIdea] = useState(null);
   const [form, setForm] = useState({});
   const [newComment, setNewComment] = useState("");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
   const statusCfg = { approved:{ l:"Aprovada", c:B.green }, review:{ l:"Em análise", c:B.orange }, pending:{ l:"Pendente", c:B.muted }, rejected:{ l:"Rejeitada", c:B.red } };
@@ -8890,8 +8957,6 @@ function IdeasPage({ onBack, user }) {
   }
 
   /* ── MAIN IDEAS LIST ── */
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
-  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -8900,11 +8965,16 @@ function IdeasPage({ onBack, user }) {
       
       {/* Stats */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-        <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
-          <div><p style={{ fontSize:22, fontWeight:900 }}>{ideas.length}</p><p style={{ fontSize:9, opacity:.6 }}>Total</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{ideas.filter(i=>i.status==="approved").length}</p><p style={{ fontSize:9, opacity:.6 }}>Aprovadas</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{ideas.filter(i=>i.status==="review").length}</p><p style={{ fontSize:9, opacity:.6 }}>Em análise</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.muted }}>{ideas.filter(i=>i.status==="pending").length}</p><p style={{ fontSize:9, opacity:.6 }}>Pendentes</p></div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
+            <div><p style={{ fontSize:22, fontWeight:900 }}>{ideas.length}</p><p style={{ fontSize:9, opacity:.6 }}>Total</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{ideas.filter(i=>i.status==="approved").length}</p><p style={{ fontSize:9, opacity:.6 }}>Aprovadas</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{ideas.filter(i=>i.status==="review").length}</p><p style={{ fontSize:9, opacity:.6 }}>Em análise</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.muted }}>{ideas.filter(i=>i.status==="pending").length}</p><p style={{ fontSize:9, opacity:.6 }}>Pendentes</p></div>
+          </div>
+          <button onClick={()=>{setForm({});setAdding(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>
+            {IC.plus} Nova
+          </button>
         </div>
       </Card>
 
