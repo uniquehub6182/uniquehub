@@ -1716,6 +1716,7 @@ function CheckinPage({ onBack, user }) {
   const [adminTab, setAdminTab] = useState("today");
   const [teamData, setTeamData] = useState([]);
   const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
 
   const [teamError, setTeamError] = useState(null);
 
@@ -4427,7 +4428,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
-  const [chatTab, setChatTab] = useState("all");
 
   /* Load conversations + profiles on mount */
   useEffect(() => {
@@ -4775,7 +4775,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const convName = getOtherName(selConv);
     const isGroup = selConv.type === "group";
     return (
-      <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:60, display:"flex", flexDirection:"column", background:B.bg }}>
+      <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
         {/* ── CONV HEADER ── */}
@@ -4821,7 +4821,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Messages */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", display:"flex", flexDirection:"column", gap:2, background: B.bg, WebkitOverflowScrolling:"touch" }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", display:"flex", flexDirection:"column", gap:2, background: isDark ? "linear-gradient(180deg,#0F1419 0%,#141920 100%)" : "linear-gradient(180deg,#F2F4F8 0%,#EEF0F5 100%)", WebkitOverflowScrolling:"touch" }}>
           {msgs.length === 0 && <div style={{ textAlign:"center", padding:40, color:B.muted, fontSize:13 }}>Nenhuma mensagem ainda. Comece a conversa!</div>}
           {msgs.map((m, mi) => {
             const isMe = m.sender_id === user.id;
@@ -4887,7 +4887,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Input */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom, 0px))`, display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
+        <div style={{ padding:"10px 14px 28px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
@@ -4984,11 +4984,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", background:B.bg }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* ── HEADER ── */}
-      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:"16px 20px 22px", flexShrink:0 }}>
+      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 22px`, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
           <div>
             <p style={{ fontSize:12, color:"rgba(255,255,255,0.45)", fontWeight:500, margin:0 }}>Olá,</p>
@@ -5017,7 +5017,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       </div>
 
       {/* ── CONV LIST ── */}
-      <div style={{ padding:"12px 16px 0" }}>
+      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px 100px", WebkitOverflowScrolling:"touch" }}>
         {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando...</p>}
 
         {!loading && convs.length === 0 && (
@@ -10183,6 +10183,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
+        {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
@@ -10204,7 +10205,6 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
       </div>
 
-      {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
           const a = (tab === t.k && !sub) || (sub === t.k);
