@@ -5566,8 +5566,19 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [dndEnd, setDndEnd] = useState("07:00");
 
   /* AI Config */
+  const [agCfg, setAgCfg] = useState({ name:"", slogan:"", city:"", logo_url:"" });
+  const [agLoaded, setAgLoaded] = useState(false);
+  const [agSaving, setAgSaving] = useState(false);
   const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", ai_provider:"openai" });
   const [aiCfgLoaded, setAiCfgLoaded] = useState(false);
+
+  // Load agency identity
+  React.useEffect(() => {
+    supaGetSetting("agency_identity").then(raw => {
+      if (raw) { try { setAgCfg(prev => ({ ...prev, ...JSON.parse(raw) })); } catch {} }
+      setAgLoaded(true);
+    });
+  }, []);
   const [aiCfgSaving, setAiCfgSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState({});
 
@@ -6418,17 +6429,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   /* ═══ AI CONFIG (admin only) ═══ */
   /* ═══ IDENTIDADE DA AGÊNCIA (admin only) ═══ */
   if (sub === "agencyid") {
-    const [agCfg, setAgCfg] = React.useState({ name:"", slogan:"", city:"", logo_url:"" });
-    const [agLoaded, setAgLoaded] = React.useState(false);
-    const [agSaving, setAgSaving] = React.useState(false);
-
-    React.useEffect(() => {
-      supaGetSetting("agency_identity").then(raw => {
-        if (raw) { try { setAgCfg(prev => ({ ...prev, ...JSON.parse(raw) })); } catch {} }
-        setAgLoaded(true);
-      });
-    }, []);
-
     if (!agLoaded) return <div className="pg"><Head title="Identidade" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
 
     const saveAg = async () => {
