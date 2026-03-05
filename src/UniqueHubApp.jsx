@@ -1688,7 +1688,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           {cfg.cards.slice(0,2).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return<div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}><div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{w.l}</div><div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{w.val}</div><div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{w.sub}</div><div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>;})}
         </div>
       </div>
-      <div style={{ padding:"0 24px", paddingBottom:`calc(env(safe-area-inset-bottom, 0px) + 80px)` }}>
+      <div style={{ padding:"0 24px 0" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
           <button onClick={()=>setShowEditor(true)} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
           <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
@@ -10341,7 +10341,7 @@ html,body{font-family:'Figtree',sans-serif;background:${dark?"#1C2228":"#fff"};m
 input,textarea,select{font-size:16px !important}
 .app{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
 .screen{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(120px + env(safe-area-inset-bottom,34px));background:${B.bg}}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.bg}}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
