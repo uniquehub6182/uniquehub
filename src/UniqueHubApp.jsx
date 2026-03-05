@@ -1081,28 +1081,32 @@ function OnboardingSlides({ onDone }) {
   const [offsetX, setOffsetX] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
 
+  const DEFAULT_IMGS = [
+    "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=900&auto=format&fit=crop&q=80",
+  ];
+
+  const [obImgs, setObImgs] = React.useState(DEFAULT_IMGS);
+  const [obCfgLoaded, setObCfgLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    if (obCfgLoaded) return;
+    setObCfgLoaded(true);
+    if (!supabase) return;
+    supaGetSetting("onboarding_images").then(raw => {
+      if (!raw) return;
+      try {
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed) && parsed.length === 3) setObImgs(parsed.map((v,i) => v || DEFAULT_IMGS[i]));
+      } catch {}
+    });
+  }, [obCfgLoaded]);
+
   const SLIDES = [
-    {
-      img: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&auto=format&fit=crop&q=80",
-      tag: "Gestão completa",
-      title: "Controle total\nda sua agência",
-      desc: "Clientes, equipe, demandas e financeiro em um único lugar.",
-      accent: "#BBF246",
-    },
-    {
-      img: "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=900&auto=format&fit=crop&q=80",
-      tag: "Inteligência artificial",
-      title: "IA para criar\nconteúdo mais rápido",
-      desc: "Legendas, roteiros e copies com OpenAI ou Gemini.",
-      accent: "#60A5FA",
-    },
-    {
-      img: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=900&auto=format&fit=crop&q=80",
-      tag: "Pronto para começar",
-      title: "Configure sua\nmarca agora",
-      desc: "Identidade visual, equipe e permissões personalizadas.",
-      accent: "#A78BFA",
-    },
+    { img: obImgs[0], tag: "Gestão completa",        title: "Controle total\nda sua agência",      desc: "Clientes, equipe, demandas e financeiro em um único lugar.", accent: "#BBF246" },
+    { img: obImgs[1], tag: "Inteligência artificial", title: "IA para criar\nconteúdo mais rápido", desc: "Legendas, roteiros e copies com OpenAI ou Gemini.",            accent: "#BBF246" },
+    { img: obImgs[2], tag: "Pronto para começar",     title: "Configure sua\nmarca agora",          desc: "Identidade visual, equipe e permissões personalizadas.",      accent: "#BBF246" },
   ];
 
   const N = SLIDES.length;
@@ -5710,6 +5714,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [agCfg, setAgCfg] = useState({ name:"", slogan:"", city:"", logo_url:"" });
   const [agLoaded, setAgLoaded] = useState(false);
   const [agSaving, setAgSaving] = useState(false);
+  /* Onboarding images */
+  const [obImgsState, setObImgsState] = useState(["","",""]);
+  const [obImgsLoaded, setObImgsLoaded] = useState(false);
+  const [obImgsSaving, setObImgsSaving] = useState(false);
+  const DEFAULT_OB_IMGS = [
+    "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=900&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=900&auto=format&fit=crop&q=80",
+  ];
   const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", ai_provider:"openai" });
   const [aiCfgLoaded, setAiCfgLoaded] = useState(false);
 
@@ -6569,6 +6582,99 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ AI CONFIG (admin only) ═══ */
   /* ═══ IDENTIDADE DA AGÊNCIA (admin only) ═══ */
+  if (sub === "onboardimgs") {
+    if (!obImgsLoaded) {
+      setObImgsLoaded(true);
+      if (supabase) supaGetSetting("onboarding_images").then(raw => {
+        if (!raw) return;
+        try {
+          const p = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (Array.isArray(p)) setObImgsState(p.map((v,i) => v || ""));
+        } catch {}
+      });
+      return <div className="pg"><Head title="Telas de Início" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
+    }
+
+    const handleFileOb = (i, file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const dataUrl = e.target.result;
+        setObImgsState(prev => { const n=[...prev]; n[i]=dataUrl; return n; });
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const saveObImgs = async () => {
+      setObImgsSaving(true);
+      const ok = await supaSetSetting("onboarding_images", JSON.stringify(obImgsState));
+      setObImgsSaving(false);
+      if (ok) showToast("Imagens salvas ✓");
+      else showToast("Erro ao salvar");
+    };
+
+    const LABELS = ["Slide 1 — Gestão completa","Slide 2 — Inteligência Artificial","Slide 3 — Personalização"];
+    const DEFAULT_OB_URLS = [
+      "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=900&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=900&auto=format&fit=crop&q=80",
+    ];
+
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Telas de Início" onBack={() => setSub(null)} />
+
+        <p style={{ fontSize:13, color:B.muted, marginBottom:16, lineHeight:1.5 }}>
+          Configure as 3 imagens que aparecem antes do login. Faça upload de uma foto ou cole uma URL.
+        </p>
+
+        {[0,1,2].map(i => (
+          <Card key={i} style={{ marginBottom:14 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.05em" }}>{LABELS[i]}</p>
+
+            {/* Preview */}
+            <div style={{ width:"100%", height:140, borderRadius:12, overflow:"hidden", marginBottom:12, background:B.border, position:"relative" }}>
+              <img
+                src={obImgsState[i] || DEFAULT_OB_URLS[i]}
+                style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top" }}
+                onError={e => e.target.src=DEFAULT_OB_URLS[i]}
+              />
+              <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.5) 100%)" }} />
+              {obImgsState[i] && obImgsState[i] !== DEFAULT_OB_URLS[i] && (
+                <button onClick={() => setObImgsState(prev=>{const n=[...prev];n[i]="";return n;})} style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", color:"#fff", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+              )}
+            </div>
+
+            {/* Upload button */}
+            <label style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background:`${B.accent}10`, border:`1.5px dashed ${B.accent}50`, borderRadius:12, cursor:"pointer", marginBottom:10 }}>
+              <span style={{ fontSize:20 }}>📁</span>
+              <div>
+                <p style={{ fontSize:13, fontWeight:700, color:B.accent }}>Upload de imagem</p>
+                <p style={{ fontSize:11, color:B.muted }}>JPG, PNG ou WebP — recomendado 9:16</p>
+              </div>
+              <input type="file" accept="image/*" style={{ display:"none" }} onChange={e => handleFileOb(i, e.target.files[0])} />
+            </label>
+
+            {/* Or URL */}
+            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Ou cole uma URL de imagem:</p>
+            <input
+              value={obImgsState[i] && obImgsState[i].startsWith("http") ? obImgsState[i] : ""}
+              onChange={e => setObImgsState(prev=>{const n=[...prev];n[i]=e.target.value;return n;})}
+              placeholder="https://..."
+              className="tinput"
+              style={{ fontSize:13 }}
+            />
+          </Card>
+        ))}
+
+        <button onClick={saveObImgs} disabled={obImgsSaving} className="pill full accent" style={{ padding:"14px 0", opacity:obImgsSaving?0.5:1, marginTop:4 }}>
+          {obImgsSaving ? "Salvando..." : "Salvar Imagens"}
+        </button>
+      </div>
+    );
+  }
+
   if (sub === "agencyid") {
     if (!agLoaded) return <div className="pg"><Head title="Identidade" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
 
@@ -6732,6 +6838,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
         { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" },
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "onboardimgs", l: "Telas de Início", ic: IC.image ? IC.image(B.accent) : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{color:B.accent}}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>, desc: "Imagens do onboarding antes do login" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "agencyid", l: "Identidade da Agência", ic: IC.clients(B.accent), desc: "Nome, slogan, logo e localização" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema, fontes, cards, densidade e mais" },
