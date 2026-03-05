@@ -4982,7 +4982,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
+    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bgCard }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* HEADER */}
@@ -5035,9 +5035,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           const avBg = bgPal[name.charCodeAt(0)%bgPal.length];
           return (
             <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");}}
-              style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 20px", borderBottom:`1px solid ${B.border}`, cursor:"pointer", background:B.bg, transition:"background .15s" }}
+              style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 20px", borderBottom:`1px solid ${B.border}`, cursor:"pointer", background:B.bgCard, transition:"background .15s" }}
               onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`}
-              onMouseLeave={e=>e.currentTarget.style.background=B.bg}
+              onMouseLeave={e=>e.currentTarget.style.background=B.bgCard}
             >
               <div style={{ position:"relative", flexShrink:0 }}>
                 <div style={{ width:54, height:54, borderRadius:"50%", background:isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
@@ -5045,7 +5045,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     : isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                     : <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{initials}</span>}
                 </div>
-                {!isGroup && <div style={{ position:"absolute", bottom:2, right:2, width:12, height:12, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bg}` }}/>}
+                {!isGroup && <div style={{ position:"absolute", bottom:2, right:2, width:12, height:12, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bgCard}` }}/>}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
