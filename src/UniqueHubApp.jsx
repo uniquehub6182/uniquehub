@@ -4984,7 +4984,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100%", background:B.bg }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* ── HEADER ── */}
@@ -5017,7 +5017,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       </div>
 
       {/* ── CONV LIST ── */}
-      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px 100px", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ flex:1, overflowY:"visible", padding:"12px 16px 0", WebkitOverflowScrolling:"touch" }}>
         {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando...</p>}
 
         {!loading && convs.length === 0 && (
@@ -10183,6 +10183,8 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
+        {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />
+}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
@@ -10204,7 +10206,6 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
       </div>
 
-      {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
           const a = (tab === t.k && !sub) || (sub === t.k);
