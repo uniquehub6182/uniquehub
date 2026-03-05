@@ -1075,74 +1075,99 @@ function useToast() {
 
 /* ═══════════════════════ LOGIN / AUTH ═══════════════════════ */
 /* ═══════════════════════ ONBOARDING SLIDES ═══════════════════════ */
-function OnboardingSlides({ onDone, slides }) {
+function OnboardingSlides({ onDone }) {
   const [idx, setIdx] = React.useState(0);
-  const DEFAULT_SLIDES = [
+  const [startX, setStartX] = React.useState(0);
+  const [offsetX, setOffsetX] = React.useState(0);
+  const [dragging, setDragging] = React.useState(false);
+
+  const SLIDES = [
     {
-      tag:"Gestão completa",
-      title:"Controle total da sua agência",
-      desc:"Clientes, equipe, demandas e financeiro em um único lugar.",
-      bg:"linear-gradient(160deg,#0D1117 60%,#1a2810 100%)",
-      accent:"#BBF246",
-      icon:<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="10" y="10" width="24" height="24" rx="6" fill="#BBF246" opacity="0.9"/><rect x="46" y="10" width="24" height="24" rx="6" fill="#BBF246" opacity="0.4"/><rect x="10" y="46" width="24" height="24" rx="6" fill="#BBF246" opacity="0.4"/><rect x="46" y="46" width="24" height="24" rx="6" fill="#BBF246" opacity="0.15"/></svg>,
+      img: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=900&auto=format&fit=crop&q=80",
+      tag: "Gestão completa",
+      title: "Controle total\nda sua agência",
+      desc: "Clientes, equipe, demandas e financeiro em um único lugar.",
+      accent: "#BBF246",
     },
     {
-      tag:"Inteligência artificial",
-      title:"IA para criar conteúdo mais rápido",
-      desc:"Legendas, roteiros, estratégias e copies com OpenAI ou Gemini.",
-      bg:"linear-gradient(160deg,#0D1117 60%,#0a1520 100%)",
-      accent:"#60A5FA",
-      icon:<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="28" fill="rgba(96,165,250,0.12)" stroke="#60A5FA" strokeWidth="1.5"/><circle cx="40" cy="40" r="16" fill="rgba(96,165,250,0.15)" stroke="#60A5FA" strokeWidth="1.5"/><circle cx="40" cy="40" r="6" fill="#60A5FA"/><line x1="40" y1="12" x2="40" y2="20" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/><line x1="40" y1="60" x2="40" y2="68" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="40" x2="20" y2="40" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/><line x1="60" y1="40" x2="68" y2="40" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/></svg>,
+      img: "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=900&auto=format&fit=crop&q=80",
+      tag: "Inteligência artificial",
+      title: "IA para criar\nconteúdo mais rápido",
+      desc: "Legendas, roteiros e copies com OpenAI ou Gemini.",
+      accent: "#60A5FA",
     },
     {
-      tag:"Pronto para começar",
-      title:"Personalizado para sua marca",
-      desc:"Configure a identidade visual, equipe e permissões como quiser.",
-      bg:"linear-gradient(160deg,#0D1117 60%,#1a0f20 100%)",
-      accent:"#A78BFA",
-      icon:<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><path d="M40 12 L58 22 L58 42 Q58 58 40 68 Q22 58 22 42 L22 22 Z" fill="rgba(167,139,250,0.1)" stroke="#A78BFA" strokeWidth="1.5"/><path d="M32 40 L37 45 L48 34" stroke="#A78BFA" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      img: "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=900&auto=format&fit=crop&q=80",
+      tag: "Pronto para começar",
+      title: "Configure sua\nmarca agora",
+      desc: "Identidade visual, equipe e permissões personalizadas.",
+      accent: "#A78BFA",
     },
   ];
-  const allSlides = (slides && slides.length > 0) ? slides : DEFAULT_SLIDES;
-  const cur = allSlides[idx];
-  const isLast = idx === allSlides.length - 1;
+
+  const N = SLIDES.length;
+  const W = typeof window !== "undefined" ? window.innerWidth : 390;
+
+  const getX = (e) => e.touches ? e.touches[0].clientX : e.clientX;
+
+  const onStart = (e) => { setStartX(getX(e)); setDragging(true); };
+  const onMove  = (e) => { if (!dragging) return; setOffsetX(getX(e) - startX); };
+  const onEnd   = () => {
+    if (!dragging) return;
+    setDragging(false);
+    if (offsetX < -60 && idx < N - 1) setIdx(i => i + 1);
+    else if (offsetX > 60 && idx > 0) setIdx(i => i - 1);
+    setOffsetX(0);
+  };
+
+  const tx = -idx * W + offsetX;
+  const sl = SLIDES[idx];
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:cur.bg||"#0D1117", color:"#fff", transition:"background 0.5s ease", position:"relative", overflow:"hidden" }}>
-      {/* Decorative blobs */}
-      <div style={{ position:"absolute", top:-80, right:-80, width:260, height:260, borderRadius:"50%", background:`${cur.accent||"#BBF246"}08`, pointerEvents:"none" }} />
-      <div style={{ position:"absolute", bottom:120, left:-60, width:180, height:180, borderRadius:"50%", background:`${cur.accent||"#BBF246"}05`, pointerEvents:"none" }} />
-
-      {/* Skip */}
-      <div style={{ display:"flex", justifyContent:"flex-end", padding:"calc(env(safe-area-inset-top,0px) + 20px) 24px 0" }}>
-        <button onClick={onDone} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", padding:"8px 4px" }}>Pular</button>
+    <div
+      style={{ position:"fixed", inset:0, background:"#000", overflow:"hidden", touchAction:"pan-y", userSelect:"none" }}
+      onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
+      onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
+    >
+      {/* ── SLIDE STRIP ── */}
+      <div style={{
+        display:"flex", height:"100%",
+        width: N * W,
+        transform: `translateX(${tx}px)`,
+        transition: dragging ? "none" : "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+        willChange: "transform",
+      }}>
+        {SLIDES.map((s, i) => (
+          <div key={i} style={{ width: W, height:"100%", flexShrink:0, position:"relative" }}>
+            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${s.img})`, backgroundSize:"cover", backgroundPosition:"center top" }} />
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.25) 35%,rgba(0,0,0,0.82) 65%,rgba(0,0,0,0.97) 100%)" }} />
+          </div>
+        ))}
       </div>
 
-      {/* Content */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px 36px 0", textAlign:"center" }}>
-        {/* Icon */}
-        <div style={{ marginBottom:40, filter:"drop-shadow(0 8px 32px rgba(0,0,0,0.4))" }}>
-          {cur.icon || <div style={{ width:80, height:80, borderRadius:24, background:`${cur.accent||"#BBF246"}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36 }}>{cur.emoji||"✨"}</div>}
+      {/* ── SKIP ── */}
+      <button onClick={onDone} style={{ position:"absolute", top:"calc(env(safe-area-inset-top,0px) + 18px)", right:24, background:"none", border:"none", color:"rgba(255,255,255,0.55)", fontSize:15, fontWeight:600, fontFamily:"inherit", cursor:"pointer", zIndex:20, padding:"8px 4px" }}>
+        Pular
+      </button>
+
+      {/* ── BOTTOM TEXT + CONTROLS ── */}
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 30px calc(env(safe-area-inset-bottom,0px) + 44px)", color:"#fff", zIndex:20, pointerEvents:"none" }}>
+        <p style={{ fontSize:11, fontWeight:800, color:sl.accent, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:12, opacity:1 }}>{sl.tag}</p>
+        <h2 style={{ fontSize:34, fontWeight:900, lineHeight:1.13, margin:"0 0 14px", whiteSpace:"pre-line", letterSpacing:"-0.5px" }}>{sl.title}</h2>
+        <p style={{ fontSize:15, color:"rgba(255,255,255,0.52)", lineHeight:1.65, marginBottom:38 }}>{sl.desc}</p>
+
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", pointerEvents:"auto" }}>
+          {/* Dots */}
+          <div style={{ display:"flex", gap:7, alignItems:"center" }}>
+            {SLIDES.map((_,i) => (
+              <div key={i} style={{ height:5, width:i===idx?26:5, borderRadius:3, background:i===idx?sl.accent:"rgba(255,255,255,0.28)", transition:"all .3s", cursor:"pointer" }} onClick={() => { setOffsetX(0); setIdx(i); }} />
+            ))}
+          </div>
+          {/* Arrow button */}
+          <button onClick={() => idx === N-1 ? onDone() : setIdx(i => i+1)} style={{ width:62, height:62, borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 32px rgba(0,0,0,0.45)", flexShrink:0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
         </div>
-
-        <p style={{ fontSize:12, fontWeight:700, color:cur.accent||"#BBF246", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:16 }}>{cur.tag||""}</p>
-        <h2 style={{ fontSize:30, fontWeight:900, lineHeight:1.15, margin:"0 0 16px", letterSpacing:"-0.5px" }}>{cur.title||""}</h2>
-        <p style={{ fontSize:15, color:"rgba(255,255,255,0.5)", lineHeight:1.65, maxWidth:280 }}>{cur.desc||""}</p>
-      </div>
-
-      {/* Bottom controls */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"40px 32px calc(env(safe-area-inset-bottom,0px) + 40px)" }}>
-        {/* Dots */}
-        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-          {allSlides.map((_,i) => (
-            <div key={i} onClick={() => setIdx(i)} style={{ height:6, width:i===idx?24:6, borderRadius:3, background:i===idx?(cur.accent||"#BBF246"):"rgba(255,255,255,0.2)", transition:"all .3s", cursor:"pointer" }} />
-          ))}
-        </div>
-
-        {/* Next button */}
-        <button onClick={() => isLast ? onDone() : setIdx(i => i+1)} style={{ width:58, height:58, borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(0,0,0,0.3)", transition:"transform .1s" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
       </div>
     </div>
   );
@@ -10845,10 +10870,10 @@ export default function App() {
   }, [dark, themeColor, savePrefsToCloud]);
   const [authLoading, setAuthLoading] = useState(!!supabase);
   const [onboardDone, setOnboardDone] = useState(() => {
-    try { return localStorage.getItem("uh_onboard_v2") === "1"; } catch { return false; }
+    try { return localStorage.getItem("uh_onboard_v4") === "1"; } catch { return false; }
   });
   const finishOnboard = () => {
-    try { localStorage.setItem("uh_onboard_v2","1"); } catch {}
+    try { localStorage.setItem("uh_onboard_v4","1"); } catch {}
     setOnboardDone(true);
   };
 
