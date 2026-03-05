@@ -4775,144 +4775,138 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   if (view === "chat" && selConv) {
     const convName = getOtherName(selConv);
     const isGroup = selConv.type === "group";
+    const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
+    const avBg = bgPal[convName.charCodeAt(0)%bgPal.length];
     return (
       <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
-        {/* ── CONV HEADER ── */}
-        <div style={{ background:B.text, borderRadius:"0 0 28px 28px", padding:`calc(env(safe-area-inset-top,0px) + 14px) 18px 18px`, flexShrink:0, boxShadow:`0 4px 20px ${B.accent}20` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+
+        {/* HEADER */}
+        <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, flexShrink:0, boxShadow:"0 1px 8px rgba(0,0,0,0.06)" }}>
+          <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:36, height:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div style={{ position:"relative", flexShrink:0 }}>
+            <div style={{ width:44, height:44, borderRadius:"50%", background:isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+              {isGroup ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              : <span style={{fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{convName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</span>}
+            </div>
+            {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bgCard}` }}/>}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
+            <p style={{ fontSize:11, color:otherTyping?B.accent:"#22C55E", margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
+              {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : "Online"}
+            </p>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={()=>showToast("Videochamada em breve")} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
             </button>
-            {/* Avatar */}
-            <div style={{ position:"relative" }}>
-              <div style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}30`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-                <span style={{ fontSize:16, fontWeight:800, color:B.accent }}>{convName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</span>
-              </div>
-              {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.text}` }}/>}
-            </div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0, letterSpacing:"-0.2px" }}>{convName}</p>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0, marginTop:1 }}>
-                {otherTyping ? <span style={{color:B.accent, fontWeight:600}}>digitando...</span> : isGroup ? `${(selConv.members||[]).length} membros` : "Online"}
-              </p>
-            </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={()=>showToast("Videochamada em breve")} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-              </button>
-              <button onClick={()=>showToast("Chamada em breve")} style={{ width:38, height:38, borderRadius:"50%", background:`${B.accent}`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-              </button>
-              {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro");}} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,80,80,0.2)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-              </button>}
-            </div>
+            <button onClick={()=>showToast("Chamada em breve")} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            </button>
+            {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.red}30`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>}
           </div>
         </div>
-        {/* Pinned messages panel */}
-        {pinnedOpen && pinnedMsgs.length > 0 && <div style={{ padding:"8px 16px", background:`${B.accent}08`, borderBottom:`1px solid ${B.border}`, maxHeight:150, overflowY:"auto" }}>
-          <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:6 }}>📌 Mensagens fixadas</p>
-          {pinnedMsgs.map(m => (
-            <div key={m.id} style={{ padding:"6px 10px", borderRadius:8, background:B.bgCard, marginBottom:4, fontSize:12 }}>
-              <span style={{ fontWeight:700, color:B.accent, marginRight:6 }}>{m.profiles?.name || "..."}</span>
-              <span>{m.content || m.file_name || "Arquivo"}</span>
+
+        {/* MESSAGES */}
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4 }}>
+          {pinnedOpen && msgs.filter(m=>m.pinned).length>0 && (
+            <div style={{ background:`${B.accent}10`, border:`1px solid ${B.accent}30`, borderRadius:12, padding:"8px 12px", marginBottom:8, fontSize:12, color:B.accent, fontWeight:600 }}>
+              📌 {msgs.find(m=>m.pinned)?.content}
             </div>
-          ))}
-        </div>}
-        {/* Messages */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", display:"flex", flexDirection:"column", gap:2, background: B.bg, WebkitOverflowScrolling:"touch" }}>
-          {msgs.length === 0 && <div style={{ textAlign:"center", padding:40, color:B.muted, fontSize:13 }}>Nenhuma mensagem ainda. Comece a conversa!</div>}
-          {msgs.map((m, mi) => {
+          )}
+          {msgs.map((m, i) => {
             const isMe = m.sender_id === user.id;
-            const senderName = m.profiles?.name || "...";
-            const prevMsg = msgs[mi - 1];
-            const showDate = !prevMsg || fmtDate(m.created_at) !== fmtDate(prevMsg?.created_at);
+            const showAvatar = !isMe && (i === 0 || msgs[i-1]?.sender_id !== m.sender_id);
+            const senderName = !isMe && isGroup ? (allProfiles.find(p=>p.id===m.sender_id)?.name||"").split(" ")[0] : null;
             return (
-              <React.Fragment key={m.id}>
-                {showDate && <div style={{ textAlign:"center", marginBottom:8, marginTop:4 }}><span style={{ fontSize:10, color:B.muted, background:"rgba(0,0,0,0.04)", padding:"3px 10px", borderRadius:6 }}>{fmtDate(m.created_at)}</span></div>}
-                <div style={{ display:"flex", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2 }}>
-                  {!isMe && isGroup && <Av name={senderName} sz={24} fs={9} />}
-                  <div style={{ maxWidth:"78%", position:"relative" }}>
-                    {/* Reaction picker */}
-                    {reactMsgId === m.id && (
-                      <div style={{ position:"absolute", [isMe?"right":"left"]:0, bottom:"calc(100% + 4px)", display:"flex", gap:2, padding:"4px 6px", background:B.bgCard, borderRadius:20, boxShadow:"0 4px 16px rgba(0,0,0,0.15)", zIndex:10 }}>
-                        {REACT_EMOJIS.map(e => <button key={e} onClick={() => addReaction(m.id, e)} style={{ fontSize:20, background:"none", border:"none", cursor:"pointer", padding:"2px 4px", borderRadius:8, transition:"transform 0.1s" }} onMouseOver={ev=>ev.target.style.transform="scale(1.3)"} onMouseOut={ev=>ev.target.style.transform="scale(1)"}>{e}</button>)}
-                        <button onClick={() => setReactMsgId(null)} style={{ fontSize:12, background:"none", border:"none", cursor:"pointer", color:B.muted, padding:"2px 6px" }}>✕</button>
-                      </div>
-                    )}
-                    <div onPointerDown={() => handleMsgPress(m.id)} onPointerUp={handleMsgRelease} onPointerLeave={handleMsgRelease}
-                      onClick={() => { if (!reactMsgId) togglePin(m); }}
-                      style={{ padding:"10px 14px", borderRadius:isMe?"18px 4px 18px 18px":"4px 18px 18px 18px", background:isMe?`linear-gradient(135deg,${B.accent},${B.accent}cc)`:B.bgCard, color:isMe?B.textOnAccent:B.text, boxShadow:isMe?`0 4px 12px ${B.accent}40`:"0 2px 6px rgba(0,0,0,0.06)", marginLeft:!isMe&&isGroup?6:0, cursor:"pointer", border:m.pinned?`2px solid ${B.orange}`:"2px solid transparent" }}>
-                      {!isMe && isGroup && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{senderName}</p>}
-                      {m.pinned && <span style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.5)":B.orange }}>📌 </span>}
-                      {m.file_url && m.file_type?.startsWith("audio/") ? (
-                        <AudioPlayer src={m.file_url} isMe={isMe} accent={B.accent} muted={B.muted} />
-                      ) : m.file_url ? (
-                        <div>
-                          {m.file_type?.startsWith("image/") ? <img src={m.file_url} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, marginBottom:4 }} alt="" /> : null}
-                          <a href={m.file_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:isMe?"#000":"#1a7af8", textDecoration:"underline", display:"flex", alignItems:"center", gap:4 }}>
-                            {IC.doc}<span>{m.file_name || "Arquivo"}</span>
-                          </a>
-                        </div>
-                      ) : <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-line" }}>{m.content}</p>}
-                      <p style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.4)":B.muted, textAlign:"right", marginTop:3 }}>{fmtTime(m.created_at)}{isMe && <Checkmark read={isRead(m)} />}</p>
+              <div key={m.id} style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", marginBottom:2 }}>
+                {senderName && <span style={{ fontSize:10, color:B.muted, marginLeft:36, marginBottom:2, fontWeight:600 }}>{senderName}</span>}
+                <div style={{ display:"flex", alignItems:"flex-end", gap:6, flexDirection:isMe?"row-reverse":"row" }}>
+                  {!isMe && (
+                    <div style={{ width:28, height:28, borderRadius:"50%", background:avBg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity:showAvatar?1:0 }}>
+                      <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{convName[0]?.toUpperCase()}</span>
                     </div>
-                    {/* Reactions display */}
-                    {m.reactions && Object.keys(m.reactions).length > 0 && (
-                      <div style={{ display:"flex", gap:3, flexWrap:"wrap", marginTop:2, justifyContent:isMe?"flex-end":"flex-start" }}>
-                        {Object.entries(m.reactions).map(([emoji, users]) => (
-                          <button key={emoji} onClick={() => addReaction(m.id, emoji)}
-                            style={{ display:"flex", alignItems:"center", gap:2, padding:"2px 6px", borderRadius:10, border:`1px solid ${(users||[]).includes(user.id)?B.accent:B.border}`, background:(users||[]).includes(user.id)?`${B.accent}15`:B.bgCard, cursor:"pointer", fontSize:12 }}>
-                            <span>{emoji}</span><span style={{ fontSize:10, fontWeight:600, color:B.muted }}>{(users||[]).length}</span>
-                          </button>
-                        ))}
-                      </div>
+                  )}
+                  <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ maxWidth:"72%", background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.45, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", wordBreak:"break-word" }}>
+                    {m.file_url ? (
+                      m.file_type?.startsWith("image") ? (
+                        <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
+                      ) : (
+                        <a href={m.file_url} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", background:isMe?"rgba(0,0,0,0.1)":"rgba(0,0,0,0.04)", borderRadius:10, textDecoration:"none", color:isMe?"#0D0D0D":B.text }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                          <span style={{fontSize:12,fontWeight:600}}>{m.file_name||"Arquivo"}</span>
+                        </a>
+                      )
+                    ) : (
+                      <>
+                        {m.content}
+                        {m.reactions && Object.keys(m.reactions).length>0 && (
+                          <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
+                            {Object.entries(m.reactions).map(([emoji,users])=>users.length>0&&(
+                              <span key={emoji} style={{ background:"rgba(0,0,0,0.08)", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{emoji} {users.length}</span>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
-              </React.Fragment>
+                <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2, paddingRight:isMe?0:36, justifyContent:isMe?"flex-end":"flex-start" }}>
+                  <span style={{ fontSize:10, color:B.muted }}>{fmtTime(m.created_at)}</span>
+                  {isMe && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+                {reactMsgId===m.id && (
+                  <div style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
+                    {["👍","❤️","😂","😮","😢","🙏"].map(e=>(
+                      <button key={e} onClick={()=>handleReact(m.id,e)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{e}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
-          {otherTyping && <TypingDots />}
-          <div ref={msgEndRef} />
+          <div ref={msgEndRef}/>
         </div>
-        {/* Attachment dropdown */}
-        {showAttach && <div style={{ padding:"8px 16px", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
-          {[{k:"image/*",l:"Foto",ic:IC.camera,c:B.blue},{k:"video/*",l:"Vídeo",ic:IC.vid,c:B.purple},{k:".pdf,.doc,.docx,.xls,.xlsx",l:"Documento",ic:IC.doc,c:B.green}].map(f=>(
-            <button key={f.k} onClick={()=>{ if(fileRef.current){fileRef.current.accept=f.k; fileRef.current.click();} }} style={{ flex:1, padding:"10px 0", borderRadius:12, background:`${f.c}10`, border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, fontFamily:"inherit" }}>
-              <span style={{ color:f.c, display:"flex" }}>{f.ic}</span>
-              <span style={{ fontSize:10, fontWeight:600, color:f.c }}>{f.l}</span>
-            </button>
-          ))}
-        </div>}
-        {/* Input */}
-        <div style={{ padding:"10px 14px 96px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
+
+        {/* INPUT BAR */}
+        <div style={{ padding:"10px 14px 96px", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
           {isRecording ? (
             <>
-              <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
-              <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, padding:"0 12px" }}>
-                <div style={{ width:8, height:8, borderRadius:4, background:B.red, animation:"typingBounce 1s ease-in-out infinite" }} />
-                <span style={{ fontSize:13, fontWeight:600, color:B.red }}>Gravando {fmtRecTime(recordingTime)}</span>
+              <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, background:`${B.red}10`, borderRadius:22, padding:"10px 16px" }}>
+                <div style={{ width:8, height:8, borderRadius:"50%", background:B.red }}/>
+                <span style={{ fontSize:13, color:B.red, fontWeight:600 }}>Gravando... {recordingSecs}s</span>
               </div>
-              <button onClick={stopRecording} className="send-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+              <button onClick={stopRecording} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => setShowAttach(!showAttach)} style={{ width:44, height:44, borderRadius:"50%", background:showAttach?B.accent:B.bg, border:`1.5px solid ${B.border}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:showAttach?"#0D0D0D":B.muted, transition:"all .2s" }}>{IC.plus}</button>
-              <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"11px 16px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
+              <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", background:showAttach?`${B.accent}20`:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              {showAttach && (
+                <button onClick={()=>fileRef.current?.click()} style={{ width:36, height:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+              )}
+              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }}/>
               {input.trim() ? (
-                <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 12px ${B.accent}50` }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
               ) : (
-                <button onClick={startRecording} className="send-btn" style={{ background:`${B.accent}80` }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                <button onClick={startRecording} style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                 </button>
               )}
             </>
@@ -4921,6 +4915,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       </div>
     );
   }
+
 
   /* ── NEW CHAT MODAL ── */
   const NewChatModal = showNewChat ? (
@@ -4988,49 +4983,45 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
 
-      {/* ── HEADER ── */}
-      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 22px`, flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+      {/* HEADER */}
+      <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:"18px 20px 14px", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
           <div>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,0.45)", fontWeight:500, margin:0 }}>Olá,</p>
-            <h2 style={{ fontSize:24, fontWeight:900, color:"#fff", letterSpacing:"-0.5px", margin:0 }}>{user?.nick||user?.name?.split(" ")[0]||"Usuário"}</h2>
+            <p style={{ fontSize:12, color:B.muted, fontWeight:500, margin:0 }}>Olá,</p>
+            <h2 style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", margin:0 }}>{user?.nick||user?.name?.split(" ")[0]||"Usuário"}</h2>
           </div>
-          <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => setShowNewChat(true)} style={{ width:42, height:42, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
             </button>
-            <button onClick={() => setShowNewGroup(true)} style={{ width:42, height:42, borderRadius:"50%", background:`${B.accent}`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            <button onClick={()=>setShowNewGroup(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             </button>
           </div>
         </div>
-        {/* Search */}
-        <div style={{ position:"relative" }}>
-          <svg style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:"rgba(255,255,255,0.1)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:14, padding:"11px 14px 11px 40px", fontFamily:"inherit", fontSize:14, color:"#fff", outline:"none", boxSizing:"border-box" }}/>
+        <div style={{ position:"relative", marginBottom:14 }}>
+          <svg style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:12, padding:"10px 14px 10px 36px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none", boxSizing:"border-box" }}/>
         </div>
-        {/* Tabs */}
-        <div style={{ display:"flex", gap:8, marginTop:14 }}>
+        <div style={{ display:"flex", gap:6 }}>
           {[{k:"all",l:"Todos"},{k:"dm",l:"Direto"},{k:"group",l:"Grupos"}].map(t=>(
-            <button key={t.k} onClick={()=>setChatTab(t.k)} style={{ padding:"7px 18px", borderRadius:100, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, background: chatTab===t.k ? B.accent : "rgba(255,255,255,0.1)", color: chatTab===t.k ? "#0D0D0D" : "rgba(255,255,255,0.6)", transition:"all .2s" }}>{t.l}</button>
+            <button key={t.k} onClick={()=>setChatTab(t.k)} style={{ padding:"7px 16px", borderRadius:100, border:chatTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, background:chatTab===t.k?B.accent:"transparent", color:chatTab===t.k?"#0D0D0D":B.muted, transition:"all .15s" }}>{t.l}</button>
           ))}
         </div>
       </div>
 
-      {/* ── CONV LIST ── */}
-      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px 100px", WebkitOverflowScrolling:"touch" }}>
-        {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando...</p>}
-
-        {!loading && convs.length === 0 && (
+      {/* LIST */}
+      <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+        {loading && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Carregando...</p>}
+        {!loading && convs.length===0 && (
           <div style={{ textAlign:"center", padding:60 }}>
             <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             </div>
-            <p style={{ fontSize:15, fontWeight:700, marginBottom:6 }}>Nenhuma conversa</p>
+            <p style={{ fontSize:15, fontWeight:700, color:B.text, marginBottom:6 }}>Nenhuma conversa</p>
             <p style={{ fontSize:12, color:B.muted }}>Inicie uma conversa com sua equipe</p>
           </div>
         )}
-
         {!loading && (chatTab==="all"?filteredConvs:chatTab==="dm"?dms:groups).map((c,i)=>{
           const isGroup = c.type==="group";
           const other = !isGroup ? (c.members||[]).find(m=>m.id!==user.id) : null;
@@ -5041,25 +5032,32 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
           const avBg = bgPal[name.charCodeAt(0)%bgPal.length];
           return (
-            <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");}} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 0", borderBottom:`1px solid ${B.border}`, cursor:"pointer" }}>
-              {/* Avatar */}
+            <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");}}
+              style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 20px", borderBottom:`1px solid ${B.border}`, cursor:"pointer", background:B.bg, transition:"background .15s" }}
+              onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`}
+              onMouseLeave={e=>e.currentTarget.style.background=B.bg}
+            >
               <div style={{ position:"relative", flexShrink:0 }}>
-                <div style={{ width:52, height:52, borderRadius:"50%", background: isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-                  {other?.photo_url ? <img src={other.photo_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> :
-                    isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> :
-                    <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{initials}</span>}
+                <div style={{ width:54, height:54, borderRadius:"50%", background:isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                  {other?.photo_url ? <img src={other.photo_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+                    : isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                    : <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{initials}</span>}
                 </div>
-                {c.unread>0 && <div style={{ position:"absolute", top:-2, right:-2, width:18, height:18, borderRadius:"50%", background:B.accent, border:`2px solid ${B.bg}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{fontSize:9,fontWeight:900,color:"#0D0D0D"}}>{c.unread>9?"9+":c.unread}</span>
-                </div>}
+                {!isGroup && <div style={{ position:"absolute", bottom:2, right:2, width:12, height:12, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bg}` }}/>}
               </div>
-              {/* Info */}
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:3 }}>
-                  <p style={{ fontSize:15, fontWeight:c.unread?800:600, color:B.text, margin:0 }}>{name}</p>
-                  <span style={{ fontSize:11, color:c.unread?B.accent:B.muted, flexShrink:0, marginLeft:8 }}>{fmtTime(c.lastMsg?.created_at)}</span>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
+                  <p style={{ fontSize:15, fontWeight:c.unread?800:600, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"65%" }}>{name}</p>
+                  <span style={{ fontSize:11, color:c.unread?B.accent:B.muted, flexShrink:0 }}>{fmtTime(c.lastMsg?.created_at)}</span>
                 </div>
-                <p style={{ fontSize:12, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0 }}>{lastIsMe?"Você: ":""}{lastText}</p>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                  <p style={{ fontSize:13, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0, flex:1 }}>{lastIsMe?"Você: ":""}{lastText}</p>
+                  {c.unread>0 && (
+                    <div style={{ width:22, height:22, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{fontSize:10,fontWeight:900,color:"#0D0D0D"}}>{c.unread>9?"9+":c.unread}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -5068,6 +5066,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     </div>
   );
 }
+
 
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
