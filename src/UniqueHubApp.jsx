@@ -1716,7 +1716,6 @@ function CheckinPage({ onBack, user }) {
   const [adminTab, setAdminTab] = useState("today");
   const [teamData, setTeamData] = useState([]);
   const { showToast, ToastEl } = useToast();
-  const [chatTab, setChatTab] = useState("all");
 
   const [teamError, setTeamError] = useState(null);
 
@@ -4428,6 +4427,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
 
   /* Load conversations + profiles on mount */
   useEffect(() => {
