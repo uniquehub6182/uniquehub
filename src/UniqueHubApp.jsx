@@ -1503,7 +1503,7 @@ function LoginPage({ onAuth }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
   const totalClients = CDATA.length;
@@ -1536,38 +1536,89 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
-    if(key==="comunicados") return <div key="com"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3><span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{background:C.card,borderRadius:22,padding:20,border:`1px solid ${C.brd}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><h4 style={{fontSize:17,fontWeight:800,color:C.txt,lineHeight:1.2,flex:1,marginRight:12}}>Bem-vindo ao UniqueHub</h4><span style={{background:C.badge,borderRadius:100,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.mut,whiteSpace:"nowrap",flexShrink:0}}>Agora</span></div><p style={{fontSize:13,color:C.mut,lineHeight:1.6,marginBottom:16}}>Sua plataforma de gestão de marketing 360°. Explore as funcionalidades.</p><button onClick={()=>goSub("news")} style={{width:"100%",background:C.readBtn,border:"none",borderRadius:100,padding:14,fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.readBtnT,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>Ler mais <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div></div>;
+    if(key==="comunicados") {
+      const catColor = (cat) => ({trends:"#8B5CF6",updates:"#3B82F6",tips:"#F59E0B",cases:"#10B981",tools:"#06B6D4"}[cat]||"#8B8F92");
+      const catLabel = (cat) => ({trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta"}[cat]||cat||"Geral");
+      const catGrad = (cat) => ({trends:"135deg,#4C1D95,#7C3AED",updates:"135deg,#1E3A5F,#2563EB",tips:"135deg,#78350F,#D97706",cases:"135deg,#064E3B,#059669",tools:"135deg,#164E63,#0891B2"}[cat]||"135deg,#1F2937,#374151");
+      const newsItems = (articles||[]).slice(0,6);
+      const fallbackCards = [
+        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais.",cat:"trends",date:"Hoje"},
+        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts.",cat:"updates",date:"Ontem"},
+        {id:"f3",title:"Como dobrar engajamento no Stories",summary:"5 técnicas comprovadas para aumentar o alcance orgânico.",cat:"tips",date:"2 dias"},
+      ];
+      const items = newsItems.length > 0 ? newsItems : fallbackCards;
+      return <div key="com">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+          <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
+          <span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+        </div>
+        {/* Featured first card — big */}
+        {items[0] && <div onClick={()=>goSub("news")} style={{borderRadius:22,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:180,background:`linear-gradient(${catGrad(items[0].cat)})`}}>
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)"}}/>
+          <div style={{position:"absolute",top:14,left:14}}>
+            <span style={{background:catColor(items[0].cat),color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel(items[0].cat)}</span>
+          </div>
+          <div style={{position:"absolute",bottom:14,left:14,right:14}}>
+            <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{items[0].title}</p>
+            <p style={{fontSize:11,color:"rgba(255,255,255,0.7)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{items[0].summary||""}</p>
+          </div>
+        </div>}
+        {/* Rest as horizontal scroll */}
+        {items.length > 1 && <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",marginRight:-16,paddingRight:16,paddingBottom:4}}>
+          {items.slice(1).map((a,i)=>(
+            <div key={a.id||i} onClick={()=>goSub("news")} style={{flexShrink:0,width:160,borderRadius:18,overflow:"hidden",cursor:"pointer",position:"relative",height:120,background:`linear-gradient(${catGrad(a.cat)})`}}>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)"}}/>
+              <div style={{position:"absolute",top:8,left:8}}>
+                <span style={{background:catColor(a.cat),color:"#fff",fontSize:8,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel(a.cat)}</span>
+              </div>
+              <div style={{position:"absolute",bottom:8,left:8,right:8}}>
+                <p style={{fontSize:11,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+              </div>
+            </div>
+          ))}
+        </div>}
+      </div>;
+    }
     if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{cfg.actions.map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
     if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥"},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰"},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐"},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳"}].map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
     if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
     if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"} · {c.monthly||"—"}/mês</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
-    if(key==="posts") return <div key="posts">
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
-        <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Posts Recentes</h3>
-        <span onClick={()=>goSub("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
-      </div>
-      <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",marginRight:-24,paddingRight:24}}>
-        {[
-          {img:"https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=300&q=80",client:"Balli Confeitaria",tipo:"Feed",status:"Aprovado",statusColor:"#10B981"},
-          {img:"https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&q=80",client:"Restaurante Sol",tipo:"Story",status:"Revisão",statusColor:"#F59E0B"},
-          {img:"https://images.unsplash.com/photo-1542601906897-ecd58d1cd6a1?w=300&q=80",client:"Studio Fit",tipo:"Reels",status:"Produção",statusColor:"#3B82F6"},
-          {img:"https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300&q=80",client:"Moda Única",tipo:"Carrossel",status:"Aprovado",statusColor:"#10B981"},
-        ].map((p,i)=>(
-          <div key={i} onClick={()=>goSub("content")} style={{flexShrink:0,width:150,borderRadius:18,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
-            <div style={{position:"relative",height:150}}>
-              <img src={p.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.6) 100%)"}}/>
-              <span style={{position:"absolute",top:8,left:8,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"3px 8px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{p.tipo}</span>
-              <span style={{position:"absolute",bottom:8,left:8,right:8,fontSize:11,fontWeight:700,color:"#fff",lineHeight:1.3}}>{p.client}</span>
-            </div>
-            <div style={{padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:p.statusColor,flexShrink:0}}/>
-              <span style={{fontSize:11,color:C.mut,fontWeight:600}}>{p.status}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>;
+    if(key==="posts") {
+      const recentDemands = (demands||[]).slice(0,6);
+      const stageColor = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
+      const stageName = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
+      if(recentDemands.length===0) return null;
+      return <div key="posts">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+          <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Conteúdos em Produção</h3>
+          <span onClick={()=>goSub("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+        </div>
+        <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",marginRight:-16,paddingRight:16,paddingBottom:4}}>
+          {recentDemands.map((d,i)=>{
+            const sc = stageColor[d.stage]||"#8B8F92";
+            const sn = stageName[d.stage]||d.stage;
+            const initials = (d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+            const bgColors = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6"];
+            const bg = bgColors[i % bgColors.length];
+            return (
+              <div key={d.id||i} onClick={()=>goSub("content")} style={{flexShrink:0,width:148,borderRadius:18,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
+                <div style={{position:"relative",height:148,background:`linear-gradient(135deg,${bg}dd,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontSize:36,fontWeight:900,color:"rgba(255,255,255,0.25)",letterSpacing:-2}}>{initials}</span>
+                  <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.55) 100%)"}}/>
+                  <span style={{position:"absolute",top:8,left:8,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"3px 8px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{d.format||d.network||"Post"}</span>
+                  <span style={{position:"absolute",bottom:8,left:8,right:8,fontSize:11,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</span>
+                </div>
+                <div style={{padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{width:6,height:6,borderRadius:"50%",background:sc,flexShrink:0}}/>
+                  <span style={{fontSize:10,color:C.mut,fontWeight:600,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>
+                  <span style={{fontSize:9,color:sc,fontWeight:700}}>{sn}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>;
+    }
     return null;
   };
   const EditorSheet = () => { const [ec,setEc]=useState(JSON.parse(JSON.stringify(cfg))); const toggle=(arr,key)=>{const idx=ec[arr].indexOf(key);if(idx>=0)setEc({...ec,[arr]:ec[arr].filter(x=>x!==key)});else setEc({...ec,[arr]:[...ec[arr],key]});}; const Chip=({on,label,onTap,max})=><button onClick={onTap} disabled={!on&&max} style={{padding:"6px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:max&&!on?"default":"pointer",fontFamily:"inherit",opacity:max&&!on?0.4:1}}>{label}</button>; return <><div onClick={()=>setShowEditor(false)} className="overlay"/><div className="sheet" style={{maxHeight:"85vh",overflowY:"auto",background:isDark?"#1A1A1A":"#fff",color:C.txt}}><div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3><button onClick={()=>{saveCfg(ec);setShowEditor(false);}} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button></div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(WIDGETS).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k)} max={ec.cards.length>=2}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(PILLS).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k)} max={ec.pills.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(ACTIONS).map(([k,v])=><Chip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>toggle("actions",k)} max={ec.actions.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Seções — arraste ou reordene</p>
@@ -7550,11 +7601,12 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   );
 }
 
-function NewsPage({ onBack }) {
+function NewsPage({ onBack, onArticlesLoad }) {
   const [tab, setTab] = useState("all");
   const [selArticle, setSelArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  useEffect(() => { if(onArticlesLoad) onArticlesLoad(articles); }, [articles]);
   const [creating, setCreating] = useState(false);
   const [editingArticle, setEditingArticle] = useState(false);
   const [form, setForm] = useState({});
@@ -9881,6 +9933,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   /* ── Shared demands state loaded from Supabase ── */
   const [sharedDemands, setSharedDemands] = useState([]);
+  const [sharedArticles, setSharedArticles] = useState([]);
   const [demandsLoaded, setDemandsLoaded] = useState(false);
 
   /* ── Notification state ── */
@@ -10092,7 +10145,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content">
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
@@ -10106,7 +10159,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
-        {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
+        {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
