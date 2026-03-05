@@ -10148,11 +10148,23 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
   const [user, setUser] = useState(null);
-  const [dark, setDark] = useState(false);
-  const [themeColor, setThemeColor] = useState("default");
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem("uh_dark") === "1"; } catch { return false; }
+  });
+  const [themeColor, setThemeColor] = useState(() => {
+    try { return localStorage.getItem("uh_theme") || "default"; } catch { return "default"; }
+  });
   const [uiPrefs, setUiPrefs] = useState(() => {
     try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
+  const _setDark = (v) => {
+    setDark(v);
+    try { localStorage.setItem("uh_dark", v ? "1" : "0"); } catch {}
+  };
+  const _setThemeColor = (v) => {
+    setThemeColor(v);
+    try { localStorage.setItem("uh_theme", v); } catch {}
+  };
   const updateUiPrefs = (patch) => {
     setUiPrefs(prev => {
       const next = { ...prev, ...patch };
@@ -10267,7 +10279,7 @@ input,textarea,select{font-size:16px !important}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && <LoginPage onAuth={setUser} />}
-      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} />}
+      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={_setDark} themeColor={themeColor} setThemeColor={_setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} />}
     </>
   );
 }
