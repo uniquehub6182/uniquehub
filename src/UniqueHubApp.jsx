@@ -7937,7 +7937,7 @@ function IdeasPage({ onBack }) {
             id: r.id, supaId: r.id, title: r.title, desc: r.description || "",
             author: r.author || "Matheus", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
             votes: r.votes || 0, status: r.status || "pending",
-            client: r.client_name || "Todos", tags: r.tags || [], comments: [],
+            client: r.client_name || "Todos", tags: r.tags || [], comments: r.comments || [],
           })));
         } else {
           setIdeas([]);
@@ -7967,7 +7967,13 @@ function IdeasPage({ onBack }) {
 
   const addComment = (id) => {
     if (!newComment.trim()) return;
-    setIdeas(p => p.map(i => i.id===id ? {...i, comments:[...i.comments, { by:"Matheus", text:newComment.trim(), date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }]} : i));
+    const comment = { by: user?.name || "Matheus", text: newComment.trim(), date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+    setIdeas(p => p.map(i => {
+      if (i.id !== id) return i;
+      const updated = [...i.comments, comment];
+      if (i.supaId) supaUpdateIdea(i.supaId, { comments: updated });
+      return { ...i, comments: updated };
+    }));
     setNewComment("");
     showToast("Comentário adicionado ✓");
   };
