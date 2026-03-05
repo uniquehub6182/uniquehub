@@ -1040,7 +1040,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, collapsed }) => (
         </button>}
       </div>
     ) : (
-      <div style={{ padding:"20px 20px 22px" }}>
+      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:stats.length?16:0 }}>
           <div>
             <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>{label}</p>
@@ -5219,7 +5219,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bg, paddingTop:"env(safe-area-inset-top, 0px)" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bgCard }}>
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto"}}>
         {ToastEl}
