@@ -4825,49 +4825,51 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             const showAvatar = !isMe && (i === 0 || msgs[i-1]?.sender_id !== m.sender_id);
             const senderName = !isMe && isGroup ? (allProfiles.find(p=>p.id===m.sender_id)?.name||"").split(" ")[0] : null;
             return (
-              <div key={m.id} style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", marginBottom:2 }}>
-                {senderName && <span style={{ fontSize:10, color:B.muted, marginLeft:36, marginBottom:2, fontWeight:600 }}>{senderName}</span>}
-                <div style={{ display:"flex", alignItems:"flex-end", gap:6, flexDirection:isMe?"row-reverse":"row" }}>
+              <div key={m.id} style={{ display:"flex", width:"100%", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2, paddingLeft:isMe?0:0, paddingRight:isMe?0:0 }}>
+                <div style={{ display:"flex", alignItems:"flex-end", gap:6, maxWidth:"78%", flexDirection:isMe?"row-reverse":"row" }}>
                   {!isMe && (
                     <div style={{ width:28, height:28, borderRadius:"50%", background:avBg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity:showAvatar?1:0 }}>
                       <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{convName[0]?.toUpperCase()}</span>
                     </div>
                   )}
-                  <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ maxWidth:"78%", background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.45, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"normal" }}>
-                    {m.file_url ? (
-                      m.file_type?.startsWith("image") ? (
-                        <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", minWidth:0 }}>
+                    {senderName && <span style={{ fontSize:10, color:B.muted, marginBottom:2, fontWeight:600 }}>{senderName}</span>}
+                    <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.5, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"break-word" }}>
+                      {m.file_url ? (
+                        m.file_type?.startsWith("image") ? (
+                          <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
+                        ) : (
+                          <a href={m.file_url} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", background:isMe?"rgba(0,0,0,0.1)":"rgba(0,0,0,0.04)", borderRadius:10, textDecoration:"none", color:isMe?"#0D0D0D":B.text }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span style={{fontSize:12,fontWeight:600}}>{m.file_name||"Arquivo"}</span>
+                          </a>
+                        )
                       ) : (
-                        <a href={m.file_url} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", background:isMe?"rgba(0,0,0,0.1)":"rgba(0,0,0,0.04)", borderRadius:10, textDecoration:"none", color:isMe?"#0D0D0D":B.text }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                          <span style={{fontSize:12,fontWeight:600}}>{m.file_name||"Arquivo"}</span>
-                        </a>
-                      )
-                    ) : (
-                      <>
-                        {m.content}
-                        {m.reactions && Object.keys(m.reactions).length>0 && (
-                          <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
-                            {Object.entries(m.reactions).map(([emoji,users])=>users.length>0&&(
-                              <span key={emoji} style={{ background:"rgba(0,0,0,0.08)", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{emoji} {users.length}</span>
-                            ))}
-                          </div>
-                        )}
-                      </>
+                        <>
+                          {m.content}
+                          {m.reactions && Object.keys(m.reactions).length>0 && (
+                            <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
+                              {Object.entries(m.reactions).map(([emoji,users])=>users.length>0&&(
+                                <span key={emoji} style={{ background:"rgba(0,0,0,0.08)", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{emoji} {users.length}</span>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
+                      <span style={{ fontSize:10, color:B.muted }}>{fmtTime(m.created_at)}</span>
+                      {isMe && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                    {reactMsgId===m.id && (
+                      <div style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
+                        {["👍","❤️","😂","😮","😢","🙏"].map(e=>(
+                          <button key={e} onClick={()=>handleReact(m.id,e)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{e}</button>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
-                <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2, paddingRight:isMe?0:36, justifyContent:isMe?"flex-end":"flex-start" }}>
-                  <span style={{ fontSize:10, color:B.muted }}>{fmtTime(m.created_at)}</span>
-                  {isMe && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                </div>
-                {reactMsgId===m.id && (
-                  <div style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
-                    {["👍","❤️","😂","😮","😢","🙏"].map(e=>(
-                      <button key={e} onClick={()=>handleReact(m.id,e)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{e}</button>
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })}
