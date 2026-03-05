@@ -1690,7 +1690,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       return <div key="posts">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
           <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Conteúdos em Produção</h3>
-          <span onClick={()=>goSub("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+          <span onClick={()=>goTab("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
         </div>
         <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4,marginRight:-16,paddingRight:16}}>
           {recentDemands.map((d,i)=>{
