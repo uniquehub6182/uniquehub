@@ -1537,46 +1537,55 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
     if(key==="comunicados") {
-      const catColor = (cat) => ({trends:"#8B5CF6",updates:"#3B82F6",tips:"#F59E0B",cases:"#10B981",tools:"#06B6D4"}[cat]||"#8B8F92");
-      const catLabel = (cat) => ({trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta"}[cat]||cat||"Geral");
-      const catGrad = (cat) => ({trends:"135deg,#4C1D95,#7C3AED",updates:"135deg,#1E3A5F,#2563EB",tips:"135deg,#78350F,#D97706",cases:"135deg,#064E3B,#059669",tools:"135deg,#164E63,#0891B2"}[cat]||"135deg,#1F2937,#374151");
-      const newsItems = (articles||[]).slice(0,6);
-      const fallbackCards = [
-        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais.",cat:"trends",date:"Hoje"},
-        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts.",cat:"updates",date:"Ontem"},
-        {id:"f3",title:"Como dobrar engajamento no Stories",summary:"5 técnicas comprovadas para aumentar o alcance orgânico.",cat:"tips",date:"2 dias"},
+      const catPhoto = (cat,seed) => {
+        const photos = {
+          trends:["https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&q=80","https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80","https://images.unsplash.com/photo-1655720408254-e786a5b44e98?w=600&q=80"],
+          updates:["https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600&q=80","https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80","https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&q=80"],
+          tips:["https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80","https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80","https://images.unsplash.com/photo-1434626881859-194d67b2b86f?w=600&q=80"],
+          cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80","https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600&q=80","https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&q=80"],
+          tools:["https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=600&q=80","https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&q=80","https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&q=80"],
+          default:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80","https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80"],
+        };
+        const pool = photos[cat]||photos.default;
+        return pool[seed % pool.length];
+      };
+      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2"};
+      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta"};
+      const fallback = [
+        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais e otimizando resultados.",cat:"trends",date:"Hoje"},
+        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts sem crédito.",cat:"updates",date:"Ontem"},
+        {id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para aumentar o alcance orgânico nos Stories e Feed.",cat:"tips",date:"2 dias"},
+        {id:"f4",title:"Case: como triplicamos o ROI de um e-commerce",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases",date:"3 dias"},
       ];
-      const items = newsItems.length > 0 ? newsItems : fallbackCards;
+      const items = ((articles||[]).length>0 ? articles : fallback).slice(0,5);
+      const featured = items[0];
+      const rest = items.slice(1,4);
       return <div key="com">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
           <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
           <span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
         </div>
-        {/* Featured first card — big */}
-        {items[0] && <div onClick={()=>goSub("news")} style={{borderRadius:22,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:180,background:`linear-gradient(${catGrad(items[0].cat)})`}}>
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)"}}/>
-          <div style={{position:"absolute",top:14,left:14}}>
-            <span style={{background:catColor(items[0].cat),color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel(items[0].cat)}</span>
+        {featured && (
+          <div onClick={()=>goSub("news")} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
+            <img src={catPhoto(featured.cat,0)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
+            <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
+            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
+              <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{featured.title}</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,0.75)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{featured.summary||""}</p>
+            </div>
           </div>
-          <div style={{position:"absolute",bottom:14,left:14,right:14}}>
-            <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{items[0].title}</p>
-            <p style={{fontSize:11,color:"rgba(255,255,255,0.7)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{items[0].summary||""}</p>
-          </div>
-        </div>}
-        {/* Rest as horizontal scroll */}
-        {items.length > 1 && <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",marginRight:-16,paddingRight:16,paddingBottom:4}}>
-          {items.slice(1).map((a,i)=>(
-            <div key={a.id||i} onClick={()=>goSub("news")} style={{flexShrink:0,width:160,borderRadius:18,overflow:"hidden",cursor:"pointer",position:"relative",height:120,background:`linear-gradient(${catGrad(a.cat)})`}}>
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)"}}/>
-              <div style={{position:"absolute",top:8,left:8}}>
-                <span style={{background:catColor(a.cat),color:"#fff",fontSize:8,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel(a.cat)}</span>
-              </div>
-              <div style={{position:"absolute",bottom:8,left:8,right:8}}>
-                <p style={{fontSize:11,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
-              </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {rest.map((a,i)=>(
+            <div key={a.id||i} onClick={()=>goSub("news")} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
+              <img src={catPhoto(a.cat,i+1)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
+              <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
+              <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,margin:0,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
             </div>
           ))}
-        </div>}
+        </div>
       </div>;
     }
     if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{cfg.actions.map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
@@ -1584,34 +1593,41 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
     if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"} · {c.monthly||"—"}/mês</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
     if(key==="posts") {
-      const recentDemands = (demands||[]).slice(0,6);
+      const recentDemands = (demands||[]).slice(0,8);
+      if(recentDemands.length===0) return null;
       const stageColor = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
       const stageName = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
-      if(recentDemands.length===0) return null;
+      const bgPalette = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
       return <div key="posts">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
           <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Conteúdos em Produção</h3>
           <span onClick={()=>goSub("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
         </div>
-        <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",marginRight:-16,paddingRight:16,paddingBottom:4}}>
+        <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4,marginRight:-16,paddingRight:16}}>
           {recentDemands.map((d,i)=>{
             const sc = stageColor[d.stage]||"#8B8F92";
             const sn = stageName[d.stage]||d.stage;
+            const bg = bgPalette[i % bgPalette.length];
+            const allFiles = [...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
+            const imgFile = allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
             const initials = (d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-            const bgColors = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6"];
-            const bg = bgColors[i % bgColors.length];
             return (
-              <div key={d.id||i} onClick={()=>goSub("content")} style={{flexShrink:0,width:148,borderRadius:18,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
-                <div style={{position:"relative",height:148,background:`linear-gradient(135deg,${bg}dd,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontSize:36,fontWeight:900,color:"rgba(255,255,255,0.25)",letterSpacing:-2}}>{initials}</span>
-                  <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.55) 100%)"}}/>
-                  <span style={{position:"absolute",top:8,left:8,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"3px 8px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{d.format||d.network||"Post"}</span>
-                  <span style={{position:"absolute",bottom:8,left:8,right:8,fontSize:11,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</span>
+              <div key={d.id||i} onClick={()=>goSub("content")} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
+                <div style={{position:"relative",height:140}}>
+                  {imgFile
+                    ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bg}ee,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <span style={{fontSize:32,fontWeight:900,color:"rgba(255,255,255,0.2)",letterSpacing:-1}}>{initials}</span>
+                      </div>
+                  }
+                  <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 45%,rgba(0,0,0,0.65) 100%)"}}/>
+                  <span style={{position:"absolute",top:7,left:7,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.4}}>{d.format||d.network||"Post"}</span>
+                  <span style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</span>
                 </div>
-                <div style={{padding:"8px 10px",display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:sc,flexShrink:0}}/>
+                <div style={{padding:"7px 9px",display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:sc,flexShrink:0}}/>
                   <span style={{fontSize:10,color:C.mut,fontWeight:600,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>
-                  <span style={{fontSize:9,color:sc,fontWeight:700}}>{sn}</span>
+                  <span style={{fontSize:9,color:sc,fontWeight:700,flexShrink:0}}>{sn}</span>
                 </div>
               </div>
             );
