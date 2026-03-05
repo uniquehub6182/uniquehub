@@ -5789,8 +5789,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
       { k:"v2", name:"UniqueHub Dark", desc:"Header branco, fundo escuro", emoji:"🖤", dark:true, theme:"default",
         pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:false,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#0D0D0D",customBgCard:"#1A1A1A",customText:"#FFFFFF",customMuted:"rgba(255,255,255,0.35)",customBorder:"#2A2A2A",iconColor:"#C6F135",blockBg:"rgba(198,241,53,0.04)",navActiveColor:"#0D0D0D",navInactiveColor:"rgba(255,255,255,0.30)" }},
-      { k:"v2clean", name:"UniqueHub Clean", desc:"Header escuro, fundo claro", emoji:"🤍", dark:false, theme:"default",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_light",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#F5F5F5",customBgCard:"#FFFFFF",customText:"#0D0D0D",customMuted:"#888888",customBorder:"rgba(0,0,0,0.06)",iconColor:"#08FB9D",blockBg:"rgba(8,251,157,0.04)",navActiveColor:null,navInactiveColor:"rgba(255,255,255,0.40)" }},
     ];
 
     const BG_TEMPLATES = [
@@ -5919,6 +5917,43 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               const cur = UP.navInactiveColor || "rgba(255,255,255,0.45)";
               const isActive = c === null ? !UP.navInactiveColor : UP.navInactiveColor === c;
               return <div key={i} onClick={() => setP("navInactiveColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||"rgba(255,255,255,0.45)", cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}` }} />;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Fundo da barra</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#192126","#0D0D0D","#1A1A2E","#1C1C1C","#2D1B69","#FFFFFF","#F5F5F5","#E8F5E9"].map((c,i) => {
+              const isActive = c === null ? !UP.navBgColor : UP.navBgColor === c;
+              return <div key={i} onClick={() => setP("navBgColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||"auto", cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <span style={{ fontSize:9, color:B.muted, position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>AUTO</span>}
+                {c===null && <div style={{ position:"absolute", inset:2, borderRadius:8, background:`linear-gradient(135deg, #192126 50%, #fff 50%)` }} />}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor do texto/label</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#FFFFFF","#BBF246","#C6F135","#60A5FA","#F87171","#F59E0B","#0D0D0D","rgba(255,255,255,0.7)"].map((c,i) => {
+              const isActive = c === null ? !UP.navTextColor : UP.navTextColor === c;
+              return <div key={i} onClick={() => setP("navTextColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||(dark?"#fff":"#192126"), cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <div style={{ position:"absolute", inset:2, borderRadius:8, background:`linear-gradient(135deg, #192126 50%, #fff 50%)` }} />}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Fundo da bolinha ativa</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#BBF246","#C6F135","#08FB9D","#60A5FA","#8B5CF6","#F87171","#EC4899","#FFFFFF","#0D0D0D"].map((c,i) => {
+              const isActive = c === null ? !UP.navCircleBg : UP.navCircleBg === c;
+              return <div key={i} onClick={() => setP("navCircleBg",c)} style={{ width:32, height:32, borderRadius:10, background:c||accentColor, cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <span style={{ fontSize:7, color:c===null?"#0D0D0D":B.muted, position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>AUTO</span>}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Ícone da bolinha ativa</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#0D0D0D","#192126","#FFFFFF","#BBF246","#C6F135","#60A5FA","#8B5CF6","#F87171"].map((c,i) => {
+              const isActive = c === null ? !UP.navCircleIcon : UP.navCircleIcon === c;
+              return <div key={i} onClick={() => setP("navCircleIcon",c)} style={{ width:32, height:32, borderRadius:10, background:c||(dark?"#0D0D0D":"#fff"), cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <div style={{ position:"absolute", inset:2, borderRadius:8, background:`linear-gradient(135deg, #0D0D0D 50%, #fff 50%)` }} />}
+              </div>;
             })}
           </div>
           <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho</p>
@@ -10410,7 +10445,7 @@ p,span,div,h1,h2,h3,h4{color:inherit}
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
 .overlay{background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"}!important}
 .txtbtn{color:${B.muted}!important}
-.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)"):(dark?"#1C1C1C":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;border:1px solid ${dark?"#2A2A2A":"rgba(255,255,255,0.08)"}!important;width:calc(100% - 40px)!important;max-width:${uiPrefs.navWidth||340}px!important;padding:${({sm:"6px 6px",md:"8px 8px",lg:"10px 10px"})[uiPrefs.navSize||"md"]||"8px 8px"}!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
+.bnav{background:${uiPrefs.navBgColor||(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)"):(dark?"#1C1C1C":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;border:1px solid ${dark?"#2A2A2A":"rgba(255,255,255,0.08)"}!important;width:calc(100% - 40px)!important;max-width:${uiPrefs.navWidth||340}px!important;padding:${({sm:"6px 6px",md:"8px 8px",lg:"10px 10px"})[uiPrefs.navSize||"md"]||"8px 8px"}!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
 .bnav .bt{font-size:inherit!important}
 .card,.tinput,.pill,.htab,.grid-btn,.tag{transition:all var(--uh-anim) ease!important}
 .pg svg:not(.bnav svg){stroke-width:var(--uh-icon-w)}
@@ -10480,16 +10515,19 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
           const navSzMap = { sm:{circle:44,inactive:28,h:40,lift:-18}, md:{circle:54,inactive:36,h:48,lift:-22}, lg:{circle:60,inactive:40,h:54,lift:-26} };
           const sz = navSzMap[uiPrefs.navSize] || navSzMap.md;
           const inactiveColor = uiPrefs.navInactiveColor || (dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)");
+          const circleBg = uiPrefs.navCircleBg || accentColor;
+          const circleIcon = uiPrefs.navCircleIcon || (dark ? "#0D0D0D" : "#fff");
+          const navTextColor = uiPrefs.navTextColor || accentColor;
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
             }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
-              <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none" }}>
-                {t.i(a ? (dark?"#0D0D0D":"#fff") : inactiveColor)}
+              <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?circleBg:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${circleBg}50`:"none" }}>
+                {t.i(a ? circleIcon : inactiveColor)}
               </div>
-              {a && uiPrefs.navLabels!==false && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:accentColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
+              {a && uiPrefs.navLabels!==false && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:navTextColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
               {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
               {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
             </button>
