@@ -4778,7 +4778,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
     const avBg = bgPal[convName.charCodeAt(0)%bgPal.length];
     return (
-      <div style={{ position:"fixed", inset:0, zIndex:100, display:"flex", flexDirection:"column", background:B.bg }}>
+      <div style={{ position:"fixed", inset:0, zIndex:100, display:"flex", flexDirection:"column", background:B.bgCard, overflow:"hidden" }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
@@ -4814,7 +4814,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* MESSAGES */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4 }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
           {pinnedOpen && msgs.filter(m=>m.pinned).length>0 && (
             <div style={{ background:`${B.accent}10`, border:`1px solid ${B.accent}30`, borderRadius:12, padding:"8px 12px", marginBottom:8, fontSize:12, color:B.accent, fontWeight:600 }}>
               📌 {msgs.find(m=>m.pinned)?.content}
@@ -4833,7 +4833,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{convName[0]?.toUpperCase()}</span>
                     </div>
                   )}
-                  <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ maxWidth:"72%", background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.45, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", wordBreak:"break-word" }}>
+                  <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ maxWidth:"78%", minWidth:60, background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.45, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", wordBreak:"break-word" }}>
                     {m.file_url ? (
                       m.file_type?.startsWith("image") ? (
                         <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
@@ -4912,7 +4912,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </>
           )}
         </div>
-        <div style={{ position:"absolute", bottom:"-200px", left:0, right:0, height:200, background:B.bgCard }}/>
       </div>
     );
   }
