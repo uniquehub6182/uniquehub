@@ -1729,52 +1729,54 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   React.useEffect(() => { if (blockOrder.length < 7 && isAdmin) setBlockOrder(DEFAULT_ORDER2); else if (!isAdmin && blockOrder.includes("financial")) setBlockOrder(prev => prev.filter(k => k !== "financial")); }, []);
 
   return (
-    <div className="pg" style={{ paddingTop: "52px" }}>
-      {/* ── HEADER v2 ── */}
-      <div style={{ marginBottom:16 }}>
-        {/* Top row: avatar + greeting + actions */}
+    <div className="pg" style={{ paddingTop:0 }}>
+      {/* ── WHITE HEADER CARD (rounded bottom corners) ── */}
+      <div style={{ background:"#fff", borderRadius:"0 0 32px 32px", padding:"52px 20px 24px", marginLeft:-14, marginRight:-14, marginTop:-14, marginBottom:16, boxShadow:"0 12px 40px rgba(0,0,0,0.15)" }}>
+        {/* Greeting row */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <div style={{ position:"relative" }}>
-              <Av src={user?.photo} name={user?.name} sz={52} fs={20} />
-              <div style={{ position:"absolute", bottom:0, right:0, width:14, height:14, borderRadius:7, background:"#08FB9D", border:`2.5px solid ${B.bg||"#F0F0EC"}` }} />
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:50, height:50, borderRadius:25, background:"linear-gradient(135deg,#08FB9D,#C6F135)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19, fontWeight:900, color:"#0D0D0D", overflow:"hidden", flexShrink:0 }}>
+              {user?.photo ? <img src={user.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : (user?.name?.charAt(0).toUpperCase() || "U")}
             </div>
             <div>
-              <p style={{ fontSize:13, color:B.muted, fontWeight:500, lineHeight:1 }}>{greeting} 👋</p>
-              <h2 style={{ fontSize:22, fontWeight:800, letterSpacing:"-0.5px", color:B.text, marginTop:3 }}>{user?.nick || user?.name || "Usuário"}</h2>
+              <p style={{ fontSize:20, fontWeight:800, color:"#0D0D0D", letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</p>
+              <p style={{ fontSize:12, color:"#999", fontWeight:500, marginTop:2 }}>Unique Marketing 360</p>
             </div>
           </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={() => goSub("notifs")} className="ib" style={{ width:42, height:42, borderRadius:14, background:B.bgCard||"#fff", boxShadow:"0 1px 4px rgba(0,0,0,0.06)", position:"relative", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={() => goTab("chat")} style={{ width:42, height:42, borderRadius:21, background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D" }}>{IC.chat("#0D0D0D")}</button>
+            <button onClick={() => goSub("notifs")} style={{ width:42, height:42, borderRadius:21, background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D", position:"relative" }}>
               {IC.bell}
-              <Badge n={notifCount || 0} style={{ position:"absolute", top:-3, right:-3 }} />
-            </button>
-            <button onClick={() => goSub("settings")} className="ib" style={{ width:42, height:42, borderRadius:14, background:B.bgCard||"#fff", boxShadow:"0 1px 4px rgba(0,0,0,0.06)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              {IC.settings(B.muted)}
+              {(notifCount > 0) && <span style={{ position:"absolute", top:8, right:8, width:8, height:8, borderRadius:4, background:"#FF3B30", border:"2px solid #fff" }} />}
             </button>
           </div>
         </div>
 
-        {/* Date + role card */}
-        {(() => {
-          const diasSemana = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
-          const meses = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-          const d = new Date();
-          return (
-            <Card delay={0.05} style={{ padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:34, height:34, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </div>
-                <div>
-                  <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{diasSemana[d.getDay()]}, {d.getDate()} {meses[d.getMonth()]}</p>
-                  <p style={{ fontSize:10, color:B.muted }}>{d.getFullYear()}</p>
-                </div>
-              </div>
-              <span style={{ fontSize:10, fontWeight:700, color:B.accent, background:`${B.accent}10`, padding:"5px 12px", borderRadius:8 }}>{user?.role || "Colaborador"}</span>
-            </Card>
-          );
-        })()}
+        {/* Search bar */}
+        <div onClick={() => goSub("search")} style={{ background:"#F3F3F3", borderRadius:14, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", cursor:"pointer", marginBottom:16 }}>
+          {IC.search("#BBB")}
+          <span style={{ fontSize:14, color:"#BBB", fontWeight:500, fontFamily:"inherit" }}>Buscar...</span>
+        </div>
+
+        {/* Quick cards (lime green) */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+          <div onClick={() => goSub("financial")} style={{ background:"#C6F135", borderRadius:20, padding:"10px 12px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:72 }}>
+            <p style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Investimento</p>
+            <p style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</p>
+            <p style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Tráfego / mês</p>
+            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:13, background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+          <div onClick={() => goTab("content")} style={{ background:"#C6F135", borderRadius:20, padding:"10px 12px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:72 }}>
+            <p style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Aprovações</p>
+            <p style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</p>
+            <p style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Aguardando você</p>
+            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:13, background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Edit dashboard toggle */}
@@ -5622,8 +5624,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const PRESETS = [
       { k:"default", name:"UniqueHub", desc:"O visual padrão do app", emoji:"💚", dark:false, theme:"default",
         pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
-      { k:"v2", name:"UniqueHub v2", desc:"Moderno, clean, premium", emoji:"⚡", dark:false, theme:"default",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_light",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#F0F0EC",customBgCard:"#FFFFFF",customText:"#0D0D0D",customMuted:"#888888",customBorder:"rgba(0,0,0,0.06)",iconColor:"#08FB9D",blockBg:"rgba(8,251,157,0.04)",navActiveColor:"#0D0D0D",navInactiveColor:"rgba(255,255,255,0.50)" }},
+      { k:"v2", name:"UniqueHub v2", desc:"Dark, lime green, premium", emoji:"⚡", dark:true, theme:"default",
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:false,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#0D0D0D",customBgCard:"#1A1A1A",customText:"#FFFFFF",customMuted:"rgba(255,255,255,0.35)",customBorder:"#2A2A2A",iconColor:"#C6F135",blockBg:"rgba(198,241,53,0.04)",navActiveColor:"#0D0D0D",navInactiveColor:"rgba(255,255,255,0.30)" }},
     ];
 
     const BG_TEMPLATES = [
