@@ -2819,8 +2819,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         </Card>
         <Card style={{ marginTop:10 }}>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Selecionar arquivo</label>
-          <div style={{ border:`2px dashed ${fileForm.file ? B.green : B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file ? `${B.green}06` : `${B.accent}04`, cursor:"pointer", position:"relative" }} onClick={() => document.getElementById("client-file-input")?.click()}>
-            <input id="client-file-input" type="file" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", opacity:0, cursor:"pointer" }} onChange={e => {
+          <label htmlFor="client-file-input" style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file?`${B.green}06`:`${B.accent}04`, cursor:"pointer" }}>
+            <input id="client-file-input" type="file" style={{ display:"none" }} onChange={e => {
               const f = e.target.files?.[0];
               if (f) {
                 setFileForm(p => ({ ...p, file: f, name: p.name || f.name }));
@@ -2828,14 +2828,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               }
             }} />
             {fileForm.file ? <>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polyline points="20 6 9 17 4 12"/></svg>
               <p style={{ fontSize:13, fontWeight:700, color:B.green }}>{fileForm.file.name}</p>
               <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{(fileForm.file.size / (1024 * 1024)).toFixed(1)} MB</p>
             </> : <>
-              <p style={{ fontSize:24, marginBottom:4 }}>📁</p>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Toque para selecionar</p>
               <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, documentos (até 100MB)</p>
             </>}
-          </div>
+          </label>
         </Card>
         <button onClick={addFile} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>{fileForm.file ? "Enviar Arquivo" : "Adicionar Arquivo"}</button>
       </div>
@@ -2920,8 +2921,11 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Plano</label>
             <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-              {["Traction","Growth 360","Partner"].map(p=>(
-                <button key={p} onClick={()=>updateClient(sel.id,{plan:p})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.plan===p?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel.plan===p?`${B.accent}15`:B.bgCard, color:sel.plan===p?B.accent:B.muted }}>{p}</button>
+              {[{k:"Traction",p:"R$ 1.480"},{k:"Growth 360",p:"R$ 2.480"},{k:"Partner",p:"R$ 4.480"}].map(({k,p})=>(
+                <button key={k} onClick={()=>updateClient(sel.id,{plan:k,monthly:p})} style={{ flex:1, padding:"8px 4px", borderRadius:10, cursor:"pointer", fontFamily:"inherit", textAlign:"center", border:sel.plan===k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel.plan===k?`${B.accent}15`:B.bgCard, color:sel.plan===k?B.accent:B.muted }}>
+                  <span style={{ display:"block", fontSize:11, fontWeight:700 }}>{k}</span>
+                  <span style={{ display:"block", fontSize:9, opacity:0.8, marginTop:1 }}>{p}/mês</span>
+                </button>
               ))}
             </div>
 
@@ -3255,6 +3259,10 @@ function AcademyPage({ onBack }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
+  // Lesson builder state
+  const [addingLesson, setAddingLesson] = useState(false);
+  const [editLessonIdx, setEditLessonIdx] = useState(null);
+  const [lessonForm, setLessonForm] = useState({});
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
@@ -3269,6 +3277,30 @@ function AcademyPage({ onBack }) {
     reader.readAsDataURL(file);
   };
 
+  const lessons = form.lessons || [];
+
+  const saveLesson = () => {
+    if (!lessonForm.title?.trim()) return showToast("Informe o título da aula");
+    const lesson = { id: editLessonIdx !== null ? lessons[editLessonIdx]?.id : Date.now(), title: lessonForm.title.trim(), videoUrl: lessonForm.videoUrl || "", duration: lessonForm.duration || "", desc: lessonForm.desc || "" };
+    if (editLessonIdx !== null) {
+      const updated = lessons.map((l, i) => i === editLessonIdx ? lesson : l);
+      setForm(p => ({ ...p, lessons: updated }));
+    } else {
+      setForm(p => ({ ...p, lessons: [...(p.lessons || []), lesson] }));
+    }
+    setAddingLesson(false); setEditLessonIdx(null); setLessonForm({});
+  };
+
+  const removeLesson = (idx) => { setForm(p => ({ ...p, lessons: (p.lessons || []).filter((_, i) => i !== idx) })); };
+
+  const moveLesson = (idx, dir) => {
+    const ls = [...lessons];
+    const to = idx + dir;
+    if (to < 0 || to >= ls.length) return;
+    [ls[idx], ls[to]] = [ls[to], ls[idx]];
+    setForm(p => ({ ...p, lessons: ls }));
+  };
+
   const saveCourse = () => {
     if (!form.title?.trim()) return showToast("Informe o título do curso");
     if (editing !== null) {
@@ -3276,11 +3308,11 @@ function AcademyPage({ onBack }) {
       saveCourses(updated);
       setEditing(null);
     } else {
-      const nc = { id: Date.now(), title: form.title.trim(), category: form.category || "Outro", desc: form.desc || "", thumb: form.thumb || null, videoUrl: form.videoUrl || "", lessons: form.lessons || [], createdAt: new Date().toLocaleDateString("pt-BR") };
+      const nc = { id: Date.now(), title: form.title.trim(), category: form.category || "Outro", desc: form.desc || "", thumb: form.thumb || null, lessons: form.lessons || [], createdAt: new Date().toLocaleDateString("pt-BR") };
       saveCourses([nc, ...courses]);
       setCreating(false);
     }
-    setForm({});
+    setForm({}); setAddingLesson(false); setEditLessonIdx(null); setLessonForm({});
     showToast(editing !== null ? "Curso atualizado ✓" : "Curso criado ✓");
   };
 
@@ -3291,9 +3323,49 @@ function AcademyPage({ onBack }) {
     showToast("Curso excluído");
   };
 
+  const getYTEmbed = (url) => {
+    if (!url) return null;
+    const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}`;
+    const vm = url.match(/vimeo\.com\/(\d+)/);
+    if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+    return null;
+  };
+
+  /* ── LESSON FORM ── */
+  if (addingLesson || editLessonIdx !== null) return (
+    <div className="pg">{ToastEl}
+      <Head title={editLessonIdx !== null ? "Editar Aula" : "Nova Aula"} onBack={() => { setAddingLesson(false); setEditLessonIdx(null); setLessonForm({}); }} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Título da aula *</label>
+        <input value={lessonForm.title||""} onChange={e=>setLessonForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Introdução ao Google Ads" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Duração</label>
+        <input value={lessonForm.duration||""} onChange={e=>setLessonForm(p=>({...p,duration:e.target.value}))} placeholder="Ex: 12 min" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição / Ementa</label>
+        <textarea value={lessonForm.desc||""} onChange={e=>setLessonForm(p=>({...p,desc:e.target.value}))} placeholder="O que será abordado nesta aula..." className="tinput" style={{ minHeight:70, resize:"vertical", marginBottom:0 }} />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Link do vídeo</label>
+        <input value={lessonForm.videoUrl||""} onChange={e=>setLessonForm(p=>({...p,videoUrl:e.target.value}))} placeholder="YouTube, Vimeo, Google Drive..." className="tinput" style={{ marginBottom:8 }} />
+        <p style={{ fontSize:10, color:B.muted }}>Cole o link do YouTube, Vimeo ou qualquer URL de vídeo</p>
+        {lessonForm.videoUrl && getYTEmbed(lessonForm.videoUrl) && (
+          <div style={{ marginTop:10, borderRadius:10, overflow:"hidden", background:B.dark }}>
+            <div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}>
+              <iframe src={getYTEmbed(lessonForm.videoUrl)} title="preview" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media" allowFullScreen />
+            </div>
+          </div>
+        )}
+      </Card>
+      <button onClick={saveLesson} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>
+        {editLessonIdx !== null ? "Salvar Aula" : "Adicionar Aula"}
+      </button>
+    </div>
+  );
+
+  /* ── COURSE FORM (create/edit) ── */
   const courseForm = (
     <div className="pg">{ToastEl}
-      <Head title={editing !== null ? "Editar Curso" : "Novo Curso"} onBack={() => { setCreating(false); setEditing(null); setForm({}); }} />
+      <Head title={editing !== null ? "Editar Curso" : "Novo Curso"} onBack={() => { setCreating(false); setEditing(null); setForm({}); setAddingLesson(false); setEditLessonIdx(null); setLessonForm({}); }} />
       <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
         <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Google Ads — Avançado" className="tinput" style={{ marginBottom:12 }} />
@@ -3314,14 +3386,52 @@ function AcademyPage({ onBack }) {
         </div>
         {form.thumb && <button onClick={()=>setForm(p=>({...p,thumb:null}))} style={{ marginTop:8, fontSize:11, color:B.red, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit" }}>Remover foto</button>}
       </Card>
-      <Card style={{ marginBottom:8 }}>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Link do vídeo (YouTube / Vimeo)</label>
-        <input value={form.videoUrl||""} onChange={e=>setForm(p=>({...p,videoUrl:e.target.value}))} placeholder="https://youtube.com/watch?v=..." className="tinput" />
-      </Card>
-      <Card style={{ marginBottom:8 }}>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Aulas / Tópicos (uma por linha)</label>
-        <textarea value={(form.lessons||[]).join("\n")} onChange={e=>setForm(p=>({...p,lessons:e.target.value.split("\n").filter(l=>l.trim())}))} placeholder={"Introdução ao curso\nMódulo 1: Conceitos básicos\nMódulo 2: Prática\nAvaliação final"} className="tinput" style={{ minHeight:80, resize:"vertical" }} />
-      </Card>
+
+      {/* ── LESSONS BUILDER ── */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+        <p style={{ fontSize:13, fontWeight:700 }}>Aulas <span style={{ fontSize:11, color:B.muted, fontWeight:400 }}>({lessons.length})</span></p>
+        <button onClick={()=>{ setAddingLesson(true); setLessonForm({}); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>
+          {IC.plus} Adicionar Aula
+        </button>
+      </div>
+
+      {lessons.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:20, border:`2px dashed ${B.border}`, background:"transparent", marginBottom:8 }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <p style={{ fontSize:12, color:B.muted }}>Nenhuma aula adicionada</p>
+          <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Adicione aulas com título, descrição e link de vídeo</p>
+        </Card>
+      ) : lessons.map((lesson, i) => (
+        <Card key={lesson.id||i} style={{ marginBottom:6, borderLeft:`3px solid ${B.accent}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:26, height:26, borderRadius:13, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <span style={{ fontSize:10, fontWeight:800, color:B.accent }}>{i+1}</span>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lesson.title}</p>
+              <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                {lesson.duration && <span style={{ fontSize:10, color:B.muted }}>{lesson.duration}</span>}
+                {lesson.videoUrl && <span style={{ fontSize:10, color:B.blue, display:"flex", alignItems:"center", gap:3 }}><svg width="9" height="9" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg>Vídeo</span>}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+              <button onClick={()=>moveLesson(i,-1)} disabled={i===0} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:i===0?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===0?0.3:1 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
+              <button onClick={()=>moveLesson(i,1)} disabled={i===lessons.length-1} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:i===lessons.length-1?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===lessons.length-1?0.3:1 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <button onClick={()=>{ setEditLessonIdx(i); setLessonForm({title:lesson.title,videoUrl:lesson.videoUrl||"",duration:lesson.duration||"",desc:lesson.desc||""}); }} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button onClick={()=>removeLesson(i)} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </Card>
+      ))}
+
       <button onClick={saveCourse} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>{editing !== null ? "Salvar Alterações" : "Criar Curso"}</button>
     </div>
   );
@@ -3333,17 +3443,56 @@ function AcademyPage({ onBack }) {
     const course = courses[selCourse];
     if (!course) { setSelCourse(null); return null; }
     const c = CAT_COLORS[course.category] || B.accent;
-    const getYTEmbed = (url) => {
-      if (!url) return null;
-      const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-      return m ? `https://www.youtube.com/embed/${m[1]}` : null;
-    };
-    const embed = getYTEmbed(course.videoUrl);
+    const [selLesson, setSelLesson] = useState(null);
+
+    if (selLesson !== null) {
+      const lesson = (course.lessons||[])[selLesson];
+      if (!lesson) { setSelLesson(null); return null; }
+      const embed = getYTEmbed(lesson.videoUrl);
+      return (
+        <div className="pg">{ToastEl}
+          <Head title="" onBack={()=>setSelLesson(null)} />
+          <Card style={{ marginBottom:10, borderLeft:`4px solid ${c}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+              <div style={{ width:28, height:28, borderRadius:14, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <span style={{ fontSize:11, fontWeight:800, color:c }}>{selLesson+1}</span>
+              </div>
+              <h3 style={{ fontSize:16, fontWeight:800 }}>{lesson.title}</h3>
+            </div>
+            {lesson.duration && <p style={{ fontSize:11, color:B.muted, marginLeft:36 }}>{lesson.duration}</p>}
+            {lesson.desc && <p style={{ fontSize:13, color:B.text, lineHeight:1.6, marginTop:8 }}>{lesson.desc}</p>}
+          </Card>
+          {embed ? (
+            <Card style={{ padding:0, overflow:"hidden", borderRadius:12, marginBottom:10 }}>
+              <div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}>
+                <iframe src={embed} title={lesson.title} style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              </div>
+            </Card>
+          ) : lesson.videoUrl ? (
+            <Card style={{ marginBottom:10 }}>
+              <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, fontWeight:600, color:B.blue, textDecoration:"none" }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                Assistir vídeo
+              </a>
+            </Card>
+          ) : (
+            <Card style={{ marginBottom:10, textAlign:"center", padding:20 }}>
+              <p style={{ fontSize:12, color:B.muted }}>Sem vídeo vinculado a esta aula</p>
+            </Card>
+          )}
+          <div style={{ display:"flex", gap:8, marginTop:8 }}>
+            {selLesson > 0 && <button onClick={()=>setSelLesson(selLesson-1)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text }}>← Anterior</button>}
+            {selLesson < (course.lessons||[]).length-1 && <button onClick={()=>setSelLesson(selLesson+1)} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Próxima →</button>}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="pg">{ToastEl}
         <Head title="" onBack={()=>setSelCourse(null)} right={
           <div style={{ display:"flex", gap:6 }}>
-            <button onClick={()=>{ setForm({ title:course.title, category:course.category, desc:course.desc, thumb:course.thumb, videoUrl:course.videoUrl, lessons:course.lessons||[] }); setEditing(selCourse); setSelCourse(null); }} className="ib" style={{ width:34, height:34 }}>
+            <button onClick={()=>{ setForm({ title:course.title, category:course.category, desc:course.desc, thumb:course.thumb, lessons:course.lessons||[] }); setEditing(selCourse); setSelCourse(null); }} className="ib" style={{ width:34, height:34 }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
             <button onClick={()=>deleteCourse(selCourse)} className="ib" style={{ width:34, height:34, color:B.red }}>
@@ -3356,21 +3505,36 @@ function AcademyPage({ onBack }) {
           <Tag color={c} style={{ marginBottom:8 }}>{course.category}</Tag>
           <h2 style={{ fontSize:18, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{course.title}</h2>
           {course.desc && <p style={{ fontSize:13, lineHeight:1.6, color:B.text }}>{course.desc}</p>}
-          <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>Criado em {course.createdAt}</p>
+          <div style={{ display:"flex", gap:10, marginTop:10 }}>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:800, color:B.accent }}>{(course.lessons||[]).length}</p><p style={{ fontSize:9, color:B.muted }}>Aulas</p></div>
+            {(course.lessons||[]).filter(l=>l.videoUrl).length > 0 && <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:800, color:B.blue }}>{(course.lessons||[]).filter(l=>l.videoUrl).length}</p><p style={{ fontSize:9, color:B.muted }}>Com vídeo</p></div>}
+          </div>
         </Card>
-        {embed && <Card style={{ marginBottom:10, padding:0, overflow:"hidden", borderRadius:12 }}><div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}><iframe src={embed} title="video" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div></Card>}
-        {course.videoUrl && !embed && <Card style={{ marginBottom:10 }}><a href={course.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:600, color:B.blue, textDecoration:"none" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Assistir vídeo</a></Card>}
-        {course.lessons?.length > 0 && <>
-          <p className="sl" style={{ marginBottom:8 }}>Aulas ({course.lessons.length})</p>
-          {course.lessons.map((l, i) => (
-            <Card key={i} delay={i*0.03} style={{ marginTop:i?6:0 }}>
+        {(course.lessons||[]).length > 0 ? <>
+          <p className="sl" style={{ marginBottom:8 }}>Aulas do curso</p>
+          {(course.lessons||[]).map((lesson, i) => (
+            <Card key={lesson.id||i} delay={i*0.03} style={{ marginTop:i?6:0, cursor:"pointer" }} onClick={()=>setSelLesson(i)}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:28, height:28, borderRadius:14, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:11, fontWeight:800, color:c }}>{i+1}</span></div>
-                <p style={{ fontSize:13, fontWeight:500 }}>{l}</p>
+                <div style={{ width:36, height:36, borderRadius:12, background:`${c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <span style={{ fontSize:13, fontWeight:800, color:c }}>{i+1}</span>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{lesson.title}</p>
+                  <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                    {lesson.duration && <span style={{ fontSize:10, color:B.muted }}>{lesson.duration}</span>}
+                    {lesson.videoUrl && <span style={{ fontSize:10, color:B.blue, display:"flex", alignItems:"center", gap:3 }}><svg width="9" height="9" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg>Vídeo</span>}
+                    {lesson.desc && <span style={{ fontSize:10, color:B.muted }}>+ descrição</span>}
+                  </div>
+                </div>
+                {IC.chev()}
               </div>
             </Card>
           ))}
-        </>}
+        </> : (
+          <Card style={{ textAlign:"center", padding:20 }}>
+            <p style={{ fontSize:12, color:B.muted }}>Nenhuma aula cadastrada neste curso</p>
+          </Card>
+        )}
       </div>
     );
   }
@@ -3619,7 +3783,10 @@ function FinancialPage({ onBack, clients: propClients }) {
           <FinField label="Chave PIX" value={fc.pixKey} onChange={v => upd("pixKey", v)} placeholder={fc.pixType==="cnpj"?"00.000.000/0001-00":fc.pixType==="email"?"email@agencia.com.br":fc.pixType==="phone"?"(24) 99999-9999":"chave"} mono />
         </Card>
         <Card style={{ background:`${B.green}06`, border:`1px solid ${B.green}20` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:18 }}>🔒</span><p style={{ fontSize:11, color:B.green, lineHeight:1.5 }}>Estes dados ficam armazenados de forma segura e são usados apenas para gerar faturas e boletos para seus clientes.</p></div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <p style={{ fontSize:11, color:B.green, lineHeight:1.5 }}>Estes dados ficam armazenados de forma segura e são usados apenas para gerar faturas e boletos para seus clientes.</p>
+          </div>
         </Card>
       </>}
 
@@ -7202,19 +7369,19 @@ function TeamPage({ onBack, user, onTeamChange }) {
   const memberFormJSX = (isEdit) => (
     <Card>
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome *</label>
-      <input value={form.name||""} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Nome completo" className="tinput" style={{ marginBottom:12 }} />
+      <input value={form.name ?? (isEdit ? sel?.name ?? "" : "")} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Nome completo" className="tinput" style={{ marginBottom:12 }} />
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Cargo</label>
       <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
-        {ROLES.map(r=>( <button key={r} onClick={()=>setForm(p=>({...p,role:r}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.role||(isEdit?sel?.role:""))===r?B.accent:B.border}`, background:(form.role||(isEdit?sel?.role:""))===r?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{r}</button> ))}
+        {ROLES.map(r=>( <button key={r} onClick={()=>setForm(p=>({...p,role:r}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.role ?? (isEdit?sel?.role:""))===r?B.accent:B.border}`, background:(form.role ?? (isEdit?sel?.role:""))===r?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{r}</button> ))}
       </div>
       <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail *</label>
-      <input value={form.email||""} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="email@uniquemkt.com.br" className="tinput" style={{ marginBottom:12 }} />
+      <input value={form.email ?? (isEdit ? sel?.email ?? "" : "")} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="email@uniquemkt.com.br" className="tinput" style={{ marginBottom:12 }} />
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
-      <input value={form.phone||""} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="(24) 99999-0000" className="tinput" style={{ marginBottom:12 }} />
+      <input value={form.phone ?? (isEdit ? sel?.phone ?? "" : "")} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="(24) 99999-0000" className="tinput" style={{ marginBottom:12 }} />
       {isEdit && <><label className="sl" style={{ display:"block", marginBottom:4 }}>Na equipe desde</label>
-      <input value={form.since||""} onChange={e=>setForm(p=>({...p,since:e.target.value}))} placeholder="01/2023" className="tinput" style={{ marginBottom:12 }} /></>}
+      <input value={form.since ?? (isEdit ? sel?.since ?? "" : "")} onChange={e=>setForm(p=>({...p,since:e.target.value}))} placeholder="01/2023" className="tinput" style={{ marginBottom:12 }} /></>}
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Habilidades (separadas por vírgula)</label>
-      <input value={form.skills||""} onChange={e=>setForm(p=>({...p,skills:e.target.value}))} placeholder="Design, Copywriting, Tráfego" className="tinput" />
+      <input value={form.skills ?? (isEdit ? (sel?.skills||[]).join(", ") : "")} onChange={e=>setForm(p=>({...p,skills:e.target.value}))} placeholder="Design, Copywriting, Tráfego" className="tinput" />
     </Card>
   );
 
@@ -7734,12 +7901,15 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   );
 }
 
-function LibraryPage({ onBack, clients: propClients }) {
+function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
   const CDATA = propClients || CLIENTS_DATA_INIT;
   const [filterClient, setFilterClient] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [search, setSearch] = useState("");
   const [viewFile, setViewFile] = useState(null);
+  const [addingFile, setAddingFile] = useState(false);
+  const [fileForm, setFileForm] = useState({});
+  const [uploading, setUploading] = useState(false);
   const { showToast, ToastEl } = useToast();
 
   const LIB_CATS = [
@@ -7913,6 +8083,86 @@ function LibraryPage({ onBack, clients: propClients }) {
   /* ── MAIN LIBRARY VIEW ── */
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
+
+  /* ── ADD FILE FORM ── */
+  const uploadLibFile = async () => {
+    if (!fileForm.clientId) return showToast("Selecione o cliente");
+    if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
+    if (!fileForm.file) return showToast("Selecione um arquivo");
+    setUploading(true);
+    showToast("Enviando arquivo...");
+    const result = await supaUploadClientFile(fileForm.file, fileForm.clientId);
+    setUploading(false);
+    if (result?.error) return showToast("Erro: " + result.error);
+    const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
+    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
+    const client = CDATA.find(c => c.id === fileForm.clientId);
+    if (client && onUpdateClients) {
+      const updatedClient = { ...client, files: [...(client.files||[]), nf] };
+      onUpdateClients(CDATA.map(c => c.id === fileForm.clientId ? updatedClient : c));
+    }
+    setAddingFile(false); setFileForm({});
+    showToast("Arquivo enviado ✓");
+  };
+
+  const LIB_CATS_FORM = [
+    { key:"brand", label:"Manual de Marca", c:B.red },
+    { key:"feed", label:"Posts Feed", c:B.blue },
+    { key:"stories", label:"Stories", c:B.pink },
+    { key:"reels", label:"Capas de Reels", c:B.purple },
+    { key:"videos", label:"Vídeos", c:B.orange },
+    { key:"digital", label:"Artes Digitais", c:B.cyan },
+    { key:"print", label:"Material Impresso", c:B.green },
+    { key:"docs", label:"Documentos", c:B.muted },
+  ];
+
+  if (addingFile) return (
+    <div className="pg">{ToastEl}
+      <Head title="Novo Arquivo" onBack={()=>{setAddingFile(false);setFileForm({});}} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente *</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:4 }}>
+          {CDATA.map(c => (
+            <button key={c.id} onClick={()=>setFileForm(p=>({...p,clientId:c.id}))} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${fileForm.clientId===c.id?B.accent:B.border}`, background:fileForm.clientId===c.id?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fileForm.clientId===c.id?B.accent:B.text }}>{c.name}</button>
+          ))}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do arquivo *</label>
+        <input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Ex: post_lancamento_feed.png" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Categoria</label>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+          {LIB_CATS_FORM.map(cat => (
+            <button key={cat.key} onClick={()=>setFileForm(p=>({...p,category:cat.label}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", borderRadius:10, border:`1.5px solid ${fileForm.category===cat.label?B.accent:B.border}`, background:fileForm.category===cat.label?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <span style={{ fontSize:11, fontWeight:600, color:fileForm.category===cat.label?B.accent:B.text }}>{cat.label}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Arquivo *</label>
+        <label htmlFor="lib-file-input" style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file?`${B.green}06`:`${B.accent}04`, cursor:"pointer" }}>
+          <input id="lib-file-input" type="file" style={{ display:"none" }} onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) { setFileForm(p => ({ ...p, file: f, name: p.name || f.name })); showToast(`Selecionado: ${f.name}`); }
+          }} />
+          {fileForm.file ? <>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polyline points="20 6 9 17 4 12"/></svg>
+            <p style={{ fontSize:13, fontWeight:700, color:B.green }}>{fileForm.file.name}</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{(fileForm.file.size / (1024 * 1024)).toFixed(1)} MB</p>
+          </> : <>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Toque para selecionar</p>
+            <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, documentos (até 100MB)</p>
+          </>}
+        </label>
+      </Card>
+      <button onClick={uploadLibFile} disabled={uploading} className="pill full accent" style={{ marginTop:8, padding:"14px 0", opacity:uploading?0.6:1 }}>
+        {uploading ? "Enviando..." : "Enviar Arquivo"}
+      </button>
+    </div>
+  );
+
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
@@ -7921,10 +8171,13 @@ function LibraryPage({ onBack, clients: propClients }) {
 
       {/* Stats */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-        <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
-          <div><p style={{ fontSize:22, fontWeight:900 }}>{totalFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Arquivos</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{clientsWithFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Clientes</p></div>
-          <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{LIB_CATS.filter(c=>catCounts[c.key]).length}</p><p style={{ fontSize:10, opacity:.7 }}>Categorias</p></div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
+            <div><p style={{ fontSize:22, fontWeight:900 }}>{totalFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Arquivos</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{clientsWithFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Clientes</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{LIB_CATS.filter(c=>catCounts[c.key]).length}</p><p style={{ fontSize:10, opacity:.7 }}>Categorias</p></div>
+          </div>
+          <button onClick={()=>{setFileForm({});setAddingFile(true);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>{IC.plus} Adicionar</button>
         </div>
       </Card>
 
