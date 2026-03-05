@@ -1594,102 +1594,157 @@ function LoginPage({ onAuth }) {
     </div>
   );
 
-  /* ── LOGIN MODE — new dark design ── */
+  /* ── LOGIN MODE — split design: dark header + white card ── */
+  const [emailFocused, setEmailFocused] = React.useState(false);
+  const [passFocused, setPassFocused] = React.useState(false);
+  const emailFloating = emailFocused || email.length > 0;
+  const passFloating  = passFocused  || pw.length > 0;
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", color:"#fff", overflowY:"auto" }}>
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", overflow:"hidden" }}>
       <style>{`
-        .lfield { width:100%; padding:16px 18px; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.1); border-radius:16px; color:#fff; font-size:15px; font-family:inherit; outline:none; transition:border .2s; }
-        .lfield::placeholder { color:rgba(255,255,255,0.3); }
-        .lfield:focus { border-color:#BBF246; }
-        .lbtn { width:100%; padding:16px; border-radius:16px; border:none; background:#BBF246; color:#0D1117; font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; transition:opacity .2s,transform .1s; }
-        .lbtn:active { transform:scale(0.98); }
-        .lbtn-out { width:100%; padding:15px; border-radius:16px; border:1.5px solid rgba(255,255,255,0.15); background:transparent; color:rgba(255,255,255,0.7); font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; }
+        @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+        @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+        .lcard { animation: cardUp 0.5s cubic-bezier(0.34,1.1,0.64,1) both; }
+        .llogo { animation: logoIn 0.4s ease both; }
+        .lf-wrap { position:relative; width:100%; }
+        .lf-input {
+          width:100%; padding:22px 18px 10px; border:1.5px solid #E8EAF0;
+          border-radius:16px; font-size:16px; font-family:inherit;
+          background:#F8F9FC; color:#1A1D23; outline:none;
+          transition:border-color .2s, background .2s; box-sizing:border-box;
+        }
+        .lf-input:focus { border-color:#BBF246; background:#fff; }
+        .lf-input.has-err { border-color:#F87171; }
+        .lf-label {
+          position:absolute; left:18px; top:50%; transform:translateY(-50%);
+          font-size:15px; color:#9CA3AF; pointer-events:none;
+          transition:all .18s cubic-bezier(0.4,0,0.2,1); font-family:inherit;
+        }
+        .lf-label.float { top:12px; transform:none; font-size:11px; font-weight:700; color:#BBF246; letter-spacing:0.04em; text-transform:uppercase; }
+        .lf-label.float.err { color:#F87171; }
+        .lsign-btn {
+          width:100%; padding:18px; border-radius:16px; border:none;
+          background:linear-gradient(135deg,#BBF246 0%,#9AE010 100%);
+          color:#0D1117; font-size:16px; font-weight:800; font-family:inherit;
+          cursor:pointer; transition:opacity .2s,transform .12s;
+          box-shadow:0 6px 24px rgba(187,242,70,0.35);
+          letter-spacing:0.01em;
+        }
+        .lsign-btn:active { transform:scale(0.97); }
+        .lsign-btn:disabled { opacity:0.4; }
       `}</style>
 
-      {/* Header with logo */}
-      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 48px) 28px 24px", textAlign:"center" }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:52, objectFit:"contain", marginBottom:12 }} />
-        <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", fontWeight:500, letterSpacing:"0.05em", textTransform:"uppercase" }}>Agency Panel</p>
+      {/* ── DARK HEADER ── */}
+      <div className="llogo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 52px) 28px 40px", textAlign:"center", position:"relative", zIndex:1 }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:56, objectFit:"contain", marginBottom:10 }} />
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
+
+        {/* Tab top-right: Não tem conta? */}
+        <div style={{ position:"absolute", top:"calc(env(safe-area-inset-top,0px) + 20px)", right:20, display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ fontSize:13, color:"rgba(255,255,255,0.4)" }}>
+            {mode==="login" ? "Sem conta?" : "Já tem conta?"}
+          </span>
+          <button onClick={() => { setMode(mode==="login"?"register":"login"); setError(""); }} style={{ background:"rgba(187,242,70,0.15)", border:"1.5px solid rgba(187,242,70,0.4)", borderRadius:20, padding:"6px 14px", color:"#BBF246", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            {mode==="login" ? "Solicitar" : "Entrar"}
+          </button>
+        </div>
       </div>
 
-      {/* Card */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 24px 40px" }}>
-        <div style={{ marginBottom:28 }}>
-          <h1 style={{ fontSize:28, fontWeight:800, lineHeight:1.2, margin:0 }}>
-            {mode==="login" ? <>Bem-vindo<br/>de volta 👋</> : <>Solicitar<br/>acesso</>}
-          </h1>
-          <p style={{ fontSize:14, color:"rgba(255,255,255,0.45)", marginTop:8 }}>
-            {mode==="login" ? "Entre com sua conta para continuar" : "Preencha seus dados para solicitar acesso"}
-          </p>
+      {/* ── WHITE CARD ── */}
+      <div className="lcard" style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+
+        {/* Title */}
+        <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>
+          {mode==="login" ? "Bem-vindo de volta" : "Solicitar acesso"}
+        </h1>
+        <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 30px", lineHeight:1.5 }}>
+          {mode==="login" ? "Entre com suas credenciais para continuar" : "Preencha para solicitar acesso à plataforma"}
+        </p>
+
+        {/* Email floating label */}
+        <div className="lf-wrap" style={{ marginBottom:16 }}>
+          <input
+            className={`lf-input${email && !emailValid ? " has-err" : ""}`}
+            value={email}
+            onChange={e => supabase ? setEmail(e.target.value) : handleEmailField(e.target.value, setEmail)}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
+            autoCapitalize="none" autoCorrect="off" type="email"
+          />
+          <label className={`lf-label${emailFloating ? " float" + (email && !emailValid ? " err" : "") : ""}`}>
+            {email && !emailValid ? "E-mail inválido" : "E-mail"}
+          </label>
         </div>
 
-        {/* Tab switcher */}
-        <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.05)", borderRadius:14, padding:3, marginBottom:24 }}>
-          {["login","register"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:mode===m?"rgba(255,255,255,0.12)":"transparent", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", color:mode===m?"#fff":"rgba(255,255,255,0.4)", transition:"all .2s" }}>
-              {m==="login" ? "Entrar" : "Cadastrar"}
-            </button>
-          ))}
+        {/* Password floating label */}
+        <div className="lf-wrap" style={{ marginBottom:8 }}>
+          <input
+            className="lf-input"
+            value={pw}
+            onChange={e => setPw(e.target.value)}
+            onFocus={() => { setPassFocused(true); setPwFocus(true); }}
+            onBlur={() => { setPassFocused(false); setTimeout(() => setPwFocus(false), 200); }}
+            type={showPw ? "text" : "password"}
+            style={{ paddingRight:52 }}
+          />
+          <label className={`lf-label${passFloating ? " float" : ""}`}>Senha</label>
+          <button onClick={() => setShowPw(!showPw)} style={{ position:"absolute", right:16, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", display:"flex", padding:4 }}>
+            {showPw ? IC.eyeOff : IC.eye}
+          </button>
         </div>
 
-        {/* Email */}
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.5)", display:"block", marginBottom:8, letterSpacing:"0.03em" }}>E-MAIL</label>
-          <input value={email} onChange={e => supabase ? setEmail(e.target.value) : handleEmailField(e.target.value, setEmail)} placeholder={supabase ? "seu@email.com" : `seu.nome${emailDomain}`} className="lfield" autoCapitalize="none" autoCorrect="off" />
-          {email && !emailValid && <p style={{ fontSize:11, color:"#F87171", marginTop:5 }}>⚠ Apenas e-mails @uniquemkt.com.br</p>}
-          {email && emailValid && <p style={{ fontSize:11, color:"#BBF246", marginTop:5 }}>✓ E-mail válido</p>}
-        </div>
-
-        {/* Password */}
-        <div style={{ marginBottom:6 }}>
-          <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.5)", display:"block", marginBottom:8, letterSpacing:"0.03em" }}>SENHA</label>
-          <div style={{ position:"relative" }}>
-            <input value={pw} onChange={e => setPw(e.target.value)} onFocus={() => setPwFocus(true)} onBlur={() => setTimeout(() => setPwFocus(false), 200)} type={showPw ? "text" : "password"} placeholder="Sua senha" className="lfield" style={{ paddingRight:48 }} />
-            <button onClick={() => setShowPw(!showPw)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.4)", display:"flex", padding:4 }}>{showPw ? IC.eyeOff : IC.eye}</button>
-          </div>
-        </div>
-
+        {/* pw strength */}
         {(pwFocus || pw.length > 0) && (
-          <div style={{ padding:"10px 12px", background:"rgba(255,255,255,0.04)", borderRadius:12, border:"1px solid rgba(255,255,255,0.08)", marginBottom:14 }}>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:6, fontWeight:600 }}>Critérios:</p>
+          <div style={{ padding:"10px 14px", background:"#F8F9FC", borderRadius:12, border:"1px solid #E8EAF0", marginBottom:14 }}>
+            <p style={{ fontSize:11, color:"#9CA3AF", marginBottom:6, fontWeight:700 }}>Critérios de segurança:</p>
             {pwChecks(pw).map((c,i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?3:0 }}>
-                <div style={{ width:14, height:14, borderRadius:7, background:c.ok?"#BBF246":"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
-                  {c.ok && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                <div style={{ width:14, height:14, borderRadius:7, background:c.ok?"#BBF246":"#E8EAF0", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
+                  {c.ok && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
-                <span style={{ fontSize:11, color:c.ok?"#BBF246":"rgba(255,255,255,0.35)" }}>{c.label}</span>
+                <span style={{ fontSize:11, color:c.ok?"#3D7A00":"#9CA3AF" }}>{c.label}</span>
               </div>
             ))}
           </div>
         )}
 
-        {error && <div style={{ padding:"12px 14px", background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.25)", borderRadius:12, marginBottom:14 }}><p style={{ fontSize:13, color:"#F87171", margin:0 }}>⚠ {error}</p></div>}
-        {regSuccess && <div style={{ padding:"12px 14px", background:"rgba(187,242,70,0.1)", border:"1px solid rgba(187,242,70,0.25)", borderRadius:12, marginBottom:14 }}><p style={{ fontSize:13, color:"#BBF246", margin:0 }}>✓ {regSuccess}</p></div>}
-
-        {/* Remember */}
-        <div onClick={() => setRemember(!remember)} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:22, cursor:"pointer", padding:"4px 0" }}>
-          <div style={{ width:20, height:20, borderRadius:6, border:`1.5px solid ${remember?"#BBF246":"rgba(255,255,255,0.2)"}`, background:remember?"#BBF246":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
-            {remember && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+        {/* Errors */}
+        {error && (
+          <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:12, marginBottom:14 }}>
+            <p style={{ fontSize:13, color:"#DC2626", margin:0 }}>⚠ {error}</p>
           </div>
-          <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>Lembrar meu acesso</span>
+        )}
+        {regSuccess && (
+          <div style={{ padding:"12px 14px", background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:12, marginBottom:14 }}>
+            <p style={{ fontSize:13, color:"#16A34A", margin:0 }}>✓ {regSuccess}</p>
+          </div>
+        )}
+
+        {/* Remember + Forgot row */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", margin:"14px 0 24px" }}>
+          <div onClick={() => setRemember(!remember)} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
+            <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${remember?"#BBF246":"#D1D5DB"}`, background:remember?"#BBF246":"#fff", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
+              {remember && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+            </div>
+            <span style={{ fontSize:13, color:"#6B7280", fontWeight:500 }}>Lembrar acesso</span>
+          </div>
+          <button style={{ background:"none", border:"none", fontSize:13, color:"#BBF246", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            Esqueci a senha
+          </button>
         </div>
 
-        {/* CTA button */}
-        <button onClick={handleLogin} disabled={loginLoading} className="lbtn" style={{ opacity:loginLoading?0.6:(supabase?(email.includes("@")&&pw.length>=6?1:0.45):((emailValid&&pwStrong(pw))?1:0.45)) }}>
-          {loginLoading ? "Entrando..." : "Entrar →"}
+        {/* Sign in CTA */}
+        <button onClick={handleLogin} disabled={loginLoading || !(supabase ? email.includes("@") && pw.length >= 6 : emailValid && pwStrong(pw))} className="lsign-btn">
+          {loginLoading ? "Entrando..." : mode==="login" ? "Entrar na plataforma" : "Solicitar Acesso"}
         </button>
 
-        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0" }}>
-          <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.07)" }} />
-          <span style={{ fontSize:12, color:"rgba(255,255,255,0.25)" }}>ou</span>
-          <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.07)" }} />
+        {/* Divider */}
+        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"24px 0 0" }}>
+          <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
+          <span style={{ fontSize:12, color:"#D1D5DB", fontWeight:600 }}>UniqueHub v1.0</span>
+          <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
         </div>
-
-        <button onClick={() => { setMode("register"); setError(""); }} className="lbtn-out">
-          Solicitar Acesso
-        </button>
-
-        <p style={{ fontSize:11, color:"rgba(255,255,255,0.2)", textAlign:"center", marginTop:28 }}>UniqueHub — Agency Panel v1.0</p>
       </div>
     </div>
   );
