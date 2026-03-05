@@ -1571,8 +1571,56 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const SHADOW = isDark ? "0 12px 40px rgba(0,0,0,0.3)" : "0 12px 40px rgba(0,0,0,0.08)";
   const initials = user?.name?.charAt(0).toUpperCase() || "U";
   const nav = (k) => { if(["home","content","chat","clients"].includes(k)) goTab(k); else goSub(k); };
-  const pillIcon = (pk) => { const icons = { suporte:IC.help, aprovacoes:IC.check, conteudo:IC.content, relatorios:IC.reports, financeiro:IC.financial||IC.dollar, calendar:IC.calendar, checkin:IC.checkin, ia:IC.ai, match4biz:IC.match4biz }; const fn = icons[pk]; return typeof fn === "function" ? fn(LIME) : fn || IC.more(LIME); };
-  const actionIcon = (ak) => { const icons = { aprovar:IC.check, trafego:IC.settings, relatorio:IC.reports, chat:IC.chat, checkin:IC.checkin, ia:IC.ai, match4biz:IC.match4biz }; const fn = icons[ak]; return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor"); };
+  const pillIcon = (pk) => {
+    const icons = {
+      home:       IC.home,
+      conteudo:   IC.content,
+      clientes:   IC.clients,
+      chat:       IC.chat,
+      financeiro: IC.financial,
+      calendar:   IC.calendar,
+      relatorios: IC.reports,
+      equipe:     IC.team,
+      checkin:    IC.checkin,
+      ia:         IC.ai,
+      academy:    IC.academy,
+      biblioteca: IC.library,
+      noticias:   IC.news,
+      ideias:     IC.ideas,
+      gamify:     IC.gamify,
+      match4biz:  IC.match4biz,
+      suporte:    IC.help,
+      ajustes:    IC.settings,
+    };
+    const fn = icons[pk];
+    return typeof fn === "function" ? fn(LIME) : fn ? React.cloneElement(fn, {style:{...fn.props?.style, color:LIME}}) : IC.more(LIME);
+  };
+  const actionIcon = (ak) => {
+    const icons = {
+      aprovar:      IC.check,
+      novoConteudo: IC.content,
+      trafego:      IC.financial,
+      relatorio:    IC.reports,
+      agenda:       IC.calendar,
+      novoEvento:   IC.calendar,
+      chat:         IC.chat,
+      checkin:      IC.checkin,
+      ia:           IC.ai,
+      biblioteca:   IC.library,
+      noticias:     IC.news,
+      ideias:       IC.ideas,
+      gamify:       IC.gamify,
+      match4biz:    IC.match4biz,
+      academy:      IC.academy,
+      equipe:       IC.team,
+      clientes:     IC.clients,
+      financeiro:   IC.financial,
+      suporte:      IC.help,
+      ajustes:      IC.settings,
+    };
+    const fn = icons[ak];
+    return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor");
+  };
   const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
