@@ -1538,10 +1538,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const initials = user?.name?.charAt(0).toUpperCase() || "U";
 
   return (
-    <div style={{ background:C.bg, minHeight:"100vh", paddingBottom:100 }}>
+    <div className="pg" style={{ padding:0, background:C.bg }}>
 
       {/* ═══ HEADER CARD ═══ */}
-      <div style={{ width:"100vw", position:"relative", left:"50%", marginLeft:"-50vw", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:60, paddingBottom:28, boxShadow:SHADOW, marginBottom:0, zIndex:2 }}>
+      <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:60, paddingBottom:28, boxShadow:SHADOW }}>
         {/* Greeting */}
         <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
