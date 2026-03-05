@@ -1730,32 +1730,43 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
 
   return (
     <div className="pg" style={{ paddingTop: "52px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingTop: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Av src={user?.photo} name={user?.name} sz={48} fs={18} />
-          <div>
-            <p style={{ fontSize: 12, color: B.muted }}>{greeting},</p>
-            <h2 style={{ fontSize: 18, fontWeight: 800 }}>{user?.nick || user?.name || "Usuário"}</h2>
-            <p style={{ fontSize: 11, color: B.accent, fontWeight: 600, marginTop: 1 }}>{user?.role || "Colaborador"}</p>
+      {/* ── NEW HEADER CARD ── */}
+      <Card delay={0} style={{ padding:0, overflow:"hidden", marginBottom:12 }}>
+        <div style={{ padding:"18px 18px 14px" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ position:"relative" }}>
+                <Av src={user?.photo} name={user?.name} sz={50} fs={19} />
+                <div style={{ position:"absolute", bottom:-1, right:-1, width:14, height:14, borderRadius:7, background:B.green||"#08FB9D", border:`2px solid ${B.bgCard||"#fff"}` }} />
+              </div>
+              <div>
+                <p style={{ fontSize:11, color:B.muted, fontWeight:500 }}>{greeting} 👋</p>
+                <h2 style={{ fontSize:19, fontWeight:800, letterSpacing:"-0.3px", color:B.text }}>{user?.nick || user?.name || "Usuário"}</h2>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={() => goSub("search")} className="ib" style={{ width:38, height:38, borderRadius:12, background:`${B.muted}08` }}>{IC.search(B.muted)}</button>
+              <button onClick={() => goSub("notifs")} className="ib" style={{ width:38, height:38, borderRadius:12, background:`${B.muted}08`, position:"relative" }}>{IC.bell}<Badge n={notifCount || 0} style={{ position:"absolute", top:-2, right:-2 }} /></button>
+              <button onClick={() => goSub("settings")} className="ib" style={{ width:38, height:38, borderRadius:12, background:`${B.muted}08` }}>{IC.settings(B.muted)}</button>
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => goSub("notifs")} className="ib" style={{ position: "relative" }}>{IC.bell}<Badge n={notifCount || 0} style={{ position: "absolute", top: -4, right: -4 }} /></button>
-          <button onClick={() => goSub("settings")} className="ib">{IC.settings("currentColor")}</button>
-        </div>
-      </div>
-
-      {/* Dynamic date */}
-      {(() => {
-        const diasSemana = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
-        const meses = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
-        const d = new Date();
-        return (
-          <p style={{ fontSize: 13, color: B.muted, marginBottom: 12, fontWeight: 500 }}>
-            Hoje é <span style={{ fontWeight: 700, color: B.text }}>{diasSemana[d.getDay()]}</span>, <span style={{ fontWeight: 700, color: B.text }}>{d.getDate()}</span> de <span style={{ fontWeight: 700, color: B.text }}>{meses[d.getMonth()]}</span> de <span style={{ fontWeight: 700, color: B.text }}>{d.getFullYear()}</span>.
-          </p>
-        );
-      })()}
+        {/* Date strip */}
+        {(() => {
+          const diasSemana = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+          const meses = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+          const d = new Date();
+          return (
+            <div style={{ padding:"10px 18px", background:`${B.accent}06`, borderTop:`1px solid ${B.border||"rgba(0,0,0,0.04)"}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{diasSemana[d.getDay()]}, {d.getDate()} {meses[d.getMonth()]} {d.getFullYear()}</p>
+              </div>
+              <span style={{ fontSize:10, fontWeight:600, color:B.accent, background:`${B.accent}12`, padding:"3px 8px", borderRadius:6 }}>{user?.role || "Colaborador"}</span>
+            </div>
+          );
+        })()}
+      </Card>
 
       {/* Edit dashboard toggle */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
@@ -5602,13 +5613,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const PRESETS = [
       { k:"default", name:"UniqueHub", desc:"O visual padrão do app", emoji:"💚", dark:false, theme:"default",
         pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
-      { k:"v2", name:"UniqueHub Dark", desc:"Escuro, neon green, moderno", emoji:"⚡", dark:true, theme:"default",
-        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#0A0A0A",customBgCard:"#141414",customText:"#F5F5F5",customMuted:"#737373",customBorder:"rgba(187,242,70,0.10)",iconColor:"#BBF246",blockBg:"rgba(187,242,70,0.04)",navActiveColor:"#0A0A0A",navInactiveColor:"rgba(255,255,255,0.40)" }},
+      { k:"v2", name:"UniqueHub v2", desc:"Moderno, clean, premium", emoji:"⚡", dark:false, theme:"default",
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_light",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#F0F0EC",customBgCard:"#FFFFFF",customText:"#0D0D0D",customMuted:"#888888",customBorder:"rgba(0,0,0,0.06)",iconColor:"#08FB9D",blockBg:"rgba(8,251,157,0.04)",navActiveColor:"#0D0D0D",navInactiveColor:"rgba(255,255,255,0.50)" }},
     ];
 
     const BG_TEMPLATES = [
       { k:"solid", css:B.bg },
-      { k:"uh_v2_dark", css:"linear-gradient(160deg,#0A0A0A 0%,#0D0D0D 40%,#0A0A0A 100%)" },
+      { k:"uh_v2_light", css:"#F0F0EC" },
     ];
 
     const applyPreset = (p) => { setDark(p.dark); setThemeColor(p.theme); updateUiPrefs(p.pr); showToast(p.name+" aplicado ✓"); };
@@ -10192,6 +10203,7 @@ ${(()=>{
     soft_green:"linear-gradient(160deg,#e8f5e9,#f1f8e9,#e8f5e9)",
     warm_sunset:"linear-gradient(135deg,#fff8e1,#ffe0b2,#ffccbc,#fff8e1)",
     ocean_deep:"linear-gradient(180deg,#0a1628,#0d2137,#0a1628)",
+    uh_v2_light:"#F0F0EC",
     uh_v2_dark:"linear-gradient(160deg,#0A0A0A 0%,#0D0D0D 40%,#0A0A0A 100%)",
     ember_glow:"linear-gradient(135deg,#1a0a0a,#2d1212,#1a0a0a)",
     aurora_dark:"linear-gradient(135deg,#0f1419,#1a1025,#0f1920,#0f1419)",
