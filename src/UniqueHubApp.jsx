@@ -7333,6 +7333,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   ];
   const [events, setEvents] = useState([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [pgC, setPgC] = useState(false);
+  const pgRef = useRef(null);
 
   useEffect(() => {
     if (!supabase || eventsLoaded) return;
@@ -7623,7 +7625,6 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   }
 
   /* ── MAIN CALENDAR VIEW ── */
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
