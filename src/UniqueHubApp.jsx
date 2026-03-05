@@ -4912,6 +4912,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </>
           )}
         </div>
+        <div style={{ position:"absolute", bottom:"-200px", left:0, right:0, height:200, background:B.bgCard }}/>
       </div>
     );
   }
