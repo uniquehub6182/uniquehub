@@ -4568,6 +4568,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const typingTimeout = useRef(null);
   const typingChanRef = useRef(null);
   const msgEndRef = useRef(null);
+  const msgsContainerRef = useRef(null);
   /* Audio recording */
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -4688,8 +4689,22 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     return () => clearInterval(poll);
   }, [selConv?.id]);
 
-  /* Auto-scroll */
-  useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  /* Auto-scroll to bottom on new messages */
+  const scrollToBottom = (smooth=true) => {
+    const el = msgsContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "instant" });
+  };
+  useEffect(() => { scrollToBottom(); }, [msgs]);
+
+  /* iOS keyboard: when visualViewport shrinks (keyboard opens), scroll to bottom */
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => { scrollToBottom(false); };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
 
   /* Realtime: update conversation list locally instead of full reload */
   useEffect(() => {
@@ -4965,7 +4980,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* MESSAGES */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
+        <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
           {pinnedOpen && msgs.filter(m=>m.pinned).length>0 && (
             <div style={{ background:`${B.accent}10`, border:`1px solid ${B.accent}30`, borderRadius:12, padding:"8px 12px", marginBottom:8, fontSize:12, color:B.accent, fontWeight:600 }}>
               📌 {msgs.find(m=>m.pinned)?.content}
@@ -5052,7 +5067,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
               )}
-              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }}/>
+              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }}/>
               {input.trim() ? (
                 <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
