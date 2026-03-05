@@ -5522,23 +5522,35 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         {/* Barra de Navegação */}
         <SL icon="📱" title="Barra de Navegação" />
         <div style={{ marginBottom:10, padding:14, background:dark?"#1a1f24":"#f0f0f2", borderRadius:14, border:"1px solid "+B.border, position:"relative", minHeight:70, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-          <div style={{ width:navSz==="sm"?"55%":navSz==="lg"?"90%":"72%", maxWidth:navSz==="sm"?160:navSz==="lg"?280:220, padding:navSz==="sm"?"4px":"6px", borderRadius:navSt==="pill"?18:navSt==="bar"?0:navSt==="minimal"?8:12, background:navBlur?(dark?"rgba(10,15,18,0.8)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126"), boxShadow:navPos==="float"?"0 4px 12px rgba(0,0,0,0.3)":"none", display:"flex", alignItems:"center", justifyContent:"space-around", borderTop:navSt==="bar"?"2px solid "+B.accent:"none" }}>
-            {[1,2,3,4].map(i => <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:navLabels?2:0 }}><div style={{ width:i===2?12:8, height:i===2?12:8, borderRadius:i===2?6:3, background:i===2?B.accent:"rgba(255,255,255,0.3)" }} />{navLabels && <div style={{ width:i===2?14:10, height:2, borderRadius:1, background:i===2?B.accent:"rgba(255,255,255,0.15)" }} />}</div>)}
+          <div style={{ width:"72%", maxWidth:220, padding:"6px", borderRadius:18, background:navBlur?(dark?"rgba(10,15,18,0.8)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126"), boxShadow:"0 4px 12px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", justifyContent:"space-around", overflow:"visible", position:"relative" }}>
+            {[1,2,3,4,5].map(i => <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", position:"relative" }}><div style={{ width:i===2?18:10, height:i===2?18:10, borderRadius:"50%", background:i===2?B.accent:"rgba(255,255,255,0.3)", transform:i===2?"translateY(-8px)":"none", boxShadow:i===2?`0 0 0 3px ${dark?"#1a1f24":"#192126"}`:"none", transition:"all .3s" }} /></div>)}
           </div>
           <span style={{ position:"absolute", top:4, right:6, fontSize:7, color:B.muted }}>PREVIEW</span>
         </div>
         <Card>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor do indicador ativo</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {["#BBF246","#C6F135","#08FB9D","#60A5FA","#A78BFA","#F87171","#EC4899","#F59E0B","#fff"].map(c => (
+              <div key={c} onClick={() => setThemeColor(c===B.accent?"default":c)} style={{ width:32, height:32, borderRadius:10, background:c, cursor:"pointer", border:B.accent===c?`3px solid ${B.text}`:`2px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {B.accent===c && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={dark?"#0D0D0D":"#0D0D0D"} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor dos ícones inativos</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"rgba(255,255,255,0.5)","rgba(255,255,255,0.3)","rgba(255,255,255,0.15)","rgba(0,0,0,0.3)","rgba(0,0,0,0.5)"].map((c,i) => {
+              const cur = UP.navInactiveColor || "rgba(255,255,255,0.45)";
+              const isActive = c === null ? !UP.navInactiveColor : UP.navInactiveColor === c;
+              return <div key={i} onClick={() => setP("navInactiveColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||"rgba(255,255,255,0.45)", cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}` }} />;
+            })}
+          </div>
           <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho</p>
           <OR current={navSz} onPick={v => setP("navSize",v)} options={[{k:"sm",l:"Pequeno"},{k:"md",l:"Médio"},{k:"lg",l:"Grande"}]} renderOption={(o,a) => <div><div style={{ width:o.k==="sm"?20:o.k==="md"?28:36, height:o.k==="sm"?6:o.k==="md"?8:11, borderRadius:4, background:a?B.accent:B.muted, margin:"0 auto 4px", opacity:a?0.8:0.3 }} /><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
-          <div style={{ marginTop:8 }}><p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Estilo</p>
-          <OR current={navSt} onPick={v => setP("navStyle",v)} options={[{k:"pill",l:"Pílula"},{k:"rounded",l:"Redondo"},{k:"bar",l:"Barra"},{k:"minimal",l:"Minimal"}]} renderOption={(o,a) => <div><div style={{ width:30, height:8, borderRadius:o.k==="pill"?"8px":o.k==="rounded"?"4px":o.k==="bar"?"0":"3px", background:a?B.accent+"30":B.muted+"20", borderTop:o.k==="bar"?"2px solid "+(a?B.accent:B.muted):"none", margin:"0 auto 4px" }} /><span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} /></div>
-          <div style={{ marginTop:8 }}><p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Posição</p>
-          <OR current={navPos} onPick={v => setP("navPosition",v)} options={[{k:"float",l:"Flutuante"},{k:"fixed",l:"Fixa"}]} renderOption={(o,a) => <div><div style={{ width:30, height:18, borderRadius:3, border:"1px solid "+(a?B.accent+"40":B.muted+"30"), margin:"0 auto 4px", position:"relative", overflow:"hidden" }}><div style={{ position:"absolute", left:4, right:4, height:3, borderRadius:o.k==="float"?2:0, background:a?B.accent:B.muted, opacity:a?0.7:0.3, bottom:o.k==="float"?3:0 }} /></div><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} /></div>
         </Card>
         <Card style={{ marginTop:6 }}>
           <Sli label="Largura" value={navW} min={220} max={400} step={10} unit="px" onChange={v => setP("navWidth",v)} />
           <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Efeito blur" desc="Transparência com desfoque" on={navBlur} onToggle={() => setP("navBlur",!navBlur)} /></div>
-          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Mostrar nomes" desc="Texto abaixo dos ícones" on={navLabels} onToggle={() => setP("navLabels",!navLabels)} /></div>
+          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Mostrar nomes" desc="Texto do ícone ativo" on={navLabels} onToggle={() => setP("navLabels",!navLabels)} /></div>
         </Card>
 
         {/* Reset */}
@@ -10048,16 +10060,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
       </div>
 
-      <nav className="bnav" style={{ position:"relative" }}>
-        {/* Sliding indicator */}
-        {(() => {
-          const tabKeys = TABS.map(t => t.k);
-          const activeIdx = tabKeys.findIndex(k => (tab === k && !sub) || (sub === k));
-          const idx = activeIdx >= 0 ? activeIdx : 0;
-          const n = TABS.length;
-          const pct = ((idx + 0.5) / n * 100);
-          return <div style={{ position:"absolute", top:"50%", left:`${pct}%`, width:44, height:44, borderRadius:"50%", background:accentColor, transform:"translate(-50%,-50%)", transition:"left .4s cubic-bezier(0.34,1.56,0.64,1)", zIndex:0, boxShadow:`0 4px 14px ${accentColor}40` }} />;
-        })()}
+      <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
           const a = (tab === t.k && !sub) || (sub === t.k);
           return (
@@ -10065,10 +10068,15 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
-            }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:44, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:1 }}>
-              {t.i(a ? (dark?"#0D0D0D":"#fff") : (dark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)"))}
-              {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:2, right:"calc(50% - 16px)" }} />}
-              {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:2, right:"calc(50% - 16px)" }} />}
+            }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
+              {/* Floating circle for active */}
+              <div style={{ width:a?52:36, height:a?52:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-18px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50, 0 0 0 4px ${dark?"#1C1C1C":"#192126"}`:"none" }}>
+                {t.i(a ? (dark?"#0D0D0D":"#fff") : (dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)"))}
+              </div>
+              {/* Label below for active */}
+              {a && uiPrefs.navLabels!==false && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:accentColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
+              {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
+              {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
             </button>
           );
         })}
@@ -10185,7 +10193,7 @@ input,textarea,select{font-size:16px !important}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.bnav{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.4);overflow:hidden}
+.bnav{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.4);overflow:visible}
 .bnav .bt{font-size:inherit}
 .bt{display:flex;align-items:center;justify-content:center;padding:0;background:none;border:none;cursor:pointer;font-family:inherit;position:relative}
 .htabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}.htabs::-webkit-scrollbar{display:none}
