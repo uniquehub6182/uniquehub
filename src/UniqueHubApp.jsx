@@ -4775,7 +4775,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const convName = getOtherName(selConv);
     const isGroup = selConv.type === "group";
     return (
-      <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
+      <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:60, display:"flex", flexDirection:"column", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
         {/* ── CONV HEADER ── */}
@@ -4887,7 +4887,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Input */}
-        <div style={{ padding:`10px 14px calc(10px + env(safe-area-inset-bottom, 0px))`, display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
+        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom, 0px))`, display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
