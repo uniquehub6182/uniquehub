@@ -1020,7 +1020,7 @@ const Av = ({ src, name, sz = 40, fs = 16 }) => (
   </div>
 );
 /* ── CollapseHeader: reusable collapsible page header ── */
-const CollapseHeader = ({ icon, label, title, stats=[], onAdd, collapsed }) => (
+const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => (
   <div style={{
     position:"sticky", top:0, zIndex:20, background:B.bgCard,
     borderBottom: collapsed ? `1px solid ${B.border}` : "none",
@@ -1030,6 +1030,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, collapsed }) => (
   }}>
     {collapsed ? (
       <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px" }}>
+        {onBack && <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", color:B.text, padding:0, flexShrink:0 }}>{IC.back()}</button>}
         <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {typeof icon === "function" ? icon(B.accent) : icon}
         </div>
@@ -1043,6 +1044,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, collapsed }) => (
       </div>
     ) : (
       <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
+        {onBack && <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", color:B.text, padding:0, marginBottom:8 }}>{IC.back()}</button>}
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:stats.length?16:0 }}>
           <div>
             <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>{label}</p>
@@ -10049,10 +10051,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
             <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }} className="hscroll">
               {PRESETS.map((p, i) => (
                 <button key={i} onClick={() => { startNewChat(); setTimeout(() => setInput(p.prompt), 100); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text, whiteSpace:"nowrap", flexShrink:0 }}>
-                  {p.k==="openai"
-                      ? <svg width="14" height="14" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="currentColor" opacity="0.9"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="white"/></svg>
-                    } {p.label}
+                  <span style={{ fontSize:14 }}>{p.emoji}</span> {p.label}
                 </button>
               ))}
             </div>
@@ -10091,10 +10090,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, width:"100%" }}>
           {PRESETS.map((p, i) => (
             <Card key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:12, textAlign:"left", border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard }}>
-              <div style={{ marginBottom:4, display:"flex", justifyContent:"center" }}>{p.k==="openai"
-                  ? <svg width="20" height="20" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke={B.text} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  : <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill={B.text}/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill={B.bg}/></svg>
-                }</div>
+              <div style={{ marginBottom:4, display:"flex", justifyContent:"center", fontSize:20 }}>{p.emoji}</div>
               <p style={{ fontSize:12, fontWeight:700 }}>{p.label}</p>
             </Card>
           ))}
