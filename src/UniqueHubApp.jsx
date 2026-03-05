@@ -10316,7 +10316,7 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden}
+html,body{font-family:'Figtree',sans-serif;background:${isDark?"#fff":"#0D0D0D"};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden;background:${isDark?"#fff":"#0D0D0D"}}
 input,textarea,select{font-size:16px !important}
 .app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
 .screen{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
