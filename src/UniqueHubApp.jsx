@@ -10670,6 +10670,17 @@ export default function App() {
   const [uiPrefs, setUiPrefs] = useState(() => {
     try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
+
+  /* Save visual prefs to Supabase (debounced) */
+  const savePrefsTimer = React.useRef(null);
+  const savePrefsToCloud = React.useCallback((dark_v, theme_v, prefs_v, userId) => {
+    if (!supabase || !userId) return;
+    clearTimeout(savePrefsTimer.current);
+    savePrefsTimer.current = setTimeout(() => {
+      supaSetSetting(`visual_prefs_${userId}`, JSON.stringify({ dark: dark_v, theme: theme_v, prefs: prefs_v }));
+    }, 800);
+  }, []);
+
   const _setDark = (v) => {
     setDark(v);
     try { localStorage.setItem("uh_dark", v ? "1" : "0"); } catch {}
@@ -10691,6 +10702,31 @@ export default function App() {
       return prefs;
     });
   };
+
+  /* Wrap setters to also sync to cloud when user is logged in */
+  const syncedSetDark = React.useCallback((v, userId) => {
+    _setDark(v);
+    setUiPrefs(prev => { savePrefsToCloud(v, themeColor, prev, userId); return prev; });
+  }, [themeColor, savePrefsToCloud]);
+  const syncedSetTheme = React.useCallback((v, userId) => {
+    _setThemeColor(v);
+    setUiPrefs(prev => { savePrefsToCloud(dark, v, prev, userId); return prev; });
+  }, [dark, savePrefsToCloud]);
+  const syncedUpdatePrefs = React.useCallback((patch, userId) => {
+    setUiPrefs(prev => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem("uh_ui_prefs", JSON.stringify(next)); } catch {}
+      savePrefsToCloud(dark, themeColor, next, userId);
+      return next;
+    });
+  }, [dark, themeColor, savePrefsToCloud]);
+  const syncedReplacePrefs = React.useCallback((prefs, userId) => {
+    setUiPrefs(() => {
+      try { localStorage.setItem("uh_ui_prefs", JSON.stringify(prefs)); } catch {}
+      savePrefsToCloud(dark, themeColor, prefs, userId);
+      return prefs;
+    });
+  }, [dark, themeColor, savePrefsToCloud]);
   const [authLoading, setAuthLoading] = useState(!!supabase);
 
   /* Force-kick blocked users even if app is already open */
@@ -10734,6 +10770,16 @@ export default function App() {
             nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
             phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember: true,
           });
+          /* Load visual prefs from cloud */
+          try {
+            const cloudPrefs = await supaGetSetting(`visual_prefs_${session.user.id}`);
+            if (cloudPrefs) {
+              const vp = typeof cloudPrefs === "string" ? JSON.parse(cloudPrefs) : cloudPrefs;
+              if (vp.dark !== undefined) { setDark(vp.dark); try { localStorage.setItem("uh_dark", vp.dark ? "1" : "0"); } catch {} }
+              if (vp.theme) { setThemeColor(vp.theme); try { localStorage.setItem("uh_theme", vp.theme); } catch {} }
+              if (vp.prefs) { setUiPrefs(vp.prefs); try { localStorage.setItem("uh_ui_prefs", JSON.stringify(vp.prefs)); } catch {} }
+            }
+          } catch(e) { console.warn("Visual prefs load failed:", e); }
         } catch(e) { console.error("Profile load failed:", e); }
       }
       clearTimeout(timeout);
@@ -10798,7 +10844,14 @@ input,textarea,select{font-size:16px !important}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && <LoginPage onAuth={setUser} />}
-      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={_setDark} themeColor={themeColor} setThemeColor={_setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} />}
+      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark}
+    setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
+    themeColor={themeColor}
+    setThemeColor={(v) => { _setThemeColor(v); savePrefsToCloud(dark, v, uiPrefs, user?.id); }}
+    uiPrefs={uiPrefs}
+    updateUiPrefs={(patch) => { setUiPrefs(prev => { const next={...prev,...patch}; try{localStorage.setItem("uh_ui_prefs",JSON.stringify(next))}catch{}; savePrefsToCloud(dark,themeColor,next,user?.id); return next; }); }}
+    replaceUiPrefs={(prefs) => { setUiPrefs(()=>{ try{localStorage.setItem("uh_ui_prefs",JSON.stringify(prefs))}catch{}; savePrefsToCloud(dark,themeColor,prefs,user?.id); return prefs; }); }}
+  />}
     </>
   );
 }
