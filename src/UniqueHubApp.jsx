@@ -1907,6 +1907,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
 function CheckinPage({ onBack, user }) {
   const isAdmin = user?.supaRole === "admin";
   const [adminView, setAdminView] = useState(false); /* false = meu ponto, true = equipe */
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [activeCheckin, setActiveCheckin] = useState(null);
   const [history, setHistory] = useState([]);
   const [elapsed, setElapsed] = useState(0);
@@ -2085,9 +2086,10 @@ function CheckinPage({ onBack, user }) {
 
   /* ── Member View ── */
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.checkin} label="Presença" title="Check-in" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
-      <Head title="Check-in" onBack={onBack} />
       {adminToggle}
       <Card style={{ background: B.dark, color: "#fff", border: "none", textAlign: "center", padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
@@ -2131,6 +2133,7 @@ function CheckinPage({ onBack, user }) {
           </Card>
         ))}
       </>}
+      </div>
     </div>
   );
 }
@@ -2862,9 +2865,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={pgC}
-        stats={[{val:(clients||[]).length,label:"total"},{val:(clients||[]).filter(c=>["ativo","Partner","Premium","Basic"].includes(c.status)).length,label:"ativos"}]}
-        onAdd={()=>setCreating(true)} />
+      <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {/* Summary */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
@@ -2926,6 +2927,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 /* ═══════════════════════ ACADEMY PAGE ═══════════════════════ */
 function AcademyPage({ onBack }) {
   const [selCat, setSelCat] = useState(null);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selCourse, setSelCourse] = useState(null);
   const cats = [
     { id: "mkt", name: "Marketing Digital", icon: IC.trending, c: B.accent, courses: [
@@ -3007,8 +3009,9 @@ function AcademyPage({ onBack }) {
   const completedCourses = cats.reduce((a, c) => a + c.courses.filter(x => x.progress === 100).length, 0);
 
   return (
-    <div className="pg">
-      <Head title="Academy" onBack={onBack} />
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.academy} label="Aprendizado" title="Academy" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.award}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>TREINAMENTOS</p></div>
         <div style={{ display: "flex", justifyContent: "center", gap: 20 }}>
@@ -3026,6 +3029,7 @@ function AcademyPage({ onBack }) {
           </div>
         </Card>
       ))}
+      </div>
     </div>
   );
 }
@@ -4285,59 +4289,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
 
-      {/* ── COLLAPSIBLE HEADER ── */}
-      <div style={{
-        position:"sticky", top:0, zIndex:20,
-        background: headerCollapsed ? B.bgCard : B.bgCard,
-        borderBottom: headerCollapsed ? `1px solid ${B.border}` : "none",
-        borderRadius: headerCollapsed ? 0 : "0 0 28px 28px",
-        boxShadow: headerCollapsed ? "none" : "0 4px 24px rgba(0,0,0,0.10)",
-        transition:"all .28s cubic-bezier(.4,0,.2,1)",
-        overflow:"hidden",
-      }}>
-        {headerCollapsed ? (
-          /* ── COMPACT BAR ── */
-          <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px" }}>
-            <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              {IC.content(B.accent)}
-            </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:13, fontWeight:800, color:B.text }}>Conteúdo</p>
-              <p style={{ fontSize:10, color:B.muted }}>{pendingCount} em andamento · {totalCount} total</p>
-            </div>
-            <button onClick={() => setCreating(true)} style={{ width:34, height:34, borderRadius:10, background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-          </div>
-        ) : (
-          /* ── EXPANDED HEADER ── */
-          <div style={{ padding:"20px 20px 22px" }}>
-            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:16 }}>
-              <div>
-                <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>Produção</p>
-                <h2 style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", lineHeight:1 }}>Demandas</h2>
-              </div>
-              <button onClick={() => setCreating(true)} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
-            </div>
-            <div style={{ display:"flex", gap:10 }}>
-              <div style={{ flex:1, background:`${B.accent}10`, borderRadius:14, padding:"12px 14px" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:B.accent, lineHeight:1 }}>{pendingCount}</p>
-                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>Em andamento</p>
-              </div>
-              <div style={{ flex:1, background:`${B.bgCard}`, border:`1px solid ${B.border}`, borderRadius:14, padding:"12px 14px" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:B.text, lineHeight:1 }}>{publishedCount}</p>
-                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>Publicados</p>
-              </div>
-              <div style={{ flex:1, background:`${B.bgCard}`, border:`1px solid ${B.border}`, borderRadius:14, padding:"12px 14px" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:B.text, lineHeight:1 }}>{totalCount}</p>
-                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>Total</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} />
 
       {/* ── SCROLLABLE CONTENT ── */}
       <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
@@ -5446,6 +5398,7 @@ function ApprovalsPage({ onBack }) {
 
 function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs }) {
   const [sub, setSub] = useState(null);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [twoFA, setTwoFA] = useState(false);
   const { showToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs?.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
@@ -6500,9 +6453,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ SETTINGS MAIN ═══ */
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
-      <Head title="Configurações" onBack={onBack} />
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Av src={user?.photo} name={user?.name} sz={48} fs={18} />
@@ -6538,6 +6492,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       ))}
       <button onClick={onLogout} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 14, width: "100%", background: `${B.red}08`, borderRadius: 14, border: `1px solid ${B.red}20`, cursor: "pointer", color: B.red, fontFamily: "inherit", marginTop: 20, fontSize: 14 }}>{IC.logout()} Sair da Conta</button>
       <p style={{ fontSize: 11, color: B.muted, textAlign: "center", marginTop: 12 }}>UniqueHub Agency v1.0 (build 3.04A)</p>
+      </div>
     </div>
   );
 }
@@ -6808,9 +6763,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.team} label="Pessoas" title="Equipe" collapsed={pgC}
-        stats={[{val:members.length,label:"membros"},{val:members.filter(m=>m.status==="online").length,label:"online"}]}
-        onAdd={isAdmin?()=>setAdding(true):null} />
+      <CollapseHeader icon={IC.team} label="Pessoas" title="Equipe" collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
@@ -7943,6 +7896,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
 
 function NewsPage({ onBack, onArticlesLoad }) {
   const [tab, setTab] = useState("all");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -8115,11 +8069,10 @@ function NewsPage({ onBack, onArticlesLoad }) {
 
   /* ── MAIN NEWS LIST ── */
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
-      <Head title="News" onBack={onBack} right={
-        <button onClick={()=>{setCreating(true);setForm({});}} className="ib" style={{ background:B.accent, color:B.textOnAccent, borderRadius:10, padding:"6px 12px", fontSize:11, fontWeight:700, border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Novo</button>
-      } />
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
         {[...CATS, { k:"saved", l:`Salvos (${saved.length})` }].map(c => (
           <button key={c.k} onClick={()=>setTab(c.k)} className={`htab${tab===c.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.l}</button>
@@ -8166,6 +8119,7 @@ function NewsPage({ onBack, onArticlesLoad }) {
           </div>
         </Card>
       ))}
+      </div>
     </div>
   );
 }
@@ -8421,9 +8375,7 @@ function IdeasPage({ onBack, user }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC}
-        stats={[{val:ideas.length,label:"total"},{val:ideas.filter(x=>x.votes>0).length,label:"votadas"}]}
-        onAdd={()=>setCreating(true)} />
+      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       
       {/* Stats */}
@@ -8965,6 +8917,7 @@ function GamifyPage({ onBack, user, team }) {
 }
 
 function AIPage({ onBack, user }) {
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [view, setView] = useState("history"); // "history" | "chat"
@@ -9123,17 +9076,10 @@ function AIPage({ onBack, user }) {
     const showList = filtered || null;
 
     return (
-      <div className="pg">
+      <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
         {ToastEl}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
-            <h2 style={{ fontSize:18, fontWeight:800 }}>Assistente IA</h2>
-          </div>
-          <button onClick={startNewChat} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#192126" }}>
-            {IC.plus} Nova
-          </button>
-        </div>
 
         {/* Search */}
         <div style={{ position:"relative", marginBottom:14 }}>
@@ -9231,6 +9177,7 @@ function AIPage({ onBack, user }) {
             </div>
           </>}
         </>}
+      </div>
       </div>
     );
   }
@@ -9360,6 +9307,7 @@ function AIPage({ onBack, user }) {
 
 function HelpPage({ onBack }) {
   const [selCat, setSelCat] = useState(null);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selQ, setSelQ] = useState(null);
   const [contactForm, setContactForm] = useState(false);
   const [cMsg, setCMsg] = useState("");
@@ -9623,9 +9571,10 @@ function HelpPage({ onBack }) {
   ];
 
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.help} label="Suporte" title="Ajuda" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
-      <Head title="Central de Ajuda" onBack={onBack} />
 
       {/* Hero */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12, textAlign:"center", padding:20 }}>
@@ -9765,12 +9714,14 @@ function HelpPage({ onBack }) {
           <p style={{ fontSize:9, marginTop:2 }}>Petrópolis, RJ — Brasil</p>
         </div>
       </>}
+      </div>
     </div>
   );
 }
 
 function SearchPage({ onBack, team, clients }) {
   const [query, setQuery] = useState("");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [filter, setFilter] = useState("all");
   const inputRef = React.useRef(null);
 
@@ -9828,8 +9779,9 @@ function SearchPage({ onBack, team, clients }) {
   const catColor = (cat) => ({ "Manual de Marca":B.red, "Posts Feed":B.blue, "Stories":B.pink, "Capas de Reels":B.purple, "Vídeos":B.orange, "Artes Digitais":B.cyan, "Material Impresso":B.green, "Documentos":B.muted, "Referências":"#F59E0B", "Outros":B.muted }[cat] || B.muted);
 
   return (
-    <div className="pg">
-      <Head title="Buscar" onBack={onBack} />
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.search} label="Descoberta" title="Buscar" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Search input */}
       <div style={{ position:"relative", marginBottom:12 }}>
@@ -9940,6 +9892,7 @@ function SearchPage({ onBack, team, clients }) {
           </Card>
         ))}
       </>}
+      </div>
     </div>
   );
 }
@@ -9960,6 +9913,7 @@ function PlaceholderPage({ title, onBack, icon }) {
 /* ═══════════════════════ MATCH4BIZ (AGENCY PANEL) ═══════════════════════ */
 function Match4BizPage({ onBack, clients, user }) {
   const [view, setView] = useState("dashboard");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selMatch, setSelMatch] = useState(null);
   const [filter, setFilter] = useState("all");
   const [msgInput, setMsgInput] = useState("");
@@ -10158,9 +10112,10 @@ function Match4BizPage({ onBack, clients, user }) {
 
   /* ── DASHBOARD (default) ── */
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
-      <Head title="Match4Biz" onBack={onBack} />
 
       {/* Metrics */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
@@ -10234,6 +10189,7 @@ function Match4BizPage({ onBack, clients, user }) {
         <p style={{ fontSize:13, fontWeight:700, color:B.text }}>Como funciona</p>
         <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, marginTop:4 }}>Os clientes da agência fazem match entre si no app. Aqui você acompanha cada conexão, intervém quando necessário e registra os negócios fechados.</p>
       </Card>
+      </div>
     </div>
   );
 }
