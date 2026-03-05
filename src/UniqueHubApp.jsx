@@ -1666,7 +1666,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           ))}
         </div><button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.brd}`,background:"transparent",color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button></div></>;};
   return (
-    <div className="pg" style={{ padding:0, background:C.bg }}>
+    <div className="pg" style={{ padding:0, minHeight:"100%" }}>
       <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:`calc(env(safe-area-inset-top, 0px) + 16px)`, paddingBottom:28, boxShadow:SHADOW }}>
         <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
@@ -10340,7 +10340,7 @@ html,body{font-family:'Figtree',sans-serif;background:${dark?"#fff":"#0D0D0D"};m
 input,textarea,select{font-size:16px !important}
 .app{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
 .screen{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(120px + env(safe-area-inset-bottom,34px))}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(120px + env(safe-area-inset-bottom,34px));background:${B.bg}}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
