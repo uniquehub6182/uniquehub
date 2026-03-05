@@ -4697,13 +4697,21 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   };
   useEffect(() => { scrollToBottom(); }, [msgs]);
 
-  /* iOS keyboard: when visualViewport shrinks (keyboard opens), scroll to bottom */
+  /* iOS keyboard fix: track visualViewport height and apply to conv container */
+  const [vpHeight, setVpHeight] = useState(() => window.visualViewport?.height || window.innerHeight);
+  const [vpTop, setVpTop] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const onResize = () => { scrollToBottom(false); };
-    vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
+    const update = () => {
+      setVpHeight(vv.height);
+      setVpTop(vv.offsetTop);
+      /* After layout settles, snap to bottom */
+      requestAnimationFrame(() => scrollToBottom(false));
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
   }, []);
 
   /* Realtime: update conversation list locally instead of full reload */
@@ -4944,7 +4952,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
     const avBg = bgPal[convName.charCodeAt(0)%bgPal.length];
     return (
-      <div style={{ position:"fixed", inset:0, zIndex:100, display:"flex", flexDirection:"column", background:B.bgCard, overflow:"hidden" }}>
+      <div style={{ position:"fixed", top:vpTop, left:0, right:0, height:vpHeight, zIndex:100, display:"flex", flexDirection:"column", background:B.bgCard, overflow:"hidden" }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
