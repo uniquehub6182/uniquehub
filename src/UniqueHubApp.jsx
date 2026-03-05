@@ -1512,349 +1512,186 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const totalRevenue = `R$ ${totalRevNum.toLocaleString("pt-BR")}`;
   const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
-  const today = new Date();
-  const hours = today.getHours();
-  const greeting = hours < 12 ? "Bom dia" : hours < 18 ? "Boa tarde" : "Boa noite";
+  const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
 
-  const DEFAULT_ORDER = ["summary","shortcuts","team","clients","financial"];
-  const [blockOrder, setBlockOrder] = useState(DEFAULT_ORDER);
-  const [editing, setEditing] = useState(false);
+  /* Theme-adaptive colors: dark = white header + dark body, light = dark header + light body */
+  const isDark = B.bg === "#0D0D0D";
+  const H = { bg: isDark?"#fff":"#0D0D0D", txt: isDark?"#0D0D0D":"#fff", sub: isDark?"#999":"rgba(255,255,255,0.5)", btn: isDark?"#F3F3F3":"#2A2A2A", btnC: isDark?"#0D0D0D":"#fff", srch: isDark?"#F3F3F3":"#2A2A2A", srchT: isDark?"#BBB":"rgba(255,255,255,0.35)" };
+  const C = { bg: isDark?"#0D0D0D":"#F5F5F5", card: isDark?"#1A1A1A":"#fff", brd: isDark?"#272727":"rgba(0,0,0,0.06)", txt: isDark?"#fff":"#0D0D0D", mut: isDark?"rgba(255,255,255,0.35)":"#888", pill: isDark?"#1E1E1E":"#fff", pbrd: isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn: isDark?"#2A2A2A":"#F3F3F3", aicn: isDark?"#252525":"#F3F3F3", readBtn: isDark?"#fff":"#0D0D0D", readBtnT: isDark?"#0D0D0D":"#fff", badge: isDark?"#252525":"#F3F3F3" };
+  const LIME = "#C6F135";
+  const SHADOW = isDark ? "0 12px 40px rgba(0,0,0,0.3)" : "0 12px 40px rgba(0,0,0,0.08)";
 
-  const moveBlock = (i, dir) => {
-    const j = i + dir;
-    if (j < 0 || j >= blockOrder.length) return;
-    setBlockOrder(prev => { const n = [...prev]; [n[i], n[j]] = [n[j], n[i]]; return n; });
-  };
-
-  const EditHandle = ({ i }) => editing ? (
-    <div style={{ display:"flex", gap:3, marginBottom:6 }}>
-      <button disabled={i===0} onClick={(e)=>{e.stopPropagation();moveBlock(i,-1);}} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:i===0?"transparent":`${B.accent}08`, cursor:i===0?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===0?.3:1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg></button>
-      <button disabled={i===blockOrder.length-1} onClick={(e)=>{e.stopPropagation();moveBlock(i,1);}} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:i===blockOrder.length-1?"transparent":`${B.accent}08`, cursor:i===blockOrder.length-1?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===blockOrder.length-1?.3:1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg></button>
-    </div>
-  ) : null;
-
-  /* ── Today's tasks for activity feed ── */
-  const todayTasks = [
-    { action: "Review carrossel Casa Nova", time: "09:00", icon: "📋", color: B.orange },
-    { action: "Publicar stories Bella", time: "10:00", icon: "📱", color: B.purple },
-    { action: "Reunião TechSmart", time: "14:00", icon: "📹", color: B.blue },
-    { action: "Entregar reels Studio", time: "17:00", icon: "🎬", color: B.green },
-  ];
-
-  const BLOCKS = {
-    summary: (i) => (
-      <div key="summary">
-        <EditHandle i={i} />
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
-          {[
-            ...(isAdmin ? [{ label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", color:B.green, icon:"💰", act:()=>goSub("financial") }] : []),
-            { label:"Clientes", value:totalClients, sub:`${activeClients} ativos`, color:B.accent, icon:"👥", act:()=>goTab("clients") },
-            { label:"Pendentes", value:pendingApprovals, sub:"aguardando ação", color:B.orange, icon:"⏳", act:()=>goTab("content") },
-            { label:"Score", value:avgScore, sub:"satisfação média", color:B.purple, icon:"⭐", act:()=>goSub("gamify") },
-          ].map((s, j) => (
-            <Card key={j} delay={j*0.04} onClick={s.act} style={{ padding:"14px 16px", position:"relative", overflow:"hidden", cursor:"pointer" }}>
-              <div style={{ position:"absolute", top:10, right:10, fontSize:20, opacity:0.12 }}>{s.icon}</div>
-              <p style={{ fontSize:9, color:B.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{s.label}</p>
-              <p style={{ fontSize:22, fontWeight:900, color:s.color, marginTop:4 }}>{s.value}</p>
-              <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{s.sub}</p>
-            </Card>
-          ))}
-        </div>
-      </div>
-    ),
-    pipeline: (i) => (
-      <div key="pipeline">
-        <EditHandle i={i} />
-        <Card style={{ background:B.dark, color:"#fff", border:editing?`2px dashed ${B.accent}`:"none", padding:0, overflow:"hidden" }}>
-          <div style={{ padding:"16px 18px 12px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <span style={{ color:B.accent, display:"flex" }}>{IC.content(B.accent)}</span>
-              <p style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.6)", letterSpacing:1.5, textTransform:"uppercase" }}>Pipeline</p>
-            </div>
-            <button onClick={() => goTab("content")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver tudo →</button>
-          </div>
-          <div style={{ display:"flex", justifyContent:"space-around", padding:"0 12px 16px" }}>
-            {[
-              { l:"Criação", k:["idea","briefing","design","caption","planning","creation"], c:B.blue },
-              { l:"Revisão", k:["review"], c:B.orange },
-              { l:"Cliente", k:["client","execution"], c:B.purple },
-              { l:"Publicado", k:["published","completed"], c:B.green },
-            ].map((p,j) => {
-              const count = DEMANDS_INIT.filter(d => p.k.includes(d.stage)).length;
-              return (
-                <div key={j} style={{ textAlign:"center", flex:1 }}>
-                  <div style={{ width:38, height:38, borderRadius:12, background:`${p.c}20`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 6px" }}>
-                    <span style={{ fontSize:16, fontWeight:900, color:p.c }}>{count}</span>
-                  </div>
-                  <p style={{ fontSize:9, color:"rgba(255,255,255,0.5)", fontWeight:600 }}>{p.l}</p>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-    ),
-    activity: (i) => (
-      <div key="activity">
-        <EditHandle i={i} />
-        <div style={{ border:editing?`2px dashed ${B.accent}40`:"none", borderRadius:16, padding:editing?4:0 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <p className="sl">Agenda de hoje</p>
-            <button onClick={() => goSub("calendar")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Calendário →</button>
-          </div>
-          <Card>
-            {todayTasks.map((t, j) => (
-              <div key={j} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:j?`1px solid ${B.border}`:"none" }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:`${t.color}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>{t.icon}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.action}</p>
-                </div>
-                <span style={{ fontSize:11, fontWeight:700, color:B.muted, fontVariantNumeric:"tabular-nums" }}>{t.time}</span>
-              </div>
-            ))}
-          </Card>
-        </div>
-      </div>
-    ),
-    shortcuts: (i) => (
-      <div key="shortcuts">
-        <EditHandle i={i} />
-        <div style={{ border:editing?`2px dashed ${B.accent}40`:"none", borderRadius:16, padding:editing?4:0 }}>
-          <p className="sl" style={{ marginBottom:8 }}>Acesso rápido</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-            {[
-              { k:"checkin", l:"Check-in", icon:"📍", c:B.green },
-              { k:"clients", l:"Clientes", icon:"👥", c:B.blue },
-              { k:"content", l:"Conteúdo", icon:"📋", c:B.orange },
-              { k:"ai", l:"IA", icon:"🤖", c:B.purple },
-              { k:"calendar", l:"Agenda", icon:"📅", c:B.accent },
-              { k:"gamify", l:"Ranking", icon:"🏆", c:"#F59E0B" },
-              { k:"match4biz", l:"Match4Biz", icon:"💘", c:B.pink||"#EC4899" },
-              ...(isAdmin ? [{ k:"financial", l:"Financeiro", icon:"💰", c:B.green }] : []),
-              { k:"reports", l:"Relatórios", icon:"📊", c:B.red },
-            ].map((s,j) => (
-              <Card key={j} delay={j*0.03} onClick={() => ["home","content","chat"].includes(s.k) ? goTab(s.k) : goSub(s.k)} style={{ cursor:"pointer", padding:12, textAlign:"center" }}>
-                <span style={{ fontSize:22, display:"block", marginBottom:4 }}>{s.icon}</span>
-                <p style={{ fontSize:9, fontWeight:700, color:B.text }}>{s.l}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    ),
-    team: (i) => (
-      <div key="team">
-        <EditHandle i={i} />
-        <div style={{ border:editing?`2px dashed ${B.accent}40`:"none", borderRadius:16, padding:editing?4:0 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <p className="sl">Equipe</p>
-            <button onClick={() => goSub("team")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
-          </div>
-          <div style={{ display:"flex", gap:10, overflowX:"auto", paddingBottom:4 }} className="hscroll">
-            {(team && team.length > 0 ? team : []).map((m, j) => (
-              <Card key={m.id} delay={j*0.04} style={{ minWidth:110, flex:"0 0 auto", textAlign:"center", padding:"16px 12px" }}>
-                <div style={{ position:"relative", display:"inline-block", marginBottom:8 }}>
-                  <Av name={m.name} sz={44} fs={16} />
-                  <div style={{ position:"absolute", bottom:0, right:-2, width:12, height:12, borderRadius:6, background:B.green, border:`2.5px solid ${B.bgCard}` }} />
-                </div>
-                <p style={{ fontSize:12, fontWeight:700 }}>{m.name}</p>
-                <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{m.role || m.job_title || "—"}</p>
-              </Card>
-            ))}
-            {(!team || team.length === 0) && <p style={{ fontSize:12, color:B.muted, padding:20 }}>Nenhum membro cadastrado</p>}
-          </div>
-        </div>
-      </div>
-    ),
-    clients: (i) => (
-      <div key="clients">
-        <EditHandle i={i} />
-        <div style={{ border:editing?`2px dashed ${B.accent}40`:"none", borderRadius:16, padding:editing?4:0 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-            <p className="sl">Clientes</p>
-            <button onClick={() => goSub("clients")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
-          </div>
-          {CDATA.slice(0, 4).map((c, j) => (
-            <Card key={c.id} delay={0.04 + j * 0.03} onClick={() => goSub("clients")} style={{ marginTop:j?6:0, cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <Av name={c.name} sz={38} fs={14} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
-                  <div style={{ display:"flex", gap:4, marginTop:3 }}>
-                    <Tag color={B.accent}>{c.plan}</Tag>
-                    {c.pending > 0 && <Tag color={B.orange}>{c.pending} pendente{c.pending > 1 ? "s" : ""}</Tag>}
-                  </div>
-                </div>
-                <p style={{ fontSize:13, fontWeight:700 }}>{isAdmin ? c.monthly : ""}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    ),
-    financial: (i) => (
-      <div key="financial">
-        <EditHandle i={i} />
-        <div style={{ border:editing?`2px dashed ${B.accent}40`:"none", borderRadius:16, padding:editing?4:0 }}>
-          <p className="sl" style={{ marginBottom:8 }}>Financeiro</p>
-          <Card delay={0.3} onClick={() => goSub("financial")} style={{ cursor:"pointer" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-              <div style={{ width:38, height:38, borderRadius:12, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", color:B.green }}>{IC.dollar}</div>
-              <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Faturamento Mensal</p><p style={{ fontSize:10, color:B.muted }}>Março 2026</p></div>
-              {IC.chev()}
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
-              <div style={{ padding:8, background:`${B.green}06`, borderRadius:10, textAlign:"center" }}>
-                <p style={{ fontSize:14, fontWeight:800, color:B.green }}>R$ 18.4k</p>
-                <p style={{ fontSize:9, color:B.muted }}>Receita</p>
-              </div>
-              <div style={{ padding:8, background:`${B.blue}06`, borderRadius:10, textAlign:"center" }}>
-                <p style={{ fontSize:14, fontWeight:800, color:B.blue }}>7</p>
-                <p style={{ fontSize:9, color:B.muted }}>Pagantes</p>
-              </div>
-              <div style={{ padding:8, background:`${B.accent}06`, borderRadius:10, textAlign:"center" }}>
-                <p style={{ fontSize:14, fontWeight:800, color:B.accent }}>R$ 2.6k</p>
-                <p style={{ fontSize:9, color:B.muted }}>Ticket</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-    ),
-  };
-
-  const DEFAULT_ORDER2 = isAdmin
-    ? ["summary","pipeline","activity","shortcuts","team","clients","financial"]
-    : ["summary","pipeline","activity","shortcuts","team","clients"];
-  React.useEffect(() => { if (blockOrder.length < 7 && isAdmin) setBlockOrder(DEFAULT_ORDER2); else if (!isAdmin && blockOrder.includes("financial")) setBlockOrder(prev => prev.filter(k => k !== "financial")); }, []);
-
-  /* v2 pills */
-  const V2_PILLS = [
+  const pills = [
     { k:"help", l:"Suporte", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z"/><path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg> },
-    { k:"content", l:"Aprovações", icon:IC.check, badge:pendingApprovals||0 },
+    { k:"content", l:"Aprovações", icon:IC.check, badge:pendingApprovals },
     { k:"content", l:"Conteúdo", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg> },
     { k:"reports", l:"Relatórios", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
   ];
 
-  /* v2 announcements */
-  const V2_ANN = [
-    { title:"Bem-vindo ao UniqueHub", time:"Agora", body:"Sua plataforma de gestão de marketing 360°. Explore as funcionalidades e gerencie tudo em um só lugar." },
-  ];
-
-  /* v2 quick actions */
-  const V2_ACTIONS = [
+  const actions = [
     { k:"content", l:"Aprovar conteúdos", icon:IC.check },
     { k:"financial", l:"Configurar tráfego", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> },
     { k:"reports", l:"Ver relatório", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-    { k:"chat", l:"Falar com equipe", icon:IC.chat() },
+    { k:"chat", l:"Falar com equipe", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> },
   ];
 
-  const isV2 = B.bg === "#0D0D0D";
+  const initials = user?.name?.charAt(0).toUpperCase() || "U";
 
   return (
-    <div className="pg" style={{ paddingTop:0 }}>
+    <div style={{ minHeight:"100vh", background:C.bg, marginLeft:-14, marginRight:-14, marginTop:-14, paddingBottom:100 }}>
 
-      {/* ══════════════ HEADER (white card, rounded bottom) ══════════════ */}
-      <div style={{ background:"#fff", borderRadius:"0 0 40px 40px", padding:"52px 0 28px", marginLeft:-14, marginRight:-14, marginTop:-14, marginBottom:0, boxShadow:isV2?"0 12px 40px rgba(0,0,0,0.3)":"0 4px 16px rgba(0,0,0,0.06)" }}>
-
+      {/* ═══ HEADER CARD (white on dark / dark on light) ═══ */}
+      <header style={{ background:H.bg, borderRadius:"0 0 40px 40px", padding:"52px 0 28px", boxShadow:SHADOW }}>
         {/* Greeting */}
-        <div style={{ padding:"0 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ padding:"14px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:50, height:50, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>
-              {user?.photo ? <img src={user.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : (user?.name?.charAt(0).toUpperCase() || "U")}
+              {user?.photo ? <img src={user.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : initials}
             </div>
             <div>
-              <div style={{ fontSize:20, fontWeight:800, color:"#0D0D0D", letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div>
-              <div style={{ fontSize:12, color:"#999", fontWeight:500, marginTop:2 }}>Unique Marketing 360</div>
+              <div style={{ fontSize:20, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div>
+              <div style={{ fontSize:12, color:H.sub, fontWeight:500, marginTop:2 }}>Unique Marketing 360</div>
             </div>
           </div>
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => goTab("chat")} style={{ width:42, height:42, borderRadius:"50%", background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D", position:"relative" }}>{IC.chat("#0D0D0D")}</button>
-            <button onClick={() => goSub("notifs")} style={{ width:42, height:42, borderRadius:"50%", background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D", position:"relative" }}>
+            <button onClick={() => goTab("chat")} style={{ width:42, height:42, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC }}>{IC.chat(H.btnC)}</button>
+            <button onClick={() => goSub("notifs")} style={{ width:42, height:42, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC, position:"relative" }}>
               {IC.bell}
-              {(notifCount > 0) && <span style={{ position:"absolute", top:8, right:8, width:8, height:8, borderRadius:"50%", background:"#FF3B30", border:"2px solid #fff" }} />}
+              {(notifCount > 0) && <span style={{ position:"absolute", top:8, right:8, width:8, height:8, borderRadius:"50%", background:"#FF3B30", border:`2px solid ${H.bg}` }} />}
             </button>
           </div>
         </div>
 
         {/* Search */}
-        <div onClick={() => goSub("search")} style={{ margin:"14px 20px 0", background:"#F3F3F3", borderRadius:14, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", cursor:"pointer" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span style={{ fontSize:14, color:"#BBB", fontFamily:"inherit" }}>Buscar...</span>
+        <div onClick={() => goSub("search")} style={{ margin:"14px 20px 0", background:H.srch, borderRadius:14, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", cursor:"pointer" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span style={{ fontSize:14, color:H.srchT, fontFamily:"inherit" }}>Buscar...</span>
         </div>
 
-        {/* Quick cards */}
+        {/* Quick cards (lime) */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 20px 0" }}>
-          <div onClick={() => goSub("financial")} style={{ background:"#C6F135", borderRadius:20, padding:"10px 12px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:72 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Investimento</div>
-            <div style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</div>
-            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Tráfego / mês</div>
-            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <div onClick={() => goSub("financial")} style={{ background:LIME, borderRadius:20, padding:"12px 14px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:76 }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:2 }}>Investimento</div>
+            <div style={{ fontSize:20, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</div>
+            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:2 }}>Tráfego / mês</div>
+            <div style={{ position:"absolute", bottom:10, right:10, width:28, height:28, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>
-          <div onClick={() => goTab("content")} style={{ background:"#C6F135", borderRadius:20, padding:"10px 12px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:72 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Aprovações</div>
-            <div style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</div>
-            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Aguardando você</div>
-            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <div onClick={() => goTab("content")} style={{ background:LIME, borderRadius:20, padding:"12px 14px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:76 }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:2 }}>Aprovações</div>
+            <div style={{ fontSize:20, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</div>
+            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:2 }}>Aguardando você</div>
+            <div style={{ position:"absolute", bottom:10, right:10, width:28, height:28, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* ══════════════ PILLS (horizontal scroll) ══════════════ */}
-      <div style={{ display:"flex", gap:10, padding:"22px 0 0", overflowX:"auto", scrollbarWidth:"none", msOverflowStyle:"none" }}>
-        {V2_PILLS.map(p => (
-          <div key={p.l} onClick={() => p.k==="chat"?goTab("chat"):goSub(p.k)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:8, background:isV2?"#1E1E1E":B.bgCard, border:`1px solid ${isV2?"#2A2A2A":B.border}`, borderRadius:100, padding:"10px 16px", cursor:"pointer", color:isV2?"rgba(255,255,255,0.7)":B.text, fontSize:13, fontWeight:600, position:"relative" }}>
-            <div style={{ width:28, height:28, borderRadius:"50%", background:isV2?"#2A2A2A":`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:isV2?"#C6F135":B.accent }}>{p.icon}</div>
-            {p.l}
-            {p.badge > 0 && <span style={{ background:"#FF3B30", color:"#fff", fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:100 }}>{p.badge}</span>}
-          </div>
-        ))}
-      </div>
+      {/* ═══ BODY ═══ */}
+      <div style={{ padding:"0 20px" }}>
 
-      {/* ══════════════ COMUNICADOS ══════════════ */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
-        <h3 style={{ fontSize:18, fontWeight:800, color:isV2?"#fff":B.text }}>Comunicados</h3>
-        <span onClick={() => goSub("news")} style={{ fontSize:13, color:isV2?"rgba(255,255,255,0.35)":B.muted, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
-      </div>
-      {V2_ANN.map((a,i) => (
-        <div key={i} style={{ background:isV2?"#1A1A1A":B.bgCard, borderRadius:22, padding:20, border:`1px solid ${isV2?"#272727":B.border}`, marginBottom:10 }}>
+        {/* Pills (horizontal scroll) */}
+        <div style={{ display:"flex", gap:10, paddingTop:22, overflowX:"auto", scrollbarWidth:"none" }}>
+          {pills.map((p,i) => (
+            <div key={i} onClick={() => p.k==="chat"?goTab("chat"):goSub(p.k)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:8, background:C.pill, border:`1px solid ${C.pbrd}`, borderRadius:100, padding:"10px 16px", cursor:"pointer", color:C.txt, fontSize:13, fontWeight:600 }}>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:C.picn, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:LIME }}>{p.icon}</div>
+              {p.l}
+              {p.badge > 0 && <span style={{ background:"#FF3B30", color:"#fff", fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:100 }}>{p.badge}</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Comunicados */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
+          <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Comunicados</h3>
+          <span onClick={() => goSub("news")} style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
+        </div>
+        <div style={{ background:C.card, borderRadius:22, padding:20, border:`1px solid ${C.brd}` }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-            <h4 style={{ fontSize:17, fontWeight:800, color:isV2?"#fff":B.text, lineHeight:1.2, flex:1, marginRight:12 }}>{a.title}</h4>
-            <span style={{ background:isV2?"#252525":`${B.muted}15`, borderRadius:100, padding:"5px 12px", fontSize:11, fontWeight:600, color:isV2?"rgba(255,255,255,0.35)":B.muted, whiteSpace:"nowrap", flexShrink:0 }}>{a.time}</span>
+            <h4 style={{ fontSize:17, fontWeight:800, color:C.txt, lineHeight:1.2, flex:1, marginRight:12 }}>Bem-vindo ao UniqueHub</h4>
+            <span style={{ background:C.badge, borderRadius:100, padding:"5px 12px", fontSize:11, fontWeight:600, color:C.mut, whiteSpace:"nowrap", flexShrink:0 }}>Agora</span>
           </div>
-          <p style={{ fontSize:13, color:isV2?"rgba(255,255,255,0.45)":B.muted, lineHeight:1.6, marginBottom:16 }}>{a.body}</p>
-          <button onClick={() => goSub("news")} style={{ width:"100%", background:isV2?"#fff":"#0D0D0D", border:"none", borderRadius:100, padding:14, fontFamily:"inherit", fontSize:14, fontWeight:700, color:isV2?"#0D0D0D":"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <p style={{ fontSize:13, color:C.mut, lineHeight:1.6, marginBottom:16 }}>Sua plataforma de gestão de marketing 360°. Explore as funcionalidades e gerencie tudo em um só lugar.</p>
+          <button onClick={() => goSub("news")} style={{ width:"100%", background:C.readBtn, border:"none", borderRadius:100, padding:14, fontFamily:"inherit", fontSize:14, fontWeight:700, color:C.readBtnT, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
             Ler mais <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
-      ))}
 
-      {/* ══════════════ AÇÕES RÁPIDAS ══════════════ */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 12px" }}>
-        <h3 style={{ fontSize:18, fontWeight:800, color:isV2?"#fff":B.text }}>Ações rápidas</h3>
-        <span style={{ fontSize:13, color:isV2?"rgba(255,255,255,0.35)":B.muted, fontWeight:600 }}>Ver todas</span>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-        {V2_ACTIONS.map(a => (
-          <div key={a.l} onClick={() => a.k==="chat"?goTab("chat"):goSub(a.k)} style={{ background:isV2?"#1A1A1A":B.bgCard, borderRadius:22, padding:"20px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${isV2?"#272727":B.border}` }}>
-            <div style={{ width:42, height:42, borderRadius:"50%", background:isV2?"#252525":`${B.muted}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:isV2?"rgba(255,255,255,0.6)":B.muted }}>{a.icon}</div>
-            <span style={{ fontSize:13, fontWeight:700, color:isV2?"rgba(255,255,255,0.75)":B.text, lineHeight:1.3 }}>{a.l}</span>
-          </div>
-        ))}
-      </div>
+        {/* Ações rápidas */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
+          <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Ações rápidas</h3>
+          <span style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todas</span>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {actions.map((a,i) => (
+            <div key={i} onClick={() => a.k==="chat"?goTab("chat"):goSub(a.k)} style={{ background:C.card, borderRadius:22, padding:"20px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
+              <div style={{ width:42, height:42, borderRadius:"50%", background:C.aicn, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:C.mut }}>{a.icon}</div>
+              <span style={{ fontSize:13, fontWeight:700, color:C.txt, lineHeight:1.3 }}>{a.l}</span>
+            </div>
+          ))}
+        </div>
 
-      {/* ══════════════ EXISTING BLOCKS (summary, team, etc) ══════════════ */}
-      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
-        <button onClick={() => setEditing(!editing)} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 12px", borderRadius:8, background:editing?B.accent:`${B.muted}10`, border:editing?`1.5px solid ${B.accent}`:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:editing?B.dark:B.muted }}>
-          {editing ? <>{IC.check} Pronto</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Organizar</>}
-        </button>
-      </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-        {blockOrder.map((key, i) => BLOCKS[key] ? BLOCKS[key](i) : null)}
+        {/* Resumo (admin only) */}
+        {isAdmin && (
+          <>
+            <div style={{ padding:"24px 0 12px" }}><h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Resumo</h3></div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+              {[
+                { label:"Clientes", value:totalClients, sub:`${activeClients} ativos`, icon:"👥" },
+                { label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", icon:"💰" },
+                { label:"Score", value:avgScore, sub:"satisfação média", icon:"⭐" },
+                { label:"Pendentes", value:pendingApprovals, sub:"aguardando ação", icon:"⏳" },
+              ].map((s,j) => (
+                <div key={j} style={{ background:C.card, borderRadius:22, padding:"16px 14px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
+                  <div style={{ position:"absolute", top:12, right:12, fontSize:20, opacity:0.12 }}>{s.icon}</div>
+                  <p style={{ fontSize:9, color:C.mut, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{s.label}</p>
+                  <p style={{ fontSize:22, fontWeight:900, color:LIME, marginTop:4 }}>{s.value}</p>
+                  <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>{s.sub}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Equipe */}
+        {team && team.length > 0 && (
+          <>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
+              <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Equipe</h3>
+              <span onClick={() => goSub("team")} style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
+            </div>
+            <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+              {(team||[]).slice(0,6).map((m,i) => (
+                <div key={i} style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:6, width:64 }}>
+                  <Av src={m.photo_url} name={m.name} sz={48} fs={18} />
+                  <p style={{ fontSize:10, fontWeight:600, color:C.txt, textAlign:"center", lineHeight:1.2, maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.name?.split(" ")[0]}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Clientes recentes */}
+        {CDATA.length > 0 && (
+          <>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
+              <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Clientes</h3>
+              <span onClick={() => goSub("clients")} style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
+            </div>
+            {CDATA.slice(0,3).map((c,i) => (
+              <div key={c.id||i} onClick={() => goSub("clients")} style={{ background:C.card, borderRadius:18, padding:"14px 16px", border:`1px solid ${C.brd}`, marginTop:i?8:0, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={c.name} sz={40} fs={15} />
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:700, color:C.txt }}>{c.name}</p>
+                  <p style={{ fontSize:11, color:C.mut }}>{c.plan||"—"} · {c.monthly||"—"}/mês</p>
+                </div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -5690,13 +5527,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const PRESETS = [
       { k:"default", name:"UniqueHub", desc:"O visual padrão do app", emoji:"💚", dark:false, theme:"default",
         pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
-      { k:"v2", name:"UniqueHub v2", desc:"Dark, lime green, premium", emoji:"⚡", dark:true, theme:"default",
+      { k:"v2", name:"UniqueHub Dark", desc:"Header branco, fundo escuro", emoji:"🖤", dark:true, theme:"default",
         pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:false,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#0D0D0D",customBgCard:"#1A1A1A",customText:"#FFFFFF",customMuted:"rgba(255,255,255,0.35)",customBorder:"#2A2A2A",iconColor:"#C6F135",blockBg:"rgba(198,241,53,0.04)",navActiveColor:"#0D0D0D",navInactiveColor:"rgba(255,255,255,0.30)" }},
+      { k:"v2clean", name:"UniqueHub Clean", desc:"Header escuro, fundo claro", emoji:"🤍", dark:false, theme:"default",
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_light",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#F5F5F5",customBgCard:"#FFFFFF",customText:"#0D0D0D",customMuted:"#888888",customBorder:"rgba(0,0,0,0.06)",iconColor:"#08FB9D",blockBg:"rgba(8,251,157,0.04)",navActiveColor:null,navInactiveColor:"rgba(255,255,255,0.40)" }},
     ];
 
     const BG_TEMPLATES = [
       { k:"solid", css:B.bg },
-      { k:"uh_v2_light", css:"#F0F0EC" },
+      { k:"uh_v2_light", css:"#F5F5F5" },
     ];
 
     const applyPreset = (p) => { setDark(p.dark); setThemeColor(p.theme); updateUiPrefs(p.pr); showToast(p.name+" aplicado ✓"); };
@@ -10280,7 +10119,7 @@ ${(()=>{
     soft_green:"linear-gradient(160deg,#e8f5e9,#f1f8e9,#e8f5e9)",
     warm_sunset:"linear-gradient(135deg,#fff8e1,#ffe0b2,#ffccbc,#fff8e1)",
     ocean_deep:"linear-gradient(180deg,#0a1628,#0d2137,#0a1628)",
-    uh_v2_light:"#F0F0EC",
+    uh_v2_light:"#F5F5F5",
     uh_v2_dark:"linear-gradient(160deg,#0A0A0A 0%,#0D0D0D 40%,#0A0A0A 100%)",
     ember_glow:"linear-gradient(135deg,#1a0a0a,#2d1212,#1a0a0a)",
     aurora_dark:"linear-gradient(135deg,#0f1419,#1a1025,#0f1920,#0f1419)",
