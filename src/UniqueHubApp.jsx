@@ -10070,7 +10070,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
               goTab(t.k);
             }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               {/* Floating circle for active */}
-              <div style={{ width:a?52:36, height:a?52:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-18px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50, 0 0 0 4px ${dark?"#1C1C1C":"#192126"}`:"none" }}>
+              <div style={{ width:a?52:36, height:a?52:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-18px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none", border:a?`5px solid ${B.bg||"#0D0D0D"}`:"none" }}>
                 {t.i(a ? (dark?"#0D0D0D":"#fff") : (dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)"))}
               </div>
               {/* Label below for active */}
