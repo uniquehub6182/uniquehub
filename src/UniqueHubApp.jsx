@@ -6725,11 +6725,20 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "onboardimgs") {
     if (!obImgsLoaded) {
       setObImgsLoaded(true);
+      // Load from localStorage first (instant)
+      try {
+        const local = localStorage.getItem("uh_ob_imgs");
+        if (local) {
+          const p = JSON.parse(local);
+          if (Array.isArray(p) && p.length === 3) setObImgsState(p.map(v => v || ""));
+        }
+      } catch {}
+      // Also try Supabase to sync
       if (supabase) supaGetSetting("onboarding_images").then(raw => {
         if (!raw) return;
         try {
           const p = typeof raw === "string" ? JSON.parse(raw) : raw;
-          if (Array.isArray(p)) setObImgsState(p.map((v,i) => v || ""));
+          if (Array.isArray(p) && p.length > 0) setObImgsState(p.map((v,i) => v || ""));
         } catch {}
       });
       return <div className="pg"><Head title="Telas de Início" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
@@ -6739,8 +6748,20 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       if (!file) return;
       const reader = new FileReader();
       reader.onload = e => {
-        const dataUrl = e.target.result;
-        setObImgsState(prev => { const n=[...prev]; n[i]=dataUrl; return n; });
+        // Compress to max 900px wide, quality 0.75 to keep localStorage safe
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX = 900;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.75);
+          setObImgsState(prev => { const n=[...prev]; n[i]=compressed; return n; });
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     };
@@ -6748,12 +6769,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const saveObImgs = async () => {
       setObImgsSaving(true);
       const payload = JSON.stringify(obImgsState);
-      // Always save to localStorage so onboarding can read it before login
-      try { localStorage.setItem("uh_ob_imgs", payload); } catch {}
+      try {
+        localStorage.setItem("uh_ob_imgs", payload);
+        // Reset onboarding flag so slides show again on next open (preview)
+        localStorage.removeItem("uh_onboard_v4");
+      } catch {}
       const ok = await supaSetSetting("onboarding_images", payload);
       setObImgsSaving(false);
-      if (ok) showToast("Imagens salvas ✓");
-      else showToast("Imagens salvas localmente ✓");
+      if (ok) showToast("Imagens salvas! Saia e abra o app para ver ✓");
+      else showToast("Salvo localmente! Saia e abra o app para ver ✓");
     };
 
     const LABELS = ["Slide 1 — Gestão completa","Slide 2 — Inteligência Artificial","Slide 3 — Personalização"];
