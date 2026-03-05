@@ -1207,6 +1207,22 @@ function LoginPage({ onAuth }) {
   const [fromInviteLink, setFromInviteLink] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState("");
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  const handleForgot = async () => {
+    if (!forgotEmail.includes("@")) { setError("Digite um e-mail válido"); return; }
+    if (!supabase) { setForgotSent(true); return; }
+    setForgotLoading(true); setError("");
+    const { error: e } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: window.location.origin + "/?reset=1",
+    });
+    setForgotLoading(false);
+    if (e) setError(e.message);
+    else setForgotSent(true);
+  };
 
   /* Auto-detect invite link ?convite=email */
   useEffect(() => {
@@ -1594,6 +1610,56 @@ function LoginPage({ onAuth }) {
     </div>
   );
 
+  /* ── FORGOT PASSWORD ── */
+  if (forgotMode) return (
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", overflow:"hidden" }}>
+      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 52px) 28px 40px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:56, objectFit:"contain", marginBottom:10 }} />
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
+        <button onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(""); setError(""); }} style={{ position:"absolute", top:"calc(env(safe-area-inset-top,0px) + 20px)", left:20, background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, padding:"8px 4px" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Voltar
+        </button>
+      </div>
+      <div style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 40px)" }}>
+        {forgotSent ? (
+          <div style={{ textAlign:"center", paddingTop:20 }}>
+            <div style={{ width:72, height:72, borderRadius:"50%", background:"#F0FDF4", border:"2px solid #BBF246", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3D7A00" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h2 style={{ fontSize:24, fontWeight:900, color:"#1A1D23", marginBottom:10 }}>E-mail enviado!</h2>
+            <p style={{ fontSize:14, color:"#9CA3AF", lineHeight:1.6, marginBottom:32 }}>Verifique sua caixa de entrada em <strong style={{color:"#1A1D23"}}>{forgotEmail}</strong> e siga o link para redefinir sua senha.</p>
+            <button onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(""); }} style={{ width:"100%", padding:"18px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#BBF246 0%,#9AE010 100%)", color:"#0D1117", fontSize:16, fontWeight:800, fontFamily:"inherit", cursor:"pointer", boxShadow:"0 6px 24px rgba(187,242,70,0.35)" }}>
+              Voltar ao login
+            </button>
+          </div>
+        ) : (
+          <>
+            <h1 style={{ fontSize:26, fontWeight:900, color:"#1A1D23", margin:"0 0 8px" }}>Redefinir senha</h1>
+            <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 28px", lineHeight:1.5 }}>Digite seu e-mail e enviaremos um link para criar uma nova senha.</p>
+            {error && <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:12, marginBottom:16 }}><p style={{ fontSize:13, color:"#DC2626", margin:0 }}>⚠ {error}</p></div>}
+            <div style={{ position:"relative", marginBottom:24 }}>
+              <input
+                value={forgotEmail}
+                onChange={e => { setForgotEmail(e.target.value); setError(""); }}
+                placeholder="seu@email.com"
+                type="email"
+                autoCapitalize="none"
+                style={{ width:"100%", padding:"22px 18px 10px", border:"1.5px solid #E8EAF0", borderRadius:16, fontSize:16, fontFamily:"inherit", background:"#F8F9FC", color:"#1A1D23", outline:"none", boxSizing:"border-box", transition:"border .2s" }}
+                onFocus={e => e.target.style.borderColor="#BBF246"}
+                onBlur={e => e.target.style.borderColor="#E8EAF0"}
+              />
+              <label style={{ position:"absolute", left:18, top: forgotEmail ? 10 : "50%", transform: forgotEmail ? "none" : "translateY(-50%)", fontSize: forgotEmail ? 11 : 15, color: forgotEmail ? "#BBF246" : "#9CA3AF", fontWeight: forgotEmail ? 700 : 400, letterSpacing: forgotEmail ? "0.04em" : 0, textTransform: forgotEmail ? "uppercase" : "none", pointerEvents:"none", transition:"all .18s" }}>E-mail</label>
+            </div>
+            <button onClick={handleForgot} disabled={forgotLoading || !forgotEmail.includes("@")} style={{ width:"100%", padding:"18px", borderRadius:16, border:"none", background:"linear-gradient(135deg,#BBF246 0%,#9AE010 100%)", color:"#0D1117", fontSize:16, fontWeight:800, fontFamily:"inherit", cursor:"pointer", boxShadow:"0 6px 24px rgba(187,242,70,0.35)", opacity: forgotLoading || !forgotEmail.includes("@") ? 0.45 : 1 }}>
+              {forgotLoading ? "Enviando..." : "Enviar link de redefinição"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   /* ── LOGIN MODE — split design: dark header + white card ── */
   const [emailFocused, setEmailFocused] = React.useState(false);
   const [passFocused, setPassFocused] = React.useState(false);
@@ -1729,14 +1795,19 @@ function LoginPage({ onAuth }) {
             </div>
             <span style={{ fontSize:13, color:"#6B7280", fontWeight:500 }}>Lembrar acesso</span>
           </div>
-          <button style={{ background:"none", border:"none", fontSize:13, color:"#BBF246", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+          <button onClick={() => { setForgotMode(true); setForgotEmail(email); setError(""); setForgotSent(false); }} style={{ background:"none", border:"none", fontSize:13, color:"#BBF246", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
             Esqueci a senha
           </button>
         </div>
 
         {/* Sign in CTA */}
-        <button onClick={handleLogin} disabled={loginLoading || !(supabase ? email.includes("@") && pw.length >= 6 : emailValid && pwStrong(pw))} className="lsign-btn">
-          {loginLoading ? "Entrando..." : mode==="login" ? "Entrar na plataforma" : "Solicitar Acesso"}
+        <button
+          onClick={mode==="login" ? handleLogin : () => setMode("register")}
+          disabled={mode==="login" && (loginLoading || !(supabase ? email.includes("@") && pw.length >= 6 : emailValid && pwStrong(pw)))}
+          className="lsign-btn"
+          style={{ opacity: mode==="register" ? 1 : (loginLoading ? 0.6 : (supabase ? (email.includes("@") && pw.length >= 6 ? 1 : 0.45) : ((emailValid && pwStrong(pw)) ? 1 : 0.45))) }}
+        >
+          {loginLoading ? "Entrando..." : mode==="login" ? "Entrar na plataforma" : "Preencher cadastro →"}
         </button>
 
         {/* Divider */}
