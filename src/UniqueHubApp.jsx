@@ -1004,11 +1004,22 @@ const Toggle = ({ on, onToggle }) => (
   </button>
 );
 
-const Head = ({ title, onBack, right }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, paddingTop: 8 }}>
-    {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}` }}>{IC.back()}</button>}
-    <h2 style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>{title}</h2>
-    {right}
+const HeadBtn = ({ onClick, children, accent }) => (
+  <button onClick={onClick} style={{ width:38, height:38, borderRadius:"50%", background: accent ? B.accent : "rgba(255,255,255,0.12)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color: accent ? B.textOnAccent : "#fff", flexShrink:0 }}>
+    {children}
+  </button>
+);
+
+const Head = ({ title, onBack, right, sub }) => (
+  <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:`calc(env(safe-area-inset-top,0px) + 14px) 20px 22px`, margin:"0 -16px 20px", display:"flex", alignItems:"center", gap:12, boxShadow:`0 4px 24px ${B.accent}18` }}>
+    {onBack && <button onClick={onBack} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, touchAction:"manipulation" }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>}
+    <div style={{ flex:1 }}>
+      <h2 style={{ fontSize:20, fontWeight:900, color:"#fff", letterSpacing:"-0.4px", lineHeight:1.1, margin:0 }}>{title}</h2>
+      {sub && <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", fontWeight:500, marginTop:2 }}>{sub}</p>}
+    </div>
+    {right && <div className="ph-head" style={{ display:"flex", gap:8 }}>{right}</div>}
   </div>
 );
 
@@ -3361,7 +3372,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
   /* ── CREATE SHEET ── */
   if (creating) return (
-    <div className="pg" style={{ paddingTop: TOP }}>
+    <div className="pg" style={{ padding:0 }}>
       {ToastEl}
       <Head title={createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"} onBack={() => { if (createType) setCreateType(null); else setCreating(false); }} />
       {!createType ? (
@@ -3513,7 +3524,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
     return (
       <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-      <div className="pg" style={{ paddingTop: TOP }}>
+      <div className="pg" style={{ padding:0 }}>
         {ToastEl}
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
@@ -4072,7 +4083,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
   /* ── MAIN LIST ── */
   return (
-    <div className="pg" style={{ paddingTop: TOP }}>
+    <div className="pg" style={{ padding:0 }}>
       {ToastEl}
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, paddingTop:8 }}>
@@ -4978,7 +4989,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div className="pg" style={{ paddingTop: TOP }}>
+    <div className="pg" style={{ padding:0 }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, paddingTop:8 }}>
         <h2 style={{ fontSize:18, fontWeight:800, flex:1 }}>Chat</h2>
@@ -10115,8 +10126,8 @@ p,span,div,h1,h2,h3,h4{color:inherit}
 .pill{background:${B.dark}!important}
 .send-btn{background:${B.accent}!important;color:${B.textOnAccent}!important}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:var(--uh-radius-sm)!important}.htab.a{background:${B.accent}!important;color:${B.textOnAccent}!important;box-shadow:0 2px 8px ${B.accent}30!important}
-.ib{background:${B.bgCard}!important;color:${B.text}!important;border-color:${B.border}!important}
-.sheet{background:${B.bgCard}!important;border-radius:var(--uh-radius) var(--uh-radius) 0 0!important}
+.ib{background:${B.bgCard}!important;color:${B.text}!important;border-color:${B.border}!important}.ph-head .ib{background:rgba(255,255,255,0.12)!important;color:#fff!important;border-color:rgba(255,255,255,0.15)!important}
+.sheet{background:${B.bgCard}!important;border-radius:var(--uh-radius) var(--uh-radius) 0 0!important;max-height:82vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
 .grid-btn{background:${B.bgCard}!important;color:${B.text}!important;border-radius:var(--uh-radius)!important}
 .sl{color:${B.muted}!important;font-size:var(--uh-fs-sm)!important}
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
@@ -10316,12 +10327,12 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${dark?"#fff":"#0D0D0D"};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden;background:${dark?"#fff":"#0D0D0D"}}
+html,body{font-family:'Figtree',sans-serif;background:${dark?"#fff":"#0D0D0D"};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overscroll-behavior:none}#root{height:100%;height:100dvh;background:${dark?"#fff":"#0D0D0D"}}
 input,textarea,select{font-size:16px !important}
 .app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
 .screen{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:100px}
-.pg{padding:16px 16px 20px;padding-top:${TOP}}
+.pg{padding:0 16px 20px}.pg-body{padding:0 16px 20px}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
 .ani{animation:fadeUp .35s ease both}
