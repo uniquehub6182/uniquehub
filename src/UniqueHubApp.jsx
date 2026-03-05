@@ -4833,7 +4833,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{convName[0]?.toUpperCase()}</span>
                     </div>
                   )}
-                  <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ maxWidth:"78%", minWidth:60, background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.45, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", wordBreak:"break-word" }}>
+                  <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ maxWidth:"78%", background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.45, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"normal" }}>
                     {m.file_url ? (
                       m.file_type?.startsWith("image") ? (
                         <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
