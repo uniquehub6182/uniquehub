@@ -1503,7 +1503,7 @@ function LoginPage({ onAuth }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
   const totalClients = CDATA.length;
@@ -1522,8 +1522,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:"registro diário",val:"—",k:"checkin"} };
   const PILLS = { suporte:{l:"Suporte",k:"help"}, aprovacoes:{l:"Aprovações",k:"content",badge:pendingApprovals}, conteudo:{l:"Conteúdo",k:"content"}, relatorios:{l:"Relatórios",k:"reports"}, financeiro:{l:"Financeiro",k:"financial"}, calendar:{l:"Agenda",k:"calendar"}, checkin:{l:"Check-in",k:"checkin"}, ia:{l:"IA",k:"ai"}, match4biz:{l:"Match4Biz",k:"match4biz"} };
   const ACTIONS = { aprovar:{l:"Aprovar conteúdos",k:"content"}, trafego:{l:"Configurar tráfego",k:"financial"}, relatorio:{l:"Ver relatório",k:"reports"}, chat:{l:"Falar com equipe",k:"chat"}, checkin:{l:"Fazer check-in",k:"checkin"}, ia:{l:"Assistente IA",k:"ai"}, match4biz:{l:"Match4Biz",k:"match4biz"} };
-  const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", equipe:"Equipe", clientes:"Clientes recentes" };
-  const cfg = dashCfg || { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","equipe","clientes"] };
+  const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", posts:"Posts Recentes", equipe:"Equipe", clientes:"Clientes recentes" };
+  const cfg = dashCfg || { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","posts","equipe","clientes"] };
   const isDark = B.bg === "#0D0D0D";
   const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
   const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
@@ -1536,17 +1536,138 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
-    if(key==="comunicados") return <div key="com"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3><span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{background:C.card,borderRadius:22,padding:20,border:`1px solid ${C.brd}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><h4 style={{fontSize:17,fontWeight:800,color:C.txt,lineHeight:1.2,flex:1,marginRight:12}}>Bem-vindo ao UniqueHub</h4><span style={{background:C.badge,borderRadius:100,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.mut,whiteSpace:"nowrap",flexShrink:0}}>Agora</span></div><p style={{fontSize:13,color:C.mut,lineHeight:1.6,marginBottom:16}}>Sua plataforma de gestão de marketing 360°. Explore as funcionalidades.</p><button onClick={()=>goSub("news")} style={{width:"100%",background:C.readBtn,border:"none",borderRadius:100,padding:14,fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.readBtnT,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>Ler mais <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div></div>;
+    if(key==="comunicados") {
+      const catPhoto = (cat,seed) => {
+        const photos = {
+          trends:["https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&q=80","https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80","https://images.unsplash.com/photo-1655720408254-e786a5b44e98?w=600&q=80"],
+          updates:["https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600&q=80","https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80","https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&q=80"],
+          tips:["https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80","https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80","https://images.unsplash.com/photo-1434626881859-194d67b2b86f?w=600&q=80"],
+          cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80","https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600&q=80","https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&q=80"],
+          tools:["https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=600&q=80","https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&q=80","https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&q=80"],
+          default:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80","https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80"],
+        };
+        const pool = photos[cat]||photos.default;
+        return pool[seed % pool.length];
+      };
+      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2"};
+      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta"};
+      const fallback = [
+        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais e otimizando resultados.",cat:"trends",date:"Hoje"},
+        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts sem crédito.",cat:"updates",date:"Ontem"},
+        {id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para aumentar o alcance orgânico nos Stories e Feed.",cat:"tips",date:"2 dias"},
+        {id:"f4",title:"Case: como triplicamos o ROI de um e-commerce",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases",date:"3 dias"},
+        {id:"f5",title:"As melhores ferramentas de automação para agências",summary:"Plataformas que economizam horas de trabalho em gestão de clientes e conteúdo.",cat:"tools",date:"4 dias"},
+      ];
+      const items = ((articles||[]).length>0 ? articles : fallback).slice(0,5);
+      const featured = items[0];
+      const rest = items.slice(1,5);
+      return <div key="com">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+          <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
+          <span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+        </div>
+        {featured && (
+          <div onClick={()=>goSub("news")} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
+            <img src={catPhoto(featured.cat,0)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
+            <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
+            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
+              <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{featured.title}</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,0.75)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{featured.summary||""}</p>
+            </div>
+          </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {rest.map((a,i)=>(
+            <div key={a.id||i} onClick={()=>goSub("news")} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
+              <img src={catPhoto(a.cat,i+1)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
+              <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
+              <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,margin:0,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+            </div>
+          ))}
+        </div>
+      </div>;
+    }
     if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{cfg.actions.map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
     if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥"},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰"},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐"},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳"}].map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
     if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
     if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"} · {c.monthly||"—"}/mês</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
+    if(key==="posts") {
+      const recentDemands = (demands||[]).slice(0,8);
+      if(recentDemands.length===0) return null;
+      const stageColor = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
+      const stageName = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
+      const bgPalette = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
+      return <div key="posts">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+          <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Conteúdos em Produção</h3>
+          <span onClick={()=>goSub("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+        </div>
+        <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4,marginRight:-16,paddingRight:16}}>
+          {recentDemands.map((d,i)=>{
+            const sc = stageColor[d.stage]||"#8B8F92";
+            const sn = stageName[d.stage]||d.stage;
+            const bg = bgPalette[i % bgPalette.length];
+            const allFiles = [...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
+            const imgFile = allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const initials = (d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+            return (
+              <div key={d.id||i} onClick={()=>goSub("content")} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
+                <div style={{position:"relative",height:140}}>
+                  {imgFile
+                    ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bg}ee,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <span style={{fontSize:32,fontWeight:900,color:"rgba(255,255,255,0.2)",letterSpacing:-1}}>{initials}</span>
+                      </div>
+                  }
+                  <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 45%,rgba(0,0,0,0.65) 100%)"}}/>
+                  <span style={{position:"absolute",top:7,left:7,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.4}}>{d.format||d.network||"Post"}</span>
+                  <span style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</span>
+                </div>
+                <div style={{padding:"7px 9px",display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:sc,flexShrink:0}}/>
+                  <span style={{fontSize:10,color:C.mut,fontWeight:600,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>
+                  <span style={{fontSize:9,color:sc,fontWeight:700,flexShrink:0}}>{sn}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>;
+    }
     return null;
   };
-  const EditorSheet = () => { const [ec,setEc]=useState(JSON.parse(JSON.stringify(cfg))); const toggle=(arr,key)=>{const idx=ec[arr].indexOf(key);if(idx>=0)setEc({...ec,[arr]:ec[arr].filter(x=>x!==key)});else setEc({...ec,[arr]:[...ec[arr],key]});}; const Chip=({on,label,onTap,max})=><button onClick={onTap} disabled={!on&&max} style={{padding:"6px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:max&&!on?"default":"pointer",fontFamily:"inherit",opacity:max&&!on?0.4:1}}>{label}</button>; return <><div onClick={()=>setShowEditor(false)} className="overlay"/><div className="sheet" style={{maxHeight:"85vh",overflowY:"auto",background:isDark?"#1A1A1A":"#fff",color:C.txt}}><div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3><button onClick={()=>{saveCfg(ec);setShowEditor(false);}} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button></div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(WIDGETS).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k)} max={ec.cards.length>=2}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(PILLS).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k)} max={ec.pills.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(ACTIONS).map(([k,v])=><Chip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>toggle("actions",k)} max={ec.actions.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Seções visíveis</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>{Object.entries(SECTIONS).map(([k,v])=><Chip key={k} on={ec.sections.includes(k)} label={v} onTap={()=>toggle("sections",k)} max={false}/>)}</div><button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.brd}`,background:"transparent",color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button></div></>;};
+  const EditorSheet = () => { const [ec,setEc]=useState(JSON.parse(JSON.stringify(cfg))); const toggle=(arr,key)=>{const idx=ec[arr].indexOf(key);if(idx>=0)setEc({...ec,[arr]:ec[arr].filter(x=>x!==key)});else setEc({...ec,[arr]:[...ec[arr],key]});}; const Chip=({on,label,onTap,max})=><button onClick={onTap} disabled={!on&&max} style={{padding:"6px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:max&&!on?"default":"pointer",fontFamily:"inherit",opacity:max&&!on?0.4:1}}>{label}</button>; return <><div onClick={()=>setShowEditor(false)} className="overlay" style={{touchAction:"none"}} onTouchMove={e=>e.preventDefault()}/><div className="sheet" onTouchMove={e=>e.stopPropagation()} style={{paddingBottom:48}}><div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3><button onClick={()=>{saveCfg(ec);setShowEditor(false);}} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button></div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(WIDGETS).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k)} max={ec.cards.length>=2}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(PILLS).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k)} max={ec.pills.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(ACTIONS).map(([k,v])=><Chip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>toggle("actions",k)} max={ec.actions.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Seções — arraste ou reordene</p>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+          {/* Active sections in order — with up/down arrows */}
+          {ec.sections.map((k,i)=>(
+            <div key={k} style={{display:"flex",alignItems:"center",gap:8,background:isDark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)",borderRadius:12,padding:"10px 12px",border:`1.5px solid ${LIME}30`}}>
+              <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                <button onClick={()=>{if(i===0)return;const s=[...ec.sections];[s[i-1],s[i]]=[s[i],s[i-1]];setEc({...ec,sections:s});}} disabled={i===0} style={{background:"none",border:"none",cursor:i===0?"default":"pointer",padding:"1px 4px",opacity:i===0?0.2:1,color:C.txt}}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+                <button onClick={()=>{if(i===ec.sections.length-1)return;const s=[...ec.sections];[s[i],s[i+1]]=[s[i+1],s[i]];setEc({...ec,sections:s});}} disabled={i===ec.sections.length-1} style={{background:"none",border:"none",cursor:i===ec.sections.length-1?"default":"pointer",padding:"1px 4px",opacity:i===ec.sections.length-1?0.2:1,color:C.txt}}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </div>
+              <span style={{flex:1,fontSize:13,fontWeight:700,color:C.txt}}>{SECTIONS[k]||k}</span>
+              <button onClick={()=>toggle("sections",k)} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:C.mut}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          ))}
+          {/* Hidden sections — click to add */}
+          {Object.entries(SECTIONS).filter(([k])=>!ec.sections.includes(k)).map(([k,v])=>(
+            <div key={k} onClick={()=>toggle("sections",k)} style={{display:"flex",alignItems:"center",gap:8,background:"transparent",borderRadius:12,padding:"10px 12px",border:`1.5px dashed ${C.brd}`,cursor:"pointer",opacity:0.5}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span style={{fontSize:13,fontWeight:600,color:C.mut}}>{v}</span>
+            </div>
+          ))}
+        </div><button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.brd}`,background:"transparent",color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button></div></>;};
   return (
     <div className="pg" style={{ padding:0, background:C.bg }}>
-      <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:60, paddingBottom:28, boxShadow:SHADOW }}>
+      <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:`calc(env(safe-area-inset-top, 0px) + 16px)`, paddingBottom:28, boxShadow:SHADOW }}>
         <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
@@ -1595,6 +1716,7 @@ function CheckinPage({ onBack, user }) {
   const [adminTab, setAdminTab] = useState("today");
   const [teamData, setTeamData] = useState([]);
   const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
 
   const [teamError, setTeamError] = useState(null);
 
@@ -4306,6 +4428,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
 
   /* Load conversations + profiles on mount */
   useEffect(() => {
@@ -4656,32 +4779,37 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
-        {/* Header */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:`calc(${TOP} + 4px) 12px 10px`, background:B.bgCard, borderBottom:`1px solid ${B.border}`, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
-          <button onClick={() => { setView("list"); setSelConv(null); setMsgs([]); }} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
-          <Av name={convName} sz={38} fs={14} />
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:14, fontWeight:700 }}>{convName}</p>
-            <p style={{ fontSize:10, color:B.muted }}>{isGroup ? `${(selConv.members||[]).length} membros` : "Chat direto"}</p>
+        {/* ── CONV HEADER ── */}
+        <div style={{ background:B.text, borderRadius:"0 0 28px 28px", padding:`calc(env(safe-area-inset-top,0px) + 14px) 18px 18px`, flexShrink:0, boxShadow:`0 4px 20px ${B.accent}20` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            {/* Avatar */}
+            <div style={{ position:"relative" }}>
+              <div style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}30`, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                <span style={{ fontSize:16, fontWeight:800, color:B.accent }}>{convName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</span>
+              </div>
+              {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.text}` }}/>}
+            </div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:15, fontWeight:800, color:"#fff", margin:0, letterSpacing:"-0.2px" }}>{convName}</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", margin:0, marginTop:1 }}>
+                {otherTyping ? <span style={{color:B.accent, fontWeight:600}}>digitando...</span> : isGroup ? `${(selConv.members||[]).length} membros` : "Online"}
+              </p>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={()=>showToast("Videochamada em breve")} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              </button>
+              <button onClick={()=>showToast("Chamada em breve")} style={{ width:38, height:38, borderRadius:"50%", background:`${B.accent}`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+              </button>
+              {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro");}} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,80,80,0.2)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              </button>}
+            </div>
           </div>
-          <button onClick={() => showToast("Chamada de voz em breve")} className="ib" style={{ width:34, height:34 }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-          </button>
-          <button onClick={() => showToast("Videochamada em breve")} className="ib" style={{ width:34, height:34 }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-          </button>
-          {pinnedMsgs.length > 0 && <button onClick={() => setPinnedOpen(!pinnedOpen)} className="ib" style={{ width:34, height:34, position:"relative" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M12 17v5"/><path d="M5 17h14"/><path d="M15.5 3.5L18 6l-6.5 6.5L8 9l6.5-6.5z"/></svg>
-            <span style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:8, background:B.accent, color:B.text, fontSize:9, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center" }}>{pinnedMsgs.length}</span>
-          </button>}
-          {user?.supaRole === "admin" && <button onClick={async () => {
-            if (!confirm(`Excluir conversa "${convName}"? Todas as mensagens serão apagadas permanentemente.`)) return;
-            const ok = await supaDeleteConversation(selConv.id);
-            if (ok) { setConvs(prev => prev.filter(c => c.id !== selConv.id)); setSelConv(null); setMsgs([]); setView("list"); showToast("Conversa excluída ✓"); }
-            else showToast("Erro ao excluir conversa");
-          }} className="ib" style={{ width:34, height:34, color:B.red }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-          </button>}
         </div>
         {/* Pinned messages panel */}
         {pinnedOpen && pinnedMsgs.length > 0 && <div style={{ padding:"8px 16px", background:`${B.accent}08`, borderBottom:`1px solid ${B.border}`, maxHeight:150, overflowY:"auto" }}>
@@ -4694,7 +4822,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Messages */}
-        <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:4 }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", display:"flex", flexDirection:"column", gap:2, background: B.bg, WebkitOverflowScrolling:"touch" }}>
           {msgs.length === 0 && <div style={{ textAlign:"center", padding:40, color:B.muted, fontSize:13 }}>Nenhuma mensagem ainda. Comece a conversa!</div>}
           {msgs.map((m, mi) => {
             const isMe = m.sender_id === user.id;
@@ -4716,7 +4844,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     )}
                     <div onPointerDown={() => handleMsgPress(m.id)} onPointerUp={handleMsgRelease} onPointerLeave={handleMsgRelease}
                       onClick={() => { if (!reactMsgId) togglePin(m); }}
-                      style={{ padding:"8px 12px", borderRadius:isMe?"14px 4px 14px 14px":"4px 14px 14px 14px", background:isMe?B.accent:B.bgCard, color:isMe?B.textOnAccent:B.text, boxShadow:"0 1px 2px rgba(0,0,0,0.06)", marginLeft:!isMe&&isGroup?6:0, cursor:"pointer", border:m.pinned?`2px solid ${B.orange}`:"2px solid transparent" }}>
+                      style={{ padding:"10px 14px", borderRadius:isMe?"18px 4px 18px 18px":"4px 18px 18px 18px", background:isMe?`linear-gradient(135deg,${B.accent},${B.accent}cc)`:B.bgCard, color:isMe?B.textOnAccent:B.text, boxShadow:isMe?`0 4px 12px ${B.accent}40`:"0 2px 6px rgba(0,0,0,0.06)", marginLeft:!isMe&&isGroup?6:0, cursor:"pointer", border:m.pinned?`2px solid ${B.orange}`:"2px solid transparent" }}>
                       {!isMe && isGroup && <p style={{ fontSize:10, fontWeight:700, color:B.blue, marginBottom:2 }}>{senderName}</p>}
                       {m.pinned && <span style={{ fontSize:9, color:isMe?"rgba(0,0,0,0.5)":B.orange }}>📌 </span>}
                       {m.file_url && m.file_type?.startsWith("audio/") ? (
@@ -4760,7 +4888,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Input */}
-        <div style={{ padding:"8px 12px 24px", display:"flex", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}` }}>
+        <div style={{ padding:"10px 14px 96px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
@@ -4776,11 +4904,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </>
           ) : (
             <>
-              <button onClick={() => setShowAttach(!showAttach)} className="ib" style={{ width:40, height:40, flexShrink:0, background:showAttach?`${B.accent}15`:B.bgCard }}>{IC.plus}</button>
-              <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." className="tinput" style={{ flex:1 }} />
+              <button onClick={() => setShowAttach(!showAttach)} style={{ width:44, height:44, borderRadius:"50%", background:showAttach?B.accent:B.bg, border:`1.5px solid ${B.border}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:showAttach?"#0D0D0D":B.muted, transition:"all .2s" }}>{IC.plus}</button>
+              <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && sendMsg()} placeholder="Mensagem..." style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"11px 16px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
               {input.trim() ? (
-                <button onClick={sendMsg} className="send-btn">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 12px ${B.accent}50` }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
                 </button>
               ) : (
                 <button onClick={startRecording} className="send-btn" style={{ background:`${B.accent}80` }}>
@@ -4857,73 +4985,86 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div className="pg" style={{ paddingTop: TOP }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, paddingTop:8 }}>
-        <h2 style={{ fontSize:18, fontWeight:800, flex:1 }}>Chat</h2>
-        {totalUnread > 0 && <Tag color={B.accent}>{totalUnread} {totalUnread === 1 ? "nova" : "novas"}</Tag>}
-        <button onClick={() => setShowNewChat(true)} className="ib" style={{ width:36, height:36, background:`${B.accent}15` }}>{IC.plus}</button>
-      </div>
-      {/* Search */}
-      <div style={{ position:"relative", marginBottom:12 }}>
-        <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</span>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar conversa..." className="tinput" style={{ paddingLeft:40 }} />
-      </div>
-      {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando conversas...</p>}
-      {!loading && groups.length > 0 && <>
-        <p className="sl" style={{ marginBottom:6 }}>Grupos</p>
-        {groups.map((c, i) => {
-          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content || "Sem mensagens");
-          return (
-            <Card key={c.id} delay={i*0.03} onClick={() => { setSelConv(c); setView("chat"); }} style={{ marginTop:i?6:0, cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:42, height:42, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{ color:B.accent, display:"flex" }}>{IC.users}</span>
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:c.unread?700:500 }}>{c.name || "Grupo"}</p>
-                  <p style={{ fontSize:12, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lastText}</p>
-                </div>
-                <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <p style={{ fontSize:10, color:c.unread?B.accent:B.muted }}>{fmtTime(c.lastMsg?.created_at)}</p>
-                  {c.unread > 0 && <div style={{ width:18, height:18, borderRadius:9, background:B.accent, color:B.text, fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginTop:4, marginLeft:"auto" }}>!</div>}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </>}
-      {!loading && dms.length > 0 && <>
-        <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Conversas</p>
-        {dms.map((c, i) => {
-          const other = (c.members || []).find(m => m.id !== user.id);
-          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content || "Sem mensagens");
-          const lastIsMe = c.lastMsg?.sender_id === user.id;
-          return (
-            <Card key={c.id} delay={(i+groups.length)*0.03} onClick={() => { setSelConv(c); setView("chat"); }} style={{ marginTop:i?6:0, cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <Av name={other?.name || "?"} sz={42} fs={16} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:14, fontWeight:c.unread?700:500 }}>{other?.name || "Usuário"}</p>
-                  <p style={{ fontSize:12, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lastIsMe ? "Você: " : ""}{lastText}</p>
-                </div>
-                <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <p style={{ fontSize:10, color:c.unread?B.accent:B.muted }}>{fmtTime(c.lastMsg?.created_at)}</p>
-                  {c.unread > 0 && <div style={{ width:18, height:18, borderRadius:9, background:B.accent, color:B.text, fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginTop:4, marginLeft:"auto" }}>!</div>}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </>}
-      {!loading && convs.length === 0 && <div style={{ textAlign:"center", padding:40 }}>
-        <div style={{ width:60, height:60, borderRadius:16, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
-          <span style={{ color:B.accent }}>{IC.chat}</span>
+
+      {/* ── HEADER ── */}
+      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 22px`, flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+          <div>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.45)", fontWeight:500, margin:0 }}>Olá,</p>
+            <h2 style={{ fontSize:24, fontWeight:900, color:"#fff", letterSpacing:"-0.5px", margin:0 }}>{user?.nick||user?.name?.split(" ")[0]||"Usuário"}</h2>
+          </div>
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={() => setShowNewChat(true)} style={{ width:42, height:42, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button onClick={() => setShowNewGroup(true)} style={{ width:42, height:42, borderRadius:"50%", background:`${B.accent}`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            </button>
+          </div>
         </div>
-        <p style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Nenhuma conversa</p>
-        <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>Inicie uma conversa com sua equipe</p>
-        <button onClick={() => setShowNewChat(true)} className="pill accent">Nova conversa</button>
-      </div>}
+        {/* Search */}
+        <div style={{ position:"relative" }}>
+          <svg style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:"rgba(255,255,255,0.1)", border:"1.5px solid rgba(255,255,255,0.12)", borderRadius:14, padding:"11px 14px 11px 40px", fontFamily:"inherit", fontSize:14, color:"#fff", outline:"none", boxSizing:"border-box" }}/>
+        </div>
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:8, marginTop:14 }}>
+          {[{k:"all",l:"Todos"},{k:"dm",l:"Direto"},{k:"group",l:"Grupos"}].map(t=>(
+            <button key={t.k} onClick={()=>setChatTab(t.k)} style={{ padding:"7px 18px", borderRadius:100, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, background: chatTab===t.k ? B.accent : "rgba(255,255,255,0.1)", color: chatTab===t.k ? "#0D0D0D" : "rgba(255,255,255,0.6)", transition:"all .2s" }}>{t.l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CONV LIST ── */}
+      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px 100px", WebkitOverflowScrolling:"touch" }}>
+        {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando...</p>}
+
+        {!loading && convs.length === 0 && (
+          <div style={{ textAlign:"center", padding:60 }}>
+            <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <p style={{ fontSize:15, fontWeight:700, marginBottom:6 }}>Nenhuma conversa</p>
+            <p style={{ fontSize:12, color:B.muted }}>Inicie uma conversa com sua equipe</p>
+          </div>
+        )}
+
+        {!loading && (chatTab==="all"?filteredConvs:chatTab==="dm"?dms:groups).map((c,i)=>{
+          const isGroup = c.type==="group";
+          const other = !isGroup ? (c.members||[]).find(m=>m.id!==user.id) : null;
+          const name = isGroup ? (c.name||"Grupo") : (other?.name||"Usuário");
+          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content||"Sem mensagens");
+          const lastIsMe = c.lastMsg?.sender_id===user.id;
+          const initials = name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+          const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
+          const avBg = bgPal[name.charCodeAt(0)%bgPal.length];
+          return (
+            <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");}} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 0", borderBottom:`1px solid ${B.border}`, cursor:"pointer" }}>
+              {/* Avatar */}
+              <div style={{ position:"relative", flexShrink:0 }}>
+                <div style={{ width:52, height:52, borderRadius:"50%", background: isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                  {other?.photo_url ? <img src={other.photo_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> :
+                    isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> :
+                    <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{initials}</span>}
+                </div>
+                {c.unread>0 && <div style={{ position:"absolute", top:-2, right:-2, width:18, height:18, borderRadius:"50%", background:B.accent, border:`2px solid ${B.bg}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{fontSize:9,fontWeight:900,color:"#0D0D0D"}}>{c.unread>9?"9+":c.unread}</span>
+                </div>}
+              </div>
+              {/* Info */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:3 }}>
+                  <p style={{ fontSize:15, fontWeight:c.unread?800:600, color:B.text, margin:0 }}>{name}</p>
+                  <span style={{ fontSize:11, color:c.unread?B.accent:B.muted, flexShrink:0, marginLeft:8 }}>{fmtTime(c.lastMsg?.created_at)}</span>
+                </div>
+                <p style={{ fontSize:12, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0 }}>{lastIsMe?"Você: ":""}{lastText}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -7497,11 +7638,12 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   );
 }
 
-function NewsPage({ onBack }) {
+function NewsPage({ onBack, onArticlesLoad }) {
   const [tab, setTab] = useState("all");
   const [selArticle, setSelArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  useEffect(() => { if(onArticlesLoad) onArticlesLoad(articles); }, [articles]);
   const [creating, setCreating] = useState(false);
   const [editingArticle, setEditingArticle] = useState(false);
   const [form, setForm] = useState({});
@@ -9828,6 +9970,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   /* ── Shared demands state loaded from Supabase ── */
   const [sharedDemands, setSharedDemands] = useState([]);
+  const [sharedArticles, setSharedArticles] = useState([]);
   const [demandsLoaded, setDemandsLoaded] = useState(false);
 
   /* ── Notification state ── */
@@ -10039,7 +10182,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content">
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
@@ -10053,7 +10196,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
-        {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
+        {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
@@ -10095,11 +10238,23 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
   const [user, setUser] = useState(null);
-  const [dark, setDark] = useState(false);
-  const [themeColor, setThemeColor] = useState("default");
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem("uh_dark") === "1"; } catch { return false; }
+  });
+  const [themeColor, setThemeColor] = useState(() => {
+    try { return localStorage.getItem("uh_theme") || "default"; } catch { return "default"; }
+  });
   const [uiPrefs, setUiPrefs] = useState(() => {
     try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
+  const _setDark = (v) => {
+    setDark(v);
+    try { localStorage.setItem("uh_dark", v ? "1" : "0"); } catch {}
+  };
+  const _setThemeColor = (v) => {
+    setThemeColor(v);
+    try { localStorage.setItem("uh_theme", v); } catch {}
+  };
   const updateUiPrefs = (patch) => {
     setUiPrefs(prev => {
       const next = { ...prev, ...patch };
@@ -10181,11 +10336,11 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};margin:0;padding:0;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden}
+html,body{font-family:'Figtree',sans-serif;background:${dark?"#fff":"#0D0D0D"};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden;background:${dark?"#fff":"#0D0D0D"}}
 input,textarea,select{font-size:16px !important}
-.app{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.screen{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:120px}
+.app{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
+.screen{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(120px + env(safe-area-inset-bottom,34px))}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
@@ -10208,13 +10363,13 @@ input,textarea,select{font-size:16px !important}
 .ib{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;border:1.5px solid ${dark?"rgba(255,255,255,0.08)":"rgba(11,35,66,0.1)"};background:${dark?"#1C2228":"#fff"};cursor:pointer;color:${dark?"#E8EAED":"#192126"};box-shadow:0 2px 6px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.08)"}}
 .tag{display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:8px;font-size:10px;font-weight:600;background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"};color:${dark?"#9CA3AF":"#5E6468"}}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
-.sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"}}
+.sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"};max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid-btn{padding:14px 6px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.06)"};display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:all .15s ease;color:${dark?"#E8EAED":"inherit"}}.grid-btn:active{transform:scale(0.95)}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && <LoginPage onAuth={setUser} />}
-      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} />}
+      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={_setDark} themeColor={themeColor} setThemeColor={_setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} />}
     </>
   );
 }
