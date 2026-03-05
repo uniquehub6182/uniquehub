@@ -427,7 +427,7 @@ const supaSetSetting = async (key, value) => {
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
   try {
-    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key"]);
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key", "gemini_key", "ai_provider"]);
     const map = {};
     (data || []).forEach(r => { map[r.key] = r.value; });
     return map;
@@ -6420,15 +6420,32 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
     const saveAI = async () => {
       setAiCfgSaving(true);
-      const ok = await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
+      await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
+      await supaSetSetting("gemini_key", aiCfgKeys.gemini_key || "");
+      const ok = await supaSetSetting("ai_provider", aiCfgKeys.ai_provider || "openai");
       setAiCfgSaving(false);
       if (ok) showToast("Configuração salva ✓");
-      else showToast("Erro ao salvar. Rode o SQL app_settings_migration no Supabase.");
+      else showToast("Erro ao salvar.");
     };
+    const curProvider = aiCfgKeys.ai_provider || "openai";
     return (
       <div className="pg">
         {ToastEl}
         <Head title="Assistente IA" onBack={() => setSub(null)} />
+
+        {/* Provider selector */}
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:8 }}>Provedor ativo</p>
+          <div style={{ display:"flex", gap:8 }}>
+            {[{k:"openai",l:"OpenAI",emoji:"🟢"},{k:"gemini",l:"Gemini",emoji:"🔵"}].map(p => (
+              <button key={p.k} onClick={() => setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px 8px", borderRadius:12, border:`1.5px solid ${curProvider===p.k?B.accent:B.border}`, background:curProvider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:13, color:curProvider===p.k?B.accent:B.muted }}>
+                {p.emoji} {p.l}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* OpenAI key */}
         <Card style={{ marginBottom:12 }}>
           <p className="sl" style={{ marginBottom:4 }}>Chave OpenAI</p>
           <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em platform.openai.com → API Keys</p>
@@ -6436,13 +6453,20 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <input type={showApiKey.openai?"text":"password"} value={aiCfgKeys.openai_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, openai_key:e.target.value}))} placeholder="sk-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
             <button onClick={() => setShowApiKey(p=>({...p,openai:!p.openai}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.openai?"🙈":"👁️"}</button>
           </div>
-          {aiCfgKeys.openai_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada</p>}
+          {aiCfgKeys.openai_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — GPT-4o-mini</p>}
         </Card>
-        <Card style={{ background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:6 }}>Modelo utilizado</p>
-          <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:12 }}>🟢 OpenAI</span><span style={{ fontSize:12, color:B.muted }}>GPT-4o-mini</span></div>
-          <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>Modelo mais econômico (~$0.15/1M tokens input). Ideal para copywriting, legendas e estratégias.</p>
+
+        {/* Gemini key */}
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:4 }}>Chave Gemini</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em aistudio.google.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showApiKey.gemini?"text":"password"} value={aiCfgKeys.gemini_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, gemini_key:e.target.value}))} placeholder="AIza..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowApiKey(p=>({...p,gemini:!p.gemini}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.gemini?"🙈":"👁️"}</button>
+          </div>
+          {aiCfgKeys.gemini_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Gemini 2.0 Flash</p>}
         </Card>
+
         <button onClick={saveAI} disabled={aiCfgSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar Configuração"}</button>
       </div>
     );
@@ -9053,10 +9077,15 @@ function AIPage({ onBack, user }) {
 
   const SYSTEM_PROMPT = `Você é o Assistente IA da UniqueHub Agency, uma agência de marketing 360 em Petrópolis/RJ. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`;
 
+  const activeProvider = aiKeys.ai_provider || "openai";
+
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
-    const key = aiKeys.openai_key;
-    if (!key) { showToast("Chave de API não configurada. Vá em Config → Assistente IA"); return; }
+    const openaiKey = aiKeys.openai_key;
+    const geminiKey = aiKeys.gemini_key;
+    const useGemini = activeProvider === "gemini";
+    if (useGemini && !geminiKey) { showToast("Chave Gemini não configurada. Vá em Config → Assistente IA"); return; }
+    if (!useGemini && !openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
 
     const userMsg = { role: "user", content: text.trim() };
     const newMsgs = [...messages, userMsg];
@@ -9070,15 +9099,28 @@ function AIPage({ onBack, user }) {
     setView("chat");
 
     try {
-      const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
-      });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message || "Erro OpenAI");
-      const aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
+      let aiText = "";
+      if (useGemini) {
+        const geminiMsgs = newMsgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents: geminiMsgs, generationConfig: { maxOutputTokens: 2000 } })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro Gemini");
+        aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
+      } else {
+        const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
+          body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro OpenAI");
+        aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
+      }
       const finalMsgs = [...newMsgs, { role: "assistant", content: aiText }];
       setMessages(finalMsgs);
       saveToHistory(chatId, finalMsgs);
@@ -9230,10 +9272,10 @@ function AIPage({ onBack, user }) {
         <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.nick || user?.name || "equipe"}!</h3>
         <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
 
-        {aiReady && !aiKeys.openai_key && (
+        {aiReady && ((activeProvider==="gemini"&&!aiKeys.gemini_key)||(activeProvider!=="gemini"&&!aiKeys.openai_key)) && (
           <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:16, width:"100%", textAlign:"left" }}>
             <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave OpenAI.</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {activeProvider==="gemini"?"Gemini":"OpenAI"}.</p>
           </Card>
         )}
 
@@ -9270,7 +9312,7 @@ function AIPage({ onBack, user }) {
           <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
           <div>
             <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
-            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● OpenAI</p>
+            <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>● {activeProvider==="gemini"?"Gemini 2.0 Flash":"OpenAI GPT-4o-mini"}</p>
           </div>
         </div>
         <div style={{ display:"flex", gap:6 }}>
