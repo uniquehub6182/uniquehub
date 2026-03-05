@@ -5219,7 +5219,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
+    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bg, paddingTop:"env(safe-area-inset-top, 0px)" }}>
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto"}}>
         {ToastEl}
