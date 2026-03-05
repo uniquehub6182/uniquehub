@@ -9984,7 +9984,7 @@ p,span,div,h1,h2,h3,h4{color:inherit}
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
 .overlay{background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"}!important}
 .txtbtn{color:${B.muted}!important}
-.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.78)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;width:auto!important;max-width:calc(100% - 40px)!important;padding:8px 14px!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
+.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.82)":"rgba(25,33,38,0.88)"):(dark?"#1C1C1C":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;border:1px solid ${dark?"#2A2A2A":"rgba(255,255,255,0.08)"}!important;width:calc(100% - 40px)!important;max-width:420px!important;padding:8px 12px!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
 .bnav .bt{font-size:inherit!important}
 .card,.tinput,.pill,.htab,.grid-btn,.tag{transition:all var(--uh-anim) ease!important}
 .pg svg:not(.bnav svg){stroke-width:var(--uh-icon-w)}
@@ -10057,12 +10057,11 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
-            }} className="bt" style={{ flex:"0 0 auto", padding:0, position:"relative" }}>
-              <div style={{ width:52, height:52, borderRadius:"50%", background:a?`${accentColor}18`:(dark?"#2A2A2A":"#E8E8E8"), display:"flex", alignItems:"center", justifyContent:"center", border:a?`2px solid ${accentColor}`:"2px solid transparent", transition:"all .25s ease", boxShadow:a?`0 0 12px ${accentColor}30`:"none" }}>
-                {t.i(a ? accentColor : isMore ? accentColor : (dark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)"))}
-              </div>
-              {t.k === "content" && demandBadge > 0 && <Badge n={demandBadge} style={{ position:"absolute", top:0, right:0 }} />}
-              {t.k === "chat" && chatUnread > 0 && <Badge n={chatUnread} style={{ position:"absolute", top:0, right:0 }} />}
+            }} className="bt" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap: a?7:0, height:44, borderRadius:100, padding: a?"0 16px":"0 12px", background: a?`${accentColor}18`:"transparent", color: a?accentColor:(dark?"rgba(255,255,255,0.3)":"rgba(0,0,0,0.3)"), transition:"all .3s cubic-bezier(0.32,0.72,0,1)", position:"relative", border:"none", cursor:"pointer", fontFamily:"inherit", overflow:"hidden" }}>
+              {t.i(a ? accentColor : isMore ? accentColor : (dark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"))}
+              <span style={{ fontSize:12, fontWeight:700, color:accentColor, maxWidth:a?80:0, overflow:"hidden", whiteSpace:"nowrap", opacity:a?1:0, transition:"max-width .35s cubic-bezier(0.32,0.72,0,1), opacity .25s ease" }}>{t.l}</span>
+              {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:4, right:4 }} />}
+              {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:4, right:4 }} />}
             </button>
           );
         })}
@@ -10179,7 +10178,7 @@ input,textarea,select{font-size:16px !important}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.bnav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:8px;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.bnav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:space-around;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
 .bnav .bt{font-size:inherit}
 .bt{display:flex;align-items:center;justify-content:center;padding:0;background:none;border:none;cursor:pointer;font-family:inherit;position:relative}
 .htabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}.htabs::-webkit-scrollbar{display:none}
