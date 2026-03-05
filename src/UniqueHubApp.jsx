@@ -4775,7 +4775,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const convName = getOtherName(selConv);
     const isGroup = selConv.type === "group";
     return (
-      <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
+      <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
         {/* ── CONV HEADER ── */}
