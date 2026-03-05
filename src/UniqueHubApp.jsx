@@ -486,7 +486,7 @@ const supaLoadConversations = async (userId) => {
     /* Get only the profiles we need */
     const uniqueUserIds = [...new Set(allMembers.map(m => m.user_id))];
     const profileRes = uniqueUserIds.length > 0
-      ? await supabase.from("profiles").select("id, name, email").in("id", uniqueUserIds)
+      ? await supabase.from("profiles").select("id, name, email, photo_url").in("id", uniqueUserIds)
       : { data: [] };
     const allProfiles = profileRes.data || [];
     const profileMap = {};
@@ -1017,6 +1017,54 @@ const Av = ({ src, name, sz = 40, fs = 16 }) => (
     {src ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontWeight: 800, fontSize: fs, color: B.accent }}>{(name || "U")[0].toUpperCase()}</span>}
   </div>
 );
+/* ── CollapseHeader: reusable collapsible page header ── */
+const CollapseHeader = ({ icon, label, title, stats=[], onAdd, collapsed }) => (
+  <div style={{
+    position:"sticky", top:0, zIndex:20, background:B.bgCard,
+    borderBottom: collapsed ? `1px solid ${B.border}` : "none",
+    borderRadius: collapsed ? 0 : "0 0 26px 26px",
+    boxShadow: collapsed ? "none" : "0 4px 20px rgba(0,0,0,0.08)",
+    transition:"all .26s cubic-bezier(.4,0,.2,1)", overflow:"hidden",
+  }}>
+    {collapsed ? (
+      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px" }}>
+        <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          {typeof icon === "function" ? icon(B.accent) : icon}
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:13, fontWeight:800, color:B.text }}>{title}</p>
+          {stats.length>0 && <p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{stats.map(s=>`${s.val} ${s.label}`).join(" · ")}</p>}
+        </div>
+        {onAdd && <button onClick={onAdd} style={{ width:34, height:34, borderRadius:10, background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>}
+      </div>
+    ) : (
+      <div style={{ padding:"20px 20px 22px" }}>
+        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:stats.length?16:0 }}>
+          <div>
+            <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>{label}</p>
+            <h2 style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", lineHeight:1 }}>{title}</h2>
+          </div>
+          {onAdd && <button onClick={onAdd} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>}
+        </div>
+        {stats.length>0 && (
+          <div style={{ display:"flex", gap:10 }}>
+            {stats.map((s,i) => (
+              <div key={i} style={{ flex:1, background:i===0?`${B.accent}12`:B.bgCard, border:i===0?"none":`1px solid ${B.border}`, borderRadius:14, padding:"12px 14px" }}>
+                <p style={{ fontSize:22, fontWeight:900, color:i===0?B.accent:B.text, lineHeight:1 }}>{s.val}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+);
+
 
 function useToast() {
   const [toast, setToast] = useState(null);
@@ -2810,10 +2858,14 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   }
 
   /* ── CLIENT LIST ── */
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Clientes" onBack={onBack} />
+      <CollapseHeader icon={IC.clients} label="Gestão" title="Clientes" collapsed={pgC}
+        stats={[{val:(clients||[]).length,label:"total"},{val:(clients||[]).filter(c=>["ativo","Partner","Premium","Basic"].includes(c.status)).length,label:"ativos"}]}
+        onAdd={()=>setCreating(true)} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {/* Summary */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -2866,6 +2918,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhum cliente encontrado</p>
         <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar a busca ou adicione um novo cliente.</p>
       </Card>}
+      </div>
     </div>
   );
 }
@@ -3043,12 +3096,12 @@ function FinancialPage({ onBack, clients: propClients }) {
     { k:"expenses", l:"Despesas", icon:"💸" },
   ];
 
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Financeiro" onBack={onBack} right={finTab !== "dashboard" ? (
-        <button onClick={saveFin} disabled={finCfgSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:finCfgSaving?0.5:1 }}>{finCfgSaving ? "Salvando..." : "Salvar"}</button>
-      ) : null} />
+      <CollapseHeader icon={IC.financial} label="Agência" title="Financeiro" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Tabs */}
       <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4 }}>
@@ -3318,6 +3371,7 @@ function FinancialPage({ onBack, clients: propClients }) {
 
       {/* Save button for config tabs */}
       {finTab !== "dashboard" && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
+      </div>
     </div>
   );
 }
@@ -4651,7 +4705,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       setConvs(c);
       const memberIds = (membersRes.data || []).map(m => m.user_id).filter(id => id !== user.id);
       if (memberIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("id, name, email, role").in("id", memberIds);
+        const { data: profs } = await supabase.from("profiles").select("id, name, email, role, photo_url").in("id", memberIds);
         setAllProfiles(profs || []);
       } else {
         setAllProfiles([]);
@@ -5018,10 +5072,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div style={{ position:"relative", flexShrink:0 }}>
-            <div style={{ width:44, height:44, borderRadius:"50%", background:isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-              {isGroup ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-              : <span style={{fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{convName.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</span>}
-            </div>
+            {isGroup
+              ? <div style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+              : <Av src={allProfiles.find(p=>p.id===selConv?.members?.find(m=>m.id!==user.id)?.id)?.photo_url} name={convName} sz={44} fs={16} />
+            }
             {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bgCard}` }}/>}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
@@ -5058,8 +5112,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               <div key={m.id} style={{ display:"flex", width:"100%", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2, paddingLeft:isMe?0:0, paddingRight:isMe?0:0 }}>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:6, maxWidth:"78%", flexDirection:isMe?"row-reverse":"row" }}>
                   {!isMe && (
-                    <div style={{ width:28, height:28, borderRadius:"50%", background:avBg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, opacity:showAvatar?1:0 }}>
-                      <span style={{fontSize:10,fontWeight:800,color:"rgba(255,255,255,0.9)"}}>{convName[0]?.toUpperCase()}</span>
+                    <div style={{flexShrink:0, opacity:showAvatar?1:0}}>
+                      <Av src={allProfiles.find(p=>p.id===m.sender_id)?.photo_url} name={isGroup?(allProfiles.find(p=>p.id===m.sender_id)?.name||convName):convName} sz={28} fs={10} />
                     </div>
                   )}
                   <div style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", minWidth:0 }}>
@@ -5163,7 +5217,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         <p className="sl" style={{ marginTop:12, marginBottom:6 }}>Membros da equipe</p>
         {allProfiles.map(p => (
           <button key={p.id} onClick={() => startDM(p.id)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
-            <Av name={p.name} sz={38} fs={14} />
+            <Av src={p.photo_url} name={p.name} sz={38} fs={14} />
             <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.email}</p></div>
           </button>
         ))}
@@ -5189,7 +5243,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${sel ? B.accent : B.border}`, background:sel ? B.accent : "none", display:"flex", alignItems:"center", justifyContent:"center" }}>
                 {sel && <span style={{ color:B.text, display:"flex" }}>{IC.check}</span>}
               </div>
-              <Av name={p.name} sz={34} fs={12} />
+              <Av src={p.photo_url} name={p.name} sz={34} fs={12} />
               <span style={{ fontSize:13, fontWeight:600 }}>{p.name}</span>
             </button>
           );
@@ -6617,7 +6671,13 @@ function TeamPage({ onBack, user, onTeamChange }) {
             }
           }
         }
-        setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", user_id:r.user_id||null, supaId:r.id })));
+        const uids = rows.filter(r=>r.user_id).map(r=>r.user_id);
+        let pm = {};
+        if (uids.length && supabase) {
+          const { data: profs } = await supabase.from("profiles").select("id, photo_url").in("id", uids);
+          (profs||[]).forEach(p => { pm[p.id] = p.photo_url; });
+        }
+        setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", user_id:r.user_id||null, supaId:r.id, photo_url:pm[r.user_id]||null })));
       }
       setLoaded(true);
     });
@@ -6700,7 +6760,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
         : null} />
         <Card style={{ textAlign:"center", marginBottom:12 }}>
           <div style={{ position:"relative", display:"inline-block" }}>
-            <Av name={m.name} sz={72} fs={28} />
+            <Av src={m.photo_url} name={m.name} sz={72} fs={28} />
             <div style={{ position:"absolute", bottom:2, right:2, width:14, height:14, borderRadius:7, background:m.status==="pendente"?B.orange:B.green, border:"3px solid #fff" }} />
           </div>
           <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{m.name}</h3>
@@ -6744,12 +6804,14 @@ function TeamPage({ onBack, user, onTeamChange }) {
     );
   }
 
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Equipe" onBack={onBack} right={isAdmin ?
-        <button onClick={()=>{setAdding(true);setForm({});}} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent }}>{IC.plus} Novo</button>
-      : null} />
+      <CollapseHeader icon={IC.team} label="Agência" title="Equipe" collapsed={pgC}
+        stats={[{val:members.length,label:"membros"},{val:members.filter(m=>m.status==="online").length,label:"online"}]}
+        onAdd={isAdmin?()=>setAdding(true):null} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
           <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
@@ -6763,7 +6825,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
         <Card key={m.id} delay={i*0.03} onClick={() => setSel(m)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ position:"relative" }}>
-              <Av name={m.name} sz={44} fs={16} />
+              <Av src={m.photo_url} name={m.name} sz={44} fs={16} />
               <div style={{ position:"absolute", bottom:0, right:0, width:12, height:12, borderRadius:6, background:m.status==="pendente"?B.orange:B.green, border:"2px solid #fff" }} />
             </div>
             <div style={{ flex:1 }}>
@@ -6779,6 +6841,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
           </div>
         </Card>
       ))}
+      </div>
     </div>
   );
 }
@@ -7114,10 +7177,12 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   }
 
   /* ── MAIN CALENDAR VIEW ── */
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Calendário" onBack={onBack} />
+      <CollapseHeader icon={IC.calendar} label="Planejamento" title="Calendário" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
           <button onClick={prevMonth} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
@@ -7178,6 +7243,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
           </Card>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -7359,10 +7425,12 @@ function LibraryPage({ onBack, clients: propClients }) {
   }
 
   /* ── MAIN LIBRARY VIEW ── */
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Biblioteca" onBack={onBack} />
+      <CollapseHeader icon={IC.library} label="Recursos" title="Biblioteca" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Stats */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
@@ -7433,6 +7501,7 @@ function LibraryPage({ onBack, clients: propClients }) {
           })}
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -7597,9 +7666,11 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
     { k:"team", l:"Equipe" },
   ];
 
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
-      <Head title="Relatórios" onBack={onBack} />
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.reports} label="Análises" title="Relatórios" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Period selector */}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:8, overflowX:"auto", paddingBottom:4 }}>
@@ -7865,6 +7936,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
           </Card>
         ))}
       </>}
+      </div>
     </div>
   );
 }
@@ -8345,13 +8417,15 @@ function IdeasPage({ onBack, user }) {
   }
 
   /* ── MAIN IDEAS LIST ── */
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Ideias" onBack={onBack} right={
-        <button onClick={()=>setAdding(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>{IC.plus} Nova</button>
-      } />
-
+      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC}
+        stats={[{val:ideas.length,label:"total"},{val:ideas.filter(x=>x.votes>0).length,label:"votadas"}]}
+        onAdd={()=>setCreating(true)} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      
       {/* Stats */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
@@ -8401,6 +8475,7 @@ function IdeasPage({ onBack, user }) {
           </Card>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -8578,10 +8653,13 @@ function GamifyPage({ onBack, user, team }) {
     { k:"history", l:"Histórico" },
   ];
 
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
-    <div className="pg">
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <Head title="Gamificação" onBack={onBack} />
+      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" collapsed={pgC}
+        stats={[{val:team.length,label:"membros"}]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* My Stats Card */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:14, padding:20 }}>
@@ -8634,7 +8712,7 @@ function GamifyPage({ onBack, user, team }) {
               <div style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", paddingBottom:4 }} className="hscroll">
                 {teamData.map(m => (
                   <button key={m.user_id} onClick={() => setAwardUser(m.user_id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 12px", borderRadius:10, border:`1.5px solid ${awardUser===m.user_id?B.accent:B.border}`, background:awardUser===m.user_id?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
-                    <Av name={m.name} sz={28} fs={10} />
+                    <Av src={m.photo_url} name={m.name} sz={28} fs={10} />
                     <span style={{ fontSize:10, fontWeight:awardUser===m.user_id?700:500 }}>{m.name}</span>
                   </button>
                 ))}
@@ -8881,6 +8959,7 @@ function GamifyPage({ onBack, user, team }) {
           </Card>
         ))}
       </>}
+      </div>
     </div>
   );
 }
@@ -10295,8 +10374,15 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       setClientsLoaded(true);
     });
     /* Also load team for dashboard */
-    supaLoadTeam().then(rows => {
-      if (rows) setSharedTeam(rows);
+    supaLoadTeam().then(async rows => {
+      if (!rows?.length) return;
+      const uids = rows.filter(r=>r.user_id).map(r=>r.user_id);
+      let pm = {};
+      if (uids.length && supabase) {
+        const { data: profs } = await supabase.from("profiles").select("id, photo_url").in("id", uids);
+        (profs||[]).forEach(p => { pm[p.id] = p.photo_url; });
+      }
+      setSharedTeam(rows.map(r => ({ ...r, photo_url: pm[r.user_id]||null })));
     });
   }, [clientsLoaded]);
 
