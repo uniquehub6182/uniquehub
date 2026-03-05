@@ -5391,7 +5391,7 @@ function ApprovalsPage({ onBack }) {
   );
 }
 
-function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs }) {
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [twoFA, setTwoFA] = useState(false);
@@ -5796,7 +5796,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       { k:"uh_v2_light", css:"#F5F5F5" },
     ];
 
-    const applyPreset = (p) => { setDark(p.dark); setThemeColor(p.theme); updateUiPrefs(p.pr); showToast(p.name+" aplicado ✓"); };
+    const applyPreset = (p) => { setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr); showToast(p.name+" aplicado ✓"); };
 
     /* Helpers */
     const OR = ({ options, current, onPick, renderOption }) => <div style={{ display:"flex", gap:6 }}>{options.map(o => { const a=current===o.k; return <button key={o.k} onClick={() => onPick(o.k)} style={{ flex:1, padding:"10px 6px", borderRadius:12, border:"1.5px solid "+(a?B.accent:B.border), background:a?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>{renderOption(o,a)}</button>; })}</div>;
@@ -10225,7 +10225,7 @@ function Match4BizPage({ onBack, clients, user }) {
 }
 
 
-function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs }) {
+function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs }) {
   const [tab, setTab] = useState("home");
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
@@ -10494,7 +10494,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
-        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} /></SettingsBoundary>}
+        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
@@ -10566,6 +10566,12 @@ export default function App() {
       const next = { ...prev, ...patch };
       try { localStorage.setItem("uh_ui_prefs", JSON.stringify(next)); } catch {}
       return next;
+    });
+  };
+  const replaceUiPrefs = (prefs) => {
+    setUiPrefs(() => {
+      try { localStorage.setItem("uh_ui_prefs", JSON.stringify(prefs)); } catch {}
+      return prefs;
     });
   };
   const [authLoading, setAuthLoading] = useState(!!supabase);
@@ -10675,7 +10681,7 @@ input,textarea,select{font-size:16px !important}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && <LoginPage onAuth={setUser} />}
-      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={_setDark} themeColor={themeColor} setThemeColor={_setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} />}
+      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} setDark={_setDark} themeColor={themeColor} setThemeColor={_setThemeColor} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} />}
     </>
   );
 }
