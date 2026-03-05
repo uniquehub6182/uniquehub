@@ -2862,7 +2862,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.clients} label="Gestão" title="Clientes" collapsed={pgC}
+      <CollapseHeader icon={IC.clients} label="UniqueHub" title="Clientes" collapsed={pgC}
         stats={[{val:(clients||[]).length,label:"total"},{val:(clients||[]).filter(c=>["ativo","Partner","Premium","Basic"].includes(c.status)).length,label:"ativos"}]}
         onAdd={()=>setCreating(true)} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
@@ -3100,7 +3100,7 @@ function FinancialPage({ onBack, clients: propClients }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.financial} label="Agência" title="Financeiro" collapsed={pgC} stats={[]} />
+      <CollapseHeader icon={IC.financial} label="UniqueHub" title="Financeiro" collapsed={pgC} stats={[]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Tabs */}
@@ -6808,7 +6808,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.team} label="Agência" title="Equipe" collapsed={pgC}
+      <CollapseHeader icon={IC.team} label="UniqueHub" title="Equipe" collapsed={pgC}
         stats={[{val:members.length,label:"membros"},{val:members.filter(m=>m.status==="online").length,label:"online"}]}
         onAdd={isAdmin?()=>setAdding(true):null} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
@@ -7181,7 +7181,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.calendar} label="Planejamento" title="Calendário" collapsed={pgC} stats={[]} />
+      <CollapseHeader icon={IC.calendar} label="UniqueHub" title="Calendário" collapsed={pgC} stats={[]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
@@ -7429,7 +7429,7 @@ function LibraryPage({ onBack, clients: propClients }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.library} label="Recursos" title="Biblioteca" collapsed={pgC} stats={[]} />
+      <CollapseHeader icon={IC.library} label="UniqueHub" title="Biblioteca" collapsed={pgC} stats={[]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Stats */}
@@ -7669,7 +7669,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.reports} label="Análises" title="Relatórios" collapsed={pgC} stats={[]} />
+      <CollapseHeader icon={IC.reports} label="UniqueHub" title="Relatórios" collapsed={pgC} stats={[]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Period selector */}
@@ -8421,7 +8421,7 @@ function IdeasPage({ onBack, user }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC}
+      <CollapseHeader icon={IC.ideas} label="UniqueHub" title="Ideias" collapsed={pgC}
         stats={[{val:ideas.length,label:"total"},{val:ideas.filter(x=>x.votes>0).length,label:"votadas"}]}
         onAdd={()=>setCreating(true)} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
@@ -8657,7 +8657,7 @@ function GamifyPage({ onBack, user, team }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" collapsed={pgC}
+      <CollapseHeader icon={IC.gamify} label="UniqueHub" title="Gamificação" collapsed={pgC}
         stats={[{val:team.length,label:"membros"}]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
