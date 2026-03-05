@@ -1486,7 +1486,7 @@ function LoginPage({ onAuth }) {
           ))}
         </div>
 
-        <p style={{ fontSize: 11, color: B.muted, marginTop: 16, textAlign: "center" }}>{agencyIdentity.name} — Agency Panel v1.0</p>
+        <p style={{ fontSize: 11, color: B.muted, marginTop: 16, textAlign: "center" }}>UniqueHub — Agency Panel v1.0</p>
       </div>
     </div>
   );
@@ -1544,7 +1544,7 @@ function LoginPage({ onAuth }) {
           {loginLoading ? "Entrando..." : <>Entrar {IC.arrowR()}</>}
         </button>
 
-        <p style={{ fontSize: 11, color: B.muted, marginTop: 20, textAlign: "center" }}>{agencyIdentity.name} — Agency Panel v1.0</p>
+        <p style={{ fontSize: 11, color: B.muted, marginTop: 20, textAlign: "center" }}>UniqueHub — Agency Panel v1.0</p>
       </div>
     </div>
   );
