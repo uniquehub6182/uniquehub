@@ -4643,6 +4643,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   const [chatTab, setChatTab] = useState("all");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
 
   /* Load conversations + profiles on mount */
   useEffect(() => {
@@ -5218,38 +5219,29 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bgCard }}>
-      {ToastEl}{NewChatModal}{NewGroupModal}
-
-      {/* HEADER */}
-      <div style={{ background:B.bgCard, padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 14px`, flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-          <div>
-            <p style={{ fontSize:12, color:B.muted, fontWeight:500, margin:0 }}>Olá,</p>
-            <h2 style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", margin:0 }}>{user?.nick||user?.name?.split(" ")[0]||"Usuário"}</h2>
-          </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
-            </button>
-            <button onClick={()=>setShowNewGroup(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-            </button>
-          </div>
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {NewChatModal}{NewGroupModal}
+      <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+        {ToastEl}
+        <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
+          <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <button onClick={()=>setShowNewGroup(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </button>
         </div>
         <div style={{ position:"relative", marginBottom:14 }}>
           <svg style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:12, padding:"10px 14px 10px 36px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none", boxSizing:"border-box" }}/>
         </div>
-        <div style={{ display:"flex", gap:6 }}>
+        <div style={{ display:"flex", gap:6, marginBottom:14 }}>
           {[{k:"all",l:"Todos"},{k:"dm",l:"Direto"},{k:"group",l:"Grupos"}].map(t=>(
             <button key={t.k} onClick={()=>setChatTab(t.k)} style={{ padding:"7px 16px", borderRadius:100, border:chatTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, background:chatTab===t.k?B.accent:"transparent", color:chatTab===t.k?"#0D0D0D":B.muted, transition:"all .15s" }}>{t.l}</button>
           ))}
         </div>
-      </div>
-
-      {/* LIST */}
-      <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+        <div>
         {loading && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Carregando...</p>}
         {!loading && convs.length===0 && (
           <div style={{ textAlign:"center", padding:60 }}>
@@ -5300,6 +5292,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
