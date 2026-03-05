@@ -1349,7 +1349,7 @@ function LoginPage({ onAuth }) {
 
   /* ── PENDING SCREEN ── */
   if (mode === "pending") return (
-    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
+    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, minHeight: "100vh", background: "#F7F7F8", color: "#192126" }}>
       <div style={{ width: 80, height: 80, borderRadius: 20, background: `${B.accent}15`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
         <span style={{ color: B.accent }}>{IC.clock}</span>
       </div>
@@ -1407,7 +1407,7 @@ function LoginPage({ onAuth }) {
 
   /* ── REGISTER STEPPER ── */
   if (mode === "register") return (
-    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 24px 32px", minHeight: "100vh", overflowY: "auto" }}>
+    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 24px 32px", minHeight: "100vh", overflowY: "auto", background: "#F7F7F8", color: "#192126" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 340 }}>
         {logoJSX(20)}
         {stepperJSX}
@@ -1585,8 +1585,8 @@ function LoginPage({ onAuth }) {
   /* ── FORGOT PASSWORD ── */
   if (forgotMode) return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", overflow:"hidden" }}>
-      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 52px) 28px 40px", textAlign:"center" }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:56, objectFit:"contain", marginBottom:10 }} />
+      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:45, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
         <button onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(""); setError(""); }} style={{ position:"absolute", top:"calc(env(safe-area-inset-top,0px) + 20px)", left:20, background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, padding:"8px 4px" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -1674,8 +1674,8 @@ function LoginPage({ onAuth }) {
       `}</style>
 
       {/* ── DARK HEADER ── */}
-      <div className="llogo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 52px) 28px 40px", textAlign:"center", position:"relative", zIndex:1 }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:56, objectFit:"contain", marginBottom:10 }} />
+      <div className="llogo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:45, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
 
         {/* Tab top-right: Não tem conta? */}
@@ -1732,8 +1732,8 @@ function LoginPage({ onAuth }) {
           </button>
         </div>
 
-        {/* pw strength */}
-        {(pwFocus || pw.length > 0) && (
+        {/* pw strength — only on error */}
+        {error && error.includes("critério") && (
           <div style={{ padding:"10px 14px", background:"#F8F9FC", borderRadius:12, border:"1px solid #E8EAF0", marginBottom:14 }}>
             <p style={{ fontSize:11, color:"#9CA3AF", marginBottom:6, fontWeight:700 }}>Critérios de segurança:</p>
             {pwChecks(pw).map((c,i) => (
@@ -1759,14 +1759,8 @@ function LoginPage({ onAuth }) {
           </div>
         )}
 
-        {/* Remember + Forgot row */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", margin:"14px 0 24px" }}>
-          <div onClick={() => setRemember(!remember)} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
-            <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${remember?"#BBF246":"#D1D5DB"}`, background:remember?"#BBF246":"#fff", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
-              {remember && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-            </div>
-            <span style={{ fontSize:13, color:"#6B7280", fontWeight:500 }}>Lembrar acesso</span>
-          </div>
+        {/* Forgot row */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", margin:"12px 0 22px" }}>
           <button onClick={() => { setForgotMode(true); setForgotEmail(email); setError(""); setForgotSent(false); }} style={{ background:"none", border:"none", fontSize:13, color:"#BBF246", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
             Esqueci a senha
           </button>
@@ -1793,8 +1787,88 @@ function LoginPage({ onAuth }) {
   );
 }
 
+
+/* ══ PWA Install Popup ══ */
+function PWAInstallPopup({ onDismiss }) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const [deferredPrompt, setDeferredPrompt] = React.useState(null);
+
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      onDismiss();
+    } else {
+      onDismiss();
+    }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:9999, display:"flex", alignItems:"flex-end", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}>
+      <div style={{ width:"100%", background:"#fff", borderRadius:"24px 24px 0 0", padding:"28px 24px calc(env(safe-area-inset-bottom,0px) + 32px)", animation:"cardUp .35s cubic-bezier(0.34,1.1,0.64,1) both" }}>
+        {/* App icon */}
+        <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:20 }}>
+          <img src={LOGO_B64} alt="UniqueHub" style={{ width:56, height:56, borderRadius:14, boxShadow:"0 4px 12px rgba(0,0,0,0.12)" }} />
+          <div>
+            <p style={{ fontSize:18, fontWeight:900, color:"#1A1D23", margin:0 }}>UniqueHub</p>
+            <p style={{ fontSize:12, color:"#8B8F92", margin:"2px 0 0" }}>Agency Panel</p>
+          </div>
+          <button onClick={onDismiss} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", padding:4 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <p style={{ fontSize:15, fontWeight:700, color:"#1A1D23", marginBottom:6 }}>Adicione o app à tela inicial</p>
+        <p style={{ fontSize:13, color:"#6B7280", lineHeight:1.5, marginBottom:20 }}>
+          Acesse o UniqueHub direto do seu celular como um app nativo — sem precisar abrir o navegador.
+        </p>
+
+        {isIOS ? (
+          <div style={{ background:"#F8F9FC", borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
+            <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", marginBottom:10 }}>Como instalar no iPhone:</p>
+            {[
+              { icon: "share", text: 'Toque no ícone Compartilhar', sub: "⬆ na barra do Safari" },
+              { icon: "plus", text: "Adicionar à Tela de Início", sub: "Role e selecione esta opção" },
+              { icon: "check", text: "Confirme tocando em Adicionar", sub: "O ícone aparece na sua tela" },
+            ].map((s, i) => (
+              <div key={i} style={{ display:"flex", gap:12, marginBottom: i < 2 ? 10 : 0, alignItems:"flex-start" }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:"#BBF246", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {s.icon === "share" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>}
+                  {s.icon === "plus" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
+                  {s.icon === "check" && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+                <div>
+                  <p style={{ fontSize:13, fontWeight:600, color:"#1A1D23", margin:0 }}>{s.text}</p>
+                  <p style={{ fontSize:11, color:"#9CA3AF", margin:"1px 0 0" }}>{s.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : isAndroid ? (
+          <button onClick={handleInstall} style={{ width:"100%", padding:"16px", borderRadius:14, border:"none", background:"linear-gradient(135deg,#BBF246 0%,#9AE010 100%)", color:"#0D1117", fontSize:15, fontWeight:800, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginBottom:16, boxShadow:"0 4px 16px rgba(187,242,70,0.4)" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            Instalar no Android
+          </button>
+        ) : null}
+
+        <button onClick={onDismiss} style={{ width:"100%", padding:"14px", borderRadius:14, background:"transparent", border:"1.5px solid #E8EAF0", color:"#9CA3AF", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+          Agora não
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, agencyIdentity }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, agencyIdentity, cloudDash }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
   const totalClients = CDATA.length;
@@ -1808,7 +1882,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const [searchFocus, setSearchFocus] = useState(false);
   const searchRef = useRef(null);
   const [showEditor, setShowEditor] = useState(false);
-  const [dashCfg, setDashCfg] = useState(() => { try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
+  const [dashCfg, setDashCfg] = useState(() => { if (cloudDash) return cloudDash; try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
+  useEffect(() => { if (cloudDash) setDashCfg(cloudDash); }, [cloudDash]);
   const [ec, setEc] = useState(null); // editor copy — initialized when sheet opens
   const saveCfg = (c) => {
     setDashCfg(c);
@@ -10628,7 +10703,7 @@ function Match4BizPage({ onBack, clients, user }) {
 }
 
 
-function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud }) {
+function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud, cloudDash, cloudNav }) {
   const [tab, setTab] = useState("home");
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
@@ -10636,8 +10711,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [sub, setSub] = useState(null);
   const [more, setMore] = useState(false);
   const [navPicks, setNavPicks] = useState(() => {
+    if (cloudNav) return cloudNav;
     try { const s = localStorage.getItem("uh_nav_picks"); return s ? JSON.parse(s) : DEFAULT_NAV; } catch { return DEFAULT_NAV; }
   });
+  useEffect(() => { if (cloudNav) setNavPicks(cloudNav); }, [cloudNav]);
   const setNavPicksAndSave = (picks, userId) => {
     setNavPicks(picks);
     try { localStorage.setItem("uh_nav_picks", JSON.stringify(picks)); } catch {}
@@ -10903,7 +10980,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content">
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} agencyIdentity={agencyIdentity} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} agencyIdentity={agencyIdentity} cloudDash={cloudDash} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
@@ -10962,6 +11039,25 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
   const [user, setUser] = useState(null);
+  const [showPWA, setShowPWA] = useState(false);
+
+  /* ── Load visual prefs from cloud after login ── */
+  const [cloudDash, setCloudDash] = useState(null);
+  const [cloudNav, setCloudNav] = useState(null);
+  const loadCloudPrefsForUser = async (userId) => {
+    if (!supabase || !userId) return;
+    try {
+      const cloudPrefs = await supaGetSetting(`visual_prefs_${userId}`);
+      if (!cloudPrefs) return;
+      const vp = typeof cloudPrefs === "string" ? JSON.parse(cloudPrefs) : cloudPrefs;
+      if (vp.dark !== undefined) { _setDark(vp.dark); }
+      if (vp.theme) { _setThemeColor(vp.theme); }
+      if (vp.prefs) { setUiPrefs(vp.prefs); try { localStorage.setItem("uh_ui_prefs", JSON.stringify(vp.prefs)); } catch {} }
+      if (vp.dash) { try { localStorage.setItem("uh_dash_cfg", JSON.stringify(vp.dash)); } catch {} setCloudDash(vp.dash); }
+      if (vp.nav) { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} setCloudNav(vp.nav); }
+    } catch(e) { console.warn("loadCloudPrefs error:", e); }
+  };
+
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem("uh_dark") === "1"; } catch { return false; }
   });
@@ -11095,8 +11191,8 @@ export default function App() {
               if (vp.dark !== undefined) { setDark(vp.dark); try { localStorage.setItem("uh_dark", vp.dark ? "1" : "0"); } catch {} }
               if (vp.theme) { setThemeColor(vp.theme); try { localStorage.setItem("uh_theme", vp.theme); } catch {} }
               if (vp.prefs) { setUiPrefs(vp.prefs); try { localStorage.setItem("uh_ui_prefs", JSON.stringify(vp.prefs)); } catch {} }
-              if (vp.dash) { try { localStorage.setItem("uh_dash_cfg", JSON.stringify(vp.dash)); } catch {} }
-              if (vp.nav)  { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} }
+              if (vp.dash) { try { localStorage.setItem("uh_dash_cfg", JSON.stringify(vp.dash)); } catch {} setCloudDash(vp.dash); }
+              if (vp.nav)  { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} setCloudNav(vp.nav); }
             }
           } catch(e) { console.warn("Visual prefs load failed:", e); }
         } catch(e) { console.error("Profile load failed:", e); }
@@ -11163,8 +11259,14 @@ input,textarea,select{font-size:16px !important}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && onboardDone && <LoginPage onAuth={(u) => { setUser(u); }} />}
-      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark}
+      {!user && onboardDone && <LoginPage onAuth={(u) => { setUser(u); loadCloudPrefsForUser(u.id);
+    /* Show PWA prompt once per device on mobile */
+    const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
+    if (isMobile && !isStandalone && !dismissed) setTimeout(() => setShowPWA(true), 1200);
+  }} />}
+      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
     setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
     themeColor={themeColor}
     setThemeColor={(v) => { _setThemeColor(v); savePrefsToCloud(dark, v, uiPrefs, user?.id); }}
@@ -11173,6 +11275,7 @@ input,textarea,select{font-size:16px !important}
     replaceUiPrefs={(prefs) => { setUiPrefs(()=>{ try{localStorage.setItem("uh_ui_prefs",JSON.stringify(prefs))}catch{}; savePrefsToCloud(dark,themeColor,prefs,user?.id); return prefs; }); }}
     savePrefsToCloud={savePrefsToCloud}
   />}
+    {showPWA && <PWAInstallPopup onDismiss={() => { setShowPWA(false); try { localStorage.setItem("uh_pwa_dismissed", "1"); } catch {} }} />}
     </>
   );
 }
