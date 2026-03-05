@@ -1809,6 +1809,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const searchRef = useRef(null);
   const [showEditor, setShowEditor] = useState(false);
   const [dashCfg, setDashCfg] = useState(() => { try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
+  const [ec, setEc] = useState(null); // editor copy — initialized when sheet opens
   const saveCfg = (c) => {
     setDashCfg(c);
     try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {}
@@ -2021,24 +2022,24 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     }
     return null;
   };
-  const EditorSheet = () => {
-    const [ec, setEc] = useState(JSON.parse(JSON.stringify(cfg)));
-    const toggle = (arr, key, max) => {
-      const idx = ec[arr].indexOf(key);
-      if (idx >= 0) setEc({...ec, [arr]: ec[arr].filter(x => x !== key)});
-      else if (!max || ec[arr].length < max) setEc({...ec, [arr]: [...ec[arr], key]});
-    };
-    const moveSection = (i, dir) => {
-      const s = [...ec.sections];
-      const j = i + dir;
-      if (j < 0 || j >= s.length) return;
-      [s[i], s[j]] = [s[j], s[i]];
-      setEc({...ec, sections: s});
-    };
-    const Chip = ({on, label, onTap, disabled}) => (
-      <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px", borderRadius:10, border: on ? `2px solid ${LIME}` : `1.5px solid ${C.brd}`, background: on ? `${LIME}15` : "transparent", fontSize:12, fontWeight: on ? 700 : 500, color: on ? LIME : C.mut, cursor: disabled ? "default" : "pointer", fontFamily:"inherit", opacity: disabled ? 0.4 : 1}}>{label}</button>
-    );
-    return (
+  const editorToggle = (arr, key, max) => {
+    if (!ec) return;
+    const idx = ec[arr].indexOf(key);
+    if (idx >= 0) setEc({...ec, [arr]: ec[arr].filter(x => x !== key)});
+    else if (!max || ec[arr].length < max) setEc({...ec, [arr]: [...ec[arr], key]});
+  };
+  const editorMoveSection = (i, dir) => {
+    if (!ec) return;
+    const s = [...ec.sections];
+    const j = i + dir;
+    if (j < 0 || j >= s.length) return;
+    [s[i], s[j]] = [s[j], s[i]];
+    setEc({...ec, sections: s});
+  };
+  const EditorChip = ({on, label, onTap, disabled}) => (
+    <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px", borderRadius:10, border: on ? `2px solid ${LIME}` : `1.5px solid ${C.brd}`, background: on ? `${LIME}15` : "transparent", fontSize:12, fontWeight: on ? 700 : 500, color: on ? LIME : C.mut, cursor: disabled ? "default" : "pointer", fontFamily:"inherit", opacity: disabled ? 0.4 : 1}}>{label}</button>
+  );
+  const EditorSheetJSX = !showEditor || !ec ? null : (
       <>
         <div onClick={()=>setShowEditor(false)} className="overlay" style={{touchAction:"none"}} onTouchMove={e=>e.preventDefault()}/>
         <div className="sheet" onTouchMove={e=>e.stopPropagation()} style={{paddingBottom:48}}>
@@ -2052,7 +2053,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
             {Object.entries(WIDGETS).map(([k,v]) => (
-              <Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k,2)} disabled={!ec.cards.includes(k) && ec.cards.length>=2}/>
+              <EditorChip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>editorToggle("cards",k,2)} disabled={!ec.cards.includes(k) && ec.cards.length>=2}/>
             ))}
           </div>
 
@@ -2060,7 +2061,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
             {Object.entries(PILLS).map(([k,v]) => (
-              <Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k)}/>
+              <EditorChip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>editorToggle("pills",k)}/>
             ))}
           </div>
 
@@ -2068,7 +2069,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
             {Object.entries(ACTIONS).map(([k,v]) => (
-              <Chip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>toggle("actions",k)}/>
+              <EditorChip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>editorToggle("actions",k)}/>
             ))}
           </div>
 
@@ -2076,29 +2077,27 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
           <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Toque para ativar/desativar. Use as setas para reordenar.</p>
           <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-            {/* Active sections */}
             {ec.sections.map((k, i) => (
               <div key={k} style={{display:"flex",alignItems:"center",gap:0,background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",borderRadius:12,overflow:"hidden",border:`1.5px solid ${LIME}30`}}>
                 <div style={{display:"flex",flexDirection:"column",borderRight:`1px solid ${C.brd}`}}>
-                  <button onClick={()=>moveSection(i,-1)} disabled={i===0} style={{width:36,height:28,background:"none",border:"none",cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?0.25:1,color:C.txt}}>
+                  <button onClick={()=>editorMoveSection(i,-1)} disabled={i===0} style={{width:36,height:28,background:"none",border:"none",cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?0.25:1,color:C.txt}}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
                   </button>
-                  <button onClick={()=>moveSection(i,1)} disabled={i===ec.sections.length-1} style={{width:36,height:28,background:"none",border:"none",cursor:i===ec.sections.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===ec.sections.length-1?0.25:1,color:C.txt}}>
+                  <button onClick={()=>editorMoveSection(i,1)} disabled={i===ec.sections.length-1} style={{width:36,height:28,background:"none",border:"none",cursor:i===ec.sections.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===ec.sections.length-1?0.25:1,color:C.txt}}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
                 </div>
                 <span style={{flex:1,fontSize:13,fontWeight:700,color:C.txt,paddingLeft:12}}>{SECTIONS[k]||k}</span>
                 <div style={{display:"flex",alignItems:"center",gap:4,paddingRight:10}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:LIME}}/>
-                  <button onClick={()=>toggle("sections",k)} style={{background:"none",border:"none",cursor:"pointer",padding:6,color:C.mut,display:"flex"}}>
+                  <button onClick={()=>editorToggle("sections",k)} style={{background:"none",border:"none",cursor:"pointer",padding:6,color:C.mut,display:"flex"}}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
               </div>
             ))}
-            {/* Inactive sections */}
             {Object.entries(SECTIONS).filter(([k])=>!ec.sections.includes(k)).map(([k,v]) => (
-              <div key={k} onClick={()=>toggle("sections",k)} style={{display:"flex",alignItems:"center",gap:12,background:"transparent",borderRadius:12,padding:"10px 14px",border:`1.5px dashed ${C.brd}`,cursor:"pointer"}}>
+              <div key={k} onClick={()=>editorToggle("sections",k)} style={{display:"flex",alignItems:"center",gap:12,background:"transparent",borderRadius:12,padding:"10px 14px",border:`1.5px dashed ${C.brd}`,cursor:"pointer"}}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span style={{fontSize:13,fontWeight:600,color:C.mut}}>{v}</span>
               </div>
@@ -2108,8 +2107,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","posts","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:"10px",background:"transparent",border:`1px solid ${C.brd}`,borderRadius:10,color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
         </div>
       </>
-    );
-  };
+  );
 
   return (
     <div className="pg" style={{ padding:0, minHeight:"100%" }}>
@@ -2136,14 +2134,14 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       </div>
       <div style={{ padding:"0 24px 0" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
-          <button onClick={()=>setShowEditor(true)} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+          <button onClick={()=>{ setEc(JSON.parse(JSON.stringify(cfg))); setShowEditor(true); }} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
           <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
           </div>
         </div>
         {cfg.sections.map(sk => renderSection(sk))}
       </div>
-      {showEditor && <EditorSheet/>}
+      {EditorSheetJSX}
     </div>
   );
 }
