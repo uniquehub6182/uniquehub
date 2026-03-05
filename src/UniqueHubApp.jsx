@@ -1728,66 +1728,132 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
     : ["summary","pipeline","activity","shortcuts","team","clients"];
   React.useEffect(() => { if (blockOrder.length < 7 && isAdmin) setBlockOrder(DEFAULT_ORDER2); else if (!isAdmin && blockOrder.includes("financial")) setBlockOrder(prev => prev.filter(k => k !== "financial")); }, []);
 
+  /* v2 pills */
+  const V2_PILLS = [
+    { k:"help", l:"Suporte", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z"/><path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg> },
+    { k:"content", l:"Aprovações", icon:IC.check, badge:pendingApprovals||0 },
+    { k:"content", l:"Conteúdo", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg> },
+    { k:"reports", l:"Relatórios", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+  ];
+
+  /* v2 announcements */
+  const V2_ANN = [
+    { title:"Bem-vindo ao UniqueHub", time:"Agora", body:"Sua plataforma de gestão de marketing 360°. Explore as funcionalidades e gerencie tudo em um só lugar." },
+  ];
+
+  /* v2 quick actions */
+  const V2_ACTIONS = [
+    { k:"content", l:"Aprovar conteúdos", icon:IC.check },
+    { k:"financial", l:"Configurar tráfego", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> },
+    { k:"reports", l:"Ver relatório", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+    { k:"chat", l:"Falar com equipe", icon:IC.chat() },
+  ];
+
+  const isV2 = B.bg === "#0D0D0D";
+
   return (
     <div className="pg" style={{ paddingTop:0 }}>
-      {/* ── WHITE HEADER CARD (rounded bottom corners) ── */}
-      <div style={{ background:"#fff", borderRadius:"0 0 32px 32px", padding:"52px 20px 24px", marginLeft:-14, marginRight:-14, marginTop:-14, marginBottom:16, boxShadow:"0 12px 40px rgba(0,0,0,0.15)" }}>
-        {/* Greeting row */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+
+      {/* ══════════════ HEADER (white card, rounded bottom) ══════════════ */}
+      <div style={{ background:"#fff", borderRadius:"0 0 40px 40px", padding:"52px 0 28px", marginLeft:-14, marginRight:-14, marginTop:-14, marginBottom:0, boxShadow:isV2?"0 12px 40px rgba(0,0,0,0.3)":"0 4px 16px rgba(0,0,0,0.06)" }}>
+
+        {/* Greeting */}
+        <div style={{ padding:"0 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:50, height:50, borderRadius:25, background:"linear-gradient(135deg,#08FB9D,#C6F135)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19, fontWeight:900, color:"#0D0D0D", overflow:"hidden", flexShrink:0 }}>
+            <div style={{ width:50, height:50, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>
               {user?.photo ? <img src={user.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : (user?.name?.charAt(0).toUpperCase() || "U")}
             </div>
             <div>
-              <p style={{ fontSize:20, fontWeight:800, color:"#0D0D0D", letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</p>
-              <p style={{ fontSize:12, color:"#999", fontWeight:500, marginTop:2 }}>Unique Marketing 360</p>
+              <div style={{ fontSize:20, fontWeight:800, color:"#0D0D0D", letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div>
+              <div style={{ fontSize:12, color:"#999", fontWeight:500, marginTop:2 }}>Unique Marketing 360</div>
             </div>
           </div>
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => goTab("chat")} style={{ width:42, height:42, borderRadius:21, background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D" }}>{IC.chat("#0D0D0D")}</button>
-            <button onClick={() => goSub("notifs")} style={{ width:42, height:42, borderRadius:21, background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D", position:"relative" }}>
+            <button onClick={() => goTab("chat")} style={{ width:42, height:42, borderRadius:"50%", background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D", position:"relative" }}>{IC.chat("#0D0D0D")}</button>
+            <button onClick={() => goSub("notifs")} style={{ width:42, height:42, borderRadius:"50%", background:"#F3F3F3", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#0D0D0D", position:"relative" }}>
               {IC.bell}
-              {(notifCount > 0) && <span style={{ position:"absolute", top:8, right:8, width:8, height:8, borderRadius:4, background:"#FF3B30", border:"2px solid #fff" }} />}
+              {(notifCount > 0) && <span style={{ position:"absolute", top:8, right:8, width:8, height:8, borderRadius:"50%", background:"#FF3B30", border:"2px solid #fff" }} />}
             </button>
           </div>
         </div>
 
-        {/* Search bar */}
-        <div onClick={() => goSub("search")} style={{ background:"#F3F3F3", borderRadius:14, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", cursor:"pointer", marginBottom:16 }}>
-          {IC.search("#BBB")}
-          <span style={{ fontSize:14, color:"#BBB", fontWeight:500, fontFamily:"inherit" }}>Buscar...</span>
+        {/* Search */}
+        <div onClick={() => goSub("search")} style={{ margin:"14px 20px 0", background:"#F3F3F3", borderRadius:14, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", cursor:"pointer" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span style={{ fontSize:14, color:"#BBB", fontFamily:"inherit" }}>Buscar...</span>
         </div>
 
-        {/* Quick cards (lime green) */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        {/* Quick cards */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 20px 0" }}>
           <div onClick={() => goSub("financial")} style={{ background:"#C6F135", borderRadius:20, padding:"10px 12px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:72 }}>
-            <p style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Investimento</p>
-            <p style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</p>
-            <p style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Tráfego / mês</p>
-            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:13, background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Investimento</div>
+            <div style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</div>
+            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Tráfego / mês</div>
+            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>
           <div onClick={() => goTab("content")} style={{ background:"#C6F135", borderRadius:20, padding:"10px 12px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:72 }}>
-            <p style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Aprovações</p>
-            <p style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</p>
-            <p style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Aguardando você</p>
-            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:13, background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:1 }}>Aprovações</div>
+            <div style={{ fontSize:18, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</div>
+            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:1 }}>Aguardando você</div>
+            <div style={{ position:"absolute", bottom:10, right:10, width:26, height:26, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Edit dashboard toggle */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-        <button onClick={() => setEditing(!editing)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, background: editing ? B.accent : `${B.muted}10`, border: editing ? `1.5px solid ${B.accent}` : `1.5px solid ${B.border}`, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600, color: editing ? B.dark : B.muted }}>
+      {/* ══════════════ PILLS (horizontal scroll) ══════════════ */}
+      <div style={{ display:"flex", gap:10, padding:"22px 0 0", overflowX:"auto", scrollbarWidth:"none", msOverflowStyle:"none" }}>
+        {V2_PILLS.map(p => (
+          <div key={p.l} onClick={() => p.k==="chat"?goTab("chat"):goSub(p.k)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:8, background:isV2?"#1E1E1E":B.bgCard, border:`1px solid ${isV2?"#2A2A2A":B.border}`, borderRadius:100, padding:"10px 16px", cursor:"pointer", color:isV2?"rgba(255,255,255,0.7)":B.text, fontSize:13, fontWeight:600, position:"relative" }}>
+            <div style={{ width:28, height:28, borderRadius:"50%", background:isV2?"#2A2A2A":`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:isV2?"#C6F135":B.accent }}>{p.icon}</div>
+            {p.l}
+            {p.badge > 0 && <span style={{ background:"#FF3B30", color:"#fff", fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:100 }}>{p.badge}</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* ══════════════ COMUNICADOS ══════════════ */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
+        <h3 style={{ fontSize:18, fontWeight:800, color:isV2?"#fff":B.text }}>Comunicados</h3>
+        <span onClick={() => goSub("news")} style={{ fontSize:13, color:isV2?"rgba(255,255,255,0.35)":B.muted, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
+      </div>
+      {V2_ANN.map((a,i) => (
+        <div key={i} style={{ background:isV2?"#1A1A1A":B.bgCard, borderRadius:22, padding:20, border:`1px solid ${isV2?"#272727":B.border}`, marginBottom:10 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+            <h4 style={{ fontSize:17, fontWeight:800, color:isV2?"#fff":B.text, lineHeight:1.2, flex:1, marginRight:12 }}>{a.title}</h4>
+            <span style={{ background:isV2?"#252525":`${B.muted}15`, borderRadius:100, padding:"5px 12px", fontSize:11, fontWeight:600, color:isV2?"rgba(255,255,255,0.35)":B.muted, whiteSpace:"nowrap", flexShrink:0 }}>{a.time}</span>
+          </div>
+          <p style={{ fontSize:13, color:isV2?"rgba(255,255,255,0.45)":B.muted, lineHeight:1.6, marginBottom:16 }}>{a.body}</p>
+          <button onClick={() => goSub("news")} style={{ width:"100%", background:isV2?"#fff":"#0D0D0D", border:"none", borderRadius:100, padding:14, fontFamily:"inherit", fontSize:14, fontWeight:700, color:isV2?"#0D0D0D":"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            Ler mais <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      ))}
+
+      {/* ══════════════ AÇÕES RÁPIDAS ══════════════ */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 12px" }}>
+        <h3 style={{ fontSize:18, fontWeight:800, color:isV2?"#fff":B.text }}>Ações rápidas</h3>
+        <span style={{ fontSize:13, color:isV2?"rgba(255,255,255,0.35)":B.muted, fontWeight:600 }}>Ver todas</span>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+        {V2_ACTIONS.map(a => (
+          <div key={a.l} onClick={() => a.k==="chat"?goTab("chat"):goSub(a.k)} style={{ background:isV2?"#1A1A1A":B.bgCard, borderRadius:22, padding:"20px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${isV2?"#272727":B.border}` }}>
+            <div style={{ width:42, height:42, borderRadius:"50%", background:isV2?"#252525":`${B.muted}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:isV2?"rgba(255,255,255,0.6)":B.muted }}>{a.icon}</div>
+            <span style={{ fontSize:13, fontWeight:700, color:isV2?"rgba(255,255,255,0.75)":B.text, lineHeight:1.3 }}>{a.l}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ══════════════ EXISTING BLOCKS (summary, team, etc) ══════════════ */}
+      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
+        <button onClick={() => setEditing(!editing)} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 12px", borderRadius:8, background:editing?B.accent:`${B.muted}10`, border:editing?`1.5px solid ${B.accent}`:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:editing?B.dark:B.muted }}>
           {editing ? <>{IC.check} Pronto</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Organizar</>}
         </button>
       </div>
-
-      {/* Render blocks in order */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
         {blockOrder.map((key, i) => BLOCKS[key] ? BLOCKS[key](i) : null)}
       </div>
     </div>
