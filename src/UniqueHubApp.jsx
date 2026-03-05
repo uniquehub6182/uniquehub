@@ -1126,15 +1126,16 @@ function LoginPage({ onAuth }) {
     /* Try Supabase auth if available */
     if (supabase) {
       setLoginLoading(true); setError("");
+      const loginTimeout = setTimeout(() => { setError("Servidor demorou para responder. Tente novamente."); setLoginLoading(false); }, 10000);
       try {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-        if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
+        if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
         /* Load profile from DB */
-        const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
-        const extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`);
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single().catch(() => ({ data: null }));
+        const extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`).catch(() => null);
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
         let photo = profile?.photo_url || null;
-        if (!photo) { const fp = await supaGetSetting(`profile_photo_${data.user.id}`); if (fp) photo = fp; }
+        if (!photo) { const fp = await supaGetSetting(`profile_photo_${data.user.id}`).catch(() => null); if (fp) photo = fp; }
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
@@ -1142,8 +1143,8 @@ function LoginPage({ onAuth }) {
           nick: profile?.nick || profile?.name || email.split("@")[0],
           phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember,
         };
-        setLoginLoading(false); onAuth(userObj);
-      } catch (e) { setError("Erro de conexão"); setLoginLoading(false); }
+        clearTimeout(loginTimeout); setLoginLoading(false); onAuth(userObj);
+      } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
       return;
     }
     /* Fallback: mock login */
