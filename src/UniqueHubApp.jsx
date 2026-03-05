@@ -1538,59 +1538,59 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const initials = user?.name?.charAt(0).toUpperCase() || "U";
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, marginLeft:-14, marginRight:-14, marginTop:-14, paddingBottom:100 }}>
+    <div style={{ minHeight:"100vh", background:C.bg, margin:"-60px -16px -20px", paddingBottom:100 }}>
 
-      {/* ═══ HEADER CARD (white on dark / dark on light) ═══ */}
-      <header style={{ background:H.bg, borderRadius:"0 0 40px 40px", padding:"52px 0 28px", boxShadow:SHADOW }}>
+      {/* ═══ HEADER CARD (full-width, only bottom corners rounded) ═══ */}
+      <header style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:52, paddingBottom:28, boxShadow:SHADOW, position:"relative", zIndex:2 }}>
         {/* Greeting */}
-        <div style={{ padding:"14px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:50, height:50, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:19, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>
+        <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>
               {user?.photo ? <img src={user.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : initials}
             </div>
             <div>
-              <div style={{ fontSize:20, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div>
-              <div style={{ fontSize:12, color:H.sub, fontWeight:500, marginTop:2 }}>Unique Marketing 360</div>
+              <div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div>
+              <div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>Unique Marketing 360</div>
             </div>
           </div>
-          <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => goTab("chat")} style={{ width:42, height:42, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC }}>{IC.chat(H.btnC)}</button>
-            <button onClick={() => goSub("notifs")} style={{ width:42, height:42, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC, position:"relative" }}>
-              {IC.bell}
-              {(notifCount > 0) && <span style={{ position:"absolute", top:8, right:8, width:8, height:8, borderRadius:"50%", background:"#FF3B30", border:`2px solid ${H.bg}` }} />}
+          <div style={{ display:"flex", gap:12 }}>
+            <button onClick={() => goTab("chat")} style={{ width:48, height:48, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+            <button onClick={() => goSub("notifs")} style={{ width:48, height:48, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC, position:"relative" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+              {(notifCount > 0) && <span style={{ position:"absolute", top:10, right:10, width:9, height:9, borderRadius:"50%", background:"#FF3B30", border:`2px solid ${H.bg}` }} />}
             </button>
           </div>
         </div>
 
         {/* Search */}
-        <div onClick={() => goSub("search")} style={{ margin:"14px 20px 0", background:H.srch, borderRadius:14, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", cursor:"pointer" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span style={{ fontSize:14, color:H.srchT, fontFamily:"inherit" }}>Buscar...</span>
+        <div onClick={() => goSub("search")} style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", cursor:"pointer" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span style={{ fontSize:15, color:H.srchT, fontFamily:"inherit" }}>Buscar...</span>
         </div>
 
         {/* Quick cards (lime) */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 20px 0" }}>
-          <div onClick={() => goSub("financial")} style={{ background:LIME, borderRadius:20, padding:"12px 14px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:76 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:2 }}>Investimento</div>
-            <div style={{ fontSize:20, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</div>
-            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:2 }}>Tráfego / mês</div>
-            <div style={{ position:"absolute", bottom:10, right:10, width:28, height:28, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
+          <div onClick={() => goSub("financial")} style={{ background:LIME, borderRadius:22, padding:"14px 16px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:80 }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:3 }}>Investimento</div>
+            <div style={{ fontSize:22, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</div>
+            <div style={{ fontSize:11, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:3 }}>Tráfego / mês</div>
+            <div style={{ position:"absolute", bottom:12, right:12, width:32, height:32, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>
-          <div onClick={() => goTab("content")} style={{ background:LIME, borderRadius:20, padding:"12px 14px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:76 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:2 }}>Aprovações</div>
-            <div style={{ fontSize:20, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</div>
-            <div style={{ fontSize:10, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:2 }}>Aguardando você</div>
-            <div style={{ position:"absolute", bottom:10, right:10, width:28, height:28, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          <div onClick={() => goTab("content")} style={{ background:LIME, borderRadius:22, padding:"14px 16px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:80 }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:3 }}>Aprovações</div>
+            <div style={{ fontSize:22, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</div>
+            <div style={{ fontSize:11, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:3 }}>Aguardando você</div>
+            <div style={{ position:"absolute", bottom:12, right:12, width:32, height:32, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>
         </div>
       </header>
 
       {/* ═══ BODY ═══ */}
-      <div style={{ padding:"0 20px" }}>
+      <div style={{ padding:"0 24px" }}>
 
         {/* Pills (horizontal scroll) */}
         <div style={{ display:"flex", gap:10, paddingTop:22, overflowX:"auto", scrollbarWidth:"none" }}>
