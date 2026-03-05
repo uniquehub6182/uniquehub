@@ -4986,7 +4986,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* HEADER */}
-      <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 14px`, flexShrink:0 }}>
+      <div style={{ background:B.bgCard, padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 14px`, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
           <div>
             <p style={{ fontSize:12, color:B.muted, fontWeight:500, margin:0 }}>Olá,</p>
