@@ -1870,7 +1870,7 @@ function PWAInstallPopup({ onDismiss }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, agencyIdentity, cloudDash }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, agencyIdentity, cloudDash, savePrefsToCloud }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
   const totalClients = CDATA.length;
@@ -11025,7 +11025,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} agencyIdentity={agencyIdentity} cloudDash={cloudDash} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
