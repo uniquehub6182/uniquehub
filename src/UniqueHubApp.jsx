@@ -1556,10 +1556,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts sem crédito.",cat:"updates",date:"Ontem"},
         {id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para aumentar o alcance orgânico nos Stories e Feed.",cat:"tips",date:"2 dias"},
         {id:"f4",title:"Case: como triplicamos o ROI de um e-commerce",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases",date:"3 dias"},
+        {id:"f5",title:"As melhores ferramentas de automação para agências",summary:"Plataformas que economizam horas de trabalho em gestão de clientes e conteúdo.",cat:"tools",date:"4 dias"},
       ];
       const items = ((articles||[]).length>0 ? articles : fallback).slice(0,5);
       const featured = items[0];
-      const rest = items.slice(1,4);
+      const rest = items.slice(1,5);
       return <div key="com">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
           <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
