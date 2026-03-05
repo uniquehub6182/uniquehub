@@ -1131,11 +1131,13 @@ function LoginPage({ onAuth }) {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
         /* Load profile from DB */
-        const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single().catch(() => ({ data: null }));
-        const extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`).catch(() => null);
+        let profile = null;
+        try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
+        let extrasRaw = null;
+        try { extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`); } catch {}
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
         let photo = profile?.photo_url || null;
-        if (!photo) { const fp = await supaGetSetting(`profile_photo_${data.user.id}`).catch(() => null); if (fp) photo = fp; }
+        if (!photo) { try { const fp = await supaGetSetting(`profile_photo_${data.user.id}`); if (fp) photo = fp; } catch {} }
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
