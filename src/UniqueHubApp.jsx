@@ -3440,6 +3440,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [createType, setCreateType] = useState(null);
   const [form, setForm] = useState({});
   const [editMode, setEditMode] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const contentScrollRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
   const filtered = demands.filter(d => {
@@ -4223,15 +4225,68 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   }
 
   /* ── MAIN LIST ── */
+  const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
+  const totalCount = demands.length;
   return (
-    <div className="pg" style={{ paddingTop: TOP }}>
+    <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, paddingTop:8 }}>
-        <h2 style={{ fontSize:18, fontWeight:800, flex:1 }}>Demandas</h2>
-        <Tag color={B.orange}>{pendingCount} em andamento</Tag>
-        <button onClick={() => setCreating(true)} style={{ width:36, height:36, borderRadius:12, background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.plus}</button>
+
+      {/* ── COLLAPSIBLE HEADER ── */}
+      <div style={{
+        position:"sticky", top:0, zIndex:20,
+        background: headerCollapsed ? B.bgCard : B.bgCard,
+        borderBottom: headerCollapsed ? `1px solid ${B.border}` : "none",
+        borderRadius: headerCollapsed ? 0 : "0 0 28px 28px",
+        boxShadow: headerCollapsed ? "none" : "0 4px 24px rgba(0,0,0,0.10)",
+        transition:"all .28s cubic-bezier(.4,0,.2,1)",
+        overflow:"hidden",
+      }}>
+        {headerCollapsed ? (
+          /* ── COMPACT BAR ── */
+          <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px" }}>
+            <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              {IC.content(B.accent)}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:13, fontWeight:800, color:B.text }}>Conteúdo</p>
+              <p style={{ fontSize:10, color:B.muted }}>{pendingCount} em andamento · {totalCount} total</p>
+            </div>
+            <button onClick={() => setCreating(true)} style={{ width:34, height:34, borderRadius:10, background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+        ) : (
+          /* ── EXPANDED HEADER ── */
+          <div style={{ padding:"20px 20px 22px" }}>
+            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:16 }}>
+              <div>
+                <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>Conteúdo</p>
+                <h2 style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", lineHeight:1 }}>Demandas</h2>
+              </div>
+              <button onClick={() => setCreating(true)} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <div style={{ flex:1, background:`${B.accent}10`, borderRadius:14, padding:"12px 14px" }}>
+                <p style={{ fontSize:22, fontWeight:900, color:B.accent, lineHeight:1 }}>{pendingCount}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>Em andamento</p>
+              </div>
+              <div style={{ flex:1, background:`${B.bgCard}`, border:`1px solid ${B.border}`, borderRadius:14, padding:"12px 14px" }}>
+                <p style={{ fontSize:22, fontWeight:900, color:B.text, lineHeight:1 }}>{publishedCount}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>Publicados</p>
+              </div>
+              <div style={{ flex:1, background:`${B.bgCard}`, border:`1px solid ${B.border}`, borderRadius:14, padding:"12px 14px" }}>
+                <p style={{ fontSize:22, fontWeight:900, color:B.text, lineHeight:1 }}>{totalCount}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:3, fontWeight:600 }}>Total</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* ── SCROLLABLE CONTENT ── */}
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
 
       {/* Client selector */}
       <div style={{ marginBottom:10 }}>
@@ -4480,6 +4535,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         </Card>
         );
       })}
+      </div>{/* end scrollable content */}
     </div>
   );
 }
