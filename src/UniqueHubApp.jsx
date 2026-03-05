@@ -1074,6 +1074,80 @@ function useToast() {
 }
 
 /* ═══════════════════════ LOGIN / AUTH ═══════════════════════ */
+/* ═══════════════════════ ONBOARDING SLIDES ═══════════════════════ */
+function OnboardingSlides({ onDone, slides }) {
+  const [idx, setIdx] = React.useState(0);
+  const DEFAULT_SLIDES = [
+    {
+      tag:"Gestão completa",
+      title:"Controle total da sua agência",
+      desc:"Clientes, equipe, demandas e financeiro em um único lugar.",
+      bg:"linear-gradient(160deg,#0D1117 60%,#1a2810 100%)",
+      accent:"#BBF246",
+      icon:<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="10" y="10" width="24" height="24" rx="6" fill="#BBF246" opacity="0.9"/><rect x="46" y="10" width="24" height="24" rx="6" fill="#BBF246" opacity="0.4"/><rect x="10" y="46" width="24" height="24" rx="6" fill="#BBF246" opacity="0.4"/><rect x="46" y="46" width="24" height="24" rx="6" fill="#BBF246" opacity="0.15"/></svg>,
+    },
+    {
+      tag:"Inteligência artificial",
+      title:"IA para criar conteúdo mais rápido",
+      desc:"Legendas, roteiros, estratégias e copies com OpenAI ou Gemini.",
+      bg:"linear-gradient(160deg,#0D1117 60%,#0a1520 100%)",
+      accent:"#60A5FA",
+      icon:<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="28" fill="rgba(96,165,250,0.12)" stroke="#60A5FA" strokeWidth="1.5"/><circle cx="40" cy="40" r="16" fill="rgba(96,165,250,0.15)" stroke="#60A5FA" strokeWidth="1.5"/><circle cx="40" cy="40" r="6" fill="#60A5FA"/><line x1="40" y1="12" x2="40" y2="20" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/><line x1="40" y1="60" x2="40" y2="68" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="40" x2="20" y2="40" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/><line x1="60" y1="40" x2="68" y2="40" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round"/></svg>,
+    },
+    {
+      tag:"Pronto para começar",
+      title:"Personalizado para sua marca",
+      desc:"Configure a identidade visual, equipe e permissões como quiser.",
+      bg:"linear-gradient(160deg,#0D1117 60%,#1a0f20 100%)",
+      accent:"#A78BFA",
+      icon:<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><path d="M40 12 L58 22 L58 42 Q58 58 40 68 Q22 58 22 42 L22 22 Z" fill="rgba(167,139,250,0.1)" stroke="#A78BFA" strokeWidth="1.5"/><path d="M32 40 L37 45 L48 34" stroke="#A78BFA" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    },
+  ];
+  const allSlides = (slides && slides.length > 0) ? slides : DEFAULT_SLIDES;
+  const cur = allSlides[idx];
+  const isLast = idx === allSlides.length - 1;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:cur.bg||"#0D1117", color:"#fff", transition:"background 0.5s ease", position:"relative", overflow:"hidden" }}>
+      {/* Decorative blobs */}
+      <div style={{ position:"absolute", top:-80, right:-80, width:260, height:260, borderRadius:"50%", background:`${cur.accent||"#BBF246"}08`, pointerEvents:"none" }} />
+      <div style={{ position:"absolute", bottom:120, left:-60, width:180, height:180, borderRadius:"50%", background:`${cur.accent||"#BBF246"}05`, pointerEvents:"none" }} />
+
+      {/* Skip */}
+      <div style={{ display:"flex", justifyContent:"flex-end", padding:"calc(env(safe-area-inset-top,0px) + 20px) 24px 0" }}>
+        <button onClick={onDone} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.35)", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", padding:"8px 4px" }}>Pular</button>
+      </div>
+
+      {/* Content */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px 36px 0", textAlign:"center" }}>
+        {/* Icon */}
+        <div style={{ marginBottom:40, filter:"drop-shadow(0 8px 32px rgba(0,0,0,0.4))" }}>
+          {cur.icon || <div style={{ width:80, height:80, borderRadius:24, background:`${cur.accent||"#BBF246"}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36 }}>{cur.emoji||"✨"}</div>}
+        </div>
+
+        <p style={{ fontSize:12, fontWeight:700, color:cur.accent||"#BBF246", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:16 }}>{cur.tag||""}</p>
+        <h2 style={{ fontSize:30, fontWeight:900, lineHeight:1.15, margin:"0 0 16px", letterSpacing:"-0.5px" }}>{cur.title||""}</h2>
+        <p style={{ fontSize:15, color:"rgba(255,255,255,0.5)", lineHeight:1.65, maxWidth:280 }}>{cur.desc||""}</p>
+      </div>
+
+      {/* Bottom controls */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"40px 32px calc(env(safe-area-inset-bottom,0px) + 40px)" }}>
+        {/* Dots */}
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          {allSlides.map((_,i) => (
+            <div key={i} onClick={() => setIdx(i)} style={{ height:6, width:i===idx?24:6, borderRadius:3, background:i===idx?(cur.accent||"#BBF246"):"rgba(255,255,255,0.2)", transition:"all .3s", cursor:"pointer" }} />
+          ))}
+        </div>
+
+        {/* Next button */}
+        <button onClick={() => isLast ? onDone() : setIdx(i => i+1)} style={{ width:58, height:58, borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(0,0,0,0.3)", transition:"transform .1s" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LoginPage({ onAuth }) {
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState(1);
@@ -1491,60 +1565,102 @@ function LoginPage({ onAuth }) {
     </div>
   );
 
-  /* ── LOGIN MODE ── */
+  /* ── LOGIN MODE — new dark design ── */
   return (
-    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", minHeight: "100vh" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 340 }}>
-        {logoJSX(32)}
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", color:"#fff", overflowY:"auto" }}>
+      <style>{`
+        .lfield { width:100%; padding:16px 18px; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.1); border-radius:16px; color:#fff; font-size:15px; font-family:inherit; outline:none; transition:border .2s; }
+        .lfield::placeholder { color:rgba(255,255,255,0.3); }
+        .lfield:focus { border-color:#BBF246; }
+        .lbtn { width:100%; padding:16px; border-radius:16px; border:none; background:#BBF246; color:#0D1117; font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; transition:opacity .2s,transform .1s; }
+        .lbtn:active { transform:scale(0.98); }
+        .lbtn-out { width:100%; padding:15px; border-radius:16px; border:1.5px solid rgba(255,255,255,0.15); background:transparent; color:rgba(255,255,255,0.7); font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; }
+      `}</style>
 
-        <div style={{ display: "flex", gap: 4, background: "rgba(0,0,0,0.04)", borderRadius: 12, padding: 3, width: "100%", marginBottom: 20 }}>
-          {["login", "register"].map(m => (
-            <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: mode === m ? "#fff" : "transparent", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: mode === m ? B.dark : B.muted, boxShadow: mode === m ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
-              {m === "login" ? "Entrar" : "Cadastrar"}
+      {/* Header with logo */}
+      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 48px) 28px 24px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:52, objectFit:"contain", marginBottom:12 }} />
+        <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", fontWeight:500, letterSpacing:"0.05em", textTransform:"uppercase" }}>Agency Panel</p>
+      </div>
+
+      {/* Card */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 24px 40px" }}>
+        <div style={{ marginBottom:28 }}>
+          <h1 style={{ fontSize:28, fontWeight:800, lineHeight:1.2, margin:0 }}>
+            {mode==="login" ? <>Bem-vindo<br/>de volta 👋</> : <>Solicitar<br/>acesso</>}
+          </h1>
+          <p style={{ fontSize:14, color:"rgba(255,255,255,0.45)", marginTop:8 }}>
+            {mode==="login" ? "Entre com sua conta para continuar" : "Preencha seus dados para solicitar acesso"}
+          </p>
+        </div>
+
+        {/* Tab switcher */}
+        <div style={{ display:"flex", gap:4, background:"rgba(255,255,255,0.05)", borderRadius:14, padding:3, marginBottom:24 }}>
+          {["login","register"].map(m => (
+            <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:mode===m?"rgba(255,255,255,0.12)":"transparent", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", color:mode===m?"#fff":"rgba(255,255,255,0.4)", transition:"all .2s" }}>
+              {m==="login" ? "Entrar" : "Cadastrar"}
             </button>
           ))}
         </div>
 
-        <label style={{ fontSize: 12, fontWeight: 600, alignSelf: "flex-start", marginBottom: 6 }}>E-mail corporativo</label>
-        <div style={{ position: "relative", width: "100%", marginBottom: 4 }}>
-          <input value={email} onChange={e => supabase ? setEmail(e.target.value) : handleEmailField(e.target.value, setEmail)} placeholder={supabase ? "seu@email.com" : `seu.nome${emailDomain}`} className="tinput" style={{ paddingRight: 14 }} />
-        </div>
-        {email && !emailValid && <p style={{ fontSize: 11, color: B.red, alignSelf: "flex-start", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}><span style={{ display: "flex" }}>{IC.x}</span> Apenas e-mails @uniquemkt.com.br</p>}
-        {email && emailValid && <p style={{ fontSize: 11, color: B.green, alignSelf: "flex-start", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}><span style={{ display: "flex" }}>{IC.check}</span> E-mail válido</p>}
-
-        <label style={{ fontSize: 12, fontWeight: 600, alignSelf: "flex-start", marginBottom: 6, marginTop: 8 }}>Senha</label>
-        <div style={{ position: "relative", width: "100%" }}>
-          <input value={pw} onChange={e => setPw(e.target.value)} onFocus={() => setPwFocus(true)} onBlur={() => setTimeout(() => setPwFocus(false), 200)} type={showPw ? "text" : "password"} placeholder="Sua senha segura" className="tinput" style={{ paddingRight: 44 }} />
-          <button onClick={() => setShowPw(!showPw)} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: B.muted, display: "flex", padding: 6 }}>{showPw ? IC.eyeOff : IC.eye}</button>
+        {/* Email */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.5)", display:"block", marginBottom:8, letterSpacing:"0.03em" }}>E-MAIL</label>
+          <input value={email} onChange={e => supabase ? setEmail(e.target.value) : handleEmailField(e.target.value, setEmail)} placeholder={supabase ? "seu@email.com" : `seu.nome${emailDomain}`} className="lfield" autoCapitalize="none" autoCorrect="off" />
+          {email && !emailValid && <p style={{ fontSize:11, color:"#F87171", marginTop:5 }}>⚠ Apenas e-mails @uniquemkt.com.br</p>}
+          {email && emailValid && <p style={{ fontSize:11, color:"#BBF246", marginTop:5 }}>✓ E-mail válido</p>}
         </div>
 
-        {(pwFocus || pw.length > 0) && <div style={{ width: "100%", marginTop: 8, padding: "10px 12px", background: "rgba(0,0,0,0.02)", borderRadius: 12, border: `1px solid ${B.border}` }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: B.muted, marginBottom: 6 }}>Critérios de segurança:</p>
-          {pwChecks(pw).map((c, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: i ? 3 : 0 }}>
-              <div style={{ width: 14, height: 14, borderRadius: 7, background: c.ok ? B.green : "rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s" }}>
-                {c.ok && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
-              </div>
-              <span style={{ fontSize: 11, color: c.ok ? B.green : B.muted }}>{c.label}</span>
-            </div>
-          ))}
-        </div>}
-
-        {error && <p style={{ fontSize: 12, color: B.red, marginTop: 10, textAlign: "center" }}>{error}</p>}
-        {regSuccess && <p style={{ fontSize: 12, color: B.green, marginTop: 10, textAlign: "center" }}>{regSuccess}</p>}
-
-        <div onClick={() => setRemember(!remember)} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, cursor: "pointer", padding: "8px 0" }}>
-          <div style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${remember ? B.accent : B.border}`, background: remember ? B.accent : B.bgCard, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s", flexShrink: 0 }}>
-            {remember && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+        {/* Password */}
+        <div style={{ marginBottom:6 }}>
+          <label style={{ fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.5)", display:"block", marginBottom:8, letterSpacing:"0.03em" }}>SENHA</label>
+          <div style={{ position:"relative" }}>
+            <input value={pw} onChange={e => setPw(e.target.value)} onFocus={() => setPwFocus(true)} onBlur={() => setTimeout(() => setPwFocus(false), 200)} type={showPw ? "text" : "password"} placeholder="Sua senha" className="lfield" style={{ paddingRight:48 }} />
+            <button onClick={() => setShowPw(!showPw)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.4)", display:"flex", padding:4 }}>{showPw ? IC.eyeOff : IC.eye}</button>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 500, color: B.muted }}>Lembrar meu acesso</span>
         </div>
 
-        <button onClick={handleLogin} disabled={loginLoading} className="pill full accent" style={{ marginTop: 8, opacity: loginLoading ? 0.6 : (supabase ? (email.includes("@") && pw.length >= 6 ? 1 : 0.4) : ((emailValid && pwStrong(pw)) ? 1 : 0.4)) }}>
-          {loginLoading ? "Entrando..." : <>Entrar {IC.arrowR()}</>}
+        {(pwFocus || pw.length > 0) && (
+          <div style={{ padding:"10px 12px", background:"rgba(255,255,255,0.04)", borderRadius:12, border:"1px solid rgba(255,255,255,0.08)", marginBottom:14 }}>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:6, fontWeight:600 }}>Critérios:</p>
+            {pwChecks(pw).map((c,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?3:0 }}>
+                <div style={{ width:14, height:14, borderRadius:7, background:c.ok?"#BBF246":"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
+                  {c.ok && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="4" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+                <span style={{ fontSize:11, color:c.ok?"#BBF246":"rgba(255,255,255,0.35)" }}>{c.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && <div style={{ padding:"12px 14px", background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.25)", borderRadius:12, marginBottom:14 }}><p style={{ fontSize:13, color:"#F87171", margin:0 }}>⚠ {error}</p></div>}
+        {regSuccess && <div style={{ padding:"12px 14px", background:"rgba(187,242,70,0.1)", border:"1px solid rgba(187,242,70,0.25)", borderRadius:12, marginBottom:14 }}><p style={{ fontSize:13, color:"#BBF246", margin:0 }}>✓ {regSuccess}</p></div>}
+
+        {/* Remember */}
+        <div onClick={() => setRemember(!remember)} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:22, cursor:"pointer", padding:"4px 0" }}>
+          <div style={{ width:20, height:20, borderRadius:6, border:`1.5px solid ${remember?"#BBF246":"rgba(255,255,255,0.2)"}`, background:remember?"#BBF246":"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>
+            {remember && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+          </div>
+          <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>Lembrar meu acesso</span>
+        </div>
+
+        {/* CTA button */}
+        <button onClick={handleLogin} disabled={loginLoading} className="lbtn" style={{ opacity:loginLoading?0.6:(supabase?(email.includes("@")&&pw.length>=6?1:0.45):((emailValid&&pwStrong(pw))?1:0.45)) }}>
+          {loginLoading ? "Entrando..." : "Entrar →"}
         </button>
 
-        <p style={{ fontSize: 11, color: B.muted, marginTop: 20, textAlign: "center" }}>UniqueHub — Agency Panel v1.0</p>
+        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0" }}>
+          <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.07)" }} />
+          <span style={{ fontSize:12, color:"rgba(255,255,255,0.25)" }}>ou</span>
+          <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.07)" }} />
+        </div>
+
+        <button onClick={() => { setMode("register"); setError(""); }} className="lbtn-out">
+          Solicitar Acesso
+        </button>
+
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.2)", textAlign:"center", marginTop:28 }}>UniqueHub — Agency Panel v1.0</p>
       </div>
     </div>
   );
@@ -10728,6 +10844,13 @@ export default function App() {
     });
   }, [dark, themeColor, savePrefsToCloud]);
   const [authLoading, setAuthLoading] = useState(!!supabase);
+  const [onboardDone, setOnboardDone] = useState(() => {
+    try { return localStorage.getItem("uh_onboard_v2") === "1"; } catch { return false; }
+  });
+  const finishOnboard = () => {
+    try { localStorage.setItem("uh_onboard_v2","1"); } catch {}
+    setOnboardDone(true);
+  };
 
   /* Force-kick blocked users even if app is already open */
   const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
@@ -10843,7 +10966,8 @@ input,textarea,select{font-size:16px !important}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
-      {!user && <LoginPage onAuth={setUser} />}
+      {!user && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
+      {!user && onboardDone && <LoginPage onAuth={(u) => { setUser(u); }} />}
       {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark}
     setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
     themeColor={themeColor}
