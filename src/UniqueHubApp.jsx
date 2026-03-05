@@ -4775,11 +4775,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const convName = getOtherName(selConv);
     const isGroup = selConv.type === "group";
     return (
-      <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:60, display:"flex", flexDirection:"column", background:B.bg }}>
+      <div style={{ display:"flex", flexDirection:"column", height:"calc(100% + 100px)", marginBottom:"-100px", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
         {/* ── CONV HEADER ── */}
-        <div style={{ background:B.text, borderRadius:"0 0 28px 28px", padding:`calc(env(safe-area-inset-top,0px) + 14px) 18px 18px`, flexShrink:0, boxShadow:`0 4px 20px ${B.accent}20` }}>
+        <div style={{ background:B.text, borderRadius:"0 0 28px 28px", padding:"12px 18px 18px", flexShrink:0, boxShadow:`0 4px 20px ${B.accent}20` }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:38, height:38, borderRadius:"50%", background:"rgba(255,255,255,0.1)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -4887,7 +4887,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Input */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom, 0px))`, display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
+        <div style={{ padding:"10px 14px 110px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
@@ -4988,7 +4988,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* ── HEADER ── */}
-      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 22px`, flexShrink:0 }}>
+      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:"14px 20px 22px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
           <div>
             <p style={{ fontSize:12, color:"rgba(255,255,255,0.45)", fontWeight:500, margin:0 }}>Olá,</p>
@@ -5017,7 +5017,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       </div>
 
       {/* ── CONV LIST ── */}
-      <div style={{ flex:1, overflowY:"visible", padding:"12px 16px 0", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ flex:1, padding:"12px 16px 0", WebkitOverflowScrolling:"touch" }}>
         {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando...</p>}
 
         {!loading && convs.length === 0 && (
