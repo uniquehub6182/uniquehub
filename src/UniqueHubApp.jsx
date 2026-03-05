@@ -1093,12 +1093,28 @@ function OnboardingSlides({ onDone }) {
   React.useEffect(() => {
     if (obCfgLoaded) return;
     setObCfgLoaded(true);
+    // 1. Read from localStorage immediately (no auth needed, works before login)
+    try {
+      const local = localStorage.getItem("uh_ob_imgs");
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length === 3) {
+          setObImgs(parsed.map((v,i) => v || DEFAULT_IMGS[i]));
+          return; // got images from localStorage, no need to call Supabase
+        }
+      }
+    } catch {}
+    // 2. Fallback: try Supabase (may work if anon read is allowed)
     if (!supabase) return;
     supaGetSetting("onboarding_images").then(raw => {
       if (!raw) return;
       try {
         const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-        if (Array.isArray(parsed) && parsed.length === 3) setObImgs(parsed.map((v,i) => v || DEFAULT_IMGS[i]));
+        if (Array.isArray(parsed) && parsed.length === 3) {
+          setObImgs(parsed.map((v,i) => v || DEFAULT_IMGS[i]));
+          // also cache locally for next time
+          try { localStorage.setItem("uh_ob_imgs", JSON.stringify(parsed)); } catch {}
+        }
       } catch {}
     });
   }, [obCfgLoaded]);
@@ -6731,10 +6747,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     const saveObImgs = async () => {
       setObImgsSaving(true);
-      const ok = await supaSetSetting("onboarding_images", JSON.stringify(obImgsState));
+      const payload = JSON.stringify(obImgsState);
+      // Always save to localStorage so onboarding can read it before login
+      try { localStorage.setItem("uh_ob_imgs", payload); } catch {}
+      const ok = await supaSetSetting("onboarding_images", payload);
       setObImgsSaving(false);
       if (ok) showToast("Imagens salvas ✓");
-      else showToast("Erro ao salvar");
+      else showToast("Imagens salvas localmente ✓");
     };
 
     const LABELS = ["Slide 1 — Gestão completa","Slide 2 — Inteligência Artificial","Slide 3 — Personalização"];
