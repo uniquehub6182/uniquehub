@@ -1656,10 +1656,10 @@ function LoginPage({ onAuth }) {
 
         {/* Title */}
         <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>
-          {mode==="login" ? "Bem-vindo de volta" : "Solicitar acesso"}
+          {mode==="login" ? "Acesse sua conta" : "Solicitar acesso"}
         </h1>
         <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 30px", lineHeight:1.5 }}>
-          {mode==="login" ? "Entre com suas credenciais para continuar" : "Preencha para solicitar acesso à plataforma"}
+          {mode==="login" ? "Entre com seu e-mail e senha para continuar" : "Preencha para solicitar acesso à plataforma"}
         </p>
 
         {/* Email floating label */}
