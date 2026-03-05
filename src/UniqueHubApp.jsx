@@ -4428,6 +4428,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
 
   /* Load conversations + profiles on mount */
   useEffect(() => {
@@ -4821,7 +4822,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Messages */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", display:"flex", flexDirection:"column", gap:2, background: isDark ? "linear-gradient(180deg,#0F1419 0%,#141920 100%)" : "linear-gradient(180deg,#F2F4F8 0%,#EEF0F5 100%)", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", display:"flex", flexDirection:"column", gap:2, background: B.bg, WebkitOverflowScrolling:"touch" }}>
           {msgs.length === 0 && <div style={{ textAlign:"center", padding:40, color:B.muted, fontSize:13 }}>Nenhuma mensagem ainda. Comece a conversa!</div>}
           {msgs.map((m, mi) => {
             const isMe = m.sender_id === user.id;
@@ -4887,7 +4888,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           ))}
         </div>}
         {/* Input */}
-        <div style={{ padding:"10px 14px 28px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
+        <div style={{ padding:"10px 14px 96px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, borderTop:`1px solid ${B.border}40`, boxShadow:"0 -4px 20px rgba(0,0,0,0.06)" }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} className="ib" style={{ width:40, height:40, flexShrink:0, color:B.red }}>
