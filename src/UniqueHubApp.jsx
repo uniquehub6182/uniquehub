@@ -4778,7 +4778,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
     const avBg = bgPal[convName.charCodeAt(0)%bgPal.length];
     return (
-      <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
+      <div style={{ position:"fixed", inset:0, zIndex:100, display:"flex", flexDirection:"column", background:B.bg }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
@@ -4875,7 +4875,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* INPUT BAR */}
-        <div style={{ padding:"10px 14px 96px", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -10183,7 +10183,6 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
       <div className="content">
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} />}
-        {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
@@ -10205,6 +10204,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
       </div>
 
+      {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
           const a = (tab === t.k && !sub) || (sub === t.k);
