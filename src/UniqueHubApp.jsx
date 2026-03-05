@@ -7898,7 +7898,7 @@ function NewsPage({ onBack }) {
   );
 }
 
-function IdeasPage({ onBack }) {
+function IdeasPage({ onBack, user }) {
   const IDEAS_MOCK = [
     { id:1, title:"Série 'Antes & Depois' para todos os clientes", desc:"Criar uma série padronizada de posts mostrando resultados reais dos serviços de cada cliente. Funciona bem para Bella Estética (procedimentos), Casa Nova (reformas), Studio Fitness (transformações).", author:"Matheus", date:"28/02/2026", votes:8, status:"approved", client:"Todos", tags:["Conteúdo","Série","Resultados"], comments:[
       { by:"Alice", text:"Já tenho templates prontos, posso adaptar para cada cliente!", date:"28/02" },
@@ -10232,7 +10232,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} />}
-        {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} />}
+        {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
