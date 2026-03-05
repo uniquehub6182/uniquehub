@@ -1374,7 +1374,7 @@ function LoginPage({ onAuth }) {
   /* Logo inline */
   const logoJSX = (mb) => (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: mb || 32 }}>
-      <img src={LOGO_B64} alt="UniqueHub" style={{ height: 56, objectFit: "contain", marginBottom: 8 }} />
+      <img src={LOGO_B64} alt="UniqueHub" style={{ height: 45, objectFit: "contain", marginBottom: 8 }} />
       <span style={{ fontSize: 13, color: B.muted, fontWeight: 600, marginTop: 2 }}>Agency Panel</span>
     </div>
   );
@@ -1588,7 +1588,7 @@ function LoginPage({ onAuth }) {
   if (forgotMode) return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", overflow:"hidden" }}>
       <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center" }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:45, objectFit:"contain", marginBottom:10 }} />
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
         <button onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(""); setError(""); }} style={{ position:"absolute", top:"calc(env(safe-area-inset-top,0px) + 20px)", left:20, background:"none", border:"none", color:"rgba(255,255,255,0.5)", fontSize:14, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, padding:"8px 4px" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -1677,7 +1677,7 @@ function LoginPage({ onAuth }) {
 
       {/* ── DARK HEADER ── */}
       <div className="llogo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:45, objectFit:"contain", marginBottom:10 }} />
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
 
         {/* Tab top-right: Não tem conta? */}
@@ -1818,7 +1818,7 @@ function PWAInstallPopup({ onDismiss }) {
       <div style={{ width:"100%", background:"#fff", borderRadius:"24px 24px 0 0", padding:"28px 24px calc(env(safe-area-inset-bottom,0px) + 32px)", animation:"cardUp .35s cubic-bezier(0.34,1.1,0.64,1) both" }}>
         {/* App icon */}
         <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:20 }}>
-          <img src={LOGO_B64} alt="UniqueHub" style={{ width:56, height:56, borderRadius:14, boxShadow:"0 4px 12px rgba(0,0,0,0.12)" }} />
+          <img src={LOGO_B64} alt="UniqueHub" style={{ width:45, height:45, borderRadius:14, boxShadow:"0 4px 12px rgba(0,0,0,0.12)" }} />
           <div>
             <p style={{ fontSize:18, fontWeight:900, color:"#1A1D23", margin:0 }}>UniqueHub</p>
             <p style={{ fontSize:12, color:"#8B8F92", margin:"2px 0 0" }}>Agency Panel</p>
@@ -2527,6 +2527,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     /* Sync to Supabase */
     const client = clients.find(c => c.id === id);
     if (client?.supaId) supaUpdateClient(client.supaId, data);
+    /* Persist file metadata separately via settings */
+    if (data.files !== undefined) {
+      supaSetSetting(`client_files_${id}`, JSON.stringify(data.files));
+    }
   };
 
   const connectSocial = (platformKey) => {
@@ -6183,11 +6187,22 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   ];
   const pwStrong = (p) => pwChecks(p).every(c => c.ok);
 
-  const savePw = () => {
+  const savePw = async () => {
     if (!pwStrong(newPw)) { showToast("Senha não atende os critérios"); return; }
     if (newPw !== confirmPw) { showToast("As senhas não conferem"); return; }
-    setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw("");
-    showToast("Senha alterada com sucesso ✓");
+    if (!supabase) { showToast("Erro: sem conexão"); return; }
+    /* Re-authenticate with old password first */
+    try {
+      const userEmail = supabase.auth.getUser ? (await supabase.auth.getUser())?.data?.user?.email : null;
+      if (userEmail && oldPw) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email: userEmail, password: oldPw });
+        if (signInErr) { showToast("Senha atual incorreta"); return; }
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) { showToast("Erro: " + error.message); return; }
+      setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw("");
+      showToast("Senha alterada com sucesso ✓");
+    } catch(e) { showToast("Erro ao alterar senha"); }
   };
 
   const EyeBtn = ({ show, toggle }) => (
@@ -10103,7 +10118,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
       {ToastEl}
-      <div style={{ padding:`52px 16px 10px`, display:"flex", alignItems:"center", justifyContent:"space-between", background:B.bgCard, borderBottom:`1px solid ${B.border}` }}>
+      <div style={{ padding:`${TOP} 16px 10px`, display:"flex", alignItems:"center", justifyContent:"space-between", background:B.bgCard, borderBottom:`1px solid ${B.border}` }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
           <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
@@ -11204,14 +11219,20 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   useEffect(() => {
     if (!supabase || clientsLoaded) return;
-    supaLoadClients().then(rows => {
+    supaLoadClients().then(async rows => {
       if (rows) {
         if (rows.length > 0) {
           const merged = rows.map(r => {
             const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
             return mergeSupaClient(r, existing);
           });
-          setSharedClients(merged);
+          /* Load file metadata for each client */
+          const withFiles = await Promise.all(merged.map(async (c) => {
+            const filesRaw = await supaGetSetting(`client_files_${c.id}`);
+            if (filesRaw) { try { return { ...c, files: JSON.parse(filesRaw) }; } catch {} }
+            return c;
+          }));
+          setSharedClients(withFiles);
         } else {
           setSharedClients([]);
         }
