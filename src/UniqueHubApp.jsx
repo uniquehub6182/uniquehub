@@ -1154,20 +1154,14 @@ function OnboardingSlides({ onDone }) {
         Pular
       </button>
 
-      {/* ── BOTTOM TEXT + CONTROLS ── */}
-      <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 30px calc(env(safe-area-inset-bottom,0px) + 44px)", color:"#fff", zIndex:20, pointerEvents:"none" }}>
-        <p style={{ fontSize:11, fontWeight:800, color:sl.accent, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:12, opacity:1 }}>{sl.tag}</p>
-        <h2 style={{ fontSize:34, fontWeight:900, lineHeight:1.13, margin:"0 0 14px", whiteSpace:"pre-line", letterSpacing:"-0.5px" }}>{sl.title}</h2>
-        <p style={{ fontSize:15, color:"rgba(255,255,255,0.52)", lineHeight:1.65, marginBottom:38 }}>{sl.desc}</p>
-
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", pointerEvents:"auto" }}>
-          {/* Dots */}
+      {/* ── BOTTOM CONTROLS ONLY (no text) ── */}
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 30px calc(env(safe-area-inset-bottom,0px) + 44px)", zIndex:20 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", gap:7, alignItems:"center" }}>
             {SLIDES.map((_,i) => (
-              <div key={i} style={{ height:5, width:i===idx?26:5, borderRadius:3, background:i===idx?sl.accent:"rgba(255,255,255,0.28)", transition:"all .3s", cursor:"pointer" }} onClick={() => { setOffsetX(0); setIdx(i); }} />
+              <div key={i} style={{ height:5, width:i===idx?26:5, borderRadius:3, background:i===idx?"#fff":"rgba(255,255,255,0.35)", transition:"all .3s", cursor:"pointer" }} onClick={() => { setOffsetX(0); setIdx(i); }} />
             ))}
           </div>
-          {/* Arrow button */}
           <button onClick={() => idx === N-1 ? onDone() : setIdx(i => i+1)} style={{ width:62, height:62, borderRadius:"50%", background:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 32px rgba(0,0,0,0.45)", flexShrink:0 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
@@ -1837,7 +1831,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const searchRef = useRef(null);
   const [showEditor, setShowEditor] = useState(false);
   const [dashCfg, setDashCfg] = useState(() => { try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
-  const saveCfg = (c) => { setDashCfg(c); try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {} };
+  const saveCfg = (c) => {
+    setDashCfg(c);
+    try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {}
+    savePrefsToCloud(undefined, undefined, undefined, user?.id, c, undefined);
+  };
   const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:"registro diário",val:"—",k:"checkin"} };
   const PILLS = {
     home:      {l:"Home",        k:"home",      tab:true},
@@ -10710,14 +10708,21 @@ function Match4BizPage({ onBack, clients, user }) {
 }
 
 
-function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs }) {
+function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud }) {
   const [tab, setTab] = useState("home");
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
   const [sub, setSub] = useState(null);
   const [more, setMore] = useState(false);
-  const [navPicks, setNavPicks] = useState(DEFAULT_NAV);
+  const [navPicks, setNavPicks] = useState(() => {
+    try { const s = localStorage.getItem("uh_nav_picks"); return s ? JSON.parse(s) : DEFAULT_NAV; } catch { return DEFAULT_NAV; }
+  });
+  const setNavPicksAndSave = (picks, userId) => {
+    setNavPicks(picks);
+    try { localStorage.setItem("uh_nav_picks", JSON.stringify(picks)); } catch {}
+    savePrefsToCloud(undefined, undefined, undefined, userId, undefined, picks);
+  };
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
   const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
@@ -11027,7 +11032,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
       </nav>
 
       {more && <MoreSheet onClose={() => setMore(false)} goSub={goSub} />}
-      {showNavEdit && <NavEditSheet picks={navPicks} setPicks={setNavPicks} onClose={() => setShowNavEdit(false)} />}
+      {showNavEdit && <NavEditSheet picks={navPicks} setPicks={(p) => setNavPicksAndSave(p, user?.id)} onClose={() => setShowNavEdit(false)} />}
     </div>
   );
 }
@@ -11045,13 +11050,22 @@ export default function App() {
     try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
 
-  /* Save visual prefs to Supabase (debounced) */
+  /* Save visual prefs to Supabase (debounced) — includes dash+nav */
   const savePrefsTimer = React.useRef(null);
-  const savePrefsToCloud = React.useCallback((dark_v, theme_v, prefs_v, userId) => {
+  const allPrefsRef = React.useRef({ dark: false, theme: "default", prefs: {}, dash: null, nav: null });
+  const savePrefsToCloud = React.useCallback((dark_v, theme_v, prefs_v, userId, dash_v, nav_v) => {
     if (!supabase || !userId) return;
+    // merge into ref so debounce always saves latest
+    allPrefsRef.current = {
+      dark: dark_v ?? allPrefsRef.current.dark,
+      theme: theme_v ?? allPrefsRef.current.theme,
+      prefs: prefs_v ?? allPrefsRef.current.prefs,
+      dash: dash_v !== undefined ? dash_v : allPrefsRef.current.dash,
+      nav: nav_v !== undefined ? nav_v : allPrefsRef.current.nav,
+    };
     clearTimeout(savePrefsTimer.current);
     savePrefsTimer.current = setTimeout(() => {
-      supaSetSetting(`visual_prefs_${userId}`, JSON.stringify({ dark: dark_v, theme: theme_v, prefs: prefs_v }));
+      supaSetSetting(`visual_prefs_${userId}`, JSON.stringify(allPrefsRef.current));
     }, 800);
   }, []);
 
@@ -11159,6 +11173,8 @@ export default function App() {
               if (vp.dark !== undefined) { setDark(vp.dark); try { localStorage.setItem("uh_dark", vp.dark ? "1" : "0"); } catch {} }
               if (vp.theme) { setThemeColor(vp.theme); try { localStorage.setItem("uh_theme", vp.theme); } catch {} }
               if (vp.prefs) { setUiPrefs(vp.prefs); try { localStorage.setItem("uh_ui_prefs", JSON.stringify(vp.prefs)); } catch {} }
+              if (vp.dash) { try { localStorage.setItem("uh_dash_cfg", JSON.stringify(vp.dash)); } catch {} }
+              if (vp.nav)  { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} }
             }
           } catch(e) { console.warn("Visual prefs load failed:", e); }
         } catch(e) { console.error("Profile load failed:", e); }
@@ -11233,6 +11249,7 @@ input,textarea,select{font-size:16px !important}
     uiPrefs={uiPrefs}
     updateUiPrefs={(patch) => { setUiPrefs(prev => { const next={...prev,...patch}; try{localStorage.setItem("uh_ui_prefs",JSON.stringify(next))}catch{}; savePrefsToCloud(dark,themeColor,next,user?.id); return next; }); }}
     replaceUiPrefs={(prefs) => { setUiPrefs(()=>{ try{localStorage.setItem("uh_ui_prefs",JSON.stringify(prefs))}catch{}; savePrefsToCloud(dark,themeColor,prefs,user?.id); return prefs; }); }}
+    savePrefsToCloud={savePrefsToCloud}
   />}
     </>
   );
