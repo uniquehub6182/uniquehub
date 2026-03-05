@@ -9984,16 +9984,10 @@ p,span,div,h1,h2,h3,h4{color:inherit}
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
 .overlay{background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"}!important}
 .txtbtn{color:${B.muted}!important}
-.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.78)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:var(--uh-nav-rad)!important;width:calc(100% - 48px)!important;max-width:var(--uh-nav-w)!important;padding:var(--uh-nav-pad)!important;${uiPrefs.navStyle==="bar"?"border-top:2px solid "+B.accent+"!important;box-shadow:none!important;bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
+.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.78)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;width:auto!important;max-width:calc(100% - 40px)!important;padding:8px 14px!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
 .bnav .bt{font-size:inherit!important}
-.bnav .bt svg{width:var(--uh-icon-sz)!important;height:var(--uh-icon-sz)!important;stroke-width:var(--uh-icon-w)!important}
-.bnav .bt span{font-size:${uiPrefs.navLabels===false?"0":"9px"}!important;height:${uiPrefs.navLabels===false?"0":"auto"}!important;overflow:hidden;opacity:${uiPrefs.navLabels===false?"0":"1"}}
 .card,.tinput,.pill,.htab,.grid-btn,.tag{transition:all var(--uh-anim) ease!important}
 .pg svg:not(.bnav svg){stroke-width:var(--uh-icon-w)}
-${B.iconFill==="filled"?`.bnav .bt svg *[fill="none"]{fill:currentColor;fill-opacity:0.15}.pg svg circle,.pg svg rect,.pg svg path{fill-opacity:0.08}`:""}
-${B.iconFill==="duotone"?`.bnav .bt svg{opacity:0.9}.bnav .bt svg *{fill:currentColor;fill-opacity:0.1}`:""}
-.bnav .bt:not(.a) svg{color:${B.navInactive}}
-.bnav .bt.a svg{color:${B.navActive}}
 ${(()=>{
   const t = uiPrefs.bgTemplate || "solid";
   if(t==="solid") return "";
@@ -10057,16 +10051,18 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
       <nav className="bnav">
         {TABS.map(t => {
           const a = (tab === t.k && !sub) || (sub === t.k);
+          const isMore = t.k === "more";
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
-            }} className={`bt${a ? " a" : ""}`} style={a ? { background: accentColor, borderRadius: 14, padding: "8px 14px", gap: 5, margin: "0 2px" } : {}}>
-              {t.i(a ? B.navActive : B.navInactive)}
-              {a && <span style={{ fontSize: 11, fontWeight: 700, color: B.navActive }}>{t.l}</span>}
-              {t.k === "content" && <Badge n={demandBadge} style={{ position: "absolute", top: -2, right: a ? -4 : "calc(50% - 10px)" }} />}
-              {t.k === "chat" && <Badge n={chatUnread} style={{ position: "absolute", top: -2, right: a ? -4 : "calc(50% - 10px)" }} />}
+            }} className="bt" style={{ flex:"0 0 auto", padding:0, position:"relative" }}>
+              <div style={{ width:52, height:52, borderRadius:"50%", background:a?`${accentColor}18`:(dark?"#2A2A2A":"#E8E8E8"), display:"flex", alignItems:"center", justifyContent:"center", border:a?`2px solid ${accentColor}`:"2px solid transparent", transition:"all .25s ease", boxShadow:a?`0 0 12px ${accentColor}30`:"none" }}>
+                {t.i(a ? accentColor : isMore ? accentColor : (dark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.35)"))}
+              </div>
+              {t.k === "content" && demandBadge > 0 && <Badge n={demandBadge} style={{ position:"absolute", top:0, right:0 }} />}
+              {t.k === "chat" && chatUnread > 0 && <Badge n={chatUnread} style={{ position:"absolute", top:0, right:0 }} />}
             </button>
           );
         })}
@@ -10183,9 +10179,9 @@ input,textarea,select{font-size:16px !important}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.bnav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:space-around;z-index:50;box-shadow:0 8px 32px rgba(25,33,38,0.4)}
+.bnav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:8px;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
 .bnav .bt{font-size:inherit}
-.bt{flex:1;display:flex;align-items:center;justify-content:center;gap:0;padding:10px 0;background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.45);font-family:inherit;position:relative;border-radius:14px;transition:all .25s ease}.bt.a{flex:1.4}
+.bt{display:flex;align-items:center;justify-content:center;padding:0;background:none;border:none;cursor:pointer;font-family:inherit;position:relative}
 .htabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}.htabs::-webkit-scrollbar{display:none}
 .htab{padding:7px 14px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;background:${dark?"#1C2228":"#fff"};color:${dark?"#8B9099":"#8B8F92"};border:none;cursor:pointer;font-family:inherit;box-shadow:0 1px 2px ${dark?"rgba(0,0,0,0.2)":"rgba(0,0,0,0.04)"}}.htab.a{background:${THEME_MAP[themeColor]||"#BBF246"};color:#192126;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
 .hscroll{scrollbar-width:none}.hscroll::-webkit-scrollbar{display:none}
