@@ -1667,7 +1667,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div><button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.brd}`,background:"transparent",color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button></div></>;};
   return (
     <div className="pg" style={{ padding:0, background:C.bg }}>
-      <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:60, paddingBottom:28, boxShadow:SHADOW }}>
+      <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:`calc(env(safe-area-inset-top, 0px) + 16px)`, paddingBottom:28, boxShadow:SHADOW }}>
         <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
@@ -10316,11 +10316,11 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden}
+html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden}
 input,textarea,select{font-size:16px !important}
-.app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.screen{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:100px}
+.app{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
+.screen{width:100%;max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none;scroll-behavior:smooth;padding-bottom:100px}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
