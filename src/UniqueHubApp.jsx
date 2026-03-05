@@ -1520,8 +1520,48 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const [dashCfg, setDashCfg] = useState(() => { try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
   const saveCfg = (c) => { setDashCfg(c); try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {} };
   const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:"registro diário",val:"—",k:"checkin"} };
-  const PILLS = { suporte:{l:"Suporte",k:"help"}, aprovacoes:{l:"Aprovações",k:"content",badge:pendingApprovals}, conteudo:{l:"Conteúdo",k:"content"}, relatorios:{l:"Relatórios",k:"reports"}, financeiro:{l:"Financeiro",k:"financial"}, calendar:{l:"Agenda",k:"calendar"}, checkin:{l:"Check-in",k:"checkin"}, ia:{l:"IA",k:"ai"}, match4biz:{l:"Match4Biz",k:"match4biz"} };
-  const ACTIONS = { aprovar:{l:"Aprovar conteúdos",k:"content"}, trafego:{l:"Configurar tráfego",k:"financial"}, relatorio:{l:"Ver relatório",k:"reports"}, chat:{l:"Falar com equipe",k:"chat"}, checkin:{l:"Fazer check-in",k:"checkin"}, ia:{l:"Assistente IA",k:"ai"}, match4biz:{l:"Match4Biz",k:"match4biz"} };
+  const PILLS = {
+    home:      {l:"Home",        k:"home",      tab:true},
+    conteudo:  {l:"Conteúdo",    k:"content",   tab:true,  badge:pendingApprovals},
+    clientes:  {l:"Clientes",    k:"clients",   tab:true},
+    chat:      {l:"Chat",        k:"chat",       tab:true},
+    financeiro:{l:"Financeiro",  k:"financial"},
+    calendar:  {l:"Agenda",      k:"calendar"},
+    relatorios:{l:"Relatórios",  k:"reports"},
+    equipe:    {l:"Equipe",      k:"team"},
+    checkin:   {l:"Check-in",    k:"checkin"},
+    ia:        {l:"IA",          k:"ai"},
+    academy:   {l:"Academy",     k:"academy"},
+    biblioteca:{l:"Biblioteca",  k:"library"},
+    noticias:  {l:"Notícias",    k:"news"},
+    ideias:    {l:"Ideias",      k:"ideas"},
+    gamify:    {l:"Gamify",      k:"gamify"},
+    match4biz: {l:"Match4Biz",   k:"match4biz"},
+    suporte:   {l:"Suporte",     k:"help"},
+    ajustes:   {l:"Ajustes",     k:"settings"},
+  };
+  const ACTIONS = {
+    aprovar:   {l:"Aprovar conteúdos",  k:"content"},
+    novoConteudo:{l:"Novo conteúdo",    k:"content"},
+    trafego:   {l:"Configurar tráfego", k:"financial"},
+    relatorio:  {l:"Ver relatório",      k:"reports"},
+    agenda:    {l:"Ver agenda",          k:"calendar"},
+    novoEvento:{l:"Novo evento",         k:"calendar"},
+    chat:      {l:"Falar com equipe",    k:"chat",    tab:true},
+    checkin:   {l:"Fazer check-in",      k:"checkin"},
+    ia:        {l:"Assistente IA",       k:"ai"},
+    biblioteca:{l:"Ir à biblioteca",     k:"library"},
+    noticias:  {l:"Ler notícias",        k:"news"},
+    ideias:    {l:"Ver ideias",          k:"ideas"},
+    gamify:    {l:"Gamify / Ranking",    k:"gamify"},
+    match4biz: {l:"Match4Biz",          k:"match4biz"},
+    academy:   {l:"Academy",            k:"academy"},
+    equipe:    {l:"Ver equipe",          k:"team"},
+    clientes:  {l:"Ver clientes",        k:"clients",  tab:true},
+    financeiro:{l:"Ver financeiro",      k:"financial"},
+    suporte:   {l:"Suporte / Ajuda",     k:"help"},
+    ajustes:   {l:"Ajustes",            k:"settings"},
+  };
   const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", posts:"Posts Recentes", equipe:"Equipe", clientes:"Clientes recentes" };
   const cfg = dashCfg || { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","posts","equipe","clientes"] };
   const isDark = B.bg === "#0D0D0D";
