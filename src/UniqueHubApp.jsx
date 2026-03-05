@@ -740,6 +740,8 @@ const IC = {
   camera: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,
   palette: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>,
   phone: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>,
+  phone2: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>,
+  sos: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.5 9h5"/><line x1="12" y1="9" x2="12" y2="15"/></svg>,
   device: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,
   download: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
   share: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
@@ -3826,7 +3828,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   useEffect(() => {
     if (initialDemandId && demands?.length) {
       const d = demands.find(x => x.id === initialDemandId);
-      if (d) { setSel(d); if (onOpenIdConsumed) onOpenIdConsumed(); }
+      if (d) { setSel(d); if (onOpenIdConsumed) onOpenIdConsumed(); if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0; }
     }
   }, [initialDemandId, demands]);
 
@@ -6111,9 +6113,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         {pf.emergency_name ? <div>
           <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
           <Card style={{ marginBottom:10 }}>
-            {[["Nome",pf.emergency_name,"sos"],["Telefone",pf.emergency_phone||"—","phone2"],["Parentesco",pf.emergency_relation||"—","users"]].map((f,i) => (
+            {[["Nome",pf.emergency_name,IC.sos],["Telefone",pf.emergency_phone||"—",IC.phone2],["Parentesco",pf.emergency_relation||"—",IC.users]].map((f,i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?"1px solid "+B.border:"none" }}>
-                <span style={{ fontSize:14 }}>{f[2]}</span>
+                <span style={{ display:"flex", alignItems:"center", color:B.accent }}>{f[2]}</span>
                 <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
               </div>
             ))}
@@ -6122,7 +6124,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
         {pf.shirt_size ? <Card style={{ marginBottom:10 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ fontSize:16 }}>👕</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0}}><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.86H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.86l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>
             <div><p style={{ fontSize:10, color:B.muted }}>Camiseta</p><p style={{ fontSize:13, fontWeight:600 }}>{pf.shirt_size}</p></div>
           </div>
         </Card> : null}
@@ -6187,16 +6189,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             const pText = p.pr.customText || (p.dark?"#E8EAED":"#192126");
             const pMuted = p.pr.customMuted || (p.dark?"#8B9099":"#8B8F92");
             const pIcon = p.pr.iconColor || pAccent;
-            const bgT = BG_TEMPLATES.find(b => b.k===p.pr.bgTemplate)||BG_TEMPLATES[0];
+            const bgT = BG_TEMPLATES.find(b => b.k===p.pr.bgTemplate) || null;
             const rad = ({sharp:"4px",round:"12px",pill:"20px"})[p.pr.cardRadius]||"12px";
             const isActive = themeColor===p.theme && dark===p.dark && (UP.bgTemplate||"solid")===p.pr.bgTemplate;
             return (
               <button key={p.k} onClick={() => applyPreset(p)} style={{ position:"relative", overflow:"hidden", borderRadius:16, border:isActive?"2.5px solid "+pAccent:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left", padding:0, background:"none" }}>
-                <div style={{ padding:14, background:bgT.css||pBg, minHeight:90, display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative" }}>
-                  {bgT.overlay && <div style={{ position:"absolute", inset:0, backgroundImage:bgT.overlay, backgroundSize:bgT.overlaySize||"auto", opacity:0.5 }} />}
+                <div style={{ padding:14, background:bgT?.css||pBg, minHeight:90, display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative" }}>
+                  {bgT?.overlay && <div style={{ position:"absolute", inset:0, backgroundImage:bgT.overlay, backgroundSize:bgT.overlaySize||"auto", opacity:0.5 }} />}
                   <div style={{ position:"relative", zIndex:1 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-                      <div style={{ width:22, height:22, borderRadius:8, background:pAccent, flexShrink:0 }} />
                       <div style={{ flex:1 }}>
                         <p style={{ fontSize:14, fontWeight:700, color:pText, fontFamily:({system:"inherit",inter:"'Inter',sans-serif",mono:"monospace",serif:"Georgia,serif"})[p.pr.fontFamily]||"inherit" }}>{p.name}</p>
                         <p style={{ fontSize:10, color:pMuted }}>{p.desc}</p>
@@ -8362,7 +8363,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   );
 }
 
-function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }) {
+function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user }) {
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
@@ -8378,6 +8379,31 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }
   const [creating, setCreating] = useState(false);
   const [editingArticle, setEditingArticle] = useState(false);
   const [form, setForm] = useState({});
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const isAdmin = user?.supaRole === "admin";
+  const newsPhotoRef = React.useRef(null);
+
+  const handleNewsPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        const b64 = canvas.toDataURL("image/jpeg", 0.82);
+        setPhotoPreview(b64);
+        setForm(p => ({ ...p, photo: b64 }));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
   const { showToast, ToastEl } = useToast();
 
   useEffect(() => {
@@ -8392,7 +8418,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }
             id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
             body: r.body || "", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
             readTime: r.read_time || "", source: sourceName, sourceUrl, pinned: r.pinned || false,
-            tags: r.tags || [], supaId: r.id
+            tags: r.tags || [], supaId: r.id, photo: r.photo || null
           };
         }));
       }
@@ -8417,12 +8443,12 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }
   const saveArticle = async () => {
     if (!form.title?.trim()) return showToast("Informe o título");
     const sourceVal = form.sourceUrl ? `${form.source||""}||${form.sourceUrl}` : (form.source || "");
-    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [] };
+    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [], photo: form.photo || null };
     const row = await supaCreateNews(na);
     if (row) {
       const parsedNewSrc = (row.source || "").split("||");
-      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:parsedNewSrc[0]||"", sourceUrl:parsedNewSrc[1]||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id }, ...prev]);
-      setCreating(false); setForm({}); showToast("Artigo publicado ✓");
+      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:parsedNewSrc[0]||"", sourceUrl:parsedNewSrc[1]||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id, photo:row.photo||null }, ...prev]);
+      setCreating(false); setForm({}); setPhotoPreview(null); showToast("Artigo publicado ✓");
     }
   };
 
@@ -8477,6 +8503,24 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }
       <textarea value={form.body||""} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Texto completo do artigo..." className="tinput" style={{ minHeight:120, resize:"vertical", marginBottom:10 }} />
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separadas por vírgula)</label>
       <input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="Instagram, Meta, Reels" className="tinput" style={{ marginBottom:10 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Foto de capa</label>
+      <div style={{ marginBottom:14 }}>
+        <input ref={newsPhotoRef} type="file" accept="image/*" onChange={handleNewsPhoto} style={{ display:"none" }} />
+        {form.photo ? (
+          <div style={{ position:"relative" }}>
+            <img src={form.photo} alt="capa" style={{ width:"100%", height:160, objectFit:"cover", borderRadius:12 }} />
+            <button onClick={() => { setForm(p=>({...p,photo:null})); setPhotoPreview(null); }} style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => newsPhotoRef.current?.click()} style={{ width:"100%", padding:"20px 0", borderRadius:12, border:`2px dashed ${B.border}`, background:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+            {IC.img}
+            <span>Adicionar foto de capa</span>
+            <span style={{ fontSize:10 }}>Aparece como thumbnail no dashboard e na lista de notícias</span>
+          </button>
+        )}
+      </div>
       <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
         <input type="checkbox" checked={form.pinned||false} onChange={e=>setForm(p=>({...p,pinned:e.target.checked}))} /> Destacar artigo
       </label>
@@ -8544,7 +8588,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }
   /* ── MAIN NEWS LIST ── */
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} />
+      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isAdmin ? () => { setCreating(true); setForm({}); setPhotoPreview(null); } : null} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
@@ -8575,8 +8619,9 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed }
           <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{tab === "saved" ? "Salve artigos para ler depois." : "Volte em breve para novidades."}</p>
         </Card>
       ) : filtered.filter(a=> tab!=="all" || !a.pinned).map((a,i) => (
-        <Card key={a.id} delay={i*0.03} onClick={()=>setSelArticle(a)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
-          <div style={{ display:"flex", gap:10 }}>
+        <Card key={a.id} delay={i*0.03} onClick={()=>setSelArticle(a)} style={{ marginTop:i?6:0, cursor:"pointer", padding:0, overflow:"hidden" }}>
+          {a.photo && <img src={a.photo} alt="" style={{ width:"100%", height:120, objectFit:"cover" }} />}
+          <div style={{ display:"flex", gap:10, padding:12 }}>
             <div style={{ width:6, borderRadius:3, background:catColor(a.cat), flexShrink:0 }} />
             <div style={{ flex:1, minWidth:0 }}>
               <h4 style={{ fontSize:13, fontWeight:700, lineHeight:1.3, marginBottom:4 }}>{a.title}</h4>
@@ -9085,8 +9130,7 @@ function GamifyPage({ onBack, user, team }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" onBack={onBack} collapsed={pgC}
-        stats={[{val:team.length,label:"membros"}]} />
+      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" onBack={onBack} collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* My Stats Card */}
@@ -10993,7 +11037,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
-        {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} />}
+        {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
