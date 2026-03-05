@@ -4783,7 +4783,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
         {/* HEADER */}
-        <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, flexShrink:0, boxShadow:"0 1px 8px rgba(0,0,0,0.06)" }}>
+        <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:`calc(env(safe-area-inset-top,0px) + 12px) 16px 12px`, display:"flex", alignItems:"center", gap:12, flexShrink:0, boxShadow:"0 1px 8px rgba(0,0,0,0.06)" }}>
           <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:36, height:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
@@ -4875,7 +4875,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* INPUT BAR */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:`0 0 0 100px ${B.bgCard}` }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -4980,11 +4980,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
+    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* HEADER */}
-      <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:"18px 20px 14px", flexShrink:0 }}>
+      <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 14px`, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
           <div>
             <p style={{ fontSize:12, color:B.muted, fontWeight:500, margin:0 }}>Olá,</p>
