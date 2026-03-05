@@ -1486,7 +1486,7 @@ function LoginPage({ onAuth }) {
           ))}
         </div>
 
-        <p style={{ fontSize: 11, color: B.muted, marginTop: 16, textAlign: "center" }}>Unique Marketing 360 — Agency Panel v1.0</p>
+        <p style={{ fontSize: 11, color: B.muted, marginTop: 16, textAlign: "center" }}>{agencyIdentity.name} — Agency Panel v1.0</p>
       </div>
     </div>
   );
@@ -1544,7 +1544,7 @@ function LoginPage({ onAuth }) {
           {loginLoading ? "Entrando..." : <>Entrar {IC.arrowR()}</>}
         </button>
 
-        <p style={{ fontSize: 11, color: B.muted, marginTop: 20, textAlign: "center" }}>Unique Marketing 360 — Agency Panel v1.0</p>
+        <p style={{ fontSize: 11, color: B.muted, marginTop: 20, textAlign: "center" }}>{agencyIdentity.name} — Agency Panel v1.0</p>
       </div>
     </div>
   );
@@ -1870,7 +1870,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
-            <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>Unique Marketing 360</div></div>
+            <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>{agencyIdentity.name}</div></div>
           </div>
           <div style={{ display:"flex", gap:12 }}>
             <button onClick={()=>goTab("chat")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:H.btnC}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
@@ -5391,7 +5391,7 @@ function ApprovalsPage({ onBack }) {
   );
 }
 
-function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate }) {
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [twoFA, setTwoFA] = useState(false);
@@ -6416,6 +6416,72 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ AI CONFIG (admin only) ═══ */
+  /* ═══ IDENTIDADE DA AGÊNCIA (admin only) ═══ */
+  if (sub === "agencyid") {
+    const [agCfg, setAgCfg] = React.useState({ name:"", slogan:"", city:"", logo_url:"" });
+    const [agLoaded, setAgLoaded] = React.useState(false);
+    const [agSaving, setAgSaving] = React.useState(false);
+
+    React.useEffect(() => {
+      supaGetSetting("agency_identity").then(raw => {
+        if (raw) { try { setAgCfg(prev => ({ ...prev, ...JSON.parse(raw) })); } catch {} }
+        setAgLoaded(true);
+      });
+    }, []);
+
+    if (!agLoaded) return <div className="pg"><Head title="Identidade" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
+
+    const saveAg = async () => {
+      setAgSaving(true);
+      const ok = await supaSetSetting("agency_identity", JSON.stringify(agCfg));
+      setAgSaving(false);
+      if (ok) { showToast("Identidade salva ✓"); if(onAgencyUpdate) onAgencyUpdate(agCfg); }
+      else showToast("Erro ao salvar");
+    };
+
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Identidade da Agência" onBack={() => setSub(null)} />
+
+        {/* Preview card */}
+        <Card style={{ marginBottom:16, background:`${B.accent}08`, border:`1.5px solid ${B.accent}20` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {agCfg.logo_url
+              ? <img src={agCfg.logo_url} style={{ width:48, height:48, borderRadius:12, objectFit:"contain", background:B.bg }} onError={e=>e.target.style.display="none"} />
+              : <div style={{ width:48, height:48, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🏢</div>
+            }
+            <div>
+              <p style={{ fontSize:15, fontWeight:800, color:B.text }}>{agCfg.name || "Nome da Agência"}</p>
+              <p style={{ fontSize:12, color:B.muted }}>{agCfg.slogan || "Slogan / descrição"}</p>
+              {agCfg.city && <p style={{ fontSize:11, color:B.accent, marginTop:2 }}>📍 {agCfg.city}</p>}
+            </div>
+          </div>
+        </Card>
+
+        <Card style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Nome da agência</p>
+          <input value={agCfg.name} onChange={e=>setAgCfg(p=>({...p,name:e.target.value}))} placeholder="Ex: Unique Marketing 360" className="tinput" />
+        </Card>
+        <Card style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Slogan / descrição curta</p>
+          <input value={agCfg.slogan} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} placeholder="Ex: Agência de marketing 360" className="tinput" />
+        </Card>
+        <Card style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Cidade / localização</p>
+          <input value={agCfg.city} onChange={e=>setAgCfg(p=>({...p,city:e.target.value}))} placeholder="Ex: Petrópolis, RJ" className="tinput" />
+        </Card>
+        <Card style={{ marginBottom:16 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>URL do logo (opcional)</p>
+          <input value={agCfg.logo_url} onChange={e=>setAgCfg(p=>({...p,logo_url:e.target.value}))} placeholder="https://..." className="tinput" />
+          <p style={{ fontSize:10, color:B.muted, marginTop:6 }}>Cole o link direto de uma imagem (PNG, SVG). Use imgur.com ou similar para hospedar.</p>
+        </Card>
+
+        <button onClick={saveAg} disabled={agSaving} className="pill full accent" style={{ padding:"14px 0", opacity:agSaving?0.5:1 }}>{agSaving?"Salvando...":"Salvar Identidade"}</button>
+      </div>
+    );
+  }
+
   if (sub === "aiconfig") {
     if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
     const saveAI = async () => {
@@ -6525,6 +6591,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
         { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" },
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "agencyid", l: "Identidade da Agência", ic: IC.clients(B.accent), desc: "Nome, slogan, logo e localização" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema, fontes, cards, densidade e mais" },
         { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
@@ -8970,7 +9037,7 @@ function GamifyPage({ onBack, user, team }) {
   );
 }
 
-function AIPage({ onBack, user }) {
+function AIPage({ onBack, user, agencyIdentity }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
@@ -9075,7 +9142,9 @@ function AIPage({ onBack, user }) {
     });
   };
 
-  const SYSTEM_PROMPT = `Você é o Assistente IA da UniqueHub Agency, uma agência de marketing 360 em Petrópolis/RJ. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`;
+  const agName = agencyIdentity?.name || "UniqueHub Agency";
+  const agCity = agencyIdentity?.city || "";
+  const SYSTEM_PROMPT = `Você é o Assistente IA da ${agName}${agCity ? ", "+agCity : ""}. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`;
 
   const activeProvider = aiKeys.ai_provider || "openai";
 
@@ -10278,6 +10347,12 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
   const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
+  const [agencyIdentity, setAgencyIdentity] = useState({ name:"Unique Marketing 360", slogan:"Agência de marketing 360", city:"Petrópolis, RJ", logo_url:"" });
+  useEffect(() => {
+    supaGetSetting("agency_identity").then(raw => {
+      if (raw) { try { setAgencyIdentity(prev => ({ ...prev, ...JSON.parse(raw) })); } catch {} }
+    });
+  }, []);
 
   /* ── Role-based permissions ── */
   const [rolePermsMap, setRolePermsMap] = useState({});
@@ -10536,7 +10611,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
-        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} /></SettingsBoundary>}
+        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
@@ -10544,7 +10619,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
-        {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} />}
+        {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} team={sharedTeam} clients={sharedClients} />}
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
