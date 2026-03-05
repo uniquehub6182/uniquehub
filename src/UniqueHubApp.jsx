@@ -4984,11 +4984,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:"fixed", inset:0, maxWidth:430, margin:"0 auto", zIndex:50, display:"flex", flexDirection:"column", background:B.bg }}>
+    <div style={{ display:"flex", flexDirection:"column", background:B.bg }}>
       {ToastEl}{NewChatModal}{NewGroupModal}
 
       {/* ── HEADER ── */}
-      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:`calc(env(safe-area-inset-top,0px) + 18px) 20px 22px`, flexShrink:0 }}>
+      <div style={{ background:B.text, borderRadius:"0 0 32px 32px", padding:"16px 20px 22px", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
           <div>
             <p style={{ fontSize:12, color:"rgba(255,255,255,0.45)", fontWeight:500, margin:0 }}>Olá,</p>
@@ -5017,7 +5017,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       </div>
 
       {/* ── CONV LIST ── */}
-      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px 100px", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ padding:"12px 16px 0" }}>
         {loading && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Carregando...</p>}
 
         {!loading && convs.length === 0 && (
