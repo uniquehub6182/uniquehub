@@ -1513,189 +1513,74 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team }) {
   const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
-
-  /* Theme-adaptive colors: dark = white header + dark body, light = dark header + light body */
+  const [searchQ, setSearchQ] = useState("");
+  const [searchFocus, setSearchFocus] = useState(false);
+  const searchRef = useRef(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [dashCfg, setDashCfg] = useState(() => { try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
+  const saveCfg = (c) => { setDashCfg(c); try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {} };
+  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:"registro diário",val:"—",k:"checkin"} };
+  const PILLS = { suporte:{l:"Suporte",k:"help"}, aprovacoes:{l:"Aprovações",k:"content",badge:pendingApprovals}, conteudo:{l:"Conteúdo",k:"content"}, relatorios:{l:"Relatórios",k:"reports"}, financeiro:{l:"Financeiro",k:"financial"}, calendar:{l:"Agenda",k:"calendar"}, checkin:{l:"Check-in",k:"checkin"}, ia:{l:"IA",k:"ai"}, match4biz:{l:"Match4Biz",k:"match4biz"} };
+  const ACTIONS = { aprovar:{l:"Aprovar conteúdos",k:"content"}, trafego:{l:"Configurar tráfego",k:"financial"}, relatorio:{l:"Ver relatório",k:"reports"}, chat:{l:"Falar com equipe",k:"chat"}, checkin:{l:"Fazer check-in",k:"checkin"}, ia:{l:"Assistente IA",k:"ai"}, match4biz:{l:"Match4Biz",k:"match4biz"} };
+  const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", equipe:"Equipe", clientes:"Clientes recentes" };
+  const cfg = dashCfg || { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","equipe","clientes"] };
   const isDark = B.bg === "#0D0D0D";
-  const H = { bg: isDark?"#fff":"#0D0D0D", txt: isDark?"#0D0D0D":"#fff", sub: isDark?"#999":"rgba(255,255,255,0.5)", btn: isDark?"#F3F3F3":"#2A2A2A", btnC: isDark?"#0D0D0D":"#fff", srch: isDark?"#F3F3F3":"#2A2A2A", srchT: isDark?"#BBB":"rgba(255,255,255,0.35)" };
-  const C = { bg: isDark?"#0D0D0D":"#F5F5F5", card: isDark?"#1A1A1A":"#fff", brd: isDark?"#272727":"rgba(0,0,0,0.06)", txt: isDark?"#fff":"#0D0D0D", mut: isDark?"rgba(255,255,255,0.35)":"#888", pill: isDark?"#1E1E1E":"#fff", pbrd: isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn: isDark?"#2A2A2A":"#F3F3F3", aicn: isDark?"#252525":"#F3F3F3", readBtn: isDark?"#fff":"#0D0D0D", readBtnT: isDark?"#0D0D0D":"#fff", badge: isDark?"#252525":"#F3F3F3" };
+  const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
+  const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
   const LIME = "#C6F135";
   const SHADOW = isDark ? "0 12px 40px rgba(0,0,0,0.3)" : "0 12px 40px rgba(0,0,0,0.08)";
-
-  const pills = [
-    { k:"help", l:"Suporte", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z"/><path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg> },
-    { k:"content", l:"Aprovações", icon:IC.check, badge:pendingApprovals },
-    { k:"content", l:"Conteúdo", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg> },
-    { k:"reports", l:"Relatórios", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-  ];
-
-  const actions = [
-    { k:"content", l:"Aprovar conteúdos", icon:IC.check },
-    { k:"financial", l:"Configurar tráfego", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> },
-    { k:"reports", l:"Ver relatório", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-    { k:"chat", l:"Falar com equipe", icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> },
-  ];
-
   const initials = user?.name?.charAt(0).toUpperCase() || "U";
-
+  const nav = (k) => { if(["home","content","chat","clients"].includes(k)) goTab(k); else goSub(k); };
+  const pillIcon = (pk) => { const icons = { suporte:IC.help, aprovacoes:IC.check, conteudo:IC.content, relatorios:IC.reports, financeiro:IC.financial||IC.dollar, calendar:IC.calendar, checkin:IC.checkin, ia:IC.ai, match4biz:IC.match4biz }; const fn = icons[pk]; return typeof fn === "function" ? fn(LIME) : fn || IC.more(LIME); };
+  const actionIcon = (ak) => { const icons = { aprovar:IC.check, trafego:IC.settings, relatorio:IC.reports, chat:IC.chat, checkin:IC.checkin, ia:IC.ai, match4biz:IC.match4biz }; const fn = icons[ak]; return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor"); };
+  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
+  const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
+  const renderSection = (key) => {
+    if(key==="comunicados") return <div key="com"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3><span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{background:C.card,borderRadius:22,padding:20,border:`1px solid ${C.brd}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><h4 style={{fontSize:17,fontWeight:800,color:C.txt,lineHeight:1.2,flex:1,marginRight:12}}>Bem-vindo ao UniqueHub</h4><span style={{background:C.badge,borderRadius:100,padding:"5px 12px",fontSize:11,fontWeight:600,color:C.mut,whiteSpace:"nowrap",flexShrink:0}}>Agora</span></div><p style={{fontSize:13,color:C.mut,lineHeight:1.6,marginBottom:16}}>Sua plataforma de gestão de marketing 360°. Explore as funcionalidades.</p><button onClick={()=>goSub("news")} style={{width:"100%",background:C.readBtn,border:"none",borderRadius:100,padding:14,fontFamily:"inherit",fontSize:14,fontWeight:700,color:C.readBtnT,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>Ler mais <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div></div>;
+    if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{cfg.actions.map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
+    if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥"},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰"},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐"},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳"}].map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
+    if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
+    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"} · {c.monthly||"—"}/mês</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
+    return null;
+  };
+  const EditorSheet = () => { const [ec,setEc]=useState(JSON.parse(JSON.stringify(cfg))); const toggle=(arr,key)=>{const idx=ec[arr].indexOf(key);if(idx>=0)setEc({...ec,[arr]:ec[arr].filter(x=>x!==key)});else setEc({...ec,[arr]:[...ec[arr],key]});}; const Chip=({on,label,onTap,max})=><button onClick={onTap} disabled={!on&&max} style={{padding:"6px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:max&&!on?"default":"pointer",fontFamily:"inherit",opacity:max&&!on?0.4:1}}>{label}</button>; return <><div onClick={()=>setShowEditor(false)} className="overlay"/><div className="sheet" style={{maxHeight:"85vh",overflowY:"auto",background:isDark?"#1A1A1A":"#fff",color:C.txt}}><div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3><button onClick={()=>{saveCfg(ec);setShowEditor(false);}} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button></div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(WIDGETS).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k)} max={ec.cards.length>=2}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(PILLS).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k)} max={ec.pills.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:20}}>{Object.entries(ACTIONS).map(([k,v])=><Chip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>toggle("actions",k)} max={ec.actions.length>=6}/>)}</div><p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Seções visíveis</p><div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>{Object.entries(SECTIONS).map(([k,v])=><Chip key={k} on={ec.sections.includes(k)} label={v} onTap={()=>toggle("sections",k)} max={false}/>)}</div><button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:12,borderRadius:12,border:`1px solid ${C.brd}`,background:"transparent",color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button></div></>;};
   return (
     <div className="pg" style={{ padding:0, background:C.bg }}>
-
-      {/* ═══ HEADER CARD ═══ */}
       <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:60, paddingBottom:28, boxShadow:SHADOW }}>
-        {/* Greeting */}
         <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>
-              {user?.photo ? <img src={user.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : initials}
-            </div>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div>
-              <div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>Unique Marketing 360</div>
-            </div>
+            <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
+            <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>Unique Marketing 360</div></div>
           </div>
           <div style={{ display:"flex", gap:12 }}>
-            <button onClick={() => goTab("chat")} style={{ width:48, height:48, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
-            <button onClick={() => goSub("notifs")} style={{ width:48, height:48, borderRadius:"50%", background:H.btn, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:H.btnC, position:"relative" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-              {(notifCount > 0) && <span style={{ position:"absolute", top:10, right:10, width:9, height:9, borderRadius:"50%", background:"#FF3B30", border:`2px solid ${H.bg}` }} />}
-            </button>
+            <button onClick={()=>goTab("chat")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:H.btnC}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+            <button onClick={()=>goSub("notifs")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:H.btnC,position:"relative"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{(notifCount>0)&&<span style={{position:"absolute",top:10,right:10,width:9,height:9,borderRadius:"50%",background:"#FF3B30",border:`2px solid ${H.bg}`}}/>}</button>
           </div>
         </div>
-
-        {/* Search */}
-        <div onClick={() => goSub("search")} style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", cursor:"pointer" }}>
+        <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", position:"relative" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span style={{ fontSize:15, color:H.srchT, fontFamily:"inherit" }}>Buscar...</span>
+          <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:15,color:H.txt,outline:"none",flex:1,width:"100%"}}/>
+          {searchQ&&<button onClick={()=>{setSearchQ("");searchRef.current?.focus();}} style={{background:"none",border:"none",cursor:"pointer",color:H.srchT,display:"flex",padding:2}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+          {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:8,background:isDark?"#1A1A1A":"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",border:`1px solid ${C.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"12px 18px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${C.brd}`:"none",display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div><p style={{fontSize:14,fontWeight:600,color:C.txt}}>{r.l}</p>{r.sub&&<p style={{fontSize:11,color:C.mut}}>{r.sub}</p>}</div></div>)}</div>}
         </div>
-
-        {/* Quick cards (lime) */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
-          <div onClick={() => goSub("financial")} style={{ background:LIME, borderRadius:22, padding:"14px 16px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:80 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:3 }}>Investimento</div>
-            <div style={{ fontSize:22, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{totalRevenue}</div>
-            <div style={{ fontSize:11, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:3 }}>Tráfego / mês</div>
-            <div style={{ position:"absolute", bottom:12, right:12, width:32, height:32, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </div>
-          </div>
-          <div onClick={() => goTab("content")} style={{ background:LIME, borderRadius:22, padding:"14px 16px", position:"relative", overflow:"hidden", cursor:"pointer", minHeight:80 }}>
-            <div style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.45)", textTransform:"uppercase", letterSpacing:0.4, marginBottom:3 }}>Aprovações</div>
-            <div style={{ fontSize:22, fontWeight:900, color:"#0D0D0D", letterSpacing:"-0.8px", lineHeight:1.1 }}>{String(pendingApprovals).padStart(2,"0")}</div>
-            <div style={{ fontSize:11, fontWeight:600, color:"rgba(0,0,0,0.45)", marginTop:3 }}>Aguardando você</div>
-            <div style={{ position:"absolute", bottom:12, right:12, width:32, height:32, borderRadius:"50%", background:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </div>
-          </div>
+          {cfg.cards.slice(0,2).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return<div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}><div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{w.l}</div><div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{w.val}</div><div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{w.sub}</div><div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>;})}
         </div>
       </div>
-
-      {/* ═══ BODY ═══ */}
-      <div style={{ padding:"0 24px" }}>
-
-        {/* Pills (horizontal scroll) */}
-        <div style={{ display:"flex", gap:10, paddingTop:22, overflowX:"auto", scrollbarWidth:"none" }}>
-          {pills.map((p,i) => (
-            <div key={i} onClick={() => p.k==="chat"?goTab("chat"):goSub(p.k)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:8, background:C.pill, border:`1px solid ${C.pbrd}`, borderRadius:100, padding:"10px 16px", cursor:"pointer", color:C.txt, fontSize:13, fontWeight:600 }}>
-              <div style={{ width:28, height:28, borderRadius:"50%", background:C.picn, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:LIME }}>{p.icon}</div>
-              {p.l}
-              {p.badge > 0 && <span style={{ background:"#FF3B30", color:"#fff", fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:100 }}>{p.badge}</span>}
-            </div>
-          ))}
-        </div>
-
-        {/* Comunicados */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
-          <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Comunicados</h3>
-          <span onClick={() => goSub("news")} style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
-        </div>
-        <div style={{ background:C.card, borderRadius:22, padding:20, border:`1px solid ${C.brd}` }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-            <h4 style={{ fontSize:17, fontWeight:800, color:C.txt, lineHeight:1.2, flex:1, marginRight:12 }}>Bem-vindo ao UniqueHub</h4>
-            <span style={{ background:C.badge, borderRadius:100, padding:"5px 12px", fontSize:11, fontWeight:600, color:C.mut, whiteSpace:"nowrap", flexShrink:0 }}>Agora</span>
+      <div style={{ padding:"0 24px", paddingBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
+          <button onClick={()=>setShowEditor(true)} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+          <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
+            {cfg.pills.map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
           </div>
-          <p style={{ fontSize:13, color:C.mut, lineHeight:1.6, marginBottom:16 }}>Sua plataforma de gestão de marketing 360°. Explore as funcionalidades e gerencie tudo em um só lugar.</p>
-          <button onClick={() => goSub("news")} style={{ width:"100%", background:C.readBtn, border:"none", borderRadius:100, padding:14, fontFamily:"inherit", fontSize:14, fontWeight:700, color:C.readBtnT, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-            Ler mais <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
         </div>
-
-        {/* Ações rápidas */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
-          <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Ações rápidas</h3>
-          <span style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todas</span>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          {actions.map((a,i) => (
-            <div key={i} onClick={() => a.k==="chat"?goTab("chat"):goSub(a.k)} style={{ background:C.card, borderRadius:22, padding:"20px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
-              <div style={{ width:42, height:42, borderRadius:"50%", background:C.aicn, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:C.mut }}>{a.icon}</div>
-              <span style={{ fontSize:13, fontWeight:700, color:C.txt, lineHeight:1.3 }}>{a.l}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Resumo (admin only) */}
-        {isAdmin && (
-          <>
-            <div style={{ padding:"24px 0 12px" }}><h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Resumo</h3></div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
-              {[
-                { label:"Clientes", value:totalClients, sub:`${activeClients} ativos`, icon:"👥" },
-                { label:"Receita", value:totalRevenue, sub:"+12% vs mês ant.", icon:"💰" },
-                { label:"Score", value:avgScore, sub:"satisfação média", icon:"⭐" },
-                { label:"Pendentes", value:pendingApprovals, sub:"aguardando ação", icon:"⏳" },
-              ].map((s,j) => (
-                <div key={j} style={{ background:C.card, borderRadius:22, padding:"16px 14px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
-                  <div style={{ position:"absolute", top:12, right:12, fontSize:20, opacity:0.12 }}>{s.icon}</div>
-                  <p style={{ fontSize:9, color:C.mut, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>{s.label}</p>
-                  <p style={{ fontSize:22, fontWeight:900, color:LIME, marginTop:4 }}>{s.value}</p>
-                  <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>{s.sub}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Equipe */}
-        {team && team.length > 0 && (
-          <>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
-              <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Equipe</h3>
-              <span onClick={() => goSub("team")} style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
-            </div>
-            <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
-              {(team||[]).slice(0,6).map((m,i) => (
-                <div key={i} style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:6, width:64 }}>
-                  <Av src={m.photo_url} name={m.name} sz={48} fs={18} />
-                  <p style={{ fontSize:10, fontWeight:600, color:C.txt, textAlign:"center", lineHeight:1.2, maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.name?.split(" ")[0]}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Clientes recentes */}
-        {CDATA.length > 0 && (
-          <>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"24px 0 12px" }}>
-              <h3 style={{ fontSize:18, fontWeight:800, color:C.txt }}>Clientes</h3>
-              <span onClick={() => goSub("clients")} style={{ fontSize:13, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
-            </div>
-            {CDATA.slice(0,3).map((c,i) => (
-              <div key={c.id||i} onClick={() => goSub("clients")} style={{ background:C.card, borderRadius:18, padding:"14px 16px", border:`1px solid ${C.brd}`, marginTop:i?8:0, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
-                <Av name={c.name} sz={40} fs={15} />
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:14, fontWeight:700, color:C.txt }}>{c.name}</p>
-                  <p style={{ fontSize:11, color:C.mut }}>{c.plan||"—"} · {c.monthly||"—"}/mês</p>
-                </div>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            ))}
-          </>
-        )}
+        {cfg.sections.map(sk => renderSection(sk))}
       </div>
+      {showEditor && <EditorSheet/>}
     </div>
   );
 }
+
 
 
 /* ═══════════════════════ CHECK-IN SYSTEM ═══════════════════════ */
