@@ -5022,6 +5022,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [sub, setSub] = useState(null);
   const [twoFA, setTwoFA] = useState(false);
   const { showToast, ToastEl } = useToast();
+  const accentColor = themeColor === "custom" ? (uiPrefs?.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
 
   /* Permissions state (must be before any conditional returns) */
   const [permRole, setPermRole] = useState(null);
@@ -5530,9 +5531,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <Card>
           <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor do indicador ativo</p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
-            {["#BBF246","#C6F135","#08FB9D","#60A5FA","#A78BFA","#F87171","#EC4899","#F59E0B","#fff"].map(c => (
-              <div key={c} onClick={() => setThemeColor(c===B.accent?"default":c)} style={{ width:32, height:32, borderRadius:10, background:c, cursor:"pointer", border:B.accent===c?`3px solid ${B.text}`:`2px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {B.accent===c && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={dark?"#0D0D0D":"#0D0D0D"} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+            {[
+              {c:"#BBF246",k:"default"},{c:"#C6F135",k:"custom"},{c:"#08FB9D",k:"emerald"},{c:"#60A5FA",k:"blue"},{c:"#8B5CF6",k:"purple"},{c:"#F87171",k:"red"},{c:"#EC4899",k:"pink"},{c:"#F59E0B",k:"orange"},{c:"#fff",k:"custom_w"}
+            ].map(({c,k}) => (
+              <div key={c} onClick={() => { if(k.startsWith("custom")) { setThemeColor("custom"); updateUiPrefs({customColor:c}); } else { setThemeColor(k); } showToast("Cor aplicada ✓"); }} style={{ width:32, height:32, borderRadius:10, background:c, cursor:"pointer", border:accentColor===c?`3px solid ${B.text}`:`2px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {accentColor===c && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={k==="custom_w"?"#0D0D0D":"#0D0D0D"} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
               </div>
             ))}
           </div>
@@ -9996,7 +9999,7 @@ p,span,div,h1,h2,h3,h4{color:inherit}
 .tag{background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"}!important;border-radius:var(--uh-radius-sm)!important}
 .overlay{background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"}!important}
 .txtbtn{color:${B.muted}!important}
-.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)"):(dark?"#1C1C1C":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;border:1px solid ${dark?"#2A2A2A":"rgba(255,255,255,0.08)"}!important;width:calc(100% - 40px)!important;max-width:360px!important;padding:8px 8px!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
+.bnav{background:${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?(dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)"):(dark?"#1C1C1C":"#192126")}!important;${(uiPrefs.navBlur!==false&&!uiPrefs.reduceTransparency)?"backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;":""}border-radius:100px!important;border:1px solid ${dark?"#2A2A2A":"rgba(255,255,255,0.08)"}!important;width:calc(100% - 40px)!important;max-width:${uiPrefs.navWidth||340}px!important;padding:${({sm:"6px 6px",md:"8px 8px",lg:"10px 10px"})[uiPrefs.navSize||"md"]||"8px 8px"}!important;${uiPrefs.navPosition==="fixed"?"bottom:0!important;border-radius:0!important;width:100%!important;max-width:100%!important;left:0!important;transform:none!important;":""}}
 .bnav .bt{font-size:inherit!important}
 .card,.tinput,.pill,.htab,.grid-btn,.tag{transition:all var(--uh-anim) ease!important}
 .pg svg:not(.bnav svg){stroke-width:var(--uh-icon-w)}
@@ -10063,17 +10066,18 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
           const a = (tab === t.k && !sub) || (sub === t.k);
+          const navSzMap = { sm:{circle:44,inactive:28,h:40,lift:-18}, md:{circle:54,inactive:36,h:48,lift:-22}, lg:{circle:60,inactive:40,h:54,lift:-26} };
+          const sz = navSzMap[uiPrefs.navSize] || navSzMap.md;
+          const inactiveColor = uiPrefs.navInactiveColor || (dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)");
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
-            }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
-              {/* Floating circle for active */}
-              <div style={{ width:a?52:36, height:a?52:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-18px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none", border:a?`5px solid ${uiPrefs.customBg||(dark?"#0F1419":"#F7F7F8")}`:"none" }}>
-                {t.i(a ? (dark?"#0D0D0D":"#fff") : (dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)"))}
+            }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
+              <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none" }}>
+                {t.i(a ? (dark?"#0D0D0D":"#fff") : inactiveColor)}
               </div>
-              {/* Label below for active */}
               {a && uiPrefs.navLabels!==false && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:accentColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
               {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
               {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
