@@ -1122,7 +1122,7 @@ function OnboardingSlides({ onDone }) {
         {SLIDES.map((s, i) => (
           <div key={i} style={{ width: W, height:"100%", flexShrink:0, position:"relative" }}>
             <div style={{ position:"absolute", inset:0, backgroundImage:`url(${s.img})`, backgroundSize:"cover", backgroundPosition:"center top" }} />
-            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.25) 35%,rgba(0,0,0,0.82) 65%,rgba(0,0,0,0.97) 100%)" }} />
+
           </div>
         ))}
       </div>
