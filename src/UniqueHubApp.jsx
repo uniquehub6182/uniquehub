@@ -40,6 +40,23 @@ class SettingsBoundary extends React.Component {
 /* ═══════════════════════ SUPABASE ═══════════════════════ */
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+
+/* Capture Meta OAuth params from URL BEFORE Supabase can consume them */
+const _metaOAuthCapture = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    if (code && (state?.startsWith("meta_connect_") || sessionStorage.getItem("uh_meta_oauth_client"))) {
+      const clientId = state?.startsWith("meta_connect_") ? state.replace("meta_connect_", "") : sessionStorage.getItem("uh_meta_oauth_client");
+      window.history.replaceState({}, "", window.location.pathname);
+      sessionStorage.removeItem("uh_meta_oauth_client");
+      return { code, clientId };
+    }
+  } catch {}
+  return null;
+})();
+
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
 
 /* ═══════════════════════ LAYOUT ═══════════════════════ */
@@ -12278,32 +12295,31 @@ export default function App() {
 
   /* Check for existing Supabase session on mount */
   /* ── Meta OAuth callback handler ── */
-  const [metaOAuthPending, setMetaOAuthPending] = useState(false);
+  const [metaOAuthPending, setMetaOAuthPending] = useState(!!_metaOAuthCapture);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const state = params.get("state");
-    if (code && state?.startsWith("meta_connect_")) {
-      /* Clean URL immediately */
-      window.history.replaceState({}, "", window.location.pathname);
-      setMetaOAuthPending(true);
-      const clientId = state.replace("meta_connect_", "");
-      (async () => {
-        try {
-          const result = await handleMetaOAuthCallback(code);
-          if (result && !result.error) {
-            await saveMetaToken(clientId, result);
-            /* Store connection info in sessionStorage for the client page to pick up */
-            try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId, ...result })); } catch {}
-          } else {
-            try { sessionStorage.setItem("uh_meta_error", result?.error || "Falha na conexão com Meta"); } catch {}
-          }
-        } catch(e) {
-          try { sessionStorage.setItem("uh_meta_error", e.message || "Erro inesperado"); } catch {}
+    if (!_metaOAuthCapture) return;
+    const { code, clientId } = _metaOAuthCapture;
+    console.log("[Meta OAuth] Processing captured callback, clientId:", clientId);
+    (async () => {
+      try {
+        console.log("[Meta OAuth] Calling Edge Function...");
+        const result = await handleMetaOAuthCallback(code);
+        console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 200));
+        if (result && !result.error) {
+          await saveMetaToken(clientId, result);
+          try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId, ...result })); } catch {}
+          console.log("[Meta OAuth] Success!");
+        } else {
+          const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
+          try { sessionStorage.setItem("uh_meta_error", errMsg); } catch {}
+          console.error("[Meta OAuth] Error:", errMsg);
         }
-        setMetaOAuthPending(false);
-      })();
-    }
+      } catch(e) {
+        console.error("[Meta OAuth] Exception:", e);
+        try { sessionStorage.setItem("uh_meta_error", e.message || "Erro inesperado"); } catch {}
+      }
+      setMetaOAuthPending(false);
+    })();
   }, []);
 
   useEffect(() => {
@@ -12356,6 +12372,18 @@ export default function App() {
     if (supabase) await supabase.auth.signOut();
     setUser(null);
   };
+
+  if (metaOAuthPending) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:16}}>🔗</div>
+        <div style={{width:44,height:44,border:"3px solid #E5E2DD",borderTopColor:"#1877F2",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+        <p style={{color:"#192126",fontSize:15,fontWeight:700}}>Conectando com Meta...</p>
+        <p style={{color:"#8B8F92",fontSize:12,marginTop:4}}>Vinculando Instagram e Facebook</p>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
 
   if (authLoading) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8"}}>
