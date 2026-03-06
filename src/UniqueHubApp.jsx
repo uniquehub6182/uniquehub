@@ -390,6 +390,28 @@ const supaDeleteNews = async (id) => {
   try { await supabase.from("news").delete().eq("id", id); } catch(e) {}
 };
 
+/* ── Parse a raw supabase news row into app article format ── */
+const parseNewsRow = (r) => {
+  const srcParts = (r.source || "").split("||");
+  const sourceName = srcParts[0] || "";
+  const sourceUrl = srcParts[1] || "";
+  const rawBody = r.body || "";
+  let photo = r.photo || null;
+  let body = rawBody;
+  if (rawBody.startsWith("__PHOTO__:")) {
+    const nl = rawBody.indexOf("\n");
+    const photoLine = nl === -1 ? rawBody : rawBody.slice(0, nl);
+    photo = photo || photoLine.replace("__PHOTO__:", "").trim();
+    body = nl === -1 ? "" : rawBody.slice(nl + 1);
+  }
+  return {
+    id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
+    body, date: new Date(r.created_at).toLocaleDateString("pt-BR"),
+    readTime: r.read_time || "", source: sourceName, sourceUrl, pinned: r.pinned || false,
+    tags: r.tags || [], supaId: r.id, photo
+  };
+};
+
 /* ── Supabase: Team CRUD ── */
 const supaLoadTeam = async () => {
   if (!supabase) return [];
@@ -2051,7 +2073,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div>
         {featured && (
           <div onClick={()=>goSub("news", featured.id)} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
-            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(featured.cat,0);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
             <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
             <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
             <div style={{position:"absolute",bottom:14,left:14,right:14}}>
@@ -2063,7 +2085,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {rest.map((a,i)=>(
             <div key={a.id||i} onClick={()=>goSub("news", a.id)} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
-              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(a.cat,i+1);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
               <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
               <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
               <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,margin:0,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
@@ -9004,27 +9026,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     if (loaded) return;
     supaLoadNews().then(rows => {
       if (rows.length) {
-        setArticles(rows.map(r => {
-          const srcParts = (r.source || "").split("||");
-          const sourceName = srcParts[0] || "";
-          const sourceUrl = srcParts[1] || "";
-          /* Extract photo URL embedded in body as __PHOTO__:url\n prefix */
-          const rawBody = r.body || "";
-          let photo = r.photo || null;
-          let body = rawBody;
-          if (rawBody.startsWith("__PHOTO__:")) {
-            const nl = rawBody.indexOf("\n");
-            const photoLine = nl === -1 ? rawBody : rawBody.slice(0, nl);
-            photo = photo || photoLine.replace("__PHOTO__:", "").trim();
-            body = nl === -1 ? "" : rawBody.slice(nl + 1);
-          }
-          return {
-            id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
-            body, date: new Date(r.created_at).toLocaleDateString("pt-BR"),
-            readTime: r.read_time || "", source: sourceName, sourceUrl, pinned: r.pinned || false,
-            tags: r.tags || [], supaId: r.id, photo
-          };
-        }));
+        setArticles(rows.map(parseNewsRow));
       }
       setLoaded(true);
     });
@@ -9050,17 +9052,10 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [], photo: form.photo || null };
     const row = await supaCreateNews(na);
     if (row) {
-      const parsedNewSrc = (row.source || "").split("||");
-      /* Parse photo from body prefix in case photo column doesn't exist on server */
-      const rawBody = row.body || "";
-      let rowPhoto = row.photo || form.photo || null;
-      let rowBody = rawBody;
-      if (rawBody.startsWith("__PHOTO__:")) {
-        const nl = rawBody.indexOf("\n");
-        rowPhoto = rowPhoto || rawBody.slice(10, nl === -1 ? undefined : nl).trim();
-        rowBody = nl === -1 ? "" : rawBody.slice(nl + 1);
-      }
-      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:rowBody, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:parsedNewSrc[0]||"", sourceUrl:parsedNewSrc[1]||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id, photo:rowPhoto }, ...prev]);
+      const parsed = parseNewsRow(row);
+      /* Ensure photo is preserved from form even if DB doesn't return it */
+      if (!parsed.photo && form.photo) parsed.photo = form.photo;
+      setArticles(prev => [parsed, ...prev]);
       setCreating(false); setForm({}); setPhotoPreview(null); showToast("Artigo publicado ✓");
     } else {
       showToast("Erro ao publicar artigo");
@@ -9181,7 +9176,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
         {/* Hero photo */}
         {a.photo && (
           <div style={{ marginBottom:12, borderRadius:16, overflow:"hidden", position:"relative", height:200 }}>
-            <img src={a.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.parentElement.style.display="none";}} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
             <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,0.55) 100%)" }} />
             <div style={{ position:"absolute", bottom:12, left:12, display:"flex", gap:6, flexWrap:"wrap" }}>
               <Tag color={catColor(a.cat)} style={{ background:catColor(a.cat), color:"#fff" }}>{catLabel(a.cat)}</Tag>
@@ -9238,7 +9233,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
         <Card key={a.id} onClick={()=>setSelArticle(a)} style={{ marginBottom:12, cursor:"pointer", padding:0, overflow:"hidden", border:`1.5px solid ${B.accent}20` }}>
           {a.photo
             ? <div style={{ position:"relative", height:140 }}>
-                <img src={a.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                 <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.02) 0%,rgba(0,0,0,0.6) 100%)" }} />
                 <span style={{ position:"absolute", top:10, left:10, background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"3px 10px", borderRadius:100, textTransform:"uppercase", letterSpacing:0.8 }}>⭐ Destaque</span>
               </div>
@@ -9267,7 +9262,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
         </Card>
       ) : filtered.filter(a=> tab!=="all" || !a.pinned).map((a,i) => (
         <Card key={a.id} delay={i*0.03} onClick={()=>setSelArticle(a)} style={{ marginTop:i?6:0, cursor:"pointer", padding:0, overflow:"hidden" }}>
-          {a.photo && <img src={a.photo} alt="" style={{ width:"100%", height:120, objectFit:"cover" }} />}
+          {a.photo && <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:120, objectFit:"cover" }} />}
           <div style={{ display:"flex", gap:10, padding:12 }}>
             <div style={{ width:6, borderRadius:3, background:catColor(a.cat), flexShrink:0 }} />
             <div style={{ flex:1, minWidth:0 }}>
@@ -11595,6 +11590,18 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       setDemandsLoaded(true);
     });
   }, [clientsLoaded, demandsLoaded]);
+
+  /* Load news articles at startup so dashboard shows them immediately */
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
+  useEffect(() => {
+    if (!supabase || articlesLoaded) return;
+    supaLoadNews().then(rows => {
+      if (rows && rows.length > 0) {
+        setSharedArticles(rows.map(parseNewsRow));
+      }
+      setArticlesLoaded(true);
+    });
+  }, [articlesLoaded]);
 
   const [pendingOpenId, setPendingOpenId] = useState(null);
   const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
