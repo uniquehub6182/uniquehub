@@ -7399,7 +7399,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <input type={showApiKey.gemini?"text":"password"} value={aiCfgKeys.gemini_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, gemini_key:e.target.value}))} placeholder="AIza..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
             <button onClick={() => setShowApiKey(p=>({...p,gemini:!p.gemini}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.gemini?"🙈":"👁️"}</button>
           </div>
-          {aiCfgKeys.gemini_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Gemini 1.5 Flash</p>}
+          {aiCfgKeys.gemini_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Gemini 2.0 Flash</p>}
         </Card>
 
         <button onClick={saveAI} disabled={aiCfgSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar Configuração"}</button>
@@ -10281,14 +10281,19 @@ function AIPage({ onBack, user, agencyIdentity }) {
       let aiText = "";
       if (useGemini) {
         const geminiMsgs = newMsgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents: geminiMsgs, generationConfig: { maxOutputTokens: 2000 } })
         });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Gemini API retornou status ${response.status}`);
+        }
         const data = await response.json();
         if (data.error) throw new Error(data.error.message || "Erro Gemini");
-        aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
+        if (!data.candidates?.length) throw new Error("Gemini não retornou resposta. Verifique a chave API.");
+        aiText = data.candidates[0]?.content?.parts?.[0]?.text || "Sem resposta.";
       } else {
         const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -10296,6 +10301,10 @@ function AIPage({ onBack, user, agencyIdentity }) {
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
           body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
         });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `OpenAI API retornou status ${response.status}`);
+        }
         const data = await response.json();
         if (data.error) throw new Error(data.error.message || "Erro OpenAI");
         aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
