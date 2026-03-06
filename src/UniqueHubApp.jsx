@@ -482,7 +482,7 @@ const handleMetaOAuthCallback = async (code) => {
     const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ code, redirect_uri: META_REDIRECT_URI })
+      body: JSON.stringify({ code, client_id: META_APP_ID, redirect_uri: META_REDIRECT_URI })
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
