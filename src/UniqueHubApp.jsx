@@ -1353,7 +1353,7 @@ function LoginPage({ onAuth }) {
 
   /* ── PENDING SCREEN ── */
   if (mode === "pending") return (
-    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, minHeight: "100vh", background: "#F7F7F8", color: "#192126" }}>
+    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, minHeight: "100%", background: "#F7F7F8", color: "#192126" }}>
       <div style={{ width: 80, height: 80, borderRadius: 20, background: `${B.accent}15`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
         <span style={{ color: B.accent }}>{IC.clock}</span>
       </div>
@@ -1411,7 +1411,7 @@ function LoginPage({ onAuth }) {
 
   /* ── REGISTER STEPPER ── */
   if (mode === "register") return (
-    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 24px 32px", minHeight: "100vh", overflowY: "auto", background: "#F7F7F8", color: "#192126" }}>
+    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 24px 32px", minHeight: "100%", overflowY: "auto", background: "#F7F7F8", color: "#192126" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 340 }}>
         {logoJSX(20)}
         {stepperJSX}
@@ -1938,7 +1938,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     ajustes:   {l:"Ajustes",            k:"settings"},
   };
   const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", posts:"Posts Recentes", equipe:"Equipe", clientes:"Clientes recentes" };
-  const cfg = dashCfg || { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","posts","equipe","clientes"] };
+  const cfgDefault = isAdmin
+    ? { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
+    : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
+  const cfg = dashCfg || cfgDefault;
   const isDark = B.bg === "#0D0D0D";
   const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
   const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
@@ -6990,7 +6993,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ PERMISSIONS ═══ */
-  const PERM_ROLES = ["Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)"];
+  const PERM_ROLES = ["Social Media","Designer","Audiovisual / Vídeo","Redator(a)","Gestor de Tráfego","Atendimento","Gerente","Head de Marketing","Analista de Dados","Estagiário(a)"];
   const PERM_AREAS = [
     { k:"home", l:"Home / Dashboard", ic:IC.home, subs:[
       { k:"home.view", l:"Visualizar dashboard" },
@@ -7063,6 +7066,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"settings", l:"Configurações", ic:IC.settings, subs:[
       { k:"settings.own", l:"Configurações próprias" },
       { k:"settings.admin", l:"Configurações da agência" },
+    ]},
+    { k:"ai", l:"Assistente IA", ic:IC.ai, subs:[
+      { k:"ai.use", l:"Usar assistente" },
+    ]},
+    { k:"match4biz", l:"Match4Biz", ic:IC.match4biz, subs:[
+      { k:"match4biz.view", l:"Visualizar matches" },
     ]},
   ];
 
@@ -7345,7 +7354,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </Card>
       {[
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
-        { k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" },
+        ...(user?.supaRole === "admin" ? [{ k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "agencyid", l: "Identidade da Agência", ic: IC.clients(B.accent), desc: "Nome, slogan, logo e localização" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
@@ -7516,7 +7525,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
     });
   }, [loaded]);
 
-  const ROLES = ["CEO / Proprietário","Social Media","Designer","Audiovisual","Redator(a)","Gestor de Tráfego","Atendimento","Estagiário(a)"];
+  const ROLES = ["CEO / Proprietário","Gerente","Head de Marketing","Social Media","Designer","Audiovisual / Vídeo","Redator(a)","Gestor de Tráfego","Atendimento","Analista de Dados","Estagiário(a)"];
 
   const addMember = async () => {
     if (!form.name?.trim()) return showToast("Informe o nome");
@@ -11278,13 +11287,20 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   useEffect(() => {
     if (!supabase) return;
     supaLoadPermissions().then(m => setRolePermsMap(m));
+    /* Reload perms every 60s so changes by admin take effect without restart */
+    const interval = setInterval(() => {
+      supaLoadPermissions().then(m => setRolePermsMap(m));
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
   /* Get user's job title from agency_members to check permissions */
   const [userJobTitle, setUserJobTitle] = useState(null);
   useEffect(() => {
     if (!supabase || !user?.id || user?.supaRole === "admin") return;
-    supabase.from("agency_members").select("role").eq("user_id", user.id).limit(1).then(({ data }) => {
-      if (data?.[0]?.role) setUserJobTitle(data[0].role);
+    /* Try agency_members first (role field), fall back to profiles metadata */
+    supabase.from("agency_members").select("role, job_title").eq("user_id", user.id).limit(1).then(({ data }) => {
+      const t = data?.[0]?.role || data?.[0]?.job_title || user?.role || null;
+      if (t) setUserJobTitle(t);
     });
   }, [user?.id]);
   const canAccess = (areaKey) => {
