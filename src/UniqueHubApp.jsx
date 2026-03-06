@@ -359,7 +359,7 @@ const supaLoadNews = async () => {
 const supaCreateNews = async (article) => {
   if (!supabase) return null;
   try {
-    const payload = { title: article.title, body: article.body || "", category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [] };
+    const payload = { title: article.title, body: article.body || "", category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [], photo: article.photo || null };
     if (article.author) payload.author = article.author;
     const { data } = await supabase.from("news").insert(payload).select(); return data?.[0] || null;
   } catch(e) { return null; }
@@ -2034,7 +2034,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div>
         {featured && (
           <div onClick={()=>goSub("news", featured.id)} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
-            <img src={catPhoto(featured.cat,0)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
             <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
             <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
             <div style={{position:"absolute",bottom:14,left:14,right:14}}>
@@ -2046,7 +2046,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {rest.map((a,i)=>(
             <div key={a.id||i} onClick={()=>goSub("news", a.id)} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
-              <img src={catPhoto(a.cat,i+1)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
               <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
               <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
               <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,margin:0,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
@@ -9004,11 +9004,11 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   const updateArticle = async () => {
     if (!selArticle?.supaId) return;
     const updSourceVal = form.sourceUrl ? `${form.source || selArticle.source || ""}||${form.sourceUrl}` : (form.source ?? selArticle.source ?? "");
-    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags };
+    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: form.photo !== undefined ? form.photo : selArticle.photo };
     await supaUpdateNews(selArticle.supaId, updates);
     const parsedSrc = updSourceVal.includes("||") ? updSourceVal.split("||") : [updSourceVal, ""];
-    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags } } : a));
-    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags };
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:updates.photo } } : a));
+    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:updates.photo };
     setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
   };
 
@@ -9148,16 +9148,27 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
 
       {/* Pinned article */}
       {tab === "all" && articles.filter(a=>a.pinned).map(a => (
-        <Card key={a.id} onClick={()=>setSelArticle(a)} style={{ marginBottom:12, cursor:"pointer", background:`${B.accent}06`, border:`1.5px solid ${B.accent}20` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={B.red} stroke={B.red} strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span style={{ fontSize:10, fontWeight:700, color:B.red }}>DESTAQUE</span>
-          </div>
-          <h3 style={{ fontSize:15, fontWeight:800, lineHeight:1.3, marginBottom:4 }}>{a.title}</h3>
-          <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>{a.summary}</p>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
-            <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
-            <span style={{ fontSize:10, color:B.muted }}>{a.readTime} · {a.source}</span>
+        <Card key={a.id} onClick={()=>setSelArticle(a)} style={{ marginBottom:12, cursor:"pointer", padding:0, overflow:"hidden", border:`1.5px solid ${B.accent}20` }}>
+          {a.photo
+            ? <div style={{ position:"relative", height:140 }}>
+                <img src={a.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.02) 0%,rgba(0,0,0,0.6) 100%)" }} />
+                <span style={{ position:"absolute", top:10, left:10, background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"3px 10px", borderRadius:100, textTransform:"uppercase", letterSpacing:0.8 }}>⭐ Destaque</span>
+              </div>
+            : <div style={{ background:`${B.accent}06`, padding:"12px 12px 0 12px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={B.red} stroke={B.red} strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <span style={{ fontSize:10, fontWeight:700, color:B.red }}>DESTAQUE</span>
+                </div>
+              </div>
+          }
+          <div style={{ padding:12 }}>
+            <h3 style={{ fontSize:15, fontWeight:800, lineHeight:1.3, marginBottom:4, color: a.photo ? undefined : B.text }}>{a.title}</h3>
+            <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>{a.summary}</p>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+              <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
+              <span style={{ fontSize:10, color:B.muted }}>{a.readTime} · {a.source}</span>
+            </div>
           </div>
         </Card>
       ))}
