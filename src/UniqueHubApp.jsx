@@ -496,11 +496,10 @@ const startMetaOAuth = (clientId) => {
 const handleMetaOAuthCallback = async (code) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   if (!code) return { error: "Código OAuth vazio" };
-  const bodyObj = { code: String(code), client_id: String(META_APP_ID), redirect_uri: String(META_REDIRECT_URI) };
-  console.log("Meta OAuth: sending to edge function:", JSON.stringify(bodyObj));
+  const bodyObj = { code: String(code), client_id: String(META_APP_ID), redirect_uri: String(META_REDIRECT_URI), action: "list_pages" };
+  console.log("Meta OAuth: sending to edge function (list_pages):", JSON.stringify(bodyObj));
   try {
-    const fnUrl = `${SUPA_URL}/functions/v1/meta-oauth-callback?code=${encodeURIComponent(String(code))}&client_id=${encodeURIComponent(String(META_APP_ID))}&redirect_uri=${encodeURIComponent(String(META_REDIRECT_URI))}`;
-    const res = await fetch(fnUrl, {
+    const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
       body: JSON.stringify(bodyObj)
@@ -517,6 +516,22 @@ const handleMetaOAuthCallback = async (code) => {
     console.error("Meta OAuth callback error:", e); 
     return { error: `Conexão falhou: ${e.message}` };
   }
+};
+
+const saveMetaSelectedPage = async (clientId, page) => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ action: "save_page", client_id: clientId, page_id: page.page_id, page_name: page.page_name, page_token: page.page_token, ig_user_id: page.ig_user_id, ig_username: page.ig_username })
+    });
+    const data = await res.json();
+    if (data.error) return { error: data.error };
+    /* Also save to app_settings for local use */
+    await saveMetaToken(clientId, page);
+    return data;
+  } catch(e) { return { error: e.message }; }
 };
 
 const saveMetaToken = async (clientId, tokenData) => {
@@ -12312,7 +12327,9 @@ export default function App() {
   /* Check for existing Supabase session on mount */
   /* ── Meta OAuth callback handler ── */
   const [metaOAuthPending, setMetaOAuthPending] = useState(!!_metaOAuthCapture);
-  const [metaOAuthResult, setMetaOAuthResult] = useState(null); /* {success:true, msg} or {success:false, msg} */
+  const [metaOAuthResult, setMetaOAuthResult] = useState(null); /* {success:true, pages:[...]} or {success:false, msg} */
+  const [metaPagePicker, setMetaPagePicker] = useState(null); /* {pages:[], clientId} — shown when user needs to pick a page */
+  const [metaSavingPage, setMetaSavingPage] = useState(false);
   useEffect(() => {
     if (!_metaOAuthCapture) return;
     const { code, clientId } = _metaOAuthCapture;
@@ -12320,21 +12337,25 @@ export default function App() {
     (async () => {
       try {
         const result = await handleMetaOAuthCallback(code);
-        console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 200));
-        if (result && !result.error) {
-          await saveMetaToken(clientId, result);
-          try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId, ...result })); } catch {}
-          setMetaOAuthResult({ success: true, msg: `${result.ig_username || result.page_name || "Meta"} conectado!`, igUsername: result.ig_username, pageName: result.page_name });
+        console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 300));
+        if (result && !result.error && result.pages?.length) {
+          /* Show page picker */
+          setMetaPagePicker({ pages: result.pages, clientId });
+          setMetaOAuthPending(false);
+        } else if (result && !result.error && result.saved) {
+          /* Direct save (single page) */
+          setMetaOAuthResult({ success: true, msg: "Conectado!", pageName: result.page_name, igUsername: result.ig_username });
+          setMetaOAuthPending(false);
         } else {
           const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
           try { sessionStorage.setItem("uh_meta_error", errMsg); } catch {}
           setMetaOAuthResult({ success: false, msg: errMsg });
+          setMetaOAuthPending(false);
         }
       } catch(e) {
         setMetaOAuthResult({ success: false, msg: e.message });
-        try { sessionStorage.setItem("uh_meta_error", e.message); } catch {}
+        setMetaOAuthPending(false);
       }
-      setMetaOAuthPending(false);
     })();
   }, []);
 
@@ -12389,27 +12410,74 @@ export default function App() {
     setUser(null);
   };
 
-  if (metaOAuthPending || metaOAuthResult) return (
+  if (metaOAuthPending || metaOAuthResult || metaPagePicker) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8"}}>
-      <div style={{textAlign:"center",padding:24,maxWidth:360}}>
-        {metaOAuthPending ? <>
+      <div style={{textAlign:"center",padding:24,maxWidth:480,width:"100%"}}>
+
+        {/* Loading */}
+        {metaOAuthPending && !metaPagePicker ? <>
           <div style={{fontSize:48,marginBottom:16}}>🔗</div>
           <div style={{width:44,height:44,border:"3px solid #E5E2DD",borderTopColor:"#1877F2",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
           <p style={{color:"#192126",fontSize:15,fontWeight:700}}>Conectando com Meta...</p>
-          <p style={{color:"#8B8F92",fontSize:12,marginTop:4}}>Vinculando Instagram e Facebook</p>
-        </> : metaOAuthResult?.success ? <>
+          <p style={{color:"#8B8F92",fontSize:12,marginTop:4}}>Buscando suas páginas e perfis</p>
+        </> : null}
+
+        {/* Page Picker */}
+        {metaPagePicker && !metaOAuthResult ? <>
+          <div style={{fontSize:48,marginBottom:12}}>📋</div>
+          <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:4}}>Selecione a página do cliente</p>
+          <p style={{color:"#8B8F92",fontSize:12,marginBottom:20}}>{metaPagePicker.pages.length} página{metaPagePicker.pages.length > 1 ? "s" : ""} encontrada{metaPagePicker.pages.length > 1 ? "s" : ""}</p>
+          <div style={{maxHeight:"50vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:8,padding:"0 4px"}}>
+            {metaPagePicker.pages.map(pg => (
+              <button key={pg.page_id} disabled={metaSavingPage} onClick={async () => {
+                setMetaSavingPage(true);
+                const res = await saveMetaSelectedPage(metaPagePicker.clientId, pg);
+                if (res && !res.error) {
+                  setMetaOAuthResult({ success: true, pageName: pg.page_name, igUsername: pg.ig_username });
+                } else {
+                  setMetaOAuthResult({ success: false, msg: res?.error || "Erro ao salvar" });
+                }
+                setMetaSavingPage(false);
+              }} style={{
+                display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:14,
+                background:"#fff",border:"1.5px solid #E5E2DD",cursor:metaSavingPage?"wait":"pointer",
+                fontFamily:"inherit",textAlign:"left",transition:"all 0.2s",opacity:metaSavingPage?0.6:1
+              }}>
+                {pg.page_picture ? <img src={pg.page_picture} style={{width:44,height:44,borderRadius:10,objectFit:"cover"}} alt=""/> : <div style={{width:44,height:44,borderRadius:10,background:"#1877F2",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:18}}>{pg.page_name?.[0] || "?"}</div>}
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{color:"#192126",fontSize:14,fontWeight:700,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pg.page_name}</p>
+                  {pg.page_category && <p style={{color:"#8B8F92",fontSize:11,margin:"2px 0 0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pg.page_category}</p>}
+                  <div style={{display:"flex",gap:8,marginTop:4}}>
+                    <span style={{fontSize:11,color:"#1877F2",fontWeight:600}}>📘 Facebook</span>
+                    {pg.has_instagram ? <span style={{fontSize:11,color:"#E1306C",fontWeight:600}}>📸 @{pg.ig_username}</span> : <span style={{fontSize:11,color:"#ccc"}}>📸 Sem Instagram</span>}
+                  </div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => { setMetaPagePicker(null); setMetaOAuthResult(null); setMetaOAuthPending(false); }} style={{marginTop:16,padding:"10px 24px",borderRadius:10,background:"transparent",border:"1px solid #E5E2DD",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:"#8B8F92"}}>Cancelar</button>
+        </> : null}
+
+        {/* Success */}
+        {metaOAuthResult?.success ? <>
           <div style={{fontSize:56,marginBottom:16}}>✅</div>
           <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Conectado com sucesso!</p>
           {metaOAuthResult.igUsername && <p style={{color:"#E1306C",fontSize:14,fontWeight:600}}>📸 @{metaOAuthResult.igUsername}</p>}
           {metaOAuthResult.pageName && <p style={{color:"#1877F2",fontSize:14,fontWeight:600,marginTop:4}}>📘 {metaOAuthResult.pageName}</p>}
+          {!metaOAuthResult.igUsername && metaOAuthResult.pageName && <p style={{color:"#F59E0B",fontSize:11,marginTop:8}}>⚠️ Instagram não vinculado a esta página. Vincule pelo Facebook para publicar no Instagram.</p>}
           <p style={{color:"#8B8F92",fontSize:12,marginTop:12}}>Token salvo. Abra o cliente para ver as redes conectadas.</p>
-          <button onClick={() => setMetaOAuthResult(null)} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#BBF246",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#192126"}}>Continuar</button>
-        </> : <>
+          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#BBF246",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#192126"}}>Continuar</button>
+        </> : null}
+
+        {/* Error */}
+        {metaOAuthResult && !metaOAuthResult.success ? <>
           <div style={{fontSize:56,marginBottom:16}}>⚠️</div>
           <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Erro na conexão</p>
           <p style={{color:"#EF4444",fontSize:12,marginTop:8,lineHeight:1.5,wordBreak:"break-word"}}>{metaOAuthResult?.msg}</p>
-          <button onClick={() => setMetaOAuthResult(null)} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#F7F7F8",border:"1.5px solid #E5E2DD",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#192126"}}>Fechar</button>
-        </>}
+          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#F7F7F8",border:"1.5px solid #E5E2DD",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#192126"}}>Fechar</button>
+        </> : null}
+
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
