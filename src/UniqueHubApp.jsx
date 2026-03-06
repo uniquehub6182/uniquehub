@@ -11593,6 +11593,9 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showPWA, setShowPWA] = useState(false);
 
+  /* ── iOS 26 PWA gap fix: screen.height > window.innerHeight by ~62px ── */
+  const [screenGap] = useState(() => Math.max(0, (window.screen?.height || 0) - window.innerHeight));
+
   /* ── Load visual prefs from cloud after login ── */
   const [cloudDash, setCloudDash] = useState(null);
   const [cloudNav, setCloudNav] = useState(null);
@@ -11828,6 +11831,8 @@ input,textarea,select{font-size:16px !important}
     savePrefsToCloud={savePrefsToCloud}
   />}
     {showPWA && <PWAInstallPopup onDismiss={() => { setShowPWA(false); try { localStorage.setItem("uh_pwa_dismissed", "1"); } catch {} }} />}
+    {/* ── iOS 26 physical screen gap filler (screen.height - innerHeight px) ── */}
+    {screenGap > 0 && <div style={{ position:"fixed", top:window.innerHeight, left:0, right:0, height:screenGap, background: dark ? "#0F1419" : "#F7F7F8", zIndex:9999 }} />}
     </>
   );
 }
