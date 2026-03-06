@@ -11593,8 +11593,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showPWA, setShowPWA] = useState(false);
 
-  /* ── iOS 26 PWA gap fix: screen.height > window.innerHeight by ~62px ── */
-  const [screenGap] = useState(() => Math.max(0, (window.screen?.height || 0) - window.innerHeight));
+  /* ── iOS 26 PWA gap fix: sync body background with dark mode ── */
 
   /* ── Load visual prefs from cloud after login ── */
   const [cloudDash, setCloudDash] = useState(null);
@@ -11697,6 +11696,13 @@ export default function App() {
     setOnboardDone(true);
   };
 
+  /* ── Sync body background with dark mode — paints iOS 26 PWA gap zone ── */
+  useEffect(() => {
+    const bg = dark ? "#0F1419" : "#F7F7F8";
+    document.documentElement.style.background = bg;
+    document.body.style.background = bg;
+  }, [dark]);
+
   /* Force-kick blocked users even if app is already open */
   const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
   useEffect(() => {
@@ -11781,7 +11787,7 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;width:100%;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;overflow:hidden;background:${B.bg}}
+html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};margin:0;padding:0;width:100%;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
 input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
 .screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
@@ -11831,8 +11837,6 @@ input,textarea,select{font-size:16px !important}
     savePrefsToCloud={savePrefsToCloud}
   />}
     {showPWA && <PWAInstallPopup onDismiss={() => { setShowPWA(false); try { localStorage.setItem("uh_pwa_dismissed", "1"); } catch {} }} />}
-    {/* ── iOS 26 physical screen gap filler (screen.height - innerHeight px) ── */}
-    {screenGap > 0 && <div style={{ position:"fixed", top:window.innerHeight, left:0, right:0, height:screenGap, background: dark ? "#0F1419" : "#F7F7F8", zIndex:9999 }} />}
     </>
   );
 }
