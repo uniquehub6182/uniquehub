@@ -4898,7 +4898,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
 
-      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} />
+      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={() => { setCreating(true); setCreateType(null); setForm({}); }} />
 
       {/* ── SCROLLABLE CONTENT ── */}
       <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
