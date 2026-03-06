@@ -1111,7 +1111,7 @@ function OnboardingSlides({ onDone }) {
 
   return (
     <div
-      style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"#000", overflow:"hidden", touchAction:"pan-y", userSelect:"none" }}
+      style={{ position:"fixed", top:0, left:0, right:0, height:"100vh", background:"#000", overflow:"hidden", touchAction:"pan-y", userSelect:"none" }}
       onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
       onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
     >
@@ -1588,7 +1588,7 @@ function LoginPage({ onAuth }) {
 
   /* ── FORGOT PASSWORD ── */
   if (forgotMode) return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
+    <div style={{ position:"fixed", top:0, left:0, right:0, height:"100vh", display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
       <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative" }}>
         <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
@@ -1643,7 +1643,7 @@ function LoginPage({ onAuth }) {
   const passFloating  = passFocused  || pw.length > 0;
 
   return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
+    <div style={{ position:"fixed", top:0, left:0, right:0, height:"100vh", display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
@@ -11694,6 +11694,28 @@ export default function App() {
     setOnboardDone(true);
   };
 
+  /* ── FIX iOS PWA height: usa window.innerHeight real em vez de 100dvh/vh ── */
+  useEffect(() => {
+    const setH = () => {
+      const h = window.innerHeight;
+      document.documentElement.style.setProperty('--app-h', h + 'px');
+      document.documentElement.style.setProperty('height', h + 'px');
+      document.body.style.setProperty('height', h + 'px');
+      if (document.getElementById('root')) {
+        document.getElementById('root').style.setProperty('height', h + 'px');
+      }
+    };
+    setH();
+    window.addEventListener('resize', setH);
+    window.addEventListener('orientationchange', setH);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', setH);
+    return () => {
+      window.removeEventListener('resize', setH);
+      window.removeEventListener('orientationchange', setH);
+      if (window.visualViewport) window.visualViewport.removeEventListener('resize', setH);
+    };
+  }, []);
+
   /* Force-kick blocked users even if app is already open */
   const BLOCKED_EMAILS = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
   useEffect(() => {
@@ -11778,10 +11800,11 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;width:100%;height:100%;height:-webkit-fill-available;min-height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;height:-webkit-fill-available;min-height:100dvh;overflow:hidden;background:${B.bg}}
+html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;width:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;color:${dark?"#E8EAED":"#192126"}}#root{width:100%;overflow:hidden;background:${B.bg}}
+.fullh{height:100vh;height:100dvh;height:var(--app-h,100dvh)}
 input,textarea,select{font-size:16px !important}
-.app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
-.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
+.app{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;height:var(--app-h,100dvh);display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
+.screen{position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh;height:var(--app-h,100dvh);display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.bg}}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
 .card{padding:16px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
