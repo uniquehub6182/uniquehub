@@ -487,7 +487,7 @@ const supaGetAIKeys = async () => {
 const META_APP_ID = "1991284381812510";
 const META_CONFIG_ID = "";
 const META_REDIRECT_URI = `${window.location.origin}/`;
-const META_SCOPES = "public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_insights";
+const META_SCOPES = "public_profile,pages_show_list,pages_read_engagement,pages_manage_posts";
 
 const startMetaOAuth = (clientId) => {
   /* Store which client we're connecting, to use after redirect */
