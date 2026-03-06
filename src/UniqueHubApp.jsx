@@ -2821,6 +2821,19 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </div>
         </>}
 
+        {/* Reconnect option when already connected via Meta OAuth */}
+        {isMetaType && current.connected && hasOAuth && supabase && <>
+          <Card style={{ marginBottom:12, background:"#F59E0B10", border:"1.5px solid #F59E0B25" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>Trocar página / Reconectar</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Conectou a página errada? Refaça o OAuth para selecionar outra página.</p>
+              <button onClick={() => { startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:"#F59E0B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                🔄 Reconectar com Meta
+              </button>
+            </div>
+          </Card>
+        </>}
+
         {/* Steps guide for manual connection */}
         {!current.connected && !isMetaType && <Card style={{ marginBottom:12, background:`${B.accent}04`, border:`1px solid ${B.accent}12` }}>
           <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Como conectar:</p>
@@ -12433,6 +12446,8 @@ export default function App() {
                 setMetaSavingPage(true);
                 const res = await saveMetaSelectedPage(metaPagePicker.clientId, pg);
                 if (res && !res.error) {
+                  /* Write to sessionStorage so ClientsPage can update the client */
+                  try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId: metaPagePicker.clientId, page_name: pg.page_name, page_id: pg.page_id, ig_username: pg.ig_username, ig_user_id: pg.ig_user_id })); } catch {}
                   setMetaOAuthResult({ success: true, pageName: pg.page_name, igUsername: pg.ig_username });
                 } else {
                   setMetaOAuthResult({ success: false, msg: res?.error || "Erro ao salvar" });
