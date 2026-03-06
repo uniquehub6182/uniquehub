@@ -522,18 +522,18 @@ const handleMetaOAuthCallback = async (code) => {
 const saveMetaToken = async (clientId, tokenData) => {
   if (!supabase) return false;
   try {
-    const { error } = await supabase.from("social_tokens").upsert({
-      client_id: clientId,
-      platform: "meta",
+    /* Save to app_settings as JSON (social_tokens table may have schema issues) */
+    const key = `meta_token_${clientId}`;
+    const value = JSON.stringify({
       page_id: tokenData.page_id,
       page_name: tokenData.page_name,
       page_token: tokenData.page_token,
       ig_user_id: tokenData.ig_user_id,
       ig_username: tokenData.ig_username,
+      pages: tokenData.pages,
       updated_at: new Date().toISOString()
-    }, { onConflict: "client_id,platform" });
-    if (error) { console.error("saveMetaToken error:", error); return false; }
-    return true;
+    });
+    return await supaSetSetting(key, value);
   } catch(e) { console.error("saveMetaToken catch:", e); return false; }
 };
 
