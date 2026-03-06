@@ -8932,22 +8932,50 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   const isAdmin = user?.supaRole === "admin";
   const newsPhotoRef = React.useRef(null);
 
+  const [photoUploading, setPhotoUploading] = useState(false);
+
   const handleNewsPhoto = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = ""; /* reset so same file can be reselected */
+
+    /* Resize on canvas first, then upload the blob */
     const reader = new FileReader();
     reader.onload = ev => {
       const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX = 800;
+      img.onload = async () => {
+        const MAX = 1200;
         let w = img.width, h = img.height;
         if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        const b64 = canvas.toDataURL("image/jpeg", 0.82);
-        setPhotoPreview(b64);
-        setForm(p => ({ ...p, photo: b64 }));
+
+        /* Show local preview immediately */
+        const b64Preview = canvas.toDataURL("image/jpeg", 0.85);
+        setForm(p => ({ ...p, photo: b64Preview }));
+
+        if (!supabase) return; /* offline: keep base64 as fallback */
+
+        setPhotoUploading(true);
+        try {
+          canvas.toBlob(async (blob) => {
+            const path = `news-covers/${Date.now()}_cover.jpg`;
+            const { error } = await supabase.storage.from("demand-files").upload(path, blob, { upsert: true, cacheControl: "3600", contentType: "image/jpeg" });
+            if (error) {
+              console.warn("News photo upload failed:", error.message);
+              showToast("⚠️ Foto salva localmente (storage indisponível)");
+            } else {
+              const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+              const url = pub?.publicUrl || b64Preview;
+              setForm(p => ({ ...p, photo: url, _photoPath: path }));
+            }
+            setPhotoUploading(false);
+          }, "image/jpeg", 0.85);
+        } catch (err) {
+          console.warn("News photo upload catch:", err);
+          setPhotoUploading(false);
+        }
       };
       img.src = ev.target.result;
     };
@@ -9029,8 +9057,8 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     <Card style={{ marginBottom:10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
         <p style={{ fontSize:14, fontWeight:700 }}>{isEdit ? "Editando artigo" : "Novo artigo"}</p>
-        <button onClick={isEdit ? updateArticle : saveArticle} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
-          {IC.check} {isEdit ? "Salvar" : "Publicar"}
+        <button onClick={isEdit ? updateArticle : saveArticle} disabled={photoUploading} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:photoUploading?B.muted:B.accent,border:"none",cursor:photoUploading?"not-allowed":"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent,opacity:photoUploading?0.7:1}}>
+          {IC.check} {photoUploading ? "Enviando foto..." : (isEdit ? "Salvar" : "Publicar")}
         </button>
       </div>
       <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
@@ -9057,10 +9085,15 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
         <input ref={newsPhotoRef} type="file" accept="image/*" onChange={handleNewsPhoto} style={{ display:"none" }} />
         {form.photo ? (
           <div style={{ position:"relative" }}>
-            <img src={form.photo} alt="capa" style={{ width:"100%", height:160, objectFit:"cover", borderRadius:12 }} />
-            <button onClick={() => { setForm(p=>({...p,photo:null})); setPhotoPreview(null); }} style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
+            <img src={form.photo} alt="capa" style={{ width:"100%", height:160, objectFit:"cover", borderRadius:12, opacity: photoUploading ? 0.6 : 1 }} />
+            {photoUploading && (
+              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:12, background:"rgba(0,0,0,0.3)" }}>
+                <div style={{ fontSize:12, fontWeight:700, color:"#fff", background:"rgba(0,0,0,0.5)", padding:"6px 14px", borderRadius:20 }}>Enviando foto...</div>
+              </div>
+            )}
+            {!photoUploading && <button onClick={() => { setForm(p=>({...p,photo:null,_photoPath:undefined})); setPhotoPreview(null); }} style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            </button>}
           </div>
         ) : (
           <button onClick={() => newsPhotoRef.current?.click()} style={{ width:"100%", padding:"20px 0", borderRadius:12, border:`2px dashed ${B.border}`, background:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
