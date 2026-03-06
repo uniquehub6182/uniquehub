@@ -359,14 +359,31 @@ const supaLoadNews = async () => {
 const supaCreateNews = async (article) => {
   if (!supabase) return null;
   try {
-    const payload = { title: article.title, body: article.body || "", category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [], photo: article.photo || null };
+    /* Embed photo URL in body to avoid dependency on optional photo column */
+    const bodyWithPhoto = article.photo ? `__PHOTO__:${article.photo}\n${article.body || ""}` : (article.body || "");
+    const payload = { title: article.title, body: bodyWithPhoto, category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [] };
     if (article.author) payload.author = article.author;
-    const { data } = await supabase.from("news").insert(payload).select(); return data?.[0] || null;
+    /* Try with photo column first; fall back without it if column doesn't exist */
+    const withPhoto = await supabase.from("news").insert({ ...payload, photo: article.photo || null }).select();
+    if (!withPhoto.error) return withPhoto.data?.[0] || null;
+    const { data } = await supabase.from("news").insert(payload).select();
+    return data?.[0] || null;
   } catch(e) { return null; }
 };
 const supaUpdateNews = async (id, updates) => {
   if (!supabase) return;
-  try { await supabase.from("news").update(updates).eq("id", id); } catch(e) {}
+  try {
+    /* Embed photo in body for compatibility with tables without photo column */
+    const bodyBase = (updates.body || "").replace(/^__PHOTO__:[^\n]*\n?/, ""); /* strip old prefix */
+    const bodyWithPhoto = updates.photo ? `__PHOTO__:${updates.photo}\n${bodyBase}` : bodyBase;
+    const payload = { ...updates, body: bodyWithPhoto };
+    const withPhoto = await supabase.from("news").update(payload).eq("id", id);
+    if (withPhoto.error && withPhoto.error.code === "42703") {
+      /* photo column doesn't exist — retry without it */
+      const { photo: _p, ...noPhotoPayload } = payload;
+      await supabase.from("news").update(noPhotoPayload).eq("id", id);
+    }
+  } catch(e) {}
 };
 const supaDeleteNews = async (id) => {
   if (!supabase) return;
@@ -8991,11 +9008,21 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
           const srcParts = (r.source || "").split("||");
           const sourceName = srcParts[0] || "";
           const sourceUrl = srcParts[1] || "";
+          /* Extract photo URL embedded in body as __PHOTO__:url\n prefix */
+          const rawBody = r.body || "";
+          let photo = r.photo || null;
+          let body = rawBody;
+          if (rawBody.startsWith("__PHOTO__:")) {
+            const nl = rawBody.indexOf("\n");
+            const photoLine = nl === -1 ? rawBody : rawBody.slice(0, nl);
+            photo = photo || photoLine.replace("__PHOTO__:", "").trim();
+            body = nl === -1 ? "" : rawBody.slice(nl + 1);
+          }
           return {
             id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
-            body: r.body || "", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
+            body, date: new Date(r.created_at).toLocaleDateString("pt-BR"),
             readTime: r.read_time || "", source: sourceName, sourceUrl, pinned: r.pinned || false,
-            tags: r.tags || [], supaId: r.id, photo: r.photo || null
+            tags: r.tags || [], supaId: r.id, photo
           };
         }));
       }
@@ -9024,19 +9051,32 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     const row = await supaCreateNews(na);
     if (row) {
       const parsedNewSrc = (row.source || "").split("||");
-      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:row.body, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:parsedNewSrc[0]||"", sourceUrl:parsedNewSrc[1]||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id, photo:row.photo||null }, ...prev]);
+      /* Parse photo from body prefix in case photo column doesn't exist on server */
+      const rawBody = row.body || "";
+      let rowPhoto = row.photo || form.photo || null;
+      let rowBody = rawBody;
+      if (rawBody.startsWith("__PHOTO__:")) {
+        const nl = rawBody.indexOf("\n");
+        rowPhoto = rowPhoto || rawBody.slice(10, nl === -1 ? undefined : nl).trim();
+        rowBody = nl === -1 ? "" : rawBody.slice(nl + 1);
+      }
+      setArticles(prev => [{ id:row.id, cat:row.category, title:row.title, summary:row.summary, body:rowBody, date:new Date(row.created_at).toLocaleDateString("pt-BR"), readTime:row.read_time, source:parsedNewSrc[0]||"", sourceUrl:parsedNewSrc[1]||"", pinned:row.pinned, tags:row.tags||[], supaId:row.id, photo:rowPhoto }, ...prev]);
       setCreating(false); setForm({}); setPhotoPreview(null); showToast("Artigo publicado ✓");
+    } else {
+      showToast("Erro ao publicar artigo");
     }
   };
 
   const updateArticle = async () => {
     if (!selArticle?.supaId) return;
     const updSourceVal = form.sourceUrl ? `${form.source || selArticle.source || ""}||${form.sourceUrl}` : (form.source ?? selArticle.source ?? "");
-    const updates = { title: form.title || selArticle.title, body: form.body ?? selArticle.body, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: form.photo !== undefined ? form.photo : selArticle.photo };
+    const photoToSave = form.photo !== undefined ? form.photo : selArticle.photo;
+    const cleanBody = (form.body ?? selArticle.body ?? "").replace(/^__PHOTO__:[^\n]*\n?/, "");
+    const updates = { title: form.title || selArticle.title, body: cleanBody, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: photoToSave };
     await supaUpdateNews(selArticle.supaId, updates);
     const parsedSrc = updSourceVal.includes("||") ? updSourceVal.split("||") : [updSourceVal, ""];
-    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, ...{ title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:updates.photo } } : a));
-    const updated = { ...selArticle, title:updates.title, body:updates.body, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:updates.photo };
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:photoToSave } : a));
+    const updated = { ...selArticle, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:photoToSave };
     setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
   };
 
