@@ -7594,18 +7594,25 @@ function TeamPage({ onBack, user, onTeamChange }) {
   const [members, setMembers] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [memberExtras, setMemberExtras] = useState(null);
+  const [extrasLoading, setExtrasLoading] = useState(false);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
 
   /* Load extras for selected member */
   useEffect(() => {
-    if (!sel?.user_id) { setMemberExtras(null); return; }
-    supaGetSetting(`profile_extras_${sel.user_id}`).then(raw => {
-      if (raw) { try { setMemberExtras(typeof raw === "string" ? JSON.parse(raw) : raw); } catch { setMemberExtras(null); } }
-      else { setMemberExtras(null); }
-    }).catch(() => setMemberExtras(null));
-  }, [sel?.user_id]);
+    if (!sel) { setMemberExtras(null); return; }
+    const uid = sel.user_id;
+    if (!uid) { setMemberExtras(null); return; }
+    setExtrasLoading(true);
+    supaGetSetting(`profile_extras_${uid}`).then(raw => {
+      if (raw) {
+        try { setMemberExtras(typeof raw === "string" ? JSON.parse(raw) : raw); }
+        catch { setMemberExtras(null); }
+      } else { setMemberExtras(null); }
+      setExtrasLoading(false);
+    }).catch(() => { setMemberExtras(null); setExtrasLoading(false); });
+  }, [sel]);
 
   useEffect(() => {
     if (loaded) return;
@@ -7744,9 +7751,10 @@ function TeamPage({ onBack, user, onTeamChange }) {
             </div>
           ))}
         </Card>
-        {memberExtras && <>
+        {sel.user_id && <>
           <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Dados adicionais</p>
-          <Card>
+          {extrasLoading ? <Card><p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:8 }}>Carregando...</p></Card> :
+          memberExtras && (memberExtras.social || memberExtras.birth || memberExtras.blood || memberExtras.cpf || memberExtras.pix) ? <Card>
             {[
               {l:"Rede social",v:memberExtras.social},
               {l:"Data nascimento",v:memberExtras.birth ? (()=>{ const d=memberExtras.birth.replace(/\D/g,""); return d.length===8?d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4):memberExtras.birth; })() : null},
@@ -7765,7 +7773,8 @@ function TeamPage({ onBack, user, onTeamChange }) {
               </div>
               <button onClick={()=>{ navigator.clipboard.writeText(memberExtras.pix).then(()=>showToast("PIX copiado ✓")).catch(()=>{}); }} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", gap:4 }}>{IC.clipboard}<span>Copiar</span></button>
             </div>}
-          </Card>
+          </Card> :
+          <Card><p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:8 }}>Membro ainda não preencheu dados extras no perfil.</p></Card>}
         </>}
         {m.skills && m.skills.length > 0 && <>
           <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Habilidades</p>
@@ -9779,7 +9788,7 @@ function GamifyPage({ onBack, user, team }) {
     if (!b) { setSelBadge(null); return null; }
     const earned = myBadges.includes(selBadge);
     return (
-      <div style={{ paddingTop:TOP, minHeight:"100%", padding:"0 16px" }}>
+      <div style={{ paddingTop:TOP, minHeight:"100vh", paddingLeft:16, paddingRight:16, background:B.bg }}>
         {ToastEl}
         <Head title="Conquista" onBack={() => setSelBadge(null)} />
         <div style={{ textAlign:"center", padding:"20px 0" }}>
@@ -9799,17 +9808,52 @@ function GamifyPage({ onBack, user, team }) {
   }
 
   /* ── Reward detail modal ── */
+  const [redeemConfirm, setRedeemConfirm] = useState(false);
+  const [redeemed, setRedeemed] = useState(false);
   if (selReward) {
     const r = REWARDS.find(x => x.id === selReward);
     if (!r) { setSelReward(null); return null; }
     const canAfford = me.xp >= r.cost;
+
+    const handleRedeem = () => {
+      if (!canAfford || r.stock <= 0) return;
+      setRedeemConfirm(false);
+      setRedeemed(true);
+      /* Deduct XP from teamData */
+      const idx = teamData.findIndex(t => t.user_id === user?.id);
+      if (idx >= 0) teamData[idx].xp = Math.max(0, teamData[idx].xp - r.cost);
+      r.stock = Math.max(0, r.stock - 1);
+      showToast(`${r.name} resgatado com sucesso! 🎉`);
+    };
+
+    if (redeemed) {
+      return (
+        <div style={{ paddingTop:TOP, minHeight:"100vh", paddingLeft:16, paddingRight:16, background:B.bg }}>
+          {ToastEl}
+          <Head title="" onBack={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} />
+          <div style={{ textAlign:"center", padding:"60px 0" }}>
+            <div style={{ fontSize:72, marginBottom:16 }}>🎉</div>
+            <h3 style={{ fontSize:22, fontWeight:800, marginBottom:8, color:B.text }}>Resgatado!</h3>
+            <p style={{ fontSize:15, color:B.muted, marginBottom:4 }}>{r.icon} {r.name}</p>
+            <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginTop:12 }}>Fale com seu gestor para receber sua recompensa.</p>
+            <Card style={{ marginTop:24, display:"flex", justifyContent:"space-around" }}>
+              <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>-{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP descontado</p></div>
+              <div style={{ width:1, background:B.border }} />
+              <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Saldo atual</p></div>
+            </Card>
+            <button onClick={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} style={{ marginTop:24, padding:"14px 32px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent }}>Voltar à Loja</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div style={{ paddingTop:TOP, minHeight:"100%", padding:"0 16px" }}>
+      <div style={{ paddingTop:TOP, minHeight:"100vh", paddingLeft:16, paddingRight:16, background:B.bg }}>
         {ToastEl}
-        <Head title="Recompensa" onBack={() => setSelReward(null)} />
+        <Head title="Recompensa" onBack={() => { setSelReward(null); setRedeemConfirm(false); }} />
         <div style={{ textAlign:"center", padding:"20px 0" }}>
           <div style={{ fontSize:56, marginBottom:12 }}>{r.icon}</div>
-          <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>{r.name}</h3>
+          <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4, color:B.text }}>{r.name}</h3>
           <Tag color={B.accent}>{r.cat}</Tag>
           <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{r.desc}</p>
           <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
@@ -9819,9 +9863,20 @@ function GamifyPage({ onBack, user, team }) {
             <div style={{ width:1, background:B.border }} />
             <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:r.stock>0?B.green:B.red }}>{r.stock}</p><p style={{ fontSize:10, color:B.muted }}>Estoque</p></div>
           </Card>
-          <button onClick={() => { if(canAfford && r.stock>0){ showToast(`${r.name} resgatado! 🎉`); setSelReward(null); } else if(!canAfford) { showToast("XP insuficiente"); } else { showToast("Sem estoque"); } }} className="pill full accent" style={{ marginTop:20, opacity:(canAfford&&r.stock>0)?1:0.4 }}>
-            {canAfford && r.stock>0 ? `Resgatar por ${r.cost.toLocaleString()} XP` : !canAfford ? `Faltam ${(r.cost - me.xp).toLocaleString()} XP` : "Sem estoque"}
-          </button>
+          {!redeemConfirm ? (
+            <button onClick={() => { if(canAfford && r.stock>0) setRedeemConfirm(true); else if(!canAfford) showToast("XP insuficiente"); else showToast("Sem estoque"); }} style={{ marginTop:20, width:"100%", padding:"14px 0", borderRadius:14, background:canAfford&&r.stock>0?B.accent:`${B.muted}30`, border:"none", cursor:canAfford&&r.stock>0?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:canAfford&&r.stock>0?B.textOnAccent:B.muted }}>
+              {canAfford && r.stock>0 ? `Resgatar por ${r.cost.toLocaleString()} XP` : !canAfford ? `Faltam ${(r.cost - me.xp).toLocaleString()} XP` : "Sem estoque"}
+            </button>
+          ) : (
+            <Card style={{ marginTop:20, background:`${B.orange}08`, border:`1.5px solid ${B.orange}30` }}>
+              <p style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:4 }}>Confirmar resgate?</p>
+              <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>Serão descontados <strong>{r.cost.toLocaleString()} XP</strong> do seu saldo.</p>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => setRedeemConfirm(false)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Cancelar</button>
+                <button onClick={handleRedeem} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>✓ Confirmar</button>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     );
