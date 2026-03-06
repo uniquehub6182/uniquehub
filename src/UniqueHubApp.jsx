@@ -6118,6 +6118,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [showOldPw, setShowOldPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [sessions, setSessions] = useState(false);
+  /* 2FA states */
+  const [twoFASetup, setTwoFASetup] = useState(null); // null | 'qr' | 'disable'
+  const [twoFAQR, setTwoFAQR] = useState("");
+  const [twoFAFactorId, setTwoFAFactorId] = useState("");
+  const [twoFAChallengeId, setTwoFAChallengeId] = useState("");
+  const [twoFACode, setTwoFACode] = useState("");
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  /* Sessions data */
+  const [sessionInfo, setSessionInfo] = useState(null);
 
   /* Notifications */
   const [notifChat, setNotifChat] = useState(true);
@@ -6762,46 +6771,198 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </div>
     );
 
+    /* 2FA setup view - QR code enrollment */
+    if (twoFASetup === 'qr') {
+      const startEnroll = async () => {
+        setTwoFALoading(true);
+        try {
+          const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
+          if (error) throw error;
+          setTwoFAQR(data.totp.qr_code);
+          setTwoFAFactorId(data.id);
+          setTwoFASetup('verify');
+        } catch(e) { showToast("Erro ao gerar QR code"); setTwoFASetup(null); }
+        setTwoFALoading(false);
+      };
+      startEnroll();
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Ativar 2FA" onBack={() => setTwoFASetup(null)} />
+          <Card style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 24, minHeight: 120 }}>
+            <p style={{ fontSize: 13, color: B.muted }}>Gerando QR code…</p>
+          </Card>
+        </div>
+      );
+    }
+
+    /* 2FA verify view - scan QR and enter code */
+    if (twoFASetup === 'verify') {
+      const verifyEnroll = async () => {
+        if (twoFACode.length !== 6) return;
+        setTwoFALoading(true);
+        try {
+          const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: twoFAFactorId });
+          if (chErr) throw chErr;
+          const { error: vErr } = await supabase.auth.mfa.verify({ factorId: twoFAFactorId, challengeId: ch.id, code: twoFACode });
+          if (vErr) throw vErr;
+          setTwoFA(true);
+          setTwoFASetup(null);
+          setTwoFACode("");
+          showToast("2FA ativado com sucesso ✓");
+        } catch(e) { showToast("Código inválido. Tente novamente."); setTwoFACode(""); }
+        setTwoFALoading(false);
+      };
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Ativar 2FA" onBack={async () => { try { await supabase.auth.mfa.unenroll({ factorId: twoFAFactorId }); } catch(e){} setTwoFASetup(null); setTwoFAQR(""); setTwoFACode(""); }} />
+          <Card style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>1. Escaneie com seu app autenticador</p>
+            <p style={{ fontSize: 11, color: B.muted, marginBottom: 12 }}>Use Google Authenticator, Authy ou similar.</p>
+            {twoFAQR && <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: twoFAQR.replace(/width="[^"]*"/, 'width="180"').replace(/height="[^"]*"/, 'height="180"') }} />}
+          </Card>
+          <Card style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>2. Digite o código de 6 dígitos</p>
+            <input
+              type="number"
+              value={twoFACode}
+              onChange={e => setTwoFACode(e.target.value.slice(0, 6))}
+              placeholder="000000"
+              className="tinput"
+              style={{ textAlign: "center", letterSpacing: 8, fontSize: 22, fontWeight: 700 }}
+              onKeyDown={e => e.key === "Enter" && verifyEnroll()}
+            />
+          </Card>
+          <button onClick={verifyEnroll} className="pill full accent" disabled={twoFALoading || twoFACode.length !== 6} style={{ opacity: twoFACode.length === 6 ? 1 : 0.4 }}>
+            {twoFALoading ? "Verificando…" : "Confirmar e Ativar 2FA"}
+          </button>
+        </div>
+      );
+    }
+
+    /* 2FA disable view - verify before disabling */
+    if (twoFASetup === 'disable') {
+      const doDisable = async () => {
+        if (twoFACode.length !== 6) return;
+        setTwoFALoading(true);
+        try {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const totp = factors?.totp?.[0];
+          if (totp) {
+            const { data: ch } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+            await supabase.auth.mfa.verify({ factorId: totp.id, challengeId: ch.id, code: twoFACode });
+            await supabase.auth.mfa.unenroll({ factorId: totp.id });
+          }
+          setTwoFA(false);
+          setTwoFASetup(null);
+          setTwoFACode("");
+          showToast("2FA desativado ✓");
+        } catch(e) { showToast("Código inválido. Tente novamente."); setTwoFACode(""); }
+        setTwoFALoading(false);
+      };
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Desativar 2FA" onBack={() => { setTwoFASetup(null); setTwoFACode(""); }} />
+          <Card style={{ marginBottom: 8, background: `${B.red}08`, border: `1px solid ${B.red}20` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: B.red, fontSize: 20 }}>⚠️</span>
+              <p style={{ fontSize: 12, color: B.red }}>Desativar o 2FA reduz a segurança da sua conta.</p>
+            </div>
+          </Card>
+          <Card style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Confirme com seu app autenticador</p>
+            <p style={{ fontSize: 11, color: B.muted, marginBottom: 12 }}>Digite o código atual do seu app para desativar.</p>
+            <input
+              type="number"
+              value={twoFACode}
+              onChange={e => setTwoFACode(e.target.value.slice(0, 6))}
+              placeholder="000000"
+              className="tinput"
+              style={{ textAlign: "center", letterSpacing: 8, fontSize: 22, fontWeight: 700 }}
+              onKeyDown={e => e.key === "Enter" && doDisable()}
+            />
+          </Card>
+          <button onClick={doDisable} className="pill full" disabled={twoFALoading || twoFACode.length !== 6} style={{ opacity: twoFACode.length === 6 ? 1 : 0.4, background: B.red, color: "#fff", border: "none" }}>
+            {twoFALoading ? "Verificando…" : "Desativar 2FA"}
+          </button>
+        </div>
+      );
+    }
+
     /* Sessions sub-view */
-    if (sessions) return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Sessões Ativas" onBack={() => setSessions(false)} />
-        {[
-          { device: "iPhone 15 Pro", browser: "Safari", location: "Petrópolis, RJ", time: "Agora", current: true },
-          { device: "MacBook Pro", browser: "Chrome", location: "Petrópolis, RJ", time: "Há 2 horas", current: false },
-          { device: "Windows PC", browser: "Firefox", location: "Petrópolis, RJ", time: "Há 1 dia", current: false },
-        ].map((s, i) => (
-          <Card key={i} delay={i*0.04} style={{ marginBottom: 8, borderLeft: s.current ? `4px solid ${B.green}` : "none" }}>
+    if (sessions) {
+      /* Detect current device from userAgent */
+      const ua = navigator.userAgent;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+      const isTablet = /iPad|Tablet/i.test(ua);
+      const deviceType = isTablet ? "Tablet" : isMobile ? "Celular" : "Computador";
+      const browser = ua.includes("Chrome") && !ua.includes("Edg") ? "Chrome"
+        : ua.includes("Safari") && !ua.includes("Chrome") ? "Safari"
+        : ua.includes("Firefox") ? "Firefox"
+        : ua.includes("Edg") ? "Edge"
+        : "Navegador";
+      const platform = ua.includes("iPhone") ? "iPhone" : ua.includes("iPad") ? "iPad"
+        : ua.includes("Android") ? "Android" : ua.includes("Mac") ? "Mac"
+        : ua.includes("Windows") ? "Windows" : ua.includes("Linux") ? "Linux" : "Dispositivo";
+
+      const signOutOthers = async () => {
+        try {
+          await supabase.auth.signOut({ scope: 'others' });
+          showToast("Todas as outras sessões encerradas ✓");
+        } catch(e) { showToast("Erro ao encerrar sessões"); }
+      };
+
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Sessões Ativas" onBack={() => setSessions(false)} />
+          <Card delay={0} style={{ marginBottom: 8, borderLeft: `4px solid ${B.green}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: `${s.current ? B.green : B.muted}08`, display: "flex", alignItems: "center", justifyContent: "center", color: s.current ? B.green : B.muted }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: `${B.green}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.green }}>
                 {IC.device}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>{s.device}</p>
-                  {s.current && <Tag color={B.green}>Atual</Tag>}
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{platform}</p>
+                  <Tag color={B.green}>Sessão atual</Tag>
                 </div>
-                <p style={{ fontSize: 11, color: B.muted }}>{s.browser} · {s.location}</p>
-                <p style={{ fontSize: 10, color: B.muted }}>{s.time}</p>
+                <p style={{ fontSize: 11, color: B.muted }}>{browser} · {deviceType}</p>
+                <p style={{ fontSize: 10, color: B.muted }}>Sessão ativa agora</p>
               </div>
-              {!s.current && <button onClick={() => showToast("Sessão encerrada ✓")} style={{ padding: "6px 10px", borderRadius: 8, background: `${B.red}08`, border: `1px solid ${B.red}20`, cursor: "pointer", fontFamily: "inherit", fontSize: 10, fontWeight: 600, color: B.red }}>Encerrar</button>}
             </div>
           </Card>
-        ))}
-        <button onClick={() => showToast("Todas as outras sessões encerradas ✓")} className="pill full outline" style={{ marginTop: 8, color: B.red, borderColor: `${B.red}30` }}>Encerrar todas as outras sessões</button>
-      </div>
-    );
+          <Card style={{ marginBottom: 12, background: `${B.muted}05`, border: `1px solid ${B.muted}15` }}>
+            <p style={{ fontSize: 11, color: B.muted, textAlign: "center" }}>
+              Outras sessões ativas em outros dispositivos não são visíveis aqui por segurança.
+            </p>
+          </Card>
+          <button onClick={signOutOthers} className="pill full outline" style={{ marginTop: 8, color: B.red, borderColor: `${B.red}30` }}>
+            🔐 Encerrar todas as outras sessões
+          </button>
+        </div>
+      );
+    }
+
+    /* Load 2FA status on first render of security page */
+    const check2FA = async () => {
+      try {
+        const { data } = await supabase.auth.mfa.listFactors();
+        const enrolled = data?.totp?.length > 0 && data.totp[0].status === 'verified';
+        setTwoFA(enrolled);
+      } catch(e) {}
+    };
 
     /* Security main */
     return (
-      <div className="pg">
+      <div className="pg" ref={el => el && check2FA()}>
         {ToastEl}
         <Head title="Segurança" onBack={() => setSub(null)} />
         <Card onClick={() => setChangePw(true)} style={{ cursor: "pointer", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ color: B.accent, display: "flex" }}>{IC.lock}</span>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Alterar Senha</p><p style={{ fontSize: 11, color: B.muted }}>Última alteração: 30 dias atrás</p></div>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Alterar Senha</p><p style={{ fontSize: 11, color: B.muted }}>Gerenciar credenciais de acesso</p></div>
             {IC.chev()}
           </div>
         </Card>
@@ -6809,15 +6970,18 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ color: B.accent, display: "flex" }}>{IC.shield}</span>
-              <div><p style={{ fontSize: 14, fontWeight: 600 }}>Autenticação 2 Fatores</p><p style={{ fontSize: 11, color: B.muted }}>{twoFA ? "Ativado" : "Desativado"}</p></div>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>Autenticação 2 Fatores</p>
+                <p style={{ fontSize: 11, color: twoFA ? B.green : B.muted }}>{twoFA ? "✓ Ativado" : "Desativado"}</p>
+              </div>
             </div>
-            <Toggle on={twoFA} onToggle={() => { setTwoFA(!twoFA); showToast(twoFA ? "2FA desativado" : "2FA ativado ✓"); }} />
+            <Toggle on={twoFA} onToggle={() => { if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
           </div>
         </Card>
         <Card onClick={() => setSessions(true)} style={{ cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ color: B.accent, display: "flex" }}>{IC.device}</span>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Sessões Ativas</p><p style={{ fontSize: 11, color: B.muted }}>3 dispositivos conectados</p></div>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Sessões Ativas</p><p style={{ fontSize: 11, color: B.muted }}>Ver e gerenciar dispositivos conectados</p></div>
             {IC.chev()}
           </div>
         </Card>
