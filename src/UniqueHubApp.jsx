@@ -11394,12 +11394,19 @@ function Match4BizPage({ onBack, clients, user }) {
 
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud, cloudDash, cloudNav }) {
   const mainContentRef = useRef(null);
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState(() => {
+    try { return sessionStorage.getItem("uh_tab") || "home"; } catch { return "home"; }
+  });
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
-  const [sub, setSub] = useState(null);
+  const [sub, setSub] = useState(() => {
+    try { return sessionStorage.getItem("uh_sub") || null; } catch { return null; }
+  });
   const [more, setMore] = useState(false);
+  /* Sync tab/sub to sessionStorage for refresh persistence */
+  useEffect(() => { try { sessionStorage.setItem("uh_tab", tab); } catch {} }, [tab]);
+  useEffect(() => { try { if (sub) sessionStorage.setItem("uh_sub", sub); else sessionStorage.removeItem("uh_sub"); } catch {} }, [sub]);
   const [navPicks, setNavPicks] = useState(() => {
     if (cloudNav) return cloudNav;
     try { const s = localStorage.getItem("uh_nav_picks"); return s ? JSON.parse(s) : DEFAULT_NAV; } catch { return DEFAULT_NAV; }
@@ -11609,9 +11616,9 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   }, [articlesLoaded]);
 
   const [pendingOpenId, setPendingOpenId] = useState(null);
-  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
+  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); try { sessionStorage.setItem("uh_tab", k); sessionStorage.removeItem("uh_sub"); } catch {} if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
   const [pendingSubId, setPendingSubId] = useState(null);
-  const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); if (initialId) setPendingSubId(initialId); };
+  const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); try { sessionStorage.setItem("uh_sub", k); } catch {} if (initialId) setPendingSubId(initialId); };
 
   return (
     <div className="app" style={{ background: B.bg, color: B.text }}>
