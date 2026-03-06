@@ -10110,7 +10110,7 @@ function GamifyPage({ onBack, user, team }) {
         if (!b) return null;
         const earned = myBadges.includes(selBadge);
         return (
-          <div style={{ position:"absolute", inset:0, zIndex:20, background:B.bg, overflowY:"auto", padding:"0 16px" }}>
+          <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
             <div style={{ paddingTop:16 }}>
               <Head title="Conquista" onBack={() => setSelBadge(null)} />
               <div style={{ textAlign:"center", padding:"20px 0" }}>
@@ -10144,7 +10144,7 @@ function GamifyPage({ onBack, user, team }) {
           showToast(`${r.name} resgatado! 🎉`);
         };
         if (redeemed) return (
-          <div style={{ position:"absolute", inset:0, zIndex:20, background:B.bg, overflowY:"auto", padding:"0 16px" }}>
+          <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
             <div style={{ paddingTop:16 }}>
               <Head title="" onBack={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} />
               <div style={{ textAlign:"center", padding:"60px 0" }}>
@@ -10163,7 +10163,7 @@ function GamifyPage({ onBack, user, team }) {
           </div>
         );
         return (
-          <div style={{ position:"absolute", inset:0, zIndex:20, background:B.bg, overflowY:"auto", padding:"0 16px" }}>
+          <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
             <div style={{ paddingTop:16 }}>
               <Head title="Recompensa" onBack={() => { setSelReward(null); setRedeemConfirm(false); }} />
               <div style={{ textAlign:"center", padding:"20px 0" }}>
