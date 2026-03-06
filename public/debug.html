@@ -1,55 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; background: #111; color: #fff; font-family: monospace; }
-#info { padding: 20px; padding-top: env(safe-area-inset-top, 0px); font-size: 13px; line-height: 2; }
-#fill { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: red; z-index: -1; }
-#bottom { position: fixed; bottom: 0; left: 0; right: 0; height: 4px; background: lime; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; background:#111; color:#0f0; font-family:monospace; font-size:14px; }
+#wrap { 
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:#111; 
+  padding: env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);
+  overflow:auto;
+}
+/* Red bar fills whole screen behind content - if visible = gap exists */
+#bg { position:fixed; top:0; left:0; right:0; bottom:0; background:red; z-index:-1; }
+/* Lime line at real bottom:0 */
+#bot { position:fixed; bottom:0; left:0; right:0; height:3px; background:lime; z-index:99; }
+/* Blue line at safe area bottom */
+#sab-line { position:fixed; bottom:env(safe-area-inset-bottom,0px); left:0; right:0; height:3px; background:blue; z-index:98; }
+div.row { line-height:2.2; border-bottom:1px solid #333; padding:2px 0; }
 </style>
 </head>
 <body>
-<div id="fill"></div>
-<div id="info">
-  <div>window.innerHeight: <b id="ih"></b></div>
-  <div>window.outerHeight: <b id="oh"></b></div>
-  <div>screen.height: <b id="sh"></b></div>
-  <div>document.body.offsetHeight: <b id="bh"></b></div>
-  <div>safe-area-inset-top: <b id="sat"></b></div>
-  <div>safe-area-inset-bottom: <b id="sab"></b></div>
-  <div>standalone: <b id="sa"></b></div>
-  <div>display-mode: <b id="dm"></b></div>
-  <div style="margin-top:20px; background:#333; padding:10px;">
-    Linha verde = bottom:0<br>
-    Fundo vermelho = body<br>
-    Se aparecer vermelho = gap
+<div id="bg"></div>
+<div id="bot"></div>
+<div id="sab-line"></div>
+<div id="wrap">
+  <div class="row">window.innerHeight: <b id="ih">?</b></div>
+  <div class="row">screen.height: <b id="sh">?</b></div>
+  <div class="row">visualViewport.height: <b id="vvh">?</b></div>
+  <div class="row">safe-area-inset-top: <b id="sat">?</b></div>
+  <div class="row">safe-area-inset-bottom: <b id="sab">?</b></div>
+  <div class="row">standalone (navigator): <b id="sa">?</b></div>
+  <div class="row">display-mode standalone: <b id="dm">?</b></div>
+  <div class="row">display-mode fullscreen: <b id="dfs">?</b></div>
+  <div class="row">userAgent: <b id="ua" style="font-size:10px;word-break:break-all">?</b></div>
+  <div style="margin-top:16px; background:#222; padding:10px; font-size:12px; line-height:1.8">
+    🔴 Fundo vermelho = área não coberta pelo #wrap<br>
+    🟢 Linha VERDE = bottom:0 (fundo físico da tela)<br>
+    🔵 Linha AZUL = safe-area-inset-bottom<br>
+    Se vermelho visível abaixo do azul = gap real
   </div>
 </div>
-<div id="bottom"></div>
 <script>
-document.getElementById('ih').textContent = window.innerHeight;
-document.getElementById('oh').textContent = window.outerHeight;
-document.getElementById('sh').textContent = screen.height;
-document.getElementById('bh').textContent = document.body.offsetHeight;
-document.getElementById('sa').textContent = window.navigator.standalone;
-document.getElementById('dm').textContent = window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser';
+try {
+  document.getElementById('ih').textContent = window.innerHeight + 'px';
+  document.getElementById('sh').textContent = screen.height + 'px';
+  document.getElementById('vvh').textContent = (window.visualViewport ? window.visualViewport.height + 'px' : 'n/a');
+  document.getElementById('sa').textContent = String(window.navigator.standalone);
+  document.getElementById('dm').textContent = String(window.matchMedia('(display-mode: standalone)').matches);
+  document.getElementById('dfs').textContent = String(window.matchMedia('(display-mode: fullscreen)').matches);
+  document.getElementById('ua').textContent = navigator.userAgent.substring(0, 120);
 
-// Read CSS env values
-const el = document.createElement('div');
-el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;';
-document.body.appendChild(el);
-const top = getComputedStyle(el).top;
-document.getElementById('sat').textContent = top;
-
-el.style.cssText = 'position:fixed;bottom:env(safe-area-inset-bottom,0px);left:0;width:1px;height:1px;';
-const bot = getComputedStyle(el).bottom;
-document.getElementById('sab').textContent = bot;
-document.body.removeChild(el);
+  // Measure CSS env() values via computed style
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);width:0;height:0;visibility:hidden';
+  document.body.appendChild(d);
+  document.getElementById('sat').textContent = window.getComputedStyle(d).top;
+  d.style.bottom = 'env(safe-area-inset-bottom,0px)';
+  d.style.top = 'auto';
+  document.body.appendChild(d);
+  document.getElementById('sab').textContent = window.getComputedStyle(d).bottom;
+  document.body.removeChild(d);
+} catch(e) {
+  document.getElementById('ih').textContent = 'ERRO: ' + e.message;
+}
 </script>
 </body>
 </html>
