@@ -11579,6 +11579,9 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         })}
       </nav>
 
+      {/* ── SAFE AREA BOTTOM FILL — covers the gap below the floating nav ── */}
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />
+
       {more && <MoreSheet onClose={() => setMore(false)} goSub={goSub} />}
       {showNavEdit && <NavEditSheet picks={navPicks} setPicks={(p) => setNavPicksAndSave(p, user?.id)} onClose={() => setShowNavEdit(false)} />}
     </div>
