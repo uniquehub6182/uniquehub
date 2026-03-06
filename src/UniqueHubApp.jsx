@@ -462,6 +462,70 @@ const supaGetAIKeys = async () => {
     return map;
   } catch(e) { return {}; }
 };
+
+/* ── Meta API Integration (Instagram / Facebook) ── */
+const META_APP_ID = "1557196698688426";
+const META_REDIRECT_URI = `${window.location.origin}/`;
+const META_SCOPES = "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_comments,instagram_manage_insights";
+
+const startMetaOAuth = (clientId) => {
+  /* Store which client we're connecting, to use after redirect */
+  try { sessionStorage.setItem("uh_meta_oauth_client", clientId); } catch {}
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&scope=${META_SCOPES}&response_type=code&state=meta_connect_${clientId}`;
+  window.location.href = url;
+};
+
+const handleMetaOAuthCallback = async (code) => {
+  if (!supabase || !SUPA_URL) return null;
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ code, redirect_uri: META_REDIRECT_URI })
+    });
+    const data = await res.json();
+    if (data.error) { console.error("Meta OAuth error:", data.error); return null; }
+    return data; /* { page_id, page_name, page_token, ig_user_id, ig_username } */
+  } catch(e) { console.error("Meta OAuth callback error:", e); return null; }
+};
+
+const saveMetaToken = async (clientId, tokenData) => {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from("social_tokens").upsert({
+      client_id: clientId,
+      platform: "meta",
+      page_id: tokenData.page_id,
+      page_name: tokenData.page_name,
+      page_token: tokenData.page_token,
+      ig_user_id: tokenData.ig_user_id,
+      ig_username: tokenData.ig_username,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "client_id,platform" });
+    if (error) { console.error("saveMetaToken error:", error); return false; }
+    return true;
+  } catch(e) { console.error("saveMetaToken catch:", e); return false; }
+};
+
+const getMetaConnection = async (clientId) => {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.from("social_tokens").select("*").eq("client_id", clientId).eq("platform", "meta").single();
+    return data || null;
+  } catch(e) { return null; }
+};
+
+const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
+  if (!supabase || !SUPA_URL) return null;
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/meta-publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ client_id: clientId, image_url: imageUrl, caption, platforms })
+    });
+    return await res.json();
+  } catch(e) { console.error("publishToMeta error:", e); return null; }
+};
 const supaCheckInvite = async (email) => {
   if (!supabase || !email) return null;
   try {
@@ -2550,6 +2614,36 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   const { showToast, ToastEl } = useToast();
+
+  /* Check for Meta OAuth results after redirect */
+  useEffect(() => {
+    try {
+      const metaResult = sessionStorage.getItem("uh_meta_connected");
+      const metaError = sessionStorage.getItem("uh_meta_error");
+      if (metaResult) {
+        sessionStorage.removeItem("uh_meta_connected");
+        const result = JSON.parse(metaResult);
+        const clientId = result.clientId;
+        /* Find and select the client, then update socials */
+        const client = clients.find(c => String(c.id) === String(clientId) || c.supaId === clientId);
+        if (client) {
+          const ns = {
+            ...client.socials,
+            instagram: { connected: true, user: result.ig_username || "", followers: "", oauth: true, ig_user_id: result.ig_user_id },
+            facebook: { connected: true, user: result.page_name || "", followers: "", oauth: true, page_id: result.page_id }
+          };
+          updateClient(client.id, { socials: ns });
+          setSel({ ...client, socials: ns });
+          setProfileTab("socials");
+          showToast("Instagram e Facebook conectados via Meta! ✓");
+        }
+      }
+      if (metaError) {
+        sessionStorage.removeItem("uh_meta_error");
+        showToast(`Erro Meta: ${metaError}`);
+      }
+    } catch(e) {}
+  }, [clients]);
   const filtered = clients.filter(c => {
     if (filter !== "all" && c.status !== filter) return false;
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
@@ -2592,6 +2686,20 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     if (!sel) return;
     const plat = SOCIAL_PLATFORMS.find(p => p.key === platformKey);
     if (plat?.soon) { showToast(`${plat.name} será disponibilizado em breve!`); return; }
+    /* For Instagram & Facebook, offer real Meta OAuth */
+    if ((platformKey === "instagram" || platformKey === "facebook") && supabase) {
+      const current = sel.socials?.[platformKey] || {};
+      if (current.connected) {
+        /* Already connected — open manage modal */
+        setEditingSocial(platformKey);
+        setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
+      } else {
+        /* Offer choice: manual or OAuth */
+        setEditingSocial(platformKey);
+        setSocialForm({ user: "", followers: "", reviews: "", showOAuth: true });
+      }
+      return;
+    }
     const current = sel.socials?.[platformKey] || {};
     setEditingSocial(platformKey);
     setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
@@ -2612,8 +2720,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   if (editingSocial) {
     const plat = SOCIAL_PLATFORMS.find(p => p.key === editingSocial);
     const isGoogleType = plat.key === "google" || plat.key === "ga4";
+    const isMetaType = plat.key === "instagram" || plat.key === "facebook";
     const current = sel?.socials?.[editingSocial] || {};
     const isDisconnecting = current.connected;
+    const hasOAuth = current.oauth;
     return (
       <div className="pg">
         {ToastEl}
@@ -2626,12 +2736,32 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Perfil de <strong>{sel?.name}</strong></p>
           {current.connected && <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:8, padding:"4px 12px", borderRadius:8, background:`${B.green}12` }}>
             <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
-            <span style={{ fontSize:10, fontWeight:700, color:B.green }}>Conectado</span>
+            <span style={{ fontSize:10, fontWeight:700, color:B.green }}>{hasOAuth ? "Conectado via Meta" : "Conectado"}</span>
           </div>}
         </Card>
 
-        {/* Steps guide */}
-        {!current.connected && <Card style={{ marginBottom:12, background:`${B.accent}04`, border:`1px solid ${B.accent}12` }}>
+        {/* Meta OAuth option for Instagram/Facebook */}
+        {isMetaType && !current.connected && supabase && <>
+          <Card style={{ marginBottom:12, background:"#1877F215", border:"1.5px solid #1877F230" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão automática via Meta</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte Instagram e Facebook de uma vez com OAuth oficial. Permite publicar, acessar métricas e gerenciar comentários.</p>
+              <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/></svg>
+                Conectar com Meta
+              </button>
+            </div>
+          </Card>
+
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+            <div style={{ flex:1, height:1, background:B.border }} />
+            <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
+            <div style={{ flex:1, height:1, background:B.border }} />
+          </div>
+        </>}
+
+        {/* Steps guide for manual connection */}
+        {!current.connected && !isMetaType && <Card style={{ marginBottom:12, background:`${B.accent}04`, border:`1px solid ${B.accent}12` }}>
           <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Como conectar:</p>
           {[
             `Acesse ${plat.urlBase} e faça login na conta que deseja gerenciar`,
@@ -2662,7 +2792,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <div style={{ display:"flex", gap:8, marginTop:16 }}>
           {current.connected && <button onClick={() => { const ns = { ...sel.socials, [editingSocial]: { connected: false } }; updateClient(sel.id, { socials: ns }); setEditingSocial(null); showToast("Desconectado"); }} style={{ flex:1, padding:"14px 0", borderRadius:14, border:`1.5px solid ${B.red}40`, background:`${B.red}08`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Desconectar</button>}
           <button onClick={saveSocial} className="pill full accent" style={{ flex:current.connected?1:undefined, padding:"14px 0" }}>
-            {current.connected ? "Salvar" : `Conectar ${plat.name}`}
+            {current.connected ? "Salvar" : `Conectar ${plat.name} manualmente`}
           </button>
         </div>
       </div>
@@ -3054,6 +3184,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             const data = sel.socials?.[plat.key] || {}; const connected = data.connected;
             return (
               <Card key={plat.key} style={{ cursor:"pointer", textAlign:"center", padding:"16px 10px", position:"relative" }} onClick={()=>connectSocial(plat.key)}>
+                {data.oauth && <span style={{ position:"absolute", top:6, right:6, padding:"2px 6px", borderRadius:4, background:"#1877F2", color:"#fff", fontSize:7, fontWeight:800, letterSpacing:0.3 }}>META</span>}
                 <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}${connected?"15":"08"}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
                   {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={22} active={connected} /> : plat.key==="pinterest" ? <PinterestIcon sz={22}/> : <span style={{ fontSize:18, fontWeight:700 }}>@</span>}
                 </div>
@@ -12133,6 +12264,35 @@ export default function App() {
   }, [user]);
 
   /* Check for existing Supabase session on mount */
+  /* ── Meta OAuth callback handler ── */
+  const [metaOAuthPending, setMetaOAuthPending] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    if (code && state?.startsWith("meta_connect_")) {
+      /* Clean URL immediately */
+      window.history.replaceState({}, "", window.location.pathname);
+      setMetaOAuthPending(true);
+      const clientId = state.replace("meta_connect_", "");
+      (async () => {
+        try {
+          const result = await handleMetaOAuthCallback(code);
+          if (result && !result.error) {
+            await saveMetaToken(clientId, result);
+            /* Store connection info in sessionStorage for the client page to pick up */
+            try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId, ...result })); } catch {}
+          } else {
+            try { sessionStorage.setItem("uh_meta_error", result?.error || "Falha na conexão com Meta"); } catch {}
+          }
+        } catch(e) {
+          try { sessionStorage.setItem("uh_meta_error", e.message || "Erro inesperado"); } catch {}
+        }
+        setMetaOAuthPending(false);
+      })();
+    }
+  }, []);
+
   useEffect(() => {
     if (!supabase) return;
     let timeout = setTimeout(() => { setAuthLoading(false); }, 3000); /* safety: max 3s */
