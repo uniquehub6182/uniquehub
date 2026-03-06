@@ -9785,102 +9785,7 @@ function GamifyPage({ onBack, user, team }) {
   const actionIcon = (a) => ({ checkin:"📍", task_done:"✅", post_published:"📱", bonus:"🎁", badge:"🏆", reels:"🎬", feedback:"⭐" }[a] || "⚡");
 
   /* ── Badge detail modal ── */
-  if (selBadge) {
-    const b = ALL_BADGES.find(x => x.id === selBadge);
-    if (!b) { setSelBadge(null); return null; }
-    const earned = myBadges.includes(selBadge);
-    return (
-      <div style={{ paddingTop:TOP, minHeight:"100vh", paddingLeft:16, paddingRight:16, background:B.bg }}>
-        {ToastEl}
-        <Head title="Conquista" onBack={() => setSelBadge(null)} />
-        <div style={{ textAlign:"center", padding:"20px 0" }}>
-          <div style={{ width:80, height:80, borderRadius:24, background:earned?`${rarityColor(b.rarity)}12`:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:`3px solid ${earned?rarityColor(b.rarity):B.border}`, fontSize:36 }}>{b.emoji}</div>
-          <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>{b.name}</h3>
-          <Tag color={rarityColor(b.rarity)}>{b.rarity}</Tag>
-          <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{b.desc}</p>
-          <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>+{b.xpReward}</p><p style={{ fontSize:10, color:B.muted }}>XP Recompensa</p></div>
-            <div style={{ width:1, background:B.border }} />
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:earned?B.green:B.muted }}>{earned?"✓":"✗"}</p><p style={{ fontSize:10, color:B.muted }}>{earned?"Conquistado":"Bloqueado"}</p></div>
-          </Card>
-          {!earned && <p style={{ fontSize:11, color:B.muted, marginTop:12, fontStyle:"italic" }}>Continue trabalhando para desbloquear esta conquista!</p>}
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Reward detail modal ── */
-  if (selReward) {
-    const r = REWARDS.find(x => x.id === selReward);
-    if (!r) { setSelReward(null); return null; }
-    const canAfford = me.xp >= r.cost;
-
-    const handleRedeem = () => {
-      if (!canAfford || r.stock <= 0) return;
-      setRedeemConfirm(false);
-      setRedeemed(true);
-      /* Add negative XP event to deduct */
-      const deductEvent = { id: "redeem_"+Date.now(), user_id: user?.id, action: "redeem", xp_amount: -r.cost, description: `Resgate: ${r.name}`, created_at: new Date().toISOString() };
-      setXpEvents(prev => [...prev, deductEvent]);
-      r.stock = Math.max(0, r.stock - 1);
-      showToast(`${r.name} resgatado com sucesso! 🎉`);
-    };
-
-    if (redeemed) {
-      return (
-        <div style={{ paddingTop:TOP, minHeight:"100vh", paddingLeft:16, paddingRight:16, background:B.bg }}>
-          {ToastEl}
-          <Head title="" onBack={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} />
-          <div style={{ textAlign:"center", padding:"60px 0" }}>
-            <div style={{ fontSize:72, marginBottom:16 }}>🎉</div>
-            <h3 style={{ fontSize:22, fontWeight:800, marginBottom:8, color:B.text }}>Resgatado!</h3>
-            <p style={{ fontSize:15, color:B.muted, marginBottom:4 }}>{r.icon} {r.name}</p>
-            <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginTop:12 }}>Fale com seu gestor para receber sua recompensa.</p>
-            <Card style={{ marginTop:24, display:"flex", justifyContent:"space-around" }}>
-              <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>-{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP descontado</p></div>
-              <div style={{ width:1, background:B.border }} />
-              <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Saldo atual</p></div>
-            </Card>
-            <button onClick={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} style={{ marginTop:24, padding:"14px 32px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent }}>Voltar à Loja</button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ paddingTop:TOP, minHeight:"100vh", paddingLeft:16, paddingRight:16, background:B.bg }}>
-        {ToastEl}
-        <Head title="Recompensa" onBack={() => { setSelReward(null); setRedeemConfirm(false); }} />
-        <div style={{ textAlign:"center", padding:"20px 0" }}>
-          <div style={{ fontSize:56, marginBottom:12 }}>{r.icon}</div>
-          <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4, color:B.text }}>{r.name}</h3>
-          <Tag color={B.accent}>{r.cat}</Tag>
-          <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{r.desc}</p>
-          <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.orange }}>{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP necessário</p></div>
-            <div style={{ width:1, background:B.border }} />
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Seu XP atual</p></div>
-            <div style={{ width:1, background:B.border }} />
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:r.stock>0?B.green:B.red }}>{r.stock}</p><p style={{ fontSize:10, color:B.muted }}>Estoque</p></div>
-          </Card>
-          {!redeemConfirm ? (
-            <button onClick={() => { if(canAfford && r.stock>0) setRedeemConfirm(true); else if(!canAfford) showToast("XP insuficiente"); else showToast("Sem estoque"); }} style={{ marginTop:20, width:"100%", padding:"14px 0", borderRadius:14, background:canAfford&&r.stock>0?B.accent:`${B.muted}30`, border:"none", cursor:canAfford&&r.stock>0?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:canAfford&&r.stock>0?B.textOnAccent:B.muted }}>
-              {canAfford && r.stock>0 ? `Resgatar por ${r.cost.toLocaleString()} XP` : !canAfford ? `Faltam ${(r.cost - me.xp).toLocaleString()} XP` : "Sem estoque"}
-            </button>
-          ) : (
-            <Card style={{ marginTop:20, background:`${B.orange}08`, border:`1.5px solid ${B.orange}30` }}>
-              <p style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:4 }}>Confirmar resgate?</p>
-              <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>Serão descontados <strong>{r.cost.toLocaleString()} XP</strong> do seu saldo.</p>
-              <div style={{ display:"flex", gap:8 }}>
-                <button onClick={() => setRedeemConfirm(false)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Cancelar</button>
-                <button onClick={handleRedeem} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>✓ Confirmar</button>
-              </div>
-            </Card>
-          )}
-        </div>
-      </div>
-    );
-  }
+  /* Badge and Reward detail are now rendered as overlays in the main return */
 
   /* ── TABS ── */
   const TABS_LIST = [
@@ -9894,7 +9799,7 @@ function GamifyPage({ onBack, user, team }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column", position:"relative" }}>
       {ToastEl}
       <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" onBack={onBack} collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
@@ -10198,6 +10103,101 @@ function GamifyPage({ onBack, user, team }) {
         ))}
       </>}
       </div>
+
+      {/* ═══ BADGE DETAIL OVERLAY ═══ */}
+      {selBadge && (() => {
+        const b = ALL_BADGES.find(x => x.id === selBadge);
+        if (!b) return null;
+        const earned = myBadges.includes(selBadge);
+        return (
+          <div style={{ position:"absolute", inset:0, zIndex:20, background:B.bg, overflowY:"auto", padding:"0 16px" }}>
+            <div style={{ paddingTop:16 }}>
+              <Head title="Conquista" onBack={() => setSelBadge(null)} />
+              <div style={{ textAlign:"center", padding:"20px 0" }}>
+                <div style={{ width:80, height:80, borderRadius:24, background:earned?`${rarityColor(b.rarity)}12`:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:`3px solid ${earned?rarityColor(b.rarity):B.border}`, fontSize:36 }}>{b.emoji}</div>
+                <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4, color:B.text }}>{b.name}</h3>
+                <Tag color={rarityColor(b.rarity)}>{b.rarity}</Tag>
+                <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{b.desc}</p>
+                <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>+{b.xpReward}</p><p style={{ fontSize:10, color:B.muted }}>XP Recompensa</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:earned?B.green:B.muted }}>{earned?"✓":"✗"}</p><p style={{ fontSize:10, color:B.muted }}>{earned?"Conquistado":"Bloqueado"}</p></div>
+                </Card>
+                {!earned && <p style={{ fontSize:11, color:B.muted, marginTop:12, fontStyle:"italic" }}>Continue trabalhando para desbloquear esta conquista!</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ═══ REWARD DETAIL OVERLAY ═══ */}
+      {selReward && (() => {
+        const r = REWARDS.find(x => x.id === selReward);
+        if (!r) return null;
+        const canAfford = me.xp >= r.cost;
+        const doRedeem = () => {
+          if (!canAfford || r.stock <= 0) return;
+          setRedeemConfirm(false);
+          setRedeemed(true);
+          setXpEvents(prev => [...prev, { id:"redeem_"+Date.now(), user_id:user?.id, action:"redeem", xp_amount:-r.cost, description:`Resgate: ${r.name}`, created_at:new Date().toISOString() }]);
+          r.stock = Math.max(0, r.stock - 1);
+          showToast(`${r.name} resgatado! 🎉`);
+        };
+        if (redeemed) return (
+          <div style={{ position:"absolute", inset:0, zIndex:20, background:B.bg, overflowY:"auto", padding:"0 16px" }}>
+            <div style={{ paddingTop:16 }}>
+              <Head title="" onBack={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} />
+              <div style={{ textAlign:"center", padding:"60px 0" }}>
+                <div style={{ fontSize:72, marginBottom:16 }}>🎉</div>
+                <h3 style={{ fontSize:22, fontWeight:800, marginBottom:8, color:B.text }}>Resgatado!</h3>
+                <p style={{ fontSize:15, color:B.muted }}>{r.icon} {r.name}</p>
+                <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginTop:12 }}>Fale com seu gestor para receber sua recompensa.</p>
+                <Card style={{ marginTop:24, display:"flex", justifyContent:"space-around" }}>
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>-{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP descontado</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Saldo atual</p></div>
+                </Card>
+                <button onClick={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} style={{ marginTop:24, padding:"14px 32px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent }}>Voltar à Loja</button>
+              </div>
+            </div>
+          </div>
+        );
+        return (
+          <div style={{ position:"absolute", inset:0, zIndex:20, background:B.bg, overflowY:"auto", padding:"0 16px" }}>
+            <div style={{ paddingTop:16 }}>
+              <Head title="Recompensa" onBack={() => { setSelReward(null); setRedeemConfirm(false); }} />
+              <div style={{ textAlign:"center", padding:"20px 0" }}>
+                <div style={{ fontSize:56, marginBottom:12 }}>{r.icon}</div>
+                <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4, color:B.text }}>{r.name}</h3>
+                <Tag color={B.accent}>{r.cat}</Tag>
+                <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{r.desc}</p>
+                <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.orange }}>{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP necessário</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Seu XP</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:r.stock>0?B.green:B.red }}>{r.stock}</p><p style={{ fontSize:10, color:B.muted }}>Estoque</p></div>
+                </Card>
+                {!redeemConfirm ? (
+                  <button onClick={() => { if(canAfford && r.stock>0) setRedeemConfirm(true); else if(!canAfford) showToast("XP insuficiente"); else showToast("Sem estoque"); }} style={{ marginTop:20, width:"100%", padding:"14px 0", borderRadius:14, background:canAfford&&r.stock>0?B.accent:`${B.muted}30`, border:"none", cursor:canAfford&&r.stock>0?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:canAfford&&r.stock>0?B.textOnAccent:B.muted }}>
+                    {canAfford && r.stock>0 ? `Resgatar por ${r.cost.toLocaleString()} XP` : !canAfford ? `Faltam ${(r.cost - me.xp).toLocaleString()} XP` : "Sem estoque"}
+                  </button>
+                ) : (
+                  <Card style={{ marginTop:20, background:`${B.orange}08`, border:`1.5px solid ${B.orange}30` }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:4 }}>Confirmar resgate?</p>
+                    <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>Serão descontados <strong>{r.cost.toLocaleString()} XP</strong> do seu saldo.</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => setRedeemConfirm(false)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Cancelar</button>
+                      <button onClick={doRedeem} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>✓ Confirmar</button>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 }
