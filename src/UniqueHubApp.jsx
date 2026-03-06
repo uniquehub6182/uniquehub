@@ -477,17 +477,25 @@ const startMetaOAuth = (clientId) => {
 };
 
 const handleMetaOAuthCallback = async (code) => {
-  if (!supabase || !SUPA_URL) return null;
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
       body: JSON.stringify({ code, redirect_uri: META_REDIRECT_URI })
     });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("Meta OAuth HTTP error:", res.status, text);
+      return { error: `Edge Function erro ${res.status}: ${text.substring(0, 100)}` };
+    }
     const data = await res.json();
-    if (data.error) { console.error("Meta OAuth error:", data.error); return null; }
+    if (data.error) { console.error("Meta OAuth error:", data.error); return { error: data.error }; }
     return data; /* { page_id, page_name, page_token, ig_user_id, ig_username } */
-  } catch(e) { console.error("Meta OAuth callback error:", e); return null; }
+  } catch(e) { 
+    console.error("Meta OAuth callback error:", e); 
+    return { error: `Conexão falhou: ${e.message}. Verifique se a Edge Function meta-oauth-callback está deployada no Supabase.` };
+  }
 };
 
 const saveMetaToken = async (clientId, tokenData) => {
