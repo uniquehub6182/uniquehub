@@ -2506,14 +2506,25 @@ function CheckinPage({ onBack, user }) {
 
 /* ═══════════════════════ CLIENTS PAGE ═══════════════════════ */
 const SOCIAL_PLATFORMS = [
-  { key:"instagram", name:"Instagram", icon:"instagram", c:"#E1306C", urlBase:"instagram.com/" },
-  { key:"facebook", name:"Facebook", icon:"facebook", c:"#1877F2", urlBase:"facebook.com/" },
-  { key:"tiktok", name:"TikTok", icon:"tiktok", c:"#010101", urlBase:"tiktok.com/@" },
-  { key:"linkedin", name:"LinkedIn", icon:"linkedin", c:"#0A66C2", urlBase:"linkedin.com/company/" },
-  { key:"youtube", name:"YouTube", icon:"youtube", c:"#FF0000", urlBase:"youtube.com/@" },
-  { key:"twitter", name:"X (Twitter)", icon:"twitter", c:"#1D9BF0", urlBase:"x.com/" },
-  { key:"google", name:"Google Meu Negócio", icon:null, c:"#4285F4", urlBase:"business.google.com" },
-  { key:"pinterest", name:"Pinterest", icon:null, c:"#E60023", urlBase:"pinterest.com/" },
+  /* Redes Sociais */
+  { key:"instagram", name:"Instagram", icon:"instagram", c:"#E1306C", urlBase:"instagram.com/", cat:"social" },
+  { key:"facebook", name:"Facebook", icon:"facebook", c:"#1877F2", urlBase:"facebook.com/", cat:"social" },
+  { key:"linkedin", name:"LinkedIn", icon:"linkedin", c:"#0A66C2", urlBase:"linkedin.com/company/", cat:"social" },
+  { key:"tiktok", name:"TikTok", icon:"tiktok", c:"#010101", urlBase:"tiktok.com/@", cat:"social" },
+  { key:"youtube", name:"YouTube", icon:"youtube", c:"#FF0000", urlBase:"youtube.com/@", cat:"social" },
+  { key:"twitter", name:"X (Twitter)", icon:"twitter", c:"#1D9BF0", urlBase:"x.com/", cat:"social" },
+  { key:"pinterest", name:"Pinterest", icon:null, c:"#E60023", urlBase:"pinterest.com/", cat:"social" },
+  { key:"threads", name:"Threads", icon:null, c:"#000000", urlBase:"threads.net/@", cat:"social" },
+  /* Google */
+  { key:"google", name:"Google Meu Negócio", icon:null, c:"#4285F4", urlBase:"business.google.com", cat:"google" },
+  { key:"ga4", name:"Google Analytics 4", icon:null, c:"#E37400", urlBase:"analytics.google.com", cat:"google" },
+  /* Ads & Tráfego */
+  { key:"meta_ads", name:"Meta Ads", icon:null, c:"#0081FB", urlBase:"business.facebook.com", cat:"ads", soon:true },
+  { key:"google_ads", name:"Google Ads", icon:null, c:"#4285F4", urlBase:"ads.google.com", cat:"ads", soon:true },
+  { key:"linkedin_ads", name:"LinkedIn Ads", icon:null, c:"#0A66C2", urlBase:"linkedin.com/campaignmanager", cat:"ads", soon:true },
+  { key:"tiktok_ads", name:"TikTok Ads", icon:null, c:"#010101", urlBase:"ads.tiktok.com", cat:"ads", soon:true },
+  /* CRM & Automação */
+  { key:"rd_station", name:"RD Station", icon:null, c:"#00C4B3", urlBase:"rdstation.com", cat:"crm", soon:true },
 ];
 
 function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user }) {
@@ -2579,16 +2590,11 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const connectSocial = (platformKey) => {
     if (!sel) return;
+    const plat = SOCIAL_PLATFORMS.find(p => p.key === platformKey);
+    if (plat?.soon) { showToast(`${plat.name} será disponibilizado em breve!`); return; }
     const current = sel.socials?.[platformKey] || {};
-    if (current.connected) {
-      /* Disconnect */
-      const ns = { ...sel.socials, [platformKey]: { connected: false } };
-      updateClient(sel.id, { socials: ns });
-      showToast("Desconectado");
-    } else {
-      setEditingSocial(platformKey);
-      setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
-    }
+    setEditingSocial(platformKey);
+    setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
   };
 
   const saveSocial = () => {
@@ -2605,32 +2611,60 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   /* ── SOCIAL CONNECTION MODAL ── */
   if (editingSocial) {
     const plat = SOCIAL_PLATFORMS.find(p => p.key === editingSocial);
+    const isGoogleType = plat.key === "google" || plat.key === "ga4";
+    const current = sel?.socials?.[editingSocial] || {};
+    const isDisconnecting = current.connected;
     return (
       <div className="pg">
         {ToastEl}
-        <Head title={`Conectar ${plat.name}`} onBack={() => setEditingSocial(null)} />
+        <Head title={isDisconnecting ? `Gerenciar ${plat.name}` : `Conectar ${plat.name}`} onBack={() => setEditingSocial(null)} />
         <Card style={{ textAlign:"center", marginBottom:16 }}>
           <div style={{ width:56, height:56, borderRadius:16, background:`${plat.c}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-            {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={28} active /> : plat.key === "google" ? <GoogleIcon sz={28} /> : <PinterestIcon sz={28} />}
+            {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={28} active /> : plat.key === "google" ? <GoogleIcon sz={28} /> : plat.key === "pinterest" ? <PinterestIcon sz={28} /> : plat.key === "ga4" ? <span style={{ fontSize:13, fontWeight:800, color:plat.c }}>GA4</span> : <span style={{ fontSize:16, fontWeight:700, color:plat.c }}>@</span>}
           </div>
-          <p style={{ fontSize:16, fontWeight:700 }}>Conectar {plat.name}</p>
-          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Vincule o perfil de <strong>{sel?.name}</strong></p>
+          <p style={{ fontSize:16, fontWeight:700 }}>{isDisconnecting ? plat.name : `Conectar ${plat.name}`}</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Perfil de <strong>{sel?.name}</strong></p>
+          {current.connected && <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:8, padding:"4px 12px", borderRadius:8, background:`${B.green}12` }}>
+            <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
+            <span style={{ fontSize:10, fontWeight:700, color:B.green }}>Conectado</span>
+          </div>}
         </Card>
+
+        {/* Steps guide */}
+        {!current.connected && <Card style={{ marginBottom:12, background:`${B.accent}04`, border:`1px solid ${B.accent}12` }}>
+          <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Como conectar:</p>
+          {[
+            `Acesse ${plat.urlBase} e faça login na conta que deseja gerenciar`,
+            "Preencha o nome de usuário/perfil abaixo",
+            "Clique em Conectar para vincular ao UniqueHub"
+          ].map((step, i) => (
+            <div key={i} style={{ display:"flex", gap:8, marginBottom:6 }}>
+              <div style={{ width:20, height:20, borderRadius:10, background:`${plat.c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                <span style={{ fontSize:10, fontWeight:800, color:plat.c }}>{i+1}</span>
+              </div>
+              <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>{step}</p>
+            </div>
+          ))}
+        </Card>}
+
         <Card>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>@ Usuário / Perfil</label>
           <input value={socialForm.user||""} onChange={e=>setSocialForm(p=>({...p,user:e.target.value}))} placeholder={`Ex: ${plat.urlBase}nome`} className="tinput" style={{ marginBottom:12 }} />
-          {plat.key === "google" ? <>
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Nota média (avaliações)</label>
-            <input value={socialForm.reviews||""} onChange={e=>setSocialForm(p=>({...p,reviews:e.target.value}))} placeholder="Ex: 4.7★" className="tinput" />
+          {isGoogleType ? <>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>{plat.key==="ga4"?"ID da propriedade":"Nota média (avaliações)"}</label>
+            <input value={socialForm.reviews||""} onChange={e=>setSocialForm(p=>({...p,reviews:e.target.value}))} placeholder={plat.key==="ga4"?"Ex: 123456789":"Ex: 4.7★"} className="tinput" />
           </> : <>
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Seguidores</label>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Seguidores / Inscritos</label>
             <input value={socialForm.followers||""} onChange={e=>setSocialForm(p=>({...p,followers:e.target.value}))} placeholder="Ex: 12.4k" className="tinput" />
           </>}
         </Card>
-        <button onClick={saveSocial} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          &nbsp; Conectar {plat.name}
-        </button>
+
+        <div style={{ display:"flex", gap:8, marginTop:16 }}>
+          {current.connected && <button onClick={() => { const ns = { ...sel.socials, [editingSocial]: { connected: false } }; updateClient(sel.id, { socials: ns }); setEditingSocial(null); showToast("Desconectado"); }} style={{ flex:1, padding:"14px 0", borderRadius:14, border:`1.5px solid ${B.red}40`, background:`${B.red}08`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Desconectar</button>}
+          <button onClick={saveSocial} className="pill full accent" style={{ flex:current.connected?1:undefined, padding:"14px 0" }}>
+            {current.connected ? "Salvar" : `Conectar ${plat.name}`}
+          </button>
+        </div>
       </div>
     );
   }
@@ -3009,26 +3043,93 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <Card style={{ marginBottom:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            <div><p style={{ fontSize:13, fontWeight:700, color:B.text }}>Redes conectadas: {connectedCount}/{SOCIAL_PLATFORMS.length}</p><p style={{ fontSize:11, color:B.muted }}>Conecte os perfis para gerenciar conteúdo</p></div>
+            <div><p style={{ fontSize:13, fontWeight:700, color:B.text }}>Contas conectadas: {connectedCount}</p><p style={{ fontSize:11, color:B.muted }}>Gerencie as redes e plataformas de {sel?.name}</p></div>
           </div>
         </Card>
-        {SOCIAL_PLATFORMS.map((plat) => {
-          const data = sel.socials?.[plat.key] || {}; const connected = data.connected;
-          return (
-            <Card key={plat.key} style={{ marginTop:6, cursor:"pointer", borderLeft:`4px solid ${connected?plat.c:B.border}` }} onClick={()=>connectSocial(plat.key)}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:`${plat.c}${connected?"15":"08"}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={20} active={connected} /> : plat.key==="google" ? <GoogleIcon sz={20}/> : <PinterestIcon sz={20}/>}
+
+        {/* Redes Sociais */}
+        <p className="sl" style={{ marginBottom:8, marginTop:4 }}>Redes Sociais</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="social").map((plat) => {
+            const data = sel.socials?.[plat.key] || {}; const connected = data.connected;
+            return (
+              <Card key={plat.key} style={{ cursor:"pointer", textAlign:"center", padding:"16px 10px", position:"relative" }} onClick={()=>connectSocial(plat.key)}>
+                <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}${connected?"15":"08"}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                  {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={22} active={connected} /> : plat.key==="pinterest" ? <PinterestIcon sz={22}/> : <span style={{ fontSize:18, fontWeight:700 }}>@</span>}
                 </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:600, color:B.text }}>{plat.name}</p>
-                  {connected ? <p style={{ fontSize:11, color:plat.c, fontWeight:500 }}>{data.user} {data.followers?`· ${data.followers}`:""}{data.reviews?` · ${data.reviews}`:""}</p> : <p style={{ fontSize:11, color:B.muted }}>Não conectado</p>}
+                <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+                {connected ? (
+                  <div style={{ marginTop:6 }}>
+                    <p style={{ fontSize:10, color:plat.c, fontWeight:500 }}>{data.user}</p>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, padding:"2px 8px", borderRadius:6, background:`${B.green}12` }}>
+                      <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
+                      <span style={{ fontSize:9, fontWeight:700, color:B.green }}>Conectado</span>
+                    </div>
+                  </div>
+                ) : (
+                  <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:plat.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Conectar</button>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Google */}
+        <p className="sl" style={{ marginBottom:8 }}>Google</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="google").map((plat) => {
+            const data = sel.socials?.[plat.key] || {}; const connected = data.connected;
+            return (
+              <Card key={plat.key} style={{ cursor:"pointer", textAlign:"center", padding:"16px 10px" }} onClick={()=>connectSocial(plat.key)}>
+                <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}${connected?"15":"08"}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                  {plat.key==="google" ? <GoogleIcon sz={22}/> : <span style={{ fontSize:11, fontWeight:800, color:plat.c }}>GA4</span>}
                 </div>
-                {connected ? <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:8, height:8, borderRadius:4, background:B.green }}/><span style={{ fontSize:10, fontWeight:600, color:B.green }}>Ativo</span></div> : <span style={{ fontSize:10, fontWeight:600, color:B.accent, padding:"4px 10px", borderRadius:8, background:`${B.accent}10` }}>Conectar</span>}
+                <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+                {connected ? (
+                  <div style={{ marginTop:6 }}>
+                    <p style={{ fontSize:10, color:plat.c, fontWeight:500 }}>{data.user || data.reviews}</p>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, padding:"2px 8px", borderRadius:6, background:`${B.green}12` }}>
+                      <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
+                      <span style={{ fontSize:9, fontWeight:700, color:B.green }}>Conectado</span>
+                    </div>
+                  </div>
+                ) : (
+                  <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:plat.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Conectar</button>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Ads & Tráfego */}
+        <p className="sl" style={{ marginBottom:8 }}>Ads & Tráfego</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="ads").map((plat) => (
+            <Card key={plat.key} style={{ textAlign:"center", padding:"16px 10px", position:"relative", opacity:0.7 }}>
+              {plat.soon && <span style={{ position:"absolute", top:6, right:6, padding:"2px 6px", borderRadius:4, background:B.red, color:"#fff", fontSize:8, fontWeight:800, letterSpacing:0.5 }}>NOVO</span>}
+              <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                {plat.key==="meta_ads" ? <span style={{ fontSize:16, fontWeight:800, color:plat.c }}>M</span> : plat.key==="google_ads" ? <GoogleIcon sz={22}/> : plat.key==="linkedin_ads" ? <NetworkIcon name="LinkedIn" sz={22} active={false} /> : <NetworkIcon name="TikTok" sz={22} active={false} />}
               </div>
+              <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+              <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:"transparent", border:`1.5px solid ${plat.c}40`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:plat.c }}>Em breve</button>
             </Card>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* CRM & Automação */}
+        <p className="sl" style={{ marginBottom:8 }}>CRM & Automação</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="crm").map((plat) => (
+            <Card key={plat.key} style={{ textAlign:"center", padding:"16px 10px", position:"relative", opacity:0.7 }}>
+              {plat.soon && <span style={{ position:"absolute", top:6, right:6, padding:"2px 6px", borderRadius:4, background:B.red, color:"#fff", fontSize:8, fontWeight:800, letterSpacing:0.5 }}>NOVO</span>}
+              <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                <span style={{ fontSize:14, fontWeight:800, color:plat.c }}>RD</span>
+              </div>
+              <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+              <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:"transparent", border:`1.5px solid ${plat.c}40`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:plat.c }}>Em breve</button>
+            </Card>
+          ))}
+        </div>
       </>}
 
       {profileTab === "library" && <>
