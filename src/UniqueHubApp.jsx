@@ -9038,8 +9038,12 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
 
   const saveArticle = async () => {
     if (!form.title?.trim()) return showToast("Informe o título");
+    if (photoUploading) return showToast("Aguarde o upload da foto terminar...");
     const sourceVal = form.sourceUrl ? `${form.source||""}||${form.sourceUrl}` : (form.source || "");
-    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [], photo: form.photo || null };
+    /* Only save real URLs, never base64 previews */
+    const safePhoto = (form.photo && !form.photo.startsWith("data:")) ? form.photo : null;
+    if (form.photo && !safePhoto) showToast("⚠️ Upload da foto falhou — artigo salvo sem imagem");
+    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [], photo: safePhoto };
     const row = await supaCreateNews(na);
     if (row) {
       const parsed = parseNewsRow(row);
@@ -9056,12 +9060,13 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     if (!selArticle?.supaId) return;
     const updSourceVal = form.sourceUrl ? `${form.source || selArticle.source || ""}||${form.sourceUrl}` : (form.source ?? selArticle.source ?? "");
     const photoToSave = form.photo !== undefined ? form.photo : selArticle.photo;
+    const safePhoto = (photoToSave && !photoToSave.startsWith("data:")) ? photoToSave : (selArticle.photo && !selArticle.photo.startsWith("data:") ? selArticle.photo : null);
     const cleanBody = (form.body ?? selArticle.body ?? "").replace(/^__PHOTO__:[^\n]*\n?/, "");
-    const updates = { title: form.title || selArticle.title, body: cleanBody, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: photoToSave };
+    const updates = { title: form.title || selArticle.title, body: cleanBody, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: safePhoto };
     await supaUpdateNews(selArticle.supaId, updates);
     const parsedSrc = updSourceVal.includes("||") ? updSourceVal.split("||") : [updSourceVal, ""];
-    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:photoToSave } : a));
-    const updated = { ...selArticle, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:photoToSave };
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto } : a));
+    const updated = { ...selArticle, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto };
     setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
   };
 
