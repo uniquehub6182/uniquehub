@@ -6032,7 +6032,7 @@ function ApprovalsPage({ onBack }) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => approveMember(r)} className="pill accent" style={{ flex: 1, padding: "10px 14px" }}>{IC.check} Aprovar</button>
-            <button onClick={() => rejectMember(r)} className="pill outline" style={{ flex: 1, padding: "10px 14px", color: B.red, borderColor: `${B.red}30` }}>{IC.x} Recusar</button>
+            <button onClick={() => rejectMember(r)} style={{ flex: 1, padding: "10px 14px", borderRadius: 50, border: `1.5px solid ${B.red}40`, background: `${B.red}10`, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: B.red, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>{IC.x} Recusar</button>
           </div>
         </Card>
       ))}
@@ -6270,6 +6270,22 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     if (d.length <= 7) return "(" + d.slice(0,2) + ") " + d.slice(2);
     return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
   };
+  const maskDate = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    if (d.length <= 2) return d;
+    if (d.length <= 4) return d.slice(0,2) + "/" + d.slice(2);
+    return d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4);
+  };
+  const maskCpfPf = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + "." + d.slice(3);
+    if (d.length <= 9) return d.slice(0,3) + "." + d.slice(3,6) + "." + d.slice(6);
+    return d.slice(0,3) + "." + d.slice(3,6) + "." + d.slice(6,9) + "-" + d.slice(9);
+  };
+  const fmtBirth = (v) => { if (!v || v === "—") return "—"; const d = v.replace(/\D/g, ""); if (d.length === 8) return d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4); return v; };
+  const fmtCpf = (v) => { if (!v || v === "—") return "—"; const d = v.replace(/\D/g, ""); if (d.length === 11) return d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9); return v; };
+  const copyToClipboard = (text) => { navigator.clipboard.writeText(text).then(()=>showToast("Copiado ✓")).catch(()=>{}); };
 
   const pwChecks = (p) => [
     { label: "Mínimo 8 caracteres", ok: p.length >= 8 },
@@ -6337,9 +6353,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio</label>
           <textarea value={pf.bio || ""} onChange={e => pfUp("bio",e.target.value)} className="tinput" rows={2} placeholder="Uma frase sobre você..." style={{ marginBottom:10, resize:"vertical" }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>CPF</label>
-          <input value={pf.cpf || ""} onChange={e => { const d=e.target.value.replace(/\D/g,"").slice(0,11); let f=d; if(d.length>9) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9); else if(d.length>6) f=d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6); else if(d.length>3) f=d.slice(0,3)+"."+d.slice(3); pfUp("cpf",f); }} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
+          <input value={pf.cpf || ""} onChange={e => pfUp("cpf",maskCpfPf(e.target.value))} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Data de nascimento</label>
-          <input value={pf.birth || ""} onChange={e => pfUp("birth",e.target.value)} className="tinput" placeholder="DD/MM/AAAA" style={{ marginBottom:10 }} />
+          <input value={pf.birth || ""} onChange={e => pfUp("birth",maskDate(e.target.value))} className="tinput" placeholder="DD/MM/AAAA" inputMode="numeric" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Tipo sanguíneo</label>
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
             {["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"].map(b => (
@@ -6412,7 +6428,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </div> : <div>
         <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
-          {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",pf.birth||"—","calendar"],["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",pf.cpf||"—","id"]].map((f,i) => (
+          {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",fmtBirth(pf.birth)||"—","calendar"],["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",fmtCpf(pf.cpf)||"—","id"]].map((f,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
               <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
@@ -6426,6 +6442,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
               <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
+              {f[2]==="pix" && pf.pix && pf.pix!=="—" && <button onClick={()=>copyToClipboard(pf.pix)} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", gap:4 }}>{IC.clipboard}<span>Copiar</span></button>}
             </div>
           ))}
         </Card>
