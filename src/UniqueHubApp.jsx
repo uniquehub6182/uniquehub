@@ -3265,6 +3265,7 @@ function AcademyPage({ onBack }) {
   const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
   const [selCourse, setSelCourse] = useState(null);
+  const [selLesson, setSelLesson] = useState(null); /* must be at top — cannot be inside if block */
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
@@ -3452,7 +3453,6 @@ function AcademyPage({ onBack }) {
     const course = courses[selCourse];
     if (!course) { setSelCourse(null); return null; }
     const c = CAT_COLORS[course.category] || B.accent;
-    const [selLesson, setSelLesson] = useState(null);
 
     if (selLesson !== null) {
       const lesson = (course.lessons||[])[selLesson];
@@ -9225,7 +9225,7 @@ function IdeasPage({ onBack, user }) {
     const comment = { by: user?.name || "Matheus", text: newComment.trim(), date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
     setIdeas(p => p.map(i => {
       if (i.id !== id) return i;
-      const updated = [...i.comments, comment];
+      const updated = [...(i.comments||[]), comment];
       if (i.supaId) supaUpdateIdea(i.supaId, { comments: updated });
       return { ...i, comments: updated };
     }));
@@ -9363,21 +9363,21 @@ function IdeasPage({ onBack, user }) {
           </div>
         </Card>
 
-        {idea.tags.length > 0 && (
+        {(idea.tags||[]).length > 0 && (
           <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:12 }}>
-            {idea.tags.map((t,i)=><Tag key={i} color={B.accent}>#{t}</Tag>)}
+            {(idea.tags||[]).map((t,i)=><Tag key={i} color={B.accent}>#{t}</Tag>)}
           </div>
         )}
 
         {/* Comments */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-          <p className="sl">Comentários ({idea.comments.length})</p>
+          <p className="sl">Comentários ({(idea.comments||[]).length})</p>
         </div>
-        {idea.comments.length === 0 ? (
+        {(idea.comments||[]).length === 0 ? (
           <Card style={{ textAlign:"center", padding:16, marginBottom:8 }}>
             <p style={{ fontSize:12, color:B.muted }}>Nenhum comentário ainda. Seja o primeiro!</p>
           </Card>
-        ) : idea.comments.map((c,i) => (
+        ) : (idea.comments||[]).map((c,i) => (
           <Card key={i} style={{ marginBottom:6, padding:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
               <Av name={c.by} sz={24} fs={9} />
@@ -11556,7 +11556,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
-        {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} />}
+        {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
