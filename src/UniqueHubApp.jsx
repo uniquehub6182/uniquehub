@@ -7593,9 +7593,19 @@ function TeamPage({ onBack, user, onTeamChange }) {
   const [form, setForm] = useState({});
   const [members, setMembers] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [memberExtras, setMemberExtras] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
+
+  /* Load extras for selected member */
+  useEffect(() => {
+    if (!sel?.user_id) { setMemberExtras(null); return; }
+    supaGetSetting(`profile_extras_${sel.user_id}`).then(raw => {
+      if (raw) { try { setMemberExtras(typeof raw === "string" ? JSON.parse(raw) : raw); } catch { setMemberExtras(null); } }
+      else { setMemberExtras(null); }
+    }).catch(() => setMemberExtras(null));
+  }, [sel?.user_id]);
 
   useEffect(() => {
     if (loaded) return;
@@ -7734,6 +7744,29 @@ function TeamPage({ onBack, user, onTeamChange }) {
             </div>
           ))}
         </Card>
+        {memberExtras && <>
+          <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Dados adicionais</p>
+          <Card>
+            {[
+              {l:"Rede social",v:memberExtras.social},
+              {l:"Data nascimento",v:memberExtras.birth ? (()=>{ const d=memberExtras.birth.replace(/\D/g,""); return d.length===8?d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4):memberExtras.birth; })() : null},
+              {l:"Tipo sanguíneo",v:memberExtras.blood},
+              {l:"CPF",v:memberExtras.cpf ? (()=>{ const d=memberExtras.cpf.replace(/\D/g,""); return d.length===11?d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9):memberExtras.cpf; })() : null},
+            ].filter(x=>x.v).map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+                <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
+              </div>
+            ))}
+            {memberExtras.pix && <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
+              <div>
+                <span style={{ fontSize:11, color:B.muted }}>Chave PIX</span>
+                <p style={{ fontSize:13, fontWeight:600 }}>{memberExtras.pix}</p>
+              </div>
+              <button onClick={()=>{ navigator.clipboard.writeText(memberExtras.pix).then(()=>showToast("PIX copiado ✓")).catch(()=>{}); }} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", gap:4 }}>{IC.clipboard}<span>Copiar</span></button>
+            </div>}
+          </Card>
+        </>}
         {m.skills && m.skills.length > 0 && <>
           <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Habilidades</p>
           <Card>
