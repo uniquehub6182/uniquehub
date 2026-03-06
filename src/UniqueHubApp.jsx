@@ -359,30 +359,20 @@ const supaLoadNews = async () => {
 const supaCreateNews = async (article) => {
   if (!supabase) return null;
   try {
-    /* Embed photo URL in body to avoid dependency on optional photo column */
-    const bodyWithPhoto = article.photo ? `__PHOTO__:${article.photo}\n${article.body || ""}` : (article.body || "");
-    const payload = { title: article.title, body: bodyWithPhoto, category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [] };
+    const payload = { title: article.title, body: article.body || "", category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [], photo: article.photo || null };
     if (article.author) payload.author = article.author;
-    /* Try with photo column first; fall back without it if column doesn't exist */
-    const withPhoto = await supabase.from("news").insert({ ...payload, photo: article.photo || null }).select();
-    if (!withPhoto.error) return withPhoto.data?.[0] || null;
-    const { data } = await supabase.from("news").insert(payload).select();
+    const { data, error } = await supabase.from("news").insert(payload).select();
+    if (error) { console.warn("supaCreateNews:", error.message); return null; }
     return data?.[0] || null;
   } catch(e) { return null; }
 };
 const supaUpdateNews = async (id, updates) => {
   if (!supabase) return;
   try {
-    /* Embed photo in body for compatibility with tables without photo column */
-    const bodyBase = (updates.body || "").replace(/^__PHOTO__:[^\n]*\n?/, ""); /* strip old prefix */
-    const bodyWithPhoto = updates.photo ? `__PHOTO__:${updates.photo}\n${bodyBase}` : bodyBase;
-    const payload = { ...updates, body: bodyWithPhoto };
-    const withPhoto = await supabase.from("news").update(payload).eq("id", id);
-    if (withPhoto.error && withPhoto.error.code === "42703") {
-      /* photo column doesn't exist — retry without it */
-      const { photo: _p, ...noPhotoPayload } = payload;
-      await supabase.from("news").update(noPhotoPayload).eq("id", id);
-    }
+    /* Strip any legacy __PHOTO__ prefix from body */
+    const cleanBody = (updates.body || "").replace(/^__PHOTO__:[^\n]*\n?/, "");
+    const payload = { ...updates, body: cleanBody };
+    await supabase.from("news").update(payload).eq("id", id);
   } catch(e) {}
 };
 const supaDeleteNews = async (id) => {
