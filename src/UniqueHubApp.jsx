@@ -1597,7 +1597,7 @@ function LoginPage({ onAuth }) {
           Voltar
         </button>
       </div>
-      <div style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 40px)" }}>
+      <div style={{ flex:1, minHeight:0, background:"#fff", borderRadius:"32px 32px 0 0", overflowY:"auto", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 40px)" }}>
         {forgotSent ? (
           <div style={{ textAlign:"center", paddingTop:20 }}>
             <div style={{ width:72, height:72, borderRadius:"50%", background:"#F0FDF4", border:"2px solid #BBF246", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
@@ -1643,7 +1643,7 @@ function LoginPage({ onAuth }) {
   const passFloating  = passFocused  || pw.length > 0;
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117", overflow:"hidden" }}>
+    <div style={{ position:"fixed", inset:0, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
@@ -1694,7 +1694,7 @@ function LoginPage({ onAuth }) {
       </div>
 
       {/* ── WHITE CARD ── */}
-      <div className="lcard" style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+      <div className="lcard" style={{ flex:1, minHeight:0, background:"#fff", borderRadius:"32px 32px 0 0", overflowY:"auto", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
 
         {/* Title */}
         <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>
