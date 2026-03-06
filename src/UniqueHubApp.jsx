@@ -49,9 +49,12 @@ const _metaOAuthCapture = (() => {
     const state = params.get("state");
     if (code && (state?.startsWith("meta_connect_") || sessionStorage.getItem("uh_meta_oauth_client"))) {
       const clientId = state?.startsWith("meta_connect_") ? state.replace("meta_connect_", "") : sessionStorage.getItem("uh_meta_oauth_client");
+      /* Capture the ACTUAL redirect URI Facebook sent us to (before cleaning URL) */
+      const actualRedirectUri = window.location.origin + window.location.pathname;
+      console.log("[Meta OAuth Capture] code length:", code.length, "clientId:", clientId, "redirectUri:", actualRedirectUri);
       window.history.replaceState({}, "", window.location.pathname);
       sessionStorage.removeItem("uh_meta_oauth_client");
-      return { code, clientId };
+      return { code, clientId, redirectUri: actualRedirectUri };
     }
   } catch {}
   return null;
@@ -493,24 +496,22 @@ const startMetaOAuth = (clientId) => {
   window.location.href = url;
 };
 
-const handleMetaOAuthCallback = async (code) => {
+const handleMetaOAuthCallback = async (code, capturedRedirectUri) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   if (!code) return { error: "Código OAuth vazio" };
-  const bodyObj = { code: String(code), client_id: String(META_APP_ID), redirect_uri: String(META_REDIRECT_URI), action: "list_pages" };
-  console.log("Meta OAuth: sending to edge function (list_pages):", JSON.stringify(bodyObj));
+  const redirectUri = capturedRedirectUri || META_REDIRECT_URI;
+  const bodyObj = { code: String(code), client_id: String(META_APP_ID), redirect_uri: String(redirectUri), action: "list_pages" };
+  console.log("Meta OAuth: sending to edge function (list_pages), redirect_uri:", redirectUri, "code length:", code.length);
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
       body: JSON.stringify(bodyObj)
     });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("Meta OAuth HTTP error:", res.status, text);
-      return { error: `Edge Function erro ${res.status}: ${text.substring(0, 200)}` };
-    }
-    const data = await res.json();
-    if (data.error) { console.error("Meta OAuth error:", data.error); return { error: data.error }; }
+    let data;
+    try { data = await res.json(); } catch { data = { error: `HTTP ${res.status}: resposta inválida` }; }
+    console.log("Meta OAuth response:", res.status, JSON.stringify(data).substring(0, 300));
+    if (data.error) { console.error("Meta OAuth error:", data.error); return { error: typeof data.error === "string" ? data.error : JSON.stringify(data.error) }; }
     return data;
   } catch(e) { 
     console.error("Meta OAuth callback error:", e); 
@@ -12356,11 +12357,11 @@ export default function App() {
   const [metaSavingPage, setMetaSavingPage] = useState(false);
   useEffect(() => {
     if (!_metaOAuthCapture) return;
-    const { code, clientId } = _metaOAuthCapture;
-    console.log("[Meta OAuth] Processing captured callback, clientId:", clientId);
+    const { code, clientId, redirectUri: capturedRedirectUri } = _metaOAuthCapture;
+    console.log("[Meta OAuth] Processing captured callback, clientId:", clientId, "redirectUri:", capturedRedirectUri);
     (async () => {
       try {
-        const result = await handleMetaOAuthCallback(code);
+        const result = await handleMetaOAuthCallback(code, capturedRedirectUri);
         console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 300));
         if (result && !result.error && result.pages?.length) {
           /* Show page picker */
