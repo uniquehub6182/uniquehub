@@ -47,14 +47,17 @@ const _metaOAuthCapture = (() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     const state = params.get("state");
-    if (code && (state?.startsWith("meta_connect_") || sessionStorage.getItem("uh_meta_oauth_client"))) {
-      const clientId = state?.startsWith("meta_connect_") ? state.replace("meta_connect_", "") : sessionStorage.getItem("uh_meta_oauth_client");
-      /* Capture the ACTUAL redirect URI Facebook sent us to (before cleaning URL) */
+    if (code && (state?.startsWith("meta_connect_") || state?.startsWith("ig_connect_") || sessionStorage.getItem("uh_meta_oauth_client") || sessionStorage.getItem("uh_ig_oauth_client"))) {
+      const isInstagram = state?.startsWith("ig_connect_") || !!sessionStorage.getItem("uh_ig_oauth_client");
+      const clientId = state?.startsWith("meta_connect_") ? state.replace("meta_connect_", "") 
+        : state?.startsWith("ig_connect_") ? state.replace("ig_connect_", "")
+        : sessionStorage.getItem("uh_ig_oauth_client") || sessionStorage.getItem("uh_meta_oauth_client");
       const actualRedirectUri = window.location.origin + window.location.pathname;
-      console.log("[Meta OAuth Capture] code length:", code.length, "clientId:", clientId, "redirectUri:", actualRedirectUri);
+      console.log("[OAuth Capture] code length:", code.length, "clientId:", clientId, "isInstagram:", isInstagram, "redirectUri:", actualRedirectUri);
       window.history.replaceState({}, "", window.location.pathname);
       sessionStorage.removeItem("uh_meta_oauth_client");
-      return { code, clientId, redirectUri: actualRedirectUri };
+      sessionStorage.removeItem("uh_ig_oauth_client");
+      return { code, clientId, redirectUri: actualRedirectUri, isInstagram };
     }
   } catch {}
   return null;
@@ -574,6 +577,49 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
     return await res.json();
   } catch(e) { console.error("publishToMeta error:", e); return null; }
 };
+
+/* ── Instagram Platform API (Direct Login via Instagram) ── */
+const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights";
+
+const startInstagramOAuth = (clientId) => {
+  try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
+  const redirectUri = encodeURIComponent(window.location.origin + "/");
+  const url = `https://api.instagram.com/oauth/authorize?client_id=${META_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
+  console.log("[Instagram OAuth] Starting, redirect_uri:", window.location.origin + "/");
+  window.location.href = url;
+};
+
+const handleInstagramOAuthCallback = async (code, redirectUri) => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  if (!code) return { error: "Código OAuth vazio" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/instagram-oauth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ code, redirect_uri: redirectUri, client_id: "" })
+    });
+    let data;
+    try { data = await res.json(); } catch { data = { error: `HTTP ${res.status}` }; }
+    console.log("[Instagram OAuth] Response:", res.status, JSON.stringify(data).substring(0, 300));
+    if (data.error) return { error: typeof data.error === "string" ? data.error : JSON.stringify(data.error) };
+    return data;
+  } catch(e) { return { error: e.message }; }
+};
+
+const saveInstagramToken = async (clientId, igData) => {
+  if (!supabase) return false;
+  try {
+    const key = `ig_token_${clientId}`;
+    const value = JSON.stringify({
+      ig_user_id: igData.ig_user_id, username: igData.username,
+      profile_picture_url: igData.profile_picture_url, followers_count: igData.followers_count,
+      access_token: igData.access_token, account_type: igData.account_type,
+      updated_at: new Date().toISOString()
+    });
+    return await supaSetSetting(key, value);
+  } catch(e) { console.error("saveInstagramToken:", e); return false; }
+};
+
 const supaCheckInvite = async (email) => {
   if (!supabase || !email) return null;
   try {
@@ -2812,19 +2858,37 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </div>}
         </Card>
 
-        {/* Meta OAuth option for Instagram/Facebook */}
-        {isMetaType && !current.connected && supabase && <>
+        {/* Meta OAuth option for Facebook only */}
+        {editingSocial === "facebook" && !current.connected && supabase && <>
           <Card style={{ marginBottom:12, background:"#1877F215", border:"1.5px solid #1877F230" }}>
             <div style={{ textAlign:"center" }}>
               <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão automática via Meta</p>
-              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte Instagram e Facebook de uma vez com OAuth oficial. Permite publicar, acessar métricas e gerenciar comentários.</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Facebook com OAuth oficial. Permite publicar e gerenciar a página.</p>
               <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/></svg>
-                Conectar com Meta
+                Conectar Facebook
               </button>
             </div>
           </Card>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+            <div style={{ flex:1, height:1, background:B.border }} />
+            <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
+            <div style={{ flex:1, height:1, background:B.border }} />
+          </div>
+        </>}
 
+        {/* Instagram OAuth — login direto pelo Instagram */}
+        {editingSocial === "instagram" && !current.connected && supabase && <>
+          <Card style={{ marginBottom:12, background:"#E1306C15", border:"1.5px solid #E1306C30" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão direta via Instagram</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Instagram Business/Creator diretamente. Permite publicar, acessar métricas e gerenciar comentários.</p>
+              <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startInstagramOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                Conectar Instagram
+              </button>
+            </div>
+          </Card>
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
             <div style={{ flex:1, height:1, background:B.border }} />
             <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
@@ -12359,25 +12423,39 @@ export default function App() {
   const [metaSavingPage, setMetaSavingPage] = useState(false);
   useEffect(() => {
     if (!_metaOAuthCapture) return;
-    const { code, clientId, redirectUri: capturedRedirectUri } = _metaOAuthCapture;
-    console.log("[Meta OAuth] Processing captured callback, clientId:", clientId, "redirectUri:", capturedRedirectUri);
+    const { code, clientId, redirectUri: capturedRedirectUri, isInstagram } = _metaOAuthCapture;
+    console.log("[OAuth] Processing callback, clientId:", clientId, "isInstagram:", isInstagram);
     (async () => {
       try {
-        const result = await handleMetaOAuthCallback(code, capturedRedirectUri);
-        console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 300));
-        if (result && !result.error && result.pages?.length) {
-          /* Show page picker */
-          setMetaPagePicker({ pages: result.pages, clientId });
-          setMetaOAuthPending(false);
-        } else if (result && !result.error && result.saved) {
-          /* Direct save (single page) */
-          setMetaOAuthResult({ success: true, msg: "Conectado!", pageName: result.page_name, igUsername: result.ig_username });
+        if (isInstagram) {
+          /* Instagram Platform API flow */
+          const result = await handleInstagramOAuthCallback(code, capturedRedirectUri);
+          console.log("[Instagram OAuth] Result:", JSON.stringify(result).substring(0, 300));
+          if (result && !result.error && result.username) {
+            await saveInstagramToken(clientId, result);
+            try { sessionStorage.setItem("uh_ig_connected", JSON.stringify({ clientId, ...result })); } catch {}
+            setMetaOAuthResult({ success: true, msg: `@${result.username} conectado!`, igUsername: result.username, isInstagram: true });
+          } else {
+            const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
+            setMetaOAuthResult({ success: false, msg: errMsg });
+          }
           setMetaOAuthPending(false);
         } else {
-          const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
-          try { sessionStorage.setItem("uh_meta_error", errMsg); } catch {}
-          setMetaOAuthResult({ success: false, msg: errMsg });
-          setMetaOAuthPending(false);
+          /* Facebook OAuth flow (existing) */
+          const result = await handleMetaOAuthCallback(code, capturedRedirectUri);
+          console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 300));
+          if (result && !result.error && result.pages?.length) {
+            setMetaPagePicker({ pages: result.pages, clientId });
+            setMetaOAuthPending(false);
+          } else if (result && !result.error && result.saved) {
+            setMetaOAuthResult({ success: true, msg: "Conectado!", pageName: result.page_name, igUsername: result.ig_username });
+            setMetaOAuthPending(false);
+          } else {
+            const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
+            try { sessionStorage.setItem("uh_meta_error", errMsg); } catch {}
+            setMetaOAuthResult({ success: false, msg: errMsg });
+            setMetaOAuthPending(false);
+          }
         }
       } catch(e) {
         setMetaOAuthResult({ success: false, msg: e.message });
