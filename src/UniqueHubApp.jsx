@@ -1901,7 +1901,7 @@ function PWAInstallPopup({ onDismiss }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, agencyIdentity, cloudDash, savePrefsToCloud }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud }) {
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
   const totalClients = CDATA.length;
@@ -2053,7 +2053,17 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         {id:"f4",title:"Case: como triplicamos o ROI de um e-commerce",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases",date:"3 dias"},
         {id:"f5",title:"As melhores ferramentas de automação para agências",summary:"Plataformas que economizam horas de trabalho em gestão de clientes e conteúdo.",cat:"tools",date:"4 dias"},
       ];
-      const items = ((articles||[]).length>0 ? articles : fallback).slice(0,5);
+      const items = ((articles||[]).length>0 ? articles : (articlesLoaded ? fallback : [])).slice(0,5);
+      if (!articlesLoaded && (articles||[]).length === 0) {
+        return <div key="com">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+            <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
+          </div>
+          <div style={{borderRadius:20,overflow:"hidden",marginBottom:10,height:190,background:C.card,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{fontSize:12,color:C.mut,fontWeight:600}}>Carregando notícias...</span>
+          </div>
+        </div>;
+      }
       const featured = items[0];
       const rest = items.slice(1,5);
       return <div key="com">
@@ -11686,7 +11696,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
 
