@@ -9674,6 +9674,8 @@ function GamifyPage({ onBack, user, team }) {
   const [tab, setTab] = useState("ranking");
   const [selBadge, setSelBadge] = useState(null);
   const [selReward, setSelReward] = useState(null);
+  const [redeemConfirm, setRedeemConfirm] = useState(false);
+  const [redeemed, setRedeemed] = useState(false);
   const [xpEvents, setXpEvents] = useState([]);
   const [xpLoaded, setXpLoaded] = useState(false);
   const [awardUser, setAwardUser] = useState(null);
@@ -9808,8 +9810,6 @@ function GamifyPage({ onBack, user, team }) {
   }
 
   /* ── Reward detail modal ── */
-  const [redeemConfirm, setRedeemConfirm] = useState(false);
-  const [redeemed, setRedeemed] = useState(false);
   if (selReward) {
     const r = REWARDS.find(x => x.id === selReward);
     if (!r) { setSelReward(null); return null; }
@@ -9819,9 +9819,9 @@ function GamifyPage({ onBack, user, team }) {
       if (!canAfford || r.stock <= 0) return;
       setRedeemConfirm(false);
       setRedeemed(true);
-      /* Deduct XP from teamData */
-      const idx = teamData.findIndex(t => t.user_id === user?.id);
-      if (idx >= 0) teamData[idx].xp = Math.max(0, teamData[idx].xp - r.cost);
+      /* Add negative XP event to deduct */
+      const deductEvent = { id: "redeem_"+Date.now(), user_id: user?.id, action: "redeem", xp_amount: -r.cost, description: `Resgate: ${r.name}`, created_at: new Date().toISOString() };
+      setXpEvents(prev => [...prev, deductEvent]);
       r.stock = Math.max(0, r.stock - 1);
       showToast(`${r.name} resgatado com sucesso! 🎉`);
     };
@@ -10156,7 +10156,7 @@ function GamifyPage({ onBack, user, team }) {
         {REWARDS.map((r, i) => {
           const canAfford = me.xp >= r.cost;
           return (
-            <Card key={r.id} delay={i*0.04} onClick={() => setSelReward(r.id)} style={{ marginBottom:8, cursor:"pointer", opacity:r.stock>0?1:0.5 }}>
+            <Card key={r.id} delay={i*0.04} onClick={() => { setSelReward(r.id); setRedeemConfirm(false); setRedeemed(false); }} style={{ marginBottom:8, cursor:"pointer", opacity:r.stock>0?1:0.5 }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <span style={{ fontSize:32 }}>{r.icon}</span>
                 <div style={{ flex:1 }}>
