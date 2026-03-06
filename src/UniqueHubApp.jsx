@@ -492,7 +492,7 @@ const META_SCOPES = "pages_show_list,pages_read_engagement,pages_manage_posts,in
 const startMetaOAuth = (clientId) => {
   /* Store which client we're connecting, to use after redirect */
   try { sessionStorage.setItem("uh_meta_oauth_client", clientId); } catch {}
-  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&config_id=${META_CONFIG_ID}&response_type=code&state=meta_connect_${clientId}&override_default_response_type=true`;
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&scope=${encodeURIComponent(META_SCOPES)}&response_type=code&state=meta_connect_${clientId}`;
   window.location.href = url;
 };
 
