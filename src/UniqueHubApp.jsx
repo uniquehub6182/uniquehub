@@ -2646,17 +2646,28 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const { showToast, ToastEl } = useToast();
 
   /* Check for Meta OAuth results after redirect */
+  const metaChecked = useRef(false);
   useEffect(() => {
+    if (metaChecked.current || clients.length === 0) return;
     try {
       const metaResult = sessionStorage.getItem("uh_meta_connected");
       const metaError = sessionStorage.getItem("uh_meta_error");
       if (metaResult) {
+        metaChecked.current = true;
         sessionStorage.removeItem("uh_meta_connected");
         const result = JSON.parse(metaResult);
         const clientId = result.clientId;
-        /* Find and select the client, then update socials */
-        const client = clients.find(c => String(c.id) === String(clientId) || c.supaId === clientId);
+        console.log("[Meta Connect] Looking for client:", clientId, "in", clients.length, "clients");
+        console.log("[Meta Connect] Client IDs:", clients.map(c => `id=${c.id} supaId=${c.supaId}`).join(", "));
+        /* Try multiple matching strategies */
+        const client = clients.find(c => 
+          String(c.id) === String(clientId) || 
+          String(c.supaId) === String(clientId) ||
+          c.id === clientId ||
+          c.supaId === clientId
+        );
         if (client) {
+          console.log("[Meta Connect] Found client:", client.name);
           const ns = {
             ...client.socials,
             instagram: { connected: true, user: result.ig_username || "", followers: "", oauth: true, ig_user_id: result.ig_user_id },
@@ -2666,13 +2677,18 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           setSel({ ...client, socials: ns });
           setProfileTab("socials");
           showToast("Instagram e Facebook conectados via Meta! ✓");
+        } else {
+          console.warn("[Meta Connect] Client not found for id:", clientId);
+          /* Still show success even if client not found - token is saved */
+          showToast(`Meta conectado! (${result.ig_username || result.page_name || "OK"}) — abra o cliente para ver`);
         }
       }
       if (metaError) {
+        metaChecked.current = true;
         sessionStorage.removeItem("uh_meta_error");
         showToast(`Erro Meta: ${metaError}`);
       }
-    } catch(e) {}
+    } catch(e) { console.error("[Meta Connect] Error:", e); }
   }, [clients]);
   const filtered = clients.filter(c => {
     if (filter !== "all" && c.status !== filter) return false;
