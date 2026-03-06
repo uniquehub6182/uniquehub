@@ -2206,7 +2206,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div>
         <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", position:"relative" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:15,color:H.txt,outline:"none",flex:1,width:"100%"}}/>
+          <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:16,color:H.txt,outline:"none",flex:1,width:"100%"}}/>
           {searchQ&&<button onClick={()=>{setSearchQ("");searchRef.current?.focus();}} style={{background:"none",border:"none",cursor:"pointer",color:H.srchT,display:"flex",padding:2}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
           {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:8,background:isDark?"#1A1A1A":"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",border:`1px solid ${C.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"12px 18px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${C.brd}`:"none",display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div><p style={{fontSize:14,fontWeight:600,color:C.txt}}>{r.l}</p>{r.sub&&<p style={{fontSize:11,color:C.mut}}>{r.sub}</p>}</div></div>)}</div>}
         </div>
@@ -5215,6 +5215,36 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const [chatTab, setChatTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
 
+  /* ── Online Presence: track who's currently in the app ── */
+  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const presenceChanRef = useRef(null);
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const chan = supabase.channel('uh-online-presence', { config: { presence: { key: user.id } } });
+    chan.on('presence', { event: 'sync' }, () => {
+      const state = chan.presenceState();
+      const ids = new Set(Object.values(state).flatMap(arr => arr.map(p => p.user_id)));
+      setOnlineUserIds(ids);
+    }).on('presence', { event: 'join' }, ({ key }) => {
+      setOnlineUserIds(prev => new Set([...prev, key]));
+    }).on('presence', { event: 'leave' }, ({ key }) => {
+      setOnlineUserIds(prev => { const n = new Set(prev); n.delete(key); return n; });
+    }).subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await chan.track({ user_id: user.id, online_at: new Date().toISOString() });
+      }
+    });
+    presenceChanRef.current = chan;
+    return () => { supabase.removeChannel(chan); };
+  }, [user?.id]);
+
+  /* ── Call modal (Jitsi Meet) ── */
+  const [callModal, setCallModal] = useState(null); /* null | 'video' | 'voice' */
+  const startCall = (type) => {
+    if (!selConv?.id) return;
+    setCallModal(type);
+  };
+
   /* Load conversations + profiles on mount */
   useEffect(() => {
     if (!user?.id || !supabase) return;
@@ -5584,6 +5614,16 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const isGroup = selConv.type === "group";
     const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
     const avBg = bgPal[convName.charCodeAt(0)%bgPal.length];
+    /* Presence: is the other person actually online? */
+    const otherMember = selConv?.members?.find(m => m.id !== user.id);
+    const otherUserId = otherMember?.id;
+    const otherIsOnline = otherUserId ? onlineUserIds.has(otherUserId) : false;
+    /* Jitsi call */
+    const openCall = (type) => {
+      const roomId = `uniquehub-${(selConv.id||'').replace(/-/g,'').slice(0,12)}`;
+      const params = type === 'voice' ? '#config.startWithVideoMuted=true' : '';
+      window.open(`https://meet.jit.si/${roomId}${params}`, '_blank', 'noopener');
+    };
     return (
       <div style={{ position:"fixed", top:vpTop, left:0, right:0, height:vpHeight, zIndex:100, display:"flex", flexDirection:"column", background:B.bgCard, overflow:"hidden" }}>
         {ToastEl}
@@ -5599,19 +5639,19 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               ? <div style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
               : <Av src={allProfiles.find(p=>p.id===selConv?.members?.find(m=>m.id!==user.id)?.id)?.photo_url} name={convName} sz={44} fs={16} />
             }
-            {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bgCard}` }}/>}
+            {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ fontSize:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
-            <p style={{ fontSize:11, color:otherTyping?B.accent:"#22C55E", margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
-              {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : "Online"}
+            <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
+              {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : (otherIsOnline ? "Online" : "Offline")}
             </p>
           </div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>showToast("Videochamada em breve")} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <button onClick={()=>openCall('video')} title="Videochamada" style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
             </button>
-            <button onClick={()=>showToast("Chamada em breve")} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <button onClick={()=>openCall('voice')} title="Chamada de voz" style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
             </button>
             {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.red}30`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -5708,7 +5748,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
               )}
-              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }}/>
+              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none" }}/>
               {input.trim() ? (
                 <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -5805,7 +5845,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
         <div style={{ position:"relative", marginBottom:14 }}>
           <svg style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:B.bgCard, border:`1.5px solid ${B.border}`, borderRadius:12, padding:"10px 14px 10px 36px", fontFamily:"inherit", fontSize:14, color:B.text, outline:"none", boxSizing:"border-box" }}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:B.bgCard, border:`1.5px solid ${B.border}`, borderRadius:12, padding:"10px 14px 10px 36px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none", boxSizing:"border-box" }}/>
         </div>
         <div style={{ display:"flex", gap:6, marginBottom:14 }}>
           {[{k:"all",l:"Todos"},{k:"dm",l:"Direto"},{k:"group",l:"Grupos"}].map(t=>(
@@ -5844,7 +5884,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     : isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                     : <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{initials}</span>}
                 </div>
-                {!isGroup && <div style={{ position:"absolute", bottom:2, right:2, width:12, height:12, borderRadius:"50%", background:"#22C55E", border:`2px solid ${B.bgCard}` }}/>}
+                {!isGroup && <div style={{ position:"absolute", bottom:2, right:2, width:12, height:12, borderRadius:"50%", background:onlineUserIds.has(other?.id)?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
@@ -11275,6 +11315,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
   const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
+
   const [agencyIdentity, setAgencyIdentity] = useState({ name:"Unique Marketing 360", slogan:"Agência de marketing 360", city:"Petrópolis, RJ", logo_url:"" });
   useEffect(() => {
     supaGetSetting("agency_identity").then(raw => {
@@ -11492,7 +11533,7 @@ body,*{font-family:var(--uh-font)!important}
 .app,.screen{background:${B.bg}!important;color:${B.text}!important${uiPrefs.highContrast?";filter:contrast(1.15)":""}}
 .card{background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border);border-radius:var(--uh-radius)!important;padding:var(--uh-pad)!important;${uiPrefs.cardStyle==="glass"&&!uiPrefs.reduceTransparency?"backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);":""}transition:all var(--uh-anim) ease}
 p,span,div,h1,h2,h3,h4{color:inherit}
-.tinput{background:${B.bgInput}!important;color:${B.text}!important;border-color:${B.border}!important;border-radius:var(--uh-radius-sm)!important;font-size:var(--uh-fs)!important}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
+.tinput{background:${B.bgInput}!important;color:${B.text}!important;border-color:${B.border}!important;border-radius:var(--uh-radius-sm)!important;font-size:max(16px,var(--uh-fs))!important}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent,.pill.full.accent{background:${B.accent}!important;color:${B.textOnAccent}!important;border-radius:var(--uh-radius)!important}
 .pill.outline{color:${B.text}!important;border-color:${B.border}!important}
 .pill{background:${B.dark}!important}
@@ -11608,6 +11649,19 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 export default function App() {
   const [user, setUser] = useState(null);
   const [showPWA, setShowPWA] = useState(false);
+
+  /* ── iOS zoom prevention: lock viewport on input focus, release on blur ── */
+  useEffect(() => {
+    const vp = document.querySelector('meta[name=viewport]');
+    if (!vp) return;
+    const LOCKED = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover';
+    const NORMAL = 'width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover';
+    const lock = (e) => { if (['INPUT','TEXTAREA','SELECT'].includes(e.target?.tagName)) vp.setAttribute('content', LOCKED); };
+    const unlock = (e) => { if (['INPUT','TEXTAREA','SELECT'].includes(e.target?.tagName)) setTimeout(() => vp.setAttribute('content', NORMAL), 200); };
+    document.addEventListener('focusin', lock, true);
+    document.addEventListener('focusout', unlock, true);
+    return () => { document.removeEventListener('focusin', lock, true); document.removeEventListener('focusout', unlock, true); };
+  }, []);
 
   /* ── iOS 26 PWA gap fix: sync body background with dark mode ── */
 
