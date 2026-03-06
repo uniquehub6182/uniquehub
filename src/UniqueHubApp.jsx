@@ -478,23 +478,27 @@ const startMetaOAuth = (clientId) => {
 
 const handleMetaOAuthCallback = async (code) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  if (!code) return { error: "Código OAuth vazio" };
+  const bodyObj = { code: String(code), client_id: String(META_APP_ID), redirect_uri: String(META_REDIRECT_URI) };
+  console.log("Meta OAuth: sending to edge function:", JSON.stringify(bodyObj));
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
+    const fnUrl = `${SUPA_URL}/functions/v1/meta-oauth-callback?code=${encodeURIComponent(String(code))}&client_id=${encodeURIComponent(String(META_APP_ID))}&redirect_uri=${encodeURIComponent(String(META_REDIRECT_URI))}`;
+    const res = await fetch(fnUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ code, client_id: META_APP_ID, redirect_uri: META_REDIRECT_URI })
+      body: JSON.stringify(bodyObj)
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.error("Meta OAuth HTTP error:", res.status, text);
-      return { error: `Edge Function erro ${res.status}: ${text.substring(0, 100)}` };
+      return { error: `Edge Function erro ${res.status}: ${text.substring(0, 200)}` };
     }
     const data = await res.json();
     if (data.error) { console.error("Meta OAuth error:", data.error); return { error: data.error }; }
-    return data; /* { page_id, page_name, page_token, ig_user_id, ig_username } */
+    return data;
   } catch(e) { 
     console.error("Meta OAuth callback error:", e); 
-    return { error: `Conexão falhou: ${e.message}. Verifique se a Edge Function meta-oauth-callback está deployada no Supabase.` };
+    return { error: `Conexão falhou: ${e.message}` };
   }
 };
 
