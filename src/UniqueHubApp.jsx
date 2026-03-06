@@ -11775,9 +11775,9 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${dark?"#1C2228":"#fff"};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden;background:${dark?"#1C2228":"#fff"}}
+html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden;background:${B.bg}}
 input,textarea,select{font-size:16px !important}
-.app{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
+.app{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg};padding-bottom:env(safe-area-inset-bottom,0px)}
 .screen{width:100%;max-width:100%;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:${B.bg}}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.bg}}
 .pg{padding:16px 16px 20px;padding-top:${TOP}}
