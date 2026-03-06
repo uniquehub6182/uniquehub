@@ -9137,12 +9137,26 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
         </div>} />
+
+        {/* Hero photo */}
+        {a.photo && (
+          <div style={{ marginBottom:12, borderRadius:16, overflow:"hidden", position:"relative", height:200 }}>
+            <img src={a.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,0.55) 100%)" }} />
+            <div style={{ position:"absolute", bottom:12, left:12, display:"flex", gap:6, flexWrap:"wrap" }}>
+              <Tag color={catColor(a.cat)} style={{ background:catColor(a.cat), color:"#fff" }}>{catLabel(a.cat)}</Tag>
+              {a.pinned && <Tag color={B.red} style={{ background:B.red, color:"#fff" }}>⭐ Destaque</Tag>}
+            </div>
+          </div>
+        )}
+
         <Card style={{ marginBottom:12, borderLeft:`4px solid ${catColor(a.cat)}` }}>
-          <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+          {!a.photo && <div style={{ display:"flex", gap:6, marginBottom:8 }}>
             <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
             <Tag color={B.muted}>{a.readTime}</Tag>
             {a.pinned && <Tag color={B.red}>Destaque</Tag>}
-          </div>
+          </div>}
+          {a.photo && a.readTime && <p className="sl" style={{ marginBottom:6 }}>{a.readTime}</p>}
           <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{a.title}</h3>
           <p style={{ fontSize:11, color:B.muted }}>{a.sourceUrl ? <a href={a.sourceUrl.startsWith("http") ? a.sourceUrl : `https://${a.sourceUrl}`} target="_blank" rel="noopener noreferrer" style={{ color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : a.source} · {a.date}</p>
         </Card>
@@ -9159,7 +9173,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
             </div>
           </Card>
         )}
-        <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", ")});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+        <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar artigo
         </button>
