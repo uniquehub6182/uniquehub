@@ -12312,27 +12312,27 @@ export default function App() {
   /* Check for existing Supabase session on mount */
   /* ── Meta OAuth callback handler ── */
   const [metaOAuthPending, setMetaOAuthPending] = useState(!!_metaOAuthCapture);
+  const [metaOAuthResult, setMetaOAuthResult] = useState(null); /* {success:true, msg} or {success:false, msg} */
   useEffect(() => {
     if (!_metaOAuthCapture) return;
     const { code, clientId } = _metaOAuthCapture;
     console.log("[Meta OAuth] Processing captured callback, clientId:", clientId);
     (async () => {
       try {
-        console.log("[Meta OAuth] Calling Edge Function...");
         const result = await handleMetaOAuthCallback(code);
         console.log("[Meta OAuth] Result:", JSON.stringify(result).substring(0, 200));
         if (result && !result.error) {
           await saveMetaToken(clientId, result);
           try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId, ...result })); } catch {}
-          console.log("[Meta OAuth] Success!");
+          setMetaOAuthResult({ success: true, msg: `${result.ig_username || result.page_name || "Meta"} conectado!`, igUsername: result.ig_username, pageName: result.page_name });
         } else {
           const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
           try { sessionStorage.setItem("uh_meta_error", errMsg); } catch {}
-          console.error("[Meta OAuth] Error:", errMsg);
+          setMetaOAuthResult({ success: false, msg: errMsg });
         }
       } catch(e) {
-        console.error("[Meta OAuth] Exception:", e);
-        try { sessionStorage.setItem("uh_meta_error", e.message || "Erro inesperado"); } catch {}
+        setMetaOAuthResult({ success: false, msg: e.message });
+        try { sessionStorage.setItem("uh_meta_error", e.message); } catch {}
       }
       setMetaOAuthPending(false);
     })();
@@ -12389,13 +12389,27 @@ export default function App() {
     setUser(null);
   };
 
-  if (metaOAuthPending) return (
+  if (metaOAuthPending || metaOAuthResult) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8"}}>
-      <div style={{textAlign:"center"}}>
-        <div style={{fontSize:48,marginBottom:16}}>🔗</div>
-        <div style={{width:44,height:44,border:"3px solid #E5E2DD",borderTopColor:"#1877F2",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
-        <p style={{color:"#192126",fontSize:15,fontWeight:700}}>Conectando com Meta...</p>
-        <p style={{color:"#8B8F92",fontSize:12,marginTop:4}}>Vinculando Instagram e Facebook</p>
+      <div style={{textAlign:"center",padding:24,maxWidth:360}}>
+        {metaOAuthPending ? <>
+          <div style={{fontSize:48,marginBottom:16}}>🔗</div>
+          <div style={{width:44,height:44,border:"3px solid #E5E2DD",borderTopColor:"#1877F2",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+          <p style={{color:"#192126",fontSize:15,fontWeight:700}}>Conectando com Meta...</p>
+          <p style={{color:"#8B8F92",fontSize:12,marginTop:4}}>Vinculando Instagram e Facebook</p>
+        </> : metaOAuthResult?.success ? <>
+          <div style={{fontSize:56,marginBottom:16}}>✅</div>
+          <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Conectado com sucesso!</p>
+          {metaOAuthResult.igUsername && <p style={{color:"#E1306C",fontSize:14,fontWeight:600}}>📸 @{metaOAuthResult.igUsername}</p>}
+          {metaOAuthResult.pageName && <p style={{color:"#1877F2",fontSize:14,fontWeight:600,marginTop:4}}>📘 {metaOAuthResult.pageName}</p>}
+          <p style={{color:"#8B8F92",fontSize:12,marginTop:12}}>Token salvo. Abra o cliente para ver as redes conectadas.</p>
+          <button onClick={() => setMetaOAuthResult(null)} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#BBF246",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#192126"}}>Continuar</button>
+        </> : <>
+          <div style={{fontSize:56,marginBottom:16}}>⚠️</div>
+          <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Erro na conexão</p>
+          <p style={{color:"#EF4444",fontSize:12,marginTop:8,lineHeight:1.5,wordBreak:"break-word"}}>{metaOAuthResult?.msg}</p>
+          <button onClick={() => setMetaOAuthResult(null)} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#F7F7F8",border:"1.5px solid #E5E2DD",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#192126"}}>Fechar</button>
+        </>}
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
