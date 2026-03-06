@@ -484,17 +484,16 @@ const supaGetAIKeys = async () => {
 };
 
 /* ── Meta API Integration (Instagram / Facebook) ── */
-const META_APP_ID = "1557196698688426";
-const META_CONFIG_ID = "1251666086415367";
+const META_APP_ID = "2517979078617358";
+const META_CONFIG_ID = ""; /* Not needed for standard Facebook Login */
 const META_REDIRECT_URI = `${window.location.origin}/`;
 const META_SCOPES = "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_comments,instagram_manage_insights";
 
 const startMetaOAuth = (clientId) => {
   /* Store which client we're connecting, to use after redirect */
   try { sessionStorage.setItem("uh_meta_oauth_client", clientId); } catch {}
-  /* config_id is REQUIRED for Facebook Login for Business */
-  /* Instagram scopes must be configured in the config_id settings at Meta Developer panel */
-  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&config_id=${META_CONFIG_ID}&response_type=code&state=meta_connect_${clientId}&override_default_response_type=true`;
+  /* Standard Facebook Login: use scope directly, no config_id needed */
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&scope=${encodeURIComponent(META_SCOPES)}&response_type=code&state=meta_connect_${clientId}`;
   console.log("[Meta OAuth] Starting, redirect_uri:", META_REDIRECT_URI);
   window.location.href = url;
 };
