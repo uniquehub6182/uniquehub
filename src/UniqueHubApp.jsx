@@ -1111,7 +1111,7 @@ function OnboardingSlides({ onDone }) {
 
   return (
     <div
-      style={{ position:"fixed", inset:0, background:"#000", overflow:"hidden", touchAction:"pan-y", userSelect:"none" }}
+      style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"#000", overflow:"hidden", touchAction:"pan-y", userSelect:"none" }}
       onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
       onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
     >
@@ -1125,7 +1125,7 @@ function OnboardingSlides({ onDone }) {
       }}>
         {SLIDES.map((s, i) => (
           <div key={i} style={{ width: W, height:"100%", flexShrink:0, position:"relative" }}>
-            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${s.img})`, backgroundSize:"cover", backgroundPosition:"center top" }} />
+            <div style={{ position:"absolute", top:0, left:0, right:0, bottom:0, backgroundImage:`url(${s.img})`, backgroundSize:"cover", backgroundPosition:"center top" }} />
 
           </div>
         ))}
@@ -11778,7 +11778,7 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;height:100%;height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{height:100%;height:100dvh;overflow:hidden;background:${B.bg}}
+html,body{font-family:'Figtree',sans-serif;background:${B.bg};margin:0;padding:0;width:100%;height:100%;height:-webkit-fill-available;min-height:100dvh;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;height:-webkit-fill-available;min-height:100dvh;overflow:hidden;background:${B.bg}}
 input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
 .screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
