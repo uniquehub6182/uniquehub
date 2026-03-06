@@ -6058,7 +6058,7 @@ const profileFieldIcon = (k) => {
   if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
   return <span style={{fontSize:14}}>•</span>;
 };
-function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud }) {
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [twoFA, setTwoFA] = useState(false);
@@ -6512,7 +6512,15 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       { k:"uh_v2_light", css:"#F5F5F5" },
     ];
 
-    const applyPreset = (p) => { setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr); showToast(p.name+" aplicado ✓"); };
+    const applyPreset = (p) => {
+      /* Apply all three changes locally */
+      setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr);
+      /* Force a single correct cloud save with all new values */
+      if (typeof savePrefsToCloud === "function" && user?.id) {
+        setTimeout(() => savePrefsToCloud(p.dark, p.theme, p.pr, user.id), 50);
+      }
+      showToast(p.name+" aplicado ✓");
+    };
 
     /* Helpers */
     const OR = ({ options, current, onPick, renderOption }) => <div style={{ display:"flex", gap:6 }}>{options.map(o => { const a=current===o.k; return <button key={o.k} onClick={() => onPick(o.k)} style={{ flex:1, padding:"10px 6px", borderRadius:12, border:"1.5px solid "+(a?B.accent:B.border), background:a?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>{renderOption(o,a)}</button>; })}</div>;
@@ -9735,9 +9743,10 @@ function GamifyPage({ onBack, user, team }) {
   /* ── Badge detail modal ── */
   if (selBadge) {
     const b = ALL_BADGES.find(x => x.id === selBadge);
+    if (!b) { setSelBadge(null); return null; }
     const earned = myBadges.includes(selBadge);
     return (
-      <div className="pg">
+      <div style={{ paddingTop:TOP, minHeight:"100%", padding:"0 16px" }}>
         {ToastEl}
         <Head title="Conquista" onBack={() => setSelBadge(null)} />
         <div style={{ textAlign:"center", padding:"20px 0" }}>
@@ -9759,9 +9768,10 @@ function GamifyPage({ onBack, user, team }) {
   /* ── Reward detail modal ── */
   if (selReward) {
     const r = REWARDS.find(x => x.id === selReward);
+    if (!r) { setSelReward(null); return null; }
     const canAfford = me.xp >= r.cost;
     return (
-      <div className="pg">
+      <div style={{ paddingTop:TOP, minHeight:"100%", padding:"0 16px" }}>
         {ToastEl}
         <Head title="Recompensa" onBack={() => setSelReward(null)} />
         <div style={{ textAlign:"center", padding:"20px 0" }}>
@@ -11729,7 +11739,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
-        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} /></SettingsBoundary>}
+        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
