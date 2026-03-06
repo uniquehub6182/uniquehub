@@ -2685,13 +2685,16 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           console.log("[Meta Connect] Found client:", client.name);
           const ns = {
             ...client.socials,
-            instagram: { connected: true, user: result.ig_username || "", followers: "", oauth: true, ig_user_id: result.ig_user_id },
             facebook: { connected: true, user: result.page_name || "", followers: "", oauth: true, page_id: result.page_id }
           };
+          /* Only mark Instagram as connected if actually linked */
+          if (result.ig_username) {
+            ns.instagram = { connected: true, user: result.ig_username, followers: "", oauth: true, ig_user_id: result.ig_user_id };
+          }
           updateClient(client.id, { socials: ns });
           setSel({ ...client, socials: ns });
           setProfileTab("socials");
-          showToast("Instagram e Facebook conectados via Meta! ✓");
+          showToast(result.ig_username ? "Instagram e Facebook conectados via Meta! ✓" : "Facebook conectado via Meta! ✓ (Instagram não vinculado à página)");
         } else {
           console.warn("[Meta Connect] Client not found for id:", clientId);
           /* Still show success even if client not found - token is saved */
@@ -2740,6 +2743,11 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     /* Persist file metadata separately via settings */
     if (data.files !== undefined) {
       supaSetSetting(`client_files_${id}`, JSON.stringify(data.files));
+    }
+    /* Persist socials separately via settings */
+    if (data.socials !== undefined) {
+      const cid = client?.supaId || id;
+      supaSetSetting(`client_socials_${cid}`, JSON.stringify(data.socials));
     }
   };
 
@@ -11978,13 +11986,16 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
             const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
             return mergeSupaClient(r, existing);
           });
-          /* Load file metadata for each client */
-          const withFiles = await Promise.all(merged.map(async (c) => {
+          /* Load file metadata and socials for each client */
+          const withExtras = await Promise.all(merged.map(async (c) => {
+            let result = c;
             const filesRaw = await supaGetSetting(`client_files_${c.id}`);
-            if (filesRaw) { try { return { ...c, files: JSON.parse(filesRaw) }; } catch {} }
-            return c;
+            if (filesRaw) { try { result = { ...result, files: JSON.parse(filesRaw) }; } catch {} }
+            const socialsRaw = await supaGetSetting(`client_socials_${c.id}`);
+            if (socialsRaw) { try { result = { ...result, socials: { ...result.socials, ...JSON.parse(socialsRaw) } }; } catch {} }
+            return result;
           }));
-          setSharedClients(withFiles);
+          setSharedClients(withExtras);
         } else {
           setSharedClients([]);
         }
