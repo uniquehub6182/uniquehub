@@ -579,13 +579,14 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
 };
 
 /* ── Instagram Platform API (Direct Login via Instagram) ── */
-const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights";
+const IG_APP_ID = "1380216083791935";
+const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments";
 
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
   const redirectUri = encodeURIComponent(window.location.origin + "/");
-  const url = `https://api.instagram.com/oauth/authorize?client_id=${META_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
-  console.log("[Instagram OAuth] Starting, redirect_uri:", window.location.origin + "/");
+  const url = `https://www.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${IG_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
+  console.log("[Instagram OAuth] Starting with IG Business Login API, redirect_uri:", window.location.origin + "/");
   window.location.href = url;
 };
 
