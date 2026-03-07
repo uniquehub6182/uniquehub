@@ -582,6 +582,20 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
 const IG_APP_ID = "1380216083791935";
 const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments";
 
+const publishToInstagram = async (clientId, imageUrl, caption, mediaType = "FEED") => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/instagram-publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ client_id: clientId, image_url: imageUrl, caption, media_type: mediaType })
+    });
+    const data = await res.json();
+    console.log("[IG Publish] Response:", JSON.stringify(data).substring(0, 300));
+    return data;
+  } catch(e) { console.error("publishToInstagram error:", e); return { error: e.message }; }
+};
+
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
   const redirectUri = encodeURIComponent(window.location.origin + "/");
@@ -2935,6 +2949,41 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               <button onClick={() => { startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:"#F59E0B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                 🔄 Reconectar com Meta
               </button>
+            </div>
+          </Card>
+        </>}
+
+        {/* Quick publish test for Instagram */}
+        {editingSocial === "instagram" && current.connected && current.oauth && supabase && <>
+          <Card style={{ marginBottom:12, background:"#E1306C08", border:"1.5px solid #E1306C20" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>📸 Teste de Publicação</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Envie uma imagem de teste para o Instagram. A imagem precisa ser uma URL pública.</p>
+              <input id="ig_test_url" placeholder="URL da imagem (https://...)" className="tinput" style={{ marginBottom:8, textAlign:"center", fontSize:12 }} />
+              <input id="ig_test_caption" placeholder="Legenda (opcional para feed)" className="tinput" style={{ marginBottom:10, textAlign:"center", fontSize:12 }} />
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={async () => {
+                  const url = document.getElementById("ig_test_url")?.value;
+                  if (!url) { showToast("Cole a URL da imagem"); return; }
+                  const caption = document.getElementById("ig_test_caption")?.value || "";
+                  showToast("Publicando no Feed...");
+                  const r = await publishToInstagram(sel.supaId || sel.id, url, caption, "FEED");
+                  if (r.error) showToast(`Erro: ${r.error}`);
+                  else showToast(r.message || "Post publicado! ✓");
+                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>
+                  📷 Publicar Feed
+                </button>
+                <button onClick={async () => {
+                  const url = document.getElementById("ig_test_url")?.value;
+                  if (!url) { showToast("Cole a URL da imagem"); return; }
+                  showToast("Publicando Story...");
+                  const r = await publishToInstagram(sel.supaId || sel.id, url, "", "STORIES");
+                  if (r.error) showToast(`Erro: ${r.error}`);
+                  else showToast(r.message || "Story publicado! ✓");
+                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>
+                  📱 Publicar Story
+                </button>
+              </div>
             </div>
           </Card>
         </>}
