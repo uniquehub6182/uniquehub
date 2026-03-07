@@ -1,0 +1,59 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const { client_id, image_url, caption } = await req.json();
+    if (!client_id) throw new Error("Missing client_id");
+    if (!image_url) throw new Error("Missing image_url");
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // Read Facebook page token from app_settings
+    const { data: setting } = await supabase
+      .from("app_settings").select("value").eq("key", `meta_token_${client_id}`).single();
+    if (!setting?.value) throw new Error("Facebook não conectado para este cliente.");
+
+    let tokenData;
+    try { tokenData = JSON.parse(setting.value); } catch { throw new Error("Token corrompido"); }
+    const { page_id, page_token } = tokenData;
+    if (!page_id || !page_token) throw new Error("Token do Facebook inválido — reconecte");
+
+    console.log("[FB Publish] page:", page_id, "has image:", !!image_url);
+
+    // Publish photo to Facebook Page
+    const params = new URLSearchParams();
+    params.append("access_token", page_token);
+    params.append("url", image_url);
+    if (caption) params.append("message", caption);
+
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${page_id}/photos`,
+      { method: "POST", body: params }
+    );
+    const data = await res.json();
+    console.log("[FB Publish] Response:", JSON.stringify(data).substring(0, 300));
+
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+    return new Response(JSON.stringify({
+      success: true, media_id: data.id || data.post_id,
+      message: "Post publicado no Facebook!",
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+
+  } catch (err) {
+    console.error("[FB Publish] Error:", err.message);
+    return new Response(JSON.stringify({ error: err.message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
+  }
+});

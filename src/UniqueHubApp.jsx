@@ -569,13 +569,13 @@ const getMetaConnection = async (clientId) => {
 const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
   if (!supabase || !SUPA_URL) return null;
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/meta-publish`, {
+    const res = await fetch(`${SUPA_URL}/functions/v1/facebook-publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ client_id: clientId, image_url: imageUrl, caption, platforms })
+      body: JSON.stringify({ client_id: clientId, image_url: imageUrl, caption })
     });
     return await res.json();
-  } catch(e) { console.error("publishToMeta error:", e); return null; }
+  } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
 };
 
 /* ── Instagram Platform API (Direct Login via Instagram) ── */
