@@ -633,6 +633,54 @@ const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEE
   } catch(e) { console.error("publishToInstagram error:", e); return { error: e.message }; }
 };
 
+/* ═══ FETCH META/IG INSIGHTS (Graph API) ═══ */
+const fetchGraphInsights = async (clientId) => {
+  if (!supabase) return null;
+  try {
+    const raw = await supaGetSetting(`meta_token_${clientId}`);
+    if (!raw) return null;
+    const token = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!token.page_token) return null;
+    const now = new Date();
+    const since = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sinceStr = since.toISOString().split("T")[0];
+    const untilStr = now.toISOString().split("T")[0];
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const prevSinceStr = prevMonthStart.toISOString().split("T")[0];
+    const prevUntilStr = prevMonthEnd.toISOString().split("T")[0];
+    const at = token.page_token;
+    const result = { fb: null, ig: null, igMedia: null, fbPrev: null, igPrev: null, pageId: token.page_id, igUserId: token.ig_user_id };
+    if (token.page_id) {
+      const fbM = "page_impressions,page_impressions_organic_v2,page_impressions_paid,page_engaged_users,page_post_engagements,page_fan_adds,page_views_total";
+      try {
+        const r1 = await fetch(`https://graph.facebook.com/v21.0/${token.page_id}/insights?metric=${fbM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+        const d1 = await r1.json(); if (d1.data) result.fb = d1.data;
+        const r2 = await fetch(`https://graph.facebook.com/v21.0/${token.page_id}/insights?metric=${fbM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
+        const d2 = await r2.json(); if (d2.data) result.fbPrev = d2.data;
+      } catch (e) { console.warn("FB insights error:", e); }
+      try { const r = await fetch(`https://graph.facebook.com/v21.0/${token.page_id}?fields=name,fan_count,followers_count&access_token=${at}`); result.fbPage = await r.json(); } catch {}
+    }
+    if (token.ig_user_id) {
+      const igM = "impressions,reach,profile_views,accounts_engaged,follower_count";
+      try {
+        const r1 = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}/insights?metric=${igM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+        const d1 = await r1.json(); if (d1.data) result.ig = d1.data;
+        const r2 = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}/insights?metric=${igM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
+        const d2 = await r2.json(); if (d2.data) result.igPrev = d2.data;
+      } catch (e) { console.warn("IG insights error:", e); }
+      try {
+        const r = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url,insights.metric(impressions,reach,engagement,saved)&limit=30&access_token=${at}`);
+        const d = await r.json(); if (d.data) result.igMedia = d.data;
+      } catch (e) { console.warn("IG media error:", e); }
+      try { const r = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url&access_token=${at}`); result.igProfile = await r.json(); } catch {}
+    }
+    return result;
+  } catch (e) { console.error("fetchGraphInsights:", e); return null; }
+};
+const sumInsight = (data, name) => { if (!data) return 0; const m = data.find(x => x.name === name); return m?.values ? m.values.reduce((a, v) => a + (v.value || 0), 0) : 0; };
+const dailyInsight = (data, name) => { if (!data) return []; const m = data.find(x => x.name === name); return (m?.values || []).map(v => ({ date: v.end_time?.split("T")[0] || "", value: v.value || 0 })); };
+
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
   const redirectUri = encodeURIComponent(window.location.origin + "/");
@@ -9309,438 +9357,451 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
 function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
-  const [period, setPeriod] = useState("fev");
   const [tab, setTab] = useState("overview");
   const [selClient, setSelClient] = useState(null);
+  const [insights, setInsights] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
 
-  const PERIODS = [
-    { k:"fev", l:"Fevereiro 2026" },
-    { k:"jan", l:"Janeiro 2026" },
-    { k:"dez", l:"Dezembro 2025" },
-    { k:"nov", l:"Novembro 2025" },
-  ];
+  /* Fetch insights for all clients */
+  useEffect(() => {
+    if (loaded || CDATA.length === 0) return;
+    setLoading(true);
+    const fetchAll = async () => {
+      const results = {};
+      for (const c of CDATA) {
+        const cid = c.supaId || c.id;
+        try { results[c.name] = await fetchGraphInsights(cid); } catch { results[c.name] = null; }
+      }
+      setInsights(results); setLoading(false); setLoaded(true);
+    };
+    fetchAll();
+  }, [loaded, CDATA]);
 
-  // Simulated monthly data per client
-  const CLIENT_METRICS = CDATA.map(c => {
-    const parseFollowers = (s) => { if (!s) return 0; const n = parseFloat(s); return s.includes("k") ? n*1000 : n; };
-    const igF = parseFollowers(c.socials?.instagram?.followers);
-    const fbF = parseFollowers(c.socials?.facebook?.followers);
-    const ttF = parseFollowers(c.socials?.tiktok?.followers);
-    const totalFollowers = igF + fbF + ttF;
-    const monthly = parseBRL(c.monthly);
-    const filesCount = (c.files||[]).length;
-    const growth = Math.floor(Math.random()*15+3);
-    const reach = Math.floor(totalFollowers * (1.5 + Math.random()*3));
-    const engagement = (2 + Math.random()*4).toFixed(1);
-    const leads = Math.floor(Math.random()*30+5);
-    const posts = Math.floor(Math.random()*15+5);
-    const stories = Math.floor(Math.random()*20+8);
-    const reels = Math.floor(Math.random()*8+2);
-    return { ...c, igF, fbF, ttF, totalFollowers, monthlyValue: monthly, filesCount, growth, reach, engagement, leads, posts, stories, reels };
-  });
-
-  const totalRevenue = CLIENT_METRICS.reduce((a,c) => a + c.monthlyValue, 0);
-  const totalReach = CLIENT_METRICS.reduce((a,c) => a + c.reach, 0);
-  const avgEngagement = (CLIENT_METRICS.reduce((a,c) => a + parseFloat(c.engagement), 0) / CLIENT_METRICS.length).toFixed(1);
-  const totalPosts = CLIENT_METRICS.reduce((a,c) => a + c.posts, 0);
-  const totalStories = CLIENT_METRICS.reduce((a,c) => a + c.stories, 0);
-  const totalReels = CLIENT_METRICS.reduce((a,c) => a + c.reels, 0);
-  const totalLeads = CLIENT_METRICS.reduce((a,c) => a + c.leads, 0);
-  const avgScore = Math.round(CLIENT_METRICS.reduce((a,c) => a + c.score, 0) / CLIENT_METRICS.length);
-  const activeClients = CLIENT_METRICS.filter(c => c.status === "ativo").length;
-
-  // Revenue chart data (last 6 months)
-  const revenueChart = [
-    { m:"Set", v:12200 }, { m:"Out", v:13500 }, { m:"Nov", v:14800 },
-    { m:"Dez", v:15200 }, { m:"Jan", v:17000 }, { m:"Fev", v:totalRevenue },
-  ];
-  const maxRev = Math.max(...revenueChart.map(r=>r.v));
-
-  // Content production chart
-  const contentChart = [
-    { m:"Set", posts:42, stories:65, reels:18 },
-    { m:"Out", posts:48, stories:72, reels:22 },
-    { m:"Nov", posts:55, stories:80, reels:25 },
-    { m:"Dez", posts:38, stories:55, reels:15 },
-    { m:"Jan", posts:60, stories:88, reels:30 },
-    { m:"Fev", posts:totalPosts, stories:totalStories, reels:totalReels },
-  ];
-  const maxContent = Math.max(...contentChart.map(c=>c.posts+c.stories+c.reels));
-
-  // Team productivity
-  const teamData = TEAM.map(m => ({
-    ...m,
-    tasksCompleted: Math.floor(Math.random()*25+10),
-    tasksTotal: Math.floor(Math.random()*30+15),
-    hoursLogged: Math.floor(Math.random()*120+40),
-    rating: (3.5+Math.random()*1.5).toFixed(1),
-  }));
+  const formatNum = (n) => { if (n === null || n === undefined || isNaN(n)) return "0"; return n >= 1000000 ? (n/1000000).toFixed(1)+"M" : n >= 1000 ? (n/1000).toFixed(1)+"k" : n.toString(); };
+  const pctChange = (cur, prev) => { if (!prev) return null; const p = Math.round(((cur - prev) / prev) * 100); return p; };
 
   const Bar = ({ value, max, color, h }) => (
     <div style={{ width:"100%", height:h||8, borderRadius:4, background:`${color}15`, overflow:"hidden" }}>
-      <div style={{ width:`${Math.min((value/max)*100,100)}%`, height:"100%", borderRadius:4, background:color, transition:"width 0.5s ease" }} />
+      <div style={{ width:`${Math.min((value/(max||1))*100,100)}%`, height:"100%", borderRadius:4, background:color, transition:"width 0.5s ease" }} />
     </div>
   );
 
-  const formatNum = (n) => n >= 1000 ? (n/1000).toFixed(1)+"k" : n.toString();
-  const formatMoney = (n) => "R$ "+n.toLocaleString("pt-BR");
+  /* Aggregate data per client */
+  const clientMetrics = CDATA.map(c => {
+    const ins = insights[c.name];
+    const hasData = !!ins && (!!ins.fb || !!ins.ig);
+    const fbImpressions = sumInsight(ins?.fb, "page_impressions");
+    const fbImpOrganic = sumInsight(ins?.fb, "page_impressions_organic_v2");
+    const fbImpPaid = sumInsight(ins?.fb, "page_impressions_paid");
+    const fbEngagedUsers = sumInsight(ins?.fb, "page_engaged_users");
+    const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
+    const fbFanAdds = sumInsight(ins?.fb, "page_fan_adds");
+    const fbPageViews = sumInsight(ins?.fb, "page_views_total");
+    const fbPrevImp = sumInsight(ins?.fbPrev, "page_impressions");
+    const fbPrevEng = sumInsight(ins?.fbPrev, "page_engaged_users");
 
-  /* ── CLIENT DETAIL REPORT ── */
+    const igImpressions = sumInsight(ins?.ig, "impressions");
+    const igReach = sumInsight(ins?.ig, "reach");
+    const igProfileViews = sumInsight(ins?.ig, "profile_views");
+    const igAccountsEngaged = sumInsight(ins?.ig, "accounts_engaged");
+    const igFollowerCount = sumInsight(ins?.ig, "follower_count");
+    const igPrevReach = sumInsight(ins?.igPrev, "reach");
+    const igPrevImp = sumInsight(ins?.igPrev, "impressions");
+
+    const mediaPosts = (ins?.igMedia || []);
+    const totalLikes = mediaPosts.reduce((a, p) => a + (p.like_count || 0), 0);
+    const totalComments = mediaPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
+    const totalSaved = mediaPosts.reduce((a, p) => {
+      const s = p.insights?.data?.find(i => i.name === "saved");
+      return a + (s?.values?.[0]?.value || 0);
+    }, 0);
+
+    const fbFollowers = ins?.fbPage?.followers_count || ins?.fbPage?.fan_count || 0;
+    const igFollowers = ins?.igProfile?.followers_count || 0;
+    const igMediaCount = ins?.igProfile?.media_count || 0;
+    const engRate = igReach > 0 ? ((igAccountsEngaged / igReach) * 100).toFixed(1) : "0.0";
+
+    return {
+      ...c, hasData, fbImpressions, fbImpOrganic, fbImpPaid, fbEngagedUsers, fbPostEngagement,
+      fbFanAdds, fbPageViews, fbPrevImp, fbPrevEng, igImpressions, igReach, igProfileViews,
+      igAccountsEngaged, igFollowerCount, igPrevReach, igPrevImp, mediaPosts, totalLikes,
+      totalComments, totalSaved, fbFollowers, igFollowers, igMediaCount, engRate,
+      totalReach: fbImpressions + igReach, totalEngaged: fbEngagedUsers + igAccountsEngaged,
+      igProfile: ins?.igProfile, fbPage: ins?.fbPage,
+      igDaily: ins?.ig, fbDaily: ins?.fb, igPrev: ins?.igPrev, fbPrev: ins?.fbPrev,
+    };
+  });
+
+  const totals = {
+    reach: clientMetrics.reduce((a, c) => a + c.totalReach, 0),
+    engaged: clientMetrics.reduce((a, c) => a + c.totalEngaged, 0),
+    fbImp: clientMetrics.reduce((a, c) => a + c.fbImpressions, 0),
+    igImp: clientMetrics.reduce((a, c) => a + c.igImpressions, 0),
+    igReach: clientMetrics.reduce((a, c) => a + c.igReach, 0),
+    likes: clientMetrics.reduce((a, c) => a + c.totalLikes, 0),
+    comments: clientMetrics.reduce((a, c) => a + c.totalComments, 0),
+    saved: clientMetrics.reduce((a, c) => a + c.totalSaved, 0),
+    fbFans: clientMetrics.reduce((a, c) => a + c.fbFanAdds, 0),
+    connectedCount: clientMetrics.filter(c => c.hasData).length,
+  };
+
+  const ChangeBadge = ({ value }) => {
+    if (value === null || value === undefined) return null;
+    const color = value >= 0 ? B.green : B.red;
+    return <span style={{ fontSize:9, fontWeight:700, color, background:`${color}10`, padding:"2px 6px", borderRadius:6 }}>{value >= 0 ? "↑" : "↓"} {Math.abs(value)}%</span>;
+  };
+
+  const MetricCard = ({ label, value, sub, color, change, icon }) => (
+    <Card style={{ padding:12 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:4 }}>
+        <div style={{ width:28, height:28, borderRadius:8, background:`${color}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {icon || <div style={{ width:10, height:10, borderRadius:5, background:color }} />}
+        </div>
+        {change !== null && change !== undefined && <ChangeBadge value={change} />}
+      </div>
+      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:6 }}>{value}</p>
+      <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginTop:2 }}>{label}</p>
+      {sub && <p style={{ fontSize:9, color:B.muted, marginTop:1 }}>{sub}</p>}
+    </Card>
+  );
+
+  const DailyChart = ({ data, color, label, h }) => {
+    if (!data || data.length === 0) return <p style={{ fontSize:10, color:B.muted, textAlign:"center", padding:10 }}>Sem dados disponíveis</p>;
+    const max = Math.max(...data.map(d => d.value), 1);
+    return (
+      <div>
+        {label && <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginBottom:6 }}>{label}</p>}
+        <div style={{ display:"flex", alignItems:"flex-end", gap:1, height:h||60 }}>
+          {data.map((d, i) => (
+            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
+              <div style={{ width:"100%", borderRadius:2, background:color, height:`${Math.max((d.value/max)*(h||60)*0.85, 2)}px`, opacity: i === data.length-1 ? 1 : 0.6 }} title={`${d.date}: ${formatNum(d.value)}`} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:3 }}>
+          <span style={{ fontSize:7, color:B.muted }}>{data[0]?.date?.slice(5)}</span>
+          <span style={{ fontSize:7, color:B.muted }}>{data[data.length-1]?.date?.slice(5)}</span>
+        </div>
+      </div>
+    );
+  };
+
+  /* ── CLIENT DETAIL ── */
   if (selClient) {
-    const c = selClient;
+    const c = clientMetrics.find(x => x.name === selClient) || clientMetrics[0];
+    if (!c) { setSelClient(null); return null; }
+    const igDailyReach = dailyInsight(c.igDaily, "reach");
+    const igDailyImp = dailyInsight(c.igDaily, "impressions");
+    const fbDailyImp = dailyInsight(c.fbDaily, "page_impressions");
+    const fbDailyEng = dailyInsight(c.fbDaily, "page_engaged_users");
     return (
       <div className="pg">
+        {ToastEl}
         <Head title="" onBack={() => setSelClient(null)} />
         <Card style={{ marginBottom:12 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
             <Av name={c.name} sz={44} fs={16} />
-            <div><h3 style={{ fontSize:16, fontWeight:800 }}>{c.name}</h3><p style={{ fontSize:11, color:B.accent }}>{c.plan} · {c.segment}</p></div>
+            <div style={{ flex:1 }}>
+              <h3 style={{ fontSize:16, fontWeight:800 }}>{c.name}</h3>
+              <p style={{ fontSize:11, color:B.accent }}>{c.plan} · {c.segment}</p>
+            </div>
+            {!c.hasData && <Tag color={B.muted}>Sem API</Tag>}
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6 }}>
-            <div style={{ padding:10, borderRadius:10, background:`${B.blue}08`, textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.blue }}>{formatNum(c.reach)}</p><p style={{ fontSize:9, color:B.muted }}>Alcance</p></div>
-            <div style={{ padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.green }}>{c.engagement}%</p><p style={{ fontSize:9, color:B.muted }}>Engajamento</p></div>
-            <div style={{ padding:10, borderRadius:10, background:`${B.orange}08`, textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.orange }}>{c.leads}</p><p style={{ fontSize:9, color:B.muted }}>Leads</p></div>
-            <div style={{ padding:10, borderRadius:10, background:`${B.purple}08`, textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.purple }}>+{c.growth}%</p><p style={{ fontSize:9, color:B.muted }}>Crescimento</p></div>
-          </div>
+          {c.hasData && <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {c.igProfile && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8, background:"#E1306C10" }}>
+              <div style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />
+              <span style={{ fontSize:10, fontWeight:600 }}>@{c.igProfile.username}</span>
+              <span style={{ fontSize:10, color:B.muted }}>{formatNum(c.igFollowers)} seg.</span>
+            </div>}
+            {c.fbPage && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8, background:"#1877F210" }}>
+              <div style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />
+              <span style={{ fontSize:10, fontWeight:600 }}>{c.fbPage.name}</span>
+              <span style={{ fontSize:10, color:B.muted }}>{formatNum(c.fbFollowers)} seg.</span>
+            </div>}
+          </div>}
         </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>Produção de conteúdo</p>
-        <Card style={{ marginBottom:12 }}>
-          {[
-            { l:"Posts para Feed", v:c.posts, c:B.blue, max:20 },
-            { l:"Stories", v:c.stories, c:B.pink, max:30 },
-            { l:"Reels / Vídeos", v:c.reels, c:B.orange, max:10 },
-          ].map((item,i) => (
-            <div key={i} style={{ marginTop:i?10:0 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontSize:11, fontWeight:600 }}>{item.l}</span>
-                <span style={{ fontSize:11, fontWeight:700, color:item.c }}>{item.v}</span>
+        {!c.hasData ? <Card style={{ textAlign:"center", padding:24 }}>
+          <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Nenhuma rede social conectada via API</p>
+          <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>Conecte o Facebook ou Instagram deste cliente na aba de Clientes para ver métricas reais aqui.</p>
+        </Card> : <>
+          {/* ── Instagram Section ── */}
+          {c.igDaily && <>
+            <p className="sl" style={{ marginBottom:6, color:"#E1306C" }}>Instagram — Métricas do mês</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:8 }}>
+              <MetricCard label="Alcance" value={formatNum(c.igReach)} color="#E1306C" change={pctChange(c.igReach, sumInsight(c.igPrev, "reach"))} sub="Contas únicas alcançadas" />
+              <MetricCard label="Impressões" value={formatNum(c.igImpressions)} color="#833AB4" change={pctChange(c.igImpressions, sumInsight(c.igPrev, "impressions"))} sub="Total de vezes exibido" />
+              <MetricCard label="Visitas ao perfil" value={formatNum(c.igProfileViews)} color="#E1306C" sub="Pessoas que visitaram" />
+              <MetricCard label="Contas engajadas" value={formatNum(c.igAccountsEngaged)} color="#F77737" sub="Curtiram, comentaram, salvaram" />
+            </div>
+            <Card style={{ marginBottom:8 }}>
+              <p style={{ fontSize:11, fontWeight:700, marginBottom:4 }}>Engajamento</p>
+              <p style={{ fontSize:9, color:B.muted, marginBottom:8 }}>Taxa de engajamento = contas engajadas / alcance</p>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <p style={{ fontSize:28, fontWeight:900, color:"#E1306C" }}>{c.engRate}%</p>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:4 }}>
+                    <span>❤️ {formatNum(c.totalLikes)} curtidas</span>
+                    <span>💬 {formatNum(c.totalComments)} comentários</span>
+                    <span>🔖 {formatNum(c.totalSaved)} salvos</span>
+                  </div>
+                </div>
               </div>
-              <Bar value={item.v} max={item.max} color={item.c} />
-            </div>
-          ))}
-        </Card>
+            </Card>
+            <Card style={{ marginBottom:12 }}>
+              <DailyChart data={igDailyReach} color="#E1306C" label="Alcance diário (Instagram)" h={70} />
+            </Card>
+          </>}
 
-        <p className="sl" style={{ marginBottom:6 }}>Redes sociais</p>
-        <Card style={{ marginBottom:12 }}>
-          {[
-            { l:"Instagram", v:formatNum(c.igF), connected:c.socials?.instagram?.connected, c:"#E1306C" },
-            { l:"Facebook", v:formatNum(c.fbF), connected:c.socials?.facebook?.connected, c:"#1877F2" },
-            { l:"TikTok", v:formatNum(c.ttF), connected:c.socials?.tiktok?.connected, c:"#010101" },
-          ].map((item,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ width:8, height:8, borderRadius:4, background:item.connected?item.c:B.border }} />
-                <span style={{ fontSize:12, fontWeight:500 }}>{item.l}</span>
+          {/* ── Facebook Section ── */}
+          {c.fbDaily && <>
+            <p className="sl" style={{ marginBottom:6, color:"#1877F2" }}>Facebook — Métricas do mês</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:8 }}>
+              <MetricCard label="Impressões totais" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions, c.fbPrevImp)} sub="Vezes que o conteúdo foi visto" />
+              <MetricCard label="Engajamento" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers, c.fbPrevEng)} sub="Pessoas que interagiram" />
+            </div>
+            <Card style={{ marginBottom:8 }}>
+              <p style={{ fontSize:11, fontWeight:700, marginBottom:8 }}>Orgânico vs Pago</p>
+              <div style={{ display:"flex", gap:8 }}>
+                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}>
+                  <p style={{ fontSize:16, fontWeight:900, color:B.green }}>{formatNum(c.fbImpOrganic)}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>Impressões orgânicas</p>
+                  <p style={{ fontSize:8, color:B.muted }}>{c.fbImpressions > 0 ? Math.round((c.fbImpOrganic/c.fbImpressions)*100) : 0}% do total</p>
+                </div>
+                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.orange}08`, textAlign:"center" }}>
+                  <p style={{ fontSize:16, fontWeight:900, color:B.orange }}>{formatNum(c.fbImpPaid)}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>Impressões pagas</p>
+                  <p style={{ fontSize:8, color:B.muted }}>{c.fbImpressions > 0 ? Math.round((c.fbImpPaid/c.fbImpressions)*100) : 0}% do total</p>
+                </div>
               </div>
-              <span style={{ fontSize:12, fontWeight:700 }}>{item.connected ? `${item.v} seguidores` : "Não conectado"}</span>
-            </div>
-          ))}
-        </Card>
+            </Card>
+            <Card style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbPostEngagement)}</p><p style={{ fontSize:8, color:B.muted }}>Reações em posts</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#42B72A" }}>+{formatNum(c.fbFanAdds)}</p><p style={{ fontSize:8, color:B.muted }}>Novos fãs</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbPageViews)}</p><p style={{ fontSize:8, color:B.muted }}>Views da página</p></div>
+              </div>
+            </Card>
+            <Card style={{ marginBottom:12 }}>
+              <DailyChart data={fbDailyImp} color="#1877F2" label="Impressões diárias (Facebook)" h={70} />
+            </Card>
+          </>}
 
-        <p className="sl" style={{ marginBottom:6 }}>Informações do contrato</p>
-        <Card>
-          {[
-            { l:"Valor mensal", v:c.monthly },
-            { l:"Plano", v:c.plan },
-            { l:"Score de satisfação", v:`${c.score}/100` },
-            { l:"Arquivos na biblioteca", v:c.filesCount.toString() },
-            { l:"Cliente desde", v:c.since },
-          ].map((item,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-              <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
-              <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
-            </div>
-          ))}
-        </Card>
+          {/* ── Top Posts ── */}
+          {c.mediaPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Top posts do Instagram (por curtidas)</p>
+            {[...c.mediaPosts].sort((a,b) => (b.like_count||0) - (a.like_count||0)).slice(0, 5).map((post, i) => (
+              <Card key={post.id} style={{ marginBottom:6 }}>
+                <div style={{ display:"flex", gap:10 }}>
+                  {(post.thumbnail_url || post.media_url) && <img src={post.thumbnail_url || post.media_url} alt="" style={{ width:50, height:50, borderRadius:8, objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} />}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{post.caption?.substring(0, 60) || "Sem legenda"}</p>
+                    <div style={{ display:"flex", gap:10, marginTop:4 }}>
+                      <span style={{ fontSize:10, color:"#E1306C" }}>❤️ {post.like_count || 0}</span>
+                      <span style={{ fontSize:10, color:"#1877F2" }}>💬 {post.comments_count || 0}</span>
+                      <span style={{ fontSize:10, color:B.muted }}>{post.media_type}</span>
+                      <span style={{ fontSize:10, color:B.muted }}>{post.timestamp?.split("T")[0]}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </>}
+        </>}
       </div>
     );
   }
 
   /* ── MAIN REPORTS ── */
   const TABS = [
-    { k:"overview", l:"Geral" },
-    { k:"clients", l:"Clientes" },
-    { k:"content", l:"Conteúdo" },
-    { k:"financial", l:"Financeiro" },
-    { k:"team", l:"Equipe" },
+    { k:"overview", l:"Visão Geral", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> },
+    { k:"clients", l:"Por Cliente", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> },
+    { k:"instagram", l:"Instagram", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> },
+    { k:"facebook", l:"Facebook", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg> },
   ];
 
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
-  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.reports} label="Métricas" title="Relatórios" collapsed={pgC} stats={[]} />
+      {ToastEl}
+      <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" collapsed={pgC} stats={[]} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
-
-      {/* Period selector */}
-      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:8, overflowX:"auto", paddingBottom:4 }}>
-        {PERIODS.map(p => (
-          <button key={p.k} onClick={()=>setPeriod(p.k)} className={`htab${period===p.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{p.l}</button>
-        ))}
-      </div>
 
       {/* Tab selector */}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
         {TABS.map(t => (
-          <button key={t.k} onClick={()=>setTab(t.k)} className={`htab${tab===t.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
+          <button key={t.k} onClick={()=>setTab(t.k)} className={`htab${tab===t.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0, display:"flex", alignItems:"center", gap:4 }}>{t.ic} {t.l}</button>
         ))}
       </div>
 
-      {/* ── OVERVIEW TAB ── */}
-      {tab === "overview" && <>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:12 }}>
-          <Card style={{ textAlign:"center", padding:10 }}>
-            <p style={{ fontSize:20, fontWeight:900, color:B.green }}>{formatMoney(totalRevenue)}</p>
-            <p style={{ fontSize:9, color:B.muted }}>Receita mensal</p>
-          </Card>
-          <Card style={{ textAlign:"center", padding:10 }}>
-            <p style={{ fontSize:20, fontWeight:900, color:B.blue }}>{activeClients}</p>
-            <p style={{ fontSize:9, color:B.muted }}>Clientes ativos</p>
-          </Card>
-          <Card style={{ textAlign:"center", padding:10 }}>
-            <p style={{ fontSize:20, fontWeight:900, color:B.orange }}>{formatNum(totalReach)}</p>
-            <p style={{ fontSize:9, color:B.muted }}>Alcance total</p>
-          </Card>
-          <Card style={{ textAlign:"center", padding:10 }}>
-            <p style={{ fontSize:20, fontWeight:900, color:B.purple }}>{avgEngagement}%</p>
-            <p style={{ fontSize:9, color:B.muted }}>Engajamento médio</p>
-          </Card>
+      {/* Loading state */}
+      {loading && <Card style={{ textAlign:"center", padding:24 }}>
+        <div style={{ width:40, height:40, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
+          <div style={{ width:20, height:20, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite" }} />
         </div>
+        <p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p>
+        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Buscando dados do Facebook e Instagram via Graph API</p>
+      </Card>}
 
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:12 }}>
-          <Card style={{ textAlign:"center", padding:8 }}>
-            <p style={{ fontSize:16, fontWeight:900, color:B.blue }}>{totalPosts}</p>
-            <p style={{ fontSize:8, color:B.muted }}>Posts</p>
-          </Card>
-          <Card style={{ textAlign:"center", padding:8 }}>
-            <p style={{ fontSize:16, fontWeight:900, color:B.pink }}>{totalStories}</p>
-            <p style={{ fontSize:8, color:B.muted }}>Stories</p>
-          </Card>
-          <Card style={{ textAlign:"center", padding:8 }}>
-            <p style={{ fontSize:16, fontWeight:900, color:B.orange }}>{totalReels}</p>
-            <p style={{ fontSize:8, color:B.muted }}>Reels</p>
-          </Card>
-        </div>
-
-        {/* Revenue trend mini chart */}
-        <p className="sl" style={{ marginBottom:6 }}>Evolução da receita (6 meses)</p>
-        <Card style={{ marginBottom:12 }}>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:80 }}>
-            {revenueChart.map((r,i) => (
-              <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                <span style={{ fontSize:8, fontWeight:600, color:B.green }}>{formatMoney(r.v)}</span>
-                <div style={{ width:"100%", borderRadius:4, background:i===revenueChart.length-1?B.green:`${B.green}30`, height:`${(r.v/maxRev)*60}px`, minHeight:4 }} />
-                <span style={{ fontSize:8, color:B.muted }}>{r.m}</span>
-              </div>
-            ))}
+      {!loading && <>
+        {/* Status bar */}
+        <Card style={{ marginBottom:12, padding:10, background:`${totals.connectedCount > 0 ? B.green : B.orange}06`, border:`1px solid ${totals.connectedCount > 0 ? B.green : B.orange}15` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:8, height:8, borderRadius:4, background:totals.connectedCount > 0 ? B.green : B.orange }} />
+            <p style={{ fontSize:11, color:B.text }}><strong>{totals.connectedCount}</strong> de <strong>{CDATA.length}</strong> clientes com API conectada</p>
+            {totals.connectedCount === 0 && <span style={{ fontSize:10, color:B.muted }}> · Conecte redes sociais na aba de Clientes</span>}
           </div>
         </Card>
 
-        {/* Score */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6 }}>
-          <Card style={{ textAlign:"center", padding:10 }}>
-            <p style={{ fontSize:20, fontWeight:900, color:avgScore>=70?B.green:avgScore>=50?B.orange:B.red }}>{avgScore}</p>
-            <p style={{ fontSize:9, color:B.muted }}>Score médio</p>
-          </Card>
-          <Card style={{ textAlign:"center", padding:10 }}>
-            <p style={{ fontSize:20, fontWeight:900, color:B.cyan }}>{totalLeads}</p>
-            <p style={{ fontSize:9, color:B.muted }}>Leads gerados</p>
-          </Card>
-        </div>
-      </>}
-
-      {/* ── CLIENTS TAB ── */}
-      {tab === "clients" && <>
-        <p className="sl" style={{ marginBottom:6 }}>Performance por cliente</p>
-        {CLIENT_METRICS.sort((a,b)=>b.score-a.score).map((c,i) => (
-          <Card key={c.id} delay={i*0.03} onClick={()=>setSelClient(c)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-              <Av name={c.name} sz={36} fs={13} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
-                  <Tag color={c.score>=80?B.green:c.score>=60?B.orange:B.red}>{c.score}/100</Tag>
-                </div>
-                <p style={{ fontSize:10, color:B.muted }}>{c.plan} · {c.monthly}</p>
-              </div>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, textAlign:"center" }}>
-              <div><p style={{ fontSize:12, fontWeight:800, color:B.blue }}>{formatNum(c.reach)}</p><p style={{ fontSize:8, color:B.muted }}>Alcance</p></div>
-              <div><p style={{ fontSize:12, fontWeight:800, color:B.green }}>{c.engagement}%</p><p style={{ fontSize:8, color:B.muted }}>Engaj.</p></div>
-              <div><p style={{ fontSize:12, fontWeight:800, color:B.orange }}>{c.leads}</p><p style={{ fontSize:8, color:B.muted }}>Leads</p></div>
-              <div><p style={{ fontSize:12, fontWeight:800, color:B.purple }}>+{c.growth}%</p><p style={{ fontSize:8, color:B.muted }}>Cresc.</p></div>
-            </div>
-          </Card>
-        ))}
-      </>}
-
-      {/* ── CONTENT TAB ── */}
-      {tab === "content" && <>
-        <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-          <p style={{ fontSize:11, fontWeight:600, opacity:.7, marginBottom:6 }}>Produção total do mês</p>
-          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
-            <div><p style={{ fontSize:22, fontWeight:900 }}>{totalPosts+totalStories+totalReels}</p><p style={{ fontSize:9, opacity:.6 }}>Peças</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{totalPosts}</p><p style={{ fontSize:9, opacity:.6 }}>Posts</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.pink }}>{totalStories}</p><p style={{ fontSize:9, opacity:.6 }}>Stories</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{totalReels}</p><p style={{ fontSize:9, opacity:.6 }}>Reels</p></div>
+        {/* ── OVERVIEW TAB ── */}
+        {tab === "overview" && <>
+          <p className="sl" style={{ marginBottom:6 }}>Métricas agregadas (todos os clientes)</p>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:12 }}>
+            <MetricCard label="Alcance total" value={formatNum(totals.reach)} color={B.blue} sub="Facebook + Instagram" />
+            <MetricCard label="Pessoas engajadas" value={formatNum(totals.engaged)} color={B.green} sub="Interagiram com o conteúdo" />
+            <MetricCard label="Impressões FB" value={formatNum(totals.fbImp)} color="#1877F2" sub="Total de exibições no Facebook" />
+            <MetricCard label="Impressões IG" value={formatNum(totals.igImp)} color="#E1306C" sub="Total de exibições no Instagram" />
           </div>
-        </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>Evolução mensal de conteúdo</p>
-        <Card style={{ marginBottom:12 }}>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:100 }}>
-            {contentChart.map((c,i) => {
-              const total = c.posts+c.stories+c.reels;
-              return (
-                <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                  <span style={{ fontSize:8, fontWeight:700 }}>{total}</span>
-                  <div style={{ width:"100%", display:"flex", flexDirection:"column", gap:1, height:`${(total/maxContent)*70}px` }}>
-                    <div style={{ flex:c.posts, borderRadius:"4px 4px 0 0", background:B.blue }} />
-                    <div style={{ flex:c.stories, background:B.pink }} />
-                    <div style={{ flex:c.reels, borderRadius:"0 0 4px 4px", background:B.orange }} />
-                  </div>
-                  <span style={{ fontSize:8, color:B.muted }}>{c.m}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display:"flex", justifyContent:"center", gap:12, marginTop:8 }}>
-            {[{l:"Posts",c:B.blue},{l:"Stories",c:B.pink},{l:"Reels",c:B.orange}].map(leg=>(
-              <div key={leg.l} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                <div style={{ width:8, height:8, borderRadius:2, background:leg.c }} />
-                <span style={{ fontSize:9, color:B.muted }}>{leg.l}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <p className="sl" style={{ marginBottom:6 }}>Produção por cliente</p>
-        {CLIENT_METRICS.sort((a,b)=>(b.posts+b.stories+b.reels)-(a.posts+a.stories+a.reels)).map((c,i) => {
-          const total = c.posts+c.stories+c.reels;
-          const max = CLIENT_METRICS.reduce((a,x)=>Math.max(a,x.posts+x.stories+x.reels),1);
-          return (
-            <Card key={c.id} style={{ marginTop:i?6:0 }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <Av name={c.name} sz={28} fs={10} />
-                  <span style={{ fontSize:12, fontWeight:600 }}>{c.name}</span>
-                </div>
-                <span style={{ fontSize:12, fontWeight:800 }}>{total} peças</span>
-              </div>
-              <div style={{ display:"flex", height:10, borderRadius:5, overflow:"hidden", background:`${B.border}` }}>
-                <div style={{ width:`${(c.posts/total)*100}%`, background:B.blue }} />
-                <div style={{ width:`${(c.stories/total)*100}%`, background:B.pink }} />
-                <div style={{ width:`${(c.reels/total)*100}%`, background:B.orange }} />
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
-                <span style={{ fontSize:9, color:B.blue }}>{c.posts} posts</span>
-                <span style={{ fontSize:9, color:B.pink }}>{c.stories} stories</span>
-                <span style={{ fontSize:9, color:B.orange }}>{c.reels} reels</span>
-              </div>
+          <p className="sl" style={{ marginBottom:6 }}>Interações no Instagram</p>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:12 }}>
+            <Card style={{ textAlign:"center", padding:10 }}>
+              <p style={{ fontSize:18, fontWeight:900, color:"#E1306C" }}>{formatNum(totals.likes)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>Curtidas</p>
             </Card>
-          );
-        })}
-      </>}
-
-      {/* ── FINANCIAL TAB ── */}
-      {tab === "financial" && <>
-        <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-          <p style={{ fontSize:11, fontWeight:600, opacity:.7, marginBottom:4 }}>Receita recorrente mensal (MRR)</p>
-          <p style={{ fontSize:28, fontWeight:900 }}>{formatMoney(totalRevenue)}</p>
-          <p style={{ fontSize:11, color:B.accent, fontWeight:600 }}>+12.5% vs mês anterior</p>
-        </Card>
-
-        <p className="sl" style={{ marginBottom:6 }}>Evolução de receita</p>
-        <Card style={{ marginBottom:12 }}>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:90 }}>
-            {revenueChart.map((r,i) => (
-              <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                <span style={{ fontSize:7, fontWeight:700, color:B.green }}>{(r.v/1000).toFixed(1)}k</span>
-                <div style={{ width:"100%", borderRadius:4, background:i===revenueChart.length-1?B.green:`${B.green}40`, height:`${(r.v/maxRev)*65}px`, minHeight:4 }} />
-                <span style={{ fontSize:8, color:B.muted }}>{r.m}</span>
-              </div>
-            ))}
+            <Card style={{ textAlign:"center", padding:10 }}>
+              <p style={{ fontSize:18, fontWeight:900, color:"#1877F2" }}>{formatNum(totals.comments)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>Comentários</p>
+            </Card>
+            <Card style={{ textAlign:"center", padding:10 }}>
+              <p style={{ fontSize:18, fontWeight:900, color:B.purple }}>{formatNum(totals.saved)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>Salvamentos</p>
+            </Card>
           </div>
-        </Card>
 
-        <p className="sl" style={{ marginBottom:6 }}>Receita por plano</p>
-        <Card style={{ marginBottom:12 }}>
-          {[
-            { l:"Partner", clients:CLIENT_METRICS.filter(c=>c.plan==="Partner"), c:B.accent },
-            { l:"Growth 360", clients:CLIENT_METRICS.filter(c=>c.plan==="Growth 360"), c:B.blue },
-            { l:"Traction", clients:CLIENT_METRICS.filter(c=>c.plan==="Traction"), c:B.muted },
-          ].map((plan,i) => {
-            const rev = plan.clients.reduce((a,c)=>a+c.monthlyValue,0);
-            return (
-              <div key={i} style={{ marginTop:i?10:0 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ fontSize:11, fontWeight:600 }}>{plan.l} ({plan.clients.length} clientes)</span>
-                  <span style={{ fontSize:11, fontWeight:700, color:plan.c }}>{formatMoney(rev)}</span>
+          <p className="sl" style={{ marginBottom:6 }}>Facebook — Novos fãs</p>
+          <Card style={{ marginBottom:12 }}>
+            <p style={{ fontSize:22, fontWeight:900, color:"#42B72A" }}>+{formatNum(totals.fbFans)}</p>
+            <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Novos seguidores/fãs nas páginas este mês</p>
+          </Card>
+
+          <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, marginBottom:12, padding:14 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Como interpretar</p>
+            <p style={{ fontSize:10, color:B.muted, lineHeight:1.6 }}>
+              <strong>Alcance</strong> = quantas pessoas únicas viram o conteúdo. <strong>Impressões</strong> = total de vezes que o conteúdo apareceu (uma pessoa pode ver várias vezes). <strong>Engajamento</strong> = pessoas que curtiram, comentaram, compartilharam ou salvaram. Uma boa taxa de engajamento no Instagram é acima de 3%.
+            </p>
+          </Card>
+        </>}
+
+        {/* ── CLIENTS TAB ── */}
+        {tab === "clients" && <>
+          <p className="sl" style={{ marginBottom:6 }}>Relatório por cliente</p>
+          {clientMetrics.map((c, i) => (
+            <Card key={c.id || i} delay={i*0.03} onClick={() => setSelClient(c.name)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <Av name={c.name} sz={36} fs={13} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
+                    <Tag color={c.hasData ? B.green : B.muted}>{c.hasData ? "Conectado" : "Sem API"}</Tag>
+                  </div>
+                  <p style={{ fontSize:10, color:B.muted }}>{c.plan} · {c.monthly}</p>
                 </div>
-                <Bar value={rev} max={totalRevenue} color={plan.c} />
               </div>
+              {c.hasData ? <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, textAlign:"center" }}>
+                <div><p style={{ fontSize:12, fontWeight:800, color:"#E1306C" }}>{formatNum(c.igReach)}</p><p style={{ fontSize:8, color:B.muted }}>Alcance IG</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbImpressions)}</p><p style={{ fontSize:8, color:B.muted }}>Impr. FB</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:B.green }}>{c.engRate}%</p><p style={{ fontSize:8, color:B.muted }}>Engaj.</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:B.orange }}>{formatNum(c.totalLikes)}</p><p style={{ fontSize:8, color:B.muted }}>Curtidas</p></div>
+              </div> : <p style={{ fontSize:10, color:B.muted, textAlign:"center", padding:6 }}>Conecte as redes sociais para ver métricas → Toque para ver detalhes</p>}
+            </Card>
+          ))}
+        </>}
+
+        {/* ── INSTAGRAM TAB ── */}
+        {tab === "instagram" && <>
+          <Card style={{ background:"linear-gradient(135deg, #833AB4, #E1306C, #F77737)", border:"none", color:"#fff", marginBottom:12, padding:16 }}>
+            <p style={{ fontSize:11, fontWeight:600, opacity:.8, marginBottom:8 }}>Instagram — Resumo do mês</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.igReach)}</p><p style={{ fontSize:9, opacity:.7 }}>Alcance total</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.igImp)}</p><p style={{ fontSize:9, opacity:.7 }}>Impressões</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.likes)}</p><p style={{ fontSize:9, opacity:.7 }}>Curtidas</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.saved)}</p><p style={{ fontSize:9, opacity:.7 }}>Salvamentos</p></div>
+            </div>
+          </Card>
+
+          {clientMetrics.filter(c => c.igDaily).map((c, i) => {
+            const daily = dailyInsight(c.igDaily, "reach");
+            return (
+              <Card key={c.name} style={{ marginBottom:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                  <Av name={c.name} sz={28} fs={10} />
+                  <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>@{c.igProfile?.username || "—"} · {formatNum(c.igFollowers)} seg.</p></div>
+                  <span style={{ fontSize:12, fontWeight:800, color:"#E1306C" }}>{c.engRate}%</span>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, textAlign:"center", marginBottom:8 }}>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.igReach)}</p><p style={{ fontSize:7, color:B.muted }}>Alcance</p></div>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.igImpressions)}</p><p style={{ fontSize:7, color:B.muted }}>Impressões</p></div>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.totalLikes)}</p><p style={{ fontSize:7, color:B.muted }}>Curtidas</p></div>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.igProfileViews)}</p><p style={{ fontSize:7, color:B.muted }}>Visitas</p></div>
+                </div>
+                <DailyChart data={daily} color="#E1306C" h={40} />
+              </Card>
             );
           })}
-        </Card>
+          {clientMetrics.filter(c => c.igDaily).length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum cliente com Instagram conectado via API.</p></Card>}
+        </>}
 
-        <p className="sl" style={{ marginBottom:6 }}>Detalhamento por cliente</p>
-        {CLIENT_METRICS.sort((a,b)=>b.monthlyValue-a.monthlyValue).map((c,i) => (
-          <Card key={c.id} style={{ marginTop:i?6:0 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <Av name={c.name} sz={28} fs={10} />
-                <div>
-                  <p style={{ fontSize:12, fontWeight:600 }}>{c.name}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>{c.plan} · {c.status === "ativo" ? "Ativo" : c.status === "trial" ? "Trial" : c.status}</p>
+        {/* ── FACEBOOK TAB ── */}
+        {tab === "facebook" && <>
+          <Card style={{ background:"#1877F2", border:"none", color:"#fff", marginBottom:12, padding:16 }}>
+            <p style={{ fontSize:11, fontWeight:600, opacity:.8, marginBottom:8 }}>Facebook — Resumo do mês</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.fbImp)}</p><p style={{ fontSize:9, opacity:.7 }}>Impressões totais</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.engaged)}</p><p style={{ fontSize:9, opacity:.7 }}>Engajamento</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>+{formatNum(totals.fbFans)}</p><p style={{ fontSize:9, opacity:.7 }}>Novos fãs</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, opacity:.7 }}>Comentários</p></div>
+            </div>
+          </Card>
+
+          {clientMetrics.filter(c => c.fbDaily).map((c, i) => {
+            const daily = dailyInsight(c.fbDaily, "page_impressions");
+            return (
+              <Card key={c.name} style={{ marginBottom:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                  <Av name={c.name} sz={28} fs={10} />
+                  <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>{c.fbPage?.name || "—"} · {formatNum(c.fbFollowers)} seg.</p></div>
                 </div>
-              </div>
-              <p style={{ fontSize:14, fontWeight:800, color:B.green }}>{c.monthly}</p>
-            </div>
-          </Card>
-        ))}
+                <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.green}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.green }}>{formatNum(c.fbImpOrganic)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Orgânico</p>
+                  </div>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.orange}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.orange }}>{formatNum(c.fbImpPaid)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Pago</p>
+                  </div>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.blue}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.blue }}>+{formatNum(c.fbFanAdds)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Novos fãs</p>
+                  </div>
+                </div>
+                <DailyChart data={daily} color="#1877F2" h={40} />
+              </Card>
+            );
+          })}
+          {clientMetrics.filter(c => c.fbDaily).length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum cliente com Facebook conectado via API.</p></Card>}
+        </>}
       </>}
 
-      {/* ── TEAM TAB ── */}
-      {tab === "team" && <>
-        <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center" }}>
-            <div><p style={{ fontSize:22, fontWeight:900 }}>{teamData.length}</p><p style={{ fontSize:9, opacity:.6 }}>Membros</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{teamData.reduce((a,m)=>a+m.tasksCompleted,0)}</p><p style={{ fontSize:9, opacity:.6 }}>Tarefas feitas</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.blue }}>{teamData.reduce((a,m)=>a+m.hoursLogged,0)}h</p><p style={{ fontSize:9, opacity:.6 }}>Horas no mês</p></div>
-          </div>
-        </Card>
-
-        <p className="sl" style={{ marginBottom:6 }}>Desempenho individual</p>
-        {teamData.map((m,i) => (
-          <Card key={m.id} delay={i*0.03} style={{ marginTop:i?8:0 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-              <Av name={m.name} sz={40} fs={15} />
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700 }}>{m.name}</p>
-                <p style={{ fontSize:10, color:B.accent }}>{m.role}</p>
-              </div>
-              <Tag color={parseFloat(m.rating)>=4.5?B.green:parseFloat(m.rating)>=3.5?B.blue:B.orange}>{m.rating} ★</Tag>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, textAlign:"center", marginBottom:10 }}>
-              <div style={{ padding:6, borderRadius:8, background:`${B.green}08` }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{m.tasksCompleted}</p><p style={{ fontSize:8, color:B.muted }}>Concluídas</p></div>
-              <div style={{ padding:6, borderRadius:8, background:`${B.orange}08` }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{m.tasksTotal - m.tasksCompleted}</p><p style={{ fontSize:8, color:B.muted }}>Pendentes</p></div>
-              <div style={{ padding:6, borderRadius:8, background:`${B.blue}08` }}><p style={{ fontSize:14, fontWeight:800, color:B.blue }}>{m.hoursLogged}h</p><p style={{ fontSize:8, color:B.muted }}>Horas</p></div>
-            </div>
-            <div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                <span style={{ fontSize:10, color:B.muted }}>Produtividade</span>
-                <span style={{ fontSize:10, fontWeight:700 }}>{Math.round((m.tasksCompleted/m.tasksTotal)*100)}%</span>
-              </div>
-              <Bar value={m.tasksCompleted} max={m.tasksTotal} color={B.accent} />
-            </div>
-          </Card>
-        ))}
-      </>}
+      <div style={{ height:100 }} />
       </div>
     </div>
   );
 }
+
 
 function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user }) {
   const [tab, setTab] = useState("all");
