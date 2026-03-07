@@ -1527,6 +1527,16 @@ function LoginPage({ onAuth }) {
           nick: profile?.nick || profile?.name || email.split("@")[0],
           phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember,
         };
+        /* Check if member is pending approval */
+        try {
+          const { data: memberRow } = await supabase.from("agency_members").select("status").eq("user_id", data.user.id).limit(1).single();
+          if (memberRow && memberRow.status === "pendente") {
+            clearTimeout(loginTimeout); setLoginLoading(false);
+            setError("Seu cadastro ainda está aguardando aprovação do administrador. Você será notificado por e-mail quando aprovado.");
+            await supabase.auth.signOut();
+            return;
+          }
+        } catch {}
         clearTimeout(loginTimeout); setLoginLoading(false); onAuth(userObj);
       } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
       return;
@@ -1553,14 +1563,20 @@ function LoginPage({ onAuth }) {
         if (data?.user?.id) {
           const extras = { cpf: rCpf, birth: rBirth, social: rSocial, blood: rBlood };
           await supaSetSetting(`profile_extras_${data.user.id}`, JSON.stringify(extras)).catch(() => {});
+          /* Create pending team member for admin approval */
+          await supaCreateMember({
+            name: rName, role: rCargo || "member", email: rEmail, phone: rPhone,
+            since: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),
+            status: "pendente", user_id: data.user.id,
+          }).catch(() => {});
         }
         /* Link pending invite if exists */
         if (inviteData?.id && data?.user?.id) {
           await supaLinkInvite(inviteData.id, data.user.id);
         }
         setLoginLoading(false);
-        setRegSuccess("Conta criada! Verifique seu email para confirmar.");
-        setMode("login"); setStep(1); setInviteData(null);
+        setRegSuccess("Cadastro enviado para aprovação! Verifique seu e-mail para confirmar a conta.");
+        setMode("pending"); setStep(1); setInviteData(null);
       } catch (e) { setError("Erro de conexão"); setLoginLoading(false); }
       return;
     }
@@ -2738,7 +2754,7 @@ const SOCIAL_PLATFORMS = [
 ];
 
 function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user }) {
-  const [localClients, localSetClients] = useState(CLIENTS_DATA_INIT);
+  const [localClients, localSetClients] = useState([]);
   const clients = propClients || localClients;
   const setClients = propSetClients || localSetClients;
   const [filter, setFilter] = useState("all");
@@ -4141,7 +4157,7 @@ const FinField = ({ label, value, onChange, placeholder, type, mono, helpText })
 );
 
 function FinancialPage({ onBack, clients: propClients }) {
-  const CDATA = propClients || CLIENTS_DATA_INIT;
+  const CDATA = propClients || [];
   const totalRevReal = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
   const payingClients = CDATA.filter(c => c.status === "ativo" && c.plan !== "Trial").length;
   const trialClients = CDATA.filter(c => c.status === "trial" || c.plan === "Trial").length;
@@ -8544,7 +8560,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
 function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
-  const CDATA = propClients || CLIENTS_DATA_INIT;
+  const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const today = new Date();
   const [curMonth, setCurMonth] = useState(today.getMonth());
@@ -8946,7 +8962,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
 }
 
 function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
-  const CDATA = propClients || CLIENTS_DATA_INIT;
+  const CDATA = propClients || [];
   const [filterClient, setFilterClient] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [search, setSearch] = useState("");
@@ -9291,7 +9307,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
 }
 
 function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
-  const CDATA = propClients || CLIENTS_DATA_INIT;
+  const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [period, setPeriod] = useState("fev");
   const [tab, setTab] = useState("overview");
@@ -10065,33 +10081,8 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   );
 }
 
-function IdeasPage({ onBack, user }) {
-  const IDEAS_MOCK = [
-    { id:1, title:"Série 'Antes & Depois' para todos os clientes", desc:"Criar uma série padronizada de posts mostrando resultados reais dos serviços de cada cliente. Funciona bem para Bella Estética (procedimentos), Casa Nova (reformas), Studio Fitness (transformações).", author:"Matheus", date:"28/02/2026", votes:8, status:"approved", client:"Todos", tags:["Conteúdo","Série","Resultados"], comments:[
-      { by:"Alice", text:"Já tenho templates prontos, posso adaptar para cada cliente!", date:"28/02" },
-      { by:"Victoria", text:"Para Studio Fitness tenho material filmado que serve perfeitamente.", date:"01/03" },
-    ] },
-    { id:2, title:"Live Shopping mensal para TechSmart no TikTok", desc:"Com a chegada do TikTok Shop ao Brasil, propor ao Lucas (TechSmart) uma live mensal de review + venda direta. Formato: 1h com 5 produtos, descontos exclusivos para quem assiste ao vivo.", author:"Alice", date:"27/02/2026", votes:6, status:"review", client:"TechSmart", tags:["TikTok","Live","E-commerce"], comments:[
-      { by:"Matheus", text:"Excelente timing com o lançamento do TikTok Shop! Vamos apresentar na próxima reunião.", date:"27/02" },
-    ] },
-    { id:3, title:"Programa de indicação com QR Code para Padaria Real", desc:"Criar cartões físicos com QR Code que direcionam para o WhatsApp. Cada cliente ganha desconto ao indicar amigos. Rastrear via links UTM para medir conversão.", author:"Matheus", date:"25/02/2026", votes:4, status:"pending", client:"Padaria Real", tags:["Offline","QR Code","Indicação"], comments:[] },
-    { id:4, title:"Reels educativos semanais: 'Mitos da Estética'", desc:"Série de Reels curtos (15-30s) desmistificando procedimentos estéticos populares. A Dra. Fernanda fala direto para câmera com linguagem simples. Formato: 'Verdade ou Mito' com transição.", author:"Victoria", date:"24/02/2026", votes:7, status:"approved", client:"Bella Estética", tags:["Reels","Educativo","Saúde"], comments:[
-      { by:"Alice", text:"Já alinhei com a Dra. Fernanda, ela topou gravar toda sexta-feira!", date:"25/02" },
-      { by:"Allan", text:"Posso criar as legendas com hashtags otimizadas para alcance.", date:"25/02" },
-    ] },
-    { id:5, title:"Parceria entre clientes: Casa Nova + Bella Estética", desc:"Cross-marketing: quem compra imóvel pela Casa Nova ganha voucher na Bella Estética, e vice-versa. Público-alvo similar (classe A/B de Petrópolis). Post colaborativo nas duas contas.", author:"Matheus", date:"22/02/2026", votes:5, status:"review", client:"Casa Nova Imóveis", tags:["Parceria","Cross-marketing","Collab"], comments:[
-      { by:"Alice", text:"Ideia incrível! Posso criar o carrossel collab.", date:"23/02" },
-    ] },
-    { id:6, title:"Desafio 30 dias no Instagram do Studio Fitness", desc:"Criar um desafio de 30 dias de exercícios com posts diários de Stories + 1 Reel semanal com demonstração. Participantes postam nos próprios Stories marcando o @studiofitness. Prêmio: 1 mês grátis.", author:"Allan", date:"20/02/2026", votes:9, status:"approved", client:"Studio Fitness", tags:["Desafio","Engajamento","UGC"], comments:[
-      { by:"Victoria", text:"Já filmei 10 exercícios diferentes na última gravação!", date:"21/02" },
-      { by:"Matheus", text:"Aprovado! Vamos lançar dia 1 de março. Alice, prepara os posts do countdown.", date:"22/02" },
-      { by:"Alice", text:"Feito! Countdown de 5 dias antes do lançamento + template para participantes repostar.", date:"22/02" },
-    ] },
-    { id:7, title:"Newsletter mensal para leads de todos os clientes", desc:"Criar uma newsletter automatizada via e-mail para a base de leads captados. Conteúdo personalizado por segmento de cliente. Usar ferramenta gratuita (Mailchimp free tier).", author:"Matheus", date:"18/02/2026", votes:3, status:"pending", client:"Todos", tags:["Email","Newsletter","Automação"], comments:[] },
-    { id:8, title:"Google Ads para Pet Love Shop — campanhas locais", desc:"O Pet Love tem boa avaliação no Google (4.8★). Proposta: campanhas de Google Ads locais focadas em 'pet shop Petrópolis', 'banho e tosa perto de mim'. Budget sugerido: R$ 500/mês.", author:"Matheus", date:"15/02/2026", votes:4, status:"review", client:"Pet Love Shop", tags:["Google Ads","SEO Local","Tráfego Pago"], comments:[
-      { by:"Alice", text:"A Ana Paula mencionou interesse em tráfego pago na última reunião.", date:"16/02" },
-    ] },
-  ];
+function IdeasPage({ onBack, user, clients: propClients }) {
+  const IDEAS_MOCK = [];
   const [ideas, setIdeas] = useState([]);
   const [ideasLoaded, setIdeasLoaded] = useState(false);
 
@@ -10175,7 +10166,7 @@ function IdeasPage({ onBack, user }) {
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente relacionado</label>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
           <button onClick={()=>setForm(p=>({...p,client:"Todos"}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.client||"Todos")==="Todos"?B.accent:B.border}`, background:(form.client||"Todos")==="Todos"?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>Todos</button>
-          {CLIENTS_DATA_INIT.map(c=>(
+          {(propClients||[]).map(c=>(
             <button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{c.name}</button>
           ))}
         </div>
@@ -10930,14 +10921,14 @@ function AIPage({ onBack, user, agencyIdentity }) {
   const AI_HISTORY_KEY = `ai_history_${user?.id || "anon"}`;
 
   const PRESETS = [
-    { emoji: "✍️", label: "Criar legenda", prompt: "Crie uma legenda criativa para um post de Instagram sobre " },
-    { emoji: "📊", label: "Estratégia", prompt: "Sugira uma estratégia de marketing digital para " },
-    { emoji: "📝", label: "Roteiro Reels", prompt: "Escreva um roteiro para um Reels de 30 segundos sobre " },
-    { emoji: "💡", label: "Ideias de conteúdo", prompt: "Me dê 10 ideias de conteúdo para uma empresa de " },
-    { emoji: "📧", label: "E-mail marketing", prompt: "Escreva um e-mail marketing para promover " },
-    { emoji: "🎯", label: "Copy persuasiva", prompt: "Crie uma copy persuasiva para anúncio de " },
-    { emoji: "#️⃣", label: "Hashtags", prompt: "Sugira 30 hashtags relevantes para um post sobre " },
-    { emoji: "📅", label: "Calendário editorial", prompt: "Monte um calendário editorial de 1 mês para uma empresa de " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, label: "Criar legenda", prompt: "Crie uma legenda criativa para um post de Instagram sobre " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, label: "Estratégia", prompt: "Sugira uma estratégia de marketing digital para " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>, label: "Roteiro Reels", prompt: "Escreva um roteiro para um Reels de 30 segundos sobre " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>, label: "Ideias de conteúdo", prompt: "Me dê 10 ideias de conteúdo para uma empresa de " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.purple} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label: "E-mail marketing", prompt: "Escreva um e-mail marketing para promover " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>, label: "Copy persuasiva", prompt: "Crie uma copy persuasiva para anúncio de " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>, label: "Hashtags", prompt: "Sugira 30 hashtags relevantes para um post sobre " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, label: "Calendário editorial", prompt: "Monte um calendário editorial de 1 mês para uma empresa de " },
   ];
 
   /* Load AI keys + conversation history from Supabase */
@@ -11194,7 +11185,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
             <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }} className="hscroll">
               {PRESETS.map((p, i) => (
                 <button key={i} onClick={() => { startNewChat(); setTimeout(() => setInput(p.prompt), 100); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text, whiteSpace:"nowrap", flexShrink:0 }}>
-                  <span style={{ fontSize:14 }}>{p.emoji}</span> {p.label}
+                  <span style={{ display:"flex", alignItems:"center" }}>{p.icon}</span> {p.label}
                 </button>
               ))}
             </div>
@@ -11233,8 +11224,10 @@ function AIPage({ onBack, user, agencyIdentity }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, width:"100%" }}>
           {PRESETS.map((p, i) => (
             <Card key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:12, textAlign:"left", border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard }}>
-              <div style={{ marginBottom:4, display:"flex", justifyContent:"center", fontSize:20 }}>{p.emoji}</div>
-              <p style={{ fontSize:12, fontWeight:700 }}>{p.label}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
+                <p style={{ fontSize:12, fontWeight:700 }}>{p.label}</p>
+              </div>
             </Card>
           ))}
         </div>
@@ -11758,7 +11751,7 @@ function SearchPage({ onBack, team, clients }) {
 
   const q = query.toLowerCase().trim();
 
-  const CDATA = clients || CLIENTS_DATA_INIT;
+  const CDATA = clients || [];
   const TDATA = team || [];
 
   const clientResults = q ? CDATA.filter(c =>
@@ -12394,7 +12387,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
           setSharedClients([]);
         }
       } else {
-        setSharedClients(CLIENTS_DATA_INIT);
+        setSharedClients([]);
       }
       setClientsLoaded(true);
     });
@@ -12552,7 +12545,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} />}
-        {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} />}
+        {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={sharedClients} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
