@@ -582,13 +582,28 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
 const IG_APP_ID = "1380216083791935";
 const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments";
 
-const publishToInstagram = async (clientId, imageUrl, caption, mediaType = "FEED") => {
+/* Helper: compute scheduled unix timestamp from scheduling object {date:"2026-03-10", time:"18:00"} */
+const getScheduledTimestamp = (scheduling) => {
+  if (!scheduling?.date || !scheduling?.time) return null;
+  try {
+    const dt = new Date(`${scheduling.date}T${scheduling.time}:00`);
+    if (isNaN(dt.getTime())) return null;
+    const ts = Math.floor(dt.getTime() / 1000);
+    /* Must be at least 10 min in the future */
+    if (ts < Math.floor(Date.now() / 1000) + 600) return null;
+    return ts;
+  } catch { return null; }
+};
+
+const publishToInstagram = async (clientId, imageUrl, caption, mediaType = "FEED", scheduledTime = null) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   try {
+    const body = { client_id: clientId, image_url: imageUrl, caption, media_type: mediaType };
+    if (scheduledTime) body.scheduled_publish_time = scheduledTime;
     const res = await fetch(`${SUPA_URL}/functions/v1/instagram-publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ client_id: clientId, image_url: imageUrl, caption, media_type: mediaType })
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     console.log("[IG Publish] Response:", JSON.stringify(data).substring(0, 300));
@@ -5252,13 +5267,15 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
                 {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
               </div>}
-              <label className="sl" style={{ display:"block", marginBottom:4 }}>Legenda do post</label>
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>{sel.format === "Stories" ? "Texto para Story (referência)" : "Legenda do post"}</label>
+              {sel.format !== "Stories" ? <>
               <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
               <label className="sl" style={{ display:"block", marginBottom:4, marginTop:8 }}>Hashtags</label>
               <input value={sel.steps?.caption?.hashtags||""} onChange={e=>updateStep("caption",{hashtags:e.target.value})} placeholder="#marketing #petropolis" className="tinput" />
+              </> : <p style={{ fontSize:11, color:B.muted, padding:10, background:`${B.orange}08`, borderRadius:10, lineHeight:1.5 }}>⚠️ Stories do Instagram não suportam legenda ou hashtags. Apenas a imagem/vídeo será publicada.</p>}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10 }}>
-                <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Data</label><input type="text" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} placeholder="DD/MM" className="tinput" /></div>
-                <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="text" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" /></div>
+                <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Data de publicação</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" /></div>
+                <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" /></div>
               </div>
               {sel.sponsored && <div style={{ marginTop:8 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento do boost</label><input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" /></div>}
             </> : sel.steps?.caption?.text && <>
@@ -5319,42 +5336,43 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 {(() => {
                   const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
                   const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                  if (imgFiles.length === 0) return null;
                   const clientObj = CDATA.find(c => c.name === sel.client);
                   const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
-                  const hasNetwork = (sel.network||"").toLowerCase().includes("instagram");
-                  if (!igConnected || imgFiles.length === 0 || !hasNetwork) return null;
+                  const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
+                  const networks = (sel.network||"").toLowerCase();
+                  const hasIG = networks.includes("instagram") && igConnected;
+                  const hasFB = networks.includes("facebook") && fbConnected;
+                  const isStories = sel.format === "Stories";
+                  const schedTs = getScheduledTimestamp(sel.scheduling);
+                  const schedLabel = schedTs ? ` (agendado: ${sel.scheduling.date} ${sel.scheduling.time})` : "";
+                  if (!hasIG && !hasFB) return null;
+                  const doPublish = async (platform, type) => {
+                    const img = imgFiles[0];
+                    const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                    const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                    const clientId = clientObj.supaId || clientObj.id;
+                    showToast(schedTs ? `Agendando ${type}...` : `Publicando ${type}...`);
+                    let r;
+                    if (platform === "instagram") {
+                      r = await publishToInstagram(clientId, img.url, fullCaption, type, schedTs);
+                    } else {
+                      r = await publishToMeta(clientId, img.url, fullCaption, ["facebook"]);
+                    }
+                    if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                    updateStep("client", { status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
+                    setTimeout(() => advanceStage(sel), 200);
+                    showToast(schedTs ? `✓ Agendado com sucesso!${schedLabel}` : `✓ Publicado!`);
+                  };
                   return (
-                    <div style={{ marginTop:16, padding:12, borderRadius:12, background:"#E1306C06", border:"1px dashed #E1306C30" }}>
-                      <p style={{ fontSize:11, fontWeight:700, color:"#E1306C", marginBottom:4 }}>⚡ Publicar direto (sem aprovação)</p>
-                      <p style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Publica imediatamente no Instagram sem esperar o cliente aprovar.</p>
-                      <div style={{ display:"flex", gap:6 }}>
-                        <button onClick={async () => {
-                          const img = imgFiles[0];
-                          const caption = sel.steps?.caption?.text || sel.title || "";
-                          showToast("Publicando no Feed...");
-                          const clientId = clientObj.supaId || clientObj.id;
-                          const r = await publishToInstagram(clientId, img.url, caption, "FEED");
-                          if (r.error) { showToast(`Erro: ${r.error}`); return; }
-                          updateStep("client", { status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                          updateStep("igPublished", { type:"FEED", mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR") });
-                          setTimeout(() => advanceStage(sel), 200);
-                          showToast("✓ Publicado no Instagram e marcado como concluído!");
-                        }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>
-                          📷 Feed direto
-                        </button>
-                        <button onClick={async () => {
-                          const img = imgFiles[0];
-                          showToast("Publicando Story...");
-                          const clientId = clientObj.supaId || clientObj.id;
-                          const r = await publishToInstagram(clientId, img.url, "", "STORIES");
-                          if (r.error) { showToast(`Erro: ${r.error}`); return; }
-                          updateStep("client", { status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                          updateStep("igPublished", { type:"STORIES", mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR") });
-                          setTimeout(() => advanceStage(sel), 200);
-                          showToast("✓ Story publicado e marcado como concluído!");
-                        }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>
-                          📱 Story direto
-                        </button>
+                    <div style={{ marginTop:16, padding:12, borderRadius:12, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1px dashed ${hasIG?"#E1306C":"#1877F2"}30` }}>
+                      <p style={{ fontSize:11, fontWeight:700, color:hasIG?"#E1306C":"#1877F2", marginBottom:4 }}>⚡ Publicar direto (sem aprovação)</p>
+                      <p style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.5 }}>{schedTs ? `Agenda para ${sel.scheduling.date} às ${sel.scheduling.time}` : "Publica imediatamente"} sem esperar o cliente aprovar.</p>
+                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>📷 IG Feed{schedTs?" ⏰":""}</button>}
+                        {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>📱 IG Story</button>}
+                        {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>📘 Facebook{schedTs?" ⏰":""}</button>}
                       </div>
                     </div>
                   );
@@ -5376,46 +5394,49 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <span style={{ fontSize:11, fontWeight:700, color:"#E1306C" }}>📸 Publicado no Instagram</span>
               </div>}
             </div>}
-            {/* Instagram publish buttons — show when there are uploaded images */}
+            {/* Publish buttons — show when there are uploaded images and connected social */}
             {(() => {
               const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
               const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
               const clientObj = CDATA.find(c => c.name === sel.client);
               const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
-              const hasNetwork = (sel.network||"").toLowerCase().includes("instagram");
-              if (!igConnected || imgFiles.length === 0 || !hasNetwork) return null;
+              const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
+              const networks = (sel.network||"").toLowerCase();
+              const hasIG = networks.includes("instagram") && igConnected;
+              const hasFB = networks.includes("facebook") && fbConnected;
+              const isStories = sel.format === "Stories";
+              const schedTs = getScheduledTimestamp(sel.scheduling);
+              if ((!hasIG && !hasFB) || imgFiles.length === 0) return null;
               if (sel.steps?.igPublished) return null;
+              const doPublish = async (platform, type) => {
+                const img = imgFiles[0];
+                const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                const clientId = clientObj.supaId || clientObj.id;
+                showToast(schedTs ? `Agendando ${type}...` : `Publicando ${type}...`);
+                let r;
+                if (platform === "instagram") {
+                  r = await publishToInstagram(clientId, img.url, fullCaption, type, schedTs);
+                } else {
+                  r = await publishToMeta(clientId, img.url, fullCaption, ["facebook"]);
+                }
+                if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
+                showToast(schedTs ? `✓ Agendado!` : `✓ Publicado!`);
+              };
               return (
-                <Card style={{ marginTop:8, background:"#E1306C06", border:"1.5px solid #E1306C15" }}>
-                  <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>📸 Publicar no Instagram</p>
+                <Card style={{ marginTop:8, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1.5px solid ${hasIG?"#E1306C":"#1877F2"}15` }}>
+                  <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>📸 Publicar nas redes</p>
                   <p style={{ fontSize:11, color:B.muted, marginBottom:8, textAlign:"center", lineHeight:1.5 }}>
-                    {imgFiles.length} {imgFiles.length===1?"imagem disponível":"imagens disponíveis"} · Cliente: {sel.client}
+                    {imgFiles.length} {imgFiles.length===1?"imagem":"imagens"} · {sel.client}
                   </p>
                   {imgFiles.length > 0 && <div style={{ display:"flex", gap:6, justifyContent:"center", marginBottom:10, flexWrap:"wrap" }}>
                     {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />)}
                   </div>}
-                  <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={async () => {
-                      const img = imgFiles[0];
-                      const caption = sel.steps?.caption?.text || sel.title || "";
-                      showToast("Publicando no Feed do Instagram...");
-                      const clientId = clientObj.supaId || clientObj.id;
-                      const r = await publishToInstagram(clientId, img.url, caption, "FEED");
-                      if (r.error) showToast(`Erro: ${r.error}`);
-                      else { updateStep("igPublished", { type:"FEED", mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR") }); showToast("✓ Post publicado no Instagram!"); }
-                    }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>
-                      📷 Feed
-                    </button>
-                    <button onClick={async () => {
-                      const img = imgFiles[0];
-                      showToast("Publicando Story no Instagram...");
-                      const clientId = clientObj.supaId || clientObj.id;
-                      const r = await publishToInstagram(clientId, img.url, "", "STORIES");
-                      if (r.error) showToast(`Erro: ${r.error}`);
-                      else { updateStep("igPublished", { type:"STORIES", mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR") }); showToast("✓ Story publicado no Instagram!"); }
-                    }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>
-                      📱 Story
-                    </button>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>📷 IG Feed{schedTs?" ⏰":""}</button>}
+                    {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>📱 IG Story</button>}
+                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>📘 Facebook{schedTs?" ⏰":""}</button>}
                   </div>
                 </Card>
               );
