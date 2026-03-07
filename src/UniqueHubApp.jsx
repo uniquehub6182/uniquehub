@@ -5368,11 +5368,23 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   return (
                     <div style={{ marginTop:16, padding:12, borderRadius:12, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1px dashed ${hasIG?"#E1306C":"#1877F2"}30` }}>
                       <p style={{ fontSize:11, fontWeight:700, color:hasIG?"#E1306C":"#1877F2", marginBottom:4 }}>⚡ Publicar direto (sem aprovação)</p>
-                      <p style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.5 }}>{schedTs ? `Agenda para ${sel.scheduling.date} às ${sel.scheduling.time}` : "Publica imediatamente"} sem esperar o cliente aprovar.</p>
+                      {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B25" }}>
+                        <span style={{ fontSize:14 }}>⏰</span>
+                        <div>
+                          <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Agendado para {sel.scheduling.date} às {sel.scheduling.time}</p>
+                          <p style={{ fontSize:10, color:B.muted }}>O post será criado e salvo para publicação no horário definido.</p>
+                        </div>
+                      </div> : <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 10px", borderRadius:8, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
+                        <span style={{ fontSize:14 }}>🚀</span>
+                        <div>
+                          <p style={{ fontSize:11, fontWeight:700, color:B.green }}>Publicação imediata</p>
+                          <p style={{ fontSize:10, color:B.muted }}>Ao clicar, o post será publicado agora mesmo.</p>
+                        </div>
+                      </div>}
                       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>📷 IG Feed{schedTs?" ⏰":""}</button>}
-                        {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>📱 IG Story</button>}
-                        {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>📘 Facebook{schedTs?" ⏰":""}</button>}
+                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} IG Feed</button>}
+                        {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>🚀 Publicar IG Story</button>}
+                        {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} Facebook</button>}
                       </div>
                     </div>
                   );
@@ -5434,9 +5446,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                     {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />)}
                   </div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>📷 IG Feed{schedTs?" ⏰":""}</button>}
-                    {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>📱 IG Story</button>}
-                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>📘 Facebook{schedTs?" ⏰":""}</button>}
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} IG Feed</button>}
+                    {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>🚀 Publicar IG Story</button>}
+                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} Facebook</button>}
                   </div>
                 </Card>
               );
