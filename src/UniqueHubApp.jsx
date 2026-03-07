@@ -633,49 +633,18 @@ const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEE
   } catch(e) { console.error("publishToInstagram error:", e); return { error: e.message }; }
 };
 
-/* ═══ FETCH META/IG INSIGHTS (Graph API) ═══ */
+/* ═══ FETCH META/IG INSIGHTS (via Edge Function proxy) ═══ */
 const fetchGraphInsights = async (clientId) => {
-  if (!supabase) return null;
+  if (!supabase || !SUPA_URL) return null;
   try {
-    const raw = await supaGetSetting(`meta_token_${clientId}`);
-    if (!raw) return null;
-    const token = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (!token.page_token) return null;
-    const now = new Date();
-    const since = new Date(now.getFullYear(), now.getMonth(), 1);
-    const sinceStr = since.toISOString().split("T")[0];
-    const untilStr = now.toISOString().split("T")[0];
-    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    const prevSinceStr = prevMonthStart.toISOString().split("T")[0];
-    const prevUntilStr = prevMonthEnd.toISOString().split("T")[0];
-    const at = token.page_token;
-    const result = { fb: null, ig: null, igMedia: null, fbPrev: null, igPrev: null, pageId: token.page_id, igUserId: token.ig_user_id };
-    if (token.page_id) {
-      const fbM = "page_impressions,page_impressions_organic_v2,page_impressions_paid,page_engaged_users,page_post_engagements,page_fan_adds,page_views_total";
-      try {
-        const r1 = await fetch(`https://graph.facebook.com/v21.0/${token.page_id}/insights?metric=${fbM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
-        const d1 = await r1.json(); if (d1.data) result.fb = d1.data;
-        const r2 = await fetch(`https://graph.facebook.com/v21.0/${token.page_id}/insights?metric=${fbM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
-        const d2 = await r2.json(); if (d2.data) result.fbPrev = d2.data;
-      } catch (e) { console.warn("FB insights error:", e); }
-      try { const r = await fetch(`https://graph.facebook.com/v21.0/${token.page_id}?fields=name,fan_count,followers_count&access_token=${at}`); result.fbPage = await r.json(); } catch {}
-    }
-    if (token.ig_user_id) {
-      const igM = "impressions,reach,profile_views,accounts_engaged,follower_count";
-      try {
-        const r1 = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}/insights?metric=${igM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
-        const d1 = await r1.json(); if (d1.data) result.ig = d1.data;
-        const r2 = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}/insights?metric=${igM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
-        const d2 = await r2.json(); if (d2.data) result.igPrev = d2.data;
-      } catch (e) { console.warn("IG insights error:", e); }
-      try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url,insights.metric(impressions,reach,engagement,saved)&limit=30&access_token=${at}`);
-        const d = await r.json(); if (d.data) result.igMedia = d.data;
-      } catch (e) { console.warn("IG media error:", e); }
-      try { const r = await fetch(`https://graph.facebook.com/v21.0/${token.ig_user_id}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url&access_token=${at}`); result.igProfile = await r.json(); } catch {}
-    }
-    return result;
+    const res = await fetch(`${SUPA_URL}/functions/v1/social-insights`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ client_id: clientId })
+    });
+    const data = await res.json();
+    if (data.error) { console.warn("social-insights:", data.error); return null; }
+    return data;
   } catch (e) { console.error("fetchGraphInsights:", e); return null; }
 };
 const sumInsight = (data, name) => { if (!data) return 0; const m = data.find(x => x.name === name); return m?.values ? m.values.reduce((a, v) => a + (v.value || 0), 0) : 0; };
@@ -2823,6 +2792,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
+  const [clientIdeas, setClientIdeas] = useState([]);
+  const [clientIdeasLoaded, setClientIdeasLoaded] = useState(null); /* client id that was loaded */
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({});
   const [editingSocial, setEditingSocial] = useState(null);
@@ -2832,6 +2803,16 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [addingFile, setAddingFile] = useState(false);
   const [fileForm, setFileForm] = useState({});
   const [showPlanPicker, setShowPlanPicker] = useState(false);
+  /* Load ideas for selected client when ideas tab is opened */
+  useEffect(() => {
+    if (profileTab !== "ideas" || !sel || !supabase) return;
+    if (clientIdeasLoaded === sel.name) return;
+    supaLoadIdeas().then(rows => {
+      const filtered = (rows || []).filter(r => r.client_name === sel.name || r.client_name === "Todos");
+      setClientIdeas(filtered.map(r => ({ id: r.id, title: r.title, desc: r.description || "", author: r.author || "—", date: new Date(r.created_at).toLocaleDateString("pt-BR"), votes: r.votes || 0, status: r.status || "pending", tags: r.tags || [], comments: r.comments || [] })));
+      setClientIdeasLoaded(sel.name);
+    });
+  }, [profileTab, sel]);
   const [confirmAction, setConfirmAction] = useState(null);
   const [editClient, setEditClient] = useState(false);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -3417,7 +3398,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
       </div>
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
-        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
+        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
           <button key={t.k} onClick={()=>setProfileTab(t.k)} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
         ))}
       </div>
@@ -3647,6 +3628,34 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </Card>
         );}))}
         <button onClick={()=>setAddingFile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:16, marginTop:12, borderRadius:14, border:`2px dashed ${B.accent}30`, background:`${B.accent}04`, cursor:"pointer", color:B.accent, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>{IC.upload} Adicionar arquivo à biblioteca</button>
+      </>}
+
+      {profileTab === "ideas" && <>
+        <p className="sl" style={{ marginBottom:6 }}>Ideias relacionadas a {sel.name}</p>
+        {clientIdeas.length === 0 && <Card style={{ textAlign:"center", padding:20 }}>
+          <p style={{ fontSize:13, color:B.muted }}>Nenhuma ideia cadastrada para este cliente.</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Crie ideias na seção "Ideias" e associe a este cliente.</p>
+        </Card>}
+        {clientIdeas.map((idea, i) => {
+          const statusCfg = { approved:{ l:"Aprovada", c:B.green }, review:{ l:"Em análise", c:B.orange }, pending:{ l:"Pendente", c:B.muted }, rejected:{ l:"Rejeitada", c:B.red } };
+          const st = statusCfg[idea.status] || statusCfg.pending;
+          return (
+            <Card key={idea.id} delay={i*0.03} style={{ marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:13, fontWeight:700 }}>{idea.title}</p>
+                  {idea.desc && <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{idea.desc}</p>}
+                </div>
+                <Tag color={st.c}>{st.l}</Tag>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8, flexWrap:"wrap" }}>
+                <span style={{ fontSize:10, color:B.muted }}>{idea.author} · {idea.date}</span>
+                <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>▲ {idea.votes}</span>
+                {(idea.tags||[]).map((t,j) => <span key={j} style={{ fontSize:9, padding:"2px 6px", borderRadius:6, background:`${B.accent}10`, color:B.accent, fontWeight:600 }}>{t}</span>)}
+              </div>
+            </Card>
+          );
+        })}
       </>}
 
       {profileTab === "contract" && <>
