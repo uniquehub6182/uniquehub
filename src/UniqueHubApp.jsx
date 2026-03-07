@@ -2756,6 +2756,35 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         sessionStorage.removeItem("uh_meta_error");
         showToast(`Erro Meta: ${metaError}`);
       }
+      /* ── Instagram direct connection (Instagram Business Login API) ── */
+      const igResult = sessionStorage.getItem("uh_ig_connected");
+      if (igResult) {
+        metaChecked.current = true;
+        sessionStorage.removeItem("uh_ig_connected");
+        const result = JSON.parse(igResult);
+        const clientId = result.clientId;
+        console.log("[IG Connect] Looking for client:", clientId);
+        const client = clients.find(c =>
+          String(c.id) === String(clientId) ||
+          String(c.supaId) === String(clientId) ||
+          c.id === clientId ||
+          c.supaId === clientId
+        );
+        if (client) {
+          console.log("[IG Connect] Found client:", client.name);
+          const ns = {
+            ...client.socials,
+            instagram: { connected: true, user: `@${result.username}`, followers: result.followers_count ? `${result.followers_count}` : "", oauth: true, ig_user_id: result.ig_user_id, profile_picture_url: result.profile_picture_url }
+          };
+          updateClient(client.id, { socials: ns });
+          setSel({ ...client, socials: ns });
+          setProfileTab("socials");
+          showToast(`Instagram @${result.username} conectado! ✓`);
+        } else {
+          console.warn("[IG Connect] Client not found for id:", clientId);
+          showToast(`Instagram @${result.username} conectado! — abra o cliente para ver`);
+        }
+      }
     } catch(e) { console.error("[Meta Connect] Error:", e); }
   }, [clients]);
   const filtered = clients.filter(c => {
