@@ -1149,7 +1149,7 @@ const DEMANDS_INIT = [
     steps:{ idea:{by:"Matheus",text:"Post carrossel com fotos aéreas do drone, destacar área de lazer completa",date:"20/02"},
       briefing:{by:"Alice",text:"5 slides 1080x1080. Slide 1: fachada. Slides 2-4: lazer. Slide 5: CTA. Tons quentes, logo cliente no canto.",date:"21/02"},
       design:{by:"Victoria",files:["carrossel_parque_v2.psd"],date:"22/02"},
-      caption:{by:"Alice",text:"🏡 Seu novo lar te espera no Parque das Flores!\n\n✅ Área de lazer completa\n✅ Segurança 24h\n✅ Localização privilegiada\n\n📲 Agende sua visita!",hashtags:"#imoveis #petropolis #condominio",date:"23/02"},
+      caption:{by:"Alice",text:"🏡 Seu novo lar te espera no Parque das Flores!\n\n✅ Área de lazer completa\n✅ Segurança 24h\n✅ Localização privilegiada\n\n📲 Agende sua visita!",hashtags:"#imoveis #mktdigital #condominio",date:"23/02"},
       review:{by:"Matheus",status:"approved",note:"Ótimo trabalho!",date:"24/02"},
       client:{status:"pending"},
     },
@@ -1176,7 +1176,7 @@ const DEMANDS_INIT = [
     steps:{ idea:{by:"Alice",text:"Post simples com foto do menu do fim de semana",date:"18/02"},
       briefing:{by:"Alice",text:"1080x1080, foto do menu com overlay de texto. Cores quentes.",date:"18/02"},
       design:{by:"Victoria",files:["menu_fds.psd"],date:"19/02"},
-      caption:{by:"Alice",text:"🍞 Menu especial de sábado chegou!\n\nConfira as delícias que preparamos 😋",hashtags:"#padaria #petropolis",date:"19/02"},
+      caption:{by:"Alice",text:"🍞 Menu especial de sábado chegou!\n\nConfira as delícias que preparamos 😋",hashtags:"#padaria #mktdigital",date:"19/02"},
       review:{by:"Matheus",status:"approved",note:"OK",date:"19/02"},
       client:{status:"approved",note:"Perfeito!",date:"20/02"},
       published:{date:"20/02"},
@@ -4647,10 +4647,24 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     }
   };
 
-  const rejectToStage = (d, targetStage) => {
-    setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: targetStage }, targetStage) : x));
-    setSel(prev => syncMilestones({ ...prev, stage: targetStage }, targetStage));
-    if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage });
+  const rejectToStage = (d, targetStage, feedbackNote) => {
+    const updated = { ...d, stage: targetStage };
+    /* Store the review feedback in the target step so the person can see what needs fixing */
+    if (feedbackNote) {
+      const steps = { ...(updated.steps || {}) };
+      if (targetStage === "design" || targetStage === "caption") {
+        steps[targetStage] = { ...(steps[targetStage] || {}), reviewFeedback: feedbackNote, reviewFeedbackBy: user?.name || "Matheus", reviewFeedbackDate: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+      }
+      /* If rejecting to both (arte+legenda), store feedback in both steps */
+      if (targetStage === "design" && d._rejectBoth) {
+        steps.caption = { ...(steps.caption || {}), reviewFeedback: feedbackNote, reviewFeedbackBy: user?.name || "Matheus", reviewFeedbackDate: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+      }
+      updated.steps = steps;
+    }
+    const synced = syncMilestones(updated, targetStage);
+    setDemands(prev => prev.map(x => x.id === d.id ? synced : x));
+    setSel(synced);
+    if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage, steps: updated.steps });
     showToast(`Voltou para: ${STAGE_CFG[targetStage].l}`);
   };
 
@@ -5068,6 +5082,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           {/* ── 3. DESIGN (Designer/Audiovisual) ── */}
           {renderSection("design", <>
             {sel.stage === "design" ? <>
+              {/* Show review feedback if this was rejected */}
+              {sel.steps?.design?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.design.reviewFeedbackBy} · {sel.steps.design.reviewFeedbackDate}):</p>
+                <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.design.reviewFeedback}</p>
+              </div>}
               {/* Show briefing instructions for designer to read */}
               <div style={{ background:`${STAGE_CFG.briefing.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.briefing.c}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.briefing.c, marginBottom:4 }}>📋 Briefing da Social Media:</p>
@@ -5274,6 +5293,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           {/* ── 4. LEGENDA (Social Media) ── */}
           {renderSection("caption", <>
             {sel.stage === "caption" ? <>
+              {/* Show review feedback if this was rejected */}
+              {sel.steps?.caption?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
+                <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.caption.reviewFeedback}</p>
+              </div>}
               {/* Show design files for reference */}
               {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
@@ -5283,11 +5307,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               {sel.format !== "Stories" ? <>
               <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
               <label className="sl" style={{ display:"block", marginBottom:4, marginTop:8 }}>Hashtags</label>
-              <input value={sel.steps?.caption?.hashtags||""} onChange={e=>updateStep("caption",{hashtags:e.target.value})} placeholder="#marketing #petropolis" className="tinput" />
+              <input value={sel.steps?.caption?.hashtags||""} onChange={e=>updateStep("caption",{hashtags:e.target.value})} placeholder="#marketing #mktdigital" className="tinput" />
               </> : <p style={{ fontSize:11, color:B.muted, padding:10, background:`${B.orange}08`, borderRadius:10, lineHeight:1.5, display:"flex", alignItems:"center", gap:6 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Stories do Instagram não suportam legenda ou hashtags. Apenas a imagem/vídeo será publicada.</p>}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10 }}>
-                <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Data de publicação</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" /></div>
-                <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" /></div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10, maxWidth:"100%", overflow:"hidden" }}>
+                <div style={{ minWidth:0 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Data de publicação</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }} /></div>
+                <div style={{ minWidth:0 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }} /></div>
               </div>
               {sel.sponsored && <div style={{ marginTop:8 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento do boost</label><input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" /></div>}
             </> : sel.steps?.caption?.text && <>
@@ -5304,7 +5328,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>📎 Material do designer:</p>
                 {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {typeof f === "string" ? f : f.name || "arquivo"}</span>))}
               </div>}
-              {sel.scheduling?.date && <div style={{ display:"flex", gap:10, marginTop:10, padding:10, background:`${B.accent}06`, borderRadius:10 }}>
+              {sel.scheduling?.date && <div style={{ display:"flex", gap:10, marginTop:10, padding:10, background:`${B.accent}06`, borderRadius:10, flexWrap:"wrap", maxWidth:"100%", overflow:"hidden", boxSizing:"border-box" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}><span style={{ color:B.accent, display:"flex" }}>{IC.calendar(B.accent)}</span><span style={{ fontSize:12, fontWeight:600 }}>{sel.scheduling.date}</span></div>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}><span style={{ color:B.accent, display:"flex" }}>{IC.clock}</span><span style={{ fontSize:12, fontWeight:600 }}>{sel.scheduling.time}</span></div>
                 {sel.network && <div style={{ display:"flex", alignItems:"center", gap:4 }}><NetworkIcon name={sel.network} sz={14} active /><span style={{ fontSize:12, fontWeight:600, color:NETWORK_CFG[sel.network]?.c }}>{sel.network}</span></div>}
@@ -5315,94 +5339,175 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           {/* ── 5. REVISÃO INTERNA (Gerente) ── */}
           {renderSection("review", <>
             {sel.stage === "review" ? <>
-              <label className="sl" style={{ display:"block", marginBottom:4 }}>Observação (opcional)</label>
-              <input value={sel.steps?.review?.note||""} onChange={e=>updateStep("review",{note:e.target.value})} placeholder="Feedback sobre o material..." className="tinput" style={{ marginBottom:10 }} />
-              <div style={{ display:"flex", gap:8 }}>
-                <button onClick={() => { updateStep("review",{status:"approved",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); setTimeout(()=>advanceStage(sel),100); }} style={{ flex:1, padding:"12px 0", borderRadius:14, background:B.green, color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Aprovar</button>
-                <button onClick={() => rejectToStage(sel,"design")} style={{ flex:1, padding:"12px 0", borderRadius:14, background:B.orange, color:"#fff", border:"none", fontFamily:"inherit", fontSize:12, fontWeight:700, cursor:"pointer" }}>↩ Arte</button>
-                <button onClick={() => rejectToStage(sel,"caption")} style={{ flex:1, padding:"12px 0", borderRadius:14, background:B.red, color:"#fff", border:"none", fontFamily:"inherit", fontSize:12, fontWeight:700, cursor:"pointer" }}>↩ Legenda</button>
+              {/* Preview da Arte */}
+              {(() => {
+                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                return imgFiles.length > 0 && <div style={{ marginBottom:10 }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:6 }}>🎨 Arte para revisão:</p>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt={f.name} style={{ width:60, height:60, borderRadius:8, objectFit:"cover", border:`1px solid ${B.border}` }} />)}
+                    {imgFiles.length > 4 && <div style={{ width:60, height:60, borderRadius:8, background:B.bgCard, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:B.muted }}>+{imgFiles.length-4}</div>}
+                  </div>
+                </div>;
+              })()}
+              {/* Preview da Legenda */}
+              {sel.steps?.caption?.text && <div style={{ marginBottom:10, padding:10, background:B.bgCard, borderRadius:10, border:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:4 }}>📝 Legenda para revisão:</p>
+                <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line", color:B.text, maxHeight:80, overflow:"auto" }}>{sel.steps.caption.text}</p>
+                {sel.steps?.caption?.hashtags && <p style={{ fontSize:10, color:B.blue, marginTop:4 }}>{sel.steps.caption.hashtags}</p>}
+              </div>}
+              {/* Feedback textarea */}
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Observação / O que precisa corrigir</label>
+              <textarea value={sel.steps?.review?.note||""} onChange={e=>updateStep("review",{note:e.target.value})} placeholder="Descreva o que está errado ou precisa ser alterado..." className="tinput" style={{ marginBottom:12, minHeight:70, resize:"vertical" }} />
+              {/* Action buttons */}
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                <button onClick={() => { updateStep("review",{status:"approved",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); setTimeout(()=>advanceStage(sel),100); }} style={{ flex:"1 1 100%", padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Aprovar</button>
+                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"design",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); rejectToStage(sel,"design",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.orange, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Arte</button>
+                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"caption",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); rejectToStage(sel,"caption",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.red, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Legenda</button>
+                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"both",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); const d = {...sel, _rejectBoth:true}; rejectToStage(d,"design",note); }} style={{ flex:"1 1 100%", padding:"10px 0", borderRadius:14, background:B.dark, color:"#fff", border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Arte + Legenda</button>
               </div>
             </> : sel.steps?.review?.status && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Tag color={sel.steps?.review?.status==="approved"?B.green:B.red}>{sel.steps?.review?.status==="approved"?"✓ Aprovado":"✗ Reprovado"}</Tag>
+                <Tag color={sel.steps?.review?.status==="approved"?B.green:B.red}>{sel.steps?.review?.status==="approved"?"✓ Aprovado":sel.steps?.review?.target==="both"?"✗ Revisar Arte + Legenda":sel.steps?.review?.target==="design"?"✗ Revisar Arte":"✗ Revisar Legenda"}</Tag>
                 <span style={{ fontSize:11, color:B.muted }}>{sel.steps?.review?.by} · {sel.steps?.review?.date}</span>
               </div>
-              {sel.steps?.review?.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps?.review?.note}"</p>}
+              {sel.steps?.review?.note && <div style={{ padding:10, background:`${B.red}08`, borderRadius:10, border:`1px solid ${B.red}20` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4 }}>📋 Feedback da revisão:</p>
+                <p style={{ fontSize:12, fontStyle:"italic", color:B.text, lineHeight:1.5 }}>{sel.steps?.review?.note}</p>
+              </div>}
             </>}
           </>)}
 
           {/* ── 6. APROVAÇÃO CLIENTE ── */}
           {renderSection("client", <>
             {sel.stage === "client" ? <>
-              <div style={{ textAlign:"center", padding:16 }}>
-                <div style={{ width:44, height:44, borderRadius:22, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
-                </div>
-                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Enviado para o cliente</p>
-                <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5 }}>A demanda foi enviada para aprovação no app do cliente. Aguardando resposta.</p>
-                <div style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:12, padding:"6px 14px", borderRadius:20, background:`${B.accent}08`, border:`1px solid ${B.accent}15` }}>
-                  <div style={{ width:8, height:8, borderRadius:4, background:B.orange, animation:"skPulse 1.5s ease infinite" }} />
-                  <span style={{ fontSize:11, fontWeight:600, color:B.orange }}>Aguardando aprovação</span>
-                </div>
-                {/* Direct publish option — skip client approval */}
-                {(() => {
-                  const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-                  const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-                  if (imgFiles.length === 0) return null;
-                  const clientObj = CDATA.find(c => c.name === sel.client);
-                  const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
-                  const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
-                  const networks = (sel.network||"").toLowerCase();
-                  const hasIG = networks.includes("instagram") && igConnected;
-                  const hasFB = networks.includes("facebook") && fbConnected;
-                  const isStories = sel.format === "Stories";
-                  const schedTs = getScheduledTimestamp(sel.scheduling);
-                  const schedLabel = schedTs ? ` (agendado: ${sel.scheduling.date} ${sel.scheduling.time})` : "";
-                  if (!hasIG && !hasFB) return null;
-                  const doPublish = async (platform, type) => {
-                    const imgUrls = imgFiles.map(f => f.url);
-                    const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
-                    const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
-                    const clientId = clientObj.supaId || clientObj.id;
-                    const isCarousel = imgUrls.length > 1 && type === "FEED";
-                    showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
-                    let r;
-                    if (platform === "instagram") {
-                      r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
-                    } else {
-                      r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
-                    }
-                    if (r?.error) { showToast(`Erro: ${r.error}`); return; }
-                    updateStep("client", { status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
-                    setTimeout(() => advanceStage(sel), 200);
-                    showToast(schedTs ? `✓ Agendado com sucesso!${schedLabel}` : `✓ Publicado!`);
-                  };
-                  return (
-                    <div style={{ marginTop:16, padding:12, borderRadius:12, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1px dashed ${hasIG?"#E1306C":"#1877F2"}30` }}>
-                      <p style={{ fontSize:11, fontWeight:700, color:hasIG?"#E1306C":"#1877F2", marginBottom:4, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hasIG?"#E1306C":"#1877F2"} strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Publicar direto (sem aprovação)</p>
-                      {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B25" }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        <div>
-                          <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Agendado para {sel.scheduling.date} às {sel.scheduling.time}</p>
-                          <p style={{ fontSize:10, color:B.muted }}>O post será criado e salvo para publicação no horário definido.</p>
-                        </div>
-                      </div> : <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 10px", borderRadius:8, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
-                        <div>
-                          <p style={{ fontSize:11, fontWeight:700, color:B.green }}>Publicação imediata</p>
-                          <p style={{ fontSize:10, color:B.muted }}>Ao clicar, o post será publicado agora mesmo.</p>
-                        </div>
-                      </div>}
-                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</button>}
-                        {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
-                        {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+              {(() => {
+                const clientMode = sel.steps?.client?.mode;
+                const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const clientObj = CDATA.find(c => c.name === sel.client);
+                const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
+                const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
+                const networks = (sel.network||"").toLowerCase();
+                const hasIG = networks.includes("instagram") && igConnected;
+                const hasFB = networks.includes("facebook") && fbConnected;
+                const isStories = sel.format === "Stories";
+                const schedTs = getScheduledTimestamp(sel.scheduling);
+                const schedLabel = schedTs ? `${sel.scheduling.date} às ${sel.scheduling.time}` : "";
+                const hasApi = hasIG || hasFB;
+
+                const doPublish = async (platform, type) => {
+                  if (imgFiles.length === 0) { showToast("Nenhuma imagem disponível"); return; }
+                  const imgUrls = imgFiles.map(f => f.url);
+                  const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                  const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                  const clientId = clientObj.supaId || clientObj.id;
+                  const isCarousel = imgUrls.length > 1 && type === "FEED";
+                  showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
+                  let r;
+                  if (platform === "instagram") {
+                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
+                  } else {
+                    r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                  }
+                  if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                  updateStep("client", { ...sel.steps?.client, status:"approved", by: schedTs ? "Publicação agendada" : "Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
+                  setTimeout(() => advanceStage(sel), 200);
+                  showToast(schedTs ? `✓ Agendado com sucesso! (${schedLabel})` : `✓ Publicado!`);
+                };
+
+                const publishButtons = () => (
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</button>}
+                    {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
+                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+                  </div>
+                );
+
+                /* ── STEP 1: Initial choice — send to client or not? ── */
+                if (!clientMode) return (
+                  <div style={{ padding:12 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>Enviar para o cliente?</p>
+                    <p style={{ fontSize:11, color:B.muted, marginBottom:14, textAlign:"center", lineHeight:1.5 }}>Escolha se deseja enviar a demanda para aprovação do cliente ou publicar diretamente.</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => updateStep("client", { mode:"sent_to_client", sentAt:new Date().toISOString() })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+                        Sim, enviar
+                      </button>
+                      <button onClick={() => updateStep("client", { mode:"publish_direct" })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.bgCard, color:B.text, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Não, publicar direto
+                      </button>
+                    </div>
+                  </div>
+                );
+
+                /* ── STEP 2A: Sent to client — waiting + force publish ── */
+                if (clientMode === "sent_to_client") return (
+                  <div style={{ padding:12 }}>
+                    <div style={{ textAlign:"center", marginBottom:14 }}>
+                      <div style={{ width:44, height:44, borderRadius:22, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+                      </div>
+                      <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Enviado para o cliente</p>
+                      <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5 }}>Aguardando aprovação no app do cliente.</p>
+                      <div style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:10, padding:"6px 14px", borderRadius:20, background:`${B.orange}10`, border:`1px solid ${B.orange}20` }}>
+                        <div style={{ width:8, height:8, borderRadius:4, background:B.orange, animation:"skPulse 1.5s ease infinite" }} />
+                        <span style={{ fontSize:11, fontWeight:600, color:B.orange }}>Aguardando aprovação</span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
+                    {/* Force publish option */}
+                    {hasApi && imgFiles.length > 0 && <div style={{ padding:12, borderRadius:12, background:`${B.orange}06`, border:`1px dashed ${B.orange}30`, marginTop:4 }}>
+                      <p style={{ fontSize:11, fontWeight:700, color:B.orange, marginBottom:8, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Forçar publicação</p>
+                      <p style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.4 }}>Se o cliente não responder, publique sem aguardar aprovação.</p>
+                      {schedTs && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B25" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span style={{ fontSize:10, fontWeight:600, color:"#F59E0B" }}>Agendado: {schedLabel}</span>
+                      </div>}
+                      {publishButtons()}
+                    </div>}
+                    {/* Skip client without API */}
+                    <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Aprovação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", marginTop:10, padding:"10px 0", borderRadius:10, background:"transparent", color:B.muted, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:600, cursor:"pointer" }}>✓ Marcar como aprovado manualmente</button>
+                    <button onClick={() => updateStep("client", { mode:undefined })} style={{ width:"100%", marginTop:6, padding:"8px 0", borderRadius:10, background:"transparent", color:B.muted, border:"none", fontFamily:"inherit", fontSize:10, cursor:"pointer", textDecoration:"underline" }}>← Voltar</button>
+                  </div>
+                );
+
+                /* ── STEP 2B: Publish direct — now or scheduled ── */
+                if (clientMode === "publish_direct") return (
+                  <div style={{ padding:12 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:10, textAlign:"center" }}>Publicar sem aprovação do cliente</p>
+                    {hasApi && imgFiles.length > 0 ? <>
+                      {schedTs ? <div style={{ marginBottom:12 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"8px 12px", borderRadius:10, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <div>
+                            <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Publicar no horário agendado</p>
+                            <p style={{ fontSize:10, color:B.muted }}>{schedLabel}</p>
+                          </div>
+                        </div>
+                        {publishButtons()}
+                      </div> : <div style={{ marginBottom:12 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"8px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+                          <div>
+                            <p style={{ fontSize:11, fontWeight:700, color:B.green }}>Publicação imediata</p>
+                            <p style={{ fontSize:10, color:B.muted }}>O post será publicado agora mesmo.</p>
+                          </div>
+                        </div>
+                        {publishButtons()}
+                      </div>}
+                    </> : <div style={{ textAlign:"center", padding:10 }}>
+                      <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>{imgFiles.length === 0 ? "Nenhuma imagem disponível para publicar." : "Nenhuma rede social com API conectada."}</p>
+                      <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Marcar como publicado</button>
+                    </div>}
+                    <button onClick={() => updateStep("client", { mode:undefined })} style={{ width:"100%", marginTop:6, padding:"8px 0", borderRadius:10, background:"transparent", color:B.muted, border:"none", fontFamily:"inherit", fontSize:10, cursor:"pointer", textDecoration:"underline" }}>← Voltar</button>
+                  </div>
+                );
+
+                return null;
+              })()}
             </> : sel.steps?.client?.status && sel.steps?.client?.status !== "pending" && <>
               <Tag color={sel.steps?.client?.status==="approved"?B.green:B.red}>{sel.steps?.client?.status==="approved"?"✓ Aprovado pelo cliente":"✗ Cliente pediu ajustes"}</Tag>
               {sel.steps?.client?.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, marginTop:6, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps?.client?.note}"</p>}
