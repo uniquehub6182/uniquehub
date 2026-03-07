@@ -2972,7 +2972,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         {editingSocial === "instagram" && current.connected && current.oauth && supabase && <>
           <Card style={{ marginBottom:12, background:"#E1306C08", border:"1.5px solid #E1306C20" }}>
             <div style={{ textAlign:"center" }}>
-              <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>📸 Teste de Publicação</p>
+              <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>Teste de Publicação</p>
               <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Envie uma imagem de teste para o Instagram. A imagem precisa ser uma URL pública.</p>
               <input id="ig_test_url" placeholder="URL da imagem (https://...)" className="tinput" style={{ marginBottom:8, textAlign:"center", fontSize:12 }} />
               <input id="ig_test_caption" placeholder="Legenda (opcional para feed)" className="tinput" style={{ marginBottom:10, textAlign:"center", fontSize:12 }} />
@@ -2984,9 +2984,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   showToast("Publicando no Feed...");
                   const r = await publishToInstagram(sel.supaId || sel.id, url, caption, "FEED");
                   if (r.error) showToast(`Erro: ${r.error}`);
-                  else showToast(r.message || "Post publicado! ✓");
-                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>
-                  📷 Publicar Feed
+                  else showToast(r.message || "Post publicado!");
+                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> Feed
                 </button>
                 <button onClick={async () => {
                   const url = document.getElementById("ig_test_url")?.value;
@@ -2994,9 +2994,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   showToast("Publicando Story...");
                   const r = await publishToInstagram(sel.supaId || sel.id, url, "", "STORIES");
                   if (r.error) showToast(`Erro: ${r.error}`);
-                  else showToast(r.message || "Story publicado! ✓");
-                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>
-                  📱 Publicar Story
+                  else showToast(r.message || "Story publicado!");
+                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Story
                 </button>
               </div>
             </div>
@@ -5272,7 +5272,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
               <label className="sl" style={{ display:"block", marginBottom:4, marginTop:8 }}>Hashtags</label>
               <input value={sel.steps?.caption?.hashtags||""} onChange={e=>updateStep("caption",{hashtags:e.target.value})} placeholder="#marketing #petropolis" className="tinput" />
-              </> : <p style={{ fontSize:11, color:B.muted, padding:10, background:`${B.orange}08`, borderRadius:10, lineHeight:1.5 }}>⚠️ Stories do Instagram não suportam legenda ou hashtags. Apenas a imagem/vídeo será publicada.</p>}
+              </> : <p style={{ fontSize:11, color:B.muted, padding:10, background:`${B.orange}08`, borderRadius:10, lineHeight:1.5, display:"flex", alignItems:"center", gap:6 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Stories do Instagram não suportam legenda ou hashtags. Apenas a imagem/vídeo será publicada.</p>}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10 }}>
                 <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Data de publicação</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" /></div>
                 <div><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" /></div>
@@ -5367,24 +5367,24 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   };
                   return (
                     <div style={{ marginTop:16, padding:12, borderRadius:12, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1px dashed ${hasIG?"#E1306C":"#1877F2"}30` }}>
-                      <p style={{ fontSize:11, fontWeight:700, color:hasIG?"#E1306C":"#1877F2", marginBottom:4 }}>⚡ Publicar direto (sem aprovação)</p>
+                      <p style={{ fontSize:11, fontWeight:700, color:hasIG?"#E1306C":"#1877F2", marginBottom:4, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hasIG?"#E1306C":"#1877F2"} strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Publicar direto (sem aprovação)</p>
                       {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B25" }}>
-                        <span style={{ fontSize:14 }}>⏰</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         <div>
                           <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Agendado para {sel.scheduling.date} às {sel.scheduling.time}</p>
                           <p style={{ fontSize:10, color:B.muted }}>O post será criado e salvo para publicação no horário definido.</p>
                         </div>
                       </div> : <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"6px 10px", borderRadius:8, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
-                        <span style={{ fontSize:14 }}>🚀</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
                         <div>
                           <p style={{ fontSize:11, fontWeight:700, color:B.green }}>Publicação imediata</p>
                           <p style={{ fontSize:10, color:B.muted }}>Ao clicar, o post será publicado agora mesmo.</p>
                         </div>
                       </div>}
                       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} IG Feed</button>}
-                        {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>🚀 Publicar IG Story</button>}
-                        {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} Facebook</button>}
+                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} IG Feed</button>}
+                        {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
+                        {hasFB && !isStories && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
                       </div>
                     </div>
                   );
@@ -5402,8 +5402,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               <div style={{ width:48, height:48, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", color:B.accent }}>{IC.check}</div>
               <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Post publicado!</p>
               {sel.scheduling?.date && <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{sel.scheduling.date} às {sel.scheduling.time} · {sel.network}</p>}
-              {sel.steps?.igPublished && <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:"#E1306C10", border:"1px solid #E1306C20", display:"inline-flex", alignItems:"center", gap:6 }}>
-                <span style={{ fontSize:11, fontWeight:700, color:"#E1306C" }}>📸 Publicado no Instagram</span>
+              {sel.steps?.igPublished && <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:sel.steps.igPublished.platform==="facebook"?"#1877F210":"#E1306C10", border:sel.steps.igPublished.platform==="facebook"?"1px solid #1877F220":"1px solid #E1306C20", display:"inline-flex", alignItems:"center", gap:6 }}>
+                {sel.steps.igPublished.platform === "facebook" 
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C" stroke="none"/></svg>}
+                <span style={{ fontSize:11, fontWeight:700, color:sel.steps.igPublished.platform==="facebook"?"#1877F2":"#E1306C" }}>
+                  Publicado no {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}{sel.steps.igPublished.type==="STORIES"?" (Story)":""}
+                </span>
               </div>}
             </div>}
             {/* Publish buttons — show when there are uploaded images and connected social */}
@@ -5438,7 +5443,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               };
               return (
                 <Card style={{ marginTop:8, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1.5px solid ${hasIG?"#E1306C":"#1877F2"}15` }}>
-                  <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>📸 Publicar nas redes</p>
+                  <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg> Publicar nas redes</p>
                   <p style={{ fontSize:11, color:B.muted, marginBottom:8, textAlign:"center", lineHeight:1.5 }}>
                     {imgFiles.length} {imgFiles.length===1?"imagem":"imagens"} · {sel.client}
                   </p>
@@ -5446,9 +5451,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                     {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />)}
                   </div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} IG Feed</button>}
-                    {hasIG && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>🚀 Publicar IG Story</button>}
-                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>{schedTs?"⏰ Agendar":"🚀 Publicar"} Facebook</button>}
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} IG Feed</button>}
+                    {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
+                    {hasFB && !isStories && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
                   </div>
                 </Card>
               );
