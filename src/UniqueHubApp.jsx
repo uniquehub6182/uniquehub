@@ -595,10 +595,11 @@ const getScheduledTimestamp = (scheduling) => {
   } catch { return null; }
 };
 
-const publishToInstagram = async (clientId, imageUrl, caption, mediaType = "FEED", scheduledTime = null) => {
+const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEED", scheduledTime = null) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   try {
-    const body = { client_id: clientId, image_url: imageUrl, caption, media_type: mediaType };
+    const urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+    const body = { client_id: clientId, image_urls: urls, caption, media_type: mediaType };
     if (scheduledTime) body.scheduled_publish_time = scheduledTime;
     const res = await fetch(`${SUPA_URL}/functions/v1/instagram-publish`, {
       method: "POST",
@@ -5348,16 +5349,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   const schedLabel = schedTs ? ` (agendado: ${sel.scheduling.date} ${sel.scheduling.time})` : "";
                   if (!hasIG && !hasFB) return null;
                   const doPublish = async (platform, type) => {
-                    const img = imgFiles[0];
+                    const imgUrls = imgFiles.map(f => f.url);
                     const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                     const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                     const clientId = clientObj.supaId || clientObj.id;
-                    showToast(schedTs ? `Agendando ${type}...` : `Publicando ${type}...`);
+                    const isCarousel = imgUrls.length > 1 && type === "FEED";
+                    showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
                     let r;
                     if (platform === "instagram") {
-                      r = await publishToInstagram(clientId, img.url, fullCaption, type, schedTs);
+                      r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
                     } else {
-                      r = await publishToMeta(clientId, img.url, fullCaption, ["facebook"]);
+                      r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
                     }
                     if (r?.error) { showToast(`Erro: ${r.error}`); return; }
                     updateStep("client", { status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
@@ -5382,7 +5384,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                         </div>
                       </div>}
                       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} IG Feed</button>}
+                        {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</button>}
                         {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
                         {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
                       </div>
@@ -5426,16 +5428,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               if ((!hasIG && !hasFB) || imgFiles.length === 0) return null;
               if (sel.steps?.igPublished) return null;
               const doPublish = async (platform, type) => {
-                const img = imgFiles[0];
+                const imgUrls = imgFiles.map(f => f.url);
                 const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                 const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                 const clientId = clientObj.supaId || clientObj.id;
-                showToast(schedTs ? `Agendando ${type}...` : `Publicando ${type}...`);
+                const isCarousel = imgUrls.length > 1 && type === "FEED";
+                showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
                 let r;
                 if (platform === "instagram") {
-                  r = await publishToInstagram(clientId, img.url, fullCaption, type, schedTs);
+                  r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
                 } else {
-                  r = await publishToMeta(clientId, img.url, fullCaption, ["facebook"]);
+                  r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
                 }
                 if (r?.error) { showToast(`Erro: ${r.error}`); return; }
                 updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
@@ -5451,7 +5454,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                     {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />)}
                   </div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} IG Feed</button>}
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</button>}
                     {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
                     {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
                   </div>
