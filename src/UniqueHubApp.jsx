@@ -1985,8 +1985,8 @@ function LoginPage({ onAuth }) {
         <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
 
-        {/* Tab top-right: Não tem conta? */}
-        <div style={{ position:"absolute", top:"calc(env(safe-area-inset-top,0px) + 20px)", right:20, display:"flex", alignItems:"center", gap:8 }}>
+        {/* Tab top-right: Não tem conta? — hidden now, moved below */}
+        <div style={{ display:"none" }}>
           <span style={{ fontSize:13, color:"rgba(255,255,255,0.4)" }}>
             {mode==="login" ? "Sem conta?" : "Já tem conta?"}
           </span>
@@ -2084,10 +2084,23 @@ function LoginPage({ onAuth }) {
         </button>
 
         {/* Divider */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"24px 0 0" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0 16px" }}>
           <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
-          <span style={{ fontSize:12, color:"#D1D5DB", fontWeight:600 }}>UniqueHub v1.0</span>
+          <span style={{ fontSize:12, color:"#D1D5DB", fontWeight:600 }}>ou</span>
           <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
+        </div>
+
+        {/* Register CTA */}
+        <div style={{ textAlign:"center" }}>
+          <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:10 }}>É colaborador e ainda não tem conta?</p>
+          <button onClick={() => { setMode("register"); setError(""); }} style={{ width:"100%", padding:"14px", borderRadius:16, border:"1.5px solid #BBF24650", background:"rgba(187,242,70,0.06)", color:"#BBF246", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            Cadastre-se aqui
+          </button>
+        </div>
+
+        {/* Version */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginTop:16 }}>
+          <span style={{ fontSize:11, color:"#D1D5DB", fontWeight:500 }}>UniqueHub v1.0</span>
         </div>
       </div>
     </div>
@@ -6979,6 +6992,23 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [twoFAChallengeId, setTwoFAChallengeId] = useState("");
   const [twoFACode, setTwoFACode] = useState("");
   const [twoFALoading, setTwoFALoading] = useState(false);
+
+  /* Auto-start 2FA enrollment when entering 'qr' mode */
+  useEffect(() => {
+    if (twoFASetup !== 'qr' || !supabase) return;
+    const startEnroll = async () => {
+      setTwoFALoading(true);
+      try {
+        const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
+        if (error) throw error;
+        setTwoFAQR(data.totp.qr_code);
+        setTwoFAFactorId(data.id);
+        setTwoFASetup('verify');
+      } catch(e) { showToast("Erro ao gerar QR code: " + (e?.message || "")); setTwoFASetup(null); }
+      setTwoFALoading(false);
+    };
+    startEnroll();
+  }, [twoFASetup]);
   /* Sessions data */
   const [sessionInfo, setSessionInfo] = useState(null);
 
@@ -7652,18 +7682,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     /* 2FA setup view - QR code enrollment */
     if (twoFASetup === 'qr') {
-      const startEnroll = async () => {
-        setTwoFALoading(true);
-        try {
-          const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
-          if (error) throw error;
-          setTwoFAQR(data.totp.qr_code);
-          setTwoFAFactorId(data.id);
-          setTwoFASetup('verify');
-        } catch(e) { showToast("Erro ao gerar QR code"); setTwoFASetup(null); }
-        setTwoFALoading(false);
-      };
-      startEnroll();
       return (
         <div className="pg">
           {ToastEl}
@@ -11557,16 +11575,16 @@ function HelpPage({ onBack }) {
   ];
 
   const VIDEOS = [
-    { title:"Tour pelo Dashboard", desc:"Conheça a Home e os cards de métricas", dur:"3 min", icon:"🏠" },
-    { title:"Criando sua primeira Demanda", desc:"Do briefing à publicação em 5 minutos", dur:"5 min", icon:"📝" },
-    { title:"Gerenciando Clientes", desc:"Cadastro, arquivos, faturas e contrato", dur:"4 min", icon:"👥" },
-    { title:"Pipeline de Conteúdo Avançado", desc:"Workflow completo com revisão e rejeição", dur:"6 min", icon:"🔄" },
-    { title:"Chat e Comunicação", desc:"Mensagens, grupos e indicadores de leitura", dur:"3 min", icon:"💬" },
-    { title:"Calendário e Eventos", desc:"Tipos de evento e agendamento", dur:"4 min", icon:"📅" },
-    { title:"Financeiro e Faturas", desc:"Dashboard financeiro e controle de pagamentos", dur:"5 min", icon:"💰" },
-    { title:"Gamificação e Ranking", desc:"Sistema de XP, níveis e badges", dur:"3 min", icon:"🏆" },
-    { title:"Configurações e Permissões", desc:"Personalização, segurança e controle de acesso", dur:"4 min", icon:"⚙️" },
-    { title:"Assistente de IA", desc:"Configuração e uso do assistente inteligente", dur:"4 min", icon:"🤖" },
+    { title:"Tour pelo Dashboard", desc:"Conheça a Home e os cards de métricas", dur:"3 min", icon:IC.home(B.accent) },
+    { title:"Criando sua primeira Demanda", desc:"Do briefing à publicação em 5 minutos", dur:"5 min", icon:IC.content(B.blue) },
+    { title:"Gerenciando Clientes", desc:"Cadastro, arquivos, faturas e contrato", dur:"4 min", icon:IC.clients(B.green) },
+    { title:"Pipeline de Conteúdo Avançado", desc:"Workflow completo com revisão e rejeição", dur:"6 min", icon:IC.content(B.orange) },
+    { title:"Chat e Comunicação", desc:"Mensagens, grupos e indicadores de leitura", dur:"3 min", icon:IC.chat },
+    { title:"Calendário e Eventos", desc:"Tipos de evento e agendamento", dur:"4 min", icon:IC.calendar(B.purple) },
+    { title:"Financeiro e Faturas", desc:"Dashboard financeiro e controle de pagamentos", dur:"5 min", icon:IC.financial(B.green) },
+    { title:"Gamificação e Ranking", desc:"Sistema de XP, níveis e badges", dur:"3 min", icon:IC.star },
+    { title:"Configurações e Permissões", desc:"Personalização, segurança e controle de acesso", dur:"4 min", icon:IC.settings(B.muted) },
+    { title:"Assistente de IA", desc:"Configuração e uso do assistente inteligente", dur:"4 min", icon:IC.ai(B.accent) },
   ];
 
   /* ── SEARCH ── */
@@ -11647,10 +11665,10 @@ function HelpPage({ onBack }) {
 
   /* ── MAIN HELP ── */
   const tabs = [
-    { k:"faq", l:"FAQ", icon:"❓" },
-    { k:"guides", l:"Guias", icon:"📖" },
-    { k:"shortcuts", l:"Atalhos", icon:"⚡" },
-    { k:"videos", l:"Tutoriais", icon:"🎬" },
+    { k:"faq", l:"FAQ", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
+    { k:"guides", l:"Guias", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg> },
+    { k:"shortcuts", l:"Atalhos", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
+    { k:"videos", l:"Tutoriais", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> },
   ];
 
   return (
@@ -11782,7 +11800,7 @@ function HelpPage({ onBack }) {
           </Card>
           <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>📧</div>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.mail}</div>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:14, fontWeight:600 }}>E-mail direto</p>
                 <p style={{ fontSize:11, color:B.accent, fontWeight:600 }}>suporte@uniquemkt.com.br</p>
