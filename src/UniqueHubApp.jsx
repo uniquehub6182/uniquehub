@@ -214,17 +214,38 @@ const supaDeleteDemand = async (id) => {
   try { await supabase.from("demands").delete().eq("id", id); } catch(e) {}
 };
 
-/* ── Supabase Storage: upload files for demands ── */
+/* ── Supabase Storage: compress + upload files for demands ── */
+const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.type === "image/gif") { resolve(file); return; }
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      c.toBlob((blob) => {
+        if (blob && blob.size < file.size) {
+          resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+        } else { resolve(file); }
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 const supaUploadFile = async (file, demandId) => {
   if (!supabase) return { error: "Supabase offline" };
   try {
-    const maxSize = 100 * 1024 * 1024; /* 100MB */
-    if (file.size > maxSize) return { error: `Arquivo muito grande (${(file.size/1024/1024).toFixed(0)}MB). Máximo: 100MB` };
-    const path = `${demandId}/${Date.now()}_${file.name.replace(/\s+/g,"_")}`;
-    const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true, cacheControl: "3600" });
+    const compressed = await compressImage(file);
+    const maxSize = 100 * 1024 * 1024;
+    if (compressed.size > maxSize) return { error: `Arquivo muito grande (${(compressed.size/1024/1024).toFixed(0)}MB). Máximo: 100MB` };
+    const path = `${demandId}/${Date.now()}_${compressed.name.replace(/\s+/g,"_")}`;
+    const { data, error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600" });
     if (error) { console.error("Upload error:", error.message); return { error: error.message }; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
-    return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
+    return { name: file.name, path, url: pub?.publicUrl || "", size: compressed.size, type: compressed.type };
   } catch (e) { console.error("Upload catch:", e); return { error: e.message }; }
 };
 const supaUploadClientFile = async (file, clientId) => {
@@ -5079,15 +5100,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
-                  const uploaded = [];
-                  for (const file of files) {
-                    const result = await supaUploadFile(file, sel.supaId || sel.id);
-                    if (result.error) { showToast(`❌ ${file.name}: ${result.error}`); }
-                    else uploaded.push(result);
-                  }
+                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  const uploaded = results.filter(r => !r.error);
+                  const errors = results.filter(r => r.error);
+                  if (errors.length) showToast(`${errors.length} erro${errors.length>1?"s":""} no envio`);
                   if (uploaded.length > 0) {
                     updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
                   }
                   e.target.value = "";
                 }} />
@@ -5160,15 +5179,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
-                  const uploaded = [];
-                  for (const file of files) {
-                    const result = await supaUploadFile(file, sel.supaId || sel.id);
-                    if (result.error) { showToast(`❌ ${file.name}: ${result.error}`); }
-                    else uploaded.push(result);
-                  }
+                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  const uploaded = results.filter(r => !r.error);
                   if (uploaded.length > 0) {
                     updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
                   }
                   e.target.value = "";
                 }} />
@@ -5224,15 +5239,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
-                  const uploaded = [];
-                  for (const file of files) {
-                    const result = await supaUploadFile(file, sel.supaId || sel.id);
-                    if (result.error) { showToast(`❌ ${file.name}: ${result.error}`); }
-                    else uploaded.push(result);
-                  }
+                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  const uploaded = results.filter(r => !r.error);
                   if (uploaded.length > 0) {
                     updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}! ✓`);
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
                   }
                   e.target.value = "";
                 }} />
