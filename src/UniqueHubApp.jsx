@@ -11361,16 +11361,16 @@ function AIPage({ onBack, user, agencyIdentity }) {
 
   /* ═══ NEW CHAT (empty state) ═══ */
   if (view === "chat" && messages.length === 0 && !loading) return (
-    <div className="pg" style={{ display:"flex", flexDirection:"column", height:"100%" }}>
+    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       {ToastEl}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 10px) 16px 0`, display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
           <h2 style={{ fontSize:18, fontWeight:800 }}>Nova conversa</h2>
         </div>
       </div>
 
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"0 12px" }}>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"0 16px", overflowY:"auto" }}>
         <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
           <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
         </div>
@@ -11396,7 +11396,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
         </div>
       </div>
 
-      <div style={{ padding:"12px 0 4px", display:"flex", gap:8, alignItems:"flex-end" }}>
+      <div style={{ padding:"12px 16px calc(env(safe-area-inset-bottom, 8px) + 8px)", display:"flex", gap:8, alignItems:"flex-end", flexShrink:0 }}>
         <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
           placeholder="Pergunte qualquer coisa..."
@@ -11411,9 +11411,9 @@ function AIPage({ onBack, user, agencyIdentity }) {
 
   /* ═══ ACTIVE CHAT VIEW ═══ */
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:B.bg }}>
+    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       {ToastEl}
-      <div style={{ padding:`${TOP} 16px 10px`, display:"flex", alignItems:"center", justifyContent:"space-between", background:B.bgCard, borderBottom:`1px solid ${B.border}` }}>
+      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 10px) 16px 10px`, display:"flex", alignItems:"center", justifyContent:"space-between", background:B.bgCard, borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
           <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
