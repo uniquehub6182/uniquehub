@@ -2172,12 +2172,14 @@ function PWAInstallPopup({ onDismiss }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca }) {
+  const canAccessFn = ca || (() => true);
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
+  const canFinancial = canAccessFn("financial") || canAccessFn("financial.view") || canAccessFn("home.metrics");
   const totalClients = CDATA.length;
   const activeClients = CDATA.filter(c => c.status === "ativo").length;
-  const totalRevNum = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
+  const totalRevNum = canFinancial ? CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0) : 0;
   const totalRevenue = `R$ ${totalRevNum.toLocaleString("pt-BR")}`;
   const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
@@ -2366,9 +2368,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       </div>;
     }
     if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[...cfg.actions].sort((a,b)=>(ACTIONS[a]?.l||"").localeCompare(ACTIONS[b]?.l||"","pt")).map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
-    if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥"},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰"},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐"},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳"}].map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
+    if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥",fin:false},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰",fin:true},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐",fin:false},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳",fin:false}].filter(s => !s.fin || canFinancial).map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
     if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
-    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"} · {c.monthly||"—"}/mês</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
+    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"}{canFinancial ? ` · ${c.monthly||"—"}/mês` : ""}</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
     if(key==="posts") {
       const recentDemands = (demands||[]).slice(0,8);
       if(recentDemands.length===0) return null;
@@ -2521,14 +2523,14 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:8,background:isDark?"#1A1A1A":"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",border:`1px solid ${C.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"12px 18px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${C.brd}`:"none",display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div><p style={{fontSize:14,fontWeight:600,color:C.txt}}>{r.l}</p>{r.sub&&<p style={{fontSize:11,color:C.mut}}>{r.sub}</p>}</div></div>)}</div>}
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
-          {cfg.cards.slice(0,2).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return<div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}><div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{w.l}</div><div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{w.val}</div><div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{w.sub}</div><div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>;})}
+          {cfg.cards.slice(0,2).filter(ck => { const w=WIDGETS[ck]; return w && (w.k !== "financial" || canFinancial); }).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return<div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}><div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{w.l}</div><div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{w.val}</div><div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{w.sub}</div><div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>;})}
         </div>
       </div>
       <div style={{ padding:"0 24px 0" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
           <button onClick={()=>{ setEc(JSON.parse(JSON.stringify(cfg))); setShowEditor(true); }} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
           <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
-            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
+            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk => { const p=PILLS[pk]; return p && (p.k !== "financial" || canFinancial); }).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
           </div>
         </div>
         {cfg.sections.map(sk => renderSection(sk))}
@@ -2805,6 +2807,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const setClients = propSetClients || localSetClients;
   const [filter, setFilter] = useState("all");
   const isAdmin = user?.supaRole === "admin";
+  const canFinancial = canAccessFn("financial") || canAccessFn("financial.view") || canAccessFn("clients.financial");
 
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
@@ -3177,7 +3180,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Plano</label>
         <div style={{ display:"flex", gap:6, marginBottom:10 }}>
           {["Traction","Growth 360","Partner"].map(p=>(
-            <button key={p} onClick={()=>{f("plan",p);f("monthly",PLAN_VALUES[p]);}} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}<span style={{display:"block",fontSize:9,opacity:0.6,marginTop:2}}>{PLAN_VALUES[p]}</span></button>
+            <button key={p} onClick={()=>{f("plan",p);f("monthly",PLAN_VALUES[p]);}} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}{canFinancial && <span style={{display:"block",fontSize:9,opacity:0.6,marginTop:2}}>{PLAN_VALUES[p]}</span>}</button>
           ))}
         </div>
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Valor mensal</label>
@@ -3317,7 +3320,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         {ToastEl}
         <Head title="Alterar Plano" onBack={() => setShowPlanPicker(false)} />
         <Card style={{ marginBottom:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
-          <p style={{ fontSize:12, color:B.text }}>Plano atual: <strong>{sel.plan}</strong> — {sel.monthly}/mês</p>
+          <p style={{ fontSize:12, color:B.text }}>Plano atual: <strong>{sel.plan}</strong>{canFinancial ? ` — ${sel.monthly}/mês` : ""}</p>
         </Card>
         {PLANS.map((plan, i) => {
           const isCurrent = plan.key === sel.plan;
@@ -3407,8 +3410,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <Tag color={B.blue}>Desde {sel.since}</Tag>
         </div>
       </Card>
-      <div style={{ display:"grid", gridTemplateColumns:isAdmin?"repeat(4,1fr)":"repeat(3,1fr)", gap:6, marginBottom:10 }}>
-        {isAdmin && <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:8, color:B.muted }}>Mensal</p></Card>}
+      <div style={{ display:"grid", gridTemplateColumns:(isAdmin && canFinancial)?"repeat(4,1fr)":"repeat(3,1fr)", gap:6, marginBottom:10 }}>
+        {isAdmin && canFinancial && <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:8, color:B.muted }}>Mensal</p></Card>}
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{sel.pending}</p><p style={{ fontSize:8, color:B.muted }}>Pendentes</p></Card>
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.blue }}>{connectedCount}</p><p style={{ fontSize:8, color:B.muted }}>Redes</p></Card>
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
@@ -3437,7 +3440,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </Card>
           <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados da empresa</p>
           <Card>
-            {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Endereço",value:sel.address},{label:"Valor mensal",value:sel.monthly},{label:"Cliente desde",value:sel.since}].map((item,i)=>(
+            {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Endereço",value:sel.address},{label:"Valor mensal",value:sel.monthly,fin:true},{label:"Cliente desde",value:sel.since}].filter(item => !item.fin || canFinancial).map((item,i)=>(
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none" }}>
                 <span style={{ fontSize:11, color:B.muted }}>{item.label}</span>
                 <span style={{ fontSize:13, fontWeight:600, textAlign:"right", maxWidth:"60%" }}>{item.value||"—"}</span>
@@ -3687,7 +3690,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         {!editClient ? (<>
           <p className="sl" style={{ marginBottom:6 }}>Detalhes do contrato</p>
           <Card>
-            {[{label:"Tipo",value:sel.contractType||contract.type},{label:"Início",value:sel.contractStart||contract.startDate},{label:"Vigência",value:sel.contractEnd||contract.endDate},{label:"Valor",value:sel.monthly},{label:"Pagamento",value:sel.contractPayment||contract.payment},{label:"Posts/mês",value:sel.contractPosts||contract.posts}].map((item,i)=>(
+            {[{label:"Tipo",value:sel.contractType||contract.type},{label:"Início",value:sel.contractStart||contract.startDate},{label:"Vigência",value:sel.contractEnd||contract.endDate},{label:"Valor",value:sel.monthly,fin:true},{label:"Pagamento",value:sel.contractPayment||contract.payment},{label:"Posts/mês",value:sel.contractPosts||contract.posts}].filter(item => !item.fin || canFinancial).map((item,i)=>(
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:13, fontWeight:600 }}>{item.value||"—"}</span></div>
             ))}
           </Card>
@@ -3812,7 +3815,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           { l:"Redes Sociais", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, c:B.pink, desc:`${connectedCount} redes conectadas`, act:()=>setProfileTab("socials") },
           ...(isAdmin ? [
             { l:"Contrato", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, c:B.cyan, desc:`Plano ${sel.plan} — ${contract.type}`, act:()=>setProfileTab("contract") },
-            { l:"Financeiro", ic:IC.financial, c:B.green, desc:`${sel.monthly}/mês`, act:()=>setProfileTab("financial") },
+            { l:"Financeiro", ic:IC.financial, c:B.green, desc:canFinancial ? `${sel.monthly}/mês` : "Acesso restrito", act:()=>setProfileTab("financial") },
             { l:"Alterar plano", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, c:B.orange, desc:"Upgrade ou downgrade", act:()=>setShowPlanPicker(true) },
             { l:"Excluir cliente", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, c:B.red, desc:"Remover permanentemente", act:async ()=>{
             if (!confirm(`Excluir ${sel.name}? Essa ação não pode ser desfeita.`)) return;
@@ -3882,7 +3885,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
             </div>
             <div style={{ textAlign:"right" }}>
-              {isAdmin && <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>}
+              {isAdmin && canFinancial && <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>}
               {c.pending > 0 && <p style={{ fontSize:10, color:B.orange, fontWeight:600 }}>{c.pending} pendente{c.pending>1?"s":""}</p>}
             </div>
           </div>
@@ -12655,7 +12658,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
