@@ -699,7 +699,7 @@ const supaCheckInvite = async (email) => {
 const supaLinkInvite = async (inviteId, userId) => {
   if (!supabase) return;
   try {
-    await supabase.from("agency_members").update({ user_id: userId, status: "offline" }).eq("id", inviteId);
+    await supabase.from("agency_members").update({ user_id: userId, status: "ativo" }).eq("id", inviteId);
     /* Remove duplicate auto-created row from trigger */
     const { data: dupes } = await supabase.from("agency_members").select("id").eq("user_id", userId).neq("id", inviteId);
     if (dupes?.length) { for (const d of dupes) { await supabase.from("agency_members").delete().eq("id", d.id); } }
@@ -1546,16 +1546,30 @@ function LoginPage({ onAuth }) {
           nick: profile?.nick || profile?.name || email.split("@")[0],
           phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember,
         };
-        /* Check if member is pending approval */
-        try {
-          const { data: memberRow } = await supabase.from("agency_members").select("status").eq("user_id", data.user.id).limit(1).single();
-          if (memberRow && memberRow.status === "pendente") {
+        /* Check if member is approved (admin bypass) — ONLY allow status === "ativo" */
+        if (!profile || profile.role !== "admin") {
+          try {
+            const { data: memberRow, error: memberErr } = await supabase.from("agency_members").select("status").eq("user_id", data.user.id).maybeSingle();
+            if (memberErr) { console.warn("[Login] agency_members query error:", memberErr); }
+            const memberStatus = memberRow?.status?.toLowerCase?.() || "";
+            const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
+            if (!isApproved) {
+              clearTimeout(loginTimeout); setLoginLoading(false);
+              const msg = !memberRow ? "Cadastro não encontrado. Solicite acesso ao administrador."
+                : memberStatus === "pendente" ? "Seu cadastro está aguardando aprovação do administrador."
+                : `Status do cadastro: "${memberRow.status}". Entre em contato com o administrador.`;
+              setError(msg);
+              await supabase.auth.signOut();
+              return;
+            }
+          } catch(memberCheckErr) {
+            console.warn("[Login] agency_members check failed:", memberCheckErr);
             clearTimeout(loginTimeout); setLoginLoading(false);
-            setError("Seu cadastro ainda está aguardando aprovação do administrador. Você será notificado por e-mail quando aprovado.");
+            setError("Erro ao verificar cadastro. Tente novamente.");
             await supabase.auth.signOut();
             return;
           }
-        } catch {}
+        }
         clearTimeout(loginTimeout); setLoginLoading(false); onAuth(userObj);
       } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
       return;
@@ -2784,7 +2798,8 @@ const SOCIAL_PLATFORMS = [
   { key:"rd_station", name:"RD Station", icon:null, c:"#00C4B3", urlBase:"rdstation.com", cat:"crm", soon:true },
 ];
 
-function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user }) {
+function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user, canAccess: ca }) {
+  const canAccessFn = ca || (() => true);
   const [localClients, localSetClients] = useState([]);
   const clients = propClients || localClients;
   const setClients = propSetClients || localSetClients;
@@ -3430,10 +3445,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             ))}
           </Card>
           {sel.notes && <><p className="sl" style={{ marginTop:16, marginBottom:6 }}>Observações</p><Card><p style={{ fontSize:13, lineHeight:1.5 }}>{sel.notes}</p></Card></>}
-          <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+          {canAccessFn("clients.edit") && <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Editar informações
-          </button>
+          </button>}
         </>) : (<>
           {/* ── EDIT MODE ── */}
           <Card style={{ marginBottom:10 }}>
@@ -3676,10 +3691,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:13, fontWeight:600 }}>{item.value||"—"}</span></div>
             ))}
           </Card>
-          <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+          {canAccessFn("clients.edit") && <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Editar contrato
-          </button>
+          </button>}
         </>) : (<>
           <Card style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
@@ -3763,10 +3778,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:12, fontWeight:600, textAlign:"right", maxWidth:"55%" }}>{item.value||"—"}</span></div>
             ))}
           </Card>
-          <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+          {canAccessFn("clients.edit") && <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Editar cobrança
-          </button>
+          </button>}
         </>) : (<>
           <Card>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
@@ -3833,9 +3848,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             <span style={{ color:B.accent, display:"flex" }}>{IC.users}</span>
             <div><p style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{clients.length}</p><p style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>clientes cadastrados</p></div>
           </div>
-          <button onClick={() => setCreating(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.text }}>
+          {canAccessFn("clients.edit") && <button onClick={() => setCreating(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.text }}>
             {IC.plus} Novo
-          </button>
+          </button>}
         </div>
       </Card>
       {/* Search */}
@@ -4670,7 +4685,8 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed }) {
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca }) {
+  const canAccessFn = ca || (() => true);
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
@@ -5693,7 +5709,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
 
-      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={() => { setCreating(true); setCreateType(null); setForm({}); }} />
+      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />
 
       {/* ── SCROLLABLE CONTENT ── */}
       <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
@@ -6797,7 +6813,7 @@ function ApprovalsPage({ onBack }) {
     });
   }, [pendingLoaded]);
   const approveMember = async (m) => {
-    await supaUpdateMember(m.id, { status: "offline" });
+    await supaUpdateMember(m.id, { status: "ativo" });
     setPendingMembers(p => p.filter(x => x.id !== m.id));
     showToast(`${m.name} aprovado ✓`);
   };
@@ -12344,9 +12360,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   /* ── Role-based permissions ── */
   const [rolePermsMap, setRolePermsMap] = useState({});
+  const [permsLoaded, setPermsLoaded] = useState(false);
   useEffect(() => {
-    if (!supabase) return;
-    supaLoadPermissions().then(m => setRolePermsMap(m));
+    if (!supabase) { setPermsLoaded(true); return; }
+    supaLoadPermissions().then(m => { console.log("[Perms] Loaded role_permissions map:", Object.keys(m).length, "roles configured:", Object.keys(m)); setRolePermsMap(m); setPermsLoaded(true); });
     /* Reload perms every 60s so changes by admin take effect without restart */
     const interval = setInterval(() => {
       supaLoadPermissions().then(m => setRolePermsMap(m));
@@ -12355,20 +12372,33 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   }, []);
   /* Get user's job title from agency_members to check permissions */
   const [userJobTitle, setUserJobTitle] = useState(null);
+  const [jobTitleLoaded, setJobTitleLoaded] = useState(false);
   useEffect(() => {
-    if (!supabase || !user?.id || user?.supaRole === "admin") return;
+    if (!supabase || !user?.id) { setJobTitleLoaded(true); return; }
+    if (user?.supaRole === "admin") { setJobTitleLoaded(true); return; }
     /* Try agency_members first (role field), fall back to profiles metadata */
-    supabase.from("agency_members").select("role, job_title").eq("user_id", user.id).limit(1).then(({ data }) => {
-      const t = data?.[0]?.role || data?.[0]?.job_title || user?.role || null;
+    supabase.from("agency_members").select("role, job_title, status").eq("user_id", user.id).limit(1).then(({ data, error }) => {
+      if (error) console.warn("[Perms] agency_members query failed:", error.message);
+      const t = data?.[0]?.job_title || data?.[0]?.role || null;
+      console.log("[Perms] User job title:", t, "| member status:", data?.[0]?.status, "| user.role:", user?.role);
       if (t) setUserJobTitle(t);
-    });
+      setJobTitleLoaded(true);
+    }).catch(() => { setJobTitleLoaded(true); });
   }, [user?.id]);
   const canAccess = (areaKey) => {
     if (!user || user.supaRole === "admin") return true;
-    if (!userJobTitle) return true; /* default allow until loaded */
+    if (areaKey === "home") return true; /* home is always accessible */
+    if (areaKey === "settings") return true; /* own settings always accessible */
+    if (!permsLoaded || !jobTitleLoaded) return false; /* BLOCK while loading permissions */
+    /* Basic areas always allowed regardless of config */
+    const ALWAYS_ALLOWED = ["home.view","settings.own","checkin.own"];
+    if (ALWAYS_ALLOWED.includes(areaKey)) return true;
+    if (!userJobTitle) { console.warn("[Perms] BLOCKED", areaKey, "— no job title found for user"); return false; }
     const perms = rolePermsMap[userJobTitle];
-    if (!perms) return true; /* no config = allow all */
-    return perms[areaKey] !== false;
+    if (!perms) { console.warn("[Perms] BLOCKED", areaKey, "— no permissions configured for role:", userJobTitle); return false; }
+    const allowed = perms[areaKey] !== false;
+    if (!allowed) console.log("[Perms] BLOCKED", areaKey, "for role", userJobTitle);
+    return allowed;
   };
 
   /* ── Shared clients state loaded from Supabase ── */
@@ -12533,6 +12563,11 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   }, [articlesLoaded]);
 
   const [pendingOpenId, setPendingOpenId] = useState(null);
+  /* ── Guard: redirect to home if current tab/sub is restricted ── */
+  useEffect(() => {
+    if (!canAccess(tab)) { setTab("home"); try { sessionStorage.setItem("uh_tab", "home"); } catch {} }
+    if (sub && !canAccess(sub)) { setSub(null); try { sessionStorage.removeItem("uh_sub"); } catch {} }
+  }, [tab, sub, userJobTitle, rolePermsMap]);
   const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); try { sessionStorage.setItem("uh_tab", k); sessionStorage.removeItem("uh_sub"); } catch {} if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
   const [pendingSubId, setPendingSubId] = useState(null);
   const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); try { sessionStorage.setItem("uh_sub", k); } catch {} if (initialId) setPendingSubId(initialId); };
@@ -12621,13 +12656,13 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 ` }} />
       <div className="content" ref={mainContentRef}>
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} />}
-        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} />}
-        {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
+        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
+        {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
-        {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} />}
+        {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
-        {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} />}
+        {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
@@ -12884,7 +12919,20 @@ export default function App() {
           await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return;
         }
         try {
-          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+          /* ── Block non-approved members (approval check on session restore) ── */
+          if (!profile || profile.role !== "admin") {
+            try {
+              const { data: memberRow, error: memberErr } = await supabase.from("agency_members").select("status").eq("user_id", session.user.id).maybeSingle();
+              if (memberErr) console.warn("[Auth] agency_members query error:", memberErr);
+              const memberStatus = memberRow?.status?.toLowerCase?.() || "";
+              const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
+              if (!isApproved) {
+                console.warn("[Auth] Blocked: member not approved, status:", memberRow?.status, session.user.email);
+                await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return;
+              }
+            } catch(memberErr) { console.warn("[Auth] agency_members check failed, blocking:", memberErr); await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return; }
+          }
           const extrasRaw = await supaGetSetting(`profile_extras_${session.user.id}`);
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           let photo = profile?.photo_url || null;
@@ -12908,13 +12956,35 @@ export default function App() {
               if (vp.nav)  { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} setCloudNav(vp.nav); }
             }
           } catch(e) { console.warn("Visual prefs load failed:", e); }
-        } catch(e) { console.error("Profile load failed:", e); }
+        } catch(e) { console.error("Profile load failed, blocking:", e); await supabase.auth.signOut(); }
       }
       clearTimeout(timeout);
       setAuthLoading(false);
     }).catch(() => { clearTimeout(timeout); setAuthLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_OUT") setUser(null);
+      if (event === "SIGNED_OUT") { setUser(null); return; }
+      /* ── Catch email confirmation, password recovery, and any new sign-in ── */
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user && !user) {
+        console.log("[Auth] onAuthStateChange:", event, session.user.email);
+        /* Re-run approval check for any new session */
+        try {
+          const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+          if (profile?.role !== "admin") {
+            const { data: memberRow } = await supabase.from("agency_members").select("status").eq("user_id", session.user.id).maybeSingle();
+            const memberStatus = memberRow?.status?.toLowerCase?.() || "";
+            const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
+            if (!isApproved) {
+              console.warn("[Auth] onAuthStateChange blocked non-approved user:", session.user.email, "status:", memberRow?.status);
+              await supabase.auth.signOut();
+              return;
+            }
+          }
+        } catch(e) {
+          console.warn("[Auth] onAuthStateChange check failed, blocking:", e);
+          await supabase.auth.signOut();
+          return;
+        }
+      }
     });
     return () => subscription?.unsubscribe();
   }, []);
