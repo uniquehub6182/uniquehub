@@ -1527,18 +1527,19 @@ function LoginPage({ onAuth }) {
     /* Try Supabase auth if available */
     if (supabase) {
       setLoginLoading(true); setError("");
-      const loginTimeout = setTimeout(() => { setError("Servidor demorou para responder. Tente novamente."); setLoginLoading(false); }, 10000);
+      const loginTimeout = setTimeout(() => { setError("Servidor demorou para responder. Tente novamente."); setLoginLoading(false); }, 25000);
       try {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
-        /* Load profile from DB */
-        let profile = null;
-        try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
-        let extrasRaw = null;
-        try { extrasRaw = await supaGetSetting(`profile_extras_${data.user.id}`); } catch {}
+        /* Load profile + extras + photo in PARALLEL */
+        const [profileRes, extrasRaw, photoSetting] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", data.user.id).single().catch(() => ({ data: null })),
+          supaGetSetting(`profile_extras_${data.user.id}`).catch(() => null),
+          supaGetSetting(`profile_photo_${data.user.id}`).catch(() => null),
+        ]);
+        const profile = profileRes?.data || null;
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
-        let photo = profile?.photo_url || null;
-        if (!photo) { try { const fp = await supaGetSetting(`profile_photo_${data.user.id}`); if (fp) photo = fp; } catch {} }
+        let photo = profile?.photo_url || photoSetting || null;
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
@@ -12913,7 +12914,7 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase) return;
-    let timeout = setTimeout(() => { setAuthLoading(false); }, 3000); /* safety: max 3s */
+    let timeout = setTimeout(() => { setAuthLoading(false); }, 8000); /* safety: max 8s */
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         /* Block banned users even if they have active session */
@@ -12936,10 +12937,14 @@ export default function App() {
               }
             } catch(memberErr) { console.warn("[Auth] agency_members check failed, blocking:", memberErr); await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return; }
           }
-          const extrasRaw = await supaGetSetting(`profile_extras_${session.user.id}`);
+          /* Load extras, photo, and visual prefs in PARALLEL */
+          const [extrasRaw, photoSetting, cloudPrefs] = await Promise.all([
+            supaGetSetting(`profile_extras_${session.user.id}`).catch(() => null),
+            supaGetSetting(`profile_photo_${session.user.id}`).catch(() => null),
+            supaGetSetting(`visual_prefs_${session.user.id}`).catch(() => null),
+          ]);
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
-          let photo = profile?.photo_url || null;
-          if (!photo) { const fp = await supaGetSetting(`profile_photo_${session.user.id}`); if (fp) photo = fp; }
+          const photo = profile?.photo_url || photoSetting || null;
           setUser({
             id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
             email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
@@ -12947,9 +12952,8 @@ export default function App() {
             nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
             phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember: true,
           });
-          /* Load visual prefs from cloud */
+          /* Apply visual prefs from cloud */
           try {
-            const cloudPrefs = await supaGetSetting(`visual_prefs_${session.user.id}`);
             if (cloudPrefs) {
               const vp = typeof cloudPrefs === "string" ? JSON.parse(cloudPrefs) : cloudPrefs;
               if (vp.dark !== undefined) { setDark(vp.dark); try { localStorage.setItem("uh_dark", vp.dark ? "1" : "0"); } catch {} }
