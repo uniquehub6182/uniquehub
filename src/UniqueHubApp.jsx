@@ -2120,7 +2120,7 @@ function PWAInstallPopup({ onDismiss }) {
       <div style={{ width:"100%", background:"#fff", borderRadius:"24px 24px 0 0", padding:"28px 24px calc(env(safe-area-inset-bottom,0px) + 32px)", animation:"cardUp .35s cubic-bezier(0.34,1.1,0.64,1) both" }}>
         {/* App icon */}
         <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:20 }}>
-          <img src={LOGO_B64} alt="UniqueHub" style={{ width:45, height:45, borderRadius:14, boxShadow:"0 4px 12px rgba(0,0,0,0.12)" }} />
+          <img src="/icon-192.png" alt="UniqueHub" style={{ width:48, height:48, borderRadius:14, boxShadow:"0 4px 12px rgba(0,0,0,0.12)" }} />
           <div>
             <p style={{ fontSize:18, fontWeight:900, color:"#1A1D23", margin:0 }}>UniqueHub</p>
             <p style={{ fontSize:12, color:"#8B8F92", margin:"2px 0 0" }}>Agency Panel</p>
