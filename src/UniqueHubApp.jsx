@@ -963,6 +963,7 @@ const IC = {
   news: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
   ideas: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>,
   help: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  headset: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3v5zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3v5z"/></svg>,
   match4biz: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M16 8l-4 4-4-4"/></svg>,
   search: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   growth: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
@@ -11479,7 +11480,7 @@ function HelpPage({ onBack }) {
       { q:"Como visualizar o faturamento mensal?", a:"Acesse Financeiro no menu principal ou pelo card na Home. O dashboard mostra receita total, quantidade de pagantes, ticket médio e status de cada cliente (pago, pendente, atrasado)." },
       { q:"Como registrar um pagamento recebido?", a:"No Financeiro, localize o cliente na lista e toque em 'Marcar como Pago'. O sistema atualizará automaticamente o status e os totais do mês. A data do pagamento é registrada." },
       { q:"Como gerar relatórios financeiros?", a:"Vá em Relatórios > Financeiro. Selecione o período desejado e visualize a evolução de receita, receita por plano e detalhamento por cliente." },
-      { q:"O que significam os status de pagamento?", a:"🟢 Pago: Cliente pagou a mensalidade. 🟡 Pendente: Fatura emitida mas ainda não paga. 🔴 Atrasado: Pagamento com data vencida. O sistema calcula automaticamente com base na data de vencimento." },
+      { q:"O que significam os status de pagamento?", a:"Pago (verde): Cliente pagou a mensalidade. Pendente (amarelo): Fatura emitida mas ainda não paga. Atrasado (vermelho): Pagamento com data vencida. O sistema calcula automaticamente com base na data de vencimento." },
       { q:"Como gerar uma nova fatura?", a:"No perfil do cliente, seção de faturas, use o botão '+ Nova fatura'. O sistema gera automaticamente uma fatura com o valor do plano mensal do cliente, data atual e status 'pendente'." },
     ]},
     { cat:"Equipe & Chat", icon:IC.chat, color:B.purple, questions:[
@@ -11492,7 +11493,7 @@ function HelpPage({ onBack }) {
     ]},
     { cat:"Calendário & Agenda", icon:IC.clock, color:B.orange, questions:[
       { q:"Como criar um evento no calendário?", a:"Acesse Calendário, selecione o dia desejado e toque em '+ Novo'. Escolha o tipo (Reunião, Gravação, Evento, Lembrete ou Deadline), preencha os detalhes e salve." },
-      { q:"Quais tipos de evento posso criar?", a:"O calendário suporta 5 tipos: 📋 Reunião (online/presencial, interna/com cliente), 🎬 Gravação (com lista de equipamentos e localização), 🎉 Evento (externo), ⏰ Lembrete (pessoal) e 📅 Deadline (prazo de entrega)." },
+      { q:"Quais tipos de evento posso criar?", a:"O calendário suporta 5 tipos: Reunião (online/presencial, interna/com cliente), Gravação (com lista de equipamentos e localização), Evento (externo), Lembrete (pessoal) e Deadline (prazo de entrega)." },
       { q:"Como adicionar participantes a um evento?", a:"Ao criar ou editar uma Reunião ou Gravação, use o campo 'Participantes' para selecionar membros da equipe. Você pode adicionar múltiplos participantes." },
       { q:"Os eventos são sincronizados entre membros?", a:"Sim! Todos os eventos criados são visíveis para toda a equipe. Cada membro pode ver os compromissos do dia na Home e no Calendário completo." },
     ]},
@@ -11530,7 +11531,7 @@ function HelpPage({ onBack }) {
   ];
 
   const GUIDES = [
-    { title:"Guia Completo: Workflow de Conteúdo", desc:"Entenda cada etapa do pipeline de demandas, do briefing à publicação", icon:"📝", steps:[
+    { title:"Guia Completo: Workflow de Conteúdo", desc:"Entenda cada etapa do pipeline de demandas, do briefing à publicação", icon:IC.content, color:B.blue, steps:[
       "1. Ideia — O Head/CEO cria a demanda com título, cliente e rede social",
       "2. Briefing — Social Media detalha o que precisa ser criado (formato, referências, textos de apoio)",
       "3. Design — Designer/Audiovisual faz upload das artes e materiais visuais",
@@ -11539,7 +11540,7 @@ function HelpPage({ onBack }) {
       "6. Aprovação do Cliente — Cliente externo valida o material final",
       "7. Publicado — Post é publicado na rede social e a demanda é concluída"
     ]},
-    { title:"Guia: Gerenciando Clientes", desc:"Do cadastro ao acompanhamento completo de cada cliente", icon:"👥", steps:[
+    { title:"Guia: Gerenciando Clientes", desc:"Do cadastro ao acompanhamento completo de cada cliente", icon:IC.clients, color:B.green, steps:[
       "1. Cadastre o cliente com nome, contato, e-mail, segmento e plano mensal",
       "2. Acesse a aba de Contrato para definir termos e vigência",
       "3. Use a Biblioteca para organizar os arquivos (manual de marca, posts, vídeos)",
@@ -11547,7 +11548,7 @@ function HelpPage({ onBack }) {
       "5. Crie demandas vinculadas ao cliente para organizar o conteúdo",
       "6. Use observações para registrar informações importantes sobre o cliente"
     ]},
-    { title:"Guia: Onboarding de Novo Membro", desc:"Passo a passo para integrar um novo colaborador na agência", icon:"🚀", steps:[
+    { title:"Guia: Onboarding de Novo Membro", desc:"Passo a passo para integrar um novo colaborador na agência", icon:IC.team, color:B.cyan, steps:[
       "1. Novo membro acessa o app e cria conta com e-mail, nome e cargo",
       "2. Administrador recebe notificação e acessa Configurações > Aprovações",
       "3. Após aprovação, membro ganha acesso ao app com permissões do seu cargo",
@@ -11555,7 +11556,7 @@ function HelpPage({ onBack }) {
       "5. Novo membro personaliza seu menu e faz o primeiro check-in",
       "6. Equipe recebe notificação da entrada do novo membro"
     ]},
-    { title:"Guia: Sistema de Gamificação", desc:"Como funciona o XP, níveis, badges e ranking da equipe", icon:"🏆", steps:[
+    { title:"Guia: Sistema de Gamificação", desc:"Como funciona o XP, níveis, badges e ranking da equipe", icon:IC.trophy, color:B.orange, steps:[
       "1. Cada ação no app gera XP: check-in (+10), demanda concluída (+25), post publicado (+15)",
       "2. XP acumulado define seu nível de 1 (Iniciante) a 8 (Lenda)",
       "3. O Ranking mostra a classificação de todos os membros em tempo real",
@@ -11563,7 +11564,7 @@ function HelpPage({ onBack }) {
       "5. Administradores podem conceder XP bonus diretamente pelo Ranking",
       "6. Mantenha uma sequência de check-ins para subir no ranking mais rápido!"
     ]},
-    { title:"Guia: Assistente de IA", desc:"Use inteligência artificial para otimizar seu trabalho", icon:"🤖", steps:[
+    { title:"Guia: Assistente de IA", desc:"Use inteligência artificial para otimizar seu trabalho", icon:IC.ai, color:B.accent, steps:[
       "1. Configure a chave OpenAI em Configurações > Assistente IA (apenas admin)",
       "2. Acesse o Assistente IA pelo menu para iniciar uma conversa",
       "3. Peça ajuda para: gerar legendas, criar estratégias, brainstorm de ideias, análise de concorrência",
@@ -11571,7 +11572,7 @@ function HelpPage({ onBack }) {
       "5. Copie as sugestões diretamente para as demandas de conteúdo",
       "6. Quanto mais contexto você der, melhores serão as respostas"
     ]},
-    { title:"Guia: Financeiro da Agência", desc:"Controle total de faturamento, faturas e indicadores financeiros", icon:"💰", steps:[
+    { title:"Guia: Financeiro da Agência", desc:"Controle total de faturamento, faturas e indicadores financeiros", icon:IC.financial, color:B.green, steps:[
       "1. Cada cliente tem um plano mensal (valor e tipo: Basic, Pro, Premium, Enterprise)",
       "2. O dashboard Financeiro mostra receita total, pagantes, ticket médio e inadimplência",
       "3. Gere faturas automáticas pelo perfil do cliente",
@@ -11627,7 +11628,7 @@ function HelpPage({ onBack }) {
       <Head title="Falar com Suporte" onBack={() => setContactForm(false)} />
       <Card style={{ background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginBottom:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <span style={{ color:B.accent, display:"flex" }}>{IC.chat}</span>
+          <span style={{ color:B.accent, display:"flex" }}>{IC.headset(B.accent)}</span>
           <div><p style={{ fontSize:12, color:B.accent, fontWeight:600 }}>Suporte Unique Marketing 360</p><p style={{ fontSize:10, color:B.muted }}>Tempo médio de resposta: 2 horas úteis</p></div>
         </div>
       </Card>
@@ -11644,7 +11645,7 @@ function HelpPage({ onBack }) {
         <textarea value={cMsg} onChange={e => setCMsg(e.target.value)} placeholder="Descreva sua dúvida ou problema com o máximo de detalhes possível. Inclua prints se necessário..." className="tinput" style={{ minHeight:120, resize:"vertical" }} />
       </Card>
       <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:12 }}>
-        <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>💡 Dica: Quanto mais detalhes você incluir (tela onde ocorreu o erro, passos para reproduzir, etc.), mais rápido podemos resolver.</p>
+        <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>Dica: Quanto mais detalhes você incluir (tela onde ocorreu o erro, passos para reproduzir, etc.), mais rápido podemos resolver.</p>
       </Card>
       <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent" style={{ padding:"14px 0" }}>Enviar Mensagem</button>
     </div>
@@ -11658,7 +11659,7 @@ function HelpPage({ onBack }) {
         {ToastEl}
         <Head title="" onBack={() => setSelCat(null)} />
         <Card style={{ marginBottom:12, textAlign:"center", padding:20 }}>
-          <span style={{ fontSize:36 }}>{guide.icon}</span>
+          <div style={{ width:56, height:56, borderRadius:16, background:`${guide.color||B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:guide.color||B.accent }}>{typeof guide.icon === "function" ? guide.icon(guide.color||B.accent) : guide.icon}</div>
           <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>{guide.title}</h3>
           <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{guide.desc}</p>
         </Card>
@@ -11766,7 +11767,7 @@ function HelpPage({ onBack }) {
           {GUIDES.map((g, i) => (
             <Card key={i} delay={i*0.03} onClick={() => setSelCat(i)} style={{ marginBottom:8, cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{g.icon}</div>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${g.color||B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:g.color||B.accent }}>{typeof g.icon === "function" ? g.icon(g.color||B.accent) : g.icon}</div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:14, fontWeight:600 }}>{g.title}</p>
                   <p style={{ fontSize:11, color:B.muted }}>{g.desc}</p>
@@ -11797,7 +11798,7 @@ function HelpPage({ onBack }) {
         {/* Videos Tab */}
         {helpTab === "videos" && <>
           <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:12 }}>
-            <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>🎬 Tutoriais em vídeo estarão disponíveis em breve! Por enquanto, use os Guias passo a passo para aprender cada funcionalidade.</p>
+            <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>Tutoriais em vídeo estarão disponíveis em breve! Por enquanto, use os Guias passo a passo para aprender cada funcionalidade.</p>
           </Card>
           <p className="sl" style={{ marginBottom:8 }}>{VIDEOS.length} tutoriais planejados</p>
           {VIDEOS.map((v, i) => (
@@ -11819,7 +11820,7 @@ function HelpPage({ onBack }) {
           <p className="sl" style={{ marginBottom:8 }}>Precisa de mais ajuda?</p>
           <Card onClick={() => setContactForm(true)} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}25`, marginBottom:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.chat}</div>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.headset(B.accent)}</div>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:14, fontWeight:600 }}>Falar com Suporte</p>
                 <p style={{ fontSize:11, color:B.muted }}>Resposta em até 2 horas úteis</p>
