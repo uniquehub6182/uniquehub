@@ -489,6 +489,16 @@ const supaGetSetting = async (key) => {
   if (!supabase) return null;
   try { const { data } = await supabase.from("app_settings").select("value").eq("key", key).single(); return data?.value || null; } catch(e) { return null; }
 };
+/* Bulk load multiple settings in ONE query */
+const supaGetSettingsBulk = async (keys) => {
+  if (!supabase || !keys?.length) return {};
+  try {
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", keys);
+    const map = {};
+    (data || []).forEach(r => { map[r.key] = r.value; });
+    return map;
+  } catch(e) { return {}; }
+};
 const supaSetSetting = async (key, value) => {
   if (!supabase) return false;
   try {
@@ -1532,14 +1542,14 @@ function LoginPage({ onAuth }) {
       try {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
-        /* Load profile + extras + photo in PARALLEL */
+        /* Load profile + extras + photo in ONE bulk query */
         const profilePromise = supabase.from("profiles").select("*").eq("id", data.user.id).single().then(r => r).catch(() => ({ data: null }));
-        const extrasPromise = supaGetSetting(`profile_extras_${data.user.id}`).catch(() => null);
-        const photoPromise = supaGetSetting(`profile_photo_${data.user.id}`).catch(() => null);
-        const [profileRes, extrasRaw, photoSetting] = await Promise.all([profilePromise, extrasPromise, photoPromise]);
+        const settingsPromise = supaGetSettingsBulk([`profile_extras_${data.user.id}`, `profile_photo_${data.user.id}`]);
+        const [profileRes, settingsMap] = await Promise.all([profilePromise, settingsPromise]);
         const profile = profileRes?.data || null;
+        const extrasRaw = settingsMap[`profile_extras_${data.user.id}`] || null;
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
-        let photo = profile?.photo_url || photoSetting || null;
+        const photo = profile?.photo_url || settingsMap[`profile_photo_${data.user.id}`] || null;
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
@@ -12496,15 +12506,17 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
             const existing = CLIENTS_DATA_INIT.find(c => c.name.toLowerCase() === r.name.toLowerCase());
             return mergeSupaClient(r, existing);
           });
-          /* Load file metadata and socials for each client */
-          const withExtras = await Promise.all(merged.map(async (c) => {
+          /* Load file metadata and socials for ALL clients in ONE query */
+          const settingKeys = merged.flatMap(c => [`client_files_${c.id}`, `client_socials_${c.id}`]);
+          const settingsMap = await supaGetSettingsBulk(settingKeys);
+          const withExtras = merged.map(c => {
             let result = c;
-            const filesRaw = await supaGetSetting(`client_files_${c.id}`);
+            const filesRaw = settingsMap[`client_files_${c.id}`];
             if (filesRaw) { try { result = { ...result, files: JSON.parse(filesRaw) }; } catch {} }
-            const socialsRaw = await supaGetSetting(`client_socials_${c.id}`);
+            const socialsRaw = settingsMap[`client_socials_${c.id}`];
             if (socialsRaw) { try { result = { ...result, socials: { ...result.socials, ...JSON.parse(socialsRaw) } }; } catch {} }
             return result;
-          }));
+          });
           setSharedClients(withExtras);
         } else {
           setSharedClients([]);
@@ -12937,11 +12949,11 @@ export default function App() {
               }
             } catch(memberErr) { console.warn("[Auth] agency_members check failed, blocking:", memberErr); await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return; }
           }
-          /* Load extras, photo, and visual prefs in PARALLEL */
-          const extrasPromise = supaGetSetting(`profile_extras_${session.user.id}`).catch(() => null);
-          const photoPromise = supaGetSetting(`profile_photo_${session.user.id}`).catch(() => null);
-          const prefsPromise = supaGetSetting(`visual_prefs_${session.user.id}`).catch(() => null);
-          const [extrasRaw, photoSetting, cloudPrefs] = await Promise.all([extrasPromise, photoPromise, prefsPromise]);
+          /* Load extras, photo, and visual prefs in ONE bulk query */
+          const settingsMap = await supaGetSettingsBulk([`profile_extras_${session.user.id}`, `profile_photo_${session.user.id}`, `visual_prefs_${session.user.id}`]);
+          const extrasRaw = settingsMap[`profile_extras_${session.user.id}`] || null;
+          const photoSetting = settingsMap[`profile_photo_${session.user.id}`] || null;
+          const cloudPrefs = settingsMap[`visual_prefs_${session.user.id}`] || null;
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           const photo = profile?.photo_url || photoSetting || null;
           setUser({
