@@ -1532,11 +1532,10 @@ function LoginPage({ onAuth }) {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
         /* Load profile + extras + photo in PARALLEL */
-        const [profileRes, extrasRaw, photoSetting] = await Promise.all([
-          supabase.from("profiles").select("*").eq("id", data.user.id).single().catch(() => ({ data: null })),
-          supaGetSetting(`profile_extras_${data.user.id}`).catch(() => null),
-          supaGetSetting(`profile_photo_${data.user.id}`).catch(() => null),
-        ]);
+        const profilePromise = supabase.from("profiles").select("*").eq("id", data.user.id).single().then(r => r).catch(() => ({ data: null }));
+        const extrasPromise = supaGetSetting(`profile_extras_${data.user.id}`).catch(() => null);
+        const photoPromise = supaGetSetting(`profile_photo_${data.user.id}`).catch(() => null);
+        const [profileRes, extrasRaw, photoSetting] = await Promise.all([profilePromise, extrasPromise, photoPromise]);
         const profile = profileRes?.data || null;
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
         let photo = profile?.photo_url || photoSetting || null;
@@ -12938,11 +12937,10 @@ export default function App() {
             } catch(memberErr) { console.warn("[Auth] agency_members check failed, blocking:", memberErr); await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return; }
           }
           /* Load extras, photo, and visual prefs in PARALLEL */
-          const [extrasRaw, photoSetting, cloudPrefs] = await Promise.all([
-            supaGetSetting(`profile_extras_${session.user.id}`).catch(() => null),
-            supaGetSetting(`profile_photo_${session.user.id}`).catch(() => null),
-            supaGetSetting(`visual_prefs_${session.user.id}`).catch(() => null),
-          ]);
+          const extrasPromise = supaGetSetting(`profile_extras_${session.user.id}`).catch(() => null);
+          const photoPromise = supaGetSetting(`profile_photo_${session.user.id}`).catch(() => null);
+          const prefsPromise = supaGetSetting(`visual_prefs_${session.user.id}`).catch(() => null);
+          const [extrasRaw, photoSetting, cloudPrefs] = await Promise.all([extrasPromise, photoPromise, prefsPromise]);
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           const photo = profile?.photo_url || photoSetting || null;
           setUser({
