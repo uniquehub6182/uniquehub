@@ -1443,6 +1443,8 @@ function LoginPage({ onAuth }) {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passFocused, setPassFocused] = useState(false);
 
   const handleForgot = async () => {
     if (!forgotEmail.includes("@")) { setError("Digite um e-mail válido"); return; }
@@ -1683,7 +1685,8 @@ function LoginPage({ onAuth }) {
 
   /* ── REGISTER STEPPER ── */
   if (mode === "register") return (
-    <div className="screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 24px 32px", minHeight: "100%", overflowY: "auto", background: "#F7F7F8", color: "#192126" }}>
+    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 24px 32px", overflowY: "auto", background: "#F7F7F8", color: "#192126", zIndex:10 }}>
+      <style>{`.tinput{width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(11,35,66,0.08);font-size:16px!important;font-family:inherit;background:#fff;outline:none;color:#192126;transition:border .15s;box-sizing:border-box}.tinput:focus{border-color:#BBF246;box-shadow:0 0 0 3px #BBF24625}.tinput::placeholder{color:#8B8F92}select.tinput{appearance:auto}`}</style>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 340 }}>
         {logoJSX(20)}
         {stepperJSX}
@@ -1909,8 +1912,6 @@ function LoginPage({ onAuth }) {
   );
 
   /* ── LOGIN MODE — split design: dark header + white card ── */
-  const [emailFocused, setEmailFocused] = React.useState(false);
-  const [passFocused, setPassFocused] = React.useState(false);
   const emailFloating = emailFocused || email.length > 0;
   const passFloating  = passFocused  || pw.length > 0;
 
