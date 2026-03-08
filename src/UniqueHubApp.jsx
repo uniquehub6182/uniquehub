@@ -2241,7 +2241,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   };
   const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", posts:"Posts Recentes", equipe:"Equipe", clientes:"Clientes recentes" };
   const cfgDefault = isAdmin
-    ? { cards:["investimento","aprovacoes"], pills:["suporte","aprovacoes","conteudo","relatorios"], actions:["aprovar","trafego","relatorio","chat"], sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
+    ? { cards:canFinancial ? ["investimento","aprovacoes"] : ["aprovacoes","clientes"], pills:["suporte","aprovacoes","conteudo","relatorios"].filter(k => PILLS[k]?.k !== "financial" || canFinancial), actions:["aprovar","trafego","relatorio","chat"].filter(k => ACTIONS[k]?.k !== "financial" || canFinancial), sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
     : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
   const cfg = dashCfg || cfgDefault;
   const isDark = B.bg === "#0D0D0D";
@@ -2446,7 +2446,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           {/* Cards */}
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
-            {Object.entries(WIDGETS).map(([k,v]) => (
+            {Object.entries(WIDGETS).filter(([k,v]) => v.k !== "financial" || canFinancial).map(([k,v]) => (
               <EditorChip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>editorToggle("cards",k,2)} disabled={!ec.cards.includes(k) && ec.cards.length>=2}/>
             ))}
           </div>
@@ -2454,7 +2454,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           {/* Atalhos */}
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
-            {Object.entries(PILLS).map(([k,v]) => (
+            {Object.entries(PILLS).filter(([k,v]) => v.k !== "financial" || canFinancial).map(([k,v]) => (
               <EditorChip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>editorToggle("pills",k)}/>
             ))}
           </div>
@@ -2462,7 +2462,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           {/* Ações */}
           <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
-            {Object.entries(ACTIONS).map(([k,v]) => (
+            {Object.entries(ACTIONS).filter(([k,v]) => v.k !== "financial" || canFinancial).map(([k,v]) => (
               <EditorChip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>editorToggle("actions",k)}/>
             ))}
           </div>
@@ -2498,7 +2498,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             ))}
           </div>
 
-          <button onClick={()=>setEc({cards:["investimento","aprovacoes"],pills:["suporte","aprovacoes","conteudo","relatorios"],actions:["aprovar","trafego","relatorio","chat"],sections:["comunicados","acoes","resumo","posts","equipe","clientes"]})} style={{marginTop:12,width:"100%",padding:"10px",background:"transparent",border:`1px solid ${C.brd}`,borderRadius:10,color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
+          <button onClick={()=>setEc({...cfgDefault})} style={{marginTop:12,width:"100%",padding:"10px",background:"transparent",border:`1px solid ${C.brd}`,borderRadius:10,color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
         </div>
       </>
   );
