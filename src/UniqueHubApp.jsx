@@ -2819,6 +2819,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [filter, setFilter] = useState("all");
   const isAdmin = user?.supaRole === "admin";
   const canFinancial = canAccessFn("financial") || canAccessFn("financial.view") || canAccessFn("clients.financial");
+  const canSocials = canAccessFn("clients.socials") || isAdmin;
 
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
@@ -2971,6 +2972,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const connectSocial = (platformKey) => {
     if (!sel) return;
+    if (!canSocials) { showToast("Sem permissão para gerenciar redes sociais"); return; }
     const plat = SOCIAL_PLATFORMS.find(p => p.key === platformKey);
     if (plat?.soon) { showToast(`${plat.name} será disponibilizado em breve!`); return; }
     /* For Instagram & Facebook, offer real Meta OAuth */
@@ -3143,7 +3145,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         </Card>
 
         <div style={{ display:"flex", gap:8, marginTop:16 }}>
-          {current.connected && <button onClick={() => { const ns = { ...sel.socials, [editingSocial]: { connected: false } }; updateClient(sel.id, { socials: ns }); setEditingSocial(null); showToast("Desconectado"); }} style={{ flex:1, padding:"14px 0", borderRadius:14, border:`1.5px solid ${B.red}40`, background:`${B.red}08`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Desconectar</button>}
+          {current.connected && canSocials && <button onClick={() => { const ns = { ...sel.socials, [editingSocial]: { connected: false } }; updateClient(sel.id, { socials: ns }); setEditingSocial(null); showToast("Desconectado"); }} style={{ flex:1, padding:"14px 0", borderRadius:14, border:`1.5px solid ${B.red}40`, background:`${B.red}08`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Desconectar</button>}
           <button onClick={saveSocial} className="pill full accent" style={{ flex:current.connected?1:undefined, padding:"14px 0" }}>
             {current.connected ? "Salvar" : `Conectar ${plat.name} manualmente`}
           </button>
@@ -3550,8 +3552,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       <span style={{ fontSize:9, fontWeight:700, color:B.green }}>Conectado</span>
                     </div>
                   </div>
-                ) : (
+                ) : canSocials ? (
                   <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:plat.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Conectar</button>
+                ) : (
+                  <p style={{ marginTop:8, fontSize:10, color:B.muted }}>Não conectado</p>
                 )}
               </Card>
             );
@@ -3577,8 +3581,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       <span style={{ fontSize:9, fontWeight:700, color:B.green }}>Conectado</span>
                     </div>
                   </div>
-                ) : (
+                ) : canSocials ? (
                   <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:plat.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Conectar</button>
+                ) : (
+                  <p style={{ marginTop:8, fontSize:10, color:B.muted }}>Não conectado</p>
                 )}
               </Card>
             );
@@ -7951,6 +7957,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       { k:"clients.view", l:"Visualizar clientes" },
       { k:"clients.edit", l:"Editar dados do cliente" },
       { k:"clients.financial", l:"Ver financeiro do cliente" },
+      { k:"clients.socials", l:"Conectar/desconectar redes sociais" },
       { k:"clients.files", l:"Gerenciar arquivos" },
       { k:"clients.delete", l:"Excluir clientes" },
     ]},
