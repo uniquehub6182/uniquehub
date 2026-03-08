@@ -266,6 +266,20 @@ const supaDeleteFile = async (path) => {
   if (!supabase) return;
   try { await supabase.storage.from("demand-files").remove([path]); } catch(e) {}
 };
+/* ═══ CLIENT LOGO UPLOAD ═══ */
+const supaUploadClientLogo = async (clientId, file) => {
+  if (!supabase || !file) return null;
+  try {
+    const compressed = await compressImage(file, 400, 0.85);
+    const path = `client-logos/${clientId}_${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600", contentType: "image/jpeg" });
+    if (error) { console.error("Logo upload error:", error); return null; }
+    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+    const url = pub?.publicUrl || null;
+    if (url) await supaSetSetting(`client_logo_${clientId}`, url);
+    return url;
+  } catch(e) { console.error("Logo upload catch:", e); return null; }
+};
 const mergeSupaDemand = (row) => {
   /* Ensure steps is always a valid object */
   let steps;
@@ -2381,7 +2395,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[...cfg.actions].sort((a,b)=>(ACTIONS[a]?.l||"").localeCompare(ACTIONS[b]?.l||"","pt")).map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
     if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥",fin:false},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰",fin:true},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐",fin:false},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳",fin:false}].filter(s => !s.fin || canFinancial).map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
     if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
-    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"}{canFinancial ? ` · ${c.monthly||"—"}/mês` : ""}</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
+    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av src={c.logo} name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"}{canFinancial ? ` · ${c.monthly||"—"}/mês` : ""}</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
     if(key==="posts") {
       const recentDemands = (demands||[]).slice(0,8);
       if(recentDemands.length===0) return null;
@@ -2834,6 +2848,22 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [addingFile, setAddingFile] = useState(false);
   const [fileForm, setFileForm] = useState({});
   const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef(null);
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !sel) return;
+    const cid = sel.supaId || sel.id;
+    setLogoUploading(true);
+    const url = await supaUploadClientLogo(cid, file);
+    if (url) {
+      setSel(prev => ({ ...prev, logo: url }));
+      setClients(prev => prev.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, logo: url } : c));
+      showToast("Logo atualizado ✓");
+    } else { showToast("Erro ao enviar logo"); }
+    setLogoUploading(false);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
   /* Load ideas for selected client when ideas tab is opened */
   useEffect(() => {
     if (profileTab !== "ideas" || !sel || !supabase) return;
@@ -3414,7 +3444,14 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       {ToastEl}
       <Head title={sel.name} onBack={() => { setSel(null); setProfileTab("info"); setEditClient(false); }} />
       <Card style={{ textAlign:"center", marginBottom:10 }}>
-        <Av name={sel.name} sz={64} fs={24} />
+        <input ref={logoInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleLogoUpload} />
+        <div onClick={() => canAccessFn("clients.edit") && logoInputRef.current?.click()} style={{ position:"relative", display:"inline-block", cursor: canAccessFn("clients.edit") ? "pointer" : "default" }}>
+          <Av src={sel.logo} name={sel.name} sz={64} fs={24} />
+          {canAccessFn("clients.edit") && <div style={{ position:"absolute", bottom:-2, right:-2, width:22, height:22, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", border:`2px solid ${B.bgCard}` }}>
+            {logoUploading ? <div style={{ width:10, height:10, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} />
+            : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="3" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+          </div>}
+        </div>
         <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{sel.name}</h3>
         {sel.segment && <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{sel.segment}</p>}
         <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
@@ -3892,7 +3929,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         return (
         <Card key={c.id} delay={i*0.03} onClick={()=>setSel(c)} style={{ marginTop: i?6:0, cursor:"pointer" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <Av name={c.name} sz={42} fs={16} />
+            <Av src={c.logo} name={c.name} sz={42} fs={16} />
             <div style={{ flex:1, minWidth:0 }}>
               <p style={{ fontSize:14, fontWeight:600 }}>{c.name}</p>
               <div style={{ display:"flex", gap:4, marginTop:3, alignItems:"center" }}>
@@ -4379,7 +4416,7 @@ function FinancialPage({ onBack, clients: propClients }) {
         <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Receita por cliente</p>
         {CDATA.map((c, i) => (
           <Card key={c.id} delay={0.15 + i * 0.03} style={{ marginTop: i ? 6 : 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av name={c.name} sz={34} fs={13} /><div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</p><Tag color={c.status === "ativo" ? B.green : B.orange}>{c.plan}</Tag></div><p style={{ fontSize: 14, fontWeight: 700 }}>{c.monthly}</p></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av src={c.logo} name={c.name} sz={34} fs={13} /><div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</p><Tag color={c.status === "ativo" ? B.green : B.orange}>{c.plan}</Tag></div><p style={{ fontSize: 14, fontWeight: 700 }}>{c.monthly}</p></div>
           </Card>
         ))}
         <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Histórico mensal</p>
@@ -5053,7 +5090,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </Card>
         ) : (
         <div style={{ textAlign:"center", marginBottom:14 }}>
-          <Av name={sel.client} sz={48} fs={18} />
+          <Av src={(propClients||[]).find(c=>c.name===sel.client)?.logo} name={sel.client} sz={48} fs={18} />
           <h2 style={{ fontSize:17, fontWeight:800, marginTop:8 }}>{sel.title}</h2>
           <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{sel.client} · {typeLabel(sel.type)} · {sel.createdAt}</p>
           <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
@@ -9568,7 +9605,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
         <Head title="" onBack={() => setSelClient(null)} />
         <Card style={{ marginBottom:12 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-            <Av name={c.name} sz={44} fs={16} />
+            <Av src={c.logo} name={c.name} sz={44} fs={16} />
             <div style={{ flex:1 }}>
               <h3 style={{ fontSize:16, fontWeight:800 }}>{c.name}</h3>
               <p style={{ fontSize:11, color:B.accent }}>{c.plan} · {c.segment}</p>
@@ -9766,7 +9803,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
           {clientMetrics.map((c, i) => (
             <Card key={c.id || i} delay={i*0.03} onClick={() => setSelClient(c.name)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-                <Av name={c.name} sz={36} fs={13} />
+                <Av src={c.logo} name={c.name} sz={36} fs={13} />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
@@ -9802,7 +9839,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
             return (
               <Card key={c.name} style={{ marginBottom:8 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <Av name={c.name} sz={28} fs={10} />
+                  <Av src={c.logo} name={c.name} sz={28} fs={10} />
                   <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>@{c.igProfile?.username || "—"} · {formatNum(c.igFollowers)} seg.</p></div>
                   <span style={{ fontSize:12, fontWeight:800, color:"#E1306C" }}>{c.engRate}%</span>
                 </div>
@@ -9836,7 +9873,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
             return (
               <Card key={c.name} style={{ marginBottom:8 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                  <Av name={c.name} sz={28} fs={10} />
+                  <Av src={c.logo} name={c.name} sz={28} fs={10} />
                   <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>{c.fbPage?.name || "—"} · {formatNum(c.fbFollowers)} seg.</p></div>
                 </div>
                 <div style={{ display:"flex", gap:8, marginBottom:8 }}>
@@ -11973,7 +12010,7 @@ function SearchPage({ onBack, team, clients }) {
         {clientResults.map((c,i) => (
           <Card key={c.id} delay={i*0.03} style={{ marginBottom:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <Av name={c.name} sz={36} fs={13} />
+              <Av src={c.logo} name={c.name} sz={36} fs={13} />
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:13, fontWeight:700 }}>{c.name}</p>
                 <p style={{ fontSize:10, color:B.muted }}>{c.segment} · {c.plan} · {c.monthly}</p>
@@ -12514,7 +12551,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
             return mergeSupaClient(r, existing);
           });
           /* Load file metadata and socials for ALL clients in ONE query */
-          const settingKeys = merged.flatMap(c => [`client_files_${c.id}`, `client_socials_${c.id}`]);
+          const settingKeys = merged.flatMap(c => [`client_files_${c.id}`, `client_socials_${c.id}`, `client_logo_${c.id}`]);
           const settingsMap = await supaGetSettingsBulk(settingKeys);
           const withExtras = merged.map(c => {
             let result = c;
@@ -12522,6 +12559,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
             if (filesRaw) { try { result = { ...result, files: JSON.parse(filesRaw) }; } catch {} }
             const socialsRaw = settingsMap[`client_socials_${c.id}`];
             if (socialsRaw) { try { result = { ...result, socials: { ...result.socials, ...JSON.parse(socialsRaw) } }; } catch {} }
+            const logoUrl = settingsMap[`client_logo_${c.id}`];
+            if (logoUrl) result = { ...result, logo: logoUrl };
             return result;
           });
           setSharedClients(withExtras);
