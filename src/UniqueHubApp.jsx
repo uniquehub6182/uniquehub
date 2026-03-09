@@ -14233,17 +14233,40 @@ function ClientGamification({ onBack, user, demands }) {
           <Card style={{ padding:0, overflow:"hidden" }}>
             <div style={{ background:B.dark||"#111", padding:"20px 16px", color:"#fff", textAlign:"center" }}>
               <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", marginBottom:16 }}>Top 3 do mês</p>
-              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:12, paddingBottom:10 }}>
-                <div style={{ textAlign:"center" }}><span style={{ fontSize:14 }}>2</span><Av name={RANKING[1]?.name||""} sz={44} fs={16} /><p style={{ fontSize:10, fontWeight:600, marginTop:4, color:"#C0C0C0" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p><p style={{ fontSize:16, fontWeight:900 }}>{RANKING[1]?.score}</p><div style={{ width:60, height:50, background:"rgba(255,255,255,0.08)", borderRadius:"6px 6px 0 0", marginTop:4 }} /></div>
-                <div style={{ textAlign:"center" }}><span style={{ fontSize:16 }}>1</span><div style={{ border:`3px solid ${B.accent}`, borderRadius:"50%", padding:2, display:"inline-block" }}><Av name={RANKING[0]?.name||""} sz={52} fs={20} /></div><p style={{ fontSize:11, fontWeight:700, marginTop:4 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p><p style={{ fontSize:20, fontWeight:900, color:B.accent }}>{RANKING[0]?.score}</p><div style={{ width:60, height:70, background:B.accent, borderRadius:"6px 6px 0 0", marginTop:4 }} /></div>
-                <div style={{ textAlign:"center" }}><span style={{ fontSize:14 }}>3</span><Av name={RANKING[2]?.name||""} sz={44} fs={16} /><p style={{ fontSize:10, fontWeight:600, marginTop:4, color:"#CD7F32" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p><p style={{ fontSize:16, fontWeight:900 }}>{RANKING[2]?.score}</p><div style={{ width:60, height:40, background:"rgba(255,255,255,0.08)", borderRadius:"6px 6px 0 0", marginTop:4 }} /></div>
+              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:16, paddingBottom:10 }}>
+                {/* 2nd place */}
+                <div style={{ textAlign:"center", width:80 }}>
+                  <div style={{ width:22, height:22, borderRadius:"50%", background:"#C0C0C0", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 6px", fontSize:11, fontWeight:900, color:"#fff" }}>2</div>
+                  <Av name={RANKING[1]?.name||""} sz={48} fs={18} />
+                  <p style={{ fontSize:10, fontWeight:600, marginTop:6, color:"#C0C0C0" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:16, fontWeight:900 }}>{RANKING[1]?.score}</p>
+                  <div style={{ width:64, height:50, background:"rgba(255,255,255,0.08)", borderRadius:"6px 6px 0 0", marginTop:6, margin:"6px auto 0" }} />
+                </div>
+                {/* 1st place */}
+                <div style={{ textAlign:"center", width:90 }}>
+                  <div style={{ width:26, height:26, borderRadius:"50%", background:"#FFD700", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 6px", fontSize:13, fontWeight:900, color:"#fff", boxShadow:"0 2px 8px #FFD70060" }}>1</div>
+                  <div style={{ border:`3px solid ${B.accent}`, borderRadius:"50%", padding:3, display:"inline-block" }}><Av name={RANKING[0]?.name||""} sz={56} fs={22} /></div>
+                  <p style={{ fontSize:12, fontWeight:700, marginTop:6 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{RANKING[0]?.score}</p>
+                  <div style={{ width:64, height:70, background:B.accent, borderRadius:"6px 6px 0 0", marginTop:6, margin:"6px auto 0" }} />
+                </div>
+                {/* 3rd place */}
+                <div style={{ textAlign:"center", width:80 }}>
+                  <div style={{ width:22, height:22, borderRadius:"50%", background:"#CD7F32", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 6px", fontSize:11, fontWeight:900, color:"#fff" }}>3</div>
+                  <Av name={RANKING[2]?.name||""} sz={48} fs={18} />
+                  <p style={{ fontSize:10, fontWeight:600, marginTop:6, color:"#CD7F32" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:16, fontWeight:900 }}>{RANKING[2]?.score}</p>
+                  <div style={{ width:64, height:40, background:"rgba(255,255,255,0.08)", borderRadius:"6px 6px 0 0", marginTop:6, margin:"6px auto 0" }} />
+                </div>
               </div>
             </div>
           </Card>
           <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Ranking completo</p>
           {RANKING.map((r,i) => <Card key={i} delay={i*0.03} style={{ marginBottom:6, background:r.isMe?`${B.accent}06`:B.bgCard, border:r.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:B.muted, width:24 }}>#{i+1}</span>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:i<3?["#FFD70020","#C0C0C020","#CD7F3220"][i]:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <span style={{ fontSize:11, fontWeight:900, color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:B.muted }}>{i+1}</span>
+              </div>
               <Av name={r.name} sz={36} fs={13} />
               <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:r.isMe?800:600 }}>{r.name}{r.isMe?" (Você)":""}</p><p style={{ fontSize:10, color:B.muted }}>Zona {r.zone}</p></div>
               <div style={{ textAlign:"right" }}><p style={{ fontSize:18, fontWeight:900 }}>{r.score}</p><p style={{ fontSize:10, color:B.green, fontWeight:600 }}>+{r.delta}</p></div>
