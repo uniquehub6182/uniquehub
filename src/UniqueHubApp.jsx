@@ -13426,6 +13426,279 @@ function Match4BizPage({ onBack, clients, user }) {
 /* ═══════════════════════════════════════════════════════════════════
    CLIENT ONBOARDING — Cadastro interativo com IA conversacional
    ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT MATCH4BIZ — Tinder de negócios entre clientes
+   ═══════════════════════════════════════════════════════════════════ */
+function ClientMatch4Biz({ onBack, user }) {
+  const [accepted, setAccepted] = useState(false);
+  const [tab, setTab] = useState("discover");
+  const [credits, setCredits] = useState(10);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [matches, setMatches] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [selChat, setSelChat] = useState(null);
+  const [msgInput, setMsgInput] = useState("");
+  const [showBuy, setShowBuy] = useState(false);
+  const [selPack, setSelPack] = useState(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [swipeAnim, setSwipeAnim] = useState(null);
+  const { showToast, ToastEl } = useToast();
+
+  const PROFILES = [
+    { id:1, name:"Studio Criativo RJ", initials:"SC", city:"Rio de Janeiro", tags:["Vídeo","Foto","Reels"], desc:"Produtora audiovisual premium com 8 anos de mercado. Especializada em vídeos institucionais, reels e cobertura de eventos.", match:94, rating:4.8, clients:47, ticket:"R$5-15K", color:"#10B981" },
+    { id:2, name:"Café Artesanal SP", initials:"CA", city:"São Paulo", tags:["Food","Lifestyle"], desc:"Cafeteria artesanal com 3 unidades. Fornecemos grãos selecionados e temos programa de parceria para empresas.", match:87, rating:4.5, clients:120, ticket:"R$2-8K", color:"#F59E0B" },
+    { id:3, name:"TechSmart Solutions", initials:"TS", city:"Belo Horizonte", tags:["Tech","SaaS","B2B"], desc:"Desenvolvedora de soluções em automação comercial. Integrações com ERPs e CRMs para PMEs.", match:91, rating:4.7, clients:85, ticket:"R$10-50K", color:"#3B82F6" },
+    { id:4, name:"Bella Estética Premium", initials:"BE", city:"Curitiba", tags:["Beleza","Saúde","Bem-estar"], desc:"Rede de estética com 5 unidades. Especializada em tratamentos faciais e corporais de alto padrão.", match:78, rating:4.3, clients:200, ticket:"R$1-5K", color:"#EC4899" },
+    { id:5, name:"Distribuidora Nova Era", initials:"DN", city:"Campinas", tags:["Logística","Distribuição"], desc:"Distribuidora regional com frota própria. Atendemos todo interior de SP com entregas em 24h.", match:82, rating:4.1, clients:340, ticket:"R$5-20K", color:"#8B5CF6" },
+    { id:6, name:"Fit Arena Gym", initials:"FA", city:"Niterói", tags:["Fitness","Saúde","Esporte"], desc:"Academia completa com crossfit, musculação e pilates. Programa de parcerias corporativas.", match:75, rating:4.6, clients:500, ticket:"R$3-10K", color:"#EF4444" },
+  ];
+
+  const available = PROFILES.filter(p => !matches.some(m => m.id === p.id) && !connections.some(c => c.id === p.id));
+  const currentProfile = available[currentIdx % Math.max(available.length, 1)];
+
+  const handleLike = () => {
+    if (!currentProfile) return;
+    if (credits < 10) { setShowBuy(true); return; }
+    setSwipeAnim("like");
+    setTimeout(() => {
+      setCredits(c => c - 10);
+      setMatches(prev => [...prev, currentProfile]);
+      setCurrentIdx(i => i + 1);
+      setSwipeAnim(null);
+      showToast("Match! Você se conectou com " + currentProfile.name);
+    }, 300);
+  };
+
+  const handlePass = () => {
+    if (!currentProfile) return;
+    setSwipeAnim("pass");
+    setTimeout(() => {
+      setCurrentIdx(i => i + 1);
+      setSwipeAnim(null);
+    }, 300);
+  };
+
+  const sendMsg = () => {
+    if (!msgInput.trim() || !selChat) return;
+    setConnections(prev => prev.map(c => c.id === selChat.id ? { ...c, msgs: [...(c.msgs||[]), { from:"me", text:msgInput.trim(), ts:new Date().toISOString() }] } : c));
+    setSelChat(prev => ({ ...prev, msgs: [...(prev.msgs||[]), { from:"me", text:msgInput.trim(), ts:new Date().toISOString() }] }));
+    setMsgInput("");
+  };
+
+  /* CHAT VIEW */
+  if (selChat) {
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        {ToastEl}
+        <div style={{ padding:"12px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:`1px solid ${B.border}` }}>
+          <button onClick={()=>setSelChat(null)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex" }}>{IC.back()}</button>
+          <Av name={selChat.name} sz={36} fs={14} />
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{selChat.name}</p><p style={{ fontSize:10, color:B.muted }}>{selChat.city}</p></div>
+          <Tag color={B.accent}>{selChat.match}%</Tag>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ textAlign:"center", padding:20 }}>
+            <span style={{ color:`${B.accent}40` }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+            <p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Início da conversa com {selChat.name}</p>
+            <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:8 }}>{(selChat.tags||[]).map((t,i) => <Tag key={i} color={B.accent}>{t}</Tag>)}</div>
+          </div>
+          {(selChat.msgs||[]).map((m,i) => (
+            <div key={i} style={{ alignSelf:m.from==="me"?"flex-end":"flex-start", maxWidth:"80%" }}>
+              <div style={{ padding:"10px 14px", borderRadius:m.from==="me"?"14px 14px 4px 14px":"14px 14px 14px 4px", background:m.from==="me"?B.accent:`${B.muted}15`, color:m.from==="me"?B.textOnAccent||"#0D0D0D":B.text, fontSize:13, lineHeight:1.5 }}>{m.text}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
+          <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." style={{ flex:1, padding:"12px 16px", borderRadius:22, border:`1.5px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:14, outline:"none" }} />
+          <button onClick={sendMsg} disabled={!msgInput.trim()} className="send-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ONBOARDING */
+  if (!accepted) {
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="" onBack={onBack} />
+        <div className="content" style={{ padding:"0 20px" }}>
+          <div style={{ textAlign:"center", padding:"30px 0 20px" }}>
+            <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${B.accent}30, #8B5CF630)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            </div>
+            <p style={{ fontSize:24, fontWeight:900 }}>Match4Biz</p>
+            <p style={{ fontSize:13, color:B.muted, marginTop:6, lineHeight:1.5 }}>Encontre parceiros de negócios ideais com nosso algoritmo de compatibilidade inteligente.</p>
+          </div>
+          <Card style={{ border:`1.5px solid ${B.accent}20` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.financial(B.accent)}</div>
+              <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Seu Plano: Inicial</p><p style={{ fontSize:11, color:B.muted }}>10 créditos inclusos</p></div>
+              <Tag color={B.accent}>10</Tag>
+            </div>
+            <div style={{ background:`${B.muted}08`, borderRadius:10, padding:12 }}>
+              <p style={{ fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>{IC.help(B.muted)} Como funcionam os créditos?</p>
+              <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Cada match consome <b style={{ color:B.text }}>10 créditos</b>. Passar perfis é gratuito. Você pode comprar créditos extras a qualquer momento.</p>
+            </div>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>Termos de Uso</p>
+            {["O Match4Biz conecta empresas com base em compatibilidade.","Informações compartilhadas são confidenciais.","Mantenha postura profissional nas interações.","A Unique Marketing 360 não se responsabiliza por acordos entre partes.","Créditos consumidos em matches não são reembolsáveis."].map((t,i) => (
+              <p key={i} style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginBottom:6 }}>{i+1}. {t}</p>
+            ))}
+          </Card>
+          <button onClick={()=>setAccepted(true)} style={{ width:"100%", marginTop:14, marginBottom:20, padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Aceitar e Começar</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* BUY CREDITS SHEET */
+  const buySheet = showBuy && <><div onClick={()=>{setShowBuy(false);setSelPack(null);setShowPayment(false);}} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:100 }} />
+    <div className="sheet" style={{ zIndex:101 }}>
+      {!showPayment ? <>
+        <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 16px" }} />
+        <p style={{ fontSize:18, fontWeight:800 }}>Comprar Créditos</p>
+        <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>Saldo atual: <span style={{ color:B.accent, fontWeight:700 }}>{credits} créditos</span></p>
+        {[{n:10,price:"R$ 49,90",sub:"1 match · R$ 49,90/pacote"},{n:30,price:"R$ 119,90",sub:"3 matches · Economize 20%",popular:true},{n:50,price:"R$ 179,90",sub:"5 matches · Economize 28%"}].map((p,i) => (
+          <div key={i} onClick={()=>setSelPack(p)} style={{ padding:"14px 16px", borderRadius:14, border:selPack?.n===p.n?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:selPack?.n===p.n?`${B.accent}06`:"transparent", marginBottom:8, display:"flex", alignItems:"center", gap:12, cursor:"pointer", position:"relative" }}>
+            {p.popular && <span style={{ position:"absolute", top:-8, right:12, fontSize:9, fontWeight:700, background:B.accent, color:B.textOnAccent||"#0D0D0D", padding:"2px 8px", borderRadius:6 }}>Mais popular</span>}
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:B.accent }}>{p.n}</div>
+            <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{p.n} créditos</p><p style={{ fontSize:11, color:B.muted }}>{p.sub}</p></div>
+            <span style={{ fontSize:14, fontWeight:700, color:B.accent }}>{p.price}</span>
+            {selPack?.n===p.n && <span style={{ color:B.accent }}>{IC.check}</span>}
+          </div>
+        ))}
+        <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:8 }}>Aprovação imediata · Créditos instantâneos</p>
+        <button onClick={()=>{ if(selPack) setShowPayment(true); }} disabled={!selPack} style={{ width:"100%", marginTop:12, padding:"14px 0", borderRadius:14, background:selPack?B.accent:`${B.muted}20`, border:"none", cursor:selPack?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:selPack?(B.textOnAccent||"#0D0D0D"):B.muted }}>Continuar</button>
+      </> : <>
+        <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 16px" }} />
+        <p style={{ fontSize:18, fontWeight:800 }}>Forma de Pagamento</p>
+        <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>{selPack?.n} créditos · {selPack?.price}</p>
+        {[{l:"PIX",sub:"Aprovação instantânea",tag:"Recomendado",c:"#10B981"},{l:"Cartão de Crédito",sub:"Visa, Master, Elo",tag:"2-3 min",c:"#3B82F6"}].map((pm,i) => (
+          <div key={i} onClick={()=>{ setCredits(c=>c+selPack.n); setShowBuy(false); setSelPack(null); setShowPayment(false); showToast(`+${selPack.n} créditos adicionados!`); }} style={{ padding:"16px", borderRadius:14, border:`1.5px solid ${B.border}`, marginBottom:8, display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${pm.c}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              {i===0 ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pm.c} strokeWidth="2" strokeLinecap="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pm.c} strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>}
+            </div>
+            <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{pm.l}</p><p style={{ fontSize:11, color:B.muted }}>{pm.sub}</p></div>
+            <Tag color={pm.c}>{pm.tag}</Tag>
+          </div>
+        ))}
+        <button onClick={()=>{setShowPayment(false);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:B.muted, margin:"10px auto", display:"flex", alignItems:"center", gap:4 }}>{IC.back()} Voltar</button>
+      </>}
+    </div>
+  </>;
+
+  /* MAIN TABS */
+  const TABS_M4B = [{k:"discover",l:"Descobrir"},{k:"matches",l:`Matches (${matches.length})`},{k:"connections",l:"Conexões"},{k:"credits",l:"Créditos"}];
+
+  return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      {ToastEl} {buySheet}
+      <Head title="Conexões" onBack={onBack} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        {/* Credits bar */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:14, background:`${B.accent}06`, border:`1px solid ${B.accent}20`, marginBottom:12 }}>
+          <div style={{ width:32, height:32, borderRadius:10, background:credits>0?`${B.accent}15`:`${B.red}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>{credits>0 ? IC.financial(B.accent) : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}</div>
+          <div style={{ flex:1 }}>
+            <span style={{ fontSize:18, fontWeight:900, color:credits>0?B.accent:B.red }}>{credits}</span>
+            <span style={{ fontSize:12, color:B.muted, marginLeft:4 }}>créditos</span>
+            <div style={{ height:3, borderRadius:2, background:`${B.accent}15`, marginTop:4 }}><div style={{ height:3, borderRadius:2, background:B.accent, width:`${Math.min((credits/50)*100,100)}%`, transition:"width .3s" }} /></div>
+          </div>
+          <button onClick={()=>setShowBuy(true)} style={{ fontSize:12, fontWeight:700, color:B.accent, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Créditos</button>
+        </div>
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", scrollbarWidth:"none" }}>
+          {TABS_M4B.map(t => (
+            <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:"none", background:tab===t.k?B.accent:`${B.muted}10`, color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
+          ))}
+        </div>
+
+        {/* DISCOVER */}
+        {tab === "discover" && <>
+          {available.length > 0 && currentProfile ? (
+            <Card style={{ overflow:"hidden", padding:0 }}>
+              <div style={{ textAlign:"center", padding:"24px 20px 16px", transform:swipeAnim==="like"?"translateX(100px) rotate(10deg)":swipeAnim==="pass"?"translateX(-100px) rotate(-10deg)":"none", opacity:swipeAnim?0.3:1, transition:"all .3s ease" }}>
+                <div style={{ position:"absolute", top:12, right:16, display:"flex", alignItems:"center", gap:4 }}>{IC.financial(B.accent)} <span style={{ fontSize:12, fontWeight:700, color:B.accent }}>10</span></div>
+                <Av name={currentProfile.name} sz={80} fs={28} />
+                <p style={{ fontSize:18, fontWeight:800, marginTop:12 }}>{currentProfile.name}</p>
+                <p style={{ fontSize:12, color:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:4, marginTop:4 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {currentProfile.city}
+                </p>
+                <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:10, flexWrap:"wrap" }}>{currentProfile.tags.map((t,i) => <Tag key={i} color={currentProfile.color}>{t}</Tag>)}</div>
+                <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginTop:14, padding:"0 8px", textAlign:"center" }}>{currentProfile.desc}</p>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:16 }}>
+                  <div><p style={{ fontSize:20, fontWeight:900, color:B.accent }}>{currentProfile.match}%</p><p style={{ fontSize:10, color:B.muted }}>Match</p></div>
+                  <div><p style={{ fontSize:20, fontWeight:900 }}>{currentProfile.rating}</p><p style={{ fontSize:10, color:B.muted }}>Rating</p></div>
+                  <div><p style={{ fontSize:20, fontWeight:900 }}>{currentProfile.clients}</p><p style={{ fontSize:10, color:B.muted }}>Clientes</p></div>
+                </div>
+                <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background:`${B.muted}06`, display:"flex", alignItems:"center", gap:6 }}>{IC.financial(B.muted)} <span style={{ fontSize:13, fontWeight:600 }}>Ticket médio: {currentProfile.ticket}</span></div>
+              </div>
+            </Card>
+          ) : <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:14, fontWeight:600 }}>Sem perfis no momento</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Volte mais tarde para novas conexões!</p></Card>}
+          {available.length > 0 && currentProfile && <div style={{ display:"flex", justifyContent:"center", gap:16, marginTop:16 }}>
+            <button onClick={handlePass} style={{ width:56, height:56, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <button onClick={handleLike} style={{ width:64, height:64, borderRadius:"50%", background:`${B.green}20`, border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}><svg width="28" height="28" viewBox="0 0 24 24" fill={B.green} stroke={B.green} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span style={{ fontSize:8, fontWeight:700, color:B.green }}>-10 créditos</span></button>
+          </div>}
+          {available.length > 0 && <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:10 }}>{available.length} conexões restantes</p>}
+        </>}
+
+        {/* MATCHES */}
+        {tab === "matches" && <>
+          {matches.length === 0 && <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:14, fontWeight:600 }}>Nenhum match ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Explore perfis na aba Descobrir!</p></Card>}
+          {matches.map((m,i) => (
+            <Card key={m.id} delay={i*0.03} onClick={()=>{if(!connections.some(c=>c.id===m.id)){setConnections(prev=>[...prev,{...m,msgs:[]}]);}setSelChat(connections.find(c=>c.id===m.id)||{...m,msgs:[]});}} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={m.name} sz={44} fs={16} />
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{m.name}</p><p style={{ fontSize:10, color:B.muted }}>{m.city} · {m.match}% match</p><div style={{ display:"flex", gap:4, marginTop:4 }}>{m.tags.slice(0,2).map((t,j) => <Tag key={j} color={m.color}>{t}</Tag>)}</div></div>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(B.accent)}</div>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* CONNECTIONS */}
+        {tab === "connections" && <>
+          {connections.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+            <div style={{ width:56, height:56, borderRadius:"50%", background:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            <p style={{ fontSize:14, fontWeight:700 }}>Nenhuma conexão ainda</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Dê match com empresas para começar a conversar.</p>
+          </Card>}
+          {connections.map((c,i) => (
+            <Card key={c.id} delay={i*0.03} onClick={()=>setSelChat(c)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={c.name} sz={44} fs={16} />
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:10, color:B.muted }}>{c.city} · {c.match}% match</p></div>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(B.accent)}</div>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* CREDITS */}
+        {tab === "credits" && <>
+          <Card style={{ textAlign:"center", padding:20 }}>
+            <p style={{ fontSize:36, fontWeight:900, color:B.accent }}>{credits}</p>
+            <p style={{ fontSize:12, color:B.muted }}>créditos disponíveis</p>
+            <div style={{ height:6, borderRadius:3, background:`${B.accent}15`, marginTop:12 }}><div style={{ height:6, borderRadius:3, background:B.accent, width:`${Math.min((credits/50)*100,100)}%` }} /></div>
+            <button onClick={()=>setShowBuy(true)} style={{ marginTop:16, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Comprar Créditos</button>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Como funcionam</p>
+            {[{l:"Passar perfis",v:"Grátis"},{l:"Dar match",v:"10 créditos"},{l:"Enviar mensagens",v:"Grátis"},{l:"Ver perfil completo",v:"Grátis"}].map((r,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<3?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:12, color:B.muted }}>{r.l}</span>
+                <span style={{ fontSize:12, fontWeight:600 }}>{r.v}</span>
+              </div>
+            ))}
+          </Card>
+        </>}
+      </div>
+    </div>
+  );
+}
+
 function ClientOnboarding({ onComplete, onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -13673,6 +13946,11 @@ function MainClientApp({ user, onLogout, dark }) {
   const navBorder = dark ? "1px solid #2A2A2A" : "1px solid rgba(255,255,255,0.08)";
   const inactiveColor = dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)";
   const circleIcon = dark ? "#0D0D0D" : "#fff";
+
+  /* MATCH4BIZ */
+  if (sub === "match4biz") {
+    return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
+  }
 
   /* DEMAND DETAIL */
   if (sub && sub.startsWith("demand_")) {
@@ -13943,11 +14221,11 @@ function MainClientApp({ user, onLogout, dark }) {
           {tab === "calendar" && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calendário compartilhado</p></Card>}
           {tab === "chat" && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat com a agência</p></Card>}
           {tab === "more" && <>
-            {[{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conteúdos"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
-              <Card key={i} style={{ marginBottom:6 }}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {[{l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz"},{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conteúdos"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
+              <Card key={i} style={{ marginBottom:6, cursor:item.sub?"pointer":"default" }} onClick={()=>item.sub&&setSub(item.sub)}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
                 <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.d}</p></div>
-                <Tag color={B.accent}>Em breve</Tag>
+                {item.sub ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>}
               </div></Card>
             ))}
             <button onClick={onLogout} style={{ width:"100%", marginTop:16, padding:"14px 0", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
