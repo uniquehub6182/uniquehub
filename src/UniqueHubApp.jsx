@@ -14224,6 +14224,9 @@ function MainClientApp({ user, onLogout, dark }) {
   const [demandsLoaded, setDemandsLoaded] = useState(false);
   const [articles, setArticles] = useState([]);
   const [articlesLoaded, setArticlesLoaded] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [team, setTeam] = useState([]);
+  const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
   const scrollRef = useRef(null);
 
@@ -14253,6 +14256,13 @@ function MainClientApp({ user, onLogout, dark }) {
       setArticlesLoaded(true);
     }).catch(() => setArticlesLoaded(true));
   }, [articlesLoaded]);
+
+  /* Load clients + team for sub-pages */
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly: c.monthly, status: c.status || "ativo", logo: c.logo }))); });
+    supaLoadTeam().then(rows => { if (rows) setTeam(rows); });
+  }, []);
 
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
@@ -14288,14 +14298,14 @@ function MainClientApp({ user, onLogout, dark }) {
   if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
   if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
-  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={[]} team={[]} />;
-  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={[]} />;
+  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} />;
+  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
   if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
-  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
   if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
   if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
-  if (sub === "reports") return <ReportsPage onBack={() => setSub(null)} clients={[]} team={[]} />;
-  if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={[]} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
+  if (sub === "reports") return <ReportsPage onBack={() => setSub(null)} clients={clients} team={team} />;
+  if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
   if (sub === "financial") return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <Head title="Financeiro" onBack={() => setSub(null)} />
@@ -14617,8 +14627,8 @@ function MainClientApp({ user, onLogout, dark }) {
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={[]} team={[]} /></div>}
-          {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={true} setChatTermsOk={()=>{}} /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} /></div>}
+          {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
               {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify"},
