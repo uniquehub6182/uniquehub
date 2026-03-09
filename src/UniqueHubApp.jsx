@@ -534,7 +534,7 @@ const supaSetSetting = async (key, value) => {
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
   try {
-    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key", "gemini_key", "ai_provider"]);
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", ["openai_key", "gemini_key", "claude_key", "ai_provider"]);
     const map = {};
     (data || []).forEach(r => { map[r.key] = r.value; });
     return map;
@@ -7222,7 +7222,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [agLoaded, setAgLoaded] = useState(false);
   const [agSaving, setAgSaving] = useState(false);
 
-  const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", ai_provider:"openai" });
+  const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", ai_provider:"openai", claude_key:"" });
   const [aiCfgLoaded, setAiCfgLoaded] = useState(false);
 
   // Load agency identity
@@ -8316,6 +8316,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       setAiCfgSaving(true);
       await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
       await supaSetSetting("gemini_key", aiCfgKeys.gemini_key || "");
+      await supaSetSetting("claude_key", aiCfgKeys.claude_key || "");
       const ok = await supaSetSetting("ai_provider", aiCfgKeys.ai_provider || "openai");
       setAiCfgSaving(false);
       if (ok) showToast("Configuração salva ✓");
@@ -8331,11 +8332,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <Card style={{ marginBottom:12 }}>
           <p className="sl" style={{ marginBottom:8 }}>Provedor ativo</p>
           <div style={{ display:"flex", gap:8 }}>
-            {[{k:"openai",l:"OpenAI"},{k:"gemini",l:"Gemini"}].map(p => (
+            {[{k:"openai",l:"OpenAI"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p => (
               <button key={p.k} onClick={() => setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px 8px", borderRadius:12, border:`1.5px solid ${curProvider===p.k?B.accent:B.border}`, background:curProvider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:13, color:curProvider===p.k?B.accent:B.muted }}>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
                   {p.k==="openai"
                     ? <svg width="18" height="18" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    : p.k==="claude"
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="currentColor" opacity="0.85"/><path d="M15.5 8.5L12 15.5 8.5 8.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="8" r="1.5" fill="white"/></svg>
                     : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="currentColor" opacity="0.8"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="white"/></svg>
                   }
                   <span>{p.l}</span>
@@ -8365,6 +8368,16 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <button onClick={() => setShowApiKey(p=>({...p,gemini:!p.gemini}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.gemini?"🙈":"👁️"}</button>
           </div>
           {aiCfgKeys.gemini_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Gemini 2.0 Flash</p>}
+        </Card>
+
+        <Card style={{ marginBottom:10, padding:12 }}>
+          <p style={{ fontSize:12, fontWeight:700, marginBottom:6 }}>🟠 Claude (Anthropic)</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em console.anthropic.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showApiKey.claude?"text":"password"} value={aiCfgKeys.claude_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, claude_key:e.target.value}))} placeholder="sk-ant-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowApiKey(p=>({...p,claude:!p.claude}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.claude?"🙈":"👁️"}</button>
+          </div>
+          {aiCfgKeys.claude_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Claude Sonnet 4</p>}
         </Card>
 
         <button onClick={saveAI} disabled={aiCfgSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar Configuração"}</button>
@@ -10247,7 +10260,8 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
       const provider = keys.ai_provider || "openai";
       const openaiKey = keys.openai_key;
       const geminiKey = keys.gemini_key;
-      if ((provider === "gemini" && !geminiKey) || (provider !== "gemini" && !openaiKey)) {
+      const claudeKey = keys.claude_key;
+      if ((provider === "gemini" && !geminiKey) || (provider === "claude" && !claudeKey) || (provider === "openai" && !openaiKey)) {
         setAiError("Chave de API não configurada. Vá em Configurações → Assistente IA."); setAiLoading(false); setAiStep("url"); return;
       }
       const toneDesc = { descolado:"Informal, moderno, com gírias leves e humor. Como se um amigo do marketing estivesse contando a novidade.", serio:"Profissional e analítico. Tom de revista de negócios, com insights estratégicos.", inspirador:"Motivacional e empolgante. Foco em lições e aprendizados para profissionais.", provocativo:"Ousado e opinativo. Questiona, provoca reflexão e toma posição.", educativo:"Didático e informativo. Explica conceitos e contextualiza para quem não conhece o assunto." }[aiTone] || "Profissional e envolvente.";
@@ -10273,6 +10287,13 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
         });
         const d = await res.json();
         aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else if (provider === "claude") {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: systemPrompt, messages: [{ role: "user", content: userMsg }] })
+        });
+        const d = await res.json();
+        aiText = d?.content?.[0]?.text || "";
       } else {
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
@@ -11684,9 +11705,12 @@ function AIPage({ onBack, user, agencyIdentity }) {
     if (!text.trim() || loading) return;
     const openaiKey = aiKeys.openai_key;
     const geminiKey = aiKeys.gemini_key;
+    const claudeKey = aiKeys.claude_key;
     const useGemini = activeProvider === "gemini";
+    const useClaude = activeProvider === "claude";
     if (useGemini && !geminiKey) { showToast("Chave Gemini não configurada. Vá em Config → Assistente IA"); return; }
-    if (!useGemini && !openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
+    if (useClaude && !claudeKey) { showToast("Chave Claude não configurada. Vá em Config → Assistente IA"); return; }
+    if (!useGemini && !useClaude && !openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
 
     const userMsg = { role: "user", content: text.trim() };
     const newMsgs = [...messages, userMsg];
@@ -11716,6 +11740,20 @@ function AIPage({ onBack, user, agencyIdentity }) {
         if (data.error) throw new Error(data.error.message || "Erro Gemini");
         if (!data.candidates?.length) throw new Error("Gemini não retornou resposta. Verifique a chave API.");
         aiText = data.candidates[0]?.content?.parts?.[0]?.text || "Sem resposta.";
+      } else if (useClaude) {
+        const claudeMsgs = newMsgs.map(m => ({ role: m.role, content: m.content }));
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: SYSTEM_PROMPT, messages: claudeMsgs })
+        });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Claude API retornou status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro Claude");
+        aiText = data.content?.[0]?.text || "Sem resposta.";
       } else {
         const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -11885,7 +11923,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
         {aiReady && ((activeProvider==="gemini"&&!aiKeys.gemini_key)||(activeProvider!=="gemini"&&!aiKeys.openai_key)) && (
           <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:16, width:"100%", textAlign:"left" }}>
             <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {activeProvider==="gemini"?"Gemini":"OpenAI"}.</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {activeProvider==="gemini"?"Gemini":activeProvider==="claude"?"Claude":"OpenAI"}.</p>
           </Card>
         )}
 
@@ -11929,7 +11967,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
                 ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="#4285F4"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="#fff"/></svg>
                 : <svg width="14" height="14" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="#10A37F" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="#10A37F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               }
-              <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>{activeProvider==="gemini"?"Gemini 1.5 Flash":"GPT-4o-mini"}</p>
+              <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>{activeProvider==="gemini"?"Gemini 2.0 Flash":activeProvider==="claude"?"Claude Sonnet 4":"GPT-4o-mini"}</p>
             </div>
           </div>
         </div>
@@ -12079,7 +12117,7 @@ function HelpPage({ onBack }) {
       { q:"Como encerrar sessões em outros dispositivos?", a:"Vá em Configurações > Segurança > Sessões Ativas. Você pode encerrar sessões individualmente ou usar 'Encerrar todas as outras sessões' para manter apenas o dispositivo atual." },
       { q:"Como aprovar um novo cadastro?", a:"Apenas CEO e Gerentes podem aprovar cadastros. Vá em Configurações > Aprovações para ver solicitações pendentes. Toque em Aprovar ou Recusar para cada solicitação." },
       { q:"Como configurar permissões por cargo?", a:"Vá em Configurações > Permissões (apenas admins). Selecione o cargo e configure o acesso a cada área do app. Cada área possui sub-opções granulares (ex: Clientes → Visualizar, Editar, Excluir, Ver financeiro)." },
-      { q:"Como configurar o Assistente IA?", a:"Vá em Configurações > Assistente IA (apenas admins). Insira sua chave da API OpenAI (obtida em platform.openai.com). O assistente usa GPT-4o-mini para gerar legendas, estratégias e ideias de conteúdo." },
+      { q:"Como configurar o Assistente IA?", a:"Vá em Configurações > Assistente IA (apenas admins). Insira sua chave da API (OpenAI, Gemini ou Claude). Escolha o provedor preferido. O assistente gera legendas, estratégias e ideias de conteúdo." },
       { q:"Como mudar o tema do app?", a:"Vá em Configurações > Aparência. Ative o Modo Escuro e/ou escolha uma cor de destaque diferente para personalizar a interface ao seu gosto." },
       { q:"Como configurar notificações?", a:"Vá em Configurações > Notificações. Ative ou desative notificações por categoria: Chat, Conteúdo, Clientes, Equipe, Financeiro. Cada categoria tem sub-opções para controle granular." },
     ]},
