@@ -541,7 +541,40 @@ const supaGetAIKeys = async () => {
   } catch(e) { return {}; }
 };
 
-/* ── Meta API Integration (Instagram / Facebook) ── */
+/* ── Notifications ── */
+const supaCreateNotification = async (userId, type, title, body, icon, link) => {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from("notifications").insert({ user_id: userId, type, title, body: body || "", link: link || "" }).select().single();
+    if (error) console.error("[Notif] create error:", error.message);
+    return data;
+  } catch(e) { return null; }
+};
+const supaCreateNotificationForAll = async (type, title, body, icon, link, excludeUserId) => {
+  if (!supabase) return;
+  try {
+    const { data: profiles } = await supabase.from("profiles").select("id");
+    const users = (profiles || []).filter(p => p.id !== excludeUserId);
+    if (users.length === 0) return;
+    const rows = users.map(u => ({ user_id: u.id, type, title, body: body || "", link: link || "" }));
+    await supabase.from("notifications").insert(rows);
+  } catch(e) { console.error("[Notif] broadcast error:", e); }
+};
+const supaLoadNotifications = async (userId, limit = 30) => {
+  if (!supabase || !userId) return [];
+  try {
+    const { data } = await supabase.from("notifications").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(limit);
+    return data || [];
+  } catch(e) { return []; }
+};
+const supaMarkNotificationRead = async (id) => {
+  if (!supabase) return;
+  await supabase.from("notifications").update({ read: true }).eq("id", id);
+};
+const supaMarkAllNotificationsRead = async (userId) => {
+  if (!supabase || !userId) return;
+  await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
+};
 const META_APP_ID = "1557196698688426";
 const META_CONFIG_ID = "1251666086415367";
 const META_REDIRECT_URI = `${window.location.origin}/`;
@@ -4892,6 +4925,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       setSel(prev => syncMilestones({ ...prev, stage: next }, next));
       if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
       showToast(`Avançou para: ${STAGE_CFG[next].l}`);
+      supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
     }
   };
 
@@ -4914,6 +4948,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     setSel(synced);
     if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage, steps: updated.steps });
     showToast(`Voltou para: ${STAGE_CFG[targetStage].l}`);
+    supaCreateNotificationForAll("post_rejected", `Demanda devolvida: ${STAGE_CFG[targetStage].l}`, `${d.title || d.type} — ${feedbackNote || ""}`.slice(0,100), "❌", null, user?.id);
   };
 
   /* ── Create New Demand ── */
@@ -4937,6 +4972,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     setDemands(prev => [newD, ...prev]);
     setCreating(false); setCreateType(null); setForm({});
     showToast(toastMsg);
+    if (result?.data) supaCreateNotificationForAll("demand_created", "Nova demanda criada", `${newD.title || newD.type} — ${newD.clientName || ""}`, "📋", null, user?.id);
   };
 
   /* ── CREATE SHEET ── */
@@ -6908,38 +6944,34 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
 
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
-function NotifsPage({ onBack, readIds, setReadIds }) {
-  const notifs = [
-    { id: 1, t: "Novo conteúdo pendente — Casa Nova", cat: "content", tm: "Agora", icon: IC.content(B.accent) },
-    { id: 2, t: "Alice fez check-in às 08:30", cat: "team", tm: "30min", icon: IC.checkin(B.green) },
-    { id: 3, t: "Cadastro pendente de aprovação: João Silva", cat: "admin", tm: "1h", icon: IC.shield },
-    { id: 4, t: "Fatura de TechSmart recebida", cat: "financial", tm: "2h", icon: IC.dollar },
-    { id: 5, t: "Victoria concluiu curso de Edição", cat: "academy", tm: "3h", icon: IC.academy(B.purple) },
-    { id: 6, t: "Bella Estética aprovou 2 posts", cat: "content", tm: "5h", icon: IC.check },
-    { id: 7, t: "Relatório de Janeiro disponível", cat: "report", tm: "1d", icon: IC.reports(B.blue) },
-  ];
-  const markRead = id => setReadIds(prev => prev.includes(id) ? prev : [...prev, id]);
-  const unreadCount = notifs.filter(n => !readIds.includes(n.id)).length;
-  const markAll = () => setReadIds(notifs.map(n => n.id));
+function NotifsPage({ onBack, user }) {
+  const [notifs, setNotifs] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  useEffect(() => { if (!loaded && user?.id) { supaLoadNotifications(user.id, 50).then(d => { setNotifs(d); setLoaded(true); }); } }, [loaded, user?.id]);
+  const unreadCount = notifs.filter(n => !n.read).length;
+  const markRead = async (id) => { await supaMarkNotificationRead(id); setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n)); };
+  const markAll = async () => { if (!user?.id) return; await supaMarkAllNotificationsRead(user.id); setNotifs(p => p.map(n => ({ ...n, read: true }))); showToast("Todas marcadas como lidas"); };
+  const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
+  const timeAgo = (d) => { const s = Math.floor((Date.now()-new Date(d).getTime())/1000); if(s<60) return "Agora"; if(s<3600) return Math.floor(s/60)+"min"; if(s<86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; };
 
   return (
     <div className="pg">
+      {ToastEl}
       <Head title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} right={unreadCount > 0 ?
         <button onClick={markAll} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Marcar todas como lidas</button>
       : null} />
-      {unreadCount === 0 && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Nenhuma notificação pendente 🎉</p>}
-      {notifs.map((n, i) => {
-        const isRead = readIds.includes(n.id);
-        return (
-        <Card key={n.id} delay={i * 0.03} onClick={() => !isRead && markRead(n.id)} style={{ marginTop: i ? 6 : 0, opacity: isRead ? 0.4 : 1, cursor: isRead ? "default" : "pointer", borderLeft: `3px solid ${isRead ? B.border : B.accent}`, transition: "opacity .3s" }}>
+      {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:40 }}>Carregando...</p>}
+      {loaded && notifs.length === 0 && <Card style={{ textAlign:"center", padding:30 }}><p style={{ fontSize:28, marginBottom:8 }}>🔔</p><p style={{ fontSize:14, fontWeight:600 }}>Sem notificações</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Quando houver atividades na agência, elas aparecerão aqui.</p></Card>}
+      {notifs.map((n, i) => (
+        <Card key={n.id} delay={i * 0.02} onClick={() => !n.read && markRead(n.id)} style={{ marginTop: i ? 6 : 0, opacity: n.read ? 0.5 : 1, cursor: n.read ? "default" : "pointer", borderLeft: `3px solid ${n.read ? B.border : B.accent}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: B.accent }}>{typeof n.icon === "function" ? n.icon : n.icon}</div>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: isRead ? 400 : 600 }}>{n.t}</p><p style={{ fontSize: 10, color: B.muted }}>{n.tm}{isRead ? " · Lida" : ""}</p></div>
-            {!isRead && <div style={{ width: 8, height: 8, borderRadius: 4, background: B.accent, flexShrink: 0 }} />}
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>{typeIcon[n.type] || n.icon || "🔔"}</div>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: n.read ? 400 : 600 }}>{n.title}</p>{n.body && <p style={{ fontSize: 11, color: B.muted, marginTop:2 }}>{n.body}</p>}<p style={{ fontSize: 10, color: B.muted, marginTop:2 }}>{timeAgo(n.created_at)}{n.read ? " · Lida" : ""}</p></div>
+            {!n.read && <div style={{ width: 8, height: 8, borderRadius: 4, background: B.accent, flexShrink: 0 }} />}
           </div>
         </Card>
-        );
-      })}
+      ))}
     </div>
   );
 }
@@ -6963,6 +6995,10 @@ function ApprovalsPage({ onBack }) {
       if (error) { showToast("Erro ao aprovar: " + error.message); return; }
       setPendingMembers(p => p.filter(x => x.id !== m.id));
       showToast(`${m.name} aprovado ✓`);
+      /* Notify the approved member */
+      if (m.user_id) supaCreateNotification(m.user_id, "member_approved", "Cadastro aprovado!", "Você foi aprovado na agência. Bem-vindo à equipe!", "🎉", null);
+      /* Notify all others */
+      supaCreateNotificationForAll("member_joined", "Novo membro na equipe", `${m.name} entrou na agência`, "👋", null, m.user_id);
     } catch(e) { showToast("Erro: " + (e.message || e)); }
   };
   const rejectMember = async (m) => {
@@ -10426,6 +10462,8 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
       if (!parsed.photo && form.photo) parsed.photo = form.photo;
       setArticles(prev => [parsed, ...prev]);
       setCreating(false); setForm({}); setPhotoPreview(null); showToast("Artigo publicado ✓");
+      /* Notify all team members */
+      supaCreateNotificationForAll("news_created", "Nova notícia publicada", form.title || "Novo artigo no News", "📰", null, user?.id);
     } else {
       showToast("Erro ao publicar artigo");
     }
@@ -13013,18 +13051,24 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [demandsLoaded, setDemandsLoaded] = useState(false);
 
   /* ── Notification state ── */
-  const [notifReadIds, setNotifReadIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("uh_notif_read") || "[]"); } catch { return []; }
-  });
-  const TOTAL_NOTIFS = 7; /* matches NotifsPage mock data count */
-  const notifCount = Math.max(0, TOTAL_NOTIFS - notifReadIds.length);
-  const updateNotifReadIds = (fn) => {
-    setNotifReadIds(prev => {
-      const next = typeof fn === "function" ? fn(prev) : fn;
-      localStorage.setItem("uh_notif_read", JSON.stringify(next));
-      return next;
-    });
-  };
+  /* ── Real notifications ── */
+  const [notifCount, setNotifCount] = useState(0);
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    /* Load unread count */
+    const loadCount = async () => {
+      const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false);
+      setNotifCount(count || 0);
+    };
+    loadCount();
+    /* Real-time: listen for new notifications */
+    const chan = supabase.channel("notifs_" + user.id).on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, (payload) => {
+      setNotifCount(p => p + 1);
+    }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
+      loadCount(); /* Recount on any update (mark read) */
+    }).subscribe();
+    return () => { supabase.removeChannel(chan); };
+  }, [user?.id]);
 
   /* ── Realtime badge counts ── */
   const [chatUnread, setChatUnread] = useState(0);
@@ -13270,7 +13314,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
-        {sub === "notifs" && <NotifsPage onBack={() => setSub(null)} readIds={notifReadIds} setReadIds={updateNotifReadIds} />}
+        {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); /* Refresh count */ if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
