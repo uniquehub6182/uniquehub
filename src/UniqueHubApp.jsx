@@ -587,6 +587,18 @@ const supaLoadExpenses = async () => { if (!supabase) return []; try { const { d
 const supaCreateExpense = async (exp) => { if (!supabase) return null; try { const { data, error } = await supabase.from("expenses").insert(exp).select().single(); if (error) console.error("[Expense]", error.message); return data; } catch { return null; } };
 const supaDeleteExpense = async (id) => { if (!supabase) return; await supabase.from("expenses").delete().eq("id", id); };
 
+/* ── Asaas API (via edge function proxy) ── */
+const asaasCall = async (action, data = {}) => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/asaas-proxy`, {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ action, data })
+    });
+    return await res.json();
+  } catch(e) { return { error: e.message }; }
+};
+
 const META_APP_ID = "1557196698688426";
 const META_CONFIG_ID = "1251666086415367";
 const META_REDIRECT_URI = `${window.location.origin}/`;
@@ -4427,7 +4439,7 @@ function AcademyPage({ onBack }) {
 const FinField = ({ label, value, onChange, placeholder, type, mono, helpText }) => (
   <div style={{ marginBottom:10 }}>
     <label className="sl" style={{ display:"block", marginBottom:4 }}>{label}</label>
-    <input type={type||"text"} value={value||""} onChange={e => onChange(e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : {}} />
+    <input type={type||"text"} value={value||""} onChange={e => onChange(e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : type==="date" ? { maxWidth:"100%", width:"100%", boxSizing:"border-box" } : {}} />
     {helpText && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{helpText}</p>}
   </div>
 );
@@ -4453,6 +4465,7 @@ function FinancialPage({ onBack, clients: propClients }) {
     defaultDueDay:5, defaultPayMethod:"PIX", lateFeePercent:2, lateInterestPercent:1, trialDays:7,
     currency:"BRL", taxRegime:"simples", simplesRate:6, issRate:5, invoicePrefix:"UMK", invoiceNextNum:1,
     monthlyGoal:0, yearlyGoal:0,
+    asaasApiKey:"", asaasMode:"sandbox", /* sandbox or production */
     expenseCategories:["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório/Coworking","Impostos","Outros"],
     invoiceFooter:"Obrigado pela confiança! Qualquer dúvida entre em contato.", invoiceObs:"",
   };
@@ -4496,6 +4509,7 @@ function FinancialPage({ onBack, clients: propClients }) {
     { k:"bank", l:"Bancário", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
     { k:"billing", l:"Config", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09"/></svg> },
     { k:"goals", l:"Metas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> },
+    { k:"asaas", l:"Asaas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="14" x2="10" y2="14"/></svg> },
   ];
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -4823,7 +4837,23 @@ function FinancialPage({ onBack, clients: propClients }) {
               const num = `${fc.invoicePrefix||"UMK"}-${String(fc.invoiceNextNum||1).padStart(3,"0")}`;
               const inv = { client_id: invForm.client_id, number: num, description: invForm.description, amount: parseFloat(invForm.amount), due_date: invForm.due_date, payment_method: invForm.payment_method, notes: invForm.notes, status: "pending" };
               const created = await supaCreateInvoice(inv);
-              if (created) { setInvoices(p => [created, ...p]); upd("invoiceNextNum", (fc.invoiceNextNum||1)+1); saveFin(); setInvForm(null); showToast("Cobrança criada ✓"); supaCreateNotificationForAll("system", "Nova cobrança", `${num} — R$ ${parseFloat(invForm.amount).toLocaleString("pt-BR")}`, "💰", null); }
+              if (created) {
+                setInvoices(p => [created, ...p]); upd("invoiceNextNum", (fc.invoiceNextNum||1)+1); saveFin(); setInvForm(null);
+                supaCreateNotificationForAll("system", "Nova cobrança", `${num} — R$ ${parseFloat(invForm.amount).toLocaleString("pt-BR")}`, "💰", null);
+                /* Sync with Asaas if configured */
+                if (fc.asaasApiKey) {
+                  const client = CDATA.find(c => (c.supaId||c.id) === invForm.client_id);
+                  const asaasR = await asaasCall("create_payment", {
+                    customer: client?.asaasId || undefined,
+                    billingType: invForm.payment_method === "PIX" ? "PIX" : invForm.payment_method === "Boleto" ? "BOLETO" : invForm.payment_method === "Cartão" ? "CREDIT_CARD" : "UNDEFINED",
+                    value: parseFloat(invForm.amount), dueDate: invForm.due_date,
+                    description: invForm.description || `${num} — ${client?.name || ""}`,
+                    externalReference: created.id
+                  });
+                  if (asaasR?.id) { showToast("Cobrança criada no UniqueHub + Asaas ✓"); await supaUpdateInvoice(created.id, { notes: `Asaas ID: ${asaasR.id}` }); }
+                  else showToast("Cobrança criada ✓ (Asaas: " + (asaasR?.error || asaasR?.errors?.[0]?.description || "erro") + ")");
+                } else { showToast("Cobrança criada ✓"); }
+              }
               else showToast("Erro ao criar cobrança");
             }} className="pill accent" style={{ flex:1, padding:"12px 0" }}>💰 Criar cobrança</button>
             <button onClick={() => setInvForm(null)} className="pill" style={{ padding:"12px 16px", background:B.bgCard, border:`1px solid ${B.border}`, color:B.muted }}>Cancelar</button>
@@ -4860,7 +4890,9 @@ function FinancialPage({ onBack, clients: propClients }) {
                     </div>
                     <div style={{ textAlign:"right" }}>
                       <p style={{ fontSize:16, fontWeight:800, color:statusColor }}>R$ {Number(inv.amount).toLocaleString("pt-BR")}</p>
-                      {inv.status === "pending" && <button onClick={async () => {
+                      {inv.status === "pending" && <button onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Marcar ${inv.number} como paga? (R$ ${Number(inv.amount).toLocaleString("pt-BR")})`)) return;
                         const r = await supaUpdateInvoice(inv.id, { status:"paid", paid_at: new Date().toISOString(), paid_amount: inv.amount });
                         if (r) { setInvoices(p => p.map(x => x.id === inv.id ? r : x)); showToast("Marcada como paga ✓"); }
                       }} style={{ marginTop:4, padding:"4px 10px", borderRadius:6, background:`${B.green}12`, border:`1px solid ${B.green}30`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.green }}>✓ Paga</button>}
@@ -4950,7 +4982,35 @@ function FinancialPage({ onBack, clients: propClients }) {
       </>}
 
       {/* Save button for config tabs */}
-      {["agency","bank","billing","goals","expenses"].includes(finTab) && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
+      {/* ═══ TAB: ASAAS ═══ */}
+      {finTab === "asaas" && <>
+        <Card style={{ marginBottom:12, background:B.dark, color:"#fff", border:"none", textAlign:"center", padding:20 }}>
+          <p style={{ fontSize:22, fontWeight:900 }}>💳 Asaas</p>
+          <p style={{ fontSize:11, opacity:.5, marginTop:4 }}>Integração com o sistema de cobranças Asaas</p>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Configuração da API</p>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Acesse <strong>asaas.com</strong> → Minha Conta → Integração → Gerar API Key.</p>
+          <p className="sl" style={{ marginBottom:6 }}>Ambiente</p>
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            {[{k:"sandbox",l:"🧪 Sandbox"},{k:"production",l:"🟢 Produção"}].map(m => (
+              <button key={m.k} onClick={()=>upd("asaasMode",m.k)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${fc.asaasMode===m.k?B.accent:B.border}`, background:fc.asaasMode===m.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.asaasMode===m.k?B.accent:B.muted }}>{m.l}</button>
+            ))}
+          </div>
+          <FinField label="API Key" value={fc.asaasApiKey||""} onChange={v=>upd("asaasApiKey",v)} placeholder="$aas_..." mono helpText={fc.asaasMode==="sandbox"?"Chave Sandbox para testes":"Chave de produção"} />
+          {fc.asaasApiKey && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada · {fc.asaasMode==="production"?"Produção":"Sandbox"}</p>}
+        </Card>
+        <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Funcionalidades via Asaas</p>
+          <div style={{ fontSize:10, color:B.muted, lineHeight:1.7 }}>
+            <p>✓ PIX (QR Code) · ✓ Boleto bancário · ✓ Cartão de crédito</p>
+            <p>✓ Cobranças recorrentes · ✓ Notificações automáticas</p>
+            <p>✓ Link de pagamento · ✓ Nota fiscal eletrônica</p>
+          </div>
+        </Card>
+      </>}
+
+      {["agency","bank","billing","goals","expenses","asaas"].includes(finTab) && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
       </div>
     </div>
   );
