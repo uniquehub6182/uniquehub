@@ -13521,7 +13521,7 @@ function ClientOnboarding({ onComplete, onBack }) {
         email: data.email, password: data.password,
         options: { data: { name: data.name, company: data.company, phone: data.phone, role: "cliente" } }
       });
-      if (authErr) throw new Error(authErr.message);
+      if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
       /* Save client profile extras */
       if (authData?.user?.id) {
         await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
