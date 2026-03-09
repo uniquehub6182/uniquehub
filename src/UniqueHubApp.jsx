@@ -522,12 +522,14 @@ const supaGetSettingsBulk = async (keys) => {
   } catch(e) { return {}; }
 };
 const supaSetSetting = async (key, value) => {
-  if (!supabase) return false;
+  if (!supabase) { console.warn("[setSetting] supabase is null!"); return false; }
   try {
+    console.log("[setSetting] upserting key:", key, "value length:", value?.length);
     const { error } = await supabase.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) { console.error("setSetting:", error); return false; }
+    if (error) { console.error("[setSetting] ERROR:", key, error.message, error.code); return false; }
+    console.log("[setSetting] OK:", key);
     return true;
-  } catch(e) { console.error("setSetting:", e); return false; }
+  } catch(e) { console.error("[setSetting] CATCH:", key, e); return false; }
 };
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
@@ -2997,11 +2999,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     if (sel?.id === id) setSel(p => ({ ...p, ...data }));
     /* Sync to Supabase */
     const client = clients.find(c => c.id === id);
+    console.log("[updateClient] id:", id, "client found:", !!client, "supaId:", client?.supaId, "has files:", data.files !== undefined, "files count:", data.files?.length);
     if (client?.supaId) supaUpdateClient(client.supaId, data);
     /* Persist file metadata separately via settings — use supaId for consistency */
     if (data.files !== undefined) {
       const fid = client?.supaId || id;
-      supaSetSetting(`client_files_${fid}`, JSON.stringify(data.files));
+      console.log("[updateClient] Saving files to key:", `client_files_${fid}`, "count:", data.files.length);
+      supaSetSetting(`client_files_${fid}`, JSON.stringify(data.files)).then(ok => {
+        console.log("[updateClient] supaSetSetting result:", ok);
+      });
     }
     /* Persist socials separately via settings */
     if (data.socials !== undefined) {
@@ -3289,22 +3295,27 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     const addFile = async () => {
       if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
       if (fileForm.file) {
-        /* Real file upload to Supabase storage */
+        try {
         showToast("Enviando arquivo...");
-        const result = await supaUploadClientFile(fileForm.file, sel.supaId || sel.id);
-        if (result?.error) return showToast("Erro: " + result.error);
+        const clientId = sel.supaId || sel.id;
+        console.log("[Library] Upload start:", clientId, fileForm.file.name, fileForm.file.size);
+        const result = await supaUploadClientFile(fileForm.file, clientId);
+        console.log("[Library] Upload done:", JSON.stringify(result));
+        if (result?.error) { showToast("Erro: " + result.error); return; }
         const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
         const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
         const newFiles = [...files, nf];
-        /* Save metadata directly to Supabase with confirmation */
-        const saveKey = `client_files_${sel.supaId || sel.id}`;
+        const saveKey = `client_files_${clientId}`;
+        console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
         const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
-        if (!saved) { console.error("[Library] Failed to save file metadata, key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
+        console.log("[Library] Save result:", saved);
+        if (!saved) { console.error("[Library] SAVE FAILED key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
         /* Update local state */
         setSel(p => ({ ...p, files: newFiles }));
         setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
         setAddingFile(false); setFileForm({});
-        showToast("Arquivo enviado ✓");
+        showToast("Arquivo salvo ✓");
+        } catch(err) { console.error("[Library] CRASH:", err); showToast("Erro inesperado: " + (err.message||err)); }
       } else {
         showToast("Selecione um arquivo para enviar");
       }
