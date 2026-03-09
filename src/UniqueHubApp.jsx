@@ -9718,132 +9718,205 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   if (selClient) {
     const c = clientMetrics.find(x => x.name === selClient) || clientMetrics[0];
     if (!c) { setSelClient(null); return null; }
+    const allPosts = [
+      ...(c.fbPosts||[]).map(p=>({...p, _p:"fb", _date:p.created_time, _img:p.full_picture, _text:p.message, _likes:p.likes_count||0, _comments:p.comments_count||0, _shares:p.shares_count||0, _link:p.permalink_url, _type:"post"})),
+      ...(c.mediaPosts||[]).map(p=>({...p, _p:"ig", _date:p.timestamp, _img:p.thumbnail_url||p.media_url, _text:p.caption, _likes:p.like_count||0, _comments:p.comments_count||0, _shares:0, _link:p.permalink, _type:p.media_type==="VIDEO"?"reels":p.media_type==="CAROUSEL_ALBUM"?"carrossel":"imagem"}))
+    ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0));
+    const igPosts = allPosts.filter(p=>p._p==="ig");
+    const totalInteractions = allPosts.reduce((s,p)=>s+p._likes+p._comments+p._shares,0);
+    const avgLikes = igPosts.length ? Math.round(igPosts.reduce((s,p)=>s+p._likes,0)/igPosts.length) : 0;
+    const avgComments = igPosts.length ? Math.round(igPosts.reduce((s,p)=>s+p._comments,0)/igPosts.length) : 0;
+    const igEngRate = c.igFollowers > 0 && igPosts.length ? ((igPosts.reduce((s,p)=>s+p._likes+p._comments,0)/igPosts.length/c.igFollowers)*100).toFixed(2) : "0.00";
+    const typeCount = { imagem:0, reels:0, carrossel:0 }; igPosts.forEach(p => { typeCount[p._type]=(typeCount[p._type]||0)+1; });
+    const datesSet = new Set(allPosts.map(p=>p._date?.split("T")[0]).filter(Boolean));
+    const postsPerWeek = datesSet.size > 0 ? Math.round((allPosts.length/datesSet.size)*7*10)/10 : 0;
+    const bestPost = [...allPosts].sort((a,b)=>(b._likes+b._comments)-(a._likes+a._comments))[0];
     const igDailyReach = dailyInsight(c.igDaily, "reach");
-    const igDailyImp = dailyInsight(c.igDaily, "impressions");
     const fbDailyImp = dailyInsight(c.fbDaily, "page_views_total");
-    const fbDailyEng = dailyInsight(c.fbDaily, "page_post_engagements");
     return (
       <div className="pg">
         {ToastEl}
         <Head title="" onBack={() => setSelClient(null)} />
+        {/* HEADER */}
         <Card style={{ marginBottom:12 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-            <Av src={c.logo} name={c.name} sz={44} fs={16} />
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+            <Av src={c.logo} name={c.name} sz={48} fs={18} />
             <div style={{ flex:1 }}>
-              <h3 style={{ fontSize:16, fontWeight:800 }}>{c.name}</h3>
-              <p style={{ fontSize:11, color:B.accent }}>{c.plan} · {c.segment}</p>
+              <h3 style={{ fontSize:17, fontWeight:800 }}>{c.name}</h3>
+              <p style={{ fontSize:11, color:B.muted }}>{c.plan}{c.segment ? ` · ${c.segment}` : ""}</p>
             </div>
-            {!c.hasData && <Tag color={B.muted}>Sem API</Tag>}
           </div>
-          {c.hasData && <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-            {c.igProfile && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8, background:"#E1306C10" }}>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {c.igProfile && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"#E1306C10" }}>
               <div style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />
-              <span style={{ fontSize:10, fontWeight:600 }}>@{c.igProfile.username}</span>
+              <span style={{ fontSize:10, fontWeight:700 }}>@{c.igProfile.username}</span>
               <span style={{ fontSize:10, color:B.muted }}>{formatNum(c.igFollowers)} seg.</span>
             </div>}
-            {c.fbPage && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8, background:"#1877F210" }}>
+            {c.fbPage && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"#1877F210" }}>
               <div style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />
-              <span style={{ fontSize:10, fontWeight:600 }}>{c.fbPage.name}</span>
+              <span style={{ fontSize:10, fontWeight:700 }}>{c.fbPage.name}</span>
               <span style={{ fontSize:10, color:B.muted }}>{formatNum(c.fbFollowers)} seg.</span>
             </div>}
-          </div>}
+            {!c.hasData && <Tag color={B.orange}>Nenhuma rede conectada</Tag>}
+          </div>
         </Card>
 
-        {!c.hasData ? <Card style={{ textAlign:"center", padding:24 }}>
-          <p style={{ fontSize:13, fontWeight:600, marginBottom:4 }}>Nenhuma rede social conectada via API</p>
-          <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>Conecte o Facebook ou Instagram deste cliente na aba de Clientes para ver métricas reais aqui.</p>
+        {!c.hasData ? <Card style={{ textAlign:"center", padding:30 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>{IC.reports(B.muted)}</div>
+          <p style={{ fontSize:14, fontWeight:700 }}>Sem dados disponíveis</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Conecte Facebook ou Instagram deste cliente na aba <strong>Redes</strong> para métricas reais.</p>
         </Card> : <>
-          {/* ── Instagram Section ── */}
-          {c.igDaily && <>
-            <p className="sl" style={{ marginBottom:6, color:"#E1306C" }}>Instagram — Métricas do mês</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:8 }}>
-              <MetricCard label="Alcance" value={formatNum(c.igReach)} color="#E1306C" change={pctChange(c.igReach, sumInsight(c.igPrev, "reach"))} sub="Contas únicas alcançadas" />
-              <MetricCard label="Impressões" value={formatNum(c.igImpressions)} color="#833AB4" change={pctChange(c.igImpressions, sumInsight(c.igPrev, "impressions"))} sub="Total de vezes exibido" />
-              <MetricCard label="Visitas ao perfil" value={formatNum(c.igProfileViews)} color="#E1306C" sub="Pessoas que visitaram" />
-              <MetricCard label="Contas engajadas" value={formatNum(c.igAccountsEngaged)} color="#F77737" sub="Curtiram, comentaram, salvaram" />
+          {/* RESUMO EXECUTIVO */}
+          <p className="sl" style={{ marginBottom:6 }}>Resumo executivo</p>
+          <Card style={{ marginBottom:12, padding:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, textAlign:"center" }}>
+              <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{formatNum(c.igFollowers+c.fbFollowers)}</p><p style={{ fontSize:9, color:B.muted }}>Audiência total</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900, color:"#E1306C" }}>{formatNum(totalInteractions)}</p><p style={{ fontSize:9, color:B.muted }}>Interações totais</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900, color:B.blue }}>{allPosts.length}</p><p style={{ fontSize:9, color:B.muted }}>Posts analisados</p></div>
             </div>
-            <Card style={{ marginBottom:8 }}>
-              <p style={{ fontSize:11, fontWeight:700, marginBottom:4 }}>Engajamento</p>
-              <p style={{ fontSize:9, color:B.muted, marginBottom:8 }}>Taxa de engajamento = contas engajadas / alcance</p>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <p style={{ fontSize:28, fontWeight:900, color:"#E1306C" }}>{c.engRate}%</p>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:4 }}>
-                    <span>❤️ {formatNum(c.totalLikes)} curtidas</span>
-                    <span>💬 {formatNum(c.totalComments)} comentários</span>
-                    <span>🔖 {formatNum(c.totalSaved)} salvos</span>
+          </Card>
+          {/* AUDIENCIA POR CANAL */}
+          <p className="sl" style={{ marginBottom:6 }}>Audiência por canal</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+            <Card style={{ padding:12, borderLeft:"3px solid #E1306C" }}>
+              <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Instagram</p>
+              <p style={{ fontSize:22, fontWeight:900, color:"#E1306C" }}>{formatNum(c.igFollowers)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>seguidores</p>
+              {c.igProfile?.media_count > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{c.igProfile.media_count} publicações</p>}
+            </Card>
+            <Card style={{ padding:12, borderLeft:"3px solid #1877F2" }}>
+              <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Facebook</p>
+              <p style={{ fontSize:22, fontWeight:900, color:"#1877F2" }}>{formatNum(c.fbFollowers)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>seguidores</p>
+              {c.fbPage?.talking_about_count > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{formatNum(c.fbPage.talking_about_count)} falando sobre</p>}
+            </Card>
+          </div>
+          {/* PERFORMANCE DE CONTEUDO */}
+          <p className="sl" style={{ marginBottom:6 }}>Performance de conteúdo</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <MetricCard label="Freq. de postagem" value={postsPerWeek+"/sem"} color={B.accent} sub={allPosts.length+" posts em "+datesSet.size+" dias"} />
+            <MetricCard label="Taxa engajamento" value={igEngRate+"%"} color={Number(igEngRate)>=3?B.green:Number(igEngRate)>=1?B.orange:B.red} sub={Number(igEngRate)>=3?"Excelente":Number(igEngRate)>=1?"Bom":"Abaixo da média"} />
+            <MetricCard label="Média curtidas/post" value={formatNum(avgLikes)} color="#E1306C" sub="Instagram" />
+            <MetricCard label="Média comentários" value={formatNum(avgComments)} color="#1877F2" sub="Instagram" />
+          </div>
+          {(c.igReach>0||c.igImpressions>0) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <MetricCard label="Alcance IG" value={formatNum(c.igReach)} color="#E1306C" change={pctChange(c.igReach, sumInsight(c.igPrev,"reach"))} sub="Contas únicas" />
+            <MetricCard label="Impressões IG" value={formatNum(c.igImpressions)} color="#833AB4" change={pctChange(c.igImpressions, sumInsight(c.igPrev,"impressions"))} sub="Total exibições" />
+          </div>}
+          {(c.fbImpressions>0||c.fbEngagedUsers>0) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <MetricCard label="Views página FB" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions,c.fbPrevImp)} sub="Visualizações" />
+            <MetricCard label="Engajamento FB" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers,c.fbPrevEng)} sub="Interações" />
+          </div>}
+          {c.needsPermission?.includes("pages_read_engagement") && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:8, padding:10 }}>
+            <p style={{ fontSize:10, color:B.orange }}>⚠️ Métricas avançadas requerem <strong>pages_read_engagement</strong> no Meta App.</p>
+          </Card>}
+          {/* DISTRIBUICAO DE CONTEUDO IG */}
+          {igPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Distribuição de conteúdo — Instagram</p>
+            <Card style={{ marginBottom:12 }}>
+              <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                {[{k:"imagem",l:"Imagens",c:"#833AB4",ic:"🖼"},{k:"reels",l:"Reels",c:"#E1306C",ic:"🎬"},{k:"carrossel",l:"Carrosséis",c:"#F77737",ic:"📱"}].map(t => (
+                  <div key={t.k} style={{ flex:1, padding:10, borderRadius:10, background:t.c+"08", textAlign:"center" }}>
+                    <p style={{ fontSize:16 }}>{t.ic}</p>
+                    <p style={{ fontSize:18, fontWeight:800, color:t.c }}>{typeCount[t.k]||0}</p>
+                    <p style={{ fontSize:9, color:B.muted }}>{t.l}</p>
+                  </div>
+                ))}
+              </div>
+              <Bar value={typeCount.imagem} max={igPosts.length} color="#833AB4" h={6} />
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+                <span style={{ fontSize:9, color:B.muted }}>Imagens {igPosts.length?Math.round(typeCount.imagem/igPosts.length*100):0}%</span>
+                <span style={{ fontSize:9, color:B.muted }}>Reels {igPosts.length?Math.round(typeCount.reels/igPosts.length*100):0}%</span>
+                <span style={{ fontSize:9, color:B.muted }}>Carrosséis {igPosts.length?Math.round(typeCount.carrossel/igPosts.length*100):0}%</span>
+              </div>
+            </Card>
+          </>}
+          {/* MELHOR POST */}
+          {bestPost && (bestPost._likes+bestPost._comments)>0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Melhor publicação</p>
+            <Card onClick={()=>bestPost._link&&window.open(bestPost._link,"_blank")} style={{ marginBottom:12, cursor:bestPost._link?"pointer":"default" }}>
+              <div style={{ display:"flex", gap:12 }}>
+                {bestPost._img && <img src={bestPost._img} alt="" style={{ width:80, height:80, borderRadius:10, objectFit:"cover", flexShrink:0 }} onError={e=>{e.target.style.display="none"}} />}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4 }}>
+                    <span style={{ padding:"2px 6px", borderRadius:4, background:bestPost._p==="ig"?"#E1306C":"#1877F2", color:"#fff", fontSize:8, fontWeight:800 }}>{bestPost._p==="ig"?"INSTAGRAM":"FACEBOOK"}</span>
+                    <span style={{ fontSize:9, color:B.muted }}>{bestPost._date?new Date(bestPost._date).toLocaleDateString("pt-BR"):""}</span>
+                  </div>
+                  <p style={{ fontSize:11, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(bestPost._text||"").slice(0,80)||"Sem texto"}</p>
+                  <div style={{ display:"flex", gap:12, marginTop:6 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#E1306C" }}>❤️ {formatNum(bestPost._likes)}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#1877F2" }}>💬 {formatNum(bestPost._comments)}</span>
+                    {bestPost._shares>0 && <span style={{ fontSize:12, fontWeight:700, color:B.green }}>↗️ {formatNum(bestPost._shares)}</span>}
                   </div>
                 </div>
               </div>
             </Card>
-            <Card style={{ marginBottom:12 }}>
-              <DailyChart data={igDailyReach} color="#E1306C" label="Alcance diário (Instagram)" h={70} />
-            </Card>
           </>}
-
-          {/* ── Facebook Section ── */}
-          {(c.fbDaily || c.fbPosts?.length > 0 || c.fbFollowers > 0) && <>
-            <p className="sl" style={{ marginBottom:6, color:"#1877F2" }}>Facebook — Métricas</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:8 }}>
-              <MetricCard label="Seguidores" value={formatNum(c.fbFollowers)} color="#1877F2" sub="Total da página" />
-              <MetricCard label="Posts publicados" value={c.fbPostCount || 0} color="#42B72A" sub="Últimas publicações" />
-              {c.fbImpressions > 0 && <MetricCard label="Visualizações" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions, c.fbPrevImp)} sub="Views da página" />}
-              {c.fbEngagedUsers > 0 && <MetricCard label="Engajamento" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers, c.fbPrevEng)} sub="Interações com posts" />}
-            </div>
-            {c.needsPermission?.includes("pages_read_engagement") && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:8 }}>
-              <p style={{ fontSize:10, color:B.orange }}>⚠️ Métricas detalhadas (alcance, impressões, reações) requerem permissão <strong>pages_read_engagement</strong> no Meta App.</p>
-            </Card>}
-            {(c.fbPosts?.length > 0 || c.mediaPosts?.length > 0) && <>
-              <p className="sl" style={{ marginBottom:6 }}>Publicações recentes</p>
-              <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:8 }}>
-                {/* Merge FB + IG posts sorted by date */}
-                {[...(c.fbPosts||[]).map(p=>({...p, _platform:"facebook", _date:p.created_time, _img:p.full_picture, _text:p.message, _likes:p.likes_count, _comments:p.comments_count, _link:p.permalink_url})),
-                  ...(c.mediaPosts||[]).map(p=>({...p, _platform:"instagram", _date:p.timestamp, _img:p.thumbnail_url||p.media_url, _text:p.caption, _likes:p.like_count, _comments:p.comments_count, _link:p.permalink}))
-                ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0)).slice(0,15).map((p,i) => (
-                  <div key={i} onClick={()=>p._link&&window.open(p._link,"_blank")} style={{ flexShrink:0, width:150, borderRadius:12, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, cursor:p._link?"pointer":"default", position:"relative" }}>
-                    <div style={{ position:"absolute", top:6, left:6, padding:"2px 6px", borderRadius:6, background:p._platform==="instagram"?"#E1306C":"#1877F2", color:"#fff", fontSize:8, fontWeight:800, zIndex:1, display:"flex", alignItems:"center", gap:3 }}>
-                      {p._platform==="instagram"?"IG":"FB"}
-                    </div>
-                    {p._img ? <img src={p._img} style={{ width:150, height:110, objectFit:"cover" }} alt="" onError={e=>{e.target.style.display="none"}} />
-                    : <div style={{ width:150, height:70, background:p._platform==="instagram"?`#E1306C08`:`#1877F208`, display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, fontSize:10 }}>Sem imagem</div>}
-                    <div style={{ padding:8 }}>
-                      <p style={{ fontSize:9, color:B.muted }}>{p._date ? new Date(p._date).toLocaleDateString("pt-BR") : ""}</p>
-                      <p style={{ fontSize:10, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(p._text||"").slice(0,60)||"Sem texto"}</p>
-                      <p style={{ fontSize:9, color:B.muted, marginTop:3 }}>❤️ {p._likes||0} · 💬 {p._comments||0}</p>
-                    </div>
+          {/* GRAFICOS DIARIOS */}
+          {igDailyReach.length > 0 && <Card style={{ marginBottom:8 }}>
+            <DailyChart data={igDailyReach} color="#E1306C" label="Alcance diário — Instagram" h={80} />
+          </Card>}
+          {fbDailyImp.length > 0 && <Card style={{ marginBottom:8 }}>
+            <DailyChart data={fbDailyImp} color="#1877F2" label="Views diárias — Facebook" h={80} />
+          </Card>}
+          {/* PUBLICACOES RECENTES */}
+          {allPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Publicações recentes ({allPosts.length})</p>
+            <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:8 }}>
+              {allPosts.slice(0,15).map((p,i) => (
+                <div key={i} onClick={()=>p._link&&window.open(p._link,"_blank")} style={{ flexShrink:0, width:150, borderRadius:12, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, cursor:p._link?"pointer":"default", position:"relative" }}>
+                  <div style={{ position:"absolute", top:6, left:6, padding:"2px 6px", borderRadius:6, background:p._p==="ig"?"#E1306C":"#1877F2", color:"#fff", fontSize:8, fontWeight:800, zIndex:1 }}>{p._p==="ig"?"IG":"FB"}</div>
+                  {p._img ? <img src={p._img} style={{ width:150, height:110, objectFit:"cover" }} alt="" onError={e=>{e.target.style.display="none"}} />
+                  : <div style={{ width:150, height:70, background:p._p==="ig"?"#E1306C08":"#1877F208", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, fontSize:10 }}>Sem imagem</div>}
+                  <div style={{ padding:8 }}>
+                    <p style={{ fontSize:9, color:B.muted }}>{p._date?new Date(p._date).toLocaleDateString("pt-BR"):""} · {p._type}</p>
+                    <p style={{ fontSize:10, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(p._text||"").slice(0,60)||"Sem texto"}</p>
+                    <p style={{ fontSize:9, color:B.muted, marginTop:3 }}>❤️ {p._likes} · 💬 {p._comments}{p._shares>0?` · ↗️ ${p._shares}`:""}</p>
                   </div>
-                ))}
-              </div>
-            </>}
-            {c.fbDaily && <Card style={{ marginBottom:12 }}>
-              <DailyChart data={fbDailyImp} color="#1877F2" label="Impressões diárias (Facebook)" h={70} />
-            </Card>}
+                </div>
+              ))}
+            </div>
           </>}
-
-          {/* ── Top Posts ── */}
-          {c.mediaPosts.length > 0 && <>
-            <p className="sl" style={{ marginBottom:6 }}>Top posts — Instagram (por curtidas)</p>
-            {[...c.mediaPosts].sort((a,b) => (b.like_count||0) - (a.like_count||0)).slice(0, 5).map((post, i) => (
-              <Card key={post.id} onClick={()=>post.permalink&&window.open(post.permalink,"_blank")} style={{ marginBottom:6, cursor:post.permalink?"pointer":"default" }}>
-                <div style={{ display:"flex", gap:10 }}>
-                  {(post.thumbnail_url || post.media_url) && <div style={{ position:"relative", flexShrink:0 }}><img src={post.thumbnail_url || post.media_url} alt="" style={{ width:50, height:50, borderRadius:8, objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} /><span style={{ position:"absolute", top:-4, left:-4, background:"#E1306C", color:"#fff", fontSize:7, fontWeight:800, padding:"1px 4px", borderRadius:4 }}>IG</span></div>}
+          {/* TOP 5 POSTS IG */}
+          {igPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Top 5 — Instagram (por engajamento)</p>
+            {[...igPosts].sort((a,b)=>(b._likes+b._comments)-(a._likes+a._comments)).slice(0,5).map((post,i) => (
+              <Card key={i} onClick={()=>post._link&&window.open(post._link,"_blank")} style={{ marginBottom:6, cursor:post._link?"pointer":"default" }}>
+                <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                  <div style={{ width:24, height:24, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color:B.accent, flexShrink:0 }}>{i+1}</div>
+                  {post._img && <div style={{ position:"relative", flexShrink:0 }}><img src={post._img} alt="" style={{ width:48, height:48, borderRadius:8, objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} /><span style={{ position:"absolute", top:-3, left:-3, background:"#E1306C", color:"#fff", fontSize:7, fontWeight:800, padding:"1px 4px", borderRadius:4 }}>IG</span></div>}
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{post.caption?.substring(0, 60) || "Sem legenda"}</p>
-                    <div style={{ display:"flex", gap:10, marginTop:4, flexWrap:"wrap" }}>
-                      <span style={{ fontSize:10, color:"#E1306C" }}>❤️ {post.like_count || 0}</span>
-                      <span style={{ fontSize:10, color:"#1877F2" }}>💬 {post.comments_count || 0}</span>
-                      <span style={{ fontSize:10, color:B.muted }}>{post.media_type === "VIDEO" ? "Reels" : post.media_type === "CAROUSEL_ALBUM" ? "Carrossel" : "Imagem"}</span>
-                      <span style={{ fontSize:10, color:B.muted }}>{post.timestamp?.split("T")[0]}</span>
+                    <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(post._text||"").slice(0,50)||"Sem legenda"}</p>
+                    <div style={{ display:"flex", gap:8, marginTop:3 }}>
+                      <span style={{ fontSize:10, color:"#E1306C", fontWeight:600 }}>❤️ {post._likes}</span>
+                      <span style={{ fontSize:10, color:"#1877F2", fontWeight:600 }}>💬 {post._comments}</span>
+                      <span style={{ fontSize:10, color:B.muted }}>{post._type}</span>
+                      <span style={{ fontSize:9, color:B.muted }}>{post._date?.split("T")[0]}</span>
                     </div>
                   </div>
                 </div>
               </Card>
             ))}
           </>}
+          {/* INSIGHTS AUTOMATICOS */}
+          <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, marginBottom:12, marginTop:8, padding:14 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Insights automáticos</p>
+            <div style={{ fontSize:10, color:B.muted, lineHeight:1.7 }}>
+              {Number(igEngRate)>=3 && <p>✅ Taxa de engajamento <strong>excelente</strong> ({igEngRate}%). Acima da média do mercado.</p>}
+              {Number(igEngRate)>0 && Number(igEngRate)<1 && <p>⚠️ Taxa de engajamento <strong>abaixo da média</strong> ({igEngRate}%). Considere conteúdo mais interativo.</p>}
+              {typeCount.reels > typeCount.imagem && <p>🎬 Mais <strong>Reels</strong> que imagens — ótimo para alcance orgânico.</p>}
+              {typeCount.reels < typeCount.imagem && igPosts.length>3 && <p>💡 Considere postar mais <strong>Reels</strong> — Instagram prioriza vídeo no alcance.</p>}
+              {postsPerWeek<3 && allPosts.length>0 && <p>📅 Frequência de {postsPerWeek} posts/sem. Tente manter pelo menos <strong>3-5/semana</strong>.</p>}
+              {postsPerWeek>=5 && <p>🔥 Frequência <strong>consistente</strong> ({postsPerWeek}/sem). Ótimo ritmo!</p>}
+              {c.fbFollowers>0 && !c.igProfile && <p>📱 Cliente sem <strong>IG Business</strong> vinculado ao Facebook.</p>}
+              {allPosts.length===0 && <p>📊 Sem posts recentes. Verifique se as redes estão conectadas.</p>}
+            </div>
+          </Card>
         </>}
       </div>
     );
   }
+
 
   /* ── MAIN REPORTS ── */
   const TABS = [
