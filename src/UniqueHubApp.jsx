@@ -14078,340 +14078,264 @@ function ClientMatch4Biz({ onBack, user }) {
 /* ═══════════════════════════════════════════════════════════════════
    CLIENT GAMIFICATION — Sistema de engajamento do cliente
    ═══════════════════════════════════════════════════════════════════ */
-function ClientGamification({ onBack, user }) {
-  const [tab, setTab] = useState("meu");
-  const [selBadge, setSelBadge] = useState(null);
-  const [selReward, setSelReward] = useState(null);
+function ClientGamification({ onBack, user, demands }) {
+  const [tab, setTab] = useState("score");
   const { showToast, ToastEl } = useToast();
 
-  /* Mock client data — will be replaced with Supabase */
-  const [xp, setXp] = useState(1340);
-  const [coins, setCoins] = useState(280);
-  const [streak, setStreak] = useState(7);
-  const [dailyClaimed, setDailyClaimed] = useState(false);
-
-  const LEVELS = [
-    { level:1, title:"Novo Cliente", min:0, max:500, color:"#8B8F92" },
-    { level:2, title:"Engajado", min:500, max:1200, color:"#3B82F6" },
-    { level:3, title:"Parceiro", min:1200, max:2500, color:"#10B981" },
-    { level:4, title:"VIP", min:2500, max:4500, color:"#8B5CF6" },
-    { level:5, title:"Premium", min:4500, max:7500, color:"#F59E0B" },
-    { level:6, title:"Elite", min:7500, max:12000, color:"#EC4899" },
-    { level:7, title:"Embaixador", min:12000, max:20000, color:"#EF4444" },
-    { level:8, title:"Lenda", min:20000, max:99999, color:"#FFD700" },
+  const score = 78;
+  const scoreDelta = 6;
+  const rank = 4;
+  const totalClients = 23;
+  const zone = "Estratégica";
+  const PILLARS = [
+    { name:"Execução", score:82, color:"#10B981", desc:"Aprovação de conteúdos no prazo, cumprimento de prazos e entregas consistentes.", weight:"25%" },
+    { name:"Estratégia", score:74, color:"#BBF246", desc:"Alinhamento com planejamento, briefings respondidos e metas definidas.", weight:"25%" },
+    { name:"Educação", score:65, color:"#F59E0B", desc:"Cursos da Academy, participação em mentorias e aplicação de aprendizados.", weight:"20%" },
+    { name:"Ecossistema", score:58, color:"#EF4444", desc:"Conexões no Match4Biz, networking e parcerias ativas.", weight:"15%" },
+    { name:"Crescimento", score:80, color:"#10B981", desc:"Métricas de resultado: leads, vendas, ROI e crescimento mês a mês.", weight:"15%" },
   ];
-  const getLevel = x => LEVELS.find(l => x >= l.min && x < l.max) || LEVELS[LEVELS.length-1];
-  const lvl = getLevel(xp);
-  const nextLvl = LEVELS[LEVELS.indexOf(lvl)+1] || lvl;
-  const pct = ((xp - lvl.min) / (lvl.max - lvl.min)) * 100;
-
-  const ALL_BADGES = [
-    { id:"first_login", icon:"rocket", name:"Primeiro Acesso", desc:"Fez login pela primeira vez", xp:50, rarity:"Comum", earned:true },
-    { id:"approve5", icon:"check-circle", name:"Aprovador", desc:"Aprovou 5 conteúdos", xp:100, rarity:"Comum", earned:true },
-    { id:"streak7", icon:"flame", name:"Em Chamas", desc:"7 dias seguidos no app", xp:150, rarity:"Comum", earned:true },
-    { id:"approve20", icon:"star", name:"Decisivo", desc:"Aprovou 20 conteúdos", xp:250, rarity:"Raro", earned:false },
-    { id:"streak30", icon:"diamond", name:"Inabalável", desc:"30 dias seguidos no app", xp:500, rarity:"Épico", earned:false },
-    { id:"match_first", icon:"heart", name:"Primeiro Match", desc:"Fez seu primeiro Match4Biz", xp:200, rarity:"Raro", earned:false },
-    { id:"feedback10", icon:"message", name:"Comunicativo", desc:"Enviou 10 feedbacks", xp:200, rarity:"Raro", earned:false },
-    { id:"fast_approve", icon:"zap", name:"Relâmpago", desc:"Aprovou em menos de 1h", xp:100, rarity:"Comum", earned:true },
-    { id:"all_approve", icon:"trophy", name:"Perfeição", desc:"100% de aprovações sem edição", xp:400, rarity:"Épico", earned:false },
-    { id:"event5", icon:"calendar", name:"Presente", desc:"Participou de 5 eventos", xp:200, rarity:"Raro", earned:false },
-    { id:"academy3", icon:"book", name:"Estudioso", desc:"Completou 3 cursos", xp:300, rarity:"Épico", earned:false },
-    { id:"ambassador", icon:"crown", name:"Embaixador", desc:"Indicou 3 novos clientes", xp:1000, rarity:"Lendário", earned:false },
+  const EVOLUTION = [{m:"Set",v:62},{m:"Out",v:65},{m:"Nov",v:68},{m:"Dez",v:72},{m:"Jan",v:74},{m:"Fev",v:78}];
+  const IMPACTS = [
+    { text:"Aprovou posts no prazo", pts:"+1.2", color:B.green },
+    { text:"Concluiu missão do mês", pts:"+3", color:B.accent },
+    { text:"Meta parcial atingida", pts:"+5", color:"#8B5CF6" },
   ];
-
-  const CHALLENGES = [
-    { id:1, title:"Aprovar Tudo", desc:"Aprove todos os conteúdos pendentes", reward:100, coins:20, progress:3, total:5, deadline:"Sexta", type:"Semanal", color:"#10B981" },
-    { id:2, title:"Sequência Diária", desc:"Acesse o app 5 dias seguidos", reward:150, coins:30, progress:streak>5?5:streak, total:5, deadline:"Contínuo", type:"Diário", color:"#3B82F6" },
-    { id:3, title:"Explorer", desc:"Visite todas as seções do app", reward:80, coins:15, progress:4, total:7, deadline:"Domingo", type:"Semanal", color:"#8B5CF6" },
-    { id:4, title:"Feedback Detalhado", desc:"Envie 3 feedbacks com mais de 50 caracteres", reward:120, coins:25, progress:1, total:3, deadline:"Mensal", type:"Mensal", color:"#EC4899" },
-    { id:5, title:"Match Master", desc:"Conecte-se com 2 empresas no Match4Biz", reward:200, coins:40, progress:0, total:2, deadline:"Mensal", type:"Mensal", color:"#F59E0B" },
-    { id:6, title:"Academy Star", desc:"Assista 2 aulas na Academy", reward:100, coins:20, progress:0, total:2, deadline:"Semanal", type:"Semanal", color:"#EF4444" },
+  const ZONES = [
+    { name:"Estruturação", range:"0–40", color:"#EF4444", desc:"Início da jornada. Foco em organizar processos básicos.", reward:"Diagnóstico gratuito + plano de ação personalizado" },
+    { name:"Organização", range:"41–60", color:"#F59E0B", desc:"Processos rodando. Hora de otimizar e ser mais estratégico.", reward:"Relatório mensal detalhado + 1 sessão de consultoria" },
+    { name:"Estratégica", range:"61–80", color:"#BBF246", desc:"Marketing maduro. Decisões orientadas por dados.", reward:"Dashboard avançado + prioridade no atendimento", current:true },
+    { name:"Crescimento", range:"81–95", color:"#10B981", desc:"Resultados consistentes. Expansão acelerada.", reward:"1 consultoria estratégica gratuita + badge premium" },
+    { name:"Escala", range:"96–100", color:"#3B82F6", desc:"Excelência total. Marketing como diferencial competitivo.", reward:"15% desconto no plano anual + destaque no portfólio + mentoria exclusiva" },
   ];
-
-  const REWARDS = [
-    { id:1, name:"Diagnóstico Gratuito", desc:"Análise completa das suas redes sociais", cost:500, icon:"chart", color:"#3B82F6", stock:5 },
-    { id:2, name:"Post Extra", desc:"Um post adicional no seu plano mensal", cost:300, icon:"image", color:"#10B981", stock:10 },
-    { id:3, name:"Consultoria 30min", desc:"Sessão exclusiva com especialista", cost:800, icon:"video", color:"#8B5CF6", stock:3 },
-    { id:4, name:"Desconto 10%", desc:"Na mensalidade do próximo mês", cost:1000, icon:"tag", color:"#F59E0B", stock:2 },
-    { id:5, name:"Reel Profissional", desc:"Produção de 1 reel com equipe completa", cost:1200, icon:"film", color:"#EC4899", stock:2 },
-    { id:6, name:"Relatório Premium", desc:"Relatório detalhado de performance", cost:400, icon:"file", color:"#0EA5E9", stock:8 },
+  const MISSIONS = [
+    { title:"Aprovar 2 posts pendentes", pts:3, done:false },
+    { title:"Responder briefing", pts:3, done:true },
+    { title:"Agendar reunião mensal", pts:4, done:false },
+    { title:"Completar curso da Academy", pts:5, done:false },
+    { title:"Revisar relatório semanal", pts:2, done:false },
   ];
-
-  const LEADERBOARD = [
-    { name:"Casa Nova Imóveis", xp:2850, level:4, streak:14 },
-    { name:user?.name||"Meu Negócio", xp, level:lvl.level, streak, isMe:true },
-    { name:"Bella Estética", xp:1180, level:2, streak:5 },
-    { name:"TechSmart", xp:980, level:2, streak:3 },
-    { name:"Studio Fitness", xp:720, level:2, streak:8 },
-    { name:"Pet Love Shop", xp:450, level:1, streak:2 },
-  ].sort((a,b) => b.xp - a.xp);
-
-  const claimDaily = () => {
-    if (dailyClaimed) return;
-    const bonus = streak >= 7 ? 30 : streak >= 3 ? 20 : 10;
-    setXp(x => x + bonus);
-    setCoins(c => c + 5);
-    setStreak(s => s + 1);
-    setDailyClaimed(true);
-    showToast(`+${bonus} XP · +5 moedas · Streak ${streak+1} dias!`);
-  };
-
-  const redeemReward = (r) => {
-    if (coins < r.cost) { showToast("Moedas insuficientes"); return; }
-    setCoins(c => c - r.cost);
-    setSelReward(null);
-    showToast(`${r.name} resgatado! A equipe entrará em contato.`);
-  };
-
-  const rarityColor = r => ({"Comum":B.muted,"Raro":"#3B82F6","Épico":"#8B5CF6","Lendário":"#F59E0B"}[r]||B.muted);
-
-  const badgeIcon = (name, color, sz=20) => {
-    const icons = {
-      "rocket": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/></svg>,
-      "check-circle": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
-      "flame": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>,
-      "star": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-      "diamond": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/></svg>,
-      "heart": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
-      "message": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
-      "zap": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
-      "trophy": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>,
-      "calendar": IC.calendar(color),
-      "book": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
-      "crown": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><path d="M2 4l3 12h14l3-12-5 4-5-4-5 4z"/><path d="M5 16l-.8 4h15.6l-.8-4"/></svg>,
-      "chart": IC.reports ? IC.reports(color) : IC.trending,
-      "image": IC.content(color),
-      "video": IC.chat(color),
-      "tag": IC.financial(color),
-      "film": IC.content(color),
-      "file": IC.library ? IC.library(color) : IC.content(color),
-    };
-    return icons[name] || icons.star;
-  };
-
-  /* BADGE DETAIL SHEET */
-  if (selBadge) {
-    const rc = rarityColor(selBadge.rarity);
-    return (
-      <div className="app" style={{ background:B.bg, color:B.text }}>
-        <Head title="" onBack={()=>setSelBadge(null)} />
-        <div className="content" style={{ padding:"0 20px", textAlign:"center" }}>
-          <div style={{ width:80, height:80, borderRadius:"50%", background:selBadge.earned?`${rc}20`:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"30px auto 16px", boxShadow:selBadge.earned?`0 8px 30px ${rc}30`:"none" }}>
-            {badgeIcon(selBadge.icon, selBadge.earned?rc:B.muted, 36)}
-          </div>
-          <p style={{ fontSize:20, fontWeight:900 }}>{selBadge.name}</p>
-          <Tag color={rc}>{selBadge.rarity}</Tag>
-          <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{selBadge.desc}</p>
-          <Card style={{ marginTop:20, display:"flex", justifyContent:"space-around" }}>
-            <div><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>+{selBadge.xp}</p><p style={{ fontSize:10, color:B.muted }}>XP</p></div>
-            <div style={{ width:1, background:B.border }} />
-            <div><p style={{ fontSize:18, fontWeight:900, color:selBadge.earned?B.green:B.muted }}>{selBadge.earned?"Conquistado":"Bloqueado"}</p><p style={{ fontSize:10, color:B.muted }}>{selBadge.earned?"Parabéns!":"Continue usando o app"}</p></div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  /* REWARD DETAIL */
-  if (selReward) {
-    return (
-      <div className="app" style={{ background:B.bg, color:B.text }}>
-        <Head title="" onBack={()=>setSelReward(null)} />
-        <div className="content" style={{ padding:"0 20px", textAlign:"center" }}>
-          <div style={{ width:80, height:80, borderRadius:"50%", background:`${selReward.color}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"30px auto 16px" }}>
-            {badgeIcon(selReward.icon, selReward.color, 36)}
-          </div>
-          <p style={{ fontSize:20, fontWeight:900 }}>{selReward.name}</p>
-          <p style={{ fontSize:13, color:B.muted, marginTop:8, lineHeight:1.6 }}>{selReward.desc}</p>
-          <Card style={{ marginTop:20 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div><p style={{ fontSize:11, color:B.muted }}>Custo</p><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{selReward.cost}</p><p style={{ fontSize:10, color:B.muted }}>moedas</p></div>
-              <div><p style={{ fontSize:11, color:B.muted }}>Seu saldo</p><p style={{ fontSize:22, fontWeight:900, color:coins>=selReward.cost?B.green:(B.red||"#FF6B6B") }}>{coins}</p><p style={{ fontSize:10, color:B.muted }}>moedas</p></div>
-              <div><p style={{ fontSize:11, color:B.muted }}>Estoque</p><p style={{ fontSize:22, fontWeight:900 }}>{selReward.stock}</p><p style={{ fontSize:10, color:B.muted }}>disponíveis</p></div>
-            </div>
-          </Card>
-          <button onClick={()=>redeemReward(selReward)} disabled={coins<selReward.cost} style={{ width:"100%", marginTop:16, padding:"15px 0", borderRadius:14, background:coins>=selReward.cost?B.accent:`${B.muted}20`, border:"none", cursor:coins>=selReward.cost?"pointer":"default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:coins>=selReward.cost?(B.textOnAccent||"#0D0D0D"):B.muted }}>
-            {coins>=selReward.cost ? "Resgatar Agora" : "Moedas insuficientes"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const TABS_G = [{k:"meu",l:"Meu Progresso"},{k:"desafios",l:"Desafios"},{k:"badges",l:"Conquistas"},{k:"loja",l:"Loja"},{k:"ranking",l:"Ranking"}];
+  const mDone = MISSIONS.filter(m=>m.done).length;
+  const mPending = MISSIONS.filter(m=>!m.done).length;
+  const mPts = MISSIONS.filter(m=>!m.done).reduce((a,m)=>a+m.pts,0);
+  const RANKING = [
+    { name:"Studio Bella", score:94, delta:8, zone:"Crescimento" },
+    { name:"Tech Solutions", score:89, delta:5, zone:"Crescimento" },
+    { name:"Arq & Design", score:85, delta:6, zone:"Crescimento" },
+    { name:user?.name||"Você", score, delta:scoreDelta, zone, isMe:true },
+    { name:"Casa Nova Imóveis", score:72, delta:4, zone:"Estratégica" },
+    { name:"Fit Academy", score:68, delta:2, zone:"Estratégica" },
+    { name:"Escola Viva", score:55, delta:1, zone:"Organização" },
+  ].sort((a,b)=>b.score-a.score);
+  const SCORING = [
+    { action:"Aprovar conteúdo no prazo (até 24h)", pts:"+1.5", pillar:"Execução", c:"#10B981" },
+    { action:"Aprovar conteúdo com atraso (>24h)", pts:"+0.5", pillar:"Execução", c:"#10B981" },
+    { action:"Responder briefing completo", pts:"+2.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Definir meta mensal", pts:"+3.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Participar de reunião mensal", pts:"+4.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Completar curso da Academy", pts:"+5.0", pillar:"Educação", c:"#F59E0B" },
+    { action:"Assistir 1 aula da Academy", pts:"+0.5", pillar:"Educação", c:"#F59E0B" },
+    { action:"Enviar ideia/sugestão", pts:"+1.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Fazer conexão no Match4Biz", pts:"+2.0", pillar:"Ecossistema", c:"#EF4444" },
+    { action:"Indicar novo cliente", pts:"+6.0", pillar:"Ecossistema", c:"#EF4444" },
+    { action:"Atingir meta mensal (100%)", pts:"+8.0", pillar:"Crescimento", c:"#10B981" },
+    { action:"Atingir meta parcial (>=75%)", pts:"+5.0", pillar:"Crescimento", c:"#10B981" },
+    { action:"Login diário no Hub", pts:"+0.3", pillar:"Execução", c:"#10B981" },
+    { action:"Manter aprovações em dia (7 dias)", pts:"+3.0", pillar:"Execução", c:"#10B981" },
+    { action:"Revisar relatório semanal", pts:"+1.5", pillar:"Crescimento", c:"#10B981" },
+  ];
+  const PENALTIES = [
+    { pts:"-2.0", action:"Não aprovar conteúdo por 3+ dias" },
+    { pts:"-3.0", action:"Não responder briefing em 7 dias" },
+    { pts:"-4.0", action:"Faltar reunião mensal sem aviso" },
+    { pts:"-5.0", action:"Inatividade no Hub por 14+ dias" },
+    { pts:"-1.0", action:"Reprovar conteúdo sem justificativa" },
+  ];
+  const scoreColor = score >= 81 ? "#10B981" : score >= 61 ? "#BBF246" : score >= 41 ? "#F59E0B" : "#EF4444";
+  const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
 
   return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
-      <Head title="Gamificação" onBack={onBack} />
+      <Head title="Growth Score" onBack={onBack} />
       <div className="content" style={{ padding:"0 16px" }}>
-
-        {/* Daily check-in banner */}
-        {!dailyClaimed && <div onClick={claimDaily} style={{ borderRadius:16, padding:"14px 16px", background:`linear-gradient(135deg, ${B.accent}15, #8B5CF615)`, border:`1.5px solid ${B.accent}30`, marginBottom:12, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            {badgeIcon("flame", B.accent, 22)}
-          </div>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:13, fontWeight:700 }}>Check-in diário disponível!</p>
-            <p style={{ fontSize:11, color:B.muted }}>Toque para ganhar XP · Streak: {streak} dias</p>
-          </div>
-          <div style={{ background:B.accent, borderRadius:10, padding:"6px 14px" }}>
-            <span style={{ fontSize:12, fontWeight:800, color:B.textOnAccent||"#0D0D0D" }}>+{streak>=7?30:streak>=3?20:10} XP</span>
-          </div>
-        </div>}
-
-        {/* Tabs */}
-        <div style={{ display:"flex", gap:4, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
-          {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"7px 14px", borderRadius:10, border:"none", background:tab===t.k?B.accent:`${B.muted}08`, color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:11, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
+        <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
+          {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
         </div>
 
-        {/* ═══ MEU PROGRESSO ═══ */}
-        {tab === "meu" && <>
-          {/* Level card */}
+        {tab === "score" && <>
           <Card style={{ padding:0, overflow:"hidden" }}>
-            <div style={{ background:`linear-gradient(135deg, ${lvl.color}25, ${lvl.color}08)`, padding:"20px 16px 16px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <Av name={user?.name||"C"} sz={52} fs={20} />
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:16, fontWeight:800 }}>{user?.name||"Cliente"}</p>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
-                    <span style={{ fontSize:10, fontWeight:700, color:lvl.color, background:`${lvl.color}20`, padding:"2px 10px", borderRadius:6 }}>Nível {lvl.level} · {lvl.title}</span>
+            <div style={{ background:B.dark||"#111", padding:"20px 20px 16px", color:"#fff" }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Growth Score</p>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
+                <div>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                    <span style={{ fontSize:48, fontWeight:900, color:scoreColor }}>{score}</span>
+                    <span style={{ fontSize:14, fontWeight:700, color:B.green }}>+{scoreDelta} este mês</span>
                   </div>
+                  <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>#{rank} de {totalClients} · Zona {zone}</p>
                 </div>
-                <div style={{ textAlign:"center" }}>
-                  <p style={{ fontSize:24, fontWeight:900, color:B.accent }}>{xp}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>XP Total</p>
+                <div style={{ width:64, height:64, borderRadius:"50%", border:`3px solid ${scoreColor}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ fontSize:22, fontWeight:900, color:scoreColor }}>{score}</span>
                 </div>
               </div>
-              <div style={{ marginTop:14 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                  <span style={{ fontSize:10, color:B.muted }}>Nível {lvl.level}</span>
-                  <span style={{ fontSize:10, color:B.muted }}>{xp - lvl.min}/{lvl.max - lvl.min} XP</span>
-                  <span style={{ fontSize:10, color:B.muted }}>Nível {nextLvl.level}</span>
-                </div>
-                <div style={{ height:8, borderRadius:4, background:`${B.muted}15` }}>
-                  <div style={{ height:8, borderRadius:4, background:`linear-gradient(90deg, ${lvl.color}, ${B.accent})`, width:`${pct}%`, transition:"width .5s ease", boxShadow:`0 0 8px ${lvl.color}40` }} />
-                </div>
+              <div style={{ display:"flex", gap:4, marginTop:14 }}>
+                {PILLARS.map((p,i) => <div key={i} style={{ flex:1 }}>
+                  <div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.color, width:`${p.score}%` }} /></div>
+                  <p style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:4, textAlign:"center" }}>{p.name.substring(0,4)}</p>
+                </div>)}
+              </div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
+                <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{IC.gamify("rgba(255,255,255,0.4)")} {mPending} missões pendentes</span>
+                <span onClick={()=>setTab("missions")} style={{ fontSize:11, color:B.accent, fontWeight:600, cursor:"pointer" }}>Ver detalhes →</span>
               </div>
             </div>
           </Card>
-          {/* Stats grid */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:10 }}>
-            <Card style={{ textAlign:"center", padding:12 }}><span style={{ display:"flex", justifyContent:"center", color:"#F59E0B", marginBottom:4 }}>{badgeIcon("star","#F59E0B",18)}</span><p style={{ fontSize:18, fontWeight:900, color:"#F59E0B" }}>{coins}</p><p style={{ fontSize:9, color:B.muted }}>Moedas</p></Card>
-            <Card style={{ textAlign:"center", padding:12 }}><span style={{ display:"flex", justifyContent:"center", color:"#EF4444", marginBottom:4 }}>{badgeIcon("flame","#EF4444",18)}</span><p style={{ fontSize:18, fontWeight:900, color:"#EF4444" }}>{streak}</p><p style={{ fontSize:9, color:B.muted }}>Dias seguidos</p></Card>
-            <Card style={{ textAlign:"center", padding:12 }}><span style={{ display:"flex", justifyContent:"center", color:"#8B5CF6", marginBottom:4 }}>{badgeIcon("trophy","#8B5CF6",18)}</span><p style={{ fontSize:18, fontWeight:900, color:"#8B5CF6" }}>{ALL_BADGES.filter(b=>b.earned).length}/{ALL_BADGES.length}</p><p style={{ fontSize:9, color:B.muted }}>Conquistas</p></Card>
-          </div>
-          {/* Earned badges */}
-          <p className="sl" style={{ marginTop:14, marginBottom:8 }}>Suas conquistas</p>
-          <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
-            {ALL_BADGES.filter(b=>b.earned).map(b => (
-              <div key={b.id} onClick={()=>setSelBadge(b)} style={{ flexShrink:0, width:64, textAlign:"center", cursor:"pointer" }}>
-                <div style={{ width:48, height:48, borderRadius:"50%", background:`${rarityColor(b.rarity)}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", boxShadow:`0 2px 10px ${rarityColor(b.rarity)}20` }}>{badgeIcon(b.icon, rarityColor(b.rarity), 22)}</div>
-                <p style={{ fontSize:9, fontWeight:600, marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</p>
+          {PILLARS.map((p,i) => <Card key={i} style={{ marginTop:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>{p.name}</p>
+              <span style={{ fontSize:18, fontWeight:900, color:p.color }}>{p.score}</span>
+            </div>
+            <div style={{ height:6, borderRadius:3, background:`${p.color}15`, marginTop:8 }}>
+              <div style={{ height:6, borderRadius:3, background:p.color, width:`${p.score}%`, transition:"width .5s" }} />
+            </div>
+          </Card>)}
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>O que impactou seu score</p>
+          {IMPACTS.map((imp,i) => <Card key={i} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}><span style={{ color:imp.color }}>{IC.check}</span><span style={{ fontSize:13 }}>{imp.text}</span></div>
+              <span style={{ fontSize:14, fontWeight:700, color:B.green }}>{imp.pts}</span>
+            </div>
+          </Card>)}
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Evolução (6 meses)</p>
+          <Card>
+            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-around", height:120, gap:6 }}>
+              {EVOLUTION.map((e,i) => { const isLast = i === EVOLUTION.length - 1; return <div key={i} style={{ flex:1, textAlign:"center" }}>
+                <span style={{ fontSize:11, fontWeight:isLast?800:500, color:isLast?scoreColor:B.muted }}>{e.v}</span>
+                <div style={{ height:`${(e.v/100)*80}px`, borderRadius:6, background:isLast?scoreColor:`${B.muted}20`, marginTop:4 }} />
+                <span style={{ fontSize:9, color:B.muted, marginTop:4, display:"block" }}>{e.m}</span>
+              </div>; })}
+            </div>
+          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Zonas de crescimento</p>
+          <Card>{ZONES.map((z,i) => <div key={i} style={{ padding:"12px 0", borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:5, background:z.color }} /><span style={{ fontSize:13, fontWeight:z.current?800:500 }}>{z.name} ({z.range})</span></div>
+              {z.current && <Tag color={scoreColor}>Você</Tag>}
+            </div>
+          </div>)}</Card>
+          {ZONES.filter(z=>z.reward).slice(-2).map((z,i) => <Card key={i} style={{ marginTop:6, background:`${z.color}06`, border:`1px solid ${z.color}15` }}>
+            <p style={{ fontSize:12, fontWeight:700, color:z.color }}>Recompensa: Zona {z.name}</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{z.reward}</p>
+          </Card>)}
+        </>}
+
+        {tab === "ranking" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ background:B.dark||"#111", padding:"20px 16px", color:"#fff", textAlign:"center" }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", marginBottom:16 }}>Top 3 do mês</p>
+              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:12, paddingBottom:10 }}>
+                <div style={{ textAlign:"center" }}><span style={{ fontSize:14 }}>2</span><Av name={RANKING[1]?.name||""} sz={44} fs={16} /><p style={{ fontSize:10, fontWeight:600, marginTop:4, color:"#C0C0C0" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p><p style={{ fontSize:16, fontWeight:900 }}>{RANKING[1]?.score}</p><div style={{ width:60, height:50, background:"rgba(255,255,255,0.08)", borderRadius:"6px 6px 0 0", marginTop:4 }} /></div>
+                <div style={{ textAlign:"center" }}><span style={{ fontSize:16 }}>1</span><div style={{ border:`3px solid ${B.accent}`, borderRadius:"50%", padding:2, display:"inline-block" }}><Av name={RANKING[0]?.name||""} sz={52} fs={20} /></div><p style={{ fontSize:11, fontWeight:700, marginTop:4 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p><p style={{ fontSize:20, fontWeight:900, color:B.accent }}>{RANKING[0]?.score}</p><div style={{ width:60, height:70, background:B.accent, borderRadius:"6px 6px 0 0", marginTop:4 }} /></div>
+                <div style={{ textAlign:"center" }}><span style={{ fontSize:14 }}>3</span><Av name={RANKING[2]?.name||""} sz={44} fs={16} /><p style={{ fontSize:10, fontWeight:600, marginTop:4, color:"#CD7F32" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p><p style={{ fontSize:16, fontWeight:900 }}>{RANKING[2]?.score}</p><div style={{ width:60, height:40, background:"rgba(255,255,255,0.08)", borderRadius:"6px 6px 0 0", marginTop:4 }} /></div>
               </div>
-            ))}
-          </div>
-          {/* How to earn XP */}
-          <p className="sl" style={{ marginTop:14, marginBottom:8 }}>Como ganhar XP</p>
-          {[{a:"Aprovar conteúdo",v:"+20 XP",c:B.green},{a:"Check-in diário",v:"+10-30 XP",c:"#EF4444"},{a:"Enviar feedback",v:"+15 XP",c:"#3B82F6"},{a:"Completar desafio",v:"+80-200 XP",c:"#8B5CF6"},{a:"Match4Biz",v:"+50 XP",c:"#F59E0B"},{a:"Assistir aula",v:"+25 XP",c:"#EC4899"}].map((item,i) => (
-            <Card key={i} style={{ marginBottom:4, padding:"10px 14px" }}><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:6, height:6, borderRadius:3, background:item.c }} /><span style={{ fontSize:12 }}>{item.a}</span></div><span style={{ fontSize:12, fontWeight:700, color:item.c }}>{item.v}</span></div></Card>
+            </div>
+          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Ranking completo</p>
+          {RANKING.map((r,i) => <Card key={i} delay={i*0.03} style={{ marginBottom:6, background:r.isMe?`${B.accent}06`:B.bgCard, border:r.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:12, fontWeight:700, color:B.muted, width:24 }}>#{i+1}</span>
+              <Av name={r.name} sz={36} fs={13} />
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:r.isMe?800:600 }}>{r.name}{r.isMe?" (Você)":""}</p><p style={{ fontSize:10, color:B.muted }}>Zona {r.zone}</p></div>
+              <div style={{ textAlign:"right" }}><p style={{ fontSize:18, fontWeight:900 }}>{r.score}</p><p style={{ fontSize:10, color:B.green, fontWeight:600 }}>+{r.delta}</p></div>
+            </div>
+          </Card>)}
+          <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}20`, textAlign:"center" }}>
+            <p style={{ fontSize:14, fontWeight:700 }}>Você subiu <span style={{ color:B.accent }}>3 posições</span> este mês!</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Continue completando missões para subir no ranking.</p>
+          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Bonificações do pódio</p>
+          {[{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}].map((p,i) => (
+            <Card key={i} style={{ marginBottom:6, borderLeft:`3px solid ${p.c}` }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>{p.pos}</p>
+              <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{p.reward}</p>
+            </Card>
           ))}
         </>}
 
-        {/* ═══ DESAFIOS ═══ */}
-        {tab === "desafios" && <>
-          {CHALLENGES.map((ch,i) => {
-            const done = ch.progress >= ch.total;
-            return <Card key={ch.id} delay={i*0.04} style={{ marginBottom:8, borderLeft:`3px solid ${done?B.green:ch.color}`, opacity:done?0.6:1 }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:`${ch.color}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{badgeIcon(ch.id<=2?"flame":ch.id===3?"rocket":ch.id===4?"message":ch.id===5?"heart":"book", ch.color, 20)}</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <p style={{ fontSize:13, fontWeight:700 }}>{ch.title}</p>
-                    <Tag color={ch.color}>{ch.type}</Tag>
-                  </div>
-                  <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{ch.desc}</p>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
-                    <div style={{ flex:1, height:6, borderRadius:3, background:`${ch.color}12` }}>
-                      <div style={{ height:6, borderRadius:3, background:ch.color, width:`${(ch.progress/ch.total)*100}%`, transition:"width .4s" }} />
-                    </div>
-                    <span style={{ fontSize:10, fontWeight:700, color:ch.color }}>{ch.progress}/{ch.total}</span>
-                  </div>
-                  <div style={{ display:"flex", gap:8, marginTop:6 }}>
-                    <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>+{ch.reward} XP</span>
-                    <span style={{ fontSize:10, color:"#F59E0B", fontWeight:600 }}>+{ch.coins} moedas</span>
-                    <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{ch.deadline}</span>
-                  </div>
-                </div>
+        {tab === "missions" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ background:B.dark||"#111", padding:"16px 20px", color:"#fff" }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Missões do mês</p>
+              <div style={{ display:"flex", justifyContent:"space-around", marginTop:12 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.green }}>{mDone}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>concluídas</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900 }}>{mPending}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pendentes</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.accent }}>+{mPts}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pts disponíveis</p></div>
               </div>
-            </Card>;
-          })}
-        </>}
-
-        {/* ═══ BADGES/CONQUISTAS ═══ */}
-        {tab === "badges" && <>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-            {ALL_BADGES.map(b => {
-              const rc = rarityColor(b.rarity);
-              return <Card key={b.id} onClick={()=>setSelBadge(b)} style={{ textAlign:"center", padding:14, cursor:"pointer", opacity:b.earned?1:0.4, position:"relative" }}>
-                {!b.earned && <div style={{ position:"absolute", top:6, right:6 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>}
-                <div style={{ width:44, height:44, borderRadius:"50%", background:b.earned?`${rc}15`:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", boxShadow:b.earned?`0 2px 10px ${rc}20`:"none" }}>
-                  {badgeIcon(b.icon, b.earned?rc:B.muted, 22)}
-                </div>
-                <p style={{ fontSize:10, fontWeight:700 }}>{b.name}</p>
-                <span style={{ fontSize:8, fontWeight:600, color:rc }}>{b.rarity}</span>
-              </Card>;
-            })}
-          </div>
-        </>}
-
-        {/* ═══ LOJA ═══ */}
-        {tab === "loja" && <>
-          <Card style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, background:`linear-gradient(135deg, #F59E0B15, #F59E0B05)`, border:`1px solid #F59E0B20` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>{badgeIcon("star","#F59E0B",20)}<span style={{ fontSize:14, fontWeight:700 }}>Seu saldo</span></div>
-            <span style={{ fontSize:22, fontWeight:900, color:"#F59E0B" }}>{coins} moedas</span>
+            </div>
           </Card>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            {REWARDS.map(r => (
-              <Card key={r.id} onClick={()=>setSelReward(r)} style={{ cursor:"pointer", padding:14 }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:`${r.color}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{badgeIcon(r.icon, r.color, 20)}</div>
-                <p style={{ fontSize:12, fontWeight:700 }}>{r.name}</p>
-                <p style={{ fontSize:10, color:B.muted, marginTop:2, lineHeight:1.4 }}>{r.desc}</p>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:8 }}>
-                  <span style={{ fontSize:13, fontWeight:800, color:"#F59E0B" }}>{r.cost}</span>
-                  <span style={{ fontSize:9, color:B.muted }}>{r.stock} disp.</span>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {MISSIONS.map((m,i) => <Card key={i} style={{ marginTop:8, opacity:m.done?0.6:1, borderLeft:m.done?`3px solid ${B.green}`:`3px solid ${B.accent}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              {m.done ? <div style={{ width:36, height:36, borderRadius:"50%", background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.green }}>{IC.check}</span></div>
+                : <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:12, fontWeight:800, color:B.accent }}>+{m.pts}</span></div>}
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:700, textDecoration:m.done?"line-through":"none" }}>{m.title}</p>
+                <p style={{ fontSize:11, color:m.done?B.green:B.muted, marginTop:2 }}>{m.done?"Concluída! Pontos adicionados.":"Complete para ganhar pontos"}</p>
+              </div>
+              {!m.done && <span style={{ fontSize:13, fontWeight:700, color:B.accent }}>+{m.pts}</span>}
+            </div>
+          </Card>)}
+          <Card style={{ marginTop:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+            <span style={{ display:"flex", justifyContent:"center", marginBottom:6, color:B.accent }}>{IC.gamify(B.accent)}</span>
+            <p style={{ fontSize:14, fontWeight:700 }}>Complete todas as missões</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Ganhe <span style={{ color:B.accent, fontWeight:700 }}>+{mPts} pontos</span> e suba para a <b>Zona Crescimento</b></p>
+          </Card>
         </>}
 
-        {/* ═══ RANKING ═══ */}
-        {tab === "ranking" && <>
-          {LEADERBOARD.map((p,i) => {
-            const rank = i+1;
-            const rlvl = getLevel(p.xp);
-            return <Card key={i} delay={i*0.04} style={{ marginBottom:6, background:p.isMe?`${B.accent}06`:B.bgCard, border:p.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:32, height:32, borderRadius:10, background:rank<=3?[`#FFD70020`,`#C0C0C020`,`#CD7F3220`][rank-1]:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  <span style={{ fontSize:rank<=3?14:12, fontWeight:900, color:rank<=3?["#FFD700","#A0A0A0","#CD7F32"][rank-1]:B.muted }}>{rank}</span>
-                </div>
-                <Av name={p.name} sz={36} fs={13} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12, fontWeight:p.isMe?800:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name} {p.isMe?"(Você)":""}</p>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
-                    <span style={{ fontSize:9, fontWeight:700, color:rlvl.color, background:`${rlvl.color}15`, padding:"1px 6px", borderRadius:4 }}>Nv.{rlvl.level}</span>
-                    <span style={{ fontSize:9, color:B.muted, display:"flex", alignItems:"center", gap:2 }}>{badgeIcon("flame","#EF4444",10)} {p.streak}d</span>
-                  </div>
-                </div>
-                <div style={{ textAlign:"right" }}>
-                  <p style={{ fontSize:14, fontWeight:900, color:p.isMe?B.accent:B.text }}>{p.xp.toLocaleString()}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>XP</p>
-                </div>
-              </div>
-            </Card>;
-          })}
+        {tab === "info" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}><div style={{ background:B.dark||"#111", padding:"24px 20px", color:"#fff", textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, marginTop:8 }}>Growth Score</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Seu índice de crescimento de marketing</p></div></Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>O que é o Growth Score?</p>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.7 }}>O Growth Score é um sistema de pontuação de <b style={{ color:B.text }}>0 a 100</b> que mede o nível de maturidade e engajamento do seu marketing digital. Quanto maior seu score, mais otimizado está seu marketing.</p>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.7, marginTop:8 }}>Ele é calculado com base em <b style={{ color:B.text }}>5 pilares</b> e atualizado em tempo real conforme você cumpre tarefas, interage com a equipe e atinge metas.</p>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:12 }}>Os 5 Pilares</p>
+            {PILLARS.map((p,i) => <div key={i} style={{ padding:"10px 0", borderBottom:i<PILLARS.length-1?`1px solid ${B.border}`:"none" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}><p style={{ fontSize:13, fontWeight:700 }}>{p.name}</p><span style={{ fontSize:12, fontWeight:700, color:p.color }}>{p.weight}</span></div>
+              <p style={{ fontSize:11, color:B.muted, marginTop:2, lineHeight:1.5 }}>{p.desc}</p>
+            </div>)}
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:12 }}>Zonas de Crescimento</p>
+            {ZONES.map((z,i) => <div key={i} style={{ padding:"12px 0", borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:5, background:z.color }} /><span style={{ fontSize:13, fontWeight:700 }}>{z.name}</span></div><Tag color={z.color}>{z.range} pts</Tag></div>
+              <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{z.desc}</p>
+              <p style={{ fontSize:11, color:z.color, fontWeight:600, marginTop:4 }}>{z.reward}</p>
+            </div>)}
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>Tabela de Pontuação</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Veja quantos pontos cada ação vale:</p>
+            <div style={{ borderRadius:10, overflow:"hidden", border:`1px solid ${B.border}` }}>
+              <div style={{ display:"flex", padding:"8px 12px", background:B.dark||"#111", color:"#fff" }}><span style={{ flex:1, fontSize:11, fontWeight:700 }}>Ação</span><span style={{ width:50, fontSize:11, fontWeight:700, textAlign:"center" }}>Pontos</span><span style={{ width:70, fontSize:11, fontWeight:700, textAlign:"right" }}>Pilar</span></div>
+              {SCORING.map((s,i) => <div key={i} style={{ display:"flex", padding:"10px 12px", borderBottom:i<SCORING.length-1?`1px solid ${B.border}`:"none", alignItems:"center" }}><span style={{ flex:1, fontSize:11 }}>{s.action}</span><span style={{ width:50, fontSize:12, fontWeight:700, color:s.c, textAlign:"center" }}>{s.pts}</span><span style={{ width:70, textAlign:"right" }}><Tag color={s.c}>{s.pillar}</Tag></span></div>)}
+            </div>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>Penalidades</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Ações que reduzem seu score:</p>
+            {PENALTIES.map((p,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:i<PENALTIES.length-1?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:14, fontWeight:900, color:B.red||"#FF6B6B", width:40 }}>{p.pts}</span><span style={{ fontSize:12 }}>{p.action}</span></div>)}
+          </Card>
+          <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:6 }}>Dica Pro</p>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.6 }}>A forma mais rápida de subir seu score é manter as <b style={{ color:B.text }}>aprovações em dia</b> e <b style={{ color:B.text }}>completar as missões mensais</b>. Cada missão concluída gera pontos imediatos e impacta múltiplos pilares!</p>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:12 }}>Perguntas Frequentes</p>
+            {[{q:"Quando o score é atualizado?",a:"Em tempo real. Cada ação que você faz impacta seu score imediatamente."},{q:"Posso perder pontos?",a:"Sim. Inatividade, atrasos nas aprovações e faltas em reuniões reduzem seu score."},{q:"Como chego na Zona Escala?",a:"Mantenha todas as missões em dia, participe ativamente e atinja suas metas mensais consistentemente."},{q:"O ranking é justo?",a:"Sim! Todos começam do zero e ganham pontos pelas mesmas ações. O diferencial é a consistência."}].map((faq,i) => (
+              <div key={i} style={{ padding:"10px 0", borderBottom:i<3?`1px solid ${B.border}`:"none" }}><p style={{ fontSize:13, fontWeight:700 }}>{faq.q}</p><p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>{faq.a}</p></div>
+            ))}
+          </Card>
         </>}
       </div>
     </div>
@@ -14743,265 +14667,172 @@ function MainClientApp({ user, onLogout, dark }) {
   const inProduction = demands.filter(d => !["published","completed"].includes(d.stage) && d.steps?.client?.status !== "approved");
   const nav = (k) => goTab(k);
 
+  const growthScore = 78;
+  const growthDelta = 6;
+  const growthZone = "Estratégica";
+  const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
+  const metrics = { reach:"847K", reachD:"+18%", engagement:"12.4%", engD:"+3.2%", clicks:"3.2K", clicksD:"+24%", roas:"4.8x", roasD:"+0.6" };
+
   const renderHome = () => <>
-    {/* ── HEADER (agency-style) ── */}
-    <div style={{ background:isDark?"#0D0D0D":"#fff", margin:"-14px -16px 0", padding:"20px 20px 24px", borderRadius:"0 0 28px 28px", boxShadow:isDark?"none":"0 4px 20px rgba(0,0,0,0.05)" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+    {/* HEADER */}
+    <div style={{ background:isDark?"#0D0D0D":"#fff", margin:"-14px -16px 0", padding:"20px 20px 20px", borderRadius:"0 0 28px 28px", boxShadow:isDark?"none":"0 4px 20px rgba(0,0,0,0.05)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <Av name={user.name||"C"} sz={48} fs={18} />
+          <div>
+            <p style={{ fontSize:18, fontWeight:900, color:C.txt }}>{greeting}, {(user.name||"Cliente").split(" ")[0]}</p>
+            <p style={{ fontSize:11, color:C.mut }}>Unique Hub · Seu marketing em dia</p>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <div style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(C.mut)}</div>
+          <div style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.calendar(C.mut)}</div>
+        </div>
+      </div>
+    </div>
+
+    {/* META DO MES */}
+    <Card style={{ marginTop:12, padding:0, overflow:"hidden" }}>
+      <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
+        <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
+        <div style={{ display:"flex", alignItems:"baseline", gap:10, marginTop:8 }}>
+          <span style={{ fontSize:40, fontWeight:900, color:LIME }}>{monthGoal.pct}%</span>
+          <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</span>
+        </div>
+        <div style={{ height:6, borderRadius:3, background:"rgba(255,255,255,0.1)", marginTop:10 }}>
+          <div style={{ height:6, borderRadius:3, background:LIME, width:`${monthGoal.pct}%`, boxShadow:`0 0 8px ${LIME}40` }} />
+        </div>
+      </div>
+    </Card>
+
+    {/* GROWTH SCORE */}
+    <Card onClick={()=>setSub("gamify")} style={{ marginTop:8, cursor:"pointer" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
-          <p style={{ fontSize:11, color:C.mut, fontWeight:600, letterSpacing:1, textTransform:"uppercase" }}>{greeting}</p>
-          <p style={{ fontSize:22, fontWeight:900, color:C.txt }}>{user.name || "Cliente"}</p>
-          {user?.company && <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>{user.company}</p>}
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Growth Score</p>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:6 }}>
+            <span style={{ fontSize:32, fontWeight:900, color:LIME }}>{growthScore}</span>
+            <span style={{ fontSize:12, fontWeight:700, color:B.green }}>+{growthDelta} este mês</span>
+          </div>
+          <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>#4 de 23 · Zona {growthZone}</p>
         </div>
-        <Av name={user.name||"C"} sz={48} fs={18} />
-      </div>
-
-      {/* ── STAT CARDS ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-        <div style={{ background:isDark?"#111":"#F7F7F8", borderRadius:16, padding:"14px 16px", border:`1px solid ${C.brd}` }}>
-          <p style={{ fontSize:9, color:C.mut, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Conteúdos</p>
-          <p style={{ fontSize:26, fontWeight:900, color:LIME, marginTop:4 }}>{demands.length}</p>
-          <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>Total enviados</p>
-        </div>
-        <div style={{ background:isDark?"#111":"#F7F7F8", borderRadius:16, padding:"14px 16px", border:`1px solid ${C.brd}` }}>
-          <p style={{ fontSize:9, color:C.mut, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Aprovados</p>
-          <p style={{ fontSize:26, fontWeight:900, color:B.green, marginTop:4 }}>{approved.length}</p>
-          <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>Prontos para publicar</p>
+        <div style={{ width:56, height:56, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <span style={{ fontSize:18, fontWeight:900, color:LIME }}>{growthScore}</span>
         </div>
       </div>
-    </div>
-
-    {/* ── PENDING ALERT ── */}
-    {pendingApproval.length > 0 && <div onClick={()=>nav("content")} style={{ marginTop:14, background:isDark?"#111":"#fff", borderRadius:20, padding:"16px 18px", cursor:"pointer", border:`1.5px solid ${LIME}30`, boxShadow:`0 4px 20px ${LIME}10` }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:44, height:44, borderRadius:14, background:`${LIME}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(LIME)}</div>
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:14, fontWeight:700, color:C.txt }}>{pendingApproval.length} conteúdo{pendingApproval.length>1?"s":""} aguardando</p>
-          <p style={{ fontSize:11, color:C.mut }}>Toque para revisar e aprovar</p>
-        </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      <div style={{ display:"flex", gap:4, marginTop:12 }}>
+        {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}>
+          <div style={{ height:4, borderRadius:2, background:`${p.c}15` }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div>
+          <p style={{ fontSize:8, color:C.mut, marginTop:3, textAlign:"center" }}>{p.n}</p>
+        </div>)}
       </div>
-    </div>}
-
-    {/* ── QUICK ACTIONS (pills) ── */}
-    <div style={{ display:"flex", gap:8, marginTop:16, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
-      {[{l:"Conteúdo",ic:IC.content,k:"content"},{l:"Agenda",ic:IC.calendar,k:"calendar"},{l:"Chat",ic:IC.chat,k:"chat"}].map((p,i) => (
-        <div key={i} onClick={()=>nav(p.k)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:8, background:C.card, borderRadius:14, padding:"10px 16px", border:`1px solid ${C.brd}`, cursor:"pointer" }}>
-          <div style={{ width:28, height:28, borderRadius:8, background:`${LIME}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>{p.ic(LIME)}</div>
-          <span style={{ fontSize:12, fontWeight:700, color:C.txt }}>{p.l}</span>
-        </div>
-      ))}
-    </div>
-
-    {/* ── CONTEÚDOS EM PRODUÇÃO ── */}
-    {inProduction.length > 0 && <>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
-        <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Em produção</h3>
-        <span onClick={()=>nav("content")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, paddingTop:8, borderTop:`1px solid ${C.brd}` }}>
+        <span style={{ fontSize:11, color:C.mut }}>{IC.gamify(C.mut)} 4 missões pendentes</span>
+        <span style={{ fontSize:11, color:LIME, fontWeight:600 }}>Ver detalhes →</span>
       </div>
-      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4, marginRight:-16, paddingRight:16 }}>
-        {inProduction.slice(0,6).map((d,i) => {
-          const stageColor = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",production:"#3B82F6",editing:"#F59E0B"};
-          const stageName = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Aprovação",production:"Produção",editing:"Edição"};
-          const sc = stageColor[d.stage]||"#8B8F92";
-          const sn = stageName[d.stage]||d.stage;
+    </Card>
+
+    {/* PENDING ALERT */}
+    {pendingApproval.length > 0 && <Card onClick={()=>nav("content")} style={{ marginTop:8, cursor:"pointer", borderLeft:`3px solid ${LIME}` }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <span style={{ color:LIME }}>{IC.check}</span>
+        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{pendingApproval.length} post{pendingApproval.length>1?"s":""} para aprovar</p><p style={{ fontSize:11, color:C.mut }}>Toque para revisar</p></div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </Card>}
+
+    {/* POSTS RECENTES */}
+    {demands.length > 0 && <>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"18px 0 10px" }}>
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Posts recentes</p>
+        <span onClick={()=>nav("content")} style={{ fontSize:11, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todos →</span>
+      </div>
+      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", marginRight:-16, paddingRight:16 }}>
+        {demands.slice(0,6).map((d,i) => {
+          const st = d.steps?.client?.status;
+          const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?B.orange||"#F59E0B":C.mut;
+          const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Em Análise":"Em produção";
           const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:150, borderRadius:16, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
-            <div style={{ height:100, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${sc}40, ${sc}15)`, position:"relative" }}>
-              {!imgs[0] && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.content(sc)}</div>}
+          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:180, borderRadius:16, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
+            <div style={{ height:120, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}20, ${stColor}08)`, position:"relative" }}>
+              {!imgs[0] && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.content(stColor)}</div>}
+              <div style={{ position:"absolute", bottom:8, left:8, right:8 }}><p style={{ fontSize:11, fontWeight:700, color:"#fff", textShadow:"0 1px 4px rgba(0,0,0,0.6)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div>
             </div>
-            <div style={{ padding:"10px 12px" }}>
-              <p style={{ fontSize:11, fontWeight:700, color:C.txt, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-              <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:6 }}>
-                <div style={{ width:6, height:6, borderRadius:3, background:sc }} />
-                <span style={{ fontSize:9, color:sc, fontWeight:600 }}>{sn}</span>
-              </div>
+            <div style={{ padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:10, color:C.mut }}>{d.createdAt}</span>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:9, fontWeight:600, color:stColor }}>{stLabel}</span></div>
             </div>
           </div>;
         })}
       </div>
     </>}
 
-    {/* ── ÚLTIMOS CONTEÚDOS ── */}
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
-      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Conteúdos recentes</h3>
-    </div>
-    {demands.slice(0,5).map((d,i) => {
-      const st = d.steps?.client?.status;
-      const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?LIME:C.mut;
-      const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Aguardando":"Em produção";
-      const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-      return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ background:C.card, borderRadius:16, padding:"12px 14px", border:`1px solid ${C.brd}`, marginBottom:8, cursor:"pointer", display:"flex", gap:12, alignItems:"center" }}>
-        {imgs[0] ? <img src={imgs[0].url} style={{ width:48, height:48, borderRadius:10, objectFit:"cover", flexShrink:0 }} /> : <div style={{ width:48, height:48, borderRadius:10, background:`${stColor}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(stColor)}</div>}
-        <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:13, fontWeight:600, color:C.txt, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-          <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>{d.network} · {d.format} · {d.createdAt}</p>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
-          <div style={{ width:6, height:6, borderRadius:3, background:stColor }} />
-          <span style={{ fontSize:9, fontWeight:600, color:stColor }}>{stLabel}</span>
-        </div>
-      </div>;
-    })}
-    {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:32 }}>
-      <span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:C.mut }}>{IC.content(C.mut)}</span>
-      <p style={{ fontSize:14, fontWeight:600, color:C.txt }}>Nenhum conteúdo ainda</p>
-      <p style={{ fontSize:11, color:C.mut, marginTop:4 }}>A agência vai enviar posts para sua aprovação aqui.</p>
-    </Card>}
-
-    {/* ── COMUNICADOS / NEWS (same as agency) ── */}
-    {(() => {
-      const catPhoto = (cat, seed) => {
-        const photos = {
-          trends:["https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80","https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80"],
-          updates:["https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600&q=80"],
-          tips:["https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80","https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80"],
-          cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80","https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600&q=80"],
-          default:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80","https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80"],
-        };
-        return (photos[cat]||photos.default)[(seed||0)%2];
-      };
-      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
-      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Mkt Digital",ia:"IA"};
-      const fallback = [
-        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais.",cat:"trends"},
-        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts.",cat:"updates"},
-        {id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para aumentar o alcance orgânico.",cat:"tips"},
-        {id:"f4",title:"Case: como triplicamos o ROI",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases"},
-      ];
-      const items = (articles.length > 0 ? articles : (articlesLoaded ? fallback : [])).slice(0,5);
-      if (items.length === 0) return null;
-      const featured = items[0];
-      const rest = items.slice(1,5);
-      return <>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0 10px"}}>
-          <h3 style={{fontSize:16,fontWeight:800,color:C.txt}}>Comunicados</h3>
-        </div>
-        {featured && (
-          <div style={{borderRadius:20,overflow:"hidden",marginBottom:10,position:"relative",height:190}}>
-            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(featured.cat,0);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
-            <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
-            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
-              <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{featured.title}</p>
-              <p style={{fontSize:11,color:"rgba(255,255,255,0.75)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{featured.summary||""}</p>
-            </div>
-          </div>
-        )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {rest.map((a,i)=>(
-            <div key={a.id||i} style={{borderRadius:16,overflow:"hidden",position:"relative",height:110}}>
-              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(a.cat,i+1);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
-              <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
-              <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
-            </div>
-          ))}
-        </div>
-      </>;
-    })()}
-
-    {/* ── GAMIFICAÇÃO CARD ── */}
-    {(() => {
-      const cxp = (() => { try { return parseInt(localStorage.getItem("uh_client_xp")||"120"); } catch { return 120; } })();
-      const cstreak = (() => { try { return parseInt(localStorage.getItem("uh_client_streak")||"3"); } catch { return 3; } })();
-      const LVLS = [{lvl:1,name:"Iniciante",min:0,max:100,color:"#8B8F92"},{lvl:2,name:"Engajado",min:100,max:300,color:"#3B82F6"},{lvl:3,name:"Dedicado",min:300,max:600,color:"#8B5CF6"},{lvl:4,name:"Estrategista",min:600,max:1000,color:"#F59E0B"},{lvl:5,name:"Parceiro Gold",min:1000,max:1600,color:"#EAB308"},{lvl:6,name:"Embaixador",min:1600,max:2500,color:"#10B981"},{lvl:7,name:"Lenda",min:2500,max:4000,color:"#EC4899"},{lvl:8,name:"Visionário",min:4000,max:Infinity,color:"#BBF246"}];
-      const cl = LVLS.find(l => cxp >= l.min && cxp < l.max) || LVLS[LVLS.length-1];
-      const nl = LVLS.find(l => l.lvl === cl.lvl + 1);
-      const prog = nl ? ((cxp - cl.min) / (nl.min - cl.min)) * 100 : 100;
-      return <>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
-          <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Gamificação</h3>
-          <span onClick={()=>setSub("gamify")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver tudo</span>
-        </div>
-        <div onClick={()=>setSub("gamify")} style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", background:`linear-gradient(135deg, ${cl.color}15, ${cl.color}06)`, border:`1px solid ${cl.color}25`, padding:"16px 18px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ position:"relative" }}>
-              <Av name={user.name||"C"} sz={44} fs={16} />
-              <div style={{ position:"absolute", bottom:-3, right:-3, width:18, height:18, borderRadius:9, background:cl.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:900, color:"#fff", border:`2px solid ${C.bg==="F5F5F5"?"#F5F5F5":C.bg}` }}>{cl.lvl}</div>
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:C.txt }}>{cl.name}</p>
-                <span style={{ fontSize:10, fontWeight:700, color:cl.color }}>{cxp} XP</span>
-              </div>
-              <div style={{ height:5, borderRadius:3, background:`${cl.color}15`, marginTop:6 }}><div style={{ height:5, borderRadius:3, background:cl.color, width:`${Math.min(prog,100)}%` }} /></div>
-              {nl && <p style={{ fontSize:9, color:C.mut, marginTop:3 }}>{nl.min - cxp} XP para {nl.name}</p>}
-            </div>
-            <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-              <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:900, color:"#EF4444" }}>{cstreak}</p><p style={{ fontSize:8, color:C.mut }}>streak</p></div>
-            </div>
-          </div>
-        </div>
-      </>;
-    })()}
-
-    {/* ── GAMIFICAÇÃO BANNER ── */}
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
-      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Seu Progresso</h3>
-      <span onClick={()=>setSub("gamify")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver tudo</span>
-    </div>
-    <div onClick={()=>setSub("gamify")} style={{ borderRadius:20, padding:"16px 18px", cursor:"pointer", background:`linear-gradient(135deg, #10B98120, #8B5CF610)`, border:`1px solid ${C.brd}` }}>
+    {/* MATCH4BIZ */}
+    <Card onClick={()=>setSub("match4biz")} style={{ marginTop:14, cursor:"pointer" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:48, height:48, borderRadius:14, background:`${LIME}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.gamify(LIME)}</div>
-        <div style={{ flex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <span style={{ fontSize:14, fontWeight:800, color:C.txt }}>Nível 3 · Parceiro</span>
-            <span style={{ fontSize:10, fontWeight:700, color:LIME, background:`${LIME}15`, padding:"2px 8px", borderRadius:6 }}>1.340 XP</span>
-          </div>
-          <div style={{ height:6, borderRadius:3, background:`${C.mut}15`, marginTop:8 }}>
-            <div style={{ height:6, borderRadius:3, background:`linear-gradient(90deg, #10B981, ${LIME})`, width:"46%", boxShadow:`0 0 8px #10B98140` }} />
-          </div>
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
-            <span style={{ fontSize:9, color:C.mut }}>1.200 / 2.500 XP</span>
-            <span style={{ fontSize:9, color:C.mut, display:"flex", alignItems:"center", gap:3 }}>{IC.gamify ? IC.gamify("#EF4444") : IC.trophy} 7 dias seguidos</span>
-          </div>
+        <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, #8B5CF630, #BBF24620)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </div>
+        <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Match4Biz</p><p style={{ fontSize:11, color:C.mut }}>3 matches</p></div>
+        <Tag color={LIME}>Novo</Tag>
       </div>
-    </div>
+    </Card>
 
-    {/* ── MATCH4BIZ BANNER ── */}
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
-      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Match4Biz</h3>
-      <span onClick={()=>setSub("match4biz")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Explorar</span>
-    </div>
-    <div onClick={()=>setSub("match4biz")} style={{ borderRadius:20, overflow:"hidden", cursor:"pointer", position:"relative", height:120, background:`linear-gradient(135deg, ${LIME}15, #8B5CF615, #3B82F615)`, border:`1px solid ${C.brd}` }}>
-      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", padding:"0 20px", gap:16 }}>
-        <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg, ${LIME}30, #8B5CF630)`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-        </div>
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:15, fontWeight:800, color:C.txt }}>Conecte-se com empresas</p>
-          <p style={{ fontSize:11, color:C.mut, marginTop:4, lineHeight:1.4 }}>Encontre parceiros de negócios ideais e expanda sua rede.</p>
-          <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:LIME, background:`${LIME}15`, padding:"3px 10px", borderRadius:8 }}>Novo</span>
-            <span style={{ fontSize:10, color:C.mut }}>6 empresas disponíveis</span>
+    {/* METRICAS */}
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:14 }}>
+      {[{label:"Alcance",value:metrics.reach,delta:metrics.reachD,ic:IC.reports},{label:"Engajamento",value:metrics.engagement,delta:metrics.engD,ic:IC.chat},{label:"Cliques",value:metrics.clicks,delta:metrics.clicksD,ic:IC.content},{label:"ROAS",value:metrics.roas,delta:metrics.roasD,ic:IC.financial}].map((m,i) => (
+        <Card key={i} style={{ padding:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+            <span style={{ color:C.mut }}>{typeof m.ic==="function"?m.ic(C.mut):m.ic}</span>
+            <span style={{ fontSize:9, fontWeight:600, letterSpacing:1, color:C.mut, textTransform:"uppercase" }}>{m.label}</span>
           </div>
-        </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </div>
-
-    {/* ── AÇÕES RÁPIDAS ── */}
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
-      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Ações rápidas</h3>
-    </div>
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-      {[
-        {l:"Aprovar conteúdos",ic:IC.check,k:"content",c:B.green},
-        {l:"Match4Biz",ic:IC.match4biz,k:"match4biz",c:"#8B5CF6",isSub:true},
-        {l:"Gamificação",ic:IC.gamify||IC.trophy,k:"gamify",c:"#EAB308",isSub:true},
-        {l:"Chat com agência",ic:IC.chat,k:"chat",c:"#EC4899"},
-      ].map((a,i) => (
-        <div key={i} onClick={()=>a.isSub?setSub(a.k):nav(a.k)} style={{ background:C.card, borderRadius:18, padding:"18px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
-          <div style={{ width:38, height:38, borderRadius:12, background:`${a.c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{typeof a.ic==="function"?a.ic(a.c):a.ic}</div>
-          <span style={{ fontSize:12, fontWeight:700, color:C.txt, lineHeight:1.3 }}>{a.l}</span>
-        </div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+            <span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.value}</span>
+            <span style={{ fontSize:11, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>{m.delta}</span>
+          </div>
+        </Card>
       ))}
     </div>
+
+    {/* RELATORIO */}
+    <Card style={{ marginTop:8, cursor:"pointer" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:44, height:44, borderRadius:14, background:`${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(C.mut) : IC.content(C.mut)}</div>
+        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:11, color:C.mut }}>ROAS 4.2x · 280 leads</p></div>
+        <Tag color={LIME}>Novo</Tag>
+      </div>
+    </Card>
+
+    {/* NEWS */}
+    {(() => {
+      const catPhoto = (cat) => ({ trends:"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80", updates:"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80", tips:"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80", cases:"https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80" }[cat] || "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80");
+      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",novidade:"#EC4899",branding:"#8B5CF6",ia:"#6366F1"};
+      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",novidade:"Novidade",branding:"Branding",ia:"IA"};
+      const fallback = [{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA transformando campanhas digitais.",cat:"trends"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates"},{id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias para aumentar alcance.",cat:"tips"}];
+      const items = (articles.length > 0 ? articles : (articlesLoaded ? fallback : [])).slice(0,3);
+      if (items.length === 0) return null;
+      return <>
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>News</p>
+        {items[0] && <div style={{borderRadius:18,overflow:"hidden",marginBottom:10,position:"relative",height:170}}>
+          <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
+          <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[items[0].cat]||"Geral"}</span>
+          <div style={{position:"absolute",bottom:14,left:14,right:14}}><p style={{fontSize:14,fontWeight:800,color:"#fff",lineHeight:1.3}}>{items[0].title}</p></div>
+        </div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {items.slice(1,3).map((a,i) => <div key={a.id||i} style={{borderRadius:14,overflow:"hidden",position:"relative",height:100}}>
+            <img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
+            <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
+            <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+          </div>)}
+        </div>
+      </>;
+    })()}
     <div style={{ height:20 }} />
   </>;
 
-  const renderContent = () => <>
+    const renderContent = () => <>
     {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprovação ({pendingApproval.length})</p>
       {pendingApproval.map(d => { const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")); return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
         <div style={{ display:"flex", gap:10 }}>
