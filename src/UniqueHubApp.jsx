@@ -13612,6 +13612,8 @@ function MainClientApp({ user, onLogout, dark }) {
   const { showToast, ToastEl } = useToast();
   const [demands, setDemands] = useState([]);
   const [demandsLoaded, setDemandsLoaded] = useState(false);
+  const [articles, setArticles] = useState([]);
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [headerC, setHeaderC] = useState(false);
   const scrollRef = useRef(null);
 
@@ -13632,6 +13634,15 @@ function MainClientApp({ user, onLogout, dark }) {
       setDemandsLoaded(true);
     })();
   }, [user?.id, demandsLoaded]);
+
+  /* Load articles */
+  useEffect(() => {
+    if (!supabase || articlesLoaded) return;
+    supaLoadNews().then(rows => {
+      if (rows) setArticles(rows.map(r => ({ id:r.id, title:r.title, summary:r.summary, cat:r.category, date:r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "", photo: r.photo || (r.body?.startsWith("__PHOTO__:") ? r.body.split("\n")[0].replace("__PHOTO__:","") : null) })));
+      setArticlesLoaded(true);
+    }).catch(() => setArticlesLoaded(true));
+  }, [articlesLoaded]);
 
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
@@ -13829,6 +13840,58 @@ function MainClientApp({ user, onLogout, dark }) {
       <p style={{ fontSize:14, fontWeight:600, color:C.txt }}>Nenhum conteúdo ainda</p>
       <p style={{ fontSize:11, color:C.mut, marginTop:4 }}>A agência vai enviar posts para sua aprovação aqui.</p>
     </Card>}
+
+    {/* ── COMUNICADOS / NEWS (same as agency) ── */}
+    {(() => {
+      const catPhoto = (cat, seed) => {
+        const photos = {
+          trends:["https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80","https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80"],
+          updates:["https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600&q=80"],
+          tips:["https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80","https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80"],
+          cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80","https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600&q=80"],
+          default:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80","https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80"],
+        };
+        return (photos[cat]||photos.default)[(seed||0)%2];
+      };
+      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
+      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Mkt Digital",ia:"IA"};
+      const fallback = [
+        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais.",cat:"trends"},
+        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts.",cat:"updates"},
+        {id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para aumentar o alcance orgânico.",cat:"tips"},
+        {id:"f4",title:"Case: como triplicamos o ROI",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases"},
+      ];
+      const items = (articles.length > 0 ? articles : (articlesLoaded ? fallback : [])).slice(0,5);
+      if (items.length === 0) return null;
+      const featured = items[0];
+      const rest = items.slice(1,5);
+      return <>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0 10px"}}>
+          <h3 style={{fontSize:16,fontWeight:800,color:C.txt}}>Comunicados</h3>
+        </div>
+        {featured && (
+          <div style={{borderRadius:20,overflow:"hidden",marginBottom:10,position:"relative",height:190}}>
+            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(featured.cat,0);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
+            <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
+            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
+              <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{featured.title}</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,0.75)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{featured.summary||""}</p>
+            </div>
+          </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {rest.map((a,i)=>(
+            <div key={a.id||i} style={{borderRadius:16,overflow:"hidden",position:"relative",height:110}}>
+              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(a.cat,i+1);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
+              <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
+              <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+            </div>
+          ))}
+        </div>
+      </>;
+    })()}
 
     {/* ── AÇÕES RÁPIDAS ── */}
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
