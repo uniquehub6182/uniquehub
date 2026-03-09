@@ -14284,15 +14284,84 @@ function MainClientApp({ user, onLogout, dark }) {
   const inactiveColor = dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)";
   const circleIcon = dark ? "#0D0D0D" : "#fff";
 
-  /* GAMIFICATION */
-  if (sub === "gamify") {
-    return <ClientGamification onBack={() => setSub(null)} user={user} />;
-  }
-
-  /* MATCH4BIZ */
-  if (sub === "match4biz") {
-    return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
-  }
+  /* ═══ CLIENT SUB-PAGES — reuse agency pages where possible ═══ */
+  if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} />;
+  if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
+  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
+  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={[]} team={[]} />;
+  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={[]} />;
+  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
+  if (sub === "reports") return <ReportsPage onBack={() => setSub(null)} clients={[]} team={[]} />;
+  if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={[]} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
+  if (sub === "financial") return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      <Head title="Financeiro" onBack={() => setSub(null)} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        {/* Plano atual */}
+        <Card style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ background:B.dark||"#111", padding:"20px", color:"#fff" }}>
+            <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
+            <p style={{ fontSize:22, fontWeight:900, marginTop:6 }}>Premium</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Gestão completa de redes sociais</p>
+          </div>
+          <div style={{ padding:"14px 20px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Valor mensal</span><span style={{ fontSize:14, fontWeight:700, color:B.accent }}>R$ 3.500</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Próximo vencimento</span><span style={{ fontSize:12, fontWeight:600 }}>15/04/2026</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Status</span><Tag color={B.green}>Ativo</Tag></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0" }}><span style={{ fontSize:12, color:B.muted }}>Contrato até</span><span style={{ fontSize:12, fontWeight:600 }}>Março/2027</span></div>
+          </div>
+        </Card>
+        {/* O que inclui */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>O que inclui</p>
+          {["Gestão de Instagram e Facebook","Até 20 posts por mês","3 Reels/mês","Stories diários","Relatório mensal de performance","Reunião mensal de alinhamento","Suporte via chat no Hub","Acesso ao Match4Biz","Academy completa"].map((item,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0" }}>
+              <span style={{ color:B.green }}>{IC.check}</span>
+              <span style={{ fontSize:12 }}>{item}</span>
+            </div>
+          ))}
+        </Card>
+        {/* Faturas */}
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Faturas recentes</p>
+        {[{m:"Mar/2026",v:"R$ 3.500",s:"pending"},{m:"Fev/2026",v:"R$ 3.500",s:"paid"},{m:"Jan/2026",v:"R$ 3.500",s:"paid"},{m:"Dez/2025",v:"R$ 3.500",s:"paid"}].map((f,i) => (
+          <Card key={i} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div><p style={{ fontSize:13, fontWeight:600 }}>{f.m}</p><p style={{ fontSize:11, color:B.muted }}>{f.v}</p></div>
+              <Tag color={f.s==="paid"?B.green:(B.orange||"#F59E0B")}>{f.s==="paid"?"Pago":"Pendente"}</Tag>
+            </div>
+          </Card>
+        ))}
+        {/* Upgrade */}
+        <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+          <p style={{ fontSize:14, fontWeight:700 }}>Quer mais resultados?</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Faça upgrade e tenha acesso a tráfego pago, produção audiovisual e muito mais.</p>
+          <button style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
+        </Card>
+        {/* Serviços extras */}
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
+        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Desenvolvimento de App",d:"Aplicativo iOS e Android",v:"Sob consulta"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}].map((s,i) => (
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
+              <span style={{ fontSize:11, fontWeight:600, color:B.accent }}>{s.v}</span>
+            </div>
+          </Card>
+        ))}
+        {/* Contrato */}
+        <Card style={{ marginTop:8 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:12, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.library(B.muted)}</div>
+            <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>Contrato</p><p style={{ fontSize:10, color:B.muted }}>Visualizar termos e condições</p></div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 
   /* DEMAND DETAIL */
   if (sub && sub.startsWith("demand_")) {
@@ -14548,14 +14617,28 @@ function MainClientApp({ user, onLogout, dark }) {
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calendário compartilhado</p></Card>}
-          {tab === "chat" && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat com a agência</p></Card>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={[]} team={[]} /></div>}
+          {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={true} setChatTermsOk={()=>{}} /></div>}
           {tab === "more" && <>
-            {[{l:"Gamificação",ic:IC.gamify||IC.trophy,d:"XP, missões e ranking",sub:"gamify"},{l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz"},{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conteúdos"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
-              <Card key={i} style={{ marginBottom:6, cursor:item.sub?"pointer":"default" }} onClick={()=>item.sub&&setSub(item.sub)}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {[
+              {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify"},
+              {l:"Conteúdo",ic:IC.content,d:"Posts para aprovar",sub:null,tab:"content"},
+              {l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz"},
+              {l:"Financeiro",ic:IC.financial,d:"Plano, faturas e serviços",sub:"financial"},
+              {l:"Relatórios",ic:IC.reports,d:"Performance das redes",sub:"reports"},
+              {l:"Calendário",ic:IC.calendar,d:"Reuniões e gravações",sub:"calendar"},
+              {l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais",sub:"library"},
+              {l:"Academy",ic:IC.academy,d:"Cursos e aprendizado",sub:"academy"},
+              {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news"},
+              {l:"Ideias",ic:IC.ideas,d:"Crie e visualize ideias",sub:"ideas"},
+              {l:"Assistente IA",ic:IC.ai,d:"IA para seu time comercial",sub:"ai"},
+              {l:"Ajuda",ic:IC.help,d:"Suporte e FAQ",sub:"help"},
+              {l:"Configurações",ic:IC.settings,d:"Perfil, aparência e segurança",sub:"settings"},
+            ].map((item,i) => (
+              <Card key={i} style={{ marginBottom:6, cursor:item.sub?"pointer":"default" }} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
                 <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.d}</p></div>
-                {item.sub ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>}
+                {(item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>}
               </div></Card>
             ))}
             <button onClick={onLogout} style={{ width:"100%", marginTop:16, padding:"14px 0", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
