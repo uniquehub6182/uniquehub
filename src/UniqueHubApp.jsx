@@ -551,7 +551,7 @@ const startMetaOAuth = (clientId) => {
   /* Store which client we're connecting, to use after redirect */
   try { sessionStorage.setItem("uh_meta_oauth_client", clientId); } catch {}
   /* Facebook Login for Business with config_id for Facebook pages */
-  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&config_id=${META_CONFIG_ID}&response_type=code&state=meta_connect_${clientId}&override_default_response_type=true`;
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&config_id=${META_CONFIG_ID}&response_type=code&state=meta_connect_${clientId}&override_default_response_type=true&auth_type=rerequest`;
   console.log("[Meta OAuth] Starting, redirect_uri:", META_REDIRECT_URI);
   window.location.href = url;
 };
