@@ -13429,6 +13429,343 @@ function Match4BizPage({ onBack, clients, user }) {
 /* ═══════════════════════════════════════════════════════════════════
    CLIENT MATCH4BIZ — Tinder de negócios entre clientes
    ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT GAMIFICATION — Sistema de XP, níveis, missões e conquistas
+   ═══════════════════════════════════════════════════════════════════ */
+function ClientGamify({ onBack, user, demands }) {
+  const [tab, setTab] = useState("overview");
+  const { showToast, ToastEl } = useToast();
+
+  /* XP & Level system */
+  const [xp, setXp] = useState(() => { try { return parseInt(localStorage.getItem("uh_client_xp")||"120"); } catch { return 120; } });
+  const [streak, setStreak] = useState(() => { try { return parseInt(localStorage.getItem("uh_client_streak")||"3"); } catch { return 3; } });
+  const [claimedMissions, setClaimedMissions] = useState(() => { try { return JSON.parse(localStorage.getItem("uh_client_missions")||"[]"); } catch { return []; } });
+  const [unlockedBadges, setUnlockedBadges] = useState(() => { try { return JSON.parse(localStorage.getItem("uh_client_badges")||'["first_login","explorer"]'); } catch { return ["first_login","explorer"]; } });
+
+  useEffect(() => { try { localStorage.setItem("uh_client_xp", String(xp)); } catch {} }, [xp]);
+  useEffect(() => { try { localStorage.setItem("uh_client_streak", String(streak)); } catch {} }, [streak]);
+  useEffect(() => { try { localStorage.setItem("uh_client_missions", JSON.stringify(claimedMissions)); } catch {} }, [claimedMissions]);
+  useEffect(() => { try { localStorage.setItem("uh_client_badges", JSON.stringify(unlockedBadges)); } catch {} }, [unlockedBadges]);
+
+  const LEVELS = [
+    { lvl:1, name:"Iniciante", min:0, max:100, color:"#8B8F92" },
+    { lvl:2, name:"Engajado", min:100, max:300, color:"#3B82F6" },
+    { lvl:3, name:"Dedicado", min:300, max:600, color:"#8B5CF6" },
+    { lvl:4, name:"Estrategista", min:600, max:1000, color:"#F59E0B" },
+    { lvl:5, name:"Parceiro Gold", min:1000, max:1600, color:"#EAB308" },
+    { lvl:6, name:"Embaixador", min:1600, max:2500, color:"#10B981" },
+    { lvl:7, name:"Lenda", min:2500, max:4000, color:"#EC4899" },
+    { lvl:8, name:"Visionário", min:4000, max:Infinity, color:"#BBF246" },
+  ];
+  const currentLevel = LEVELS.find(l => xp >= l.min && xp < l.max) || LEVELS[LEVELS.length-1];
+  const nextLevel = LEVELS.find(l => l.lvl === currentLevel.lvl + 1);
+  const levelProgress = nextLevel ? ((xp - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100 : 100;
+
+  const earnXp = (amount, label) => {
+    setXp(prev => prev + amount);
+    showToast("+" + amount + " XP — " + label);
+  };
+
+  /* Missions */
+  const today = new Date().toISOString().split("T")[0];
+  const MISSIONS = [
+    { id:"daily_login_"+today, type:"daily", title:"Login diário", desc:"Acesse o app hoje", xp:10, icon:"door", auto:true },
+    { id:"approve_1_"+today, type:"daily", title:"Aprovar conteúdo", desc:"Aprove pelo menos 1 post", xp:25, icon:"check", check:()=>(demands||[]).filter(d=>d.steps?.client?.status==="approved").length>0 },
+    { id:"chat_msg_"+today, type:"daily", title:"Enviar mensagem", desc:"Mande uma mensagem no chat", xp:15, icon:"chat", check:()=>false },
+    { id:"view_calendar_"+today, type:"daily", title:"Conferir agenda", desc:"Veja sua agenda de eventos", xp:10, icon:"calendar", check:()=>false },
+    { id:"streak_3", type:"achievement", title:"3 dias seguidos", desc:"Mantenha um streak de 3 dias", xp:50, icon:"fire", check:()=>streak>=3 },
+    { id:"streak_7", type:"achievement", title:"Semana perfeita", desc:"7 dias consecutivos no app", xp:100, icon:"fire", check:()=>streak>=7 },
+    { id:"approve_5", type:"weekly", title:"Revisor ativo", desc:"Aprove 5 conteúdos esta semana", xp:75, icon:"check", check:()=>(demands||[]).filter(d=>d.steps?.client?.status==="approved").length>=5 },
+    { id:"match4biz_1", type:"weekly", title:"Networking", desc:"Faça 1 conexão no Match4Biz", xp:40, icon:"heart", check:()=>false },
+  ];
+
+  const dailyMissions = MISSIONS.filter(m => m.type === "daily");
+  const weeklyMissions = MISSIONS.filter(m => m.type === "weekly");
+  const achievementMissions = MISSIONS.filter(m => m.type === "achievement");
+  const completedDaily = dailyMissions.filter(m => m.auto || (m.check && m.check()) || claimedMissions.includes(m.id)).length;
+  const dailyTotal = dailyMissions.length;
+
+  const claimMission = (mission) => {
+    if (claimedMissions.includes(mission.id)) return;
+    if (!mission.auto && mission.check && !mission.check()) { showToast("Missão ainda não concluída"); return; }
+    setClaimedMissions(prev => [...prev, mission.id]);
+    earnXp(mission.xp, mission.title);
+  };
+
+  /* Badges */
+  const BADGES = [
+    { id:"first_login", name:"Primeiro Acesso", desc:"Entrou no UniqueHub pela primeira vez", icon:"star", color:"#3B82F6", rarity:"Comum" },
+    { id:"explorer", name:"Explorador", desc:"Visitou todas as seções do app", icon:"compass", color:"#10B981", rarity:"Comum" },
+    { id:"approver", name:"Aprovador", desc:"Aprovou 10 conteúdos", icon:"check", color:"#F59E0B", rarity:"Raro" },
+    { id:"streak_master", name:"Consistência", desc:"Streak de 7 dias consecutivos", icon:"fire", color:"#EF4444", rarity:"Raro" },
+    { id:"networker", name:"Networker", desc:"5 conexões no Match4Biz", icon:"heart", color:"#EC4899", rarity:"Épico" },
+    { id:"feedback_king", name:"Voz Ativa", desc:"Deu feedback em 20 posts", icon:"chat", color:"#8B5CF6", rarity:"Épico" },
+    { id:"gold_client", name:"Parceiro Gold", desc:"Alcançou nível 5", icon:"trophy", color:"#EAB308", rarity:"Lendário" },
+    { id:"ambassador", name:"Embaixador", desc:"Alcançou nível 6 e indicou 3 empresas", icon:"crown", color:"#BBF246", rarity:"Lendário" },
+  ];
+
+  const rarityColor = { "Comum":"#3B82F6", "Raro":"#F59E0B", "Épico":"#8B5CF6", "Lendário":"#EC4899" };
+
+  const badgeIcon = (type, c) => {
+    const icons = {
+      star: <svg width="20" height="20" viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      compass: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill={c+"30"}/></svg>,
+      check: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>,
+      fire: <svg width="20" height="20" viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1"><path d="M12 23c-3.65 0-7-2.76-7-7.46 0-3.75 2.18-6.22 4.03-8.27C10.58 5.58 12 4 12 1c2.35 3.35 2.71 5.28 2.71 5.28S16.5 4 18 6c1.34 1.79 2 4.08 2 6.54C20 18.12 17.88 23 12 23z"/></svg>,
+      heart: <svg width="20" height="20" viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+      chat: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+      trophy: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>,
+      crown: <svg width="20" height="20" viewBox="0 0 24 24" fill={c} stroke={c} strokeWidth="1"><path d="M2 4l3 12h14l3-12-6 7-4-9-4 9-6-7z"/><path d="M3 20h18" fill="none" stroke={c} strokeWidth="2"/></svg>,
+    };
+    return icons[type] || icons.star;
+  };
+
+  /* Leaderboard (mock) */
+  const LEADERBOARD = [
+    { name:"Café Aroma", xp:2840, lvl:7, streak:28, avatar:"CA" },
+    { name:"TechSmart", xp:2100, lvl:6, streak:15, avatar:"TS" },
+    { name:"Studio Fitness", xp:1680, lvl:6, streak:21, avatar:"SF" },
+    { name:user.name||"Você", xp, lvl:currentLevel.lvl, streak, avatar:(user.name||"V").substring(0,2).toUpperCase(), isMe:true },
+    { name:"Bella Estética", xp:920, lvl:4, streak:8, avatar:"BE" },
+    { name:"Padaria Real", xp:650, lvl:4, streak:5, avatar:"PR" },
+    { name:"Pet Love", xp:340, lvl:3, streak:3, avatar:"PL" },
+    { name:"Nova Digital", xp:180, lvl:2, streak:1, avatar:"ND" },
+  ].sort((a,b) => b.xp - a.xp);
+  const myRank = LEADERBOARD.findIndex(l => l.isMe) + 1;
+
+  /* Rewards */
+  const REWARDS = [
+    { id:"discount_5", name:"5% desconto no plano", cost:500, icon:"tag", color:"#3B82F6", desc:"Válido por 1 mês" },
+    { id:"free_post", name:"1 post extra grátis", cost:300, icon:"gift", color:"#10B981", desc:"Conteúdo bônus" },
+    { id:"match_credits", name:"+20 créditos Match4Biz", cost:200, icon:"heart", color:"#EC4899", desc:"Para novas conexões" },
+    { id:"priority", name:"Atendimento prioritário", cost:800, icon:"star", color:"#F59E0B", desc:"Por 2 semanas" },
+    { id:"report", name:"Relatório personalizado", cost:600, icon:"report", color:"#8B5CF6", desc:"Análise detalhada" },
+    { id:"consultation", name:"30min de consultoria", cost:1200, icon:"video", color:"#EF4444", desc:"Com especialista" },
+  ];
+
+  const rewardIcon = (type, c) => {
+    const icons = {
+      tag: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>,
+      gift: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>,
+      heart: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+      star: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      report: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+      video: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+    };
+    return icons[type] || icons.star;
+  };
+
+  const TABS_G = [{k:"overview",l:"Visão Geral"},{k:"missions",l:"Missões"},{k:"badges",l:"Conquistas"},{k:"ranking",l:"Ranking"},{k:"rewards",l:"Resgatar"}];
+
+  return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      {ToastEl}
+      <Head title="Gamificação" onBack={onBack} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        {/* Level card */}
+        <div style={{ borderRadius:20, overflow:"hidden", background:`linear-gradient(135deg, ${currentLevel.color}20, ${currentLevel.color}08)`, border:`1px solid ${currentLevel.color}30`, padding:"20px", marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div style={{ position:"relative" }}>
+              <Av name={user.name||"C"} sz={56} fs={20} />
+              <div style={{ position:"absolute", bottom:-4, right:-4, width:22, height:22, borderRadius:11, background:currentLevel.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:900, color:"#fff", border:`2px solid ${B.bg}` }}>{currentLevel.lvl}</div>
+            </div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:16, fontWeight:800 }}>{user.name||"Cliente"}</p>
+              <p style={{ fontSize:12, color:currentLevel.color, fontWeight:700 }}>{currentLevel.name}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6 }}>
+                <div style={{ flex:1, height:6, borderRadius:3, background:`${currentLevel.color}20` }}>
+                  <div style={{ height:6, borderRadius:3, background:currentLevel.color, width:`${Math.min(levelProgress,100)}%`, transition:"width .5s ease" }} />
+                </div>
+                <span style={{ fontSize:10, fontWeight:700, color:currentLevel.color }}>{xp} XP</span>
+              </div>
+              {nextLevel && <p style={{ fontSize:9, color:B.muted, marginTop:3 }}>{nextLevel.min - xp} XP para {nextLevel.name}</p>}
+            </div>
+          </div>
+          {/* Stats row */}
+          <div style={{ display:"flex", gap:8, marginTop:14 }}>
+            <div style={{ flex:1, textAlign:"center", padding:"8px 0", borderRadius:10, background:`${B.bg}40` }}>
+              <p style={{ fontSize:18, fontWeight:900, color:"#EF4444" }}>{streak}</p>
+              <p style={{ fontSize:9, color:B.muted }}>Dias seguidos</p>
+            </div>
+            <div style={{ flex:1, textAlign:"center", padding:"8px 0", borderRadius:10, background:`${B.bg}40` }}>
+              <p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{unlockedBadges.length}</p>
+              <p style={{ fontSize:9, color:B.muted }}>Conquistas</p>
+            </div>
+            <div style={{ flex:1, textAlign:"center", padding:"8px 0", borderRadius:10, background:`${B.bg}40` }}>
+              <p style={{ fontSize:18, fontWeight:900, color:"#3B82F6" }}>#{myRank}</p>
+              <p style={{ fontSize:9, color:B.muted }}>Ranking</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:4, marginBottom:14, overflowX:"auto", scrollbarWidth:"none" }}>
+          {TABS_G.map(t => (
+            <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"7px 14px", borderRadius:10, border:"none", background:tab===t.k?B.accent:`${B.muted}10`, color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:11, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
+          ))}
+        </div>
+
+        {/* OVERVIEW */}
+        {tab === "overview" && <>
+          {/* Daily progress */}
+          <Card style={{ marginBottom:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>Missões de Hoje</p>
+              <Tag color={completedDaily===dailyTotal?B.green:B.accent}>{completedDaily}/{dailyTotal}</Tag>
+            </div>
+            <div style={{ height:6, borderRadius:3, background:`${B.accent}15` }}>
+              <div style={{ height:6, borderRadius:3, background:completedDaily===dailyTotal?B.green:B.accent, width:`${(completedDaily/dailyTotal)*100}%`, transition:"width .5s" }} />
+            </div>
+            {completedDaily===dailyTotal && <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:6, textAlign:"center" }}>Todas as missões do dia completas!</p>}
+          </Card>
+          {/* Quick missions */}
+          {dailyMissions.slice(0,3).map(m => {
+            const done = m.auto || (m.check && m.check()) || claimedMissions.includes(m.id);
+            const claimed = claimedMissions.includes(m.id);
+            return <Card key={m.id} style={{ marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:done?`${B.green}15`:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {done ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : badgeIcon(m.icon, B.accent)}
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:12, fontWeight:600, textDecoration:claimed?"line-through":"none", opacity:claimed?0.5:1 }}>{m.title}</p>
+                  <p style={{ fontSize:10, color:B.muted }}>{m.desc}</p>
+                </div>
+                {!claimed && done ? <button onClick={()=>claimMission(m)} style={{ padding:"6px 12px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>+{m.xp} XP</button> : claimed ? <span style={{ fontSize:10, color:B.green, fontWeight:600 }}>Coletado</span> : <span style={{ fontSize:10, color:B.muted }}>+{m.xp} XP</span>}
+              </div>
+            </Card>;
+          })}
+          <button onClick={()=>setTab("missions")} style={{ width:"100%", padding:"10px", borderRadius:10, background:`${B.accent}08`, border:`1px solid ${B.accent}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.accent, marginTop:4, marginBottom:14 }}>Ver todas as missões</button>
+
+          {/* Recent badges */}
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Conquistas recentes</p>
+          <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", paddingBottom:8 }}>
+            {BADGES.filter(b => unlockedBadges.includes(b.id)).map(b => (
+              <div key={b.id} style={{ flexShrink:0, width:80, textAlign:"center" }}>
+                <div style={{ width:56, height:56, borderRadius:16, background:`${b.color}15`, border:`2px solid ${b.color}40`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto" }}>{badgeIcon(b.icon, b.color)}</div>
+                <p style={{ fontSize:9, fontWeight:600, marginTop:4, lineHeight:1.2 }}>{b.name}</p>
+              </div>
+            ))}
+            {BADGES.filter(b => !unlockedBadges.includes(b.id)).slice(0,2).map(b => (
+              <div key={b.id} style={{ flexShrink:0, width:80, textAlign:"center", opacity:0.3 }}>
+                <div style={{ width:56, height:56, borderRadius:16, background:`${B.muted}10`, border:`2px dashed ${B.muted}30`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </div>
+                <p style={{ fontSize:9, fontWeight:600, marginTop:4, lineHeight:1.2 }}>???</p>
+              </div>
+            ))}
+          </div>
+        </>}
+
+        {/* MISSIONS */}
+        {tab === "missions" && <>
+          <p style={{ fontSize:14, fontWeight:800, marginBottom:4 }}>Missões Diárias</p>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Renovam a cada 24h</p>
+          {dailyMissions.map(m => {
+            const done = m.auto || (m.check && m.check()) || claimedMissions.includes(m.id);
+            const claimed = claimedMissions.includes(m.id);
+            return <Card key={m.id} style={{ marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:done?`${B.green}15`:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{done?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:badgeIcon(m.icon,B.accent)}</div>
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600, textDecoration:claimed?"line-through":"none" }}>{m.title}</p><p style={{ fontSize:10, color:B.muted }}>{m.desc}</p></div>
+                {!claimed&&done?<button onClick={()=>claimMission(m)} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D", animation:"fadeIn .3s ease" }}>+{m.xp} XP</button>:claimed?<Tag color={B.green}>Coletado</Tag>:<Tag color={B.muted}>{m.xp} XP</Tag>}
+              </div>
+            </Card>;
+          })}
+          <p style={{ fontSize:14, fontWeight:800, marginTop:16, marginBottom:4 }}>Missões Semanais</p>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Mais XP, mais desafio</p>
+          {weeklyMissions.map(m => {
+            const done = (m.check && m.check()) || claimedMissions.includes(m.id);
+            const claimed = claimedMissions.includes(m.id);
+            return <Card key={m.id} style={{ marginBottom:6, borderLeft:`3px solid ${done?B.green:B.accent}` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:done?`${B.green}15`:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{done?IC.check:badgeIcon(m.icon,B.accent)}</div>
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{m.title}</p><p style={{ fontSize:10, color:B.muted }}>{m.desc}</p></div>
+                {!claimed&&done?<button onClick={()=>claimMission(m)} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>+{m.xp} XP</button>:<Tag color={B.accent}>{m.xp} XP</Tag>}
+              </div>
+            </Card>;
+          })}
+          <p style={{ fontSize:14, fontWeight:800, marginTop:16, marginBottom:4 }}>Conquistas Permanentes</p>
+          {achievementMissions.map(m => {
+            const done = (m.check && m.check()) || claimedMissions.includes(m.id);
+            const claimed = claimedMissions.includes(m.id);
+            return <Card key={m.id} style={{ marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${B.orange||"#F59E0B"}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{badgeIcon(m.icon,B.orange||"#F59E0B")}</div>
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{m.title}</p><p style={{ fontSize:10, color:B.muted }}>{m.desc}</p></div>
+                {!claimed&&done?<button onClick={()=>claimMission(m)} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>+{m.xp} XP</button>:claimed?<Tag color={B.green}>Desbloqueado</Tag>:<Tag color={B.muted}>{m.xp} XP</Tag>}
+              </div>
+            </Card>;
+          })}
+        </>}
+
+        {/* BADGES */}
+        {tab === "badges" && <>
+          <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>{unlockedBadges.length} de {BADGES.length} conquistas desbloqueadas</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {BADGES.map(b => {
+              const unlocked = unlockedBadges.includes(b.id);
+              return <div key={b.id} style={{ borderRadius:16, padding:"16px 12px", textAlign:"center", background:unlocked?`${b.color}08`:B.bgCard, border:unlocked?`1.5px solid ${b.color}30`:`1.5px dashed ${B.border}`, opacity:unlocked?1:0.4 }}>
+                <div style={{ width:52, height:52, borderRadius:16, background:unlocked?`${b.color}15`:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", border:unlocked?`2px solid ${b.color}30`:"2px solid transparent" }}>
+                  {unlocked ? badgeIcon(b.icon, b.color) : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
+                </div>
+                <p style={{ fontSize:11, fontWeight:700 }}>{unlocked ? b.name : "???"}</p>
+                <p style={{ fontSize:9, color:B.muted, marginTop:2, lineHeight:1.3 }}>{unlocked ? b.desc : "Continue jogando"}</p>
+                <span style={{ display:"inline-block", marginTop:6, fontSize:8, fontWeight:700, color:rarityColor[b.rarity], background:`${rarityColor[b.rarity]}15`, padding:"2px 8px", borderRadius:6 }}>{b.rarity}</span>
+              </div>;
+            })}
+          </div>
+        </>}
+
+        {/* RANKING */}
+        {tab === "ranking" && <>
+          <Card style={{ textAlign:"center", padding:16, marginBottom:12, background:`linear-gradient(135deg, #EAB30815, #F59E0B08)`, border:`1px solid #EAB30830` }}>
+            <p style={{ fontSize:32, fontWeight:900, color:"#EAB308" }}>#{myRank}</p>
+            <p style={{ fontSize:12, color:B.muted }}>Sua posição no ranking</p>
+          </Card>
+          {LEADERBOARD.map((p,i) => (
+            <Card key={i} style={{ marginBottom:6, borderLeft:p.isMe?`3px solid ${B.accent}`:"3px solid transparent", background:p.isMe?`${B.accent}06`:B.bgCard }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:16, fontWeight:900, color:i===0?"#EAB308":i===1?"#94A3B8":i===2?"#CD7F32":B.muted, width:24, textAlign:"center" }}>{i+1}</span>
+                <Av name={p.avatar} sz={36} fs={13} />
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:12, fontWeight:p.isMe?800:600 }}>{p.name} {p.isMe && <span style={{ fontSize:9, color:B.accent }}>(você)</span>}</p>
+                  <p style={{ fontSize:10, color:B.muted }}>Nível {p.lvl} · {p.streak} dias</p>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ fontSize:13, fontWeight:800, color:p.isMe?B.accent:B.text }}>{p.xp.toLocaleString()}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>XP</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* REWARDS */}
+        {tab === "rewards" && <>
+          <Card style={{ textAlign:"center", padding:16, marginBottom:12, background:`${B.accent}06`, border:`1px solid ${B.accent}20` }}>
+            <p style={{ fontSize:28, fontWeight:900, color:B.accent }}>{xp}</p>
+            <p style={{ fontSize:11, color:B.muted }}>XP disponíveis para resgatar</p>
+          </Card>
+          {REWARDS.map((r,i) => {
+            const canAfford = xp >= r.cost;
+            return <Card key={r.id} style={{ marginBottom:8, opacity:canAfford?1:0.5 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:44, height:44, borderRadius:14, background:`${r.color}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{rewardIcon(r.icon, r.color)}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:700 }}>{r.name}</p>
+                  <p style={{ fontSize:10, color:B.muted }}>{r.desc}</p>
+                </div>
+                <button onClick={()=>{ if(!canAfford){showToast("XP insuficiente");return;} setXp(prev=>prev-r.cost); showToast(r.name+" resgatado!"); }} disabled={!canAfford} style={{ padding:"8px 14px", borderRadius:10, background:canAfford?B.accent:`${B.muted}15`, border:"none", cursor:canAfford?"pointer":"default", fontFamily:"inherit", fontSize:11, fontWeight:700, color:canAfford?(B.textOnAccent||"#0D0D0D"):B.muted }}>{r.cost} XP</button>
+              </div>
+            </Card>;
+          })}
+        </>}
+      </div>
+    </div>
+  );
+}
+
 function ClientMatch4Biz({ onBack, user }) {
   const [accepted, setAccepted] = useState(false);
   const [tab, setTab] = useState("discover");
@@ -13738,6 +14075,349 @@ function ClientMatch4Biz({ onBack, user }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT GAMIFICATION — Sistema de engajamento do cliente
+   ═══════════════════════════════════════════════════════════════════ */
+function ClientGamification({ onBack, user }) {
+  const [tab, setTab] = useState("meu");
+  const [selBadge, setSelBadge] = useState(null);
+  const [selReward, setSelReward] = useState(null);
+  const { showToast, ToastEl } = useToast();
+
+  /* Mock client data — will be replaced with Supabase */
+  const [xp, setXp] = useState(1340);
+  const [coins, setCoins] = useState(280);
+  const [streak, setStreak] = useState(7);
+  const [dailyClaimed, setDailyClaimed] = useState(false);
+
+  const LEVELS = [
+    { level:1, title:"Novo Cliente", min:0, max:500, color:"#8B8F92" },
+    { level:2, title:"Engajado", min:500, max:1200, color:"#3B82F6" },
+    { level:3, title:"Parceiro", min:1200, max:2500, color:"#10B981" },
+    { level:4, title:"VIP", min:2500, max:4500, color:"#8B5CF6" },
+    { level:5, title:"Premium", min:4500, max:7500, color:"#F59E0B" },
+    { level:6, title:"Elite", min:7500, max:12000, color:"#EC4899" },
+    { level:7, title:"Embaixador", min:12000, max:20000, color:"#EF4444" },
+    { level:8, title:"Lenda", min:20000, max:99999, color:"#FFD700" },
+  ];
+  const getLevel = x => LEVELS.find(l => x >= l.min && x < l.max) || LEVELS[LEVELS.length-1];
+  const lvl = getLevel(xp);
+  const nextLvl = LEVELS[LEVELS.indexOf(lvl)+1] || lvl;
+  const pct = ((xp - lvl.min) / (lvl.max - lvl.min)) * 100;
+
+  const ALL_BADGES = [
+    { id:"first_login", icon:"rocket", name:"Primeiro Acesso", desc:"Fez login pela primeira vez", xp:50, rarity:"Comum", earned:true },
+    { id:"approve5", icon:"check-circle", name:"Aprovador", desc:"Aprovou 5 conteúdos", xp:100, rarity:"Comum", earned:true },
+    { id:"streak7", icon:"flame", name:"Em Chamas", desc:"7 dias seguidos no app", xp:150, rarity:"Comum", earned:true },
+    { id:"approve20", icon:"star", name:"Decisivo", desc:"Aprovou 20 conteúdos", xp:250, rarity:"Raro", earned:false },
+    { id:"streak30", icon:"diamond", name:"Inabalável", desc:"30 dias seguidos no app", xp:500, rarity:"Épico", earned:false },
+    { id:"match_first", icon:"heart", name:"Primeiro Match", desc:"Fez seu primeiro Match4Biz", xp:200, rarity:"Raro", earned:false },
+    { id:"feedback10", icon:"message", name:"Comunicativo", desc:"Enviou 10 feedbacks", xp:200, rarity:"Raro", earned:false },
+    { id:"fast_approve", icon:"zap", name:"Relâmpago", desc:"Aprovou em menos de 1h", xp:100, rarity:"Comum", earned:true },
+    { id:"all_approve", icon:"trophy", name:"Perfeição", desc:"100% de aprovações sem edição", xp:400, rarity:"Épico", earned:false },
+    { id:"event5", icon:"calendar", name:"Presente", desc:"Participou de 5 eventos", xp:200, rarity:"Raro", earned:false },
+    { id:"academy3", icon:"book", name:"Estudioso", desc:"Completou 3 cursos", xp:300, rarity:"Épico", earned:false },
+    { id:"ambassador", icon:"crown", name:"Embaixador", desc:"Indicou 3 novos clientes", xp:1000, rarity:"Lendário", earned:false },
+  ];
+
+  const CHALLENGES = [
+    { id:1, title:"Aprovar Tudo", desc:"Aprove todos os conteúdos pendentes", reward:100, coins:20, progress:3, total:5, deadline:"Sexta", type:"Semanal", color:"#10B981" },
+    { id:2, title:"Sequência Diária", desc:"Acesse o app 5 dias seguidos", reward:150, coins:30, progress:streak>5?5:streak, total:5, deadline:"Contínuo", type:"Diário", color:"#3B82F6" },
+    { id:3, title:"Explorer", desc:"Visite todas as seções do app", reward:80, coins:15, progress:4, total:7, deadline:"Domingo", type:"Semanal", color:"#8B5CF6" },
+    { id:4, title:"Feedback Detalhado", desc:"Envie 3 feedbacks com mais de 50 caracteres", reward:120, coins:25, progress:1, total:3, deadline:"Mensal", type:"Mensal", color:"#EC4899" },
+    { id:5, title:"Match Master", desc:"Conecte-se com 2 empresas no Match4Biz", reward:200, coins:40, progress:0, total:2, deadline:"Mensal", type:"Mensal", color:"#F59E0B" },
+    { id:6, title:"Academy Star", desc:"Assista 2 aulas na Academy", reward:100, coins:20, progress:0, total:2, deadline:"Semanal", type:"Semanal", color:"#EF4444" },
+  ];
+
+  const REWARDS = [
+    { id:1, name:"Diagnóstico Gratuito", desc:"Análise completa das suas redes sociais", cost:500, icon:"chart", color:"#3B82F6", stock:5 },
+    { id:2, name:"Post Extra", desc:"Um post adicional no seu plano mensal", cost:300, icon:"image", color:"#10B981", stock:10 },
+    { id:3, name:"Consultoria 30min", desc:"Sessão exclusiva com especialista", cost:800, icon:"video", color:"#8B5CF6", stock:3 },
+    { id:4, name:"Desconto 10%", desc:"Na mensalidade do próximo mês", cost:1000, icon:"tag", color:"#F59E0B", stock:2 },
+    { id:5, name:"Reel Profissional", desc:"Produção de 1 reel com equipe completa", cost:1200, icon:"film", color:"#EC4899", stock:2 },
+    { id:6, name:"Relatório Premium", desc:"Relatório detalhado de performance", cost:400, icon:"file", color:"#0EA5E9", stock:8 },
+  ];
+
+  const LEADERBOARD = [
+    { name:"Casa Nova Imóveis", xp:2850, level:4, streak:14 },
+    { name:user?.name||"Meu Negócio", xp, level:lvl.level, streak, isMe:true },
+    { name:"Bella Estética", xp:1180, level:2, streak:5 },
+    { name:"TechSmart", xp:980, level:2, streak:3 },
+    { name:"Studio Fitness", xp:720, level:2, streak:8 },
+    { name:"Pet Love Shop", xp:450, level:1, streak:2 },
+  ].sort((a,b) => b.xp - a.xp);
+
+  const claimDaily = () => {
+    if (dailyClaimed) return;
+    const bonus = streak >= 7 ? 30 : streak >= 3 ? 20 : 10;
+    setXp(x => x + bonus);
+    setCoins(c => c + 5);
+    setStreak(s => s + 1);
+    setDailyClaimed(true);
+    showToast(`+${bonus} XP · +5 moedas · Streak ${streak+1} dias!`);
+  };
+
+  const redeemReward = (r) => {
+    if (coins < r.cost) { showToast("Moedas insuficientes"); return; }
+    setCoins(c => c - r.cost);
+    setSelReward(null);
+    showToast(`${r.name} resgatado! A equipe entrará em contato.`);
+  };
+
+  const rarityColor = r => ({"Comum":B.muted,"Raro":"#3B82F6","Épico":"#8B5CF6","Lendário":"#F59E0B"}[r]||B.muted);
+
+  const badgeIcon = (name, color, sz=20) => {
+    const icons = {
+      "rocket": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/></svg>,
+      "check-circle": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+      "flame": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>,
+      "star": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      "diamond": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/></svg>,
+      "heart": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+      "message": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+      "zap": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+      "trophy": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>,
+      "calendar": IC.calendar(color),
+      "book": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
+      "crown": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><path d="M2 4l3 12h14l3-12-5 4-5-4-5 4z"/><path d="M5 16l-.8 4h15.6l-.8-4"/></svg>,
+      "chart": IC.reports ? IC.reports(color) : IC.trending(color),
+      "image": IC.content(color),
+      "video": IC.chat(color),
+      "tag": IC.financial(color),
+      "film": IC.content(color),
+      "file": IC.library ? IC.library(color) : IC.content(color),
+    };
+    return icons[name] || icons.star;
+  };
+
+  /* BADGE DETAIL SHEET */
+  if (selBadge) {
+    const rc = rarityColor(selBadge.rarity);
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="" onBack={()=>setSelBadge(null)} />
+        <div className="content" style={{ padding:"0 20px", textAlign:"center" }}>
+          <div style={{ width:80, height:80, borderRadius:"50%", background:selBadge.earned?`${rc}20`:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"30px auto 16px", boxShadow:selBadge.earned?`0 8px 30px ${rc}30`:"none" }}>
+            {badgeIcon(selBadge.icon, selBadge.earned?rc:B.muted, 36)}
+          </div>
+          <p style={{ fontSize:20, fontWeight:900 }}>{selBadge.name}</p>
+          <Tag color={rc}>{selBadge.rarity}</Tag>
+          <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{selBadge.desc}</p>
+          <Card style={{ marginTop:20, display:"flex", justifyContent:"space-around" }}>
+            <div><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>+{selBadge.xp}</p><p style={{ fontSize:10, color:B.muted }}>XP</p></div>
+            <div style={{ width:1, background:B.border }} />
+            <div><p style={{ fontSize:18, fontWeight:900, color:selBadge.earned?B.green:B.muted }}>{selBadge.earned?"Conquistado":"Bloqueado"}</p><p style={{ fontSize:10, color:B.muted }}>{selBadge.earned?"Parabéns!":"Continue usando o app"}</p></div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  /* REWARD DETAIL */
+  if (selReward) {
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="" onBack={()=>setSelReward(null)} />
+        <div className="content" style={{ padding:"0 20px", textAlign:"center" }}>
+          <div style={{ width:80, height:80, borderRadius:"50%", background:`${selReward.color}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"30px auto 16px" }}>
+            {badgeIcon(selReward.icon, selReward.color, 36)}
+          </div>
+          <p style={{ fontSize:20, fontWeight:900 }}>{selReward.name}</p>
+          <p style={{ fontSize:13, color:B.muted, marginTop:8, lineHeight:1.6 }}>{selReward.desc}</p>
+          <Card style={{ marginTop:20 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div><p style={{ fontSize:11, color:B.muted }}>Custo</p><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{selReward.cost}</p><p style={{ fontSize:10, color:B.muted }}>moedas</p></div>
+              <div><p style={{ fontSize:11, color:B.muted }}>Seu saldo</p><p style={{ fontSize:22, fontWeight:900, color:coins>=selReward.cost?B.green:(B.red||"#FF6B6B") }}>{coins}</p><p style={{ fontSize:10, color:B.muted }}>moedas</p></div>
+              <div><p style={{ fontSize:11, color:B.muted }}>Estoque</p><p style={{ fontSize:22, fontWeight:900 }}>{selReward.stock}</p><p style={{ fontSize:10, color:B.muted }}>disponíveis</p></div>
+            </div>
+          </Card>
+          <button onClick={()=>redeemReward(selReward)} disabled={coins<selReward.cost} style={{ width:"100%", marginTop:16, padding:"15px 0", borderRadius:14, background:coins>=selReward.cost?B.accent:`${B.muted}20`, border:"none", cursor:coins>=selReward.cost?"pointer":"default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:coins>=selReward.cost?(B.textOnAccent||"#0D0D0D"):B.muted }}>
+            {coins>=selReward.cost ? "Resgatar Agora" : "Moedas insuficientes"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const TABS_G = [{k:"meu",l:"Meu Progresso"},{k:"desafios",l:"Desafios"},{k:"badges",l:"Conquistas"},{k:"loja",l:"Loja"},{k:"ranking",l:"Ranking"}];
+
+  return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      {ToastEl}
+      <Head title="Gamificação" onBack={onBack} />
+      <div className="content" style={{ padding:"0 16px" }}>
+
+        {/* Daily check-in banner */}
+        {!dailyClaimed && <div onClick={claimDaily} style={{ borderRadius:16, padding:"14px 16px", background:`linear-gradient(135deg, ${B.accent}15, #8B5CF615)`, border:`1.5px solid ${B.accent}30`, marginBottom:12, cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            {badgeIcon("flame", B.accent, 22)}
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:13, fontWeight:700 }}>Check-in diário disponível!</p>
+            <p style={{ fontSize:11, color:B.muted }}>Toque para ganhar XP · Streak: {streak} dias</p>
+          </div>
+          <div style={{ background:B.accent, borderRadius:10, padding:"6px 14px" }}>
+            <span style={{ fontSize:12, fontWeight:800, color:B.textOnAccent||"#0D0D0D" }}>+{streak>=7?30:streak>=3?20:10} XP</span>
+          </div>
+        </div>}
+
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:4, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
+          {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"7px 14px", borderRadius:10, border:"none", background:tab===t.k?B.accent:`${B.muted}08`, color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:11, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
+        </div>
+
+        {/* ═══ MEU PROGRESSO ═══ */}
+        {tab === "meu" && <>
+          {/* Level card */}
+          <Card style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ background:`linear-gradient(135deg, ${lvl.color}25, ${lvl.color}08)`, padding:"20px 16px 16px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={user?.name||"C"} sz={52} fs={20} />
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:16, fontWeight:800 }}>{user?.name||"Cliente"}</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:lvl.color, background:`${lvl.color}20`, padding:"2px 10px", borderRadius:6 }}>Nível {lvl.level} · {lvl.title}</span>
+                  </div>
+                </div>
+                <div style={{ textAlign:"center" }}>
+                  <p style={{ fontSize:24, fontWeight:900, color:B.accent }}>{xp}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>XP Total</p>
+                </div>
+              </div>
+              <div style={{ marginTop:14 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:10, color:B.muted }}>Nível {lvl.level}</span>
+                  <span style={{ fontSize:10, color:B.muted }}>{xp - lvl.min}/{lvl.max - lvl.min} XP</span>
+                  <span style={{ fontSize:10, color:B.muted }}>Nível {nextLvl.level}</span>
+                </div>
+                <div style={{ height:8, borderRadius:4, background:`${B.muted}15` }}>
+                  <div style={{ height:8, borderRadius:4, background:`linear-gradient(90deg, ${lvl.color}, ${B.accent})`, width:`${pct}%`, transition:"width .5s ease", boxShadow:`0 0 8px ${lvl.color}40` }} />
+                </div>
+              </div>
+            </div>
+          </Card>
+          {/* Stats grid */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:10 }}>
+            <Card style={{ textAlign:"center", padding:12 }}><span style={{ display:"flex", justifyContent:"center", color:"#F59E0B", marginBottom:4 }}>{badgeIcon("star","#F59E0B",18)}</span><p style={{ fontSize:18, fontWeight:900, color:"#F59E0B" }}>{coins}</p><p style={{ fontSize:9, color:B.muted }}>Moedas</p></Card>
+            <Card style={{ textAlign:"center", padding:12 }}><span style={{ display:"flex", justifyContent:"center", color:"#EF4444", marginBottom:4 }}>{badgeIcon("flame","#EF4444",18)}</span><p style={{ fontSize:18, fontWeight:900, color:"#EF4444" }}>{streak}</p><p style={{ fontSize:9, color:B.muted }}>Dias seguidos</p></Card>
+            <Card style={{ textAlign:"center", padding:12 }}><span style={{ display:"flex", justifyContent:"center", color:"#8B5CF6", marginBottom:4 }}>{badgeIcon("trophy","#8B5CF6",18)}</span><p style={{ fontSize:18, fontWeight:900, color:"#8B5CF6" }}>{ALL_BADGES.filter(b=>b.earned).length}/{ALL_BADGES.length}</p><p style={{ fontSize:9, color:B.muted }}>Conquistas</p></Card>
+          </div>
+          {/* Earned badges */}
+          <p className="sl" style={{ marginTop:14, marginBottom:8 }}>Suas conquistas</p>
+          <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+            {ALL_BADGES.filter(b=>b.earned).map(b => (
+              <div key={b.id} onClick={()=>setSelBadge(b)} style={{ flexShrink:0, width:64, textAlign:"center", cursor:"pointer" }}>
+                <div style={{ width:48, height:48, borderRadius:"50%", background:`${rarityColor(b.rarity)}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", boxShadow:`0 2px 10px ${rarityColor(b.rarity)}20` }}>{badgeIcon(b.icon, rarityColor(b.rarity), 22)}</div>
+                <p style={{ fontSize:9, fontWeight:600, marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</p>
+              </div>
+            ))}
+          </div>
+          {/* How to earn XP */}
+          <p className="sl" style={{ marginTop:14, marginBottom:8 }}>Como ganhar XP</p>
+          {[{a:"Aprovar conteúdo",v:"+20 XP",c:B.green},{a:"Check-in diário",v:"+10-30 XP",c:"#EF4444"},{a:"Enviar feedback",v:"+15 XP",c:"#3B82F6"},{a:"Completar desafio",v:"+80-200 XP",c:"#8B5CF6"},{a:"Match4Biz",v:"+50 XP",c:"#F59E0B"},{a:"Assistir aula",v:"+25 XP",c:"#EC4899"}].map((item,i) => (
+            <Card key={i} style={{ marginBottom:4, padding:"10px 14px" }}><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:6, height:6, borderRadius:3, background:item.c }} /><span style={{ fontSize:12 }}>{item.a}</span></div><span style={{ fontSize:12, fontWeight:700, color:item.c }}>{item.v}</span></div></Card>
+          ))}
+        </>}
+
+        {/* ═══ DESAFIOS ═══ */}
+        {tab === "desafios" && <>
+          {CHALLENGES.map((ch,i) => {
+            const done = ch.progress >= ch.total;
+            return <Card key={ch.id} delay={i*0.04} style={{ marginBottom:8, borderLeft:`3px solid ${done?B.green:ch.color}`, opacity:done?0.6:1 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${ch.color}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{badgeIcon(ch.id<=2?"flame":ch.id===3?"rocket":ch.id===4?"message":ch.id===5?"heart":"book", ch.color, 20)}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:700 }}>{ch.title}</p>
+                    <Tag color={ch.color}>{ch.type}</Tag>
+                  </div>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{ch.desc}</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+                    <div style={{ flex:1, height:6, borderRadius:3, background:`${ch.color}12` }}>
+                      <div style={{ height:6, borderRadius:3, background:ch.color, width:`${(ch.progress/ch.total)*100}%`, transition:"width .4s" }} />
+                    </div>
+                    <span style={{ fontSize:10, fontWeight:700, color:ch.color }}>{ch.progress}/{ch.total}</span>
+                  </div>
+                  <div style={{ display:"flex", gap:8, marginTop:6 }}>
+                    <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>+{ch.reward} XP</span>
+                    <span style={{ fontSize:10, color:"#F59E0B", fontWeight:600 }}>+{ch.coins} moedas</span>
+                    <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{ch.deadline}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>;
+          })}
+        </>}
+
+        {/* ═══ BADGES/CONQUISTAS ═══ */}
+        {tab === "badges" && <>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+            {ALL_BADGES.map(b => {
+              const rc = rarityColor(b.rarity);
+              return <Card key={b.id} onClick={()=>setSelBadge(b)} style={{ textAlign:"center", padding:14, cursor:"pointer", opacity:b.earned?1:0.4, position:"relative" }}>
+                {!b.earned && <div style={{ position:"absolute", top:6, right:6 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>}
+                <div style={{ width:44, height:44, borderRadius:"50%", background:b.earned?`${rc}15`:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", boxShadow:b.earned?`0 2px 10px ${rc}20`:"none" }}>
+                  {badgeIcon(b.icon, b.earned?rc:B.muted, 22)}
+                </div>
+                <p style={{ fontSize:10, fontWeight:700 }}>{b.name}</p>
+                <span style={{ fontSize:8, fontWeight:600, color:rc }}>{b.rarity}</span>
+              </Card>;
+            })}
+          </div>
+        </>}
+
+        {/* ═══ LOJA ═══ */}
+        {tab === "loja" && <>
+          <Card style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, background:`linear-gradient(135deg, #F59E0B15, #F59E0B05)`, border:`1px solid #F59E0B20` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>{badgeIcon("star","#F59E0B",20)}<span style={{ fontSize:14, fontWeight:700 }}>Seu saldo</span></div>
+            <span style={{ fontSize:22, fontWeight:900, color:"#F59E0B" }}>{coins} moedas</span>
+          </Card>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {REWARDS.map(r => (
+              <Card key={r.id} onClick={()=>setSelReward(r)} style={{ cursor:"pointer", padding:14 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${r.color}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{badgeIcon(r.icon, r.color, 20)}</div>
+                <p style={{ fontSize:12, fontWeight:700 }}>{r.name}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2, lineHeight:1.4 }}>{r.desc}</p>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:8 }}>
+                  <span style={{ fontSize:13, fontWeight:800, color:"#F59E0B" }}>{r.cost}</span>
+                  <span style={{ fontSize:9, color:B.muted }}>{r.stock} disp.</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>}
+
+        {/* ═══ RANKING ═══ */}
+        {tab === "ranking" && <>
+          {LEADERBOARD.map((p,i) => {
+            const rank = i+1;
+            const rlvl = getLevel(p.xp);
+            return <Card key={i} delay={i*0.04} style={{ marginBottom:6, background:p.isMe?`${B.accent}06`:B.bgCard, border:p.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:rank<=3?[`#FFD70020`,`#C0C0C020`,`#CD7F3220`][rank-1]:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <span style={{ fontSize:rank<=3?14:12, fontWeight:900, color:rank<=3?["#FFD700","#A0A0A0","#CD7F32"][rank-1]:B.muted }}>{rank}</span>
+                </div>
+                <Av name={p.name} sz={36} fs={13} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:12, fontWeight:p.isMe?800:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name} {p.isMe?"(Você)":""}</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                    <span style={{ fontSize:9, fontWeight:700, color:rlvl.color, background:`${rlvl.color}15`, padding:"1px 6px", borderRadius:4 }}>Nv.{rlvl.level}</span>
+                    <span style={{ fontSize:9, color:B.muted, display:"flex", alignItems:"center", gap:2 }}>{badgeIcon("flame","#EF4444",10)} {p.streak}d</span>
+                  </div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ fontSize:14, fontWeight:900, color:p.isMe?B.accent:B.text }}>{p.xp.toLocaleString()}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>XP</p>
+                </div>
+              </div>
+            </Card>;
+          })}
+        </>}
+      </div>
+    </div>
+  );
+}
+
 function ClientOnboarding({ onComplete, onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -13986,6 +14666,16 @@ function MainClientApp({ user, onLogout, dark }) {
   const inactiveColor = dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)";
   const circleIcon = dark ? "#0D0D0D" : "#fff";
 
+  /* GAMIFICATION */
+  if (sub === "gamify") {
+    return <ClientGamify onBack={() => setSub(null)} user={user} demands={demands} />;
+  }
+
+  /* GAMIFICATION */
+  if (sub === "gamify") {
+    return <ClientGamification onBack={() => setSub(null)} user={user} />;
+  }
+
   /* MATCH4BIZ */
   if (sub === "match4biz") {
     return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
@@ -14210,6 +14900,65 @@ function MainClientApp({ user, onLogout, dark }) {
       </>;
     })()}
 
+    {/* ── GAMIFICAÇÃO CARD ── */}
+    {(() => {
+      const cxp = (() => { try { return parseInt(localStorage.getItem("uh_client_xp")||"120"); } catch { return 120; } })();
+      const cstreak = (() => { try { return parseInt(localStorage.getItem("uh_client_streak")||"3"); } catch { return 3; } })();
+      const LVLS = [{lvl:1,name:"Iniciante",min:0,max:100,color:"#8B8F92"},{lvl:2,name:"Engajado",min:100,max:300,color:"#3B82F6"},{lvl:3,name:"Dedicado",min:300,max:600,color:"#8B5CF6"},{lvl:4,name:"Estrategista",min:600,max:1000,color:"#F59E0B"},{lvl:5,name:"Parceiro Gold",min:1000,max:1600,color:"#EAB308"},{lvl:6,name:"Embaixador",min:1600,max:2500,color:"#10B981"},{lvl:7,name:"Lenda",min:2500,max:4000,color:"#EC4899"},{lvl:8,name:"Visionário",min:4000,max:Infinity,color:"#BBF246"}];
+      const cl = LVLS.find(l => cxp >= l.min && cxp < l.max) || LVLS[LVLS.length-1];
+      const nl = LVLS.find(l => l.lvl === cl.lvl + 1);
+      const prog = nl ? ((cxp - cl.min) / (nl.min - cl.min)) * 100 : 100;
+      return <>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
+          <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Gamificação</h3>
+          <span onClick={()=>setSub("gamify")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver tudo</span>
+        </div>
+        <div onClick={()=>setSub("gamify")} style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", background:`linear-gradient(135deg, ${cl.color}15, ${cl.color}06)`, border:`1px solid ${cl.color}25`, padding:"16px 18px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ position:"relative" }}>
+              <Av name={user.name||"C"} sz={44} fs={16} />
+              <div style={{ position:"absolute", bottom:-3, right:-3, width:18, height:18, borderRadius:9, background:cl.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:900, color:"#fff", border:`2px solid ${C.bg==="F5F5F5"?"#F5F5F5":C.bg}` }}>{cl.lvl}</div>
+            </div>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <p style={{ fontSize:14, fontWeight:700, color:C.txt }}>{cl.name}</p>
+                <span style={{ fontSize:10, fontWeight:700, color:cl.color }}>{cxp} XP</span>
+              </div>
+              <div style={{ height:5, borderRadius:3, background:`${cl.color}15`, marginTop:6 }}><div style={{ height:5, borderRadius:3, background:cl.color, width:`${Math.min(prog,100)}%` }} /></div>
+              {nl && <p style={{ fontSize:9, color:C.mut, marginTop:3 }}>{nl.min - cxp} XP para {nl.name}</p>}
+            </div>
+            <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+              <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:900, color:"#EF4444" }}>{cstreak}</p><p style={{ fontSize:8, color:C.mut }}>streak</p></div>
+            </div>
+          </div>
+        </div>
+      </>;
+    })()}
+
+    {/* ── GAMIFICAÇÃO BANNER ── */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
+      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Seu Progresso</h3>
+      <span onClick={()=>setSub("gamify")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver tudo</span>
+    </div>
+    <div onClick={()=>setSub("gamify")} style={{ borderRadius:20, padding:"16px 18px", cursor:"pointer", background:`linear-gradient(135deg, #10B98120, #8B5CF610)`, border:`1px solid ${C.brd}` }}>
+      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:48, height:48, borderRadius:14, background:`${LIME}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.gamify ? IC.gamify(LIME) : IC.trophy(LIME)}</div>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <span style={{ fontSize:14, fontWeight:800, color:C.txt }}>Nível 3 · Parceiro</span>
+            <span style={{ fontSize:10, fontWeight:700, color:LIME, background:`${LIME}15`, padding:"2px 8px", borderRadius:6 }}>1.340 XP</span>
+          </div>
+          <div style={{ height:6, borderRadius:3, background:`${C.mut}15`, marginTop:8 }}>
+            <div style={{ height:6, borderRadius:3, background:`linear-gradient(90deg, #10B981, ${LIME})`, width:"46%", boxShadow:`0 0 8px #10B98140` }} />
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+            <span style={{ fontSize:9, color:C.mut }}>1.200 / 2.500 XP</span>
+            <span style={{ fontSize:9, color:C.mut, display:"flex", alignItems:"center", gap:3 }}>{IC.trophy ? IC.trophy("#EF4444") : null} 7 dias seguidos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {/* ── MATCH4BIZ BANNER ── */}
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
       <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Match4Biz</h3>
@@ -14240,7 +14989,7 @@ function MainClientApp({ user, onLogout, dark }) {
       {[
         {l:"Aprovar conteúdos",ic:IC.check,k:"content",c:B.green},
         {l:"Match4Biz",ic:IC.match4biz,k:"match4biz",c:"#8B5CF6",isSub:true},
-        {l:"Ver agenda",ic:IC.calendar,k:"calendar",c:"#3B82F6"},
+        {l:"Gamificação",ic:IC.gamify||IC.trophy,k:"gamify",c:"#EAB308",isSub:true},
         {l:"Chat com agência",ic:IC.chat,k:"chat",c:"#EC4899"},
       ].map((a,i) => (
         <div key={i} onClick={()=>a.isSub?setSub(a.k):nav(a.k)} style={{ background:C.card, borderRadius:18, padding:"18px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
@@ -14282,7 +15031,7 @@ function MainClientApp({ user, onLogout, dark }) {
           {tab === "calendar" && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calendário compartilhado</p></Card>}
           {tab === "chat" && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat com a agência</p></Card>}
           {tab === "more" && <>
-            {[{l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz"},{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conteúdos"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
+            {[{l:"Gamificação",ic:IC.gamify||IC.trophy,d:"XP, missões e ranking",sub:"gamify"},{l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz"},{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conteúdos"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
               <Card key={i} style={{ marginBottom:6, cursor:item.sub?"pointer":"default" }} onClick={()=>item.sub&&setSub(item.sub)}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
                 <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.d}</p></div>
