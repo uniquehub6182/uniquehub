@@ -14180,7 +14180,7 @@ function ClientGamification({ onBack, user }) {
       "calendar": IC.calendar(color),
       "book": <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
       "crown": <svg width={sz} height={sz} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><path d="M2 4l3 12h14l3-12-5 4-5-4-5 4z"/><path d="M5 16l-.8 4h15.6l-.8-4"/></svg>,
-      "chart": IC.reports ? IC.reports(color) : IC.trending(color),
+      "chart": IC.reports ? IC.reports(color) : IC.trending,
       "image": IC.content(color),
       "video": IC.chat(color),
       "tag": IC.financial(color),
@@ -14942,7 +14942,7 @@ function MainClientApp({ user, onLogout, dark }) {
     </div>
     <div onClick={()=>setSub("gamify")} style={{ borderRadius:20, padding:"16px 18px", cursor:"pointer", background:`linear-gradient(135deg, #10B98120, #8B5CF610)`, border:`1px solid ${C.brd}` }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:48, height:48, borderRadius:14, background:`${LIME}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.gamify ? IC.gamify(LIME) : IC.trophy(LIME)}</div>
+        <div style={{ width:48, height:48, borderRadius:14, background:`${LIME}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.gamify(LIME)}</div>
         <div style={{ flex:1 }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}>
             <span style={{ fontSize:14, fontWeight:800, color:C.txt }}>Nível 3 · Parceiro</span>
@@ -14953,7 +14953,7 @@ function MainClientApp({ user, onLogout, dark }) {
           </div>
           <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
             <span style={{ fontSize:9, color:C.mut }}>1.200 / 2.500 XP</span>
-            <span style={{ fontSize:9, color:C.mut, display:"flex", alignItems:"center", gap:3 }}>{IC.trophy ? IC.trophy("#EF4444") : null} 7 dias seguidos</span>
+            <span style={{ fontSize:9, color:C.mut, display:"flex", alignItems:"center", gap:3 }}>{IC.gamify ? IC.gamify("#EF4444") : IC.trophy} 7 dias seguidos</span>
           </div>
         </div>
       </div>
