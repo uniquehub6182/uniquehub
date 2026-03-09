@@ -996,6 +996,7 @@ const IC = {
   ideas: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>,
   help: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   headset: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3v5zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3v5z"/></svg>,
+  target: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
   match4biz: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/><path d="M16 8l-4 4-4-4"/></svg>,
   search: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
   growth: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
@@ -2253,7 +2254,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const ACTIONS = {
     aprovar:   {l:"Aprovar conteúdos",  k:"content"},
     novoConteudo:{l:"Novo conteúdo",    k:"content"},
-    trafego:   {l:"Configurar tráfego", k:"financial"},
+    trafego:   {l:"Gestão de tráfego", k:"content"},
     relatorio:  {l:"Ver relatório",      k:"reports"},
     agenda:    {l:"Ver agenda",          k:"calendar"},
     novoEvento:{l:"Novo evento",         k:"calendar"},
@@ -2312,7 +2313,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     const icons = {
       aprovar:      IC.check,
       novoConteudo: IC.content,
-      trafego:      IC.financial,
+      trafego:      IC.target,
       relatorio:    IC.reports,
       agenda:       IC.calendar,
       novoEvento:   IC.calendar,
