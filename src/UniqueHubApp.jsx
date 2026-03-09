@@ -13898,39 +13898,36 @@ function ClientGamification({ onBack, user, demands }) {
         {tab === "ranking" && <>
           <Card style={{ padding:0, overflow:"hidden" }}>
             <div style={{ background:"#1A2332", padding:"24px 16px 0", color:"#fff", textAlign:"center" }}>
-              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", marginBottom:20 }}>Top 3 do mês</p>
-              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:0, position:"relative", minHeight:220 }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", marginBottom:24 }}>Top 3 do mês</p>
+              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative", minHeight:230, padding:"0 8px" }}>
                 {/* Dotted line */}
-                <div style={{ position:"absolute", left:20, right:20, top:"45%", borderTop:"1.5px dashed rgba(255,255,255,0.08)" }} />
+                <div style={{ position:"absolute", left:16, right:16, top:"42%", borderTop:"2px dashed rgba(255,255,255,0.06)" }} />
+
                 {/* 2nd */}
                 <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
-                  <div style={{ position:"relative", display:"inline-block" }}>
-                    <div style={{ width:18, height:18, borderRadius:"50%", background:"#C0C0C0", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:900, color:"#fff", position:"absolute", top:-4, right:-4, zIndex:2, border:"2px solid #1A2332" }}>2</div>
-                    <Av name={RANKING[1]?.name||""} sz={44} fs={17} />
-                  </div>
-                  <p style={{ fontSize:10, fontWeight:600, marginTop:6, color:"rgba(255,255,255,0.7)" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:16, fontWeight:900, marginTop:2 }}>{RANKING[1]?.score}</p>
-                  <div style={{ width:56, height:44, background:"rgba(255,255,255,0.06)", borderRadius:"6px 6px 0 0", margin:"8px auto 0" }} />
+                  <svg width="24" height="24" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#C0C0C0"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">2</text><path d="M7 18l5 4 5-4" fill="none" stroke="#8B9099" strokeWidth="2"/></svg>
+                  <div style={{ width:48, height:48, borderRadius:14, background:"#2A3444", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"rgba(255,255,255,0.7)" }}>{(RANKING[1]?.name||"?")[0]}</div>
+                  <p style={{ fontSize:10, fontWeight:600, marginTop:8, color:"rgba(255,255,255,0.6)" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:18, fontWeight:900, marginTop:2 }}>{RANKING[1]?.score}</p>
+                  <div style={{ width:52, height:46, background:"#2A3444", borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
                 </div>
+
                 {/* 1st */}
-                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:2, marginBottom:0 }}>
-                  <div style={{ position:"relative", display:"inline-block" }}>
-                    <div style={{ width:20, height:20, borderRadius:"50%", background:"#FFD700", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:900, color:"#fff", position:"absolute", top:-6, right:-6, zIndex:2, border:"2px solid #1A2332", boxShadow:"0 2px 6px #FFD70050" }}>1</div>
-                    <div style={{ border:`3px solid ${B.accent}`, borderRadius:"50%", padding:2, display:"inline-block" }}><Av name={RANKING[0]?.name||""} sz={52} fs={20} /></div>
-                  </div>
-                  <p style={{ fontSize:11, fontWeight:700, marginTop:6 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:20, fontWeight:900, color:B.accent, marginTop:2 }}>{RANKING[0]?.score}</p>
-                  <div style={{ width:56, height:60, background:B.accent, borderRadius:"6px 6px 0 0", margin:"8px auto 0" }} />
+                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:2 }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#FFD700"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">1</text><path d="M7 18l5 4 5-4" fill="none" stroke="#DAA520" strokeWidth="2"/></svg>
+                  <div style={{ width:60, height:60, borderRadius:"50%", border:`3px solid ${B.accent}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:24, fontWeight:900, color:B.accent, background:"#2A3444" }}>{(RANKING[0]?.name||"?")[0]}</div>
+                  <p style={{ fontSize:11, fontWeight:700, marginTop:8 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:22, fontWeight:900, color:B.accent, marginTop:2 }}>{RANKING[0]?.score}</p>
+                  <div style={{ width:52, height:64, background:B.accent, borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
                 </div>
+
                 {/* 3rd */}
                 <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
-                  <div style={{ position:"relative", display:"inline-block" }}>
-                    <div style={{ width:18, height:18, borderRadius:"50%", background:"#CD7F32", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:900, color:"#fff", position:"absolute", top:-4, right:-4, zIndex:2, border:"2px solid #1A2332" }}>3</div>
-                    <Av name={RANKING[2]?.name||""} sz={44} fs={17} />
-                  </div>
-                  <p style={{ fontSize:10, fontWeight:600, marginTop:6, color:"rgba(255,255,255,0.7)" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:16, fontWeight:900, marginTop:2 }}>{RANKING[2]?.score}</p>
-                  <div style={{ width:56, height:36, background:"rgba(255,255,255,0.06)", borderRadius:"6px 6px 0 0", margin:"8px auto 0" }} />
+                  <svg width="24" height="24" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#CD7F32"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">3</text><path d="M7 18l5 4 5-4" fill="none" stroke="#A0522D" strokeWidth="2"/></svg>
+                  <div style={{ width:48, height:48, borderRadius:14, background:"#2A3444", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"rgba(255,255,255,0.7)" }}>{(RANKING[2]?.name||"?")[0]}</div>
+                  <p style={{ fontSize:10, fontWeight:600, marginTop:8, color:"rgba(255,255,255,0.6)" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:18, fontWeight:900, marginTop:2 }}>{RANKING[2]?.score}</p>
+                  <div style={{ width:52, height:34, background:"#2A3444", borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
                 </div>
               </div>
             </div>
