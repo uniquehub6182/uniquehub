@@ -7114,7 +7114,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     {reactMsgId===m.id && (
                       <div style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
                         {["👍","❤️","😂","😮","😢","🙏"].map(e=>(
-                          <button key={e} onClick={()=>handleReact(m.id,e)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{e}</button>
+                          <button key={e} onClick={()=>addReaction(m.id,e)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{e}</button>
                         ))}
                       </div>
                     )}
