@@ -9948,11 +9948,25 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     if (mode === "manual") { setCreating(true); setForm({}); setPhotoPreview(null); setAiMode(false); }
     else { setAiMode(true); setAiStep("url"); setAiUrl(""); setAiTone(""); setAiError(""); }
   };
+  const [aiPhotoSuggestions, setAiPhotoSuggestions] = useState(null); /* { keywords, extractedUrl } */
+  const [aiPhotoUrl, setAiPhotoUrl] = useState("");
   const aiGenerateArticle = async () => {
     if (!aiUrl.trim()) { setAiError("Cole o link da notícia"); return; }
     if (!aiTone) { setAiError("Escolha o tom da reescrita"); return; }
-    setAiLoading(true); setAiError(""); setAiStep("loading");
+    setAiLoading(true); setAiError(""); setAiStep("loading"); setAiPhotoSuggestions(null); setAiPhotoUrl("");
     try {
+      /* Step 1: Try to extract og:image from original URL */
+      let extractedPhoto = "";
+      try {
+        const pageRes = await fetch(aiUrl.trim(), { mode: "cors", headers: { "Accept": "text/html" } });
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+                          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+          if (ogMatch?.[1]) extractedPhoto = ogMatch[1];
+        }
+      } catch(fetchErr) { console.log("[AI News] og:image fetch failed (CORS):", fetchErr.message); }
+
       const keys = await supaGetAIKeys();
       const provider = keys.ai_provider || "openai";
       const openaiKey = keys.openai_key;
@@ -9969,7 +9983,7 @@ REGRAS:
 3. Sempre termine com um insight prático para profissionais de marketing
 4. O texto deve ter 4-6 parágrafos
 5. Responda APENAS em JSON válido com esta estrutura exata (sem markdown, sem backticks):
-{"title":"título reescrito","summary":"resumo de 1 linha","body":"texto completo com \\n entre parágrafos","category":"uma das categorias: trends, updates, tips, cases, tools, novidade, branding, estrategia, publicidade, carreira, mktdigital, ia","tags":["tag1","tag2","tag3"],"source":"nome do veículo original","sourceUrl":"url original","readTime":"X min"}`;
+{"title":"título reescrito","summary":"resumo de 1 linha","body":"texto completo com \\n entre parágrafos","category":"uma das categorias: trends, updates, tips, cases, tools, novidade, branding, estrategia, publicidade, carreira, mktdigital, ia","tags":["tag1","tag2","tag3"],"source":"nome do veículo original","sourceUrl":"url original","readTime":"X min","photoKeywords":["3 a 5 palavras-chave para buscar foto relacionada ao tema, em português"]}`;
 
       const userMsg = `Reescreva esta notícia no tom "${aiTone}". URL da notícia original: ${aiUrl.trim()}
 
@@ -9994,14 +10008,24 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
       /* Parse JSON response */
       const clean = aiText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       const parsed = JSON.parse(clean);
+      const photoFromOg = extractedPhoto || "";
+      const photoKeywords = parsed.photoKeywords || parsed.tags || [];
       setForm({
         title: parsed.title || "", summary: parsed.summary || "", body: parsed.body || "",
         cat: normalizeCat(parsed.category || "novidade"),
         tags: (parsed.tags || []).join(", "), source: parsed.source || "", sourceUrl: parsed.sourceUrl || aiUrl.trim(),
-        readTime: parsed.readTime || "4 min", pinned: false
+        readTime: parsed.readTime || "4 min", pinned: false,
+        photo: photoFromOg || null,
       });
-      setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
-      showToast("Notícia gerada pela IA — revise e publique!");
+      if (photoFromOg) {
+        /* Photo found from og:image — go directly to edit form */
+        setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
+        showToast("Notícia gerada com foto — revise e publique!");
+      } else {
+        /* No photo — show photo suggestion step */
+        setAiPhotoSuggestions({ keywords: photoKeywords });
+        setAiStep("photo"); setAiLoading(false);
+      }
     } catch(e) {
       console.error("AI news generation error:", e);
       setAiError("Erro ao gerar: " + (e.message || "tente novamente")); setAiLoading(false); setAiStep("url");
@@ -10225,8 +10249,8 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
       <Head title="Criar com IA" onBack={()=>{setAiMode(false);setAiStep("url");setAiLoading(false);}} />
       <Card style={{ textAlign:"center", padding:20, marginBottom:12 }}>
         <div style={{ width:48, height:48, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:B.accent }}>{IC.ai(B.accent)}</div>
-        <h3 style={{ fontSize:15, fontWeight:800 }}>{aiStep==="loading"?"Gerando notícia...":"Notícia com assistência de IA"}</h3>
-        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{aiStep==="loading"?"Lendo o artigo original e reescrevendo no tom escolhido...":"Cole o link, escolha o tom e a IA faz o resto."}</p>
+        <h3 style={{ fontSize:15, fontWeight:800 }}>{aiStep==="loading"?"Gerando notícia...":aiStep==="photo"?"Notícia gerada!":"Notícia com assistência de IA"}</h3>
+        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{aiStep==="loading"?"Lendo o artigo original e reescrevendo no tom escolhido...":aiStep==="photo"?"Agora escolha a foto de capa para a notícia.":"Cole o link, escolha o tom e a IA faz o resto."}</p>
       </Card>
 
       {aiStep === "loading" && (
@@ -10265,6 +10289,45 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
         <button onClick={aiGenerateArticle} className="pill full accent" style={{ padding:"14px 0", opacity:(aiUrl.trim()&&aiTone)?1:0.4 }}>
           {IC.ai(B.dark)} Gerar notícia com IA
         </button>
+      </>}
+
+      {aiStep === "photo" && <>
+        <Card style={{ background:`${B.orange}06`, border:`1.5px solid ${B.orange}25`, marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>
+            <p style={{ fontSize:12, color:B.orange, lineHeight:1.5 }}>Não foi possível extrair a foto automaticamente. Escolha uma das opções abaixo.</p>
+          </div>
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Título gerado</p>
+        <Card style={{ marginBottom:12 }}><p style={{ fontSize:14, fontWeight:700 }}>{form.title}</p></Card>
+
+        {aiPhotoSuggestions?.keywords?.length > 0 && <>
+          <p className="sl" style={{ marginBottom:6 }}>Termos sugeridos pela IA para buscar foto</p>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {aiPhotoSuggestions.keywords.map((kw, i) => (
+                <span key={i} style={{ padding:"5px 12px", borderRadius:8, background:`${B.accent}10`, color:B.accent, fontSize:11, fontWeight:600 }}>{kw}</span>
+              ))}
+            </div>
+            <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>Use esses termos no Google Imagens para encontrar uma foto adequada</p>
+          </Card>
+        </>}
+
+        <p className="sl" style={{ marginBottom:6 }}>Colar URL da foto</p>
+        <Card style={{ marginBottom:12 }}>
+          <div style={{ display:"flex", gap:8 }}>
+            <input value={aiPhotoUrl} onChange={e=>setAiPhotoUrl(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ flex:1 }} />
+          </div>
+          {aiPhotoUrl && <img src={aiPhotoUrl} alt="preview" style={{ width:"100%", height:140, objectFit:"cover", borderRadius:10, marginTop:10 }} onError={e=>{e.target.style.display="none";}} onLoad={e=>{e.target.style.display="block";}} />}
+        </Card>
+
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={() => { setForm(p=>({...p, photo: aiPhotoUrl || null})); setCreating(true); setAiMode(false); setAiStep("done"); showToast(aiPhotoUrl ? "Foto adicionada — revise e publique!" : "Notícia sem foto — você pode adicionar depois"); }} className="pill full accent" style={{ flex:2, padding:"14px 0" }}>
+            {aiPhotoUrl ? "Usar esta foto" : "Continuar sem foto"}
+          </button>
+        </div>
+        <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:8 }}>Você também pode adicionar ou trocar a foto na tela de edição</p>
       </>}
     </div>
   );
