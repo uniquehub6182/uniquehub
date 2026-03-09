@@ -6955,9 +6955,12 @@ function ApprovalsPage({ onBack }) {
     });
   }, [pendingLoaded]);
   const approveMember = async (m) => {
-    await supaUpdateMember(m.id, { status: "ativo" });
-    setPendingMembers(p => p.filter(x => x.id !== m.id));
-    showToast(`${m.name} aprovado ✓`);
+    try {
+      const { error } = await supabase.from("agency_members").update({ status: "ativo" }).eq("id", m.id);
+      if (error) { showToast("Erro ao aprovar: " + error.message); return; }
+      setPendingMembers(p => p.filter(x => x.id !== m.id));
+      showToast(`${m.name} aprovado ✓`);
+    } catch(e) { showToast("Erro: " + (e.message || e)); }
   };
   const rejectMember = async (m) => {
     if (!confirm(`Recusar cadastro de "${m.name}"? O registro será removido.`)) return;
