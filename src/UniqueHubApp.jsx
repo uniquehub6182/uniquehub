@@ -13030,32 +13030,8 @@ export default function App() {
       clearTimeout(timeout);
       setAuthLoading(false);
     }).catch(() => { clearTimeout(timeout); setAuthLoading(false); });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_OUT") { setUserAndRef(null); return; }
-      /* Skip TOKEN_REFRESHED — session restore already handles this via getSession above */
-      if (event === "TOKEN_REFRESHED") return;
-      /* Only check SIGNED_IN for truly new sessions (email confirmation, etc.) */
-      if (event === "SIGNED_IN" && session?.user && !userRef.current) {
-        console.log("[Auth] onAuthStateChange:", event, session.user.email);
-        /* Re-run approval check for any new session */
-        try {
-          const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
-          if (profile?.role !== "admin") {
-            const { data: memberRow } = await supabase.from("agency_members").select("status").eq("user_id", session.user.id).maybeSingle();
-            const memberStatus = memberRow?.status?.toLowerCase?.() || "";
-            const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
-            if (!isApproved) {
-              console.warn("[Auth] onAuthStateChange blocked non-approved user:", session.user.email, "status:", memberRow?.status);
-              await supabase.auth.signOut();
-              return;
-            }
-          }
-        } catch(e) {
-          console.warn("[Auth] onAuthStateChange check failed, allowing:", e);
-          /* Don't signOut on error — let the user try again */
-          return;
-        }
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") { setUserAndRef(null); }
     });
     return () => subscription?.unsubscribe();
   }, []);
