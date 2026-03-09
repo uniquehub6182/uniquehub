@@ -9935,6 +9935,78 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   const [photoPreview, setPhotoPreview] = useState(null);
   const isAdmin = user?.supaRole === "admin";
   const newsPhotoRef = React.useRef(null);
+  /* AI-assisted creation */
+  const [showCreateChoice, setShowCreateChoice] = useState(false);
+  const [aiMode, setAiMode] = useState(false); /* true = AI flow */
+  const [aiStep, setAiStep] = useState("url"); /* url → tone → loading → done */
+  const [aiUrl, setAiUrl] = useState("");
+  const [aiTone, setAiTone] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const startCreation = (mode) => {
+    setShowCreateChoice(false);
+    if (mode === "manual") { setCreating(true); setForm({}); setPhotoPreview(null); setAiMode(false); }
+    else { setAiMode(true); setAiStep("url"); setAiUrl(""); setAiTone(""); setAiError(""); }
+  };
+  const aiGenerateArticle = async () => {
+    if (!aiUrl.trim()) { setAiError("Cole o link da notícia"); return; }
+    if (!aiTone) { setAiError("Escolha o tom da reescrita"); return; }
+    setAiLoading(true); setAiError(""); setAiStep("loading");
+    try {
+      const keys = await supaGetAIKeys();
+      const provider = keys.ai_provider || "openai";
+      const openaiKey = keys.openai_key;
+      const geminiKey = keys.gemini_key;
+      if ((provider === "gemini" && !geminiKey) || (provider !== "gemini" && !openaiKey)) {
+        setAiError("Chave de API não configurada. Vá em Configurações → Assistente IA."); setAiLoading(false); setAiStep("url"); return;
+      }
+      const toneDesc = { descolado:"Informal, moderno, com gírias leves e humor. Como se um amigo do marketing estivesse contando a novidade.", serio:"Profissional e analítico. Tom de revista de negócios, com insights estratégicos.", inspirador:"Motivacional e empolgante. Foco em lições e aprendizados para profissionais.", provocativo:"Ousado e opinativo. Questiona, provoca reflexão e toma posição.", educativo:"Didático e informativo. Explica conceitos e contextualiza para quem não conhece o assunto." }[aiTone] || "Profissional e envolvente.";
+      const systemPrompt = `Você é o editor de conteúdo da Unique Marketing 360, uma agência de marketing digital. Sua tarefa é reescrever notícias no estilo da Unique.
+
+REGRAS:
+1. Reescreva completamente com suas próprias palavras — NÃO copie trechos do original
+2. Tom: ${toneDesc}
+3. Sempre termine com um insight prático para profissionais de marketing
+4. O texto deve ter 4-6 parágrafos
+5. Responda APENAS em JSON válido com esta estrutura exata (sem markdown, sem backticks):
+{"title":"título reescrito","summary":"resumo de 1 linha","body":"texto completo com \\n entre parágrafos","category":"uma das categorias: trends, updates, tips, cases, tools, novidade, branding, estrategia, publicidade, carreira, mktdigital, ia","tags":["tag1","tag2","tag3"],"source":"nome do veículo original","sourceUrl":"url original","readTime":"X min"}`;
+
+      const userMsg = `Reescreva esta notícia no tom "${aiTone}". URL da notícia original: ${aiUrl.trim()}
+
+Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique Marketing. Responda SOMENTE com o JSON, sem nenhum texto antes ou depois.`;
+
+      let aiText = "";
+      if (provider === "gemini") {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\n" + userMsg }] }] })
+        });
+        const d = await res.json();
+        aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
+          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMsg }], temperature: 0.7 })
+        });
+        const d = await res.json();
+        aiText = d?.choices?.[0]?.message?.content || "";
+      }
+      /* Parse JSON response */
+      const clean = aiText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(clean);
+      setForm({
+        title: parsed.title || "", summary: parsed.summary || "", body: parsed.body || "",
+        cat: normalizeCat(parsed.category || "novidade"),
+        tags: (parsed.tags || []).join(", "), source: parsed.source || "", sourceUrl: parsed.sourceUrl || aiUrl.trim(),
+        readTime: parsed.readTime || "4 min", pinned: false
+      });
+      setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
+      showToast("Notícia gerada pela IA — revise e publique!");
+    } catch(e) {
+      console.error("AI news generation error:", e);
+      setAiError("Erro ao gerar: " + (e.message || "tente novamente")); setAiLoading(false); setAiStep("url");
+    }
+  };
 
   const [photoUploading, setPhotoUploading] = useState(false);
 
@@ -10121,6 +10193,82 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     </Card>
   );
 
+  /* ── CHOOSE CREATE MODE ── */
+  if (showCreateChoice) return (
+    <div className="pg">{ToastEl}
+      <Head title="Nova notícia" onBack={()=>setShowCreateChoice(false)} />
+      <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
+        <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.news(B.accent)}</div>
+        <h3 style={{ fontSize:16, fontWeight:800 }}>Como quer criar?</h3>
+        <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha entre escrever manualmente ou usar IA para reescrever uma notícia de outra fonte.</p>
+      </Card>
+      <Card onClick={()=>startCreation("manual")} style={{ cursor:"pointer", marginBottom:8, border:`1.5px solid ${B.border}` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:14, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center", color:B.blue, flexShrink:0 }}>{IC.content(B.blue)}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar manualmente</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Escreva o título, conteúdo e detalhes do zero</p></div>
+          {IC.chev()}
+        </div>
+      </Card>
+      <Card onClick={()=>startCreation("ai")} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}30`, background:`${B.accent}04` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, flexShrink:0 }}>{IC.ai(B.accent)}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar com IA</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Cole o link de uma notícia e a IA reescreve no estilo Unique</p></div>
+          {IC.chev()}
+        </div>
+      </Card>
+    </div>
+  );
+
+  /* ── AI CREATION FLOW ── */
+  if (aiMode) return (
+    <div className="pg">{ToastEl}
+      <Head title="Criar com IA" onBack={()=>{setAiMode(false);setAiStep("url");setAiLoading(false);}} />
+      <Card style={{ textAlign:"center", padding:20, marginBottom:12 }}>
+        <div style={{ width:48, height:48, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:B.accent }}>{IC.ai(B.accent)}</div>
+        <h3 style={{ fontSize:15, fontWeight:800 }}>{aiStep==="loading"?"Gerando notícia...":"Notícia com assistência de IA"}</h3>
+        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{aiStep==="loading"?"Lendo o artigo original e reescrevendo no tom escolhido...":"Cole o link, escolha o tom e a IA faz o resto."}</p>
+      </Card>
+
+      {aiStep === "loading" && (
+        <Card style={{ textAlign:"center", padding:30 }}>
+          <div style={{ width:40, height:40, border:`3px solid ${B.border}`, borderTopColor:B.accent, borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 16px" }} />
+          <p style={{ fontSize:13, fontWeight:600 }}>Processando...</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Isso pode levar 10-20 segundos</p>
+        </Card>
+      )}
+
+      {aiStep === "url" && <>
+        {aiError && <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:10 }}><p style={{ fontSize:12, color:B.red }}>{aiError}</p></Card>}
+        <Card style={{ marginBottom:10 }}>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Link da notícia original *</label>
+          <input value={aiUrl} onChange={e=>{setAiUrl(e.target.value);setAiError("");}} placeholder="https://forbes.com.br/artigo..." className="tinput" style={{ marginBottom:4 }} />
+          <p style={{ fontSize:10, color:B.muted }}>Cole o link completo da notícia que quer reescrever</p>
+        </Card>
+        <Card style={{ marginBottom:10 }}>
+          <label className="sl" style={{ display:"block", marginBottom:8 }}>Tom da reescrita *</label>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            {[
+              { k:"descolado", l:"Descolado", d:"Informal, moderno, com humor", ic:"😎", c:B.pink },
+              { k:"serio", l:"Sério / Analítico", d:"Tom de revista de negócios", ic:"📊", c:B.blue },
+              { k:"inspirador", l:"Inspirador", d:"Motivacional, foco em lições", ic:"🚀", c:B.green },
+              { k:"provocativo", l:"Provocativo", d:"Ousado, opinativo, questiona", ic:"🔥", c:B.orange },
+              { k:"educativo", l:"Educativo", d:"Didático, explica conceitos", ic:"📚", c:B.purple },
+            ].map(t => (
+              <button key={t.k} onClick={()=>{setAiTone(t.k);setAiError("");}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:`1.5px solid ${aiTone===t.k?t.c:B.border}`, background:aiTone===t.k?`${t.c}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <span style={{ fontSize:18 }}>{t.ic}</span>
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:aiTone===t.k?700:500, color:aiTone===t.k?t.c:B.text }}>{t.l}</p><p style={{ fontSize:10, color:B.muted }}>{t.d}</p></div>
+                {aiTone===t.k && <span style={{ color:t.c, display:"flex" }}>{IC.check}</span>}
+              </button>
+            ))}
+          </div>
+        </Card>
+        <button onClick={aiGenerateArticle} className="pill full accent" style={{ padding:"14px 0", opacity:(aiUrl.trim()&&aiTone)?1:0.4 }}>
+          {IC.ai(B.dark)} Gerar notícia com IA
+        </button>
+      </>}
+    </div>
+  );
+
   /* ── CREATE VIEW ── */
   if (creating) return (
     <div className="pg">{ToastEl}
@@ -10196,7 +10344,7 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   /* ── MAIN NEWS LIST ── */
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isAdmin ? () => { setCreating(true); setForm({}); setPhotoPreview(null); } : null} />
+      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isAdmin ? () => setShowCreateChoice(true) : null} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
