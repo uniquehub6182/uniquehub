@@ -13457,8 +13457,7 @@ function ClientMatch4Biz({ onBack, user }) {
   const currentProfile = available[currentIdx % Math.max(available.length, 1)];
 
   const handleLike = () => {
-    if (!currentProfile) return;
-    if (credits < 10) { setShowBuy(true); return; }
+    if (!currentProfile || credits < 10) return;
     setSwipeAnim("like");
     setTimeout(() => {
       setCredits(c => c - 10);
@@ -13617,7 +13616,13 @@ function ClientMatch4Biz({ onBack, user }) {
         {/* DISCOVER */}
         {tab === "discover" && <>
           {available.length > 0 && currentProfile ? (
-            <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)" }}>
+            <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)", position:"relative" }}>
+              {/* Locked overlay when no credits */}
+              {credits < 10 && <div style={{ position:"absolute", inset:0, zIndex:5, background:`${B.bg}90`, backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:20 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <p style={{ fontSize:13, fontWeight:700, color:B.text, marginTop:8 }}>Perfil bloqueado</p>
+                <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Compre créditos para continuar</p>
+              </div>}
               {/* Gradient header */}
               <div style={{ height:100, background:`linear-gradient(135deg, ${currentProfile.color}30, ${currentProfile.color}10, transparent)`, position:"relative", display:"flex", alignItems:"flex-end", justifyContent:"center", paddingBottom:0 }}>
                 <div style={{ position:"absolute", top:12, right:16, display:"flex", alignItems:"center", gap:4, background:"rgba(0,0,0,0.2)", borderRadius:8, padding:"4px 10px" }}>
@@ -13652,16 +13657,29 @@ function ClientMatch4Biz({ onBack, user }) {
           </Card>}
           {/* Action buttons */}
           {available.length > 0 && currentProfile && <>
-            <div style={{ display:"flex", justifyContent:"center", gap:20, marginTop:20 }}>
-              <button onClick={handlePass} style={{ width:60, height:60, borderRadius:"50%", background:`${B.red||"#FF6B6B"}12`, border:`2px solid ${B.red||"#FF6B6B"}30`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-              <button onClick={handleLike} style={{ width:72, height:72, borderRadius:"50%", background:`${B.green}15`, border:`2px solid ${B.green}40`, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, boxShadow:`0 4px 20px ${B.green}20`, transition:"all .2s" }}>
-                <svg width="30" height="30" viewBox="0 0 24 24" fill={B.green} stroke={B.green} strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                <span style={{ fontSize:8, fontWeight:700, color:B.green }}>-10 créditos</span>
-              </button>
-            </div>
-            <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:12 }}>{available.length} conexões restantes</p>
+            {credits < 10 ? (
+              <div style={{ marginTop:16, textAlign:"center" }}>
+                <Card style={{ background:`${B.muted}06`, border:`1.5px solid ${B.border}` }}>
+                  <div style={{ width:48, height:48, borderRadius:"50%", background:`${(B.red||"#FF6B6B")}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  </div>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Créditos insuficientes</p>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Você precisa de pelo menos <b style={{ color:B.text }}>10 créditos</b> para dar match.</p>
+                  <p style={{ fontSize:12, color:B.red||"#FF6B6B", fontWeight:600, marginTop:6 }}>Saldo atual: {credits} créditos</p>
+                  <button onClick={()=>setShowBuy(true)} style={{ marginTop:12, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Comprar Créditos</button>
+                </Card>
+              </div>
+            ) : (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:24, marginTop:20 }}>
+                <button onClick={handlePass} style={{ width:56, height:56, borderRadius:"50%", background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 2px 12px ${B.red||"#FF6B6B"}15`, transition:"transform .15s" }} onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button onClick={handleLike} style={{ width:62, height:62, borderRadius:"50%", background:B.green, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 4px 20px ${B.green}40`, transition:"transform .15s" }} onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                </button>
+              </div>
+            )}
+            <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:12 }}>{credits >= 10 ? `${available.length} conexões restantes` : ""}</p>
           </>}
         </>}
 
