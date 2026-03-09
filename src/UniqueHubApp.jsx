@@ -3291,11 +3291,18 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       if (fileForm.file) {
         /* Real file upload to Supabase storage */
         showToast("Enviando arquivo...");
-        const result = await supaUploadClientFile(fileForm.file, sel.id);
+        const result = await supaUploadClientFile(fileForm.file, sel.supaId || sel.id);
         if (result?.error) return showToast("Erro: " + result.error);
         const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
         const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
-        updateClient(sel.id, { files: [...files, nf] });
+        const newFiles = [...files, nf];
+        /* Save metadata directly to Supabase with confirmation */
+        const saveKey = `client_files_${sel.supaId || sel.id}`;
+        const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+        if (!saved) { console.error("[Library] Failed to save file metadata, key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
+        /* Update local state */
+        setSel(p => ({ ...p, files: newFiles }));
+        setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
         setAddingFile(false); setFileForm({});
         showToast("Arquivo enviado ✓");
       } else {
@@ -3303,8 +3310,13 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       }
     };
 
-    const removeFile = (fid) => {
-      updateClient(sel.id, { files: files.filter(f=>f.id!==fid) });
+    const removeFile = async (fid) => {
+      const newFiles = files.filter(f=>f.id!==fid);
+      const saveKey = `client_files_${sel.supaId || sel.id}`;
+      await supaSetSetting(saveKey, JSON.stringify(newFiles));
+      setSel(p => ({ ...p, files: newFiles }));
+      setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
+      showToast("Arquivo removido");
     };
 
     const filteredFiles = libCat === "all" ? files : files.filter(f => getFileCat(f) === libCat);
@@ -12782,7 +12794,9 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
           });
           /* Load file metadata and socials for ALL clients in ONE query */
           const settingKeys = merged.flatMap(c => [`client_files_${c.id}`, `client_socials_${c.id}`, `client_logo_${c.id}`]);
+          console.log("[Clients] Loading settings for", merged.length, "clients, keys:", settingKeys.filter(k=>k.startsWith("client_files_")).length, "file keys");
           const settingsMap = await supaGetSettingsBulk(settingKeys);
+          console.log("[Clients] Settings loaded:", Object.keys(settingsMap).length, "keys found:", Object.keys(settingsMap).filter(k=>k.startsWith("client_files_")));
           const withExtras = merged.map(c => {
             let result = c;
             const filesRaw = settingsMap[`client_files_${c.id}`];
