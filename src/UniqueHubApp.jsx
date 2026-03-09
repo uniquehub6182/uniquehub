@@ -7131,7 +7131,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               </button>
               <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, background:`${B.red}10`, borderRadius:22, padding:"10px 16px" }}>
                 <div style={{ width:8, height:8, borderRadius:"50%", background:B.red }}/>
-                <span style={{ fontSize:13, color:B.red, fontWeight:600 }}>Gravando... {recordingSecs}s</span>
+                <span style={{ fontSize:13, color:B.red, fontWeight:600 }}>Gravando... {recordingTime}s</span>
               </div>
               <button onClick={stopRecording} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
