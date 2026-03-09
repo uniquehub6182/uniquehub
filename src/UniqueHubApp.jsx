@@ -2856,6 +2856,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [socialForm, setSocialForm] = useState({});
   const [search, setSearch] = useState("");
   const [libCat, setLibCat] = useState("all");
+  const [viewClientFile, setViewClientFile] = useState(null);
   const [addingFile, setAddingFile] = useState(false);
   const [fileForm, setFileForm] = useState({});
   const [showPlanPicker, setShowPlanPicker] = useState(false);
@@ -3501,7 +3502,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       </div>
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
         {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
-          <button key={t.k} onClick={()=>setProfileTab(t.k)} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
+          <button key={t.k} onClick={()=>{setProfileTab(t.k);setViewClientFile(null);}} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
         ))}
       </div>
 
@@ -3692,7 +3693,56 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         </div>
       </>}
 
-      {profileTab === "library" && <>
+      {profileTab === "library" && viewClientFile && (() => {
+        const f = viewClientFile;
+        const fi = fileIcon(f.name);
+        const ext = f.name.split(".").pop()?.toLowerCase();
+        const isImage = ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
+        const isVideo = ["mp4","mov","avi","mkv","webm"].includes(ext);
+        const hasUrl = !!f.url;
+        return <>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+            <button onClick={()=>setViewClientFile(null)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
+            <p style={{ fontSize:14, fontWeight:700 }}>Detalhes do arquivo</p>
+          </div>
+          {/* Preview */}
+          {hasUrl && isImage && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12, background:B.bgCard }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:250, objectFit:"contain" }} /></div>}
+          {hasUrl && isVideo && <video src={f.url} controls style={{ width:"100%", maxHeight:250, borderRadius:16, marginBottom:12 }} />}
+          {!isImage && !isVideo && <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", transform:"scale(1.5)" }}>{fi.ic}</div>
+            <p style={{ fontSize:15, fontWeight:700, marginTop:8 }}>{f.name}</p>
+            <p style={{ fontSize:11, color:B.muted }}>{f.size} · {f.date}</p>
+          </Card>}
+          {/* Actions */}
+          <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+            {hasUrl && <button onClick={()=>{const a=document.createElement("a");a.href=f.url;a.download=f.name;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download iniciado ✓");}} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>
+              {IC.download} Download
+            </button>}
+            {hasUrl && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+              Abrir
+            </button>}
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+            {hasUrl && <button onClick={()=>navigator.clipboard.writeText(f.url).then(()=>showToast("Link copiado! ✓")).catch(()=>showToast("Erro ao copiar"))} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:12, borderRadius:14, background:`${B.blue}08`, border:`1.5px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.blue }}>
+              Copiar link
+            </button>}
+            {hasUrl && <button onClick={()=>{if(navigator.share){navigator.share({title:f.name,url:f.url}).catch(()=>{});}else{navigator.clipboard.writeText(f.url).then(()=>showToast("Link copiado!"));}}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:12, borderRadius:14, background:`${B.green}08`, border:`1.5px solid ${B.green}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>
+              Compartilhar
+            </button>}
+          </div>
+          {/* File info */}
+          <Card>
+            <p className="sl" style={{ marginBottom:8 }}>Informações</p>
+            {[{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date},{l:"Extensão",v:ext?.toUpperCase()},{l:"Armazenamento",v:hasUrl?"Supabase Storage":"Local"}].map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+                <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
+              </div>
+            ))}
+          </Card>
+        </>;
+      })()}
+      {profileTab === "library" && !viewClientFile && <>
         <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:10, overflowX:"auto", paddingBottom:4 }}>
           <button onClick={()=>setLibCat("all")} className={`htab${libCat==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todos ({files.length})</button>
           {LIB_CATS.map(cat => {
@@ -3711,7 +3761,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 <span style={{ fontSize:10, color:B.muted }}>{catFiles.length} arquivo{catFiles.length>1?"s":""}</span>
               </div>
               {catFiles.map(f => { const fi=fileIcon(f.name); return (
-                <Card key={f.id} style={{ marginTop:4 }}>
+                <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
                     <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
@@ -3726,7 +3776,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         {libCat !== "all" && (filteredFiles.length===0 ? (
           <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:20 }}>{LIB_CATS.find(c=>c.key===libCat)?.icon}</p><p style={{ fontSize:13, fontWeight:600, marginTop:6 }}>Nenhum arquivo nesta categoria</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{LIB_CATS.find(c=>c.key===libCat)?.desc}</p></Card>
         ) : filteredFiles.map(f => { const fi=fileIcon(f.name); return (
-          <Card key={f.id} style={{ marginTop:4 }}>
+          <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
               <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
