@@ -13718,34 +13718,136 @@ function MainClientApp({ user, onLogout, dark }) {
     );
   }
 
+  const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
+  const isDark = B.bg === "#0D0D0D" || dark;
+  const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888" };
+  const LIME = B.accent;
+  const inProduction = demands.filter(d => !["published","completed"].includes(d.stage) && d.steps?.client?.status !== "approved");
+  const nav = (k) => goTab(k);
+
   const renderHome = () => <>
-    {pendingApproval.length > 0 && <Card onClick={()=>goTab("content")} style={{ background:B.dark, border:`1px solid ${B.accent}30`, cursor:"pointer", marginBottom:10 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:14, fontWeight:700, color:"#fff" }}>{pendingApproval.length} conteúdo{pendingApproval.length>1?"s":""} para aprovar</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Toque para revisar</p>
+    {/* ── HEADER (agency-style) ── */}
+    <div style={{ background:isDark?"#0D0D0D":"#fff", margin:"-14px -16px 0", padding:"20px 20px 24px", borderRadius:"0 0 28px 28px", boxShadow:isDark?"none":"0 4px 20px rgba(0,0,0,0.05)" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <div>
+          <p style={{ fontSize:11, color:C.mut, fontWeight:600, letterSpacing:1, textTransform:"uppercase" }}>{greeting}</p>
+          <p style={{ fontSize:22, fontWeight:900, color:C.txt }}>{user.name || "Cliente"}</p>
+          {user?.company && <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>{user.company}</p>}
         </div>
-        <div style={{ width:8, height:8, borderRadius:4, background:B.accent }} />
+        <Av name={user.name||"C"} sz={48} fs={18} />
       </div>
-    </Card>}
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-      <Card style={{ textAlign:"center", padding:14 }}><span style={{ display:"flex", justifyContent:"center", color:B.accent, marginBottom:6 }}>{IC.content(B.accent)}</span><p style={{ fontSize:22, fontWeight:900 }}>{demands.length}</p><p style={{ fontSize:9, color:B.muted }}>Total de conteúdos</p></Card>
-      <Card style={{ textAlign:"center", padding:14 }}><span style={{ display:"flex", justifyContent:"center", color:B.green, marginBottom:6 }}>{IC.check}</span><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{approved.length}</p><p style={{ fontSize:9, color:B.muted }}>Aprovados</p></Card>
-    </div>
-    <p className="sl" style={{ marginBottom:8 }}>Últimos conteúdos</p>
-    {demands.slice(0,8).map((d,i) => {
-      const st = d.steps?.client?.status;
-      const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):B.muted;
-      const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Aguardando":"Em produção";
-      return <Card key={d.id} delay={i*0.03} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${stColor}` }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} · {d.createdAt}</p></div>
-          <Tag color={stColor}>{stLabel}</Tag>
+
+      {/* ── STAT CARDS ── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        <div style={{ background:isDark?"#111":"#F7F7F8", borderRadius:16, padding:"14px 16px", border:`1px solid ${C.brd}` }}>
+          <p style={{ fontSize:9, color:C.mut, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Conteúdos</p>
+          <p style={{ fontSize:26, fontWeight:900, color:LIME, marginTop:4 }}>{demands.length}</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>Total enviados</p>
         </div>
-      </Card>;
+        <div style={{ background:isDark?"#111":"#F7F7F8", borderRadius:16, padding:"14px 16px", border:`1px solid ${C.brd}` }}>
+          <p style={{ fontSize:9, color:C.mut, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Aprovados</p>
+          <p style={{ fontSize:26, fontWeight:900, color:B.green, marginTop:4 }}>{approved.length}</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>Prontos para publicar</p>
+        </div>
+      </div>
+    </div>
+
+    {/* ── PENDING ALERT ── */}
+    {pendingApproval.length > 0 && <div onClick={()=>nav("content")} style={{ marginTop:14, background:isDark?"#111":"#fff", borderRadius:20, padding:"16px 18px", cursor:"pointer", border:`1.5px solid ${LIME}30`, boxShadow:`0 4px 20px ${LIME}10` }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:44, height:44, borderRadius:14, background:`${LIME}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(LIME)}</div>
+        <div style={{ flex:1 }}>
+          <p style={{ fontSize:14, fontWeight:700, color:C.txt }}>{pendingApproval.length} conteúdo{pendingApproval.length>1?"s":""} aguardando</p>
+          <p style={{ fontSize:11, color:C.mut }}>Toque para revisar e aprovar</p>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>}
+
+    {/* ── QUICK ACTIONS (pills) ── */}
+    <div style={{ display:"flex", gap:8, marginTop:16, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+      {[{l:"Conteúdo",ic:IC.content,k:"content"},{l:"Agenda",ic:IC.calendar,k:"calendar"},{l:"Chat",ic:IC.chat,k:"chat"}].map((p,i) => (
+        <div key={i} onClick={()=>nav(p.k)} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:8, background:C.card, borderRadius:14, padding:"10px 16px", border:`1px solid ${C.brd}`, cursor:"pointer" }}>
+          <div style={{ width:28, height:28, borderRadius:8, background:`${LIME}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>{p.ic(LIME)}</div>
+          <span style={{ fontSize:12, fontWeight:700, color:C.txt }}>{p.l}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* ── CONTEÚDOS EM PRODUÇÃO ── */}
+    {inProduction.length > 0 && <>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
+        <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Em produção</h3>
+        <span onClick={()=>nav("content")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Ver todos</span>
+      </div>
+      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4, marginRight:-16, paddingRight:16 }}>
+        {inProduction.slice(0,6).map((d,i) => {
+          const stageColor = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",production:"#3B82F6",editing:"#F59E0B"};
+          const stageName = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Aprovação",production:"Produção",editing:"Edição"};
+          const sc = stageColor[d.stage]||"#8B8F92";
+          const sn = stageName[d.stage]||d.stage;
+          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:150, borderRadius:16, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
+            <div style={{ height:100, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${sc}40, ${sc}15)`, position:"relative" }}>
+              {!imgs[0] && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.content(sc)}</div>}
+            </div>
+            <div style={{ padding:"10px 12px" }}>
+              <p style={{ fontSize:11, fontWeight:700, color:C.txt, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:6 }}>
+                <div style={{ width:6, height:6, borderRadius:3, background:sc }} />
+                <span style={{ fontSize:9, color:sc, fontWeight:600 }}>{sn}</span>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </>}
+
+    {/* ── ÚLTIMOS CONTEÚDOS ── */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
+      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Conteúdos recentes</h3>
+    </div>
+    {demands.slice(0,5).map((d,i) => {
+      const st = d.steps?.client?.status;
+      const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?LIME:C.mut;
+      const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Aguardando":"Em produção";
+      const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+      return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ background:C.card, borderRadius:16, padding:"12px 14px", border:`1px solid ${C.brd}`, marginBottom:8, cursor:"pointer", display:"flex", gap:12, alignItems:"center" }}>
+        {imgs[0] ? <img src={imgs[0].url} style={{ width:48, height:48, borderRadius:10, objectFit:"cover", flexShrink:0 }} /> : <div style={{ width:48, height:48, borderRadius:10, background:`${stColor}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(stColor)}</div>}
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:13, fontWeight:600, color:C.txt, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:2 }}>{d.network} · {d.format} · {d.createdAt}</p>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+          <div style={{ width:6, height:6, borderRadius:3, background:stColor }} />
+          <span style={{ fontSize:9, fontWeight:600, color:stColor }}>{stLabel}</span>
+        </div>
+      </div>;
     })}
-    {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:32 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span><p style={{ fontSize:14, fontWeight:600 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>A agência vai enviar posts aqui.</p></Card>}
+    {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:32 }}>
+      <span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:C.mut }}>{IC.content(C.mut)}</span>
+      <p style={{ fontSize:14, fontWeight:600, color:C.txt }}>Nenhum conteúdo ainda</p>
+      <p style={{ fontSize:11, color:C.mut, marginTop:4 }}>A agência vai enviar posts para sua aprovação aqui.</p>
+    </Card>}
+
+    {/* ── AÇÕES RÁPIDAS ── */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
+      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Ações rápidas</h3>
+    </div>
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+      {[
+        {l:"Aprovar conteúdos",ic:IC.check,k:"content",c:B.green},
+        {l:"Ver agenda",ic:IC.calendar,k:"calendar",c:"#3B82F6"},
+        {l:"Chat com agência",ic:IC.chat,k:"chat",c:"#8B5CF6"},
+        {l:"Biblioteca",ic:IC.library,k:"more",c:"#F59E0B"},
+      ].map((a,i) => (
+        <div key={i} onClick={()=>nav(a.k)} style={{ background:C.card, borderRadius:18, padding:"18px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
+          <div style={{ width:38, height:38, borderRadius:12, background:`${a.c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{typeof a.ic==="function"?a.ic(a.c):a.ic}</div>
+          <span style={{ fontSize:12, fontWeight:700, color:C.txt, lineHeight:1.3 }}>{a.l}</span>
+        </div>
+      ))}
+    </div>
+    <div style={{ height:20 }} />
   </>;
 
   const renderContent = () => <>
