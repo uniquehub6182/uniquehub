@@ -13617,31 +13617,52 @@ function ClientMatch4Biz({ onBack, user }) {
         {/* DISCOVER */}
         {tab === "discover" && <>
           {available.length > 0 && currentProfile ? (
-            <Card style={{ overflow:"hidden", padding:0 }}>
-              <div style={{ textAlign:"center", padding:"24px 20px 16px", transform:swipeAnim==="like"?"translateX(100px) rotate(10deg)":swipeAnim==="pass"?"translateX(-100px) rotate(-10deg)":"none", opacity:swipeAnim?0.3:1, transition:"all .3s ease" }}>
-                <div style={{ position:"absolute", top:12, right:16, display:"flex", alignItems:"center", gap:4 }}>{IC.financial(B.accent)} <span style={{ fontSize:12, fontWeight:700, color:B.accent }}>10</span></div>
-                <Av name={currentProfile.name} sz={80} fs={28} />
-                <p style={{ fontSize:18, fontWeight:800, marginTop:12 }}>{currentProfile.name}</p>
+            <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)" }}>
+              {/* Gradient header */}
+              <div style={{ height:100, background:`linear-gradient(135deg, ${currentProfile.color}30, ${currentProfile.color}10, transparent)`, position:"relative", display:"flex", alignItems:"flex-end", justifyContent:"center", paddingBottom:0 }}>
+                <div style={{ position:"absolute", top:12, right:16, display:"flex", alignItems:"center", gap:4, background:"rgba(0,0,0,0.2)", borderRadius:8, padding:"4px 10px" }}>
+                  {IC.financial("#fff")} <span style={{ fontSize:11, fontWeight:700, color:"#fff" }}>10</span>
+                </div>
+                <div style={{ transform:"translateY(36px)" }}>
+                  <Av name={currentProfile.name} sz={72} fs={26} />
+                </div>
+              </div>
+              {/* Content */}
+              <div style={{ textAlign:"center", padding:"44px 20px 20px" }}>
+                <p style={{ fontSize:18, fontWeight:800 }}>{currentProfile.name}</p>
                 <p style={{ fontSize:12, color:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:4, marginTop:4 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   {currentProfile.city}
                 </p>
                 <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:10, flexWrap:"wrap" }}>{currentProfile.tags.map((t,i) => <Tag key={i} color={currentProfile.color}>{t}</Tag>)}</div>
-                <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginTop:14, padding:"0 8px", textAlign:"center" }}>{currentProfile.desc}</p>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:16 }}>
-                  <div><p style={{ fontSize:20, fontWeight:900, color:B.accent }}>{currentProfile.match}%</p><p style={{ fontSize:10, color:B.muted }}>Match</p></div>
-                  <div><p style={{ fontSize:20, fontWeight:900 }}>{currentProfile.rating}</p><p style={{ fontSize:10, color:B.muted }}>Rating</p></div>
-                  <div><p style={{ fontSize:20, fontWeight:900 }}>{currentProfile.clients}</p><p style={{ fontSize:10, color:B.muted }}>Clientes</p></div>
+                <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginTop:14, padding:"0 4px" }}>{currentProfile.desc}</p>
+                {/* Stats */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:16, padding:"14px 0", borderTop:`1px solid ${B.border}`, borderBottom:`1px solid ${B.border}` }}>
+                  <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{currentProfile.match}%</p><p style={{ fontSize:10, color:B.muted }}>Match</p></div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}><div style={{ display:"flex", alignItems:"center", gap:3 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span style={{ fontSize:18, fontWeight:900 }}>{currentProfile.rating}</span></div><p style={{ fontSize:10, color:B.muted }}>Rating</p></div>
+                  <div><p style={{ fontSize:22, fontWeight:900 }}>{currentProfile.clients}</p><p style={{ fontSize:10, color:B.muted }}>Clientes</p></div>
                 </div>
-                <div style={{ marginTop:12, padding:"10px 14px", borderRadius:10, background:`${B.muted}06`, display:"flex", alignItems:"center", gap:6 }}>{IC.financial(B.muted)} <span style={{ fontSize:13, fontWeight:600 }}>Ticket médio: {currentProfile.ticket}</span></div>
+                <div style={{ marginTop:12, padding:"10px 14px", borderRadius:12, background:`${B.muted}06`, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.financial(B.muted)} <span style={{ fontSize:13, fontWeight:600 }}>Ticket médio: {currentProfile.ticket}</span></div>
               </div>
-            </Card>
-          ) : <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:14, fontWeight:600 }}>Sem perfis no momento</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Volte mais tarde para novas conexões!</p></Card>}
-          {available.length > 0 && currentProfile && <div style={{ display:"flex", justifyContent:"center", gap:16, marginTop:16 }}>
-            <button onClick={handlePass} style={{ width:56, height:56, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-            <button onClick={handleLike} style={{ width:64, height:64, borderRadius:"50%", background:`${B.green}20`, border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}><svg width="28" height="28" viewBox="0 0 24 24" fill={B.green} stroke={B.green} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span style={{ fontSize:8, fontWeight:700, color:B.green }}>-10 créditos</span></button>
-          </div>}
-          {available.length > 0 && <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:10 }}>{available.length} conexões restantes</p>}
+            </div>
+          ) : <Card style={{ textAlign:"center", padding:40 }}>
+            <div style={{ width:64, height:64, borderRadius:"50%", background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+            <p style={{ fontSize:14, fontWeight:700 }}>Todos os perfis vistos!</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Novos parceiros em breve. Enquanto isso, confira seus matches!</p>
+          </Card>}
+          {/* Action buttons */}
+          {available.length > 0 && currentProfile && <>
+            <div style={{ display:"flex", justifyContent:"center", gap:20, marginTop:20 }}>
+              <button onClick={handlePass} style={{ width:60, height:60, borderRadius:"50%", background:`${B.red||"#FF6B6B"}12`, border:`2px solid ${B.red||"#FF6B6B"}30`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s" }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+              <button onClick={handleLike} style={{ width:72, height:72, borderRadius:"50%", background:`${B.green}15`, border:`2px solid ${B.green}40`, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, boxShadow:`0 4px 20px ${B.green}20`, transition:"all .2s" }}>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill={B.green} stroke={B.green} strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                <span style={{ fontSize:8, fontWeight:700, color:B.green }}>-10 créditos</span>
+              </button>
+            </div>
+            <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:12 }}>{available.length} conexões restantes</p>
+          </>}
         </>}
 
         {/* MATCHES */}
@@ -14171,6 +14192,28 @@ function MainClientApp({ user, onLogout, dark }) {
       </>;
     })()}
 
+    {/* ── MATCH4BIZ BANNER ── */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
+      <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Match4Biz</h3>
+      <span onClick={()=>setSub("match4biz")} style={{ fontSize:12, color:C.mut, fontWeight:600, cursor:"pointer" }}>Explorar</span>
+    </div>
+    <div onClick={()=>setSub("match4biz")} style={{ borderRadius:20, overflow:"hidden", cursor:"pointer", position:"relative", height:120, background:`linear-gradient(135deg, ${LIME}15, #8B5CF615, #3B82F615)`, border:`1px solid ${C.brd}` }}>
+      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", padding:"0 20px", gap:16 }}>
+        <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg, ${LIME}30, #8B5CF630)`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </div>
+        <div style={{ flex:1 }}>
+          <p style={{ fontSize:15, fontWeight:800, color:C.txt }}>Conecte-se com empresas</p>
+          <p style={{ fontSize:11, color:C.mut, marginTop:4, lineHeight:1.4 }}>Encontre parceiros de negócios ideais e expanda sua rede.</p>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:LIME, background:`${LIME}15`, padding:"3px 10px", borderRadius:8 }}>Novo</span>
+            <span style={{ fontSize:10, color:C.mut }}>6 empresas disponíveis</span>
+          </div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
     {/* ── AÇÕES RÁPIDAS ── */}
     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"20px 0 10px" }}>
       <h3 style={{ fontSize:16, fontWeight:800, color:C.txt }}>Ações rápidas</h3>
@@ -14178,11 +14221,11 @@ function MainClientApp({ user, onLogout, dark }) {
     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
       {[
         {l:"Aprovar conteúdos",ic:IC.check,k:"content",c:B.green},
+        {l:"Match4Biz",ic:IC.match4biz,k:"match4biz",c:"#8B5CF6",isSub:true},
         {l:"Ver agenda",ic:IC.calendar,k:"calendar",c:"#3B82F6"},
-        {l:"Chat com agência",ic:IC.chat,k:"chat",c:"#8B5CF6"},
-        {l:"Biblioteca",ic:IC.library,k:"more",c:"#F59E0B"},
+        {l:"Chat com agência",ic:IC.chat,k:"chat",c:"#EC4899"},
       ].map((a,i) => (
-        <div key={i} onClick={()=>nav(a.k)} style={{ background:C.card, borderRadius:18, padding:"18px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
+        <div key={i} onClick={()=>a.isSub?setSub(a.k):nav(a.k)} style={{ background:C.card, borderRadius:18, padding:"18px 16px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", border:`1px solid ${C.brd}` }}>
           <div style={{ width:38, height:38, borderRadius:12, background:`${a.c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{typeof a.ic==="function"?a.ic(a.c):a.ic}</div>
           <span style={{ fontSize:12, fontWeight:700, color:C.txt, lineHeight:1.3 }}>{a.l}</span>
         </div>
