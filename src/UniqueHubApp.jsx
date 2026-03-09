@@ -13488,10 +13488,10 @@ function MainClientApp({ user, onLogout, dark }) {
     const isApproved = d.steps?.client?.status === "approved";
     const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
     return (
-      <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <div className="app">
         {ToastEl}
         <Head title={d.title} onBack={() => setSub(null)} />
-        <div style={{ flex:1, overflowY:"auto", padding:"14px 16px 100px" }}>
+        <div className="content" style={{ padding:"14px 16px" }}>
           <Card><div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
             <Tag color={B.accent}>{d.network || "Social"}</Tag>
             <Tag color={B.blue || B.accent}>{d.format || d.type}</Tag>
@@ -13530,12 +13530,12 @@ function MainClientApp({ user, onLogout, dark }) {
   }
 
   return (
-    <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className="app">
       {ToastEl}
 
-      {tab === "home" && <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
+      {tab === "home" && <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
         <CollapseHeader icon={IC.home} label="Portal" title="Meu Marketing" collapsed={pgC} />
-        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} className="content" style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
+        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} className="content" style={{ padding:"14px 16px" }}>
           {pendingApproval.length > 0 && <Card onClick={()=>goTab("content")} style={{ background:B.dark, border:`1px solid ${B.accent}30`, cursor:"pointer", marginBottom:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
@@ -13566,9 +13566,9 @@ function MainClientApp({ user, onLogout, dark }) {
         </div>
       </div>}
 
-      {tab === "content" && <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
+      {tab === "content" && <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
         <CollapseHeader icon={IC.content} label="Aprovação" title="Conteúdo" collapsed={pgC} />
-        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} className="content" style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
+        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} className="content" style={{ padding:"14px 16px" }}>
           {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprovação ({pendingApproval.length})</p>
             {pendingApproval.map(d => { const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")); return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
               <div style={{ display:"flex", gap:10 }}>
@@ -13582,9 +13582,9 @@ function MainClientApp({ user, onLogout, dark }) {
         </div>
       </div>}
 
-      {tab === "calendar" && <div style={{ display:"flex", flexDirection:"column", flex:1 }}><CollapseHeader icon={IC.calendar} label="Eventos" title="Agenda" collapsed={pgC} /><div className="content" style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}><Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calendário compartilhado</p></Card></div></div>}
-      {tab === "chat" && <div style={{ display:"flex", flexDirection:"column", flex:1 }}><CollapseHeader icon={IC.chat} label="Mensagens" title="Chat" collapsed={pgC} /><div className="content" style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}><Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat com a agência</p></Card></div></div>}
-      {tab === "more" && <div style={{ display:"flex", flexDirection:"column", flex:1 }}><CollapseHeader icon={IC.settings} label="Opções" title="Mais" collapsed={pgC} /><div className="content" style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
+      {tab === "calendar" && <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}><CollapseHeader icon={IC.calendar} label="Eventos" title="Agenda" collapsed={pgC} /><div className="content" style={{ padding:"14px 16px" }}><Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calendário compartilhado</p></Card></div></div>}
+      {tab === "chat" && <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}><CollapseHeader icon={IC.chat} label="Mensagens" title="Chat" collapsed={pgC} /><div className="content" style={{ padding:"14px 16px" }}><Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat com a agência</p></Card></div></div>}
+      {tab === "more" && <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}><CollapseHeader icon={IC.settings} label="Opções" title="Mais" collapsed={pgC} /><div className="content" style={{ padding:"14px 16px" }}>
         {[{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conteúdos"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
           <Card key={i} style={{ marginBottom:6 }}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
