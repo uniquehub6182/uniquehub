@@ -9628,12 +9628,14 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const clientMetrics = CDATA.map(c => {
     const ins = insights[c.name];
     const hasData = !!ins && (!!ins.fb || !!ins.ig || !!ins.fbPosts || !!ins.fbPage || !!ins.igMedia);
-    const fbImpressions = sumInsight(ins?.fb, "page_views_total") + sumInsight(ins?.fb, "page_posts_impressions") + sumInsight(ins?.fb, "page_impressions");
-    const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements") + sumInsight(ins?.fb, "page_engaged_users");
+    const fbImpressions = sumInsight(ins?.fb, "page_posts_impressions") + sumInsight(ins?.fb, "page_views_total");
+    const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements");
     const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
-    const fbFanAdds = sumInsight(ins?.fb, "page_fan_adds");
+    const fbFanAdds = sumInsight(ins?.fb, "page_daily_follows");
     const fbPageViews = sumInsight(ins?.fb, "page_views_total");
-    const fbPrevImp = sumInsight(ins?.fbPrev, "page_views_total") + sumInsight(ins?.fbPrev, "page_posts_impressions");
+    const fbVideoViews = sumInsight(ins?.fb, "page_video_views");
+    const fbReactions = sumInsight(ins?.fb, "page_actions_post_reactions_total");
+    const fbPrevImp = sumInsight(ins?.fbPrev, "page_posts_impressions") + sumInsight(ins?.fbPrev, "page_views_total");
     const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
 
     const igImpressions = sumInsight(ins?.ig, "impressions");

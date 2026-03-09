@@ -30,15 +30,15 @@ serve(async (req) => {
       const prevStartD = new Date(prevEnd); prevStartD.setDate(prevStartD.getDate() - daysDiff);
       const prevStart = prevStartD.toISOString().split("T")[0];
       const prevEndStr = prevEnd.toISOString().split("T")[0];
-      const core = "page_views_total,page_post_engagements,page_posts_impressions,page_video_views";
+      /* Only metrics confirmed working (page_impressions, page_engaged_users, page_fan_adds are DEPRECATED by Meta) */
+      const core = "page_views_total,page_post_engagements,page_posts_impressions,page_video_views,page_actions_post_reactions_total,page_daily_follows,page_daily_unfollows";
 
       /* Run ALL requests in parallel — no sequential waiting */
-      const [page, posts, d1, d2, adv, igCheck] = await Promise.all([
+      const [page, posts, d1, d2, igCheck] = await Promise.all([
         safeFetch(`https://graph.facebook.com/${V}/${pid}?fields=name,fan_count,followers_count,talking_about_count,picture{url},link&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/published_posts?fields=id,message,created_time,full_picture,permalink_url&limit=20&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${core}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${core}&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`),
-        safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=page_impressions,page_engaged_users,page_fan_adds&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}?fields=instagram_business_account{id,username,followers_count,follows_count,media_count,profile_picture_url}&access_token=${at}`),
       ]);
 
@@ -49,7 +49,6 @@ serve(async (req) => {
       }
       if (d1?.data) result.fb = d1.data;
       if (d2?.data) result.fbPrev = d2.data;
-      if (adv?.data && result.fb) result.fb = [...result.fb, ...adv.data];
 
       /* Instagram via FB Business Account */
       const igBiz = igCheck?.instagram_business_account;
