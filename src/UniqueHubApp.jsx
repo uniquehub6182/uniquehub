@@ -13423,6 +13423,189 @@ function Match4BizPage({ onBack, clients, user }) {
 /* ═══════════════════════════════════════════════════════════════════
    MAIN CLIENT APP — Portal do Cliente
    ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT ONBOARDING — Cadastro interativo com IA conversacional
+   ═══════════════════════════════════════════════════════════════════ */
+function ClientOnboarding({ onComplete, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState({ name:"", company:"", email:"", phone:"", password:"" });
+  const [typing, setTyping] = useState(false);
+  const [done, setDone] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const scrollBottom = () => setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50);
+
+  const addBot = (text, delay = 600) => {
+    setTyping(true);
+    scrollBottom();
+    return new Promise(resolve => {
+      setTimeout(() => {
+        setMessages(prev => [...prev, { from:"bot", text }]);
+        setTyping(false);
+        scrollBottom();
+        setTimeout(() => inputRef.current?.focus(), 100);
+        resolve();
+      }, delay);
+    });
+  };
+
+  const addUser = (text) => {
+    setMessages(prev => [...prev, { from:"user", text }]);
+    scrollBottom();
+  };
+
+  /* Start conversation */
+  useEffect(() => {
+    (async () => {
+      await addBot("Olá! Eu sou a Luna, assistente virtual da Unique Marketing 360. 👋", 800);
+      await addBot("Vou te ajudar a criar sua conta em poucos passos. Vai ser rápido e fácil!", 1000);
+      await addBot("Para começar, qual é o seu nome?", 700);
+      setStep(1);
+    })();
+  }, []);
+
+  const STEPS = {
+    1: { field:"name", next: async (val) => {
+      await addBot(`Prazer, ${val}! Que bom ter você aqui.`, 600);
+      await addBot("Qual o nome da sua empresa ou negócio?", 700);
+    }},
+    2: { field:"company", next: async (val) => {
+      await addBot(`${val}, ótimo! Vamos cuidar bem do marketing de vocês.`, 600);
+      await addBot("Agora preciso do seu melhor e-mail para criar sua conta:", 700);
+    }},
+    3: { field:"email", validate: (v) => v.includes("@") && v.includes(".") ? null : "Hmm, isso não parece um e-mail válido. Tenta de novo?", next: async (val) => {
+      await addBot("Perfeito! E um telefone para contato? (com DDD)", 600);
+    }},
+    4: { field:"phone", next: async (val) => {
+      await addBot("Quase lá! Agora crie uma senha para sua conta. Mínimo 6 caracteres:", 700);
+    }},
+    5: { field:"password", validate: (v) => v.length >= 6 ? null : "A senha precisa ter pelo menos 6 caracteres. Tenta uma mais forte!", next: async (val) => {
+      setDone(true);
+    }},
+  };
+
+  const handleSend = async () => {
+    const val = input.trim();
+    if (!val || typing || done || creating) return;
+    const s = STEPS[step];
+    if (!s) return;
+
+    addUser(step === 5 ? "••••••" : val);
+    setInput("");
+
+    /* Validate */
+    if (s.validate) {
+      const err = s.validate(val);
+      if (err) { await addBot(err, 500); return; }
+    }
+
+    /* Save data */
+    setData(prev => ({ ...prev, [s.field]: val }));
+
+    /* Next step */
+    await s.next(val);
+    setStep(prev => prev + 1);
+  };
+
+  const handleCreate = async () => {
+    if (creating) return;
+    setCreating(true); setError("");
+    try {
+      if (!supabase) throw new Error("Servidor indisponível");
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: data.email, password: data.password,
+        options: { data: { name: data.name, company: data.company, phone: data.phone, role: "cliente" } }
+      });
+      if (authErr) throw new Error(authErr.message);
+      /* Save client profile extras */
+      if (authData?.user?.id) {
+        await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
+      }
+      await addBot(`Conta criada com sucesso, ${data.name}! 🎉`, 600);
+      await addBot("Verifique seu e-mail para confirmar a conta e depois faça login.", 800);
+      setTimeout(() => onBack(), 3000);
+    } catch(e) {
+      setError(e.message);
+      setCreating(false);
+      await addBot("Ops, tivemos um problema: " + e.message, 500);
+      await addBot("Tente novamente ou volte mais tarde.", 500);
+    }
+  };
+
+  return (
+    <div className="app" style={{ background:"#0D0D0D", color:"#fff" }}>
+      {/* Header */}
+      <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:"#fff" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><circle cx="12" cy="21" r="1"/></svg>
+        </div>
+        <div>
+          <p style={{ fontSize:14, fontWeight:700 }}>Luna</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Assistente Unique Marketing</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch" }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ display:"flex", justifyContent:m.from==="user"?"flex-end":"flex-start", maxWidth:"85%" , alignSelf:m.from==="user"?"flex-end":"flex-start" }}>
+            <div style={{
+              padding:"10px 14px", borderRadius:m.from==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
+              background:m.from==="user"?B.accent:"rgba(255,255,255,0.08)",
+              color:m.from==="user"?"#0D0D0D":"#fff",
+              fontSize:14, lineHeight:1.5, fontWeight:m.from==="user"?500:400,
+              boxShadow:m.from==="user"?`0 2px 8px ${B.accent}30`:"none",
+              animation:"fadeIn .3s ease",
+            }}>{m.text}</div>
+          </div>
+        ))}
+        {typing && <div style={{ display:"flex", alignSelf:"flex-start" }}>
+          <div style={{ padding:"10px 18px", borderRadius:"16px 16px 16px 4px", background:"rgba(255,255,255,0.08)" }}>
+            <div style={{ display:"flex", gap:4 }}>
+              {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:3, background:"rgba(255,255,255,0.4)", animation:`skPulse 1.2s ease ${i*0.2}s infinite` }} />)}
+            </div>
+          </div>
+        </div>}
+        {/* Confirmation card */}
+        {done && !creating && !error && <div style={{ alignSelf:"flex-start", maxWidth:"90%", animation:"fadeIn .5s ease" }}>
+          <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:16, border:"1px solid rgba(255,255,255,0.1)", marginTop:8 }}>
+            <p style={{ fontSize:13, fontWeight:700, color:B.accent, marginBottom:10 }}>Confirme seus dados:</p>
+            {[{l:"Nome",v:data.name},{l:"Empresa",v:data.company},{l:"E-mail",v:data.email},{l:"Telefone",v:data.phone}].map((r,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:i<3?"1px solid rgba(255,255,255,0.06)":"none" }}>
+                <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{r.l}</span>
+                <span style={{ fontSize:12, fontWeight:600 }}>{r.v}</span>
+              </div>
+            ))}
+            <button onClick={handleCreate} style={{ width:"100%", marginTop:14, padding:"13px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>
+              Criar minha conta
+            </button>
+          </div>
+        </div>}
+      </div>
+
+      {/* Input */}
+      {!done && <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(255,255,255,0.06)", display:"flex", gap:8, alignItems:"center" }}>
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()}
+          placeholder={step===1?"Seu nome...":step===2?"Nome da empresa...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
+          type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
+          style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none" }}
+        />
+        <button onClick={handleSend} disabled={typing||!input.trim()} style={{ width:44, height:44, borderRadius:22, background:input.trim()?B.accent:"rgba(255,255,255,0.08)", border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"rgba(255,255,255,0.3)"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>}
+    </div>
+  );
+}
+
 function MainClientApp({ user, onLogout, dark }) {
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
@@ -14429,7 +14612,8 @@ input,textarea,select{font-size:16px !important}
     if (data.mode === "login" && data.user) { setClientUser(data.user); }
     if (data.mode === "register") { setClientUser({ registering: true }); }
   }} />}
-      {clientUser && <MainClientApp user={clientUser} onLogout={() => { setClientUser(null); if(supabase) supabase.auth.signOut(); }} dark={dark} />}
+      {clientUser && clientUser.registering && <ClientOnboarding onComplete={(u) => setClientUser(u)} onBack={() => setClientUser(null)} />}
+      {clientUser && !clientUser.registering && <MainClientApp user={clientUser} onLogout={() => { setClientUser(null); if(supabase) supabase.auth.signOut(); }} dark={dark} />}
       {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
     setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
     themeColor={themeColor}
