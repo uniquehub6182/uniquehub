@@ -13596,7 +13596,7 @@ function MainClientApp({ user, onLogout, dark }) {
       </div></div>}
 
       {/* BOTTOM NAV — exact same as agency */}
-      <nav className="bnav" style={{ background:dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)", backdropFilter:"blur(20px) saturate(1.4)", WebkitBackdropFilter:"blur(20px) saturate(1.4)", borderRadius:100, border:dark?"1px solid #2A2A2A":"1px solid rgba(255,255,255,0.08)", width:"calc(100% - 40px)", maxWidth:340, padding:"8px 8px", overflow:"visible" }}>
+      <nav className="bnav" style={{ position:"relative", background:dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)", backdropFilter:"blur(20px) saturate(1.4)", WebkitBackdropFilter:"blur(20px) saturate(1.4)", borderRadius:100, border:dark?"1px solid #2A2A2A":"1px solid rgba(255,255,255,0.08)", width:"calc(100% - 40px)", maxWidth:340, padding:"8px 8px", overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           const accentColor = B.accent;
