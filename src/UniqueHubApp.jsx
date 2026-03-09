@@ -1425,7 +1425,8 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
 function useToast() {
   const [toast, setToast] = useState(null);
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
-  const ToastEl = toast ? <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", background: B.dark, color: "#fff", padding: "10px 20px", borderRadius: 14, fontSize: 13, fontWeight: 600, zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", animation: "toastIn .3s ease", display: "flex", alignItems: "center", gap: 8 }}><span style={{ color: B.accent }}>{IC.check}</span>{toast}</div> : null;
+  const isError = toast && (toast.includes("Erro") || toast.includes("erro") || toast.includes("falh"));
+  const ToastEl = toast ? <div className="toast-anim" style={{ position:"fixed", top:60, left:"50%", transform:"translateX(-50%)", background:isError?"#FF3B30":B.dark, color:"#fff", padding:"10px 20px", borderRadius:14, fontSize:13, fontWeight:600, zIndex:999, boxShadow:"0 4px 20px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap:8, maxWidth:"90%", textAlign:"center" }}>{isError ? <span>❌</span> : <span style={{ color:B.accent }}>{IC.check}</span>}{toast}</div> : null;
   return { toast, showToast, ToastEl };
 }
 
@@ -5302,7 +5303,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           <p className="sl" style={{ marginBottom:8 }}>Publicar em</p>
           <div style={{ display:"flex", gap:8, marginBottom:16 }}>
             {hasFB && hasIG && <button onClick={()=>doQuickPublish("both")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
-              {qpLoading ? "Publicando..." : "📤 Facebook + Instagram"}
+              {qpLoading ? "⏳ Publicando..." : "📤 Facebook + Instagram"}
             </button>}
             {hasFB && <button onClick={()=>doQuickPublish("facebook")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
               {qpLoading ? "..." : "Facebook"}
@@ -5559,8 +5560,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         ) : (
         <div style={{ textAlign:"center", marginBottom:14 }}>
           <Av src={(propClients||[]).find(c=>c.name===sel.client)?.logo} name={sel.client} sz={48} fs={18} />
-          <h2 style={{ fontSize:17, fontWeight:800, marginTop:8 }}>{sel.title}</h2>
-          <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{sel.client} · {typeLabel(sel.type)} · {sel.createdAt}</p>
+          <h2 style={{ fontSize:17, fontWeight:800, marginTop:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>{sel.title}</h2>
+          <p style={{ fontSize:12, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sel.client} · {typeLabel(sel.type)} · {sel.createdAt}</p>
           <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
             <Tag color={typeColor(sel.type)}>{typeLabel(sel.type)}</Tag>
             <Tag color={curStageCfg.c}>{curStageCfg.l}</Tag>
@@ -6375,8 +6376,22 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <span style={{ fontSize:10, color:B.muted }}>· {filtered.length} resultado{filtered.length!==1?"s":""}</span>
       </div>}
 
+      {/* Loading skeleton */}
+      {demands.length === 0 && filtered.length === 0 && <div>
+        {[1,2,3].map(i => <Card key={i} style={{ marginBottom:8, opacity: 0.5 }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+            <div className="skeleton" style={{ width:44, height:44, borderRadius:12, flexShrink:0 }} />
+            <div style={{ flex:1 }}>
+              <div className="skeleton" style={{ width:"70%", height:14, marginBottom:6 }} />
+              <div className="skeleton" style={{ width:"40%", height:10 }} />
+            </div>
+          </div>
+          <div className="skeleton" style={{ width:"100%", height:6, marginTop:12, borderRadius:3 }} />
+        </Card>)}
+      </div>}
+
       {/* Empty state */}
-      {filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+      {demands.length > 0 && filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
         <div style={{ width:48, height:48, borderRadius:24, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.muted }}>{IC.search(B.muted)}</div>
         <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhuma demanda encontrada</p>
         <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou criar uma nova demanda.</p>
@@ -6468,8 +6483,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             )}
 
             {/* Title + client */}
-            <p style={{ fontSize:15, fontWeight:800, color:B.text, marginBottom:2 }}>{d.title}</p>
-            <p style={{ fontSize:11, color:B.muted }}>{d.client} · {d.createdAt}</p>
+            <p style={{ fontSize:15, fontWeight:800, color:B.text, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client} · {d.createdAt}</p>
 
             {/* Caption preview */}
             {caption && <p style={{ fontSize:12, color:B.text, marginTop:8, lineHeight:1.5, opacity:0.75, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
@@ -7055,7 +7070,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             const showAvatar = !isMe && (i === 0 || msgs[i-1]?.sender_id !== m.sender_id);
             const senderName = !isMe && isGroup ? (allProfiles.find(p=>p.id===m.sender_id)?.name||"").split(" ")[0] : null;
             return (
-              <div key={m.id} style={{ display:"flex", width:"100%", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2, paddingLeft:isMe?0:0, paddingRight:isMe?0:0 }}>
+              <div key={m.id} style={{ display:"flex", width:"100%", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2, opacity:m._optimistic&&!m._failed?0.6:1, transition:"opacity .2s" }}>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:6, maxWidth:"78%", flexDirection:isMe?"row-reverse":"row" }}>
                   {!isMe && (
                     <div style={{flexShrink:0, opacity:showAvatar?1:0}}>
@@ -7064,7 +7079,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   )}
                   <div style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", minWidth:0 }}>
                     {senderName && <span style={{ fontSize:10, color:B.muted, marginBottom:2, fontWeight:600 }}>{senderName}</span>}
-                    <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.5, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"break-word" }}>
+                    <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.5, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"break-word", maxWidth:"100%" }}>
                       {m.file_url ? (
                         m.file_type?.startsWith("image") ? (
                           <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
@@ -7088,8 +7103,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       )}
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
-                      <span style={{ fontSize:10, color:B.muted }}>{fmtTime(m.created_at)}</span>
-                      {isMe && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      <span style={{ fontSize:10, color:m._failed?B.red:B.muted }}>{m._failed ? "❌ Falha ao enviar" : m._optimistic ? "⏳ Enviando..." : fmtTime(m.created_at)}</span>
+                      {isMe && !m._optimistic && !m._failed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {m._failed && <button onClick={()=>{ setMsgs(prev=>prev.filter(x=>x.id!==m.id)); setInput(m.content); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:10, color:B.accent, fontWeight:600, padding:0 }}>Tentar novamente</button>}
                     </div>
                     {reactMsgId===m.id && (
                       <div style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
@@ -14069,6 +14085,11 @@ export default function App() {
       <style>{`
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.skeleton{background:linear-gradient(90deg,${B.border}00 25%,${B.border}60 50%,${B.border}00 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
+.btn-loading{opacity:0.6;pointer-events:none;cursor:wait}
+.toast-anim{animation:toastIn .3s cubic-bezier(0.34,1.56,0.64,1) both}
+@keyframes toastIn{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
 html,body{font-family:'Figtree',sans-serif;background:${dark?"#0F1419":"#F7F7F8"};margin:0;padding:0;width:100%;height:100%;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;overflow:hidden;background:${dark?"#0F1419":"#F7F7F8"}}
 input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
