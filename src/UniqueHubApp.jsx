@@ -7083,6 +7083,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       {m.file_url ? (
                         m.file_type?.startsWith("image") ? (
                           <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
+                        ) : m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"") ? (
+                          <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", minWidth:180 }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={isMe?"#0D0D0D":B.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                            <audio controls preload="metadata" style={{ height:32, maxWidth:180, flex:1 }} src={m.file_url}>Áudio</audio>
+                          </div>
                         ) : (
                           <a href={m.file_url} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", background:isMe?"rgba(0,0,0,0.1)":"rgba(0,0,0,0.04)", borderRadius:10, textDecoration:"none", color:isMe?"#0D0D0D":B.text }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -14086,6 +14091,7 @@ export default function App() {
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+audio{border-radius:16px;height:32px}audio::-webkit-media-controls-panel{background:transparent}audio::-webkit-media-controls-current-time-display,audio::-webkit-media-controls-time-remaining-display{font-size:10px}
 .skeleton{background:linear-gradient(90deg,${B.border}00 25%,${B.border}60 50%,${B.border}00 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:8px}
 .btn-loading{opacity:0.6;pointer-events:none;cursor:wait}
 .toast-anim{animation:toastIn .3s cubic-bezier(0.34,1.56,0.64,1) both}
