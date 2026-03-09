@@ -35,43 +35,90 @@ serve(async (req) => {
     const prevSinceStr = prevStart.toISOString().split("T")[0];
     const prevUntilStr = prevEnd.toISOString().split("T")[0];
 
-    const result: any = { fb: null, ig: null, igMedia: null, fbPrev: null, igPrev: null, fbPage: null, igProfile: null };
+    const result: any = { fb: null, ig: null, igMedia: null, fbPrev: null, igPrev: null, fbPage: null, igProfile: null, fbDaily: null };
+
+    /* Helper: fetch with error handling */
+    const safeFetch = async (url: string) => {
+      try {
+        const r = await fetch(url);
+        const d = await r.json();
+        if (d.error) { console.warn("Graph API error:", d.error.message); return null; }
+        return d;
+      } catch (e) { console.warn("Fetch error:", e); return null; }
+    };
 
     /* ── Facebook Page Insights (via Meta token) ── */
     if (metaToken?.page_id && metaToken?.page_token) {
       const at = metaToken.page_token;
       const pid = metaToken.page_id;
-      const fbM = "page_impressions,page_impressions_organic_v2,page_impressions_paid,page_engaged_users,page_post_engagements,page_fan_adds,page_views_total";
-      try {
-        const r1 = await fetch(`https://graph.facebook.com/v21.0/${pid}/insights?metric=${fbM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
-        const d1 = await r1.json(); if (d1.data) result.fb = d1.data;
-        const r2 = await fetch(`https://graph.facebook.com/v21.0/${pid}/insights?metric=${fbM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
-        const d2 = await r2.json(); if (d2.data) result.fbPrev = d2.data;
-      } catch (e) { console.warn("FB insights:", e); }
-      try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${pid}?fields=name,fan_count,followers_count&access_token=${at}`);
-        result.fbPage = await r.json();
-      } catch {}
+
+      /* Use v19.0 for broader metric compatibility */
+      const apiVer = "v19.0";
+
+      /* Metrics that work across all page sizes */
+      const coreMetrics = "page_views_total,page_post_engagements,page_actions_post_reactions_total";
+      /* Metrics that require pages_read_engagement and may need 100+ fans */
+      const engagementMetrics = "page_impressions,page_impressions_organic_v2,page_impressions_paid,page_engaged_users,page_fan_adds";
+
+      /* Try engagement metrics first, fallback to core only */
+      let fbMetrics = `${engagementMetrics},${coreMetrics}`;
+      let d1 = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}/insights?metric=${fbMetrics}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+      if (!d1?.data) {
+        /* Fallback: try core metrics only */
+        d1 = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}/insights?metric=${coreMetrics}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+      }
+      if (d1?.data) result.fb = d1.data;
+
+      /* Previous period */
+      let d2 = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}/insights?metric=${fbMetrics}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
+      if (!d2?.data) {
+        d2 = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}/insights?metric=${coreMetrics}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${at}`);
+      }
+      if (d2?.data) result.fbPrev = d2.data;
+
+      /* Page info */
+      const pageInfo = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}?fields=name,fan_count,followers_count&access_token=${at}`);
+      if (pageInfo) result.fbPage = pageInfo;
+
+      /* Daily breakdown for charts */
+      const dailyMetrics = "page_impressions,page_engaged_users";
+      const dailyData = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}/insights?metric=${dailyMetrics}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+      if (dailyData?.data) result.fbDaily = dailyData.data;
 
       /* Instagram via Facebook Page (business account) */
-      if (metaToken.ig_user_id) {
+      const igCheck = await safeFetch(`https://graph.facebook.com/${apiVer}/${pid}?fields=instagram_business_account{id,username}&access_token=${at}`);
+      const igBizId = igCheck?.instagram_business_account?.id;
+      if (igBizId) {
+        /* Auto-save ig_user_id if not stored */
+        if (!metaToken.ig_user_id) {
+          metaToken.ig_user_id = igBizId;
+          metaToken.ig_username = igCheck.instagram_business_account.username || null;
+          await sb.from("app_settings").upsert({ key: `meta_token_${client_id}`, value: JSON.stringify(metaToken), updated_at: new Date().toISOString() }, { onConflict: "key" });
+        }
+        const igUid = igBizId;
         const igAt = at;
-        const igUid = metaToken.ig_user_id;
+
+        /* IG insights via FB business account */
         const igM = "impressions,reach,profile_views,accounts_engaged,follower_count";
-        try {
-          const r1 = await fetch(`https://graph.facebook.com/v21.0/${igUid}/insights?metric=${igM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${igAt}`);
-          const d1 = await r1.json(); if (d1.data) result.ig = d1.data;
-          const r2 = await fetch(`https://graph.facebook.com/v21.0/${igUid}/insights?metric=${igM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${igAt}`);
-          const d2 = await r2.json(); if (d2.data) result.igPrev = d2.data;
-        } catch (e) { console.warn("IG insights:", e); }
-        try {
-          const r = await fetch(`https://graph.facebook.com/v21.0/${igUid}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url,insights.metric(impressions,reach,engagement,saved)&limit=30&access_token=${igAt}`);
-          const d = await r.json(); if (d.data) result.igMedia = d.data;
-        } catch (e) { console.warn("IG media:", e); }
-        try {
-          const r = await fetch(`https://graph.facebook.com/v21.0/${igUid}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url&access_token=${igAt}`);
-          result.igProfile = await r.json();
-        } catch {}
+        const igd1 = await safeFetch(`https://graph.facebook.com/${apiVer}/${igUid}/insights?metric=${igM}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${igAt}`);
+        if (!igd1?.data) {
+          /* Fallback: try fewer metrics */
+          const igFallback = "impressions,reach,follower_count";
+          const igf = await safeFetch(`https://graph.facebook.com/${apiVer}/${igUid}/insights?metric=${igFallback}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${igAt}`);
+          if (igf?.data) result.ig = igf.data;
+        } else { result.ig = igd1.data; }
+
+        /* IG previous period */
+        const igd2 = await safeFetch(`https://graph.facebook.com/${apiVer}/${igUid}/insights?metric=${igM}&period=day&since=${prevSinceStr}&until=${prevUntilStr}&access_token=${igAt}`);
+        if (igd2?.data) result.igPrev = igd2.data;
+
+        /* IG media (recent posts) */
+        const igMedia = await safeFetch(`https://graph.facebook.com/${apiVer}/${igUid}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url,insights.metric(impressions,reach,engagement,saved)&limit=30&access_token=${igAt}`);
+        if (igMedia?.data) result.igMedia = igMedia.data;
+
+        /* IG profile */
+        const igProf = await safeFetch(`https://graph.facebook.com/${apiVer}/${igUid}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url&access_token=${igAt}`);
+        if (igProf) result.igProfile = igProf;
       }
     }
 
@@ -79,14 +126,10 @@ serve(async (req) => {
     if (igToken?.ig_user_id && igToken?.access_token && !result.ig) {
       const at = igToken.access_token;
       const uid = igToken.ig_user_id;
-      try {
-        const r = await fetch(`https://graph.instagram.com/v21.0/${uid}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url&access_token=${at}`);
-        result.igProfile = await r.json();
-      } catch {}
-      try {
-        const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url&limit=30&access_token=${at}`);
-        const d = await r.json(); if (d.data) result.igMedia = d.data;
-      } catch {}
+      const igProf = await safeFetch(`https://graph.instagram.com/v21.0/${uid}?fields=name,username,followers_count,follows_count,media_count,profile_picture_url&access_token=${at}`);
+      if (igProf) result.igProfile = igProf;
+      const igMedia = await safeFetch(`https://graph.instagram.com/v21.0/${uid}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url&limit=30&access_token=${at}`);
+      if (igMedia?.data) result.igMedia = igMedia.data;
     }
 
     return json(result);

@@ -9588,15 +9588,15 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const clientMetrics = CDATA.map(c => {
     const ins = insights[c.name];
     const hasData = !!ins && (!!ins.fb || !!ins.ig);
-    const fbImpressions = sumInsight(ins?.fb, "page_impressions");
-    const fbImpOrganic = sumInsight(ins?.fb, "page_impressions_organic_v2");
-    const fbImpPaid = sumInsight(ins?.fb, "page_impressions_paid");
-    const fbEngagedUsers = sumInsight(ins?.fb, "page_engaged_users");
+    const fbImpressions = sumInsight(ins?.fb, "page_views_total");
+    const fbImpOrganic = 0; /* deprecated Nov 2025 */
+    const fbImpPaid = 0; /* deprecated Nov 2025 */
+    const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements");
     const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
-    const fbFanAdds = sumInsight(ins?.fb, "page_fan_adds");
+    const fbFanAdds = sumInsight(ins?.fb, "page_daily_follows");
     const fbPageViews = sumInsight(ins?.fb, "page_views_total");
-    const fbPrevImp = sumInsight(ins?.fbPrev, "page_impressions");
-    const fbPrevEng = sumInsight(ins?.fbPrev, "page_engaged_users");
+    const fbPrevImp = sumInsight(ins?.fbPrev, "page_views_total");
+    const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
 
     const igImpressions = sumInsight(ins?.ig, "impressions");
     const igReach = sumInsight(ins?.ig, "reach");
@@ -9690,8 +9690,8 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
     if (!c) { setSelClient(null); return null; }
     const igDailyReach = dailyInsight(c.igDaily, "reach");
     const igDailyImp = dailyInsight(c.igDaily, "impressions");
-    const fbDailyImp = dailyInsight(c.fbDaily, "page_impressions");
-    const fbDailyEng = dailyInsight(c.fbDaily, "page_engaged_users");
+    const fbDailyImp = dailyInsight(c.fbDaily, "page_views_total");
+    const fbDailyEng = dailyInsight(c.fbDaily, "page_post_engagements");
     return (
       <div className="pg">
         {ToastEl}
@@ -9755,28 +9755,26 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
           {c.fbDaily && <>
             <p className="sl" style={{ marginBottom:6, color:"#1877F2" }}>Facebook — Métricas do mês</p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:8 }}>
-              <MetricCard label="Impressões totais" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions, c.fbPrevImp)} sub="Vezes que o conteúdo foi visto" />
-              <MetricCard label="Engajamento" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers, c.fbPrevEng)} sub="Pessoas que interagiram" />
+              <MetricCard label="Visualizações" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions, c.fbPrevImp)} sub="Vezes que a página foi vista" />
+              <MetricCard label="Engajamento" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers, c.fbPrevEng)} sub="Interações com posts" />
             </div>
             <Card style={{ marginBottom:8 }}>
-              <p style={{ fontSize:11, fontWeight:700, marginBottom:8 }}>Orgânico vs Pago</p>
+              <p style={{ fontSize:11, fontWeight:700, marginBottom:8 }}>Resumo do mês</p>
               <div style={{ display:"flex", gap:8 }}>
-                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}>
-                  <p style={{ fontSize:16, fontWeight:900, color:B.green }}>{formatNum(c.fbImpOrganic)}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>Impressões orgânicas</p>
-                  <p style={{ fontSize:8, color:B.muted }}>{c.fbImpressions > 0 ? Math.round((c.fbImpOrganic/c.fbImpressions)*100) : 0}% do total</p>
+                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.blue}08`, textAlign:"center" }}>
+                  <p style={{ fontSize:16, fontWeight:900, color:B.blue }}>{formatNum(c.fbPageViews)}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>Views da página</p>
                 </div>
-                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.orange}08`, textAlign:"center" }}>
-                  <p style={{ fontSize:16, fontWeight:900, color:B.orange }}>{formatNum(c.fbImpPaid)}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>Impressões pagas</p>
-                  <p style={{ fontSize:8, color:B.muted }}>{c.fbImpressions > 0 ? Math.round((c.fbImpPaid/c.fbImpressions)*100) : 0}% do total</p>
+                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}>
+                  <p style={{ fontSize:16, fontWeight:900, color:B.green }}>+{formatNum(c.fbFanAdds)}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>Novos seguidores</p>
                 </div>
               </div>
             </Card>
             <Card style={{ marginBottom:8 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbPostEngagement)}</p><p style={{ fontSize:8, color:B.muted }}>Reações em posts</p></div>
-                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#42B72A" }}>+{formatNum(c.fbFanAdds)}</p><p style={{ fontSize:8, color:B.muted }}>Novos fãs</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#42B72A" }}>+{formatNum(c.fbFanAdds)}</p><p style={{ fontSize:8, color:B.muted }}>Novos seguidores</p></div>
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbPageViews)}</p><p style={{ fontSize:8, color:B.muted }}>Views da página</p></div>
               </div>
             </Card>
@@ -9876,7 +9874,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
             </Card>
           </div>
 
-          <p className="sl" style={{ marginBottom:6 }}>Facebook — Novos fãs</p>
+          <p className="sl" style={{ marginBottom:6 }}>Facebook — Novos seguidores</p>
           <Card style={{ marginBottom:12 }}>
             <p style={{ fontSize:22, fontWeight:900, color:"#42B72A" }}>+{formatNum(totals.fbFans)}</p>
             <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Novos seguidores/fãs nas páginas este mês</p>
@@ -9907,7 +9905,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
               </div>
               {c.hasData ? <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, textAlign:"center" }}>
                 <div><p style={{ fontSize:12, fontWeight:800, color:"#E1306C" }}>{formatNum(c.igReach)}</p><p style={{ fontSize:8, color:B.muted }}>Alcance IG</p></div>
-                <div><p style={{ fontSize:12, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbImpressions)}</p><p style={{ fontSize:8, color:B.muted }}>Impr. FB</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbImpressions)}</p><p style={{ fontSize:8, color:B.muted }}>Views FB</p></div>
                 <div><p style={{ fontSize:12, fontWeight:800, color:B.green }}>{c.engRate}%</p><p style={{ fontSize:8, color:B.muted }}>Engaj.</p></div>
                 <div><p style={{ fontSize:12, fontWeight:800, color:B.orange }}>{formatNum(c.totalLikes)}</p><p style={{ fontSize:8, color:B.muted }}>Curtidas</p></div>
               </div> : <p style={{ fontSize:10, color:B.muted, textAlign:"center", padding:6 }}>Conecte as redes sociais para ver métricas → Toque para ver detalhes</p>}
@@ -9956,13 +9954,13 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
               <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.fbImp)}</p><p style={{ fontSize:9, opacity:.7 }}>Impressões totais</p></div>
               <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.engaged)}</p><p style={{ fontSize:9, opacity:.7 }}>Engajamento</p></div>
-              <div><p style={{ fontSize:22, fontWeight:900 }}>+{formatNum(totals.fbFans)}</p><p style={{ fontSize:9, opacity:.7 }}>Novos fãs</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>+{formatNum(totals.fbFans)}</p><p style={{ fontSize:9, opacity:.7 }}>Novos seguidores</p></div>
               <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, opacity:.7 }}>Comentários</p></div>
             </div>
           </Card>
 
           {clientMetrics.filter(c => c.fbDaily).map((c, i) => {
-            const daily = dailyInsight(c.fbDaily, "page_impressions");
+            const daily = dailyInsight(c.fbDaily, "page_views_total");
             return (
               <Card key={c.name} style={{ marginBottom:8 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
@@ -9970,17 +9968,17 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
                   <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>{c.fbPage?.name || "—"} · {formatNum(c.fbFollowers)} seg.</p></div>
                 </div>
                 <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.green}08`, textAlign:"center" }}>
-                    <p style={{ fontSize:13, fontWeight:800, color:B.green }}>{formatNum(c.fbImpOrganic)}</p>
-                    <p style={{ fontSize:8, color:B.muted }}>Orgânico</p>
-                  </div>
-                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.orange}08`, textAlign:"center" }}>
-                    <p style={{ fontSize:13, fontWeight:800, color:B.orange }}>{formatNum(c.fbImpPaid)}</p>
-                    <p style={{ fontSize:8, color:B.muted }}>Pago</p>
-                  </div>
                   <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.blue}08`, textAlign:"center" }}>
-                    <p style={{ fontSize:13, fontWeight:800, color:B.blue }}>+{formatNum(c.fbFanAdds)}</p>
-                    <p style={{ fontSize:8, color:B.muted }}>Novos fãs</p>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.blue }}>{formatNum(c.fbPageViews)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Views</p>
+                  </div>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.green}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.green }}>{formatNum(c.fbPostEngagement)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Engajamento</p>
+                  </div>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.accent}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.accent }}>+{formatNum(c.fbFanAdds)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Seguidores</p>
                   </div>
                 </div>
                 <DailyChart data={daily} color="#1877F2" h={40} />
