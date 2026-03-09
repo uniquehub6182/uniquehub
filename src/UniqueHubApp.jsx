@@ -554,7 +554,7 @@ const supaCreateNotificationForAll = async (type, title, body, icon, link, exclu
   if (!supabase) return;
   try {
     const { data: profiles } = await supabase.from("profiles").select("id");
-    const users = (profiles || []).filter(p => p.id !== excludeUserId);
+    const users = (profiles || []);
     if (users.length === 0) return;
     const rows = users.map(u => ({ user_id: u.id, type, title, body: body || "", link: link || "" }));
     await supabase.from("notifications").insert(rows);
