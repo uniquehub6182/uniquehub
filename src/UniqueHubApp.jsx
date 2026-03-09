@@ -4879,6 +4879,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [createType, setCreateType] = useState(null);
   const [form, setForm] = useState({});
   const [editMode, setEditMode] = useState(false);
+  const [quickPub, setQuickPub] = useState(false);
+  const [qpForm, setQpForm] = useState({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
+  const [qpLoading, setQpLoading] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const contentScrollRef = useRef(null);
   const { showToast, ToastEl } = useToast();
@@ -4974,6 +4977,91 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     showToast(toastMsg);
     if (result?.data) supaCreateNotificationForAll("demand_created", "Nova demanda criada", `${newD.title || newD.type} — ${newD.clientName || ""}`, "📋", null, user?.id);
   };
+
+  /* ── QUICK PUBLISH ── */
+  if (quickPub) {
+    const connectedClients = CDATA.filter(c => c.socials?.facebook?.oauth || c.socials?.instagram?.oauth);
+    const selClient = connectedClients.find(c => c.name === qpForm.client) || connectedClients[0];
+    const hasFB = selClient?.socials?.facebook?.oauth;
+    const hasIG = selClient?.socials?.instagram?.oauth;
+    const doQuickPublish = async (platform) => {
+      if (!qpForm.imageUrl) { showToast("Cole a URL da imagem"); return; }
+      if (!selClient) { showToast("Selecione um cliente"); return; }
+      setQpLoading(true);
+      const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption;
+      const clientId = selClient.supaId || selClient.id;
+      try {
+        let r;
+        if (platform === "both") {
+          const [rFb, rIg] = await Promise.all([
+            hasFB ? publishToMeta(clientId, qpForm.imageUrl, caption) : null,
+            hasIG ? publishToInstagram(clientId, [qpForm.imageUrl], caption, "FEED") : null
+          ]);
+          if (rFb?.error) { showToast("Erro FB: " + rFb.error); setQpLoading(false); return; }
+          if (rIg?.error) { showToast("Erro IG: " + rIg.error); setQpLoading(false); return; }
+          showToast("✓ Publicado no " + [hasFB && "Facebook", hasIG && "Instagram"].filter(Boolean).join(" e ") + "!");
+        } else if (platform === "facebook") {
+          r = await publishToMeta(clientId, qpForm.imageUrl, caption);
+          if (r?.error) { showToast("Erro: " + r.error); setQpLoading(false); return; }
+          showToast("✓ Publicado no Facebook!");
+        } else {
+          r = await publishToInstagram(clientId, [qpForm.imageUrl], caption, "FEED");
+          if (r?.error) { showToast("Erro: " + r.error); setQpLoading(false); return; }
+          showToast("✓ Publicado no Instagram!");
+        }
+        supaCreateNotificationForAll("post_created", "Post publicado", `${selClient.name} — ${platform === "both" ? "FB + IG" : platform}`, "📝", null, user?.id);
+        setQpLoading(false); setQuickPub(false); setQpForm({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
+      } catch(e) { showToast("Erro: " + e.message); setQpLoading(false); }
+    };
+    return (
+      <div className="pg" style={{ paddingTop: TOP }}>
+        {ToastEl}
+        <Head title="Publicação Rápida" onBack={() => setQuickPub(false)} />
+        {connectedClients.length === 0 ? <Card style={{ textAlign:"center", padding:30 }}>
+          <p style={{ fontSize:28, marginBottom:8 }}>📡</p>
+          <p style={{ fontSize:14, fontWeight:700 }}>Nenhum cliente com rede conectada</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Conecte Facebook ou Instagram de um cliente na aba Clientes → Redes.</p>
+        </Card> : <>
+          <p className="sl" style={{ marginBottom:6 }}>Cliente</p>
+          <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:12, paddingBottom:4 }}>
+            {connectedClients.map(c => (
+              <button key={c.name} onClick={()=>setQpForm(p=>({...p, client:c.name}))} style={{ flexShrink:0, padding:"8px 14px", borderRadius:10, border:qpForm.client===c.name?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:qpForm.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:qpForm.client===c.name?B.accent:B.text }}>
+                {c.name}
+                <div style={{ display:"flex", gap:3, marginTop:3, justifyContent:"center" }}>
+                  {c.socials?.facebook?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />}
+                  {c.socials?.instagram?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />}
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="sl" style={{ marginBottom:6 }}>Imagem (URL pública)</p>
+          <input value={qpForm.imageUrl} onChange={e=>setQpForm(p=>({...p,imageUrl:e.target.value}))} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ marginBottom:8, fontSize:12 }} />
+          {qpForm.imageUrl && <Card style={{ marginBottom:12, padding:6, textAlign:"center" }}>
+            <img src={qpForm.imageUrl} alt="Preview" style={{ maxWidth:"100%", maxHeight:200, borderRadius:10, objectFit:"contain" }} onError={e=>{e.target.style.display="none"}} />
+          </Card>}
+          <p className="sl" style={{ marginBottom:6 }}>Legenda</p>
+          <textarea value={qpForm.caption} onChange={e=>setQpForm(p=>({...p,caption:e.target.value}))} placeholder="Escreva a legenda do post..." className="tinput" rows={4} style={{ marginBottom:8, fontSize:13, lineHeight:1.5, resize:"vertical" }} />
+          <p className="sl" style={{ marginBottom:6 }}>Hashtags</p>
+          <input value={qpForm.hashtags} onChange={e=>setQpForm(p=>({...p,hashtags:e.target.value}))} placeholder="#marketing #digital #agencia" className="tinput" style={{ marginBottom:12, fontSize:12 }} />
+          <p className="sl" style={{ marginBottom:8 }}>Publicar em</p>
+          <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+            {hasFB && hasIG && <button onClick={()=>doQuickPublish("both")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
+              {qpLoading ? "Publicando..." : "📤 Facebook + Instagram"}
+            </button>}
+            {hasFB && <button onClick={()=>doQuickPublish("facebook")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
+              {qpLoading ? "..." : "Facebook"}
+            </button>}
+            {hasIG && <button onClick={()=>doQuickPublish("instagram")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"#E1306C", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
+              {qpLoading ? "..." : "Instagram"}
+            </button>}
+          </div>
+          <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, padding:12 }}>
+            <p style={{ fontSize:10, color:B.muted, lineHeight:1.6 }}>💡 A imagem precisa ser uma URL pública acessível pela internet. Para imagens locais, primeiro faça upload na Biblioteca e use o link gerado. Posts do Instagram precisam ser quadrados (1080x1080) idealmente.</p>
+          </Card>
+        </>}
+      </div>
+    );
+  }
 
   /* ── CREATE SHEET ── */
   if (creating) return (
@@ -5891,6 +5979,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {ToastEl}
 
       <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />
+
+      {/* Quick Publish button */}
+      <div style={{ padding:"8px 16px 0" }}>
+        <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Publicação Rápida (FB / IG)
+        </button>
+      </div>
 
       {/* ── SCROLLABLE CONTENT ── */}
       <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
