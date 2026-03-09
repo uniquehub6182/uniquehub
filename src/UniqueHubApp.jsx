@@ -9563,16 +9563,27 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
-  /* Fetch insights for all clients */
+  /* Fetch insights ONLY for connected clients, in parallel */
   useEffect(() => {
     if (loaded || CDATA.length === 0) return;
     setLoading(true);
     const fetchAll = async () => {
       const results = {};
-      for (const c of CDATA) {
+      /* Only fetch for clients that have FB or IG connected */
+      const connected = CDATA.filter(c => {
+        const s = c.socials || {};
+        return s.facebook?.connected || s.instagram?.connected;
+      });
+      console.log("[Reports] Fetching insights for", connected.length, "of", CDATA.length, "clients");
+      if (connected.length === 0) { setInsights({}); setLoading(false); setLoaded(true); return; }
+      /* Fetch all in parallel */
+      const promises = connected.map(async c => {
         const cid = c.supaId || c.id;
-        try { results[c.name] = await fetchGraphInsights(cid); } catch { results[c.name] = null; }
-      }
+        try { return { name: c.name, data: await fetchGraphInsights(cid) }; }
+        catch { return { name: c.name, data: null }; }
+      });
+      const settled = await Promise.all(promises);
+      settled.forEach(r => { results[r.name] = r.data; });
       setInsights(results); setLoading(false); setLoaded(true);
     };
     fetchAll();
