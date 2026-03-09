@@ -6,7 +6,7 @@ const json = (d: unknown, s=200) => new Response(JSON.stringify(d), { headers:{.
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   try {
-    const { client_id } = await req.json();
+    const { client_id, since, until } = await req.json();
     if (!client_id) throw new Error("Missing client_id");
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     let metaToken: any = null;
@@ -20,10 +20,16 @@ serve(async (req) => {
     if (metaToken?.page_id && metaToken?.page_token) {
       const at = metaToken.page_token, pid = metaToken.page_id;
       const now = new Date();
-      const sinceStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-      const untilStr = now.toISOString().split("T")[0];
-      const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-      const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
+      /* Use custom dates if provided, otherwise default to current month */
+      const sinceStr = since || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const untilStr = until || now.toISOString().split("T")[0];
+      /* Calculate previous period (same length, immediately before) */
+      const sinceDate = new Date(sinceStr); const untilDate = new Date(untilStr);
+      const daysDiff = Math.ceil((untilDate.getTime() - sinceDate.getTime()) / (1000*60*60*24));
+      const prevEnd = new Date(sinceDate); prevEnd.setDate(prevEnd.getDate() - 1);
+      const prevStartD = new Date(prevEnd); prevStartD.setDate(prevStartD.getDate() - daysDiff);
+      const prevStart = prevStartD.toISOString().split("T")[0];
+      const prevEndStr = prevEnd.toISOString().split("T")[0];
       const core = "page_views_total,page_post_engagements,page_posts_impressions,page_video_views";
 
       /* Run ALL requests in parallel — no sequential waiting */
@@ -31,7 +37,7 @@ serve(async (req) => {
         safeFetch(`https://graph.facebook.com/${V}/${pid}?fields=name,fan_count,followers_count,talking_about_count,picture{url},link&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/published_posts?fields=id,message,created_time,full_picture,permalink_url&limit=20&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${core}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
-        safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${core}&period=day&since=${prevStart}&until=${prevEnd}&access_token=${at}`),
+        safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${core}&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=page_impressions,page_engaged_users,page_fan_adds&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}?fields=instagram_business_account{id,username,followers_count,follows_count,media_count,profile_picture_url}&access_token=${at}`),
       ]);

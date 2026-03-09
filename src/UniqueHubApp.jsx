@@ -668,13 +668,16 @@ const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEE
 };
 
 /* ═══ FETCH META/IG INSIGHTS (via Edge Function proxy) ═══ */
-const fetchGraphInsights = async (clientId) => {
+const fetchGraphInsights = async (clientId, since, until) => {
   if (!supabase || !SUPA_URL) return null;
   try {
+    const body = { client_id: clientId };
+    if (since) body.since = since;
+    if (until) body.until = until;
     const res = await fetch(`${SUPA_URL}/functions/v1/social-insights`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ client_id: clientId })
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     if (data.error) { console.warn("social-insights:", data.error); return null; }
@@ -9560,15 +9563,35 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const [insights, setInsights] = useState({});
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  /* Date range */
+  const now = new Date();
+  const [datePreset, setDatePreset] = useState("month");
+  const [dateSince, setDateSince] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]);
+  const [dateUntil, setDateUntil] = useState(now.toISOString().split("T")[0]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const applyDatePreset = (preset) => {
+    const n = new Date(); let s, u = n.toISOString().split("T")[0];
+    if (preset === "7d") { s = new Date(n); s.setDate(n.getDate() - 7); }
+    else if (preset === "14d") { s = new Date(n); s.setDate(n.getDate() - 14); }
+    else if (preset === "30d") { s = new Date(n); s.setDate(n.getDate() - 30); }
+    else if (preset === "month") { s = new Date(n.getFullYear(), n.getMonth(), 1); }
+    else if (preset === "lastmonth") { s = new Date(n.getFullYear(), n.getMonth() - 1, 1); u = new Date(n.getFullYear(), n.getMonth(), 0).toISOString().split("T")[0]; }
+    else if (preset === "90d") { s = new Date(n); s.setDate(n.getDate() - 90); }
+    else return;
+    setDatePreset(preset); setDateSince(s.toISOString().split("T")[0]); setDateUntil(u);
+    setLoaded(false); setInsights({}); try { sessionStorage.removeItem("uh_insights_cache"); } catch {}
+  };
+  const applyCustomDates = () => { setDatePreset("custom"); setShowDatePicker(false); setLoaded(false); setInsights({}); try { sessionStorage.removeItem("uh_insights_cache"); } catch {} };
+  const dateLabel = { "7d":"7 dias", "14d":"14 dias", "30d":"30 dias", "month":"Este mês", "lastmonth":"Mês anterior", "90d":"90 dias", "custom":"Personalizado" }[datePreset] || "Este mês";
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
   /* Fetch insights ONLY for connected clients, in parallel, with cache */
   useEffect(() => {
     if (loaded || CDATA.length === 0) return;
-    /* Try cache first for instant load */
+    const cacheKey = `uh_insights_${dateSince}_${dateUntil}`;
     try {
-      const cached = sessionStorage.getItem("uh_insights_cache");
+      const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
         const { data, ts } = JSON.parse(cached);
         if (Date.now() - ts < 5 * 60 * 1000) {
@@ -9582,15 +9605,15 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
       const connected = CDATA.filter(c => (c.socials?.facebook?.connected || c.socials?.instagram?.connected));
       if (connected.length === 0) { setInsights({}); setLoading(false); setLoaded(true); return; }
       const settled = await Promise.all(connected.map(async c => {
-        try { return { name: c.name, data: await fetchGraphInsights(c.supaId || c.id) }; }
+        try { return { name: c.name, data: await fetchGraphInsights(c.supaId || c.id, dateSince, dateUntil) }; }
         catch { return { name: c.name, data: null }; }
       }));
       settled.forEach(r => { results[r.name] = r.data; });
-      try { sessionStorage.setItem("uh_insights_cache", JSON.stringify({ data: results, ts: Date.now() })); } catch {}
+      try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: results, ts: Date.now() })); } catch {}
       setInsights(results); setLoading(false); setLoaded(true);
     };
     fetchAll();
-  }, [loaded, CDATA]);
+  }, [loaded, CDATA, dateSince, dateUntil]);
 
   const formatNum = (n) => { if (n === null || n === undefined || isNaN(n)) return "0"; return n >= 1000000 ? (n/1000000).toFixed(1)+"M" : n >= 1000 ? (n/1000).toFixed(1)+"k" : n.toString(); };
   const pctChange = (cur, prev) => { if (!prev) return null; const p = Math.round(((cur - prev) / prev) * 100); return p; };
@@ -9949,6 +9972,25 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
       </Card>}
 
       {!loading && <>
+        {/* Date Range Picker */}
+        <Card style={{ marginBottom:10, padding:10 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+            <p style={{ fontSize:11, fontWeight:700 }}>📅 Período: <span style={{ color:B.accent }}>{dateLabel}</span></p>
+            <button onClick={()=>setShowDatePicker(!showDatePicker)} style={{ background:`${B.accent}10`, border:"none", padding:"4px 10px", borderRadius:8, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>{showDatePicker?"Fechar":"Personalizar"}</button>
+          </div>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+            {[{k:"7d",l:"7d"},{k:"14d",l:"14d"},{k:"30d",l:"30d"},{k:"month",l:"Mês atual"},{k:"lastmonth",l:"Mês anterior"},{k:"90d",l:"90d"}].map(p=>(
+              <button key={p.k} onClick={()=>applyDatePreset(p.k)} style={{ padding:"5px 10px", borderRadius:8, fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"inherit", border:datePreset===p.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:datePreset===p.k?`${B.accent}12`:B.bgCard, color:datePreset===p.k?B.accent:B.muted }}>{p.l}</button>
+            ))}
+          </div>
+          {showDatePicker && <div style={{ marginTop:10, display:"flex", gap:8, alignItems:"flex-end" }}>
+            <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>De</label><input type="date" value={dateSince} onChange={e=>setDateSince(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+            <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>Até</label><input type="date" value={dateUntil} onChange={e=>setDateUntil(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+            <button onClick={applyCustomDates} style={{ padding:"8px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark, flexShrink:0 }}>Aplicar</button>
+          </div>}
+          <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>{dateSince} → {dateUntil}</p>
+        </Card>
+
         {/* Status bar */}
         <Card style={{ marginBottom:12, padding:10, background:`${totals.connectedCount > 0 ? B.green : B.orange}06`, border:`1px solid ${totals.connectedCount > 0 ? B.green : B.orange}15` }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
