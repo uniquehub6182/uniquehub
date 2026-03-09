@@ -9563,27 +9563,30 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
 
-  /* Fetch insights ONLY for connected clients, in parallel */
+  /* Fetch insights ONLY for connected clients, in parallel, with cache */
   useEffect(() => {
     if (loaded || CDATA.length === 0) return;
+    /* Try cache first for instant load */
+    try {
+      const cached = sessionStorage.getItem("uh_insights_cache");
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < 5 * 60 * 1000) {
+          setInsights(data); setLoaded(true); return;
+        }
+      }
+    } catch {}
     setLoading(true);
     const fetchAll = async () => {
       const results = {};
-      /* Only fetch for clients that have FB or IG connected */
-      const connected = CDATA.filter(c => {
-        const s = c.socials || {};
-        return s.facebook?.connected || s.instagram?.connected;
-      });
-      console.log("[Reports] Fetching insights for", connected.length, "of", CDATA.length, "clients");
+      const connected = CDATA.filter(c => (c.socials?.facebook?.connected || c.socials?.instagram?.connected));
       if (connected.length === 0) { setInsights({}); setLoading(false); setLoaded(true); return; }
-      /* Fetch all in parallel */
-      const promises = connected.map(async c => {
-        const cid = c.supaId || c.id;
-        try { return { name: c.name, data: await fetchGraphInsights(cid) }; }
+      const settled = await Promise.all(connected.map(async c => {
+        try { return { name: c.name, data: await fetchGraphInsights(c.supaId || c.id) }; }
         catch { return { name: c.name, data: null }; }
-      });
-      const settled = await Promise.all(promises);
+      }));
       settled.forEach(r => { results[r.name] = r.data; });
+      try { sessionStorage.setItem("uh_insights_cache", JSON.stringify({ data: results, ts: Date.now() })); } catch {}
       setInsights(results); setLoading(false); setLoaded(true);
     };
     fetchAll();
@@ -9790,17 +9793,23 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
             {c.needsPermission?.includes("pages_read_engagement") && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:8 }}>
               <p style={{ fontSize:10, color:B.orange }}>⚠️ Métricas detalhadas (alcance, impressões, reações) requerem permissão <strong>pages_read_engagement</strong> no Meta App.</p>
             </Card>}
-            {c.fbPosts?.length > 0 && <>
+            {(c.fbPosts?.length > 0 || c.mediaPosts?.length > 0) && <>
               <p className="sl" style={{ marginBottom:6 }}>Publicações recentes</p>
               <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:8 }}>
-                {c.fbPosts.slice(0, 10).map((p, i) => (
-                  <div key={i} onClick={() => p.permalink_url && window.open(p.permalink_url, "_blank")} style={{ flexShrink:0, width:140, borderRadius:12, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, cursor: p.permalink_url ? "pointer" : "default" }}>
-                    {p.full_picture && <img src={p.full_picture} style={{ width:140, height:100, objectFit:"cover" }} alt="" />}
-                    {!p.full_picture && <div style={{ width:140, height:60, background:`${B.blue}08`, display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, fontSize:10 }}>Sem imagem</div>}
+                {/* Merge FB + IG posts sorted by date */}
+                {[...(c.fbPosts||[]).map(p=>({...p, _platform:"facebook", _date:p.created_time, _img:p.full_picture, _text:p.message, _likes:p.likes_count, _comments:p.comments_count, _link:p.permalink_url})),
+                  ...(c.mediaPosts||[]).map(p=>({...p, _platform:"instagram", _date:p.timestamp, _img:p.thumbnail_url||p.media_url, _text:p.caption, _likes:p.like_count, _comments:p.comments_count, _link:p.permalink}))
+                ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0)).slice(0,15).map((p,i) => (
+                  <div key={i} onClick={()=>p._link&&window.open(p._link,"_blank")} style={{ flexShrink:0, width:150, borderRadius:12, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, cursor:p._link?"pointer":"default", position:"relative" }}>
+                    <div style={{ position:"absolute", top:6, left:6, padding:"2px 6px", borderRadius:6, background:p._platform==="instagram"?"#E1306C":"#1877F2", color:"#fff", fontSize:8, fontWeight:800, zIndex:1, display:"flex", alignItems:"center", gap:3 }}>
+                      {p._platform==="instagram"?"IG":"FB"}
+                    </div>
+                    {p._img ? <img src={p._img} style={{ width:150, height:110, objectFit:"cover" }} alt="" onError={e=>{e.target.style.display="none"}} />
+                    : <div style={{ width:150, height:70, background:p._platform==="instagram"?`#E1306C08`:`#1877F208`, display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, fontSize:10 }}>Sem imagem</div>}
                     <div style={{ padding:8 }}>
-                      <p style={{ fontSize:9, color:B.muted }}>{new Date(p.created_time).toLocaleDateString("pt-BR")}</p>
-                      <p style={{ fontSize:10, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(p.message || "").slice(0, 60)}</p>
-                      {(p.likes_count > 0 || p.comments_count > 0) && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>❤️ {p.likes_count} · 💬 {p.comments_count}</p>}
+                      <p style={{ fontSize:9, color:B.muted }}>{p._date ? new Date(p._date).toLocaleDateString("pt-BR") : ""}</p>
+                      <p style={{ fontSize:10, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(p._text||"").slice(0,60)||"Sem texto"}</p>
+                      <p style={{ fontSize:9, color:B.muted, marginTop:3 }}>❤️ {p._likes||0} · 💬 {p._comments||0}</p>
                     </div>
                   </div>
                 ))}
@@ -9813,17 +9822,17 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
 
           {/* ── Top Posts ── */}
           {c.mediaPosts.length > 0 && <>
-            <p className="sl" style={{ marginBottom:6 }}>Top posts do Instagram (por curtidas)</p>
+            <p className="sl" style={{ marginBottom:6 }}>Top posts — Instagram (por curtidas)</p>
             {[...c.mediaPosts].sort((a,b) => (b.like_count||0) - (a.like_count||0)).slice(0, 5).map((post, i) => (
-              <Card key={post.id} style={{ marginBottom:6 }}>
+              <Card key={post.id} onClick={()=>post.permalink&&window.open(post.permalink,"_blank")} style={{ marginBottom:6, cursor:post.permalink?"pointer":"default" }}>
                 <div style={{ display:"flex", gap:10 }}>
-                  {(post.thumbnail_url || post.media_url) && <img src={post.thumbnail_url || post.media_url} alt="" style={{ width:50, height:50, borderRadius:8, objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} />}
+                  {(post.thumbnail_url || post.media_url) && <div style={{ position:"relative", flexShrink:0 }}><img src={post.thumbnail_url || post.media_url} alt="" style={{ width:50, height:50, borderRadius:8, objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} /><span style={{ position:"absolute", top:-4, left:-4, background:"#E1306C", color:"#fff", fontSize:7, fontWeight:800, padding:"1px 4px", borderRadius:4 }}>IG</span></div>}
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{post.caption?.substring(0, 60) || "Sem legenda"}</p>
-                    <div style={{ display:"flex", gap:10, marginTop:4 }}>
+                    <div style={{ display:"flex", gap:10, marginTop:4, flexWrap:"wrap" }}>
                       <span style={{ fontSize:10, color:"#E1306C" }}>❤️ {post.like_count || 0}</span>
                       <span style={{ fontSize:10, color:"#1877F2" }}>💬 {post.comments_count || 0}</span>
-                      <span style={{ fontSize:10, color:B.muted }}>{post.media_type}</span>
+                      <span style={{ fontSize:10, color:B.muted }}>{post.media_type === "VIDEO" ? "Reels" : post.media_type === "CAROUSEL_ALBUM" ? "Carrossel" : "Imagem"}</span>
                       <span style={{ fontSize:10, color:B.muted }}>{post.timestamp?.split("T")[0]}</span>
                     </div>
                   </div>
@@ -9881,44 +9890,79 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
           {totals.anyNeedsPermission && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:10 }}>
             <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
               <span style={{ color:B.orange, fontSize:16 }}>⚠️</span>
-              <div><p style={{ fontSize:11, fontWeight:600, color:B.orange }}>Permissões limitadas no Meta App</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Algumas métricas estão indisponíveis. Habilite <strong>pages_read_engagement</strong> no Facebook Login Configuration para ver alcance, impressões e engajamento detalhado.</p></div>
+              <div><p style={{ fontSize:11, fontWeight:600, color:B.orange }}>Permissões limitadas no Meta App</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Habilite <strong>pages_read_engagement</strong> no Facebook Login Configuration para métricas avançadas.</p></div>
             </div>
           </Card>}
-          <p className="sl" style={{ marginBottom:6 }}>Audiência (todos os clientes)</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:12 }}>
-            <MetricCard label="Seguidores FB" value={formatNum(totals.fbFollowers)} color="#1877F2" sub="Total no Facebook" />
-            <MetricCard label="Seguidores IG" value={formatNum(totals.igFollowers)} color="#E1306C" sub="Total no Instagram" />
-            <MetricCard label="Posts publicados" value={formatNum(totals.fbPostsTotal)} color={B.accent} sub="Posts no Facebook (mês)" />
-            <MetricCard label="Clientes conectados" value={totals.connectedCount + "/" + CDATA.length} color={B.green} sub="Com redes vinculadas" />
-          </div>
 
-          {(totals.reach > 0 || totals.engaged > 0) && <>
-            <p className="sl" style={{ marginBottom:6 }}>Métricas de desempenho</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:12 }}>
-              <MetricCard label="Alcance total" value={formatNum(totals.reach)} color={B.blue} sub="Facebook + Instagram" />
-              <MetricCard label="Engajamento total" value={formatNum(totals.engaged)} color={B.green} sub="Interações com conteúdo" />
+          {/* Audiência consolidada */}
+          <p className="sl" style={{ marginBottom:6 }}>Audiência total</p>
+          <Card style={{ marginBottom:12, padding:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20 }}>
+              <div style={{ textAlign:"center" }}><p style={{ fontSize:28, fontWeight:900, color:B.text }}>{formatNum(totals.fbFollowers + totals.igFollowers)}</p><p style={{ fontSize:10, color:B.muted }}>Seguidores totais</p></div>
             </div>
-          </>}
-
-          {(totals.likes > 0 || totals.comments > 0) && <>
-            <p className="sl" style={{ marginBottom:6 }}>Interações no Instagram</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:12 }}>
-              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:"#E1306C" }}>{formatNum(totals.likes)}</p><p style={{ fontSize:9, color:B.muted }}>Curtidas</p></Card>
-              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:"#1877F2" }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, color:B.muted }}>Comentários</p></Card>
-              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:"#F77737" }}>{formatNum(totals.saved)}</p><p style={{ fontSize:9, color:B.muted }}>Salvos</p></Card>
+            <div style={{ display:"flex", gap:8, marginTop:12 }}>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:"#1877F208", textAlign:"center" }}>
+                <p style={{ fontSize:18, fontWeight:800, color:"#1877F2" }}>{formatNum(totals.fbFollowers)}</p>
+                <p style={{ fontSize:9, color:B.muted }}>Facebook</p>
+              </div>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:"#E1306C08", textAlign:"center" }}>
+                <p style={{ fontSize:18, fontWeight:800, color:"#E1306C" }}>{formatNum(totals.igFollowers)}</p>
+                <p style={{ fontSize:9, color:B.muted }}>Instagram</p>
+              </div>
             </div>
-          </>}
-
-          <p className="sl" style={{ marginBottom:6 }}>Facebook — Novos seguidores</p>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:22, fontWeight:900, color:"#42B72A" }}>+{formatNum(totals.fbFans)}</p>
-            <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Novos seguidores/fãs nas páginas este mês</p>
           </Card>
 
+          {/* Performance por canal */}
+          <p className="sl" style={{ marginBottom:6 }}>Performance por canal</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+            {/* Facebook */}
+            <Card style={{ padding:12, borderTop:`3px solid #1877F2` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                <p style={{ fontSize:12, fontWeight:700, color:"#1877F2" }}>Facebook</p>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <div><p style={{ fontSize:16, fontWeight:800 }}>{formatNum(totals.fbPostsTotal)}</p><p style={{ fontSize:9, color:B.muted }}>Posts publicados</p></div>
+                {totals.fbImp > 0 && <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.fbImp)}</p><p style={{ fontSize:9, color:B.muted }}>Impressões</p></div>}
+                {totals.reach > 0 && <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.reach)}</p><p style={{ fontSize:9, color:B.muted }}>Alcance</p></div>}
+              </div>
+            </Card>
+            {/* Instagram */}
+            <Card style={{ padding:12, borderTop:`3px solid #E1306C` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                <p style={{ fontSize:12, fontWeight:700, color:"#E1306C" }}>Instagram</p>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <div><p style={{ fontSize:16, fontWeight:800 }}>{formatNum(totals.likes + totals.comments)}</p><p style={{ fontSize:9, color:B.muted }}>Interações totais</p></div>
+                <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.likes)}</p><p style={{ fontSize:9, color:B.muted }}>Curtidas</p></div>
+                <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, color:B.muted }}>Comentários</p></div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Status por tipo (orgânico vs pago) */}
+          <p className="sl" style={{ marginBottom:6 }}>Tipo de conteúdo</p>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}>
+                <p style={{ fontSize:14, fontWeight:800, color:B.green }}>Orgânico</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Publicações, stories, reels</p>
+                <p style={{ fontSize:9, color:B.green, marginTop:4, fontWeight:600 }}>✓ Ativo</p>
+              </div>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.muted}08`, textAlign:"center" }}>
+                <p style={{ fontSize:14, fontWeight:800, color:B.muted }}>Pago</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Ads via Meta Business</p>
+                <p style={{ fontSize:9, color:B.orange, marginTop:4, fontWeight:600 }}>Requer permissão extra</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Dica */}
           <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, marginBottom:12, padding:14 }}>
             <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Como interpretar</p>
             <p style={{ fontSize:10, color:B.muted, lineHeight:1.6 }}>
-              <strong>Alcance</strong> = quantas pessoas únicas viram o conteúdo. <strong>Impressões</strong> = total de vezes que o conteúdo apareceu (uma pessoa pode ver várias vezes). <strong>Engajamento</strong> = pessoas que curtiram, comentaram, compartilharam ou salvaram. Uma boa taxa de engajamento no Instagram é acima de 3%.
+              <strong>Orgânico</strong> = conteúdo publicado sem investimento. <strong>Pago</strong> = anúncios via Meta Ads (requer API de Ads separada). <strong>Engajamento</strong> = curtidas + comentários + compartilhamentos + salvamentos. Uma boa taxa de engajamento no Instagram é acima de 3%.
             </p>
           </Card>
         </>}
