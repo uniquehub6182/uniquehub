@@ -575,6 +575,18 @@ const supaMarkAllNotificationsRead = async (userId) => {
   if (!supabase || !userId) return;
   await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
 };
+
+/* ── Invoices (cobranças) ── */
+const supaLoadInvoices = async () => { if (!supabase) return []; try { const { data } = await supabase.from("invoices").select("*").order("due_date", { ascending: false }); return data || []; } catch { return []; } };
+const supaCreateInvoice = async (inv) => { if (!supabase) return null; try { const { data, error } = await supabase.from("invoices").insert(inv).select().single(); if (error) console.error("[Invoice]", error.message); return data; } catch { return null; } };
+const supaUpdateInvoice = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("invoices").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
+const supaDeleteInvoice = async (id) => { if (!supabase) return; await supabase.from("invoices").delete().eq("id", id); };
+
+/* ── Expenses (despesas) ── */
+const supaLoadExpenses = async () => { if (!supabase) return []; try { const { data } = await supabase.from("expenses").select("*").order("date", { ascending: false }); return data || []; } catch { return []; } };
+const supaCreateExpense = async (exp) => { if (!supabase) return null; try { const { data, error } = await supabase.from("expenses").insert(exp).select().single(); if (error) console.error("[Expense]", error.message); return data; } catch { return null; } };
+const supaDeleteExpense = async (id) => { if (!supabase) return; await supabase.from("expenses").delete().eq("id", id); };
+
 const META_APP_ID = "1557196698688426";
 const META_CONFIG_ID = "1251666086415367";
 const META_REDIRECT_URI = `${window.location.origin}/`;
@@ -4447,6 +4459,12 @@ function FinancialPage({ onBack, clients: propClients }) {
   const [finCfg, setFinCfg] = useState(null);
   const [finCfgLoaded, setFinCfgLoaded] = useState(false);
   const [finCfgSaving, setFinCfgSaving] = useState(false);
+  /* Real data */
+  const [invoices, setInvoices] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [invForm, setInvForm] = useState(null); /* null = hidden, {} = creating */
+  const [expForm, setExpForm] = useState(null);
 
   useEffect(() => {
     if (!finCfgLoaded) {
@@ -4454,6 +4472,9 @@ function FinancialPage({ onBack, clients: propClients }) {
         try { setFinCfg({ ...FIN_DEFAULT, ...(raw ? JSON.parse(raw) : {}) }); } catch { setFinCfg({ ...FIN_DEFAULT }); }
         setFinCfgLoaded(true);
       });
+    }
+    if (!dataLoaded) {
+      Promise.all([supaLoadInvoices(), supaLoadExpenses()]).then(([inv, exp]) => { setInvoices(inv); setExpenses(exp); setDataLoaded(true); });
     }
   }, []);
 
@@ -4469,11 +4490,12 @@ function FinancialPage({ onBack, clients: propClients }) {
 
   const TABS = [
     { k:"dashboard", l:"Dashboard", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
+    { k:"invoices", l:"Cobranças", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+    { k:"realExpenses", l:"Despesas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
     { k:"agency", l:"Dados Fiscais", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
     { k:"bank", l:"Bancário", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
-    { k:"billing", l:"Faturamento", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+    { k:"billing", l:"Config", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09"/></svg> },
     { k:"goals", l:"Metas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> },
-    { k:"expenses", l:"Despesas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
   ];
 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -4495,15 +4517,32 @@ function FinancialPage({ onBack, clients: propClients }) {
 
       {/* ═══ TAB: DASHBOARD ═══ */}
       {finTab === "dashboard" && <>
+        {(() => {
+          const now = new Date();
+          const monthInvoices = invoices.filter(i => { const d = new Date(i.due_date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+          const monthPaid = monthInvoices.filter(i => i.status==="paid").reduce((a,i)=>a+Number(i.paid_amount||i.amount||0),0);
+          const monthPending = monthInvoices.filter(i => i.status==="pending").reduce((a,i)=>a+Number(i.amount||0),0);
+          const monthOverdue = monthInvoices.filter(i => i.status==="pending" && new Date(i.due_date)<now).length;
+          const monthExp = expenses.filter(e => { const d = new Date(e.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); }).reduce((a,e)=>a+Number(e.amount||0),0);
+          const revenue = monthPaid > 0 ? monthPaid : totalRevReal;
+          const profit = revenue - monthExp;
+          return <>
         <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.dollar}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>FINANCEIRO — {cur.m.toUpperCase()}</p></div>
-          <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>{cur.revenue}</p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Receita mensal</p>
-          <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-            <div><span style={{ fontSize: 14, fontWeight: 800, color: B.green }}>{cur.growth}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Crescimento</p></div>
-            <div><span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{cur.profit}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Lucro</p></div>
+          <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>R$ {revenue.toLocaleString("pt-BR")}</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{monthPaid > 0 ? "Receita recebida" : "Receita prevista"}</p>
+          <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
+            <div><span style={{ fontSize: 14, fontWeight: 800, color: B.red }}>R$ {monthExp.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Despesas</p></div>
+            <div><span style={{ fontSize: 14, fontWeight: 800, color: profit>=0?B.green:B.red }}>R$ {profit.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Lucro</p></div>
+            {monthPending > 0 && <div><span style={{ fontSize: 14, fontWeight: 800, color: B.orange }}>R$ {monthPending.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>A receber</p></div>}
           </div>
         </Card>
+        {monthOverdue > 0 && <Card delay={0.01} style={{ marginTop:6, background:`${B.red}08`, border:`1px solid ${B.red}20` }}>
+          <p style={{ fontSize:12, fontWeight:700, color:B.red }}>⚠️ {monthOverdue} cobrança{monthOverdue>1?"s":""} atrasada{monthOverdue>1?"s":""}</p>
+          <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Verifique na aba Cobranças.</p>
+        </Card>}
+          </>;
+        })()}
         {/* Goal progress if configured */}
         {finCfgLoaded && fc.monthlyGoal > 0 && (() => {
           const pct = Math.min(100, Math.round((totalRevReal / fc.monthlyGoal) * 100));
@@ -4753,8 +4792,165 @@ function FinancialPage({ onBack, clients: propClients }) {
         </Card>
       </>}
 
+      {/* ═══ TAB: COBRANÇAS (Real Invoices) ═══ */}
+      {finTab === "invoices" && <>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <p className="sl">Cobranças</p>
+          <button onClick={() => setInvForm({ client_id:"", description:"", amount:"", due_date: new Date(new Date().getFullYear(), new Date().getMonth()+1, fc.defaultDueDay||5).toISOString().split("T")[0], payment_method: fc.defaultPayMethod||"PIX" })} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>+ Nova cobrança</button>
+        </div>
+        {invForm && <Card style={{ marginBottom:12, border:`2px solid ${B.accent}` }}>
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>{invForm.id ? "Editar cobrança" : "Nova cobrança"}</p>
+          <p className="sl" style={{ marginBottom:4 }}>Cliente</p>
+          <select value={invForm.client_id||""} onChange={e=>setInvForm(p=>({...p,client_id:e.target.value}))} className="tinput" style={{ marginBottom:8 }}>
+            <option value="">Selecione...</option>
+            {CDATA.map(c => <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+          </select>
+          <FinField label="Descrição" value={invForm.description||""} onChange={v=>setInvForm(p=>({...p,description:v}))} placeholder="Mensalidade Mar/2026, Gestão de tráfego..." />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Valor (R$)" value={invForm.amount||""} onChange={v=>setInvForm(p=>({...p,amount:v}))} type="number" placeholder="3500" /></div>
+            <div style={{ flex:1 }}><FinField label="Vencimento" value={invForm.due_date||""} onChange={v=>setInvForm(p=>({...p,due_date:v}))} type="date" /></div>
+          </div>
+          <p className="sl" style={{ marginBottom:4, marginTop:4 }}>Forma de pagamento</p>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+            {["PIX","Boleto","Transferência","Cartão"].map(m => (
+              <button key={m} onClick={() => setInvForm(p=>({...p,payment_method:m}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${invForm.payment_method===m?B.accent:B.border}`, background:invForm.payment_method===m?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:invForm.payment_method===m?B.accent:B.muted }}>{m}</button>
+            ))}
+          </div>
+          <FinField label="Observações" value={invForm.notes||""} onChange={v=>setInvForm(p=>({...p,notes:v}))} placeholder="Notas internas..." />
+          <div style={{ display:"flex", gap:8, marginTop:8 }}>
+            <button onClick={async () => {
+              if (!invForm.client_id || !invForm.amount) { showToast("Preencha cliente e valor"); return; }
+              const num = `${fc.invoicePrefix||"UMK"}-${String(fc.invoiceNextNum||1).padStart(3,"0")}`;
+              const inv = { client_id: invForm.client_id, number: num, description: invForm.description, amount: parseFloat(invForm.amount), due_date: invForm.due_date, payment_method: invForm.payment_method, notes: invForm.notes, status: "pending" };
+              const created = await supaCreateInvoice(inv);
+              if (created) { setInvoices(p => [created, ...p]); upd("invoiceNextNum", (fc.invoiceNextNum||1)+1); saveFin(); setInvForm(null); showToast("Cobrança criada ✓"); supaCreateNotificationForAll("system", "Nova cobrança", `${num} — R$ ${parseFloat(invForm.amount).toLocaleString("pt-BR")}`, "💰", null); }
+              else showToast("Erro ao criar cobrança");
+            }} className="pill accent" style={{ flex:1, padding:"12px 0" }}>💰 Criar cobrança</button>
+            <button onClick={() => setInvForm(null)} className="pill" style={{ padding:"12px 16px", background:B.bgCard, border:`1px solid ${B.border}`, color:B.muted }}>Cancelar</button>
+          </div>
+        </Card>}
+        {(() => {
+          const pending = invoices.filter(i => i.status === "pending");
+          const overdue = invoices.filter(i => i.status === "pending" && new Date(i.due_date) < new Date());
+          const paid = invoices.filter(i => i.status === "paid");
+          const totalPending = pending.reduce((a,i) => a + Number(i.amount||0), 0);
+          const totalPaid = paid.reduce((a,i) => a + Number(i.paid_amount || i.amount || 0), 0);
+          return <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:12 }}>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.orange }}>{pending.length}</p><p style={{ fontSize:9, color:B.muted }}>Pendentes</p><p style={{ fontSize:10, fontWeight:600, color:B.orange }}>R$ {totalPending.toLocaleString("pt-BR")}</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>{overdue.length}</p><p style={{ fontSize:9, color:B.muted }}>Atrasadas</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.green }}>{paid.length}</p><p style={{ fontSize:9, color:B.muted }}>Pagas</p><p style={{ fontSize:10, fontWeight:600, color:B.green }}>R$ {totalPaid.toLocaleString("pt-BR")}</p></Card>
+            </div>
+            {invoices.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:28, marginBottom:8 }}>💰</p><p style={{ fontSize:13, fontWeight:600 }}>Nenhuma cobrança ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Crie sua primeira cobrança clicando no botão acima.</p></Card>}
+            {invoices.map((inv, i) => {
+              const client = CDATA.find(c => (c.supaId||c.id) === inv.client_id);
+              const isOverdue = inv.status === "pending" && new Date(inv.due_date) < new Date();
+              const statusColor = inv.status === "paid" ? B.green : isOverdue ? B.red : B.orange;
+              const statusLabel = inv.status === "paid" ? "Paga" : inv.status === "cancelled" ? "Cancelada" : isOverdue ? "Atrasada" : "Pendente";
+              return (
+                <Card key={inv.id} style={{ marginTop:i?6:0, borderLeft:`3px solid ${statusColor}` }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <p style={{ fontSize:12, fontWeight:700 }}>{inv.number}</p>
+                        <Tag color={statusColor}>{statusLabel}</Tag>
+                      </div>
+                      <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{client?.name || "Cliente"} — {inv.description || "Sem descrição"}</p>
+                      <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Venc: {new Date(inv.due_date).toLocaleDateString("pt-BR")} · {inv.payment_method || "PIX"}</p>
+                    </div>
+                    <div style={{ textAlign:"right" }}>
+                      <p style={{ fontSize:16, fontWeight:800, color:statusColor }}>R$ {Number(inv.amount).toLocaleString("pt-BR")}</p>
+                      {inv.status === "pending" && <button onClick={async () => {
+                        const r = await supaUpdateInvoice(inv.id, { status:"paid", paid_at: new Date().toISOString(), paid_amount: inv.amount });
+                        if (r) { setInvoices(p => p.map(x => x.id === inv.id ? r : x)); showToast("Marcada como paga ✓"); }
+                      }} style={{ marginTop:4, padding:"4px 10px", borderRadius:6, background:`${B.green}12`, border:`1px solid ${B.green}30`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.green }}>✓ Paga</button>}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </>;
+        })()}
+      </>}
+
+      {/* ═══ TAB: DESPESAS REAIS ═══ */}
+      {finTab === "realExpenses" && <>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <p className="sl">Despesas</p>
+          <button onClick={() => setExpForm({ category:(fc.expenseCategories||[])[0]||"Outros", description:"", amount:"", date: new Date().toISOString().split("T")[0], recurring:false })} style={{ padding:"6px 14px", borderRadius:8, background:B.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>+ Nova despesa</button>
+        </div>
+        {expForm && <Card style={{ marginBottom:12, border:`2px solid ${B.red}` }}>
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Nova despesa</p>
+          <p className="sl" style={{ marginBottom:4 }}>Categoria</p>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
+            {(fc.expenseCategories||["Outros"]).map(c => (
+              <button key={c} onClick={() => setExpForm(p=>({...p,category:c}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${expForm.category===c?B.accent:B.border}`, background:expForm.category===c?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:expForm.category===c?B.accent:B.muted }}>{c}</button>
+            ))}
+          </div>
+          <FinField label="Descrição" value={expForm.description||""} onChange={v=>setExpForm(p=>({...p,description:v}))} placeholder="Canva Pro, Freelancer design..." />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Valor (R$)" value={expForm.amount||""} onChange={v=>setExpForm(p=>({...p,amount:v}))} type="number" placeholder="199.90" /></div>
+            <div style={{ flex:1 }}><FinField label="Data" value={expForm.date||""} onChange={v=>setExpForm(p=>({...p,date:v}))} type="date" /></div>
+          </div>
+          <label style={{ display:"flex", alignItems:"center", gap:8, marginTop:8, cursor:"pointer" }}>
+            <input type="checkbox" checked={expForm.recurring||false} onChange={e=>setExpForm(p=>({...p,recurring:e.target.checked}))} />
+            <span style={{ fontSize:11, color:B.text }}>Despesa recorrente (mensal)</span>
+          </label>
+          <div style={{ display:"flex", gap:8, marginTop:10 }}>
+            <button onClick={async () => {
+              if (!expForm.description || !expForm.amount) { showToast("Preencha descrição e valor"); return; }
+              const exp = { category: expForm.category, description: expForm.description, amount: parseFloat(expForm.amount), date: expForm.date, recurring: expForm.recurring, notes: expForm.notes };
+              const created = await supaCreateExpense(exp);
+              if (created) { setExpenses(p => [created, ...p]); setExpForm(null); showToast("Despesa registrada ✓"); }
+              else showToast("Erro ao registrar");
+            }} className="pill" style={{ flex:1, padding:"12px 0", background:B.red, color:"#fff", border:"none" }}>💸 Registrar despesa</button>
+            <button onClick={() => setExpForm(null)} className="pill" style={{ padding:"12px 16px", background:B.bgCard, border:`1px solid ${B.border}`, color:B.muted }}>Cancelar</button>
+          </div>
+        </Card>}
+        {(() => {
+          const now = new Date();
+          const thisMonth = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+          const totalMonth = thisMonth.reduce((a,e) => a + Number(e.amount||0), 0);
+          const totalAll = expenses.reduce((a,e) => a + Number(e.amount||0), 0);
+          const byCat = {}; thisMonth.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0); });
+          return <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>R$ {totalMonth.toLocaleString("pt-BR")}</p><p style={{ fontSize:9, color:B.muted }}>Este mês</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.muted }}>R$ {totalAll.toLocaleString("pt-BR")}</p><p style={{ fontSize:9, color:B.muted }}>Total acumulado</p></Card>
+            </div>
+            {Object.keys(byCat).length > 0 && <Card style={{ marginBottom:12 }}>
+              <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Por categoria (este mês)</p>
+              {Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat, val], i) => (
+                <div key={cat} style={{ display:"flex", alignItems:"center", gap:8, marginTop:i?6:0 }}>
+                  <div style={{ flex:1 }}><p style={{ fontSize:11, fontWeight:600 }}>{cat}</p>
+                    <div style={{ height:6, borderRadius:3, background:`${B.border}`, marginTop:3 }}><div style={{ height:"100%", borderRadius:3, background:B.red, width:`${Math.min(100, (val/totalMonth)*100)}%` }} /></div>
+                  </div>
+                  <p style={{ fontSize:12, fontWeight:700, color:B.red, flexShrink:0 }}>R$ {val.toLocaleString("pt-BR")}</p>
+                </div>
+              ))}
+            </Card>}
+            {expenses.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:28, marginBottom:8 }}>💸</p><p style={{ fontSize:13, fontWeight:600 }}>Nenhuma despesa registrada</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Registre despesas para acompanhar custos operacionais.</p></Card>}
+            {expenses.map((exp, i) => (
+              <Card key={exp.id} style={{ marginTop:i?6:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>💸</div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontSize:12, fontWeight:600 }}>{exp.description}</p>
+                    <p style={{ fontSize:10, color:B.muted }}>{exp.category} · {new Date(exp.date).toLocaleDateString("pt-BR")}{exp.recurring ? " · 🔄 Recorrente" : ""}</p>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:B.red }}>R$ {Number(exp.amount).toLocaleString("pt-BR")}</p>
+                    <button onClick={async () => { if (!confirm("Excluir esta despesa?")) return; await supaDeleteExpense(exp.id); setExpenses(p => p.filter(x => x.id !== exp.id)); showToast("Despesa excluída"); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:9, color:B.muted, marginTop:2 }}>excluir</button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </>;
+        })()}
+      </>}
+
       {/* Save button for config tabs */}
-      {finTab !== "dashboard" && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
+      {["agency","bank","billing","goals","expenses"].includes(finTab) && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
       </div>
     </div>
   );
