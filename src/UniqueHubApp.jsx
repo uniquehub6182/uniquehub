@@ -9590,15 +9590,13 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   /* Aggregate data per client */
   const clientMetrics = CDATA.map(c => {
     const ins = insights[c.name];
-    const hasData = !!ins && (!!ins.fb || !!ins.ig);
-    const fbImpressions = sumInsight(ins?.fb, "page_views_total");
-    const fbImpOrganic = 0; /* deprecated Nov 2025 */
-    const fbImpPaid = 0; /* deprecated Nov 2025 */
-    const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements");
+    const hasData = !!ins && (!!ins.fb || !!ins.ig || !!ins.fbPosts || !!ins.fbPage || !!ins.igMedia);
+    const fbImpressions = sumInsight(ins?.fb, "page_views_total") + sumInsight(ins?.fb, "page_posts_impressions") + sumInsight(ins?.fb, "page_impressions");
+    const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements") + sumInsight(ins?.fb, "page_engaged_users");
     const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
-    const fbFanAdds = sumInsight(ins?.fb, "page_daily_follows");
+    const fbFanAdds = sumInsight(ins?.fb, "page_fan_adds");
     const fbPageViews = sumInsight(ins?.fb, "page_views_total");
-    const fbPrevImp = sumInsight(ins?.fbPrev, "page_views_total");
+    const fbPrevImp = sumInsight(ins?.fbPrev, "page_views_total") + sumInsight(ins?.fbPrev, "page_posts_impressions");
     const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
 
     const igImpressions = sumInsight(ins?.ig, "impressions");
@@ -9617,16 +9615,25 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
       return a + (s?.values?.[0]?.value || 0);
     }, 0);
 
+    /* FB Posts data (new — from published_posts) */
+    const fbPosts = ins?.fbPosts || [];
+    const fbPostLikes = fbPosts.reduce((a, p) => a + (p.likes_count || 0), 0);
+    const fbPostComments = fbPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
+    const fbPostShares = fbPosts.reduce((a, p) => a + (p.shares_count || 0), 0);
+    const fbPostCount = fbPosts.length;
+    const needsPermission = ins?.needsPermission || [];
+
     const fbFollowers = ins?.fbPage?.followers_count || ins?.fbPage?.fan_count || 0;
     const igFollowers = ins?.igProfile?.followers_count || 0;
     const igMediaCount = ins?.igProfile?.media_count || 0;
     const engRate = igReach > 0 ? ((igAccountsEngaged / igReach) * 100).toFixed(1) : "0.0";
 
     return {
-      ...c, hasData, fbImpressions, fbImpOrganic, fbImpPaid, fbEngagedUsers, fbPostEngagement,
+      ...c, hasData, fbImpressions, fbEngagedUsers, fbPostEngagement,
       fbFanAdds, fbPageViews, fbPrevImp, fbPrevEng, igImpressions, igReach, igProfileViews,
       igAccountsEngaged, igFollowerCount, igPrevReach, igPrevImp, mediaPosts, totalLikes,
       totalComments, totalSaved, fbFollowers, igFollowers, igMediaCount, engRate,
+      fbPosts, fbPostLikes, fbPostComments, fbPostShares, fbPostCount, needsPermission,
       totalReach: fbImpressions + igReach, totalEngaged: fbEngagedUsers + igAccountsEngaged,
       igProfile: ins?.igProfile, fbPage: ins?.fbPage,
       igDaily: ins?.ig, fbDaily: ins?.fb, igPrev: ins?.igPrev, fbPrev: ins?.fbPrev,
@@ -9643,7 +9650,13 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
     comments: clientMetrics.reduce((a, c) => a + c.totalComments, 0),
     saved: clientMetrics.reduce((a, c) => a + c.totalSaved, 0),
     fbFans: clientMetrics.reduce((a, c) => a + c.fbFanAdds, 0),
+    fbPostsTotal: clientMetrics.reduce((a, c) => a + c.fbPostCount, 0),
+    fbPostLikes: clientMetrics.reduce((a, c) => a + c.fbPostLikes, 0),
+    fbPostComments: clientMetrics.reduce((a, c) => a + c.fbPostComments, 0),
+    fbFollowers: clientMetrics.reduce((a, c) => a + c.fbFollowers, 0),
+    igFollowers: clientMetrics.reduce((a, c) => a + c.igFollowers, 0),
     connectedCount: clientMetrics.filter(c => c.hasData).length,
+    anyNeedsPermission: clientMetrics.some(c => c.needsPermission?.length > 0),
   };
 
   const ChangeBadge = ({ value }) => {
@@ -9755,35 +9768,36 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
           </>}
 
           {/* ── Facebook Section ── */}
-          {c.fbDaily && <>
-            <p className="sl" style={{ marginBottom:6, color:"#1877F2" }}>Facebook — Métricas do mês</p>
+          {(c.fbDaily || c.fbPosts?.length > 0 || c.fbFollowers > 0) && <>
+            <p className="sl" style={{ marginBottom:6, color:"#1877F2" }}>Facebook — Métricas</p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:8 }}>
-              <MetricCard label="Visualizações" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions, c.fbPrevImp)} sub="Vezes que a página foi vista" />
-              <MetricCard label="Engajamento" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers, c.fbPrevEng)} sub="Interações com posts" />
+              <MetricCard label="Seguidores" value={formatNum(c.fbFollowers)} color="#1877F2" sub="Total da página" />
+              <MetricCard label="Posts publicados" value={c.fbPostCount || 0} color="#42B72A" sub="Últimas publicações" />
+              {c.fbImpressions > 0 && <MetricCard label="Visualizações" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions, c.fbPrevImp)} sub="Views da página" />}
+              {c.fbEngagedUsers > 0 && <MetricCard label="Engajamento" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers, c.fbPrevEng)} sub="Interações com posts" />}
             </div>
-            <Card style={{ marginBottom:8 }}>
-              <p style={{ fontSize:11, fontWeight:700, marginBottom:8 }}>Resumo do mês</p>
-              <div style={{ display:"flex", gap:8 }}>
-                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.blue}08`, textAlign:"center" }}>
-                  <p style={{ fontSize:16, fontWeight:900, color:B.blue }}>{formatNum(c.fbPageViews)}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>Views da página</p>
-                </div>
-                <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}>
-                  <p style={{ fontSize:16, fontWeight:900, color:B.green }}>+{formatNum(c.fbFanAdds)}</p>
-                  <p style={{ fontSize:9, color:B.muted }}>Novos seguidores</p>
-                </div>
+            {c.needsPermission?.includes("pages_read_engagement") && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:8 }}>
+              <p style={{ fontSize:10, color:B.orange }}>⚠️ Métricas detalhadas (alcance, impressões, reações) requerem permissão <strong>pages_read_engagement</strong> no Meta App.</p>
+            </Card>}
+            {c.fbPosts?.length > 0 && <>
+              <p className="sl" style={{ marginBottom:6 }}>Publicações recentes</p>
+              <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:8 }}>
+                {c.fbPosts.slice(0, 10).map((p, i) => (
+                  <div key={i} onClick={() => p.permalink_url && window.open(p.permalink_url, "_blank")} style={{ flexShrink:0, width:140, borderRadius:12, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, cursor: p.permalink_url ? "pointer" : "default" }}>
+                    {p.full_picture && <img src={p.full_picture} style={{ width:140, height:100, objectFit:"cover" }} alt="" />}
+                    {!p.full_picture && <div style={{ width:140, height:60, background:`${B.blue}08`, display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, fontSize:10 }}>Sem imagem</div>}
+                    <div style={{ padding:8 }}>
+                      <p style={{ fontSize:9, color:B.muted }}>{new Date(p.created_time).toLocaleDateString("pt-BR")}</p>
+                      <p style={{ fontSize:10, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(p.message || "").slice(0, 60)}</p>
+                      {(p.likes_count > 0 || p.comments_count > 0) && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>❤️ {p.likes_count} · 💬 {p.comments_count}</p>}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </Card>
-            <Card style={{ marginBottom:8 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbPostEngagement)}</p><p style={{ fontSize:8, color:B.muted }}>Reações em posts</p></div>
-                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#42B72A" }}>+{formatNum(c.fbFanAdds)}</p><p style={{ fontSize:8, color:B.muted }}>Novos seguidores</p></div>
-                <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbPageViews)}</p><p style={{ fontSize:8, color:B.muted }}>Views da página</p></div>
-              </div>
-            </Card>
-            <Card style={{ marginBottom:12 }}>
+            </>}
+            {c.fbDaily && <Card style={{ marginBottom:12 }}>
               <DailyChart data={fbDailyImp} color="#1877F2" label="Impressões diárias (Facebook)" h={70} />
-            </Card>
+            </Card>}
           </>}
 
           {/* ── Top Posts ── */}
@@ -9853,29 +9867,36 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
 
         {/* ── OVERVIEW TAB ── */}
         {tab === "overview" && <>
-          <p className="sl" style={{ marginBottom:6 }}>Métricas agregadas (todos os clientes)</p>
+          {totals.anyNeedsPermission && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+              <span style={{ color:B.orange, fontSize:16 }}>⚠️</span>
+              <div><p style={{ fontSize:11, fontWeight:600, color:B.orange }}>Permissões limitadas no Meta App</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Algumas métricas estão indisponíveis. Habilite <strong>pages_read_engagement</strong> no Facebook Login Configuration para ver alcance, impressões e engajamento detalhado.</p></div>
+            </div>
+          </Card>}
+          <p className="sl" style={{ marginBottom:6 }}>Audiência (todos os clientes)</p>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:12 }}>
-            <MetricCard label="Alcance total" value={formatNum(totals.reach)} color={B.blue} sub="Facebook + Instagram" />
-            <MetricCard label="Pessoas engajadas" value={formatNum(totals.engaged)} color={B.green} sub="Interagiram com o conteúdo" />
-            <MetricCard label="Impressões FB" value={formatNum(totals.fbImp)} color="#1877F2" sub="Total de exibições no Facebook" />
-            <MetricCard label="Impressões IG" value={formatNum(totals.igImp)} color="#E1306C" sub="Total de exibições no Instagram" />
+            <MetricCard label="Seguidores FB" value={formatNum(totals.fbFollowers)} color="#1877F2" sub="Total no Facebook" />
+            <MetricCard label="Seguidores IG" value={formatNum(totals.igFollowers)} color="#E1306C" sub="Total no Instagram" />
+            <MetricCard label="Posts publicados" value={formatNum(totals.fbPostsTotal)} color={B.accent} sub="Posts no Facebook (mês)" />
+            <MetricCard label="Clientes conectados" value={totals.connectedCount + "/" + CDATA.length} color={B.green} sub="Com redes vinculadas" />
           </div>
 
-          <p className="sl" style={{ marginBottom:6 }}>Interações no Instagram</p>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:12 }}>
-            <Card style={{ textAlign:"center", padding:10 }}>
-              <p style={{ fontSize:18, fontWeight:900, color:"#E1306C" }}>{formatNum(totals.likes)}</p>
-              <p style={{ fontSize:9, color:B.muted }}>Curtidas</p>
-            </Card>
-            <Card style={{ textAlign:"center", padding:10 }}>
-              <p style={{ fontSize:18, fontWeight:900, color:"#1877F2" }}>{formatNum(totals.comments)}</p>
-              <p style={{ fontSize:9, color:B.muted }}>Comentários</p>
-            </Card>
-            <Card style={{ textAlign:"center", padding:10 }}>
-              <p style={{ fontSize:18, fontWeight:900, color:B.purple }}>{formatNum(totals.saved)}</p>
-              <p style={{ fontSize:9, color:B.muted }}>Salvamentos</p>
-            </Card>
-          </div>
+          {(totals.reach > 0 || totals.engaged > 0) && <>
+            <p className="sl" style={{ marginBottom:6 }}>Métricas de desempenho</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:6, marginBottom:12 }}>
+              <MetricCard label="Alcance total" value={formatNum(totals.reach)} color={B.blue} sub="Facebook + Instagram" />
+              <MetricCard label="Engajamento total" value={formatNum(totals.engaged)} color={B.green} sub="Interações com conteúdo" />
+            </div>
+          </>}
+
+          {(totals.likes > 0 || totals.comments > 0) && <>
+            <p className="sl" style={{ marginBottom:6 }}>Interações no Instagram</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:12 }}>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:"#E1306C" }}>{formatNum(totals.likes)}</p><p style={{ fontSize:9, color:B.muted }}>Curtidas</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:"#1877F2" }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, color:B.muted }}>Comentários</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:900, color:"#F77737" }}>{formatNum(totals.saved)}</p><p style={{ fontSize:9, color:B.muted }}>Salvos</p></Card>
+            </div>
+          </>}
 
           <p className="sl" style={{ marginBottom:6 }}>Facebook — Novos seguidores</p>
           <Card style={{ marginBottom:12 }}>
