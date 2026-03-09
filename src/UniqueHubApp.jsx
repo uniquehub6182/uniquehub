@@ -8577,7 +8577,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
     if (loaded) return;
     supaLoadTeam().then(async (rows) => {
       if (rows.length) {
-        /* Auto-link: check if any "pendente" members now have a registered profile */
+        /* Auto-link: link user_id to pending members who registered, but keep status pendente for admin approval */
         const pending = rows.filter(r => r.status === "pendente" && !r.user_id && r.email);
         if (pending.length > 0 && supabase) {
           const emails = pending.map(p => p.email);
@@ -8586,9 +8586,9 @@ function TeamPage({ onBack, user, onTeamChange }) {
             for (const p of profiles) {
               const match = pending.find(m => m.email === p.email);
               if (match) {
-                await supabase.from("agency_members").update({ user_id: p.id, status: "offline" }).eq("id", match.id);
+                await supabase.from("agency_members").update({ user_id: p.id }).eq("id", match.id);
                 match.user_id = p.id;
-                match.status = "offline";
+                /* Keep status "pendente" — admin must approve manually */
               }
             }
           }
