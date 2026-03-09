@@ -7112,9 +7112,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       {m._failed && <button onClick={()=>{ setMsgs(prev=>prev.filter(x=>x.id!==m.id)); setInput(m.content); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:10, color:B.accent, fontWeight:600, padding:0 }}>Tentar novamente</button>}
                     </div>
                     {reactMsgId===m.id && (
-                      <div style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
-                        {["👍","❤️","😂","😮","😢","🙏"].map(e=>(
-                          <button key={e} onClick={()=>addReaction(m.id,e)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{e}</button>
+                      <div onClick={ev=>ev.stopPropagation()} style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
+                        {["👍","❤️","😂","😮","😢","🙏"].map(em=>(
+                          <button key={em} onClick={(ev)=>{ev.stopPropagation();addReaction(m.id,em);}} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{em}</button>
                         ))}
                       </div>
                     )}
