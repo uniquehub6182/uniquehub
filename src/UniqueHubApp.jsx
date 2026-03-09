@@ -9342,9 +9342,17 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
     const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
     const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
     const client = CDATA.find(c => c.id === fileForm.clientId);
-    if (client && onUpdateClients) {
-      const updatedClient = { ...client, files: [...(client.files||[]), nf] };
-      onUpdateClients(CDATA.map(c => c.id === fileForm.clientId ? updatedClient : c));
+    if (client) {
+      const newFiles = [...(client.files||[]), nf];
+      /* Persist to Supabase app_settings */
+      const saveKey = `client_files_${client.supaId || client.id}`;
+      const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+      if (!saved) { showToast("Erro ao salvar metadados — tente novamente"); return; }
+      /* Update local state */
+      if (onUpdateClients) {
+        const updatedClient = { ...client, files: newFiles };
+        onUpdateClients(CDATA.map(c => c.id === fileForm.clientId ? updatedClient : c));
+      }
     }
     setAddingFile(false); setFileForm({});
     showToast("Arquivo enviado ✓");
