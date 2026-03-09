@@ -13440,11 +13440,7 @@ function MainClientApp({ user, onLogout, dark }) {
         const { data: clients } = await supabase.from("clients").select("id, name");
         const { data: allDemands } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
         const clientNames = (clients||[]).map(c => c.name);
-        const filtered = (allDemands||[]).filter(d => {
-          const dc = d.client_name || d.client || "";
-          return clientNames.some(cn => cn.toLowerCase() === dc.toLowerCase());
-        });
-        setDemands(filtered.map(d => ({
+        setDemands((allDemands||[]).filter(d => clientNames.some(cn => cn.toLowerCase() === (d.client_name||d.client||"").toLowerCase())).map(d => ({
           id: d.id, title: d.title, type: d.type, client: d.client_name || d.client,
           stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}),
           files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]),
@@ -13463,22 +13459,23 @@ function MainClientApp({ user, onLogout, dark }) {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
       await supabase.from("demands").update({ steps: JSON.stringify(steps) }).eq("id", demand.id);
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps } : d));
-      const label = status === "approved" ? "aprovado" : status === "revision" ? "pediu edi\u00e7\u00e3o" : "reprovado";
-      showToast("\u2713 Conte\u00fado " + label + "!");
-      supaCreateNotificationForAll("post_approved", "Cliente " + label, demand.title + " \u2014 " + demand.client, status === "approved" ? "\u2705" : status === "revision" ? "\u270f\ufe0f" : "\u274c", null);
+      showToast(status === "approved" ? "Conte\u00fado aprovado!" : status === "revision" ? "Edi\u00e7\u00e3o solicitada!" : "Conte\u00fado reprovado");
+      supaCreateNotificationForAll("post_approved", "Cliente respondeu", demand.title, null, null);
       setSub(null);
     } catch(e) { showToast("Erro ao responder"); }
   };
 
+  const goTab = (k) => { setTab(k); setSub(null); setPgC(false); };
+
   const TABS = [
-    { k:"home", l:"In\u00edcio", ic:(c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg> },
-    { k:"content", l:"Conte\u00fado", ic:(c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, badge: pendingApproval.length },
-    { k:"calendar", l:"Agenda", ic:(c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-    { k:"chat", l:"Chat", ic:(c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> },
-    { k:"more", l:"Mais", ic:(c) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg> },
+    { k:"home", l:"In\u00edcio", i: IC.home },
+    { k:"content", l:"Conte\u00fado", i: IC.content, badge: pendingApproval.length },
+    { k:"calendar", l:"Agenda", i: IC.calendar },
+    { k:"chat", l:"Chat", i: IC.chat },
+    { k:"more", l:"Mais", i: IC.more || IC.settings },
   ];
 
-  /* \u2500\u2500 DEMAND DETAIL \u2500\u2500 */
+  /* --- DEMAND DETAIL --- */
   if (sub && sub.startsWith("demand_")) {
     const demandId = sub.replace("demand_","");
     const d = demands.find(x => x.id === demandId);
@@ -13487,53 +13484,45 @@ function MainClientApp({ user, onLogout, dark }) {
     const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
     const caption = d.steps?.caption?.text || "";
     const hashtags = d.steps?.caption?.hashtags || "";
+    const isPending = d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status;
     const isApproved = d.steps?.client?.status === "approved";
     const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
-    const isPending = d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status;
     return (
-      <div className="pg" style={{ paddingTop: TOP }}>
+      <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <Head title={d.title} onBack={() => setSub(null)} />
-        <div className="content" style={{ padding:"14px 16px" }}>
-          <Card><div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:4 }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"14px 16px 100px" }}>
+          <Card><div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
             <Tag color={B.accent}>{d.network || "Social"}</Tag>
             <Tag color={B.blue || B.accent}>{d.format || d.type}</Tag>
             <span style={{ fontSize:10, color:B.muted }}>{d.createdAt}</span>
           </div></Card>
           {imgFiles.length > 0 && <Card style={{ marginTop:8, padding:8 }}>
             <div style={{ display:"grid", gridTemplateColumns: imgFiles.length === 1 ? "1fr" : "1fr 1fr", gap:6 }}>
-              {imgFiles.map((f,i) => <img key={i} src={f.url} alt={f.name} style={{ width:"100%", borderRadius:12, objectFit:"cover", aspectRatio:imgFiles.length===1?"auto":"1" }} />)}
+              {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", borderRadius:12, objectFit:"cover", aspectRatio:imgFiles.length===1?"auto":"1" }} />)}
             </div>
           </Card>}
           {caption && <Card style={{ marginTop:8 }}>
             <p className="sl" style={{ marginBottom:6 }}>Legenda</p>
-            <p style={{ fontSize:13, lineHeight:1.6, color:B.text, whiteSpace:"pre-wrap" }}>{caption}</p>
+            <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{caption}</p>
             {hashtags && <p style={{ fontSize:11, color:B.accent, marginTop:8 }}>{hashtags}</p>}
           </Card>}
           {isApproved && <Card style={{ marginTop:8, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
-            <span style={{ display:"flex", justifyContent:"center", marginBottom:6 }}>{IC.check}</span>
+            <span style={{ display:"flex", justifyContent:"center", marginBottom:6, color:B.green }}>{IC.check}</span>
             <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Aprovado</p>
           </Card>}
-          {isRejected && <Card style={{ marginTop:8, background:`${B.orange}08`, border:`1px solid ${B.orange}20`, textAlign:"center" }}>
-            <p style={{ fontSize:14, fontWeight:700, color:B.orange }}>Edi\u00e7\u00e3o solicitada</p>
-            {d.steps?.client?.feedback && <p style={{ fontSize:12, color:B.text, marginTop:6, fontStyle:"italic" }}>{d.steps.client.feedback}</p>}
+          {isRejected && <Card style={{ marginTop:8, background:`${(B.orange||"#F59E0B")}08`, border:`1px solid ${(B.orange||"#F59E0B")}20`, textAlign:"center" }}>
+            <span style={{ display:"flex", justifyContent:"center", marginBottom:6, color:B.orange||"#F59E0B" }}>{IC.edit ? IC.edit(B.orange) : null}</span>
+            <p style={{ fontSize:14, fontWeight:700, color:B.orange||"#F59E0B" }}>Edi\u00e7\u00e3o solicitada</p>
+            {d.steps?.client?.feedback && <p style={{ fontSize:12, color:B.muted, marginTop:6, fontStyle:"italic" }}>{d.steps.client.feedback}</p>}
           </Card>}
-          {isPending && <div style={{ marginTop:12 }}>
-            <p className="sl" style={{ marginBottom:8, textAlign:"center" }}>O que achou do conte\u00fado?</p>
+          {isPending && <div style={{ marginTop:14 }}>
+            <p className="sl" style={{ marginBottom:10, textAlign:"center" }}>O que achou?</p>
             <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-              <button onClick={()=>respondDemand(d,"approved","")} className="pill full" style={{ flex:1, padding:"14px 0", background:B.green, color:"#fff", border:"none" }}>
-                <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.check} Aprovar</span>
-              </button>
-              <button onClick={()=>respondDemand(d,"rejected","")} className="pill full" style={{ flex:1, padding:"14px 0", background:B.red||"#FF6B6B", color:"#fff", border:"none" }}>
-                <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.close ? IC.close(B.red) : "\u2717"} Reprovar</span>
-              </button>
+              <button onClick={()=>respondDemand(d,"approved","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.check} Aprovar</button>
+              <button onClick={()=>respondDemand(d,"rejected","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.red||"#FF6B6B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>Reprovar</button>
             </div>
-            <button onClick={()=>{
-              const fb = prompt("Descreva o que gostaria de alterar:");
-              if (fb && fb.trim()) respondDemand(d, "revision", fb.trim());
-            }} className="pill full" style={{ width:"100%", padding:"12px 0", background:B.bgCard, border:`1.5px solid ${B.orange||"#F59E0B"}`, color:B.orange||"#F59E0B" }}>
-              <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.edit ? IC.edit(B.orange) : "\u270f"} Pedir edi\u00e7\u00e3o</span>
-            </button>
+            <button onClick={()=>{ const fb=prompt("Descreva o que gostaria de alterar:"); if(fb&&fb.trim()) respondDemand(d,"revision",fb.trim()); }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.bgCard, border:`1.5px solid ${B.orange||"#F59E0B"}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.orange||"#F59E0B", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>Pedir edi\u00e7\u00e3o</button>
           </div>}
         </div>
       </div>
@@ -13541,14 +13530,13 @@ function MainClientApp({ user, onLogout, dark }) {
   }
 
   return (
-    <div className="pg" style={{ paddingTop: TOP }}>
+    <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
 
-      {/* \u2550\u2550\u2550 HOME \u2550\u2550\u2550 */}
       {tab === "home" && <>
         <CollapseHeader icon={IC.home} label="Portal" title="Meu Marketing" collapsed={pgC} />
-        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} className="content" style={{ padding:"14px 16px" }}>
-          {pendingApproval.length > 0 && <Card onClick={()=>setTab("content")} style={{ background:B.dark, border:`1px solid ${B.accent}30`, cursor:"pointer", marginBottom:10 }}>
+        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 100px" }}>
+          {pendingApproval.length > 0 && <Card onClick={()=>goTab("content")} style={{ background:B.dark, border:`1px solid ${B.accent}30`, cursor:"pointer", marginBottom:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
               <div style={{ flex:1 }}>
@@ -13563,117 +13551,65 @@ function MainClientApp({ user, onLogout, dark }) {
             <Card style={{ textAlign:"center", padding:14 }}><span style={{ display:"flex", justifyContent:"center", color:B.green, marginBottom:6 }}>{IC.check}</span><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{approved.length}</p><p style={{ fontSize:9, color:B.muted }}>Aprovados</p></Card>
           </div>
           <p className="sl" style={{ marginBottom:8 }}>\u00daltimos conte\u00fados</p>
-          {demands.slice(0,5).map((d,i) => {
+          {demands.slice(0,8).map((d,i) => {
             const st = d.steps?.client?.status;
             const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):B.muted;
             const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edi\u00e7\u00e3o":d.steps?.client?.mode==="sent_to_client"?"Aguardando":"Em produ\u00e7\u00e3o";
             return <Card key={d.id} delay={i*0.03} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${stColor}` }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-                  <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} \u00b7 {d.createdAt}</p>
-                </div>
+                <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} \u00b7 {d.createdAt}</p></div>
                 <Tag color={stColor}>{stLabel}</Tag>
               </div>
             </Card>;
           })}
-          {demands.length === 0 && demandsLoaded && <Card style={{ textAlign:"center", padding:32 }}>
-            <span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span>
-            <p style={{ fontSize:14, fontWeight:600 }}>Nenhum conte\u00fado ainda</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>A ag\u00eancia vai enviar os posts aqui.</p>
-          </Card>}
+          {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:32 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span><p style={{ fontSize:14, fontWeight:600 }}>Nenhum conte\u00fado ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>A ag\u00eancia vai enviar posts aqui.</p></Card>}
         </div>
       </>}
 
-      {/* \u2550\u2550\u2550 CONTE\u00daDO \u2550\u2550\u2550 */}
       {tab === "content" && <>
         <CollapseHeader icon={IC.content} label="Aprova\u00e7\u00e3o" title="Conte\u00fado" collapsed={pgC} />
-        <div className="content" style={{ padding:"14px 16px" }}>
-          {pendingApproval.length > 0 && <>
-            <p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando sua aprova\u00e7\u00e3o ({pendingApproval.length})</p>
-            {pendingApproval.map(d => {
-              const imgs = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-              return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
-                <div style={{ display:"flex", gap:10 }}>
-                  {imgs[0] && <img src={imgs[0].url} style={{ width:52, height:52, borderRadius:10, objectFit:"cover", flexShrink:0 }} />}
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontSize:13, fontWeight:700 }}>{d.title}</p>
-                    <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} \u00b7 {d.format} \u00b7 {d.createdAt}</p>
-                    <Tag color={B.orange||"#F59E0B"}>Aguardando</Tag>
-                  </div>
-                </div>
-              </Card>;
-            })}
-          </>}
-          {approved.length > 0 && <>
-            <p className="sl" style={{ marginTop:16, marginBottom:8, color:B.green }}>Aprovados ({approved.length})</p>
-            {approved.slice(0,10).map(d => <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${B.green}` }}>
-              <p style={{ fontSize:12, fontWeight:600 }}>{d.title}</p>
-              <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} \u00b7 {d.createdAt}</p>
-            </Card>)}
-          </>}
-          {demands.length === 0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}>
-            <span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span>
-            <p style={{ fontSize:13, fontWeight:600 }}>Nada por aqui ainda</p>
-          </Card>}
-        </div>
-      </>}
-
-      {/* \u2550\u2550\u2550 PLACEHOLDERS \u2550\u2550\u2550 */}
-      {tab === "calendar" && <>
-        <CollapseHeader icon={IC.calendar} label="Eventos" title="Agenda" collapsed={pgC} />
-        <div className="content" style={{ padding:"14px 16px" }}>
-          <Card style={{ textAlign:"center", padding:40 }}>
-            <span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span>
-            <p style={{ fontSize:13, fontWeight:600 }}>Em breve</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calend\u00e1rio compartilhado com a ag\u00eancia</p>
-          </Card>
-        </div>
-      </>}
-      {tab === "chat" && <>
-        <CollapseHeader icon={IC.chat} label="Mensagens" title="Chat" collapsed={pgC} />
-        <div className="content" style={{ padding:"14px 16px" }}>
-          <Card style={{ textAlign:"center", padding:40 }}>
-            <span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span>
-            <p style={{ fontSize:13, fontWeight:600 }}>Em breve</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat direto com a ag\u00eancia</p>
-          </Card>
-        </div>
-      </>}
-      {tab === "more" && <>
-        <CollapseHeader icon={IC.settings} label="Op\u00e7\u00f5es" title="Mais" collapsed={pgC} />
-        <div className="content" style={{ padding:"14px 16px" }}>
-          {[
-            {l:"Biblioteca",ic:IC.library,desc:"Arquivos e materiais"},
-            {l:"Financeiro",ic:IC.financial,desc:"Faturas e pagamentos"},
-            {l:"Academy",ic:IC.academy,desc:"Cursos e conte\u00fados"},
-            {l:"Metas",ic:IC.trending,desc:"Objetivos do marketing"},
-            {l:"Ajuda",ic:IC.help,desc:"Suporte e FAQ"},
-          ].map((item,i) => (
-            <Card key={i} style={{ marginBottom:6 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic === "function" ? item.ic(B.accent) : item.ic}</div>
-                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.desc}</p></div>
-                <Tag color={B.accent}>Em breve</Tag>
+        <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 100px" }}>
+          {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprova\u00e7\u00e3o ({pendingApproval.length})</p>
+            {pendingApproval.map(d => { const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")); return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
+              <div style={{ display:"flex", gap:10 }}>
+                {imgs[0]&&<img src={imgs[0].url} style={{ width:52, height:52, borderRadius:10, objectFit:"cover", flexShrink:0 }} />}
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{d.title}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} \u00b7 {d.format} \u00b7 {d.createdAt}</p><Tag color={B.orange||"#F59E0B"}>Aguardando</Tag></div>
               </div>
-            </Card>
-          ))}
-          <button onClick={onLogout} className="pill full" style={{ marginTop:16, padding:"14px 0", background:`${(B.red||"#FF6B6B")}10`, border:`1px solid ${(B.red||"#FF6B6B")}30`, color:B.red||"#FF6B6B" }}>Sair da conta</button>
+            </Card>; })}</>}
+          {approved.length > 0 && <><p className="sl" style={{ marginTop:16, marginBottom:8, color:B.green }}>Aprovados ({approved.length})</p>
+            {approved.slice(0,10).map(d => <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${B.green}` }}><p style={{ fontSize:12, fontWeight:600 }}>{d.title}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} \u00b7 {d.createdAt}</p></Card>)}</>}
+          {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Nada por aqui ainda</p></Card>}
         </div>
       </>}
 
-      {/* \u2550\u2550\u2550 BOTTOM NAV (same style as agency) \u2550\u2550\u2550 */}
-      <div className="bnav" style={{ position:"fixed", bottom:"calc(14px + env(safe-area-inset-bottom,0px))", left:"50%", transform:"translateX(-50%)", display:"flex", alignItems:"center", zIndex:50, boxShadow:"0 8px 32px rgba(0,0,0,0.4)", overflow:"visible", background:dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.90)", backdropFilter:"blur(20px) saturate(1.4)", WebkitBackdropFilter:"blur(20px) saturate(1.4)", borderRadius:100, border:dark?"1px solid #2A2A2A":"1px solid rgba(255,255,255,0.08)", width:"calc(100% - 40px)", maxWidth:340, padding:"8px 8px" }}>
+      {tab === "calendar" && <><CollapseHeader icon={IC.calendar} label="Eventos" title="Agenda" collapsed={pgC} /><div style={{ flex:1, padding:"14px 16px 100px" }}><Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.calendar(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Calend\u00e1rio compartilhado</p></Card></div></>}
+      {tab === "chat" && <><CollapseHeader icon={IC.chat} label="Mensagens" title="Chat" collapsed={pgC} /><div style={{ flex:1, padding:"14px 16px 100px" }}><Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.chat(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Em breve</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Chat com a ag\u00eancia</p></Card></div></>}
+      {tab === "more" && <><CollapseHeader icon={IC.settings} label="Op\u00e7\u00f5es" title="Mais" collapsed={pgC} /><div style={{ flex:1, padding:"14px 16px 100px" }}>
+        {[{l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais"},{l:"Financeiro",ic:IC.financial,d:"Faturas e pagamentos"},{l:"Academy",ic:IC.academy,d:"Cursos e conte\u00fados"},{l:"Metas",ic:IC.trending,d:"Objetivos"},{l:"Ajuda",ic:IC.help,d:"Suporte e FAQ"}].map((item,i) => (
+          <Card key={i} style={{ marginBottom:6 }}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
+            <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.d}</p></div>
+            <Tag color={B.accent}>Em breve</Tag>
+          </div></Card>
+        ))}
+        <button onClick={onLogout} style={{ width:"100%", marginTop:16, padding:"14px 0", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
+      </div></>}
+
+      {/* --- BOTTOM NAV (identical to agency) --- */}
+      <nav className="bnav">
         {TABS.map(t => {
-          const a = tab === t.k;
-          return <button key={t.k} onClick={()=>{setTab(t.k);setSub(null);}} style={{ flex:1, background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, padding:"6px 0", position:"relative" }}>
-            {a && <div style={{ position:"absolute", top:-2, width:4, height:4, borderRadius:2, background:B.accent }} />}
-            <span style={{ color:a?B.accent:"rgba(255,255,255,0.35)" }}>{t.ic(a?B.accent:"rgba(255,255,255,0.35)")}</span>
-            {a && <span style={{ fontSize:9, fontWeight:700, color:B.accent }}>{t.l}</span>}
-            {t.badge > 0 && <span style={{ position:"absolute", top:0, right:"50%", transform:"translateX(14px)", width:16, height:16, borderRadius:8, background:B.red||"#FF6B6B", fontSize:9, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>{t.badge}</span>}
-          </button>;
+          const a = tab === t.k && !sub;
+          return (
+            <button key={t.k} onClick={()=>goTab(t.k)} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
+              <div style={{ width:a?54:36, height:a?54:36, borderRadius:"50%", background:a?B.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-22px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${B.accent}50`:"none" }}>
+                {t.i(a?(dark?"#0D0D0D":"#fff"):(dark?"rgba(255,255,255,0.4)":"rgba(255,255,255,0.5)"))}
+              </div>
+              {a && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:B.accent, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
+              {t.badge > 0 && !a && <span style={{ position:"absolute", top:6, right:"calc(50% - 16px)", width:16, height:16, borderRadius:8, background:B.red||"#FF6B6B", fontSize:9, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>{t.badge}</span>}
+            </button>
+          );
         })}
-      </div>
+      </nav>
     </div>
   );
 }
