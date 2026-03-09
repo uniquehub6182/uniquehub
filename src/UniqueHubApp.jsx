@@ -1506,7 +1506,8 @@ function OnboardingSlides({ onDone }) {
   );
 }
 
-function LoginPage({ onAuth }) {
+function LoginPage({ onAuth, onClientAuth }) {
+  const [portal, setPortal] = useState(null); /* null = choose, "team", "client" */
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState(1);
   /* Login fields */
@@ -1735,6 +1736,89 @@ function LoginPage({ onAuth }) {
 
   const stepLabels = ["Dados","Contato","Função","Segurança"];
   const stepValid = [step1Valid, step2Valid, step3Valid, step4Valid];
+
+  /* Client login handler */
+  const handleClientLogin = async () => {
+    if (!email.trim() || !pw.trim()) { setError("Preencha email e senha"); return; }
+    if (!supabase) { setError("Servidor indisponível"); return; }
+    setLoginLoading(true); setError("");
+    try {
+      const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
+      if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
+      let profile = null;
+      try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
+      if (onClientAuth) onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } });
+      setLoginLoading(false);
+    } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
+  };
+
+  /* ── PORTAL SELECTOR ── */
+  if (!portal) return (
+    <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
+      <div style={{ position:"absolute", inset:0, opacity:0.03, pointerEvents:"none", backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize:"128px" }} />
+      <div style={{ marginBottom:40, textAlign:"center", position:"relative" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center", marginBottom:8 }}>
+          <svg width="40" height="28" viewBox="0 0 40 28" fill="none"><path d="M4 20L12 8L20 20" stroke="#BBF246" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M20 20L28 8L36 20" stroke="#BBF246" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 20H28" stroke="#BBF246" strokeWidth="3.5" strokeLinecap="round"/></svg>
+        </div>
+        <p style={{ fontSize:20, fontWeight:300, color:"#fff" }}>unique<span style={{ fontWeight:800 }}> hub</span></p>
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:6, letterSpacing:1 }}>AGÊNCIA | CLIENTE</p>
+      </div>
+      <p style={{ fontSize:16, fontWeight:700, color:"#fff", marginBottom:24 }}>Como deseja acessar?</p>
+      <div style={{ display:"flex", flexDirection:"column", gap:14, width:"100%", maxWidth:320 }}>
+        <button onClick={()=>setPortal("team")} style={{ padding:"22px 24px", borderRadius:18, background:"rgba(187,242,70,0.08)", border:"1.5px solid rgba(187,242,70,0.3)", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:"rgba(187,242,70,0.15)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <div>
+            <p style={{ fontSize:15, fontWeight:700, color:"#fff" }}>Colaborador</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>Acesso ao painel da agência</p>
+          </div>
+        </button>
+        <button onClick={()=>setPortal("client")} style={{ padding:"22px 24px", borderRadius:18, background:"rgba(255,255,255,0.04)", border:"1.5px solid rgba(255,255,255,0.1)", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          </div>
+          <div>
+            <p style={{ fontSize:15, fontWeight:700, color:"#fff" }}>Sou Cliente</p>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>Acompanhe seu marketing</p>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ── CLIENT LOGIN ── */
+  if (portal === "client") return (
+    <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", padding:0 }}>
+      <div style={{ padding:"16px 20px", display:"flex", alignItems:"center" }}>
+        <button onClick={()=>setPortal(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"#fff", display:"flex", alignItems:"center", gap:6, fontFamily:"inherit", fontSize:13 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+        </button>
+      </div>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
+        <div style={{ width:56, height:56, borderRadius:16, background:"rgba(187,242,70,0.12)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        </div>
+        <p style={{ fontSize:20, fontWeight:800, color:"#fff", marginBottom:4 }}>Portal do Cliente</p>
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginBottom:32 }}>Acompanhe seu marketing digital</p>
+        {error && <p style={{ color:"#FF6B6B", fontSize:12, marginBottom:12, textAlign:"center" }}>{error}</p>}
+        <div style={{ width:"100%", maxWidth:320 }}>
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-mail" type="email" autoComplete="email" style={{ width:"100%", boxSizing:"border-box", padding:"14px 16px", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none", marginBottom:10 }} />
+          <input value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha" type={showPw?"text":"password"} autoComplete="current-password" onKeyDown={e=>e.key==="Enter"&&handleClientLogin()} style={{ width:"100%", boxSizing:"border-box", padding:"14px 16px", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none", marginBottom:16 }} />
+          <button onClick={handleClientLogin} disabled={loginLoading} style={{ width:"100%", padding:"15px 0", borderRadius:14, background:"#BBF246", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", opacity:loginLoading?0.6:1 }}>
+            {loginLoading ? "Entrando..." : "Entrar"}
+          </button>
+          <p style={{ textAlign:"center", marginTop:20, fontSize:12, color:"rgba(255,255,255,0.35)" }}>Ainda não tem conta?</p>
+          <button onClick={()=>{if(onClientAuth) onClientAuth({mode:"register"})}} style={{ width:"100%", marginTop:8, padding:"13px 0", borderRadius:14, background:"transparent", border:"1.5px solid rgba(187,242,70,0.3)", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:"#BBF246" }}>
+            Criar minha conta
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── TEAM: show back button to portal selector ── */
+  const portalBackBtn = <button onClick={()=>{setPortal(null);setMode("login");setError("");}} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.5)", fontFamily:"inherit", fontSize:12, display:"flex", alignItems:"center", gap:4, marginBottom:10 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Voltar</button>;
 
   /* ── PENDING SCREEN ── */
   if (mode === "pending") return (
@@ -2079,6 +2163,9 @@ function LoginPage({ onAuth }) {
 
       {/* ── WHITE CARD ── */}
       <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:"32px 32px 0 0", overflowY:"auto", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+
+        {/* Back to portal selector */}
+        {portal === "team" && portalBackBtn}
 
         {/* Title */}
         <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>
@@ -13333,6 +13420,244 @@ function Match4BizPage({ onBack, clients, user }) {
 }
 
 
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN CLIENT APP — Portal do Cliente
+   ═══════════════════════════════════════════════════════════════════ */
+function MainClientApp({ user, onLogout, dark }) {
+  const CL = { bg: dark?"#0F1419":"#F7F7F8", card: dark?"#1A1F25":"#fff", text: dark?"#E8EAED":"#192126", muted: dark?"#8B9099":"#8B8F92", border: dark?"#2A2F35":"#E5E2DD", accent:"#BBF246", dark:"#0D0D0D", green:"#34D399", red:"#FF6B6B", orange:"#F59E0B" };
+  const [tab, setTab] = useState("home");
+  const [sub, setSub] = useState(null);
+  const { showToast, ToastEl } = useToast();
+  const [demands, setDemands] = useState([]);
+  const [demandsLoaded, setDemandsLoaded] = useState(false);
+
+  /* Load demands assigned to this client */
+  useEffect(() => {
+    if (!supabase || demandsLoaded || !user?.id) return;
+    (async () => {
+      try {
+        /* Find which client this user is linked to */
+        const { data: clients } = await supabase.from("clients").select("id, name");
+        const { data: allDemands } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
+        /* Match demands where client name matches or client_id matches */
+        const clientNames = (clients||[]).map(c => c.name);
+        const filtered = (allDemands||[]).filter(d => {
+          const demandClient = d.client_name || d.client || "";
+          return clientNames.some(cn => cn.toLowerCase() === demandClient.toLowerCase());
+        });
+        setDemands(filtered.map(d => ({
+          id: d.id, title: d.title, type: d.type, client: d.client_name || d.client,
+          stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}),
+          files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]),
+          network: d.network, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "",
+        })));
+      } catch(e) { console.error("Client demands load:", e); }
+      setDemandsLoaded(true);
+    })();
+  }, [user?.id, demandsLoaded]);
+
+  const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
+  const approved = demands.filter(d => d.steps?.client?.status === "approved");
+  const rejected = demands.filter(d => d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision");
+
+  /* Handle client response to demand */
+  const respondDemand = async (demand, status, feedback) => {
+    try {
+      const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
+      await supabase.from("demands").update({ steps: JSON.stringify(steps) }).eq("id", demand.id);
+      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps } : d));
+      const label = status === "approved" ? "aprovado" : status === "revision" ? "pediu edição" : "reprovado";
+      showToast(`✓ Conteúdo ${label}!`);
+      supaCreateNotificationForAll("post_approved", `Cliente ${label}`, `${demand.title} — ${demand.client}`, status === "approved" ? "✅" : status === "revision" ? "✏️" : "❌", null);
+      setSub(null);
+    } catch(e) { showToast("Erro ao responder"); }
+  };
+
+  const TABS = [
+    { k:"home", l:"Início", ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg> },
+    { k:"content", l:"Conteúdo", ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, badge: pendingApproval.length },
+    { k:"calendar", l:"Agenda", ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+    { k:"chat", l:"Chat", ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> },
+    { k:"more", l:"Mais", ic:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> },
+  ];
+
+  /* ── DEMAND DETAIL (approval) ── */
+  if (sub && sub.startsWith("demand_")) {
+    const demandId = sub.replace("demand_","");
+    const d = demands.find(x => x.id === demandId);
+    if (!d) { setSub(null); return null; }
+    const files = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])];
+    const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+    const caption = d.steps?.caption?.text || "";
+    const hashtags = d.steps?.caption?.hashtags || "";
+    const isApproved = d.steps?.client?.status === "approved";
+    const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
+    const isPending = d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status;
+    return (
+      <div style={{ minHeight:"100vh", background:CL.bg, padding:"0 0 100px" }}>
+        {ToastEl}
+        <div style={{ padding:"16px 16px 0", display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={()=>setSub(null)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={CL.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <div><p style={{ fontSize:16, fontWeight:800, color:CL.text }}>{d.title}</p><p style={{ fontSize:11, color:CL.muted }}>{d.network} · {d.format} · {d.createdAt}</p></div>
+        </div>
+        {/* Images */}
+        {imgFiles.length > 0 && <div style={{ padding:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns: imgFiles.length === 1 ? "1fr" : "1fr 1fr", gap:6 }}>
+            {imgFiles.map((f,i) => <img key={i} src={f.url} alt={f.name} style={{ width:"100%", borderRadius:14, objectFit:"cover", aspectRatio: imgFiles.length===1?"1":"1" }} />)}
+          </div>
+        </div>}
+        {/* Caption */}
+        {caption && <div style={{ padding:"0 16px 12px" }}>
+          <div style={{ background:CL.card, borderRadius:14, padding:16, border:`1px solid ${CL.border}` }}>
+            <p style={{ fontSize:13, lineHeight:1.6, color:CL.text, whiteSpace:"pre-wrap" }}>{caption}</p>
+            {hashtags && <p style={{ fontSize:11, color:CL.accent, marginTop:8 }}>{hashtags}</p>}
+          </div>
+        </div>}
+        {/* Status */}
+        {isApproved && <div style={{ margin:"0 16px 12px", padding:14, borderRadius:14, background:`${CL.green}15`, border:`1px solid ${CL.green}30`, textAlign:"center" }}>
+          <p style={{ fontSize:14, fontWeight:700, color:CL.green }}>✅ Aprovado</p>
+          <p style={{ fontSize:11, color:CL.muted, marginTop:4 }}>Respondido em {d.steps?.client?.respondedAt ? new Date(d.steps.client.respondedAt).toLocaleDateString("pt-BR") : ""}</p>
+        </div>}
+        {isRejected && <div style={{ margin:"0 16px 12px", padding:14, borderRadius:14, background:`${CL.orange}15`, border:`1px solid ${CL.orange}30`, textAlign:"center" }}>
+          <p style={{ fontSize:14, fontWeight:700, color:CL.orange }}>✏️ Edição solicitada</p>
+          {d.steps?.client?.feedback && <p style={{ fontSize:12, color:CL.text, marginTop:6 }}>"{d.steps.client.feedback}"</p>}
+        </div>}
+        {/* Action buttons */}
+        {isPending && <div style={{ padding:"0 16px" }}>
+          <p style={{ fontSize:13, fontWeight:700, color:CL.text, marginBottom:10, textAlign:"center" }}>O que achou?</p>
+          <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+            <button onClick={()=>respondDemand(d,"approved","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:CL.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff" }}>✅ Aprovar</button>
+            <button onClick={()=>respondDemand(d,"rejected","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:CL.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff" }}>❌ Reprovar</button>
+          </div>
+          <button onClick={()=>{
+            const fb = prompt("Descreva o que gostaria de alterar:");
+            if (fb && fb.trim()) respondDemand(d, "revision", fb.trim());
+          }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:CL.card, border:`1.5px solid ${CL.orange}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:CL.orange }}>✏️ Pedir edição</button>
+        </div>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight:"100vh", background:CL.bg, paddingBottom:80 }}>
+      {ToastEl}
+      {/* ═══ HOME ═══ */}
+      {tab === "home" && <div style={{ padding:"20px 16px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <div>
+            <p style={{ fontSize:11, color:CL.muted, letterSpacing:1 }}>BEM-VINDO</p>
+            <p style={{ fontSize:22, fontWeight:900, color:CL.text }}>{user.name || "Cliente"}</p>
+          </div>
+          <div style={{ width:40, height:40, borderRadius:12, background:`${CL.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <Av name={user.name||"C"} sz={40} fs={16} />
+          </div>
+        </div>
+        {pendingApproval.length > 0 && <div onClick={()=>setTab("content")} style={{ background:CL.dark, borderRadius:18, padding:"18px 20px", marginBottom:14, cursor:"pointer", border:`1px solid ${CL.accent}30` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:40, height:40, borderRadius:12, background:`${CL.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>📋</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:14, fontWeight:700, color:"#fff" }}>{pendingApproval.length} conteúdo{pendingApproval.length>1?"s":""} para aprovar</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Toque para revisar</p>
+            </div>
+            <div style={{ width:8, height:8, borderRadius:4, background:CL.accent }} />
+          </div>
+        </div>}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
+          <div style={{ background:CL.card, borderRadius:14, padding:16, border:`1px solid ${CL.border}` }}>
+            <p style={{ fontSize:24, fontWeight:900, color:CL.accent }}>{demands.length}</p>
+            <p style={{ fontSize:10, color:CL.muted }}>Total de conteúdos</p>
+          </div>
+          <div style={{ background:CL.card, borderRadius:14, padding:16, border:`1px solid ${CL.border}` }}>
+            <p style={{ fontSize:24, fontWeight:900, color:CL.green }}>{approved.length}</p>
+            <p style={{ fontSize:10, color:CL.muted }}>Aprovados</p>
+          </div>
+        </div>
+        <p style={{ fontSize:14, fontWeight:700, color:CL.text, marginBottom:10 }}>Últimos conteúdos</p>
+        {demands.slice(0,5).map((d,i) => {
+          const st = d.steps?.client?.status;
+          const stColor = st==="approved"?CL.green:st==="rejected"||st==="revision"?CL.orange:CL.muted;
+          const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Aguardando":"Em produção";
+          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ background:CL.card, borderRadius:14, padding:"14px 16px", border:`1px solid ${CL.border}`, marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${stColor}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:600, color:CL.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+                <p style={{ fontSize:10, color:CL.muted, marginTop:2 }}>{d.network} · {d.createdAt}</p>
+              </div>
+              <span style={{ fontSize:9, padding:"3px 8px", borderRadius:8, background:`${stColor}15`, color:stColor, fontWeight:600, flexShrink:0 }}>{stLabel}</span>
+            </div>
+          </div>;
+        })}
+        {demands.length === 0 && demandsLoaded && <div style={{ textAlign:"center", padding:32 }}>
+          <p style={{ fontSize:28, marginBottom:8 }}>📱</p>
+          <p style={{ fontSize:14, fontWeight:600, color:CL.text }}>Nenhum conteúdo ainda</p>
+          <p style={{ fontSize:11, color:CL.muted, marginTop:4 }}>A agência vai enviar os posts para sua aprovação aqui.</p>
+        </div>}
+      </div>}
+
+      {/* ═══ CONTEÚDO ═══ */}
+      {tab === "content" && <div style={{ padding:"20px 16px" }}>
+        <p style={{ fontSize:20, fontWeight:900, color:CL.text, marginBottom:16 }}>Conteúdo</p>
+        {pendingApproval.length > 0 && <>
+          <p style={{ fontSize:12, fontWeight:700, color:CL.orange, marginBottom:8 }}>⏳ Aguardando sua aprovação ({pendingApproval.length})</p>
+          {pendingApproval.map(d => {
+            const imgs = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ background:CL.card, borderRadius:14, padding:12, border:`1.5px solid ${CL.orange}30`, marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", gap:10 }}>
+                {imgs[0] && <img src={imgs[0].url} style={{ width:56, height:56, borderRadius:10, objectFit:"cover", flexShrink:0 }} />}
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:CL.text }}>{d.title}</p>
+                  <p style={{ fontSize:10, color:CL.muted, marginTop:2 }}>{d.network} · {d.format} · {d.createdAt}</p>
+                  <span style={{ display:"inline-block", marginTop:4, fontSize:9, padding:"2px 8px", borderRadius:6, background:`${CL.orange}15`, color:CL.orange, fontWeight:600 }}>Aguardando aprovação</span>
+                </div>
+              </div>
+            </div>;
+          })}
+        </>}
+        {approved.length > 0 && <>
+          <p style={{ fontSize:12, fontWeight:700, color:CL.green, marginTop:16, marginBottom:8 }}>✅ Aprovados ({approved.length})</p>
+          {approved.slice(0,10).map(d => <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ background:CL.card, borderRadius:14, padding:"12px 14px", border:`1px solid ${CL.border}`, marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${CL.green}` }}>
+            <p style={{ fontSize:12, fontWeight:600, color:CL.text }}>{d.title}</p>
+            <p style={{ fontSize:10, color:CL.muted, marginTop:2 }}>{d.network} · {d.createdAt}</p>
+          </div>)}
+        </>}
+        {demands.length === 0 && demandsLoaded && <div style={{ textAlign:"center", padding:40 }}><p style={{ fontSize:28 }}>📭</p><p style={{ fontSize:13, fontWeight:600, color:CL.text, marginTop:8 }}>Nada por aqui ainda</p></div>}
+      </div>}
+
+      {/* ═══ CALENDAR / CHAT / MORE — placeholders ═══ */}
+      {tab === "calendar" && <div style={{ padding:"20px 16px" }}>
+        <p style={{ fontSize:20, fontWeight:900, color:CL.text, marginBottom:16 }}>Agenda</p>
+        <div style={{ textAlign:"center", padding:40 }}><p style={{ fontSize:32 }}>📅</p><p style={{ fontSize:13, color:CL.muted, marginTop:8 }}>Em breve — calendário compartilhado com a agência</p></div>
+      </div>}
+      {tab === "chat" && <div style={{ padding:"20px 16px" }}>
+        <p style={{ fontSize:20, fontWeight:900, color:CL.text, marginBottom:16 }}>Chat</p>
+        <div style={{ textAlign:"center", padding:40 }}><p style={{ fontSize:32 }}>💬</p><p style={{ fontSize:13, color:CL.muted, marginTop:8 }}>Em breve — chat direto com a agência</p></div>
+      </div>}
+      {tab === "more" && <div style={{ padding:"20px 16px" }}>
+        <p style={{ fontSize:20, fontWeight:900, color:CL.text, marginBottom:24 }}>Mais</p>
+        {[{l:"Biblioteca",ic:"📁",desc:"Arquivos e materiais"},{l:"Financeiro",ic:"💰",desc:"Faturas e pagamentos"},{l:"Academy",ic:"🎓",desc:"Cursos e conteúdos"},{l:"Metas",ic:"🎯",desc:"Objetivos do marketing"},{l:"Ajuda",ic:"❓",desc:"Suporte e FAQ"}].map((item,i) => (
+          <div key={i} style={{ background:CL.card, borderRadius:14, padding:"14px 16px", border:`1px solid ${CL.border}`, marginBottom:6, display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ fontSize:22 }}>{item.ic}</span>
+            <div><p style={{ fontSize:13, fontWeight:600, color:CL.text }}>{item.l}</p><p style={{ fontSize:10, color:CL.muted }}>{item.desc}</p></div>
+            <span style={{ marginLeft:"auto", fontSize:9, padding:"3px 8px", borderRadius:6, background:`${CL.accent}15`, color:CL.accent, fontWeight:600 }}>Em breve</span>
+          </div>
+        ))}
+        <button onClick={onLogout} style={{ width:"100%", marginTop:20, padding:"14px 0", borderRadius:14, background:`${CL.red}10`, border:`1px solid ${CL.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:CL.red }}>Sair da conta</button>
+      </div>}
+
+      {/* ═══ BOTTOM NAV ═══ */}
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:CL.dark, borderTop:`1px solid ${CL.border}`, display:"flex", padding:"8px 0 calc(8px + env(safe-area-inset-bottom, 0px))", zIndex:50 }}>
+        {TABS.map(t => (
+          <button key={t.k} onClick={()=>{setTab(t.k);setSub(null);}} style={{ flex:1, background:"none", border:"none", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, position:"relative" }}>
+            <span style={{ color:tab===t.k?CL.accent:"rgba(255,255,255,0.35)" }}>{t.ic}</span>
+            <span style={{ fontSize:9, fontWeight:600, color:tab===t.k?CL.accent:"rgba(255,255,255,0.35)" }}>{t.l}</span>
+            {t.badge > 0 && <span style={{ position:"absolute", top:0, right:"50%", transform:"translateX(14px)", width:16, height:16, borderRadius:8, background:CL.red, fontSize:9, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>{t.badge}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud, cloudDash, cloudNav }) {
   const mainContentRef = useRef(null);
   const [tab, setTab] = useState(() => {
@@ -13740,6 +14065,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
   const [user, setUser] = useState(null);
+  const [clientUser, setClientUser] = useState(null); /* Client portal user */
   const userRef = React.useRef(null); /* Track user for onAuthStateChange closure */
   const setUserAndRef = (u) => { userRef.current = u; setUser(u); };
   const [showPWA, setShowPWA] = useState(false);
@@ -14126,14 +14452,17 @@ input,textarea,select{font-size:16px !important}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
-      {!user && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && onboardDone && <LoginPage onAuth={(u) => { setUserAndRef(u); loadCloudPrefsForUser(u.id);
-    /* Show PWA prompt once per device on mobile */
+      {!user && !clientUser && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
+      {!user && !clientUser && onboardDone && <LoginPage onAuth={(u) => { setUserAndRef(u); loadCloudPrefsForUser(u.id);
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
     if (isMobile && !isStandalone && !dismissed) setTimeout(() => setShowPWA(true), 1200);
+  }} onClientAuth={(data) => {
+    if (data.mode === "login" && data.user) { setClientUser(data.user); }
+    if (data.mode === "register") { setClientUser({ registering: true }); }
   }} />}
+      {clientUser && <MainClientApp user={clientUser} onLogout={() => { setClientUser(null); if(supabase) supabase.auth.signOut(); }} dark={dark} />}
       {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
     setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
     themeColor={themeColor}
