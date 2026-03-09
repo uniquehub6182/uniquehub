@@ -2989,9 +2989,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     /* Sync to Supabase */
     const client = clients.find(c => c.id === id);
     if (client?.supaId) supaUpdateClient(client.supaId, data);
-    /* Persist file metadata separately via settings */
+    /* Persist file metadata separately via settings — use supaId for consistency */
     if (data.files !== undefined) {
-      supaSetSetting(`client_files_${id}`, JSON.stringify(data.files));
+      const fid = client?.supaId || id;
+      supaSetSetting(`client_files_${fid}`, JSON.stringify(data.files));
     }
     /* Persist socials separately via settings */
     if (data.socials !== undefined) {
@@ -3682,6 +3683,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
                     <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
+                    {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ background:`${B.accent}10`, border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:6, borderRadius:8, flexShrink:0 }}>{IC.download}</a>}
                     <button onClick={e=>{e.stopPropagation();removeFile(f.id);}} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                   </div>
                 </Card>
@@ -3696,6 +3698,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
               <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
+              {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ background:`${B.accent}10`, border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:6, borderRadius:8, flexShrink:0 }}>{IC.download}</a>}
               <button onClick={e=>{e.stopPropagation();removeFile(f.id);}} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </div>
           </Card>
@@ -12779,6 +12782,8 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
   const [user, setUser] = useState(null);
+  const userRef = React.useRef(null); /* Track user for onAuthStateChange closure */
+  const setUserAndRef = (u) => { userRef.current = u; setUser(u); };
   const [showPWA, setShowPWA] = useState(false);
 
   /* ── iOS zoom prevention: lock viewport on input focus, release on blur ── */
@@ -12911,7 +12916,7 @@ export default function App() {
     const check = () => {
       if (BLOCKED_EMAILS.some(b => user.email.toLowerCase().replace(/\s/g,"") === b)) {
         if (supabase) supabase.auth.signOut().catch(() => {});
-        setUser(null);
+        setUserAndRef(null);
         try { localStorage.removeItem("uh_user"); sessionStorage.clear(); } catch {}
         alert("Seu acesso foi revogado. Entre em contato com o administrador.");
       }
@@ -13002,7 +13007,7 @@ export default function App() {
           const cloudPrefs = settingsMap[`visual_prefs_${session.user.id}`] || null;
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           const photo = profile?.photo_url || photoSetting || null;
-          setUser({
+          setUserAndRef({
             id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
             email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
             supaRole: profile?.role || "member", photo,
@@ -13026,9 +13031,11 @@ export default function App() {
       setAuthLoading(false);
     }).catch(() => { clearTimeout(timeout); setAuthLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_OUT") { setUser(null); return; }
-      /* ── Catch email confirmation, password recovery, and any new sign-in ── */
-      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user && !user) {
+      if (event === "SIGNED_OUT") { setUserAndRef(null); return; }
+      /* Skip TOKEN_REFRESHED — session restore already handles this via getSession above */
+      if (event === "TOKEN_REFRESHED") return;
+      /* Only check SIGNED_IN for truly new sessions (email confirmation, etc.) */
+      if (event === "SIGNED_IN" && session?.user && !userRef.current) {
         console.log("[Auth] onAuthStateChange:", event, session.user.email);
         /* Re-run approval check for any new session */
         try {
@@ -13044,8 +13051,8 @@ export default function App() {
             }
           }
         } catch(e) {
-          console.warn("[Auth] onAuthStateChange check failed, blocking:", e);
-          await supabase.auth.signOut();
+          console.warn("[Auth] onAuthStateChange check failed, allowing:", e);
+          /* Don't signOut on error — let the user try again */
           return;
         }
       }
@@ -13055,7 +13062,7 @@ export default function App() {
 
   const handleLogout = async () => {
     if (supabase) await supabase.auth.signOut();
-    setUser(null);
+    setUserAndRef(null);
   };
 
   if (metaOAuthPending || metaOAuthResult || metaPagePicker) return (
@@ -13181,7 +13188,7 @@ input,textarea,select{font-size:16px !important}
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && onboardDone && <LoginPage onAuth={(u) => { setUser(u); loadCloudPrefsForUser(u.id);
+      {!user && onboardDone && <LoginPage onAuth={(u) => { setUserAndRef(u); loadCloudPrefsForUser(u.id);
     /* Show PWA prompt once per device on mobile */
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
