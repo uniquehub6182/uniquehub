@@ -9156,6 +9156,8 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
   const [fileForm, setFileForm] = useState({});
   const [uploading, setUploading] = useState(false);
   const { showToast, ToastEl } = useToast();
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
 
   const LIB_CATS = [
     { key:"brand", label:"Manual de Marca", icon:"📕", c:B.red },
@@ -9326,8 +9328,6 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
   }
 
   /* ── MAIN LIBRARY VIEW ── */
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
-  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
 
   /* ── ADD FILE FORM ── */
   const uploadLibFile = async () => {
