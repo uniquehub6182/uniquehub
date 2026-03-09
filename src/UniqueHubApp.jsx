@@ -438,6 +438,14 @@ const supaDeleteNews = async (id) => {
   try { await supabase.from("news").delete().eq("id", id); } catch(e) {}
 };
 
+/* ── Normalize category text → key (handles DB values like "Marketing Digital" → "mktdigital") ── */
+const CAT_TEXT_TO_KEY = { "marketing digital":"mktdigital", "branding":"branding", "estratégia":"estrategia", "estrategia":"estrategia", "publicidade":"publicidade", "carreira":"carreira", "novidade":"novidade", "tendências":"trends", "tendencia":"trends", "tendência":"trends", "atualização":"updates", "atualizacao":"updates", "dica":"tips", "dicas":"tips", "case":"cases", "ferramenta":"tools", "ferramentas":"tools", "inteligência artificial":"ia", "inteligencia artificial":"ia", "ia":"ia" };
+const normalizeCat = (cat) => {
+  if (!cat) return "geral";
+  const lower = cat.toLowerCase().trim();
+  return CAT_TEXT_TO_KEY[lower] || cat;
+};
+
 /* ── Parse a raw supabase news row into app article format ── */
 const parseNewsRow = (r) => {
   const srcParts = (r.source || "").split("||");
@@ -453,7 +461,7 @@ const parseNewsRow = (r) => {
     body = nl === -1 ? "" : rawBody.slice(nl + 1);
   }
   return {
-    id: r.id, cat: r.category || "geral", title: r.title, summary: r.summary || "",
+    id: r.id, cat: normalizeCat(r.category || "geral"), title: r.title, summary: r.summary || "",
     body, date: new Date(r.created_at).toLocaleDateString("pt-BR"),
     readTime: r.read_time || "", source: sourceName, sourceUrl, pinned: r.pinned || false,
     tags: r.tags || [], supaId: r.id, photo
@@ -2342,8 +2350,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         const pool = photos[cat]||photos.default;
         return pool[seed % pool.length];
       };
-      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2"};
-      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta"};
+      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
+      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Marketing Digital",ia:"Inteligência Artificial"};
       const fallback = [
         {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais e otimizando resultados.",cat:"trends",date:"Hoje"},
         {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts sem crédito.",cat:"updates",date:"Ontem"},
@@ -9996,6 +10004,13 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     { k:"tips", l:"Dicas" },
     { k:"cases", l:"Cases" },
     { k:"tools", l:"Ferramentas" },
+    { k:"novidade", l:"Novidade" },
+    { k:"branding", l:"Branding" },
+    { k:"estrategia", l:"Estratégia" },
+    { k:"publicidade", l:"Publicidade" },
+    { k:"carreira", l:"Carreira" },
+    { k:"mktdigital", l:"Marketing Digital" },
+    { k:"ia", l:"Inteligência Artificial" },
   ];
   const [saved, setSaved] = useState([]);
   const toggleSave = (id) => {
@@ -10046,8 +10061,8 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
 
   const filtered = tab === "all" ? articles : tab === "saved" ? articles.filter(a=>saved.includes(a.id)) : articles.filter(a=>a.cat===tab);
 
-  const catColor = (cat) => ({ trends:B.purple, updates:B.blue, tips:B.orange, cases:B.green, tools:B.cyan }[cat] || B.muted);
-  const catLabel = (cat) => ({ trends:"Tendência", updates:"Atualização", tips:"Dica", cases:"Case", tools:"Ferramenta" }[cat] || cat);
+  const catColor = (cat) => ({ trends:B.purple, updates:B.blue, tips:B.orange, cases:B.green, tools:B.cyan, novidade:"#EC4899", branding:"#8B5CF6", estrategia:"#0EA5E9", publicidade:"#F59E0B", carreira:"#10B981", mktdigital:B.accent, ia:"#6366F1" }[cat] || B.muted);
+  const catLabel = (cat) => ({ trends:"Tendência", updates:"Atualização", tips:"Dica", cases:"Case", tools:"Ferramenta", novidade:"Novidade", branding:"Branding", estrategia:"Estratégia", publicidade:"Publicidade", carreira:"Carreira", mktdigital:"Marketing Digital", ia:"Inteligência Artificial" }[cat] || cat);
 
   /* ── ARTICLE FORM (create/edit) ── */
   const newsFormJSX = (isEdit) => (
