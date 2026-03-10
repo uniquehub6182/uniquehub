@@ -14183,20 +14183,43 @@ function ClientOnboarding({ onComplete, onBack }) {
         options: { data: { name: data.name, company: data.company, phone: data.phone, role: "cliente" } }
       });
       if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
-      /* Save client profile extras + create client record for agency */
+      /* Save client profile extras + sync with existing client record */
       if (authData?.user?.id) {
         await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
-        /* Create entry in clients table so it appears in agency app */
-        await supabase.from("clients").insert({
-          name: data.company || data.name,
-          contact_name: data.name,
-          contact_email: data.email,
-          contact_phone: data.phone,
-          status: "ativo",
-          plan: "free",
-          start_date: new Date().toISOString().split("T")[0],
-          notes: `Cadastro via UniqueHub por ${data.name}`,
-        }).catch(e => console.warn("Client insert:", e));
+        /* Check if a client already exists by email or company name */
+        const { data: existingByEmail } = await supabase.from("clients").select("id").eq("contact_email", data.email).maybeSingle();
+        const { data: existingByName } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).maybeSingle() : { data: null };
+        const existingClient = existingByEmail || existingByName;
+        if (existingClient) {
+          /* Client already exists — sync: update with contact info */
+          await supabase.from("clients").update({
+            contact_email: data.email,
+            contact_name: data.name,
+            contact_phone: data.phone,
+            status: "ativo",
+          }).eq("id", existingClient.id).catch(e => console.warn("Client sync:", e));
+          console.log("[Onboarding] Synced with existing client:", existingClient.id);
+        } else {
+          /* No match — create new client record */
+          await supabase.from("clients").insert({
+            name: data.company || data.name,
+            contact_name: data.name,
+            contact_email: data.email,
+            contact_phone: data.phone,
+            status: "ativo",
+            plan: "free",
+            start_date: new Date().toISOString().split("T")[0],
+            notes: `Cadastro via UniqueHub por ${data.name}`,
+          }).catch(e => console.warn("Client insert:", e));
+          console.log("[Onboarding] Created new client record");
+        }
+        /* Create profile with role=cliente */
+        await supabase.from("profiles").upsert({
+          id: authData.user.id,
+          email: data.email,
+          name: data.name,
+          role: "cliente",
+        }, { onConflict: "id" }).catch(e => console.warn("Profile upsert:", e));
       }
       await addBot(`Conta criada com sucesso, ${data.name}! 🎉`, 600);
       await addBot("Você já pode fazer login com seu e-mail e senha.", 800);
