@@ -14296,18 +14296,24 @@ function MainClientApp({ user, onLogout, dark }) {
   const inactiveColor = dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)";
   const circleIcon = dark ? "#0D0D0D" : "#fff";
 
-  /* ═══ CLIENT SUB-PAGES — reuse agency pages where possible ═══ */
+  /* ═══ CLIENT SUB-PAGES — wrapper with back button ═══ */
+  const SubWrap = ({ title, children }) => (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      <Head title={title} onBack={() => setSub(null)} />
+      <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
+    </div>
+  );
   if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
-  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
-  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} />;
-  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
-  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
-  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
-  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
-  if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
-  if (sub === "reports") return <ReportsPage onBack={() => setSub(null)} clients={clients} team={team} />;
-  if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
+  if (sub === "academy") return <SubWrap title="Academy"><AcademyPage onBack={() => setSub(null)} /></SubWrap>;
+  if (sub === "calendar") return <SubWrap title="Calendário"><CalendarPage onBack={() => setSub(null)} clients={clients} team={team} /></SubWrap>;
+  if (sub === "library") return <SubWrap title="Biblioteca"><LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} /></SubWrap>;
+  if (sub === "news") return <SubWrap title="Notícias"><NewsPage onBack={() => setSub(null)} user={user} /></SubWrap>;
+  if (sub === "ideas") return <SubWrap title="Ideias"><IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /></SubWrap>;
+  if (sub === "ai") return <SubWrap title="Assistente IA"><AIPage onBack={() => setSub(null)} user={user} /></SubWrap>;
+  if (sub === "help") return <SubWrap title="Ajuda"><HelpPage onBack={() => setSub(null)} /></SubWrap>;
+  if (sub === "reports") return <SubWrap title="Relatórios"><ReportsPage onBack={() => setSub(null)} clients={clients} team={team} /></SubWrap>;
+  if (sub === "settings") return <SubWrap title="Configurações"><SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /></SubWrap>;
   if (sub === "financial") return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <Head title="Financeiro" onBack={() => setSub(null)} />
