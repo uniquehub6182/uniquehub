@@ -14366,8 +14366,15 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
 
-  /* ── Client ID for gamification ── */
-  const myClientId_inner = (() => { const cl = (clients||[]).find(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase())); return cl?.id; })();
+  /* ── Client ID for gamification (match by email first, then name) ── */
+  const myClientId_inner = (() => { 
+    const cl = (clients||[]).find(c => 
+      (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()
+    ) || (clients||[]).find(c => 
+      (user?.company||user?.name||"").toLowerCase() === (c.name||"").toLowerCase()
+    );
+    return cl?.id || cl?.supaId;
+  })();
 
   const respondDemand = async (demand, status, feedback) => {
     try {
@@ -14436,12 +14443,17 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         showToast(status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
       }
       /* ── Award gamification points ── */
-      if (supabase && myClientId_inner) {
+      const scoreClientId = demand.client_id || myClientId_inner;
+      if (supabase && scoreClientId) {
         if (status === "approved") {
-          await supabase.from("client_scores").insert({ client_id: myClientId_inner, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}` }).catch(()=>{});
+          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}` });
+          console.log("[Gamify] Approve score insert:", r.error ? r.error.message : "OK");
         } else if (status === "revision") {
-          await supabase.from("client_scores").insert({ client_id: myClientId_inner, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}` }).catch(()=>{});
+          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}` });
+          console.log("[Gamify] Edit score insert:", r.error ? r.error.message : "OK");
         }
+      } else {
+        console.warn("[Gamify] No client ID found for scoring. myClientId_inner:", myClientId_inner, "demand.client_id:", demand.client_id);
       }
       supaCreateNotificationForAll("post_approved", status === "approved" ? "Cliente aprovou post" : status === "revision" ? "Cliente pediu edição" : "Cliente reprovou post", demand.title, null, null);
       setSub(null);
