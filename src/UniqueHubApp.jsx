@@ -7126,7 +7126,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       window.open(`https://meet.jit.si/${roomId}${params}`, '_blank', 'noopener');
     };
     return (
-      <div style={{ position:"fixed", top:vpTop, left:0, right:0, height:vpHeight, zIndex:100, display:"flex", flexDirection:"column", background:B.bgCard, overflow:"hidden" }}>
+      <div style={{ position:"fixed", top:vpTop, left:0, right:0, height:vpHeight, zIndex:100, display:"flex", flexDirection:"column", background:B.bg, overflow:"hidden" }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
