@@ -7582,7 +7582,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             const { error } = await supabase.from("profiles").update({ photo_url: compressed }).eq("id", user.id);
             if (error) {
               console.warn("profiles photo_url failed, using settings fallback:", error.message);
-              /* Fallback: save photo in settings table */
               const ok = await supaSetSetting(`profile_photo_${user.id}`, compressed);
               if (ok) {
                 setUser(prev => ({ ...prev, photo: compressed }));
@@ -7593,6 +7592,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             } else {
               setUser(prev => ({ ...prev, photo: compressed }));
               showToast("Foto atualizada ✓");
+            }
+            /* Sync photo to clients table so agency sees it too */
+            if (user?.email) {
+              supabase.from("clients").update({ logo_url: compressed }).eq("contact_email", user.email).then(r => { if(r.error) console.warn("clients logo sync:", r.error.message); });
             }
           } catch(err) { console.error("photo compress error:", err); showToast("Erro ao processar imagem"); }
           setPhotoUploading(false);
