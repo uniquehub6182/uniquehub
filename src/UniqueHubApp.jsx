@@ -1752,35 +1752,7 @@ function LoginPage({ onAuth, onClientAuth }) {
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
   };
 
-  /* ── CLIENT LOGIN ── */
-  if (portal === "client") return (
-    <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", padding:0 }}>
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
-        <div style={{ width:56, height:56, borderRadius:16, background:"rgba(187,242,70,0.12)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-        </div>
-        <p style={{ fontSize:20, fontWeight:800, color:"#fff", marginBottom:4 }}>Portal do Cliente</p>
-        <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginBottom:32 }}>Acompanhe seu marketing digital</p>
-        {error && <p style={{ color:"#FF6B6B", fontSize:12, marginBottom:12, textAlign:"center" }}>{error}</p>}
-        <div style={{ width:"100%", maxWidth:320 }}>
-          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="E-mail" type="email" autoComplete="email" style={{ width:"100%", boxSizing:"border-box", padding:"14px 16px", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none", marginBottom:10 }} />
-          <input value={pw} onChange={e=>setPw(e.target.value)} placeholder="Senha" type={showPw?"text":"password"} autoComplete="current-password" onKeyDown={e=>e.key==="Enter"&&handleClientLogin()} style={{ width:"100%", boxSizing:"border-box", padding:"14px 16px", borderRadius:14, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none", marginBottom:16 }} />
-          <button onClick={handleClientLogin} disabled={loginLoading} style={{ width:"100%", padding:"15px 0", borderRadius:14, background:"#BBF246", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", opacity:loginLoading?0.6:1 }}>
-            {loginLoading ? "Entrando..." : "Entrar"}
-          </button>
-          <p style={{ textAlign:"center", marginTop:20, fontSize:12, color:"rgba(255,255,255,0.35)" }}>Ainda não tem conta?</p>
-          <button onClick={()=>{if(onClientAuth) onClientAuth({mode:"register"})}} style={{ width:"100%", marginTop:8, padding:"13px 0", borderRadius:14, background:"transparent", border:"1.5px solid rgba(187,242,70,0.3)", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:"#BBF246" }}>
-            Criar minha conta
-          </button>
-          <button onClick={()=>{setPortal("team");setError("");}} style={{ width:"100%", marginTop:16, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, color:"rgba(255,255,255,0.4)" }}>
-            ← Sou colaborador da agência
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ── TEAM: show back button to portal selector ── */
+  /* ── TEAM: portal toggle is now in the login form ── */
   const portalBackBtn = null;
 
   /* ── PENDING SCREEN ── */
@@ -1809,7 +1781,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   const logoJSX = (mb) => (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: mb || 32 }}>
       <img src={LOGO_B64} alt="UniqueHub" style={{ height: 45, objectFit: "contain", marginBottom: 8 }} />
-      <span style={{ fontSize: 13, color: B.muted, fontWeight: 600, marginTop: 2 }}>Agency Panel</span>
+      <span style={{ fontSize: 13, color: B.muted, fontWeight: 600, marginTop: 2 }}>{portal==="client" ? "Portal do Cliente" : "Agency Panel"}</span>
     </div>
   );
 
@@ -2127,15 +2099,19 @@ function LoginPage({ onAuth, onClientAuth }) {
       {/* ── WHITE CARD ── */}
       <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:"32px 32px 0 0", overflowY:"auto", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
 
-        {/* Spacer */}
-        <div style={{ height:6 }} />
+        {/* Portal toggle — Colaborador | Cliente */}
+        <div style={{ display:"flex", background:"#F0F1F3", borderRadius:14, padding:3, marginBottom:20 }}>
+          {[{k:"team",l:"Colaborador"},{k:"client",l:"Sou Cliente"}].map(p => (
+            <button key={p.k} onClick={()=>{setPortal(p.k);setError("");setMode("login");}} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:portal===p.k?"#fff":"transparent", color:portal===p.k?"#1A1D23":"#9CA3AF", fontSize:13, fontWeight:portal===p.k?700:500, cursor:"pointer", fontFamily:"inherit", boxShadow:portal===p.k?"0 1px 4px rgba(0,0,0,0.08)":"none", transition:"all .2s" }}>{p.l}</button>
+          ))}
+        </div>
 
         {/* Title */}
         <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>
-          {mode==="login" ? "Acesse sua conta" : "Solicitar acesso"}
+          {portal==="client" ? "Portal do Cliente" : (mode==="login" ? "Acesse sua conta" : "Solicitar acesso")}
         </h1>
         <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 30px", lineHeight:1.5 }}>
-          {mode==="login" ? "Entre com seu e-mail e senha para continuar" : "Preencha para solicitar acesso à plataforma"}
+          {portal==="client" ? "Acompanhe seu marketing digital" : (mode==="login" ? "Entre com seu e-mail e senha para continuar" : "Preencha para solicitar acesso à plataforma")}
         </p>
 
         {/* Email floating label */}
@@ -2206,12 +2182,12 @@ function LoginPage({ onAuth, onClientAuth }) {
 
         {/* Sign in CTA */}
         <button
-          onClick={mode==="login" ? handleLogin : () => setMode("register")}
+          onClick={portal==="client" ? handleClientLogin : (mode==="login" ? handleLogin : () => setMode("register"))}
           disabled={mode==="login" && (loginLoading || !(supabase ? email.includes("@") && pw.length >= 6 : emailValid && pwStrong(pw)))}
           className="lsign-btn"
           style={{ opacity: mode==="register" ? 1 : (loginLoading ? 0.6 : (supabase ? (email.includes("@") && pw.length >= 6 ? 1 : 0.45) : ((emailValid && pwStrong(pw)) ? 1 : 0.45))) }}
         >
-          {loginLoading ? "Entrando..." : mode==="login" ? "Entrar na plataforma" : "Preencher cadastro →"}
+          {loginLoading ? "Entrando..." : portal==="client" ? "Entrar como cliente" : (mode==="login" ? "Entrar na plataforma" : "Preencher cadastro →")}
         </button>
 
         {/* Divider */}
@@ -2221,20 +2197,25 @@ function LoginPage({ onAuth, onClientAuth }) {
           <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
         </div>
 
-        {/* Register CTA */}
-        <div style={{ textAlign:"center" }}>
-          <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:10 }}>É colaborador e ainda não tem conta?</p>
-          <button onClick={() => { setMode("register"); setError(""); }} style={{ width:"100%", padding:"14px", borderRadius:16, border:"1.5px solid #BBF24650", background:"rgba(187,242,70,0.06)", color:"#BBF246", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            Cadastre-se aqui
-          </button>
-        </div>
+        {/* Register CTA — different for team vs client */}
+        {portal === "team" ? (
+          <div style={{ textAlign:"center" }}>
+            <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:10 }}>É colaborador e ainda não tem conta?</p>
+            <button onClick={() => { setMode("register"); setError(""); }} style={{ width:"100%", padding:"14px", borderRadius:16, border:"1.5px solid #BBF24650", background:"rgba(187,242,70,0.06)", color:"#BBF246", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              Cadastre-se aqui
+            </button>
+          </div>
+        ) : (
+          <div style={{ textAlign:"center" }}>
+            <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:10 }}>Ainda não tem conta de cliente?</p>
+            <button onClick={()=>{if(onClientAuth) onClientAuth({mode:"register"})}} style={{ width:"100%", padding:"14px", borderRadius:16, border:"1.5px solid #BBF24650", background:"rgba(187,242,70,0.06)", color:"#BBF246", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              Criar minha conta
+            </button>
+          </div>
+        )}
 
         {/* Version */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, marginTop:16 }}>
-          <button onClick={()=>{setPortal("client");setError("");}} style={{ display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", padding:0 }}>
-            <span style={{ fontSize:12, color:"#9CA3AF" }}>Sou cliente?</span>
-            <span style={{ fontSize:12, fontWeight:600, color:"#BBF246" }}>Acessar portal →</span>
-          </button>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginTop:16 }}>
           <span style={{ fontSize:11, color:"#D1D5DB", fontWeight:500 }}>UniqueHub v1.0</span>
         </div>
       </div>
