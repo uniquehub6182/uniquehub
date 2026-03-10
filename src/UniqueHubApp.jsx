@@ -14185,7 +14185,8 @@ function MainClientApp({ user, onLogout, dark }) {
   const [headerC, setHeaderC] = useState(false);
   const scrollRef = useRef(null);
   const CLIENT_DASH_DEFAULT_INIT = ["news","posts","metricas","growth","match","relatorio"];
-  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); return s ? JSON.parse(s) : CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
+  const CLIENT_DASH_VALID_KEYS = ["news","posts","metricas","growth","match","relatorio"];
+  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
@@ -14544,30 +14545,37 @@ function MainClientApp({ user, onLogout, dark }) {
     </div>
     <div style={{ height:16 }} />
 
-    {/* DASH EDIT MODAL */}
+    {/* DASH EDIT MODAL — redesigned with toggles */}
     {showDashEdit && <div style={{ position:"fixed", inset:0, zIndex:999, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end" }} onClick={()=>setShowDashEdit(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.card, borderRadius:"24px 24px 0 0", width:"100%", maxHeight:"70vh", overflowY:"auto", padding:"20px 20px calc(20px + env(safe-area-inset-bottom,0px))" }}>
-        <div style={{ width:40, height:4, borderRadius:2, background:C.brd, margin:"0 auto 16px" }} />
-        <p style={{ fontSize:16, fontWeight:800, marginBottom:4 }}>Personalizar Dashboard</p>
-        <p style={{ fontSize:11, color:C.mut, marginBottom:16 }}>Arraste para reordenar ou oculte seções</p>
-        {(editSections.length?editSections:clientDashSections).map((sk,i) => <div key={sk} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:C.bg, borderRadius:12, marginBottom:6, border:`1px solid ${C.brd}` }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:2, cursor:"grab", color:C.mut }}><div style={{ width:12, height:2, borderRadius:1, background:C.mut }} /><div style={{ width:12, height:2, borderRadius:1, background:C.mut }} /><div style={{ width:12, height:2, borderRadius:1, background:C.mut }} /></div>
-          <span style={{ flex:1, fontSize:13, fontWeight:600 }}>{CLIENT_SECTIONS[sk]||sk}</span>
-          <div style={{ display:"flex", gap:4 }}>
-            {i>0 && <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections)];[a[i-1],a[i]]=[a[i],a[i-1]];setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${C.mut}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="3" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>}
-            {i<(editSections.length?editSections:clientDashSections).length-1 && <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections)];[a[i],a[i+1]]=[a[i+1],a[i]];setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${C.mut}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>}
-            <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections)].filter(x=>x!==sk);setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${(B.red||"#FF6B6B")}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-          </div>
-        </div>)}
-        {/* Hidden sections */}
-        {Object.keys(CLIENT_SECTIONS).filter(k=>!(editSections.length?editSections:clientDashSections).includes(k)).map(sk => <div key={sk} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:`${C.mut}05`, borderRadius:12, marginBottom:6, border:`1px dashed ${C.brd}`, opacity:0.5 }}>
-          <span style={{ flex:1, fontSize:13, fontWeight:600 }}>{CLIENT_SECTIONS[sk]||sk}</span>
-          <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections),sk];setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${B.green}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-        </div>)}
-        <div style={{ display:"flex", gap:8, marginTop:12 }}>
-          <button onClick={()=>{setEditSections(CLIENT_DASH_DEFAULT);}} style={{ flex:1, padding:"11px 0", borderRadius:12, background:`${C.mut}08`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:C.mut }}>Restaurar</button>
-          <button onClick={()=>{const s=editSections.length?editSections:clientDashSections;setClientDashSections(s);try{localStorage.setItem("uh_client_dash",JSON.stringify(s));}catch{}setEditSections([]);setShowDashEdit(false);}} style={{ flex:1, padding:"11px 0", borderRadius:12, background:LIME, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Salvar</button>
+      <div onClick={e=>e.stopPropagation()} style={{ background:C.card, borderRadius:"28px 28px 0 0", width:"100%", maxHeight:"75vh", overflowY:"auto", padding:"20px 24px calc(24px + env(safe-area-inset-bottom,0px))" }}>
+        <div style={{ width:40, height:4, borderRadius:2, background:C.brd, margin:"0 auto 20px" }} />
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <div><p style={{ fontSize:20, fontWeight:800 }}>Personalizar</p><p style={{ fontSize:12, color:C.mut, marginTop:2 }}>Ative ou desative seções do dashboard</p></div>
+          <button onClick={()=>{setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{ padding:"8px 14px", borderRadius:10, background:`${C.mut}08`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:C.mut }}>Resetar</button>
         </div>
+        {(() => {
+          const SEC_ICONS = { news:"📰", posts:"📋", metricas:"📊", growth:"🏆", match:"💜", relatorio:"📈" };
+          const SEC_DESC = { news:"Notícias e comunicados", posts:"Conteúdos para aprovação", metricas:"Performance das redes", growth:"Índice de crescimento", match:"Parcerias entre clientes", relatorio:"Relatório mensal" };
+          const current = editSections.length ? editSections : clientDashSections;
+          const allKeys = Object.keys(CLIENT_SECTIONS);
+          return allKeys.map((sk) => {
+            const active = current.includes(sk);
+            const idx = current.indexOf(sk);
+            return <div key={sk} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 0", borderBottom:`1px solid ${C.brd}` }}>
+              <span style={{ fontSize:22 }}>{SEC_ICONS[sk]||"📌"}</span>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:14, fontWeight:700, color: active ? C.txt : C.mut }}>{CLIENT_SECTIONS[sk]}</p>
+                <p style={{ fontSize:11, color:C.mut, marginTop:1 }}>{SEC_DESC[sk]||""}</p>
+              </div>
+              {active && idx > 0 && <button onClick={()=>{const a=[...current];[a[idx-1],a[idx]]=[a[idx],a[idx-1]];setEditSections(a);}} style={{ width:30, height:30, borderRadius:8, background:`${C.mut}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>}
+              {active && idx < current.length-1 && <button onClick={()=>{const a=[...current];[a[idx],a[idx+1]]=[a[idx+1],a[idx]];setEditSections(a);}} style={{ width:30, height:30, borderRadius:8, background:`${C.mut}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>}
+              <button onClick={()=>{let a=[...current]; if(active) a=a.filter(x=>x!==sk); else a.push(sk); setEditSections(a);}} style={{ width:48, height:28, borderRadius:14, background:active?LIME:`${C.mut}15`, border:"none", cursor:"pointer", position:"relative", transition:"background .2s" }}>
+                <div style={{ width:22, height:22, borderRadius:11, background:"#fff", position:"absolute", top:3, left:active?23:3, transition:"left .2s", boxShadow:"0 1px 4px rgba(0,0,0,0.2)" }} />
+              </button>
+            </div>;
+          });
+        })()}
+        <button onClick={()=>{const s=editSections.length?editSections.filter(k=>Object.keys(CLIENT_SECTIONS).includes(k)):clientDashSections.filter(k=>Object.keys(CLIENT_SECTIONS).includes(k));setClientDashSections(s);try{localStorage.setItem("uh_client_dash",JSON.stringify(s));}catch{}setEditSections([]);setShowDashEdit(false);}} style={{ width:"100%", marginTop:20, padding:"15px 0", borderRadius:16, background:LIME, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:800, color:B.textOnAccent||"#0D0D0D" }}>Salvar alterações</button>
       </div>
     </div>}
   </>; }
