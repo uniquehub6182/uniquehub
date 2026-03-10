@@ -536,15 +536,6 @@ const supaSetSetting = async (key, value) => {
     return true;
   } catch(e) { console.error("[setSetting] CATCH:", key, e); return false; }
 };
-/* ── Asaas Integration Helper ── */
-const asaasCall = async (action, data = {}) => {
-  if (!supabase) return { error: "supabase not initialized" };
-  try {
-    const { data: result, error } = await supabase.functions.invoke("asaas-proxy", { body: { action, data } });
-    if (error) { console.error("[Asaas]", action, error); return { error: error.message }; }
-    return result;
-  } catch(e) { console.error("[Asaas]", action, e); return { error: e.message }; }
-};
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
   try {
