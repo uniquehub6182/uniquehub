@@ -14304,6 +14304,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const [clientPills, setClientPills] = useState(() => { try { const s = localStorage.getItem("uh_client_pills"); return s ? JSON.parse(s) : ["conteudo","relatorios","suporte"]; } catch { return ["conteudo","relatorios","suporte"]; } });
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
   const [metricsSlide, setMetricsSlide] = useState(0);
+  const [finView, setFinView] = useState("main");
   const [editMode, setEditMode] = useState(false);
   const [editTypes, setEditTypes] = useState([]);
   const [editComment, setEditComment] = useState("");
@@ -14514,7 +14515,6 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; }
   if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
   if (sub === "financial") {
-    const [finView, setFinView] = React.useState("main");
     const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
     const PLAN_INFO = {
       free:{ name:"Free", desc:"Plano gratuito de entrada", features:["Acesso ao Hub do cliente","Aprovação de conteúdos","Chat com a agência","Relatórios básicos"] },
@@ -14579,7 +14579,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
     return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
-      <Head title="Financeiro" onBack={() => setSub(null)} />
+      <Head title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} />
       <div className="content" style={{ padding:"0 16px" }}>
         <Card style={{ padding:0, overflow:"hidden" }}>
           <div style={{ background:B.dark||"#111", padding:"20px", color:"#fff" }}>
