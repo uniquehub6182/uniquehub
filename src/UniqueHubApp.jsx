@@ -10452,10 +10452,12 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
               <button key={p.k} onClick={()=>applyDatePreset(p.k)} style={{ padding:"5px 10px", borderRadius:8, fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"inherit", border:datePreset===p.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:datePreset===p.k?`${B.accent}12`:B.bgCard, color:datePreset===p.k?B.accent:B.muted }}>{p.l}</button>
             ))}
           </div>
-          {showDatePicker && <div style={{ marginTop:10, display:"flex", gap:8, alignItems:"flex-end" }}>
-            <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>De</label><input type="date" value={dateSince} onChange={e=>setDateSince(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
-            <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>Até</label><input type="date" value={dateUntil} onChange={e=>setDateUntil(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
-            <button onClick={applyCustomDates} style={{ padding:"8px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark, flexShrink:0 }}>Aplicar</button>
+          {showDatePicker && <div style={{ marginTop:10 }}>
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>De</label><input type="date" value={dateSince} onChange={e=>setDateSince(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+              <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>Até</label><input type="date" value={dateUntil} onChange={e=>setDateUntil(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+            </div>
+            <button onClick={applyCustomDates} style={{ marginTop:8, width:"100%", padding:"10px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark||"#0D0D0D" }}>Aplicar</button>
           </div>}
           <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>{dateSince} → {dateUntil}</p>
         </Card>
