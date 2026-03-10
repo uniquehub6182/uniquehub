@@ -15295,13 +15295,6 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
   return (
     <div style={{ display:"flex" }}>
-      {isDesktop && <DesktopSidebar tabs={CLIENT_SIDEBAR_TABS} activeTab={sub || tab} onTabChange={(k) => { const t = CLIENT_SIDEBAR_TABS.find(x=>x.k===k); if (t?.isSub) { setSub(k); } else { setSub(null); setTab(k); } }} user={user} title={user?.company || user?.name || "Cliente"} accentColor={B.accent} onLogout={onLogout} sections={[
-        { label:null, keys:["home"] },
-        { label:"Conteúdo", keys:["content","calendar","chat"] },
-        { label:"Análise", keys:["gamify","reports","financial"] },
-        { label:"Ferramentas", keys:["library","academy","news","ideas","ai","match4biz"] },
-        { label:"Conta", keys:["settings"] },
-      ]} />}
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
@@ -15655,7 +15648,6 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   return (
     <div style={{ display:"flex" }}>
-      {isDesktop && <DesktopSidebar tabs={ALL_TABS.filter(t=>t.k!=="search" && t.k!=="more")} activeTab={sub || tab} onTabChange={(k) => { const mainTabs = ["home","content","chat","clients","team","calendar"]; if (mainTabs.includes(k)) { setSub(null); setTab(k); } else { goSub(k); } setMore(false); }} user={user} title="Unique Marketing" accentColor={B.accent} onLogout={onLogout} />}
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background: B.bg, color: B.text }}>
       {ToastEl}
@@ -15777,11 +15769,20 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
-            }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
+            }} className="bt" style={{ flex:1, display:"flex", flexDirection:isDesktop?"row":"column", alignItems:"center", justifyContent:"center", gap:isDesktop?8:0, height:isDesktop?44:sz.h, padding:isDesktop?"8px 14px":0, background:isDesktop&&a?`${accentColor}15`:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1, borderRadius:isDesktop?12:0, transition:"all .15s" }}>
+              {isDesktop ? (
+                <>
+                  <span style={{ display:"flex", alignItems:"center" }}>{t.i(a ? accentColor : (dark?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.5)"))}</span>
+                  <span className="bt-label" style={{ display:"none", fontSize:12, fontWeight:a?700:500, color:a?accentColor:(dark?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.5)") }}>{t.l}</span>
+                </>
+              ) : (
+                <>
               <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?circleBg:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${circleBg}50`:"none" }}>
                 {t.i(a ? circleIcon : inactiveColor)}
               </div>
               {a && uiPrefs.navLabels!==false && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:navTextColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
+                </>
+              )}
               {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
               {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
             </button>
@@ -16201,26 +16202,23 @@ input,textarea,select{font-size:16px !important}
 /* ── Desktop Layout ── */
 .d-sidebar{display:none}
 @media(min-width:900px){
-.d-sidebar{display:flex;flex-direction:column;width:260px;min-width:260px;height:100vh;background:${dark?"#0D1117":"#FFFFFF"};border-right:1px solid ${dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.06)"};position:fixed;left:0;top:0;z-index:60;overflow:hidden}
-.d-sidebar button:hover{background:${dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.03)"}!important}
-.d-main{margin-left:260px;width:calc(100% - 260px);max-width:none!important;min-height:100vh}
+.d-sidebar{display:none!important}
+.d-main{width:100%;max-width:none!important;min-height:100vh}
 .d-main .app{max-width:none!important;position:relative!important;min-height:100vh}
-.d-main .content{max-width:1200px;margin:0 auto;padding:24px 32px 40px!important;padding-bottom:40px!important}
-.d-main .pg{max-width:1200px;margin:0 auto;padding:24px 32px 20px!important}
-.d-main .card{transition:box-shadow .2s,transform .15s;border-radius:14px!important}
-.d-main .card:hover{box-shadow:0 6px 24px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.08)"}!important}
-.bnav{display:none!important}
+.d-main .content{max-width:1400px;margin:0 auto;padding:20px 40px 120px!important}
+.d-main .pg{max-width:1400px;margin:0 auto;padding:20px 40px!important}
+.d-main .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
+.d-main .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 .app{position:relative!important}
 .d-main input,.d-main textarea{font-size:14px!important}
 .d-main .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
-/* Desktop: CollapseHeader becomes a flat top bar */
+/* Desktop: floating navbar stays visible and centered */
+.bnav{bottom:20px!important;max-width:520px!important;width:auto!important;padding:6px 10px!important;border-radius:20px!important;backdrop-filter:blur(24px) saturate(1.6)!important;-webkit-backdrop-filter:blur(24px) saturate(1.6)!important;box-shadow:0 8px 40px rgba(0,0,0,0.25)!important}
+.bnav .bt{padding:8px 16px!important;border-radius:14px!important;gap:6px!important}
+/* Desktop: show labels next to nav icons */
+.bnav .bt-label{display:inline!important;font-size:12px;font-weight:600;letter-spacing:-0.2px}
+/* Desktop: CollapseHeader becomes flat */
 .d-main [style*="borderRadius: collapsed"]{border-radius:0!important;box-shadow:none!important}
-/* Desktop: remove safe-area-inset padding */
-.d-main [style*="safe-area-inset"]{padding-top:0!important}
-/* Desktop: search bar wider */
-.d-main .hscroll{scrollbar-width:none}
-/* Desktop: grid for horizontal scroll sections */
-.d-main .htabs{flex-wrap:wrap}
 }
 #root{overflow:auto!important}
 html,body{overflow:auto!important}
