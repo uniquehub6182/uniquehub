@@ -9732,9 +9732,9 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   );
 }
 
-function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
+function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientView, clientFilter }) {
   const CDATA = propClients || [];
-  const [filterClient, setFilterClient] = useState("all");
+  const [filterClient, setFilterClient] = useState(isClientView ? (clientFilter||"all") : "all");
   const [filterCat, setFilterCat] = useState("all");
   const [search, setSearch] = useState("");
   const [viewFile, setViewFile] = useState(null);
@@ -9917,27 +9917,26 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
 
   /* ── ADD FILE FORM ── */
   const uploadLibFile = async () => {
-    if (!fileForm.clientId) return showToast("Selecione o cliente");
+    const cid = isClientView ? (CDATA.find(c => (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase() || (c.name||"").toLowerCase() === (clientFilter||"").toLowerCase())?.id || fileForm.clientId) : fileForm.clientId;
+    if (!cid) return showToast("Selecione o cliente");
     if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
     if (!fileForm.file) return showToast("Selecione um arquivo");
     setUploading(true);
     showToast("Enviando arquivo...");
-    const result = await supaUploadClientFile(fileForm.file, fileForm.clientId);
+    const result = await supaUploadClientFile(fileForm.file, cid);
     setUploading(false);
     if (result?.error) return showToast("Erro: " + result.error);
     const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
-    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
-    const client = CDATA.find(c => c.id === fileForm.clientId);
+    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", uploadedBy: isClientView ? "cliente" : "agencia" };
+    const client = CDATA.find(c => c.id === cid);
     if (client) {
       const newFiles = [...(client.files||[]), nf];
-      /* Persist to Supabase app_settings */
       const saveKey = `client_files_${client.supaId || client.id}`;
       const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
       if (!saved) { showToast("Erro ao salvar metadados — tente novamente"); return; }
-      /* Update local state */
       if (onUpdateClients) {
         const updatedClient = { ...client, files: newFiles };
-        onUpdateClients(CDATA.map(c => c.id === fileForm.clientId ? updatedClient : c));
+        onUpdateClients(CDATA.map(c => c.id === cid ? updatedClient : c));
       }
     }
     setAddingFile(false); setFileForm({});
@@ -9958,14 +9957,14 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
   if (addingFile) return (
     <div className="pg">{ToastEl}
       <Head title="Novo Arquivo" onBack={()=>{setAddingFile(false);setFileForm({});}} />
-      <Card style={{ marginBottom:8 }}>
+      {!isClientView && <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente *</label>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:4 }}>
           {CDATA.map(c => (
             <button key={c.id} onClick={()=>setFileForm(p=>({...p,clientId:c.id}))} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${fileForm.clientId===c.id?B.accent:B.border}`, background:fileForm.clientId===c.id?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fileForm.clientId===c.id?B.accent:B.text }}>{c.name}</button>
           ))}
         </div>
-      </Card>
+      </Card>}
       <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do arquivo *</label>
         <input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Ex: post_lancamento_feed.png" className="tinput" style={{ marginBottom:12 }} />
@@ -10026,13 +10025,13 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo, cliente, categoria..." className="tinput" style={{ paddingLeft:40 }} />
       </div>
 
-      {/* Client filter */}
-      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:6, overflowX:"auto", paddingBottom:4 }}>
+      {/* Client filter — hidden for client view */}
+      {!isClientView && <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:6, overflowX:"auto", paddingBottom:4 }}>
         <button onClick={()=>setFilterClient("all")} className={`htab${filterClient==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todos os clientes</button>
         {CDATA.filter(c=>(c.files||[]).length>0).map(c => (
           <button key={c.id} onClick={()=>setFilterClient(c.name)} className={`htab${filterClient===c.name?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.name} ({(c.files||[]).length})</button>
         ))}
-      </div>
+      </div>}
 
       {/* Category filter */}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
@@ -14498,7 +14497,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
   if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
   if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} />;
-  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
+  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />;
   if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} isClientView />;
   if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
   if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
