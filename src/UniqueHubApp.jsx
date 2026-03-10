@@ -14682,7 +14682,17 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const CLIENT_SECTIONS = { growth:"Growth Score", posts:"Posts Recentes", metricas:"Métricas", news:"Comunicados", match:"Match4Biz", relatorio:"Relatório" };
   const CLIENT_DASH_DEFAULT = ["news","posts","metricas","growth","match","relatorio"];
 
-  const growthScore = 78, growthDelta = 6, growthZone = "Estratégica";
+  /* ── Load real growth score from DB ── */
+  const [realScore, setRealScore] = useState(0);
+  useEffect(() => {
+    if (!supabase || !myClientId_inner) return;
+    supabase.from("client_scores").select("points").eq("client_id", myClientId_inner).then(({ data }) => {
+      if (data) setRealScore(Math.min(100, Math.round(data.reduce((a, r) => a + Number(r.points), 0))));
+    });
+  }, [myClientId_inner]);
+  const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
+
+  const growthScore = realScore, growthDelta = realScore > 0 ? realScore : 0, growthZone = getZoneLabel(realScore);
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
   const metricsData = [
     { network:"Instagram", metrics:[{l:"Alcance",v:"847K",d:"+18%"},{l:"Engajamento",v:"12.4%",d:"+3.2%"},{l:"Seguidores",v:"15.2K",d:"+420"},{l:"Salvamentos",v:"1.8K",d:"+32%"}] },
@@ -14731,13 +14741,13 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
-              <div style={{ display:"flex", alignItems:"baseline", gap:8 }}><span style={{ fontSize:36, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>/100 pts</span><span style={{ fontSize:11, fontWeight:700, color:B.green }}>+{growthDelta}</span></div>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Posição #4 · Zona {growthZone}</p>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8 }}><span style={{ fontSize:36, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>/100 pts</span></div>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Zona {growthZone}</p>
             </div>
             <div style={{ width:52, height:52, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:18, fontWeight:900, color:LIME }}>{growthScore}</span></div>
           </div>
           <div style={{ display:"flex", gap:5, marginTop:14 }}>
-            {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div><span style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:3, display:"block", textAlign:"center" }}>{p.n}</span></div>)}
+            {[{n:"Exec",c:"#10B981",f:1},{n:"Estr",c:"#BBF246",f:0.9},{n:"Educ",c:"#F59E0B",f:0.7},{n:"Ecos",c:"#EF4444",f:0.5},{n:"Cres",c:"#10B981",f:0.8}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${Math.min(100, growthScore * p.f)}%` }} /></div><span style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:3, display:"block", textAlign:"center" }}>{p.n}</span></div>)}
           </div>
         </div>
       </Card>
@@ -14793,7 +14803,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
         {clientCards.slice(0,2).map((ck,i) => {
-          const CARD_DATA = { meta:{label:"META DO MÊS",val:`${monthGoal.pct}%`,sub:`${monthGoal.current}/${monthGoal.total} ${monthGoal.unit}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:"Aguardando você",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:"78",sub:"Posição #4",action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"3",sub:"Matches ativos",action:()=>setSub("match4biz")} };
+          const CARD_DATA = { meta:{label:"META DO MÊS",val:`${monthGoal.pct}%`,sub:`${monthGoal.current}/${monthGoal.total} ${monthGoal.unit}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:"Aguardando você",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"3",sub:"Matches ativos",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
           return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
             <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{cd.label}</div>
