@@ -13771,81 +13771,97 @@ function ClientMatch4Biz({ onBack, user }) {
 function ClientGamification({ onBack, user, clients, demands }) {
   const [tab, setTab] = useState("score");
   const { showToast, ToastEl } = useToast();
+  const [scoreData, setScoreData] = useState([]);
+  const [allScores, setAllScores] = useState({});
 
-  /* ── Generate deterministic scores for each client based on name hash ── */
-  const hashName = (name) => { let h = 0; for (let i = 0; i < (name||"").length; i++) { h = ((h << 5) - h) + name.charCodeAt(i); h |= 0; } return Math.abs(h); };
-  const genScore = (name) => { const h = hashName(name); return 40 + (h % 55); }; /* 40–94 range */
-  const genDelta = (name) => { const h = hashName(name+"d"); return 1 + (h % 10); };
+  /* ── Load real scores from DB ── */
+  useEffect(() => {
+    if (!supabase) return;
+    (async () => {
+      try {
+        /* Load scores for all clients */
+        const { data: scores } = await supabase.from("client_scores").select("*").order("created_at", { ascending: false });
+        if (scores) {
+          setScoreData(scores);
+          const byClient = {};
+          scores.forEach(s => {
+            if (!byClient[s.client_id]) byClient[s.client_id] = { total: 0, execucao: 0, estrategia: 0, educacao: 0, ecossistema: 0, crescimento: 0, history: [] };
+            byClient[s.client_id].total += Number(s.points);
+            if (s.pillar) byClient[s.client_id][s.pillar] += Number(s.points);
+            byClient[s.client_id].history.push(s);
+          });
+          setAllScores(byClient);
+        }
+      } catch(e) { console.error("Gamification load:", e); }
+    })();
+  }, []);
+
   const getZone = (s) => s >= 96 ? "Escala" : s >= 81 ? "Crescimento" : s >= 61 ? "Estratégica" : s >= 41 ? "Organização" : "Estruturação";
 
-  /* ── Build ranking from real clients ── */
+  /* ── Build ranking from real clients + real scores ── */
   const realClients = (clients || []).filter(c => c.name && c.status !== "inativo");
+  const myClientId = realClients.find(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase()))?.id;
+  
   const RANKING = realClients.map(c => {
-    const isMe = (user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (user?.client_name||"").toLowerCase() === (c.name||"").toLowerCase();
-    const s = isMe ? 78 : genScore(c.name);
-    return { name: c.name, score: s, delta: isMe ? 6 : genDelta(c.name), zone: getZone(s), isMe };
+    const s = Math.min(100, Math.round(allScores[c.id]?.total || 0));
+    return { name: c.name, score: s, delta: 0, zone: getZone(s), isMe: c.id === myClientId, id: c.id };
   }).sort((a, b) => b.score - a.score);
 
   const myEntry = RANKING.find(r => r.isMe);
-  const score = myEntry?.score || 78;
-  const scoreDelta = myEntry?.delta || 6;
-  const rank = myEntry ? RANKING.indexOf(myEntry) + 1 : Math.ceil(realClients.length / 2);
+  const myScoreData = myClientId ? (allScores[myClientId] || { total:0, execucao:0, estrategia:0, educacao:0, ecossistema:0, crescimento:0, history:[] }) : { total:0, execucao:0, estrategia:0, educacao:0, ecossistema:0, crescimento:0, history:[] };
+  const score = Math.min(100, Math.round(myScoreData.total));
+  const rank = myEntry ? RANKING.indexOf(myEntry) + 1 : realClients.length;
   const totalClients = realClients.length || 1;
   const zone = getZone(score);
+
   const PILLARS = [
-    { name:"Execução", score:82, color:"#10B981", desc:"Aprovação de conteúdos no prazo, cumprimento de prazos e entregas consistentes.", weight:"25%" },
-    { name:"Estratégia", score:74, color:"#BBF246", desc:"Alinhamento com planejamento, briefings respondidos e metas definidas.", weight:"25%" },
-    { name:"Educação", score:65, color:"#F59E0B", desc:"Cursos da Academy, participação em mentorias e aplicação de aprendizados.", weight:"20%" },
-    { name:"Ecossistema", score:58, color:"#EF4444", desc:"Conexões no Match4Biz, networking e parcerias ativas.", weight:"15%" },
-    { name:"Crescimento", score:80, color:"#10B981", desc:"Métricas de resultado: leads, vendas, ROI e crescimento mês a mês.", weight:"15%" },
+    { name:"Execução", score:Math.min(100, Math.round(myScoreData.execucao)), color:myScoreData.execucao>=8?"#10B981":myScoreData.execucao>=4?"#BBF246":"#F59E0B", desc:"Aprovação de conteúdos, cumprimento de prazos e entregas.", weight:"25%" },
+    { name:"Estratégia", score:Math.min(100, Math.round(myScoreData.estrategia)), color:myScoreData.estrategia>=8?"#10B981":myScoreData.estrategia>=4?"#BBF246":"#F59E0B", desc:"Reuniões agendadas, briefings respondidos e eventos criados.", weight:"25%" },
+    { name:"Educação", score:Math.min(100, Math.round(myScoreData.educacao)), color:myScoreData.educacao>=5?"#10B981":myScoreData.educacao>=2?"#BBF246":"#F59E0B", desc:"Cursos da Academy e participação em treinamentos.", weight:"20%" },
+    { name:"Ecossistema", score:Math.min(100, Math.round(myScoreData.ecossistema)), color:myScoreData.ecossistema>=4?"#10B981":myScoreData.ecossistema>=2?"#BBF246":"#EF4444", desc:"Conexões no Match4Biz e networking.", weight:"15%" },
+    { name:"Crescimento", score:Math.min(100, Math.round(myScoreData.crescimento)), color:myScoreData.crescimento>=5?"#10B981":myScoreData.crescimento>=2?"#BBF246":"#F59E0B", desc:"Métricas reais: engajamento, alcance e resultados.", weight:"15%" },
   ];
-  const EVOLUTION = [{m:"Set",v:62},{m:"Out",v:65},{m:"Nov",v:68},{m:"Dez",v:72},{m:"Jan",v:74},{m:"Fev",v:78}];
-  const IMPACTS = [
-    { text:"Aprovou posts no prazo", pts:"+1.2", color:B.green },
-    { text:"Concluiu missão do mês", pts:"+3", color:B.accent },
-    { text:"Meta parcial atingida", pts:"+5", color:"#8B5CF6" },
-  ];
-  const ZONES = [
-    { name:"Estruturação", range:"0–40", color:"#EF4444", desc:"Início da jornada. Foco em organizar processos básicos.", reward:"Diagnóstico gratuito + plano de ação personalizado" },
-    { name:"Organização", range:"41–60", color:"#F59E0B", desc:"Processos rodando. Hora de otimizar e ser mais estratégico.", reward:"Relatório mensal detalhado + 1 sessão de consultoria" },
-    { name:"Estratégica", range:"61–80", color:"#BBF246", desc:"Marketing maduro. Decisões orientadas por dados.", reward:"Dashboard avançado + prioridade no atendimento", current:true },
-    { name:"Crescimento", range:"81–95", color:"#10B981", desc:"Resultados consistentes. Expansão acelerada.", reward:"1 consultoria estratégica gratuita + badge premium" },
-    { name:"Escala", range:"96–100", color:"#3B82F6", desc:"Excelência total. Marketing como diferencial competitivo.", reward:"15% desconto no plano anual + destaque no portfólio + mentoria exclusiva" },
-  ];
+  
+  /* Recent impacts from actual history */
+  const IMPACTS = (myScoreData.history || []).slice(0, 5).map(h => ({
+    text: h.description || h.action, pts: `${h.points > 0 ? "+" : ""}${h.points}`, color: h.points > 0 ? B.green : (B.red||"#FF6B6B"),
+  }));
+
+  /* ── Dynamic missions from real data ── */
+  const pendingApprovals = (demands || []).filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
+  const approvedCount = (demands || []).filter(d => d.steps?.client?.status === "approved").length;
+  const totalDemands = (demands || []).length;
   const MISSIONS = [
-    { title:"Aprovar 2 posts pendentes", pts:3, done:false },
-    { title:"Responder briefing", pts:3, done:true },
-    { title:"Agendar reunião mensal", pts:4, done:false },
-    { title:"Completar curso da Academy", pts:5, done:false },
-    { title:"Revisar relatório semanal", pts:2, done:false },
+    { title:`Aprovar ${Math.max(1, pendingApprovals)} post${pendingApprovals!==1?"s":""} pendente${pendingApprovals!==1?"s":""}`, pts:1.5*Math.max(1,pendingApprovals), done:pendingApprovals===0 && approvedCount > 0, pillar:"execucao" },
+    { title:"Criar um evento no calendário", pts:2.0, done:false, pillar:"estrategia" },
+    { title:"Acessar os relatórios de performance", pts:1.0, done:false, pillar:"crescimento" },
+    { title:"Ler uma notícia no News", pts:0.5, done:false, pillar:"educacao" },
+    { title:"Visitar a página Match4Biz", pts:1.0, done:false, pillar:"ecossistema" },
   ];
   const mDone = MISSIONS.filter(m=>m.done).length;
   const mPending = MISSIONS.filter(m=>!m.done).length;
   const mPts = MISSIONS.filter(m=>!m.done).reduce((a,m)=>a+m.pts,0);
-  /* RANKING is now dynamically built from real clients above */
+  const ZONES = [
+    { name:"Estruturação", range:"0–10", color:"#EF4444", desc:"Início da jornada. Complete as primeiras ações no app.", reward:"Boas-vindas + diagnóstico inicial" },
+    { name:"Organização", range:"11–30", color:"#F59E0B", desc:"Você está ativo! Continue aprovando conteúdos e participando.", reward:"Relatório mensal detalhado" },
+    { name:"Estratégica", range:"31–60", color:"#BBF246", desc:"Engajamento consistente. Suas ações impactam o marketing.", reward:"Prioridade no atendimento" },
+    { name:"Crescimento", range:"61–85", color:"#10B981", desc:"Resultados visíveis. Seu marketing cresce de verdade.", reward:"Consultoria estratégica mensal" },
+    { name:"Escala", range:"86–100", color:"#3B82F6", desc:"Excelência. Você é referência entre os clientes da agência.", reward:"Desconto no plano + destaque no portfólio" },
+  ];
   const SCORING = [
-    { action:"Aprovar conteúdo no prazo (até 24h)", pts:"+1.5", pillar:"Execução", c:"#10B981" },
-    { action:"Aprovar conteúdo com atraso (>24h)", pts:"+0.5", pillar:"Execução", c:"#10B981" },
-    { action:"Responder briefing completo", pts:"+2.0", pillar:"Estratégia", c:"#BBF246" },
-    { action:"Definir meta mensal", pts:"+3.0", pillar:"Estratégia", c:"#BBF246" },
-    { action:"Participar de reunião mensal", pts:"+4.0", pillar:"Estratégia", c:"#BBF246" },
-    { action:"Completar curso da Academy", pts:"+5.0", pillar:"Educação", c:"#F59E0B" },
-    { action:"Assistir 1 aula da Academy", pts:"+0.5", pillar:"Educação", c:"#F59E0B" },
-    { action:"Enviar ideia/sugestão", pts:"+1.0", pillar:"Estratégia", c:"#BBF246" },
-    { action:"Fazer conexão no Match4Biz", pts:"+2.0", pillar:"Ecossistema", c:"#EF4444" },
-    { action:"Indicar novo cliente", pts:"+6.0", pillar:"Ecossistema", c:"#EF4444" },
-    { action:"Atingir meta mensal (100%)", pts:"+8.0", pillar:"Crescimento", c:"#10B981" },
-    { action:"Atingir meta parcial (>=75%)", pts:"+5.0", pillar:"Crescimento", c:"#10B981" },
-    { action:"Login diário no Hub", pts:"+0.3", pillar:"Execução", c:"#10B981" },
-    { action:"Manter aprovações em dia (7 dias)", pts:"+3.0", pillar:"Execução", c:"#10B981" },
-    { action:"Revisar relatório semanal", pts:"+1.5", pillar:"Crescimento", c:"#10B981" },
+    { action:"Aprovar conteúdo da agência", pts:"+1.5", pillar:"Execução", c:"#10B981" },
+    { action:"Solicitar edição com feedback", pts:"+0.5", pillar:"Execução", c:"#10B981" },
+    { action:"Criar evento no calendário", pts:"+2.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Acessar relatórios de performance", pts:"+1.0", pillar:"Crescimento", c:"#10B981" },
+    { action:"Ler notícia no News", pts:"+0.5", pillar:"Educação", c:"#F59E0B" },
+    { action:"Acessar Match4Biz", pts:"+1.0", pillar:"Ecossistema", c:"#EF4444" },
+    { action:"Agendar reunião com a agência", pts:"+3.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Login diário no app", pts:"+0.3", pillar:"Execução", c:"#10B981" },
   ];
   const PENALTIES = [
-    { pts:"-2.0", action:"Não aprovar conteúdo por 3+ dias" },
-    { pts:"-3.0", action:"Não responder briefing em 7 dias" },
-    { pts:"-4.0", action:"Faltar reunião mensal sem aviso" },
-    { pts:"-5.0", action:"Inatividade no Hub por 14+ dias" },
-    { pts:"-1.0", action:"Reprovar conteúdo sem justificativa" },
+    { pts:"-1.0", action:"Não aprovar conteúdo por 3+ dias" },
+    { pts:"-2.0", action:"Inatividade no app por 7+ dias" },
+    { pts:"-0.5", action:"Reprovar conteúdo sem feedback" },
   ];
   const scoreColor = score >= 81 ? "#10B981" : score >= 61 ? "#BBF246" : score >= 41 ? "#F59E0B" : "#EF4444";
   const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
@@ -13867,7 +13883,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
                 <div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
                     <span style={{ fontSize:48, fontWeight:900, color:scoreColor }}>{score}</span>
-                    <span style={{ fontSize:14, fontWeight:700, color:B.green }}>+{scoreDelta} este mês</span>
+                    <span style={{ fontSize:14, fontWeight:700, color:score > 0 ? B.green : B.muted }}>{score > 0 ? `${score} pts` : "Comece agora!"}</span>
                   </div>
                   <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>#{rank} de {totalClients} · Zona {zone}</p>
                 </div>
@@ -13903,16 +13919,11 @@ function ClientGamification({ onBack, user, clients, demands }) {
               <span style={{ fontSize:14, fontWeight:700, color:B.green }}>{imp.pts}</span>
             </div>
           </Card>)}
-          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Evolução (6 meses)</p>
-          <Card>
-            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-around", height:120, gap:6 }}>
-              {EVOLUTION.map((e,i) => { const isLast = i === EVOLUTION.length - 1; return <div key={i} style={{ flex:1, textAlign:"center" }}>
-                <span style={{ fontSize:11, fontWeight:isLast?800:500, color:isLast?scoreColor:B.muted }}>{e.v}</span>
-                <div style={{ height:`${(e.v/100)*80}px`, borderRadius:6, background:isLast?scoreColor:`${B.muted}20`, marginTop:4 }} />
-                <span style={{ fontSize:9, color:B.muted, marginTop:4, display:"block" }}>{e.m}</span>
-              </div>; })}
-            </div>
-          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Histórico recente</p>
+          {IMPACTS.length === 0 ? <Card style={{ textAlign:"center", padding:24 }}>
+            <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Nenhuma ação registrada ainda</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Comece aprovando conteúdos, criando eventos ou acessando relatórios para ganhar pontos!</p>
+          </Card> : null}
           <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Zonas de crescimento</p>
           <Card>{ZONES.map((z,i) => <div key={i} style={{ padding:"12px 0", borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none" }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -13976,8 +13987,8 @@ function ClientGamification({ onBack, user, clients, demands }) {
             </div>
           </Card>)}
           <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}20`, textAlign:"center" }}>
-            <p style={{ fontSize:14, fontWeight:700 }}>Você subiu <span style={{ color:B.accent }}>3 posições</span> este mês!</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Continue completando missões para subir no ranking.</p>
+            <p style={{ fontSize:14, fontWeight:700 }}>{score === 0 ? "O ranking começa do zero!" : `Você está na posição #${rank}`}</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{score === 0 ? "Todos os clientes começam zerados. Aprove conteúdos e complete missões para subir no ranking." : "Complete missões e ações no app para subir de posição."}</p>
           </Card>
           <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Bonificações do pódio</p>
           {[{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}].map((p,i) => (
@@ -14355,6 +14366,9 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
 
+  /* ── Client ID for gamification ── */
+  const myClientId_inner = (() => { const cl = (clients||[]).find(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase())); return cl?.id; })();
+
   const respondDemand = async (demand, status, feedback) => {
     try {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
@@ -14420,6 +14434,14 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
       if (status !== "approved") {
         showToast(status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
+      }
+      /* ── Award gamification points ── */
+      if (supabase && myClientId_inner) {
+        if (status === "approved") {
+          await supabase.from("client_scores").insert({ client_id: myClientId_inner, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}` }).catch(()=>{});
+        } else if (status === "revision") {
+          await supabase.from("client_scores").insert({ client_id: myClientId_inner, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}` }).catch(()=>{});
+        }
       }
       supaCreateNotificationForAll("post_approved", status === "approved" ? "Cliente aprovou post" : status === "revision" ? "Cliente pediu edição" : "Cliente reprovou post", demand.title, null, null);
       setSub(null);
