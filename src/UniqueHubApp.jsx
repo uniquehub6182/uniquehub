@@ -1055,28 +1055,12 @@ const useIsDesktop = () => {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
-  /* Force scroll behavior on desktop via JS — aggressive approach */
   useEffect(() => {
-    if (!isDesktop) return;
-    let applying = false;
-    const applyDesktopScroll = () => {
-      if (applying) return;
-      applying = true;
-      const s = (el, styles) => { if(el) Object.assign(el.style, styles); };
-      s(document.documentElement, { overflow:"auto", height:"auto", overscrollBehavior:"auto" });
-      s(document.body, { overflow:"auto", height:"auto", overscrollBehavior:"auto" });
-      s(document.getElementById("root"), { overflow:"visible", height:"auto" });
-      document.querySelectorAll(".app").forEach(el => { s(el, { overflow:"visible", position:"relative", height:"auto" }); });
-      document.querySelectorAll(".content").forEach(el => { s(el, { overflow:"visible", height:"auto", maxHeight:"none" }); });
-      requestAnimationFrame(() => { applying = false; });
-    };
-    applyDesktopScroll();
-    /* Re-apply on DOM changes (React re-renders) */
-    const observer = new MutationObserver(() => applyDesktopScroll());
-    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
-    /* Safety net interval */
-    const interval = setInterval(applyDesktopScroll, 3000);
-    return () => { observer.disconnect(); clearInterval(interval); };
+    if (isDesktop) {
+      document.documentElement.classList.add("uh-desktop");
+    } else {
+      document.documentElement.classList.remove("uh-desktop");
+    }
   }, [isDesktop]);
   return isDesktop;
 };
@@ -16202,22 +16186,20 @@ input,textarea,select{font-size:16px !important}
 .ib{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;border:1.5px solid ${dark?"rgba(255,255,255,0.08)":"rgba(11,35,66,0.1)"};background:${dark?"#1C2228":"#fff"};cursor:pointer;color:${dark?"#E8EAED":"#192126"};box-shadow:0 2px 6px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.08)"}}
 .tag{display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:8px;font-size:10px;font-weight:600;background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"};color:${dark?"#9CA3AF":"#5E6468"}}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
-/* ── Desktop Layout ── */
+/* ── Desktop Layout (class-based for maximum specificity) ── */
 .d-sidebar{display:none!important}
-@media(min-width:900px){
-.d-main{width:100%;max-width:none!important;min-height:100vh}
-.d-main .app{max-width:none!important;position:relative!important;min-height:100vh;overflow:visible!important}
-.d-main .content{max-width:1400px;margin:0 auto;padding:20px 40px 120px!important;overflow:visible!important;height:auto!important}
-.d-main .pg{max-width:1400px;margin:0 auto;padding:20px 40px!important}
-.d-main .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
-.d-main .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
-.d-main input,.d-main textarea{font-size:14px!important}
-.d-main .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
-html,body,#root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important}
-.bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
-.d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:16px!important;align-items:start!important}
-.d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:16px!important;align-items:start!important}
-}
+html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important}
+html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important}
+html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:1400px;margin:0 auto;padding:20px 40px 120px!important}
+html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important}
+html.uh-desktop .pg{max-width:1400px;margin:0 auto;padding:20px 40px!important}
+html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
+html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
+html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
+html.uh-desktop .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
+html.uh-desktop .bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
+html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
+html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:20px!important;align-items:start!important}
 .sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"};max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid-btn{padding:14px 6px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.06)"};display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:all .15s ease;color:${dark?"#E8EAED":"inherit"}}.grid-btn:active{transform:scale(0.95)}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
