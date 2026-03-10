@@ -1058,35 +1058,53 @@ const useIsDesktop = () => {
 };
 
 /* ── Desktop Sidebar ── */
-const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accentColor, onLogout }) => {
+const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accentColor, onLogout, sections }) => {
   const accent = accentColor || B.accent;
+  const SECTIONS = sections || [
+    { label: null, keys: ["home"] },
+    { label: "Gestão", keys: ["content","clients","chat","team","calendar"] },
+    { label: "Análise", keys: ["reports","financial","gamify","match4biz"] },
+    { label: "Ferramentas", keys: ["library","academy","news","ideas","ai"] },
+    { label: "Sistema", keys: ["checkin","help","settings"] },
+  ];
   return (
     <div className="d-sidebar">
-      <div style={{ padding:"20px 16px 16px", borderBottom:`1px solid ${B.border}`, marginBottom:8 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          {logo ? <img src={logo} alt="" style={{ width:32, height:32, borderRadius:10, objectFit:"cover" }} /> : <div style={{ width:32, height:32, borderRadius:10, background:`${accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:900, color:accent }}>{(title||"U")[0]}</div>}
-          <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ fontSize:13, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{title || "UniqueHub"}</p>
-            <p style={{ fontSize:10, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email || ""}</p>
-          </div>
+      {/* Brand */}
+      <div style={{ padding:"18px 18px 14px", display:"flex", alignItems:"center", gap:10 }}>
+        {logo ? <img src={logo} alt="" style={{ width:34, height:34, borderRadius:10, objectFit:"cover" }} /> : <div style={{ width:34, height:34, borderRadius:10, background:accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:900, color:"#0D0D0D" }}>{(title||"U")[0]}</div>}
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:14, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{title || "UniqueHub"}</p>
         </div>
       </div>
-      <div style={{ flex:1, overflowY:"auto", padding:"0 8px" }}>
-        {tabs.map(t => {
-          const isActive = activeTab === t.k;
-          return <button key={t.k} onClick={() => onTabChange(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", borderRadius:12, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isActive?700:500, color:isActive?accent:B.muted, background:isActive?`${accent}12`:"transparent", marginBottom:2, transition:"all .15s" }}>
-            <span style={{ width:20, display:"flex", justifyContent:"center", flexShrink:0 }}>{typeof t.i === "function" ? t.i(isActive?accent:B.muted) : t.i}</span>
-            {t.l}
-            {t.badge > 0 && <span style={{ marginLeft:"auto", background:accent, color:"#0D0D0D", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10 }}>{t.badge}</span>}
-          </button>;
+      {/* Nav */}
+      <div style={{ flex:1, overflowY:"auto", padding:"0 10px", scrollbarWidth:"thin" }}>
+        {SECTIONS.map((sec, si) => {
+          const items = sec.keys.map(k => tabs.find(t => t.k === k)).filter(Boolean);
+          if (items.length === 0) return null;
+          return <div key={si} style={{ marginBottom:4 }}>
+            {sec.label && <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, padding:"12px 10px 4px", opacity:0.6 }}>{sec.label}</p>}
+            {items.map(t => {
+              const isActive = activeTab === t.k;
+              return <button key={t.k} onClick={() => onTabChange(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"9px 10px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isActive?700:500, color:isActive?B.text:B.muted, background:isActive?`${accent}15`:"transparent", marginBottom:1, transition:"all .15s", textAlign:"left" }}>
+                <span style={{ width:20, display:"flex", justifyContent:"center", flexShrink:0, opacity:isActive?1:0.6 }}>{typeof t.i === "function" ? t.i(isActive?accent:B.muted) : t.i}</span>
+                <span style={{ flex:1 }}>{t.l}</span>
+                {t.badge > 0 && <span style={{ background:accent, color:"#0D0D0D", fontSize:10, fontWeight:700, padding:"1px 7px", borderRadius:10, minWidth:18, textAlign:"center" }}>{t.badge}</span>}
+              </button>;
+            })}
+          </div>;
         })}
       </div>
-      {onLogout && <div style={{ padding:"12px 16px", borderTop:`1px solid ${B.border}` }}>
-        <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"10px 12px", borderRadius:12, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, background:"transparent" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Sair
-        </button>
-      </div>}
+      {/* User + Logout */}
+      <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ width:32, height:32, borderRadius:10, background:`${accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:accent, flexShrink:0 }}>{(user?.name||user?.email||"U")[0].toUpperCase()}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:12, fontWeight:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.name || user?.email}</p>
+          <p style={{ fontSize:10, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.role || user?.email}</p>
+        </div>
+        {onLogout && <button onClick={onLogout} title="Sair" style={{ width:30, height:30, borderRadius:8, border:"none", cursor:"pointer", background:"transparent", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, flexShrink:0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>}
+      </div>
     </div>
   );
 };
@@ -15230,7 +15248,13 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
   return (
     <div style={{ display:"flex" }}>
-      {isDesktop && <DesktopSidebar tabs={CLIENT_SIDEBAR_TABS} activeTab={sub || tab} onTabChange={(k) => { const t = CLIENT_SIDEBAR_TABS.find(x=>x.k===k); if (t?.isSub) { setSub(k); } else { setSub(null); setTab(k); } }} user={user} title={user?.company || user?.name || "Cliente"} accentColor={B.accent} onLogout={onLogout} />}
+      {isDesktop && <DesktopSidebar tabs={CLIENT_SIDEBAR_TABS} activeTab={sub || tab} onTabChange={(k) => { const t = CLIENT_SIDEBAR_TABS.find(x=>x.k===k); if (t?.isSub) { setSub(k); } else { setSub(null); setTab(k); } }} user={user} title={user?.company || user?.name || "Cliente"} accentColor={B.accent} onLogout={onLogout} sections={[
+        { label:null, keys:["home"] },
+        { label:"Conteúdo", keys:["content","calendar","chat"] },
+        { label:"Análise", keys:["gamify","reports","financial"] },
+        { label:"Ferramentas", keys:["library","academy","news","ideas","ai","match4biz"] },
+        { label:"Conta", keys:["settings"] },
+      ]} />}
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
@@ -16130,11 +16154,14 @@ input,textarea,select{font-size:16px !important}
 /* ── Desktop Layout ── */
 .d-sidebar{display:none}
 @media(min-width:900px){
-.d-sidebar{display:flex;flex-direction:column;width:240px;min-width:240px;height:100vh;background:${dark?"#151A1E":"#fff"};border-right:1px solid ${B.border};position:fixed;left:0;top:0;z-index:60}
-.d-main{margin-left:240px;width:calc(100% - 240px);max-width:none!important}
-.d-main .app{max-width:none!important}
-.d-main .content{max-width:900px;margin:0 auto}
-.d-main .pg{max-width:900px;margin:0 auto}
+.d-sidebar{display:flex;flex-direction:column;width:250px;min-width:250px;height:100vh;background:${dark?"#12161A":"#FAFAFA"};border-right:1px solid ${dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)"};position:fixed;left:0;top:0;z-index:60;transition:width .2s}
+.d-sidebar button:hover{background:${dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)"}!important}
+.d-main{margin-left:250px;width:calc(100% - 250px);max-width:none!important}
+.d-main .app{max-width:none!important;position:relative!important}
+.d-main .content{max-width:1100px;margin:0 auto;padding-bottom:40px!important}
+.d-main .pg{max-width:1100px;margin:0 auto;padding-top:20px!important}
+.d-main .card{transition:box-shadow .15s,transform .15s}
+.d-main .card:hover{box-shadow:0 4px 16px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.1)"}}
 .bnav{display:none!important}
 .app{position:relative!important}
 #root{overflow:auto!important}
