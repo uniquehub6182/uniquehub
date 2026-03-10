@@ -14273,7 +14273,10 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
           id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id,
           stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}),
           files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]),
-          network: (d.networks||[])[0] || d.type, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "",
+          network: (d.networks||[])[0] || d.type, networks: d.networks || [], format: d.format,
+          scheduling: typeof d.scheduling === "object" ? d.scheduling : {},
+          schedule_date: d.schedule_date, schedule_time: d.schedule_time,
+          createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "",
         })));
       } catch(e) { console.error("Client demands:", e); }
       setDemandsLoaded(true);
@@ -14290,7 +14293,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         const myClient = (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase() || (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
         if (!myClient) return;
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
-        setDemands((clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" })));
+        setDemands((clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, networks: d.networks||[], format: d.format, scheduling: typeof d.scheduling === "object" ? d.scheduling : {}, schedule_date: d.schedule_date, schedule_time: d.schedule_time, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" })));
       } catch(e) { console.warn("Client demand refetch:", e); }
     };
     document.addEventListener("visibilitychange", refetch);
@@ -14320,10 +14323,15 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const respondDemand = async (demand, status, feedback) => {
     try {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
-      await supabase.from("demands").update({ steps: JSON.stringify(steps) }).eq("id", demand.id);
-      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps } : d));
-      showToast(status === "approved" ? "Conteúdo aprovado!" : status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
-      supaCreateNotificationForAll("post_approved", "Cliente respondeu", demand.title, null, null);
+      const updatePayload = { steps: JSON.stringify(steps) };
+      /* When client approves, advance stage to published (scheduled or immediate) */
+      if (status === "approved") {
+        updatePayload.stage = "published";
+      }
+      await supabase.from("demands").update(updatePayload).eq("id", demand.id);
+      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: status === "approved" ? "published" : d.stage } : d));
+      showToast(status === "approved" ? "Conteúdo aprovado! Será publicado conforme agendado." : status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
+      supaCreateNotificationForAll("post_approved", status === "approved" ? "Cliente aprovou post" : status === "revision" ? "Cliente pediu edição" : "Cliente reprovou post", demand.title, null, null);
       setSub(null);
     } catch(e) { showToast("Erro ao responder"); }
   };
@@ -14450,8 +14458,8 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
             {/* Approved banner */}
             {isApproved && <Card style={{ background:`${B.green}08`, border:`1.5px solid ${B.green}25`, textAlign:"center", padding:20, marginBottom:10 }}>
               <div style={{ width:48, height:48, borderRadius:24, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>{IC.check}</div>
-              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovado e publicado</p>
-              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Conteúdo aprovado por você e encaminhado para publicação.</p>
+              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovado</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{(d.scheduling?.date || d.schedule_date) ? `Será publicado em ${(() => { const sd = d.scheduling?.date || d.schedule_date; const st = d.scheduling?.time || d.schedule_time; try { return new Date(sd+"T"+(st||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"long"}) + (st ? ` às ${st}` : ""); } catch { return sd; } })()}` : "Encaminhado para publicação pela agência."}</p>
             </Card>}
             {/* Revision banner */}
             {isRejected && <Card style={{ background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25`, padding:16, marginBottom:10 }}>
@@ -14460,11 +14468,23 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
               {d.steps?.client?.feedback && <div style={{ marginTop:8, padding:10, borderRadius:10, background:`${(B.orange||"#F59E0B")}06`, border:`1px solid ${(B.orange||"#F59E0B")}15` }}><p style={{ fontSize:11, fontWeight:600, color:B.muted }}>Seu feedback:</p><p style={{ fontSize:12, marginTop:4, lineHeight:1.5 }}>{d.steps.client.feedback}</p></div>}
             </Card>}
             <div style={{ opacity: isApproved ? 0.5 : 1, pointerEvents: isApproved ? "none" : "auto" }}>
-            <Card><div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              <Tag color={B.accent}>{d.network || "Social"}</Tag>
+            {/* Scheduling info */}
+            {(d.scheduling?.date || d.schedule_date) && <Card style={{ marginBottom:8, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:700 }}>Agendado para publicação</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{(() => { const sd = d.scheduling?.date || d.schedule_date; const st = d.scheduling?.time || d.schedule_time; if (!sd) return "Data não definida"; try { return new Date(sd+"T"+(st||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"}) + (st ? ` às ${st}` : ""); } catch { return sd + (st ? ` às ${st}` : ""); } })()}</p>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:6, marginTop:10, flexWrap:"wrap" }}>{(d.networks||[d.network]).map((n,i) => <Tag key={i} color={B.accent}>{n}</Tag>)} <Tag color={B.accent}>{d.format}</Tag></div>
+            </Card>}
+            {/* Networks/format if no scheduling */}
+            {!(d.scheduling?.date || d.schedule_date) && <Card><div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {(d.networks||[d.network]).map((n,i) => <Tag key={i} color={B.accent}>{n}</Tag>)}
               <Tag color={B.accent}>{d.format || d.type}</Tag>
               <span style={{ fontSize:10, color:B.muted }}>{d.createdAt}</span>
-            </div></Card>
+            </div></Card>}
             {imgFiles.length > 0 && <Card style={{ marginTop:8, padding:8 }}>
               <div style={{ display:"grid", gridTemplateColumns:imgFiles.length===1?"1fr":"1fr 1fr", gap:6 }}>
                 {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", borderRadius:12, objectFit:"cover", aspectRatio:imgFiles.length===1?"auto":"1" }} />)}
