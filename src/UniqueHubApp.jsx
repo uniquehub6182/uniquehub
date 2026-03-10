@@ -9915,6 +9915,24 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
             </div>
           ))}
         </Card>
+
+        {/* Delete button — admin only */}
+        {!isClientView && <button onClick={async () => {
+          if (!confirm(`Tem certeza que deseja apagar "${f.name}"?`)) return;
+          const client = CDATA.find(c => c.id === f.clientId);
+          if (client) {
+            const newFiles = (client.files||[]).filter(x => x.id !== f.id);
+            const saveKey = `client_files_${client.supaId || client.id}`;
+            await supaSetSetting(saveKey, JSON.stringify(newFiles));
+            if (onUpdateClients) onUpdateClients(CDATA.map(c => c.id === f.clientId ? { ...c, files: newFiles } : c));
+            if (f.storagePath && supabase) { await supabase.storage.from("client-files").remove([f.storagePath]).catch(()=>{}); }
+            setViewFile(null);
+            showToast("Arquivo apagado ✓");
+          }
+        }} style={{ width:"100%", marginTop:12, padding:"14px 0", borderRadius:14, background:`${B.red||"#FF6B6B"}08`, border:`1.5px solid ${B.red||"#FF6B6B"}25`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red||"#FF6B6B", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Apagar arquivo
+        </button>}
       </div>
     );
   }
