@@ -14361,30 +14361,42 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
 
+          showToast("Publicando conteúdo...");
+          let published = false;
+
           /* Try Instagram */
           if (networks.some(n => n.includes("instagram"))) {
-            const type = isStories ? "STORIES" : "FEED";
-            const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, type, schedTs);
-            if (r?.error) { console.warn("Auto-publish IG:", r.error); }
-            else {
-              const pubSteps = { ...steps, igPublished: { platform:"instagram", type, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs } };
-              await supabase.from("demands").update({ steps: JSON.stringify(pubSteps) }).eq("id", demand.id);
-              showToast(schedTs ? "✓ Aprovado e agendado no Instagram!" : "✓ Aprovado e publicado no Instagram!");
-            }
+            try {
+              const type = isStories ? "STORIES" : "FEED";
+              console.log("[Publish] Calling publishToInstagram:", { clientId, imgUrls: imgUrls.length, type, schedTs });
+              const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, type, schedTs);
+              console.log("[Publish] Instagram result:", r);
+              if (r?.error) {
+                showToast(`Aprovado, mas erro ao publicar IG: ${r.error}`);
+              } else {
+                const pubSteps = { ...steps, igPublished: { platform:"instagram", type, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs } };
+                await supabase.from("demands").update({ steps: JSON.stringify(pubSteps) }).eq("id", demand.id);
+                showToast(schedTs ? "✓ Aprovado e agendado no Instagram!" : "✓ Aprovado e publicado no Instagram!");
+                published = true;
+              }
+            } catch(e) { console.error("[Publish] IG error:", e); showToast("Aprovado, mas falha na publicação IG"); }
           }
           /* Try Facebook */
           if (networks.some(n => n.includes("facebook"))) {
-            const r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
-            if (r?.error) { console.warn("Auto-publish FB:", r.error); }
-            else { showToast(schedTs ? "✓ Aprovado e agendado no Facebook!" : "✓ Aprovado e publicado no Facebook!"); }
+            try {
+              const r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+              if (r?.error) { showToast(`Aprovado, mas erro ao publicar FB: ${r.error}`); }
+              else { showToast("✓ Publicado no Facebook!"); published = true; }
+            } catch(e) { console.error("[Publish] FB error:", e); }
           }
+          if (!published) { showToast("Conteúdo aprovado! Publicação pendente pela agência."); }
+        } else {
+          showToast("Conteúdo aprovado! Sem imagens para publicar automaticamente.");
         }
       }
 
       if (status !== "approved") {
         showToast(status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
-      } else if (!showToast._called) {
-        showToast("Conteúdo aprovado! Será publicado conforme agendado.");
       }
       supaCreateNotificationForAll("post_approved", status === "approved" ? "Cliente aprovou post" : status === "revision" ? "Cliente pediu edição" : "Cliente reprovou post", demand.title, null, null);
       setSub(null);
