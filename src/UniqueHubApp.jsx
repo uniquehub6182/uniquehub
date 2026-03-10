@@ -14177,6 +14177,12 @@ function MainClientApp({ user, onLogout, dark }) {
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
   const scrollRef = useRef(null);
+  const CLIENT_DASH_DEFAULT_INIT = ["meta","growth","aprovacao","posts","metricas","match","relatorio","news"];
+  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); return s ? JSON.parse(s) : CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
+  const [showDashEdit, setShowDashEdit] = useState(false);
+  const [editSections, setEditSections] = useState([]);
+  const [metaInfoOpen, setMetaInfoOpen] = useState(false);
+  const [metricsSlide, setMetricsSlide] = useState(0);
 
   useEffect(() => {
     if (!supabase || demandsLoaded || !user?.id) return;
@@ -14392,11 +14398,6 @@ function MainClientApp({ user, onLogout, dark }) {
   /* ═══ DASHBOARD CONFIG ═══ */
   const CLIENT_SECTIONS = { meta:"Meta do Mês", growth:"Growth Score", aprovacao:"Aprovações", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz", relatorio:"Relatório", news:"Notícias" };
   const CLIENT_DASH_DEFAULT = ["meta","growth","aprovacao","posts","metricas","match","relatorio","news"];
-  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); return s ? JSON.parse(s) : CLIENT_DASH_DEFAULT; } catch { return CLIENT_DASH_DEFAULT; } });
-  const [showDashEdit, setShowDashEdit] = useState(false);
-  const [editSections, setEditSections] = useState([]);
-  const [metaInfoOpen, setMetaInfoOpen] = useState(false);
-  const [metricsSlide, setMetricsSlide] = useState(0);
 
   const growthScore = 78, growthDelta = 6, growthZone = "Estratégica";
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
