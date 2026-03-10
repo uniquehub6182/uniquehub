@@ -14503,20 +14503,51 @@ function MainClientApp({ user, onLogout, dark }) {
     return null;
   };
 
-  const renderHome = () => <>
-    {/* HEADER */}
-    <div style={{ margin:"-14px -16px 0", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <Av name={user.name||"C"} src={user.photo} sz={42} fs={16} />
-        <div>
-          <p style={{ fontSize:16, fontWeight:800, color:C.txt }}>{greeting}, {(user.name||"Cliente").split(" ")[0]}</p>
-          <p style={{ fontSize:10, color:C.mut }}>UniqueHub · Seu marketing em dia</p>
+  const renderHome = () => {
+  const isDark = B.bg === "#0A0F12" || B.bg === "#0D1117" || B.bg === "#0a0a0a";
+  const H = { bg: isDark ? "#0D1117" : "#0D0D0D", txt: "#fff", sub: "rgba(255,255,255,0.5)", btn: isDark ? "#1A1F26" : "#2A2A2A", btnC: "#fff", srch: isDark ? "#141A22" : "#1A1A1A", srchT: "rgba(255,255,255,0.3)" };
+  const LIME = B.accent || "#BBF246";
+  const initials = (user?.name||"C").split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase();
+  const pendingCount = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
+  return <>
+    {/* ═══ AGENCY-STYLE HEADER ═══ */}
+    <div style={{ margin:"-14px -16px 0", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:16, paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
+      <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${LIME} 0%,${LIME}80 100%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
+          <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {(user?.nick||user?.name||"Cliente").split(" ")[0]}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>Unique Marketing</div></div>
+        </div>
+        <div style={{ display:"flex", gap:12 }}>
+          <button onClick={()=>goTab("chat")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+          <button onClick={()=>setSub("settings")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{pendingCount>0&&<span style={{position:"absolute",top:10,right:10,width:9,height:9,borderRadius:"50%",background:"#FF3B30",border:`2px solid ${H.bg}`}}/>}</button>
         </div>
       </div>
-      <div style={{ display:"flex", gap:6 }}>
-        <div onClick={()=>setShowDashEdit(true)} style={{ width:32, height:32, borderRadius:10, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></div>
-        <div onClick={()=>goTab("chat")} style={{ width:32, height:32, borderRadius:10, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.chat(C.mut)}</div>
-        <div onClick={()=>setSub("settings")} style={{ width:32, height:32, borderRadius:10, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.settings(C.mut)}</div>
+      {/* Search bar */}
+      <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px" }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
+      </div>
+      {/* Two accent cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
+        <div onClick={()=>setSub("reports")} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
+          <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>META DO MÊS</div>
+          <div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{monthGoal.pct}%</div>
+          <div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</div>
+          <div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div onClick={()=>goTab("content")} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
+          <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>APROVAÇÕES</div>
+          <div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{String(pendingCount).padStart(2,"0")}</div>
+          <div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>Aguardando você</div>
+          <div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>
+    {/* Quick action pills */}
+    <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
+      <button onClick={()=>setShowDashEdit(true)} style={{width:38,height:38,borderRadius:"50%",background:C.pill||C.card,border:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
+        {[{l:"Conteúdo",k:"content",ic:IC.content},{l:"Relatórios",k:"reports",ic:IC.reports||IC.content},{l:"Suporte",k:"help",ic:IC.help||IC.settings}].map((p,i)=><div key={i} onClick={()=>{if(p.k==="content")goTab("content");else setSub(p.k==="reports"?"reports":"help");}} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill||C.card,border:`1px solid ${C.brd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{typeof p.ic==="function"?p.ic(LIME):p.ic}</div>{p.l}</div>)}
       </div>
     </div>
 
@@ -14552,7 +14583,7 @@ function MainClientApp({ user, onLogout, dark }) {
         </div>
       </div>
     </div>}
-  </>;
+  </>; }
 
       const renderContent = () => <>
     {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprovação ({pendingApproval.length})</p>
