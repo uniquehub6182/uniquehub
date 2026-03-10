@@ -284,8 +284,11 @@ const supaUploadClientLogo = async (clientId, file) => {
 const mergeSupaDemand = (row) => {
   /* Ensure steps is always a valid object */
   let steps;
-  if (typeof row.steps === "object" && row.steps !== null && Object.keys(row.steps).length > 0) {
-    steps = row.steps;
+  let rawSteps = row.steps;
+  /* Parse stringified JSON if needed */
+  if (typeof rawSteps === "string") { try { rawSteps = JSON.parse(rawSteps); } catch { rawSteps = null; } }
+  if (typeof rawSteps === "object" && rawSteps !== null && Object.keys(rawSteps).length > 0) {
+    steps = rawSteps;
   } else {
     steps = { idea: { by: (typeof row.created_by_name === "string" ? row.created_by_name : "Equipe"), text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } };
   }
