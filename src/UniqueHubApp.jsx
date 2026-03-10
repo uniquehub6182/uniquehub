@@ -3661,6 +3661,12 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome da empresa</label>
             <input value={sel.name||""} onChange={e=>updateClient(sel.id,{name:e.target.value})} className="tinput" style={{ marginBottom:10, fontWeight:700, fontSize:15 }} />
 
+            {/* Email missing warning */}
+            {!sel.email && <div style={{ padding:"10px 14px", borderRadius:10, background:`${B.orange||"#F59E0B"}10`, border:`1.5px solid ${B.orange||"#F59E0B"}30`, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:16 }}>⚠️</span>
+              <div><p style={{ fontSize:11, fontWeight:700, color:B.orange||"#F59E0B" }}>E-mail de contato obrigatório</p><p style={{ fontSize:10, color:B.muted }}>O cliente precisa de e-mail para criar conta no app e sincronizar automaticamente.</p></div>
+            </div>}
+
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do contato</label>
             <input value={sel.contact||""} onChange={e=>updateClient(sel.id,{contact:e.target.value})} placeholder="Nome completo" className="tinput" style={{ marginBottom:10 }} />
 
@@ -4128,7 +4134,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <Av src={c.logo} name={c.name} sz={42} fs={16} />
             <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:14, fontWeight:600 }}>{c.name}</p>
+              <p style={{ fontSize:14, fontWeight:600 }}>{c.name}{!c.email && <span title="Sem e-mail de contato" style={{ marginLeft:6, fontSize:10, color:B.orange||"#F59E0B" }}>⚠️</span>}</p>
               <div style={{ display:"flex", gap:4, marginTop:3, alignItems:"center" }}>
                 <Tag color={B.accent}>{c.plan}</Tag>
                 <Tag color={c.status==="ativo"?B.green:B.orange}>{c.status==="ativo"?"Ativo":"Trial"}</Tag>
