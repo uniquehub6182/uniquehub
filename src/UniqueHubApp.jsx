@@ -9723,7 +9723,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 </div>
               )}
             </div>
-            {ev.createdBy && <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>Criado por {ev.createdBy}{ev.location ? ` · ${ev.location}` : ""}</p>}
+            {(ev.createdBy || ev.client) && <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>Criado por {ev.createdBy || "Equipe"}{ev.client ? <span style={{ fontWeight:700, color:B.accent }}> · {ev.client}</span> : ""}{ev.location ? ` · ${ev.location}` : ""}</p>}
           </Card>
         );
       })}
@@ -10724,7 +10724,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 }
 
 
-function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user }) {
+function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView }) {
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
@@ -11174,9 +11174,9 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
           <button onClick={() => toggleSave(a.id)} className="ib" style={{ color:saved.includes(a.id)?B.accent:B.muted }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill={saved.includes(a.id)?B.accent:"none"} stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
           </button>
-          <button onClick={()=>deleteArticle(a)} className="ib" style={{ color:B.red }}>
+          {!isClientView && <button onClick={()=>deleteArticle(a)} className="ib" style={{ color:B.red }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-          </button>
+          </button>}
         </div>} />
 
         {/* Hero photo */}
@@ -11214,10 +11214,10 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
             </div>
           </Card>
         )}
-        <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+        {!isClientView && <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar artigo
-        </button>
+        </button>}
       </div>
     );
   }
@@ -11225,7 +11225,7 @@ Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique
   /* ── MAIN NEWS LIST ── */
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={() => setShowCreateChoice(true)} />
+      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
@@ -14454,7 +14454,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
   if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} />;
   if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
-  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} isClientView />;
   if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
   if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
   if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
@@ -14926,20 +14926,26 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
-              {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify"},
-              {l:"Conteúdo",ic:IC.content,d:"Posts para aprovar",sub:null,tab:"content"},
-              {l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz"},
-              {l:"Financeiro",ic:IC.financial,d:"Plano, faturas e serviços",sub:"financial"},
-              {l:"Relatórios",ic:IC.reports,d:"Performance das redes",sub:"reports"},
-              {l:"Calendário",ic:IC.calendar,d:"Reuniões e gravações",sub:"calendar"},
-              {l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais",sub:"library"},
-              {l:"Academy",ic:IC.academy,d:"Cursos e aprendizado",sub:"academy"},
-              {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news"},
-              {l:"Ideias",ic:IC.ideas,d:"Crie e visualize ideias",sub:"ideas"},
-              {l:"Assistente IA",ic:IC.ai,d:"IA para seu time comercial",sub:"ai"},
-              {l:"Ajuda",ic:IC.help,d:"Suporte e FAQ",sub:"help"},
-              {l:"Configurações",ic:IC.settings,d:"Perfil, aparência e segurança",sub:"settings"},
-            ].map((item,i) => (
+              {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify",navKey:null},
+              {l:"Conteúdo",ic:IC.content,d:"Posts para aprovar",sub:null,tab:"content",navKey:"content"},
+              {l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz",navKey:null},
+              {l:"Financeiro",ic:IC.financial,d:"Plano, faturas e serviços",sub:"financial",navKey:null},
+              {l:"Relatórios",ic:IC.reports,d:"Performance das redes",sub:"reports",navKey:null},
+              {l:"Calendário",ic:IC.calendar,d:"Reuniões e gravações",sub:"calendar",navKey:"calendar"},
+              {l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais",sub:"library",navKey:null},
+              {l:"Academy",ic:IC.academy,d:"Cursos e aprendizado",sub:"academy",navKey:null},
+              {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news",navKey:null},
+              {l:"Ideias",ic:IC.ideas,d:"Crie e visualize ideias",sub:"ideas",navKey:null},
+              {l:"Assistente IA",ic:IC.ai,d:"IA para seu time comercial",sub:"ai",navKey:null},
+              {l:"Ajuda",ic:IC.help,d:"Suporte e FAQ",sub:"help",navKey:null},
+              {l:"Configurações",ic:IC.settings,d:"Perfil, aparência e segurança",sub:"settings",navKey:null},
+            ].filter(item => {
+              /* Hide items that are already in the navbar */
+              const navTabKeys = TABS.map(t => t.k);
+              if (item.navKey && navTabKeys.includes(item.navKey)) return false;
+              if (item.tab && navTabKeys.includes(item.tab)) return false;
+              return true;
+            }).map((item,i) => (
               <Card key={i} style={{ marginBottom:6, cursor:item.sub?"pointer":"default" }} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
                 <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.d}</p></div>
