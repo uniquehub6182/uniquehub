@@ -14280,6 +14280,24 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     })();
   }, [user?.id, demandsLoaded]);
 
+  /* ── Auto-refetch client demands on tab visible (catches agency re-sends) ── */
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const refetch = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
+        const myClient = (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase() || (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
+        if (!myClient) return;
+        const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
+        setDemands((clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" })));
+      } catch(e) { console.warn("Client demand refetch:", e); }
+    };
+    document.addEventListener("visibilitychange", refetch);
+    const interval = setInterval(() => { if (document.visibilityState === "visible") refetch(); }, 30000);
+    return () => { document.removeEventListener("visibilitychange", refetch); clearInterval(interval); };
+  }, [user?.id, user?.email]);
+
   /* Load articles */
   useEffect(() => {
     if (!supabase || articlesLoaded) return;
@@ -14681,18 +14699,53 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     </div>}
   </>; }
 
-      const renderContent = () => <>
-    {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprovação ({pendingApproval.length})</p>
-      {pendingApproval.map(d => { const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")); return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
-        <div style={{ display:"flex", gap:10 }}>
-          {imgs[0]&&<img src={imgs[0].url} style={{ width:52, height:52, borderRadius:10, objectFit:"cover", flexShrink:0 }} />}
-          <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{d.title}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} · {d.format} · {d.createdAt}</p><Tag color={B.orange||"#F59E0B"}>Aguardando</Tag></div>
-        </div>
-      </Card>; })}</>}
-    {approved.length > 0 && <><p className="sl" style={{ marginTop:16, marginBottom:8, color:B.green }}>Aprovados ({approved.length})</p>
-      {approved.slice(0,10).map(d => <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:6, cursor:"pointer", borderLeft:`3px solid ${B.green}` }}><p style={{ fontSize:12, fontWeight:600 }}>{d.title}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{d.network} · {d.createdAt}</p></Card>)}</>}
-    {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span><p style={{ fontSize:13, fontWeight:600 }}>Nada por aqui ainda</p></Card>}
-  </>;
+      const renderContent = () => {
+    const revision = demands.filter(d => d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected");
+    const inProd = demands.filter(d => !d.steps?.client?.mode && !d.steps?.client?.status);
+    const DemandCard = ({ d, accent, statusLabel }) => {
+      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+      return <Card onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", padding:0, overflow:"hidden", borderRadius:18 }}>
+        {imgs[0] && <div style={{ height:140, background:`url(${imgs[0].url}) center/cover`, position:"relative" }}>
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.7) 100%)" }} />
+          <div style={{ position:"absolute", bottom:10, left:12, right:12 }}>
+            <p style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.3 }}>{d.title}</p>
+            <div style={{ display:"flex", gap:6, marginTop:6 }}>
+              <span style={{ fontSize:9, padding:"3px 10px", borderRadius:100, background:`${accent}20`, color:accent, fontWeight:700 }}>{statusLabel}</span>
+              <span style={{ fontSize:9, padding:"3px 8px", borderRadius:100, background:"rgba(255,255,255,0.15)", color:"#fff", fontWeight:600 }}>{d.network}</span>
+              <span style={{ fontSize:9, padding:"3px 8px", borderRadius:100, background:"rgba(255,255,255,0.15)", color:"#fff", fontWeight:600 }}>{d.format}</span>
+            </div>
+          </div>
+        </div>}
+        {!imgs[0] && <div style={{ padding:16 }}>
+          <p style={{ fontSize:14, fontWeight:700 }}>{d.title}</p>
+          <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
+            <span style={{ fontSize:9, padding:"3px 10px", borderRadius:100, background:`${accent}12`, color:accent, fontWeight:700 }}>{statusLabel}</span>
+            <span style={{ fontSize:9, padding:"3px 8px", borderRadius:100, background:`${B.muted}10`, color:B.muted, fontWeight:600 }}>{d.network} · {d.format}</span>
+            <span style={{ fontSize:9, color:B.muted }}>{d.createdAt}</span>
+          </div>
+        </div>}
+      </Card>;
+    };
+    return <>
+      {pendingApproval.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:15, fontWeight:800 }}>Aguardando sua aprovação ({pendingApproval.length})</p></div>
+        {pendingApproval.map(d => <DemandCard key={d.id} d={d} accent={B.orange||"#F59E0B"} statusLabel="Aguardando" />)}
+      </div>}
+      {revision.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:"#F59E0B" }} /><p style={{ fontSize:15, fontWeight:800 }}>Em edição ({revision.length})</p></div>
+        {revision.map(d => <DemandCard key={d.id} d={d} accent="#F59E0B" statusLabel="Edição solicitada" />)}
+      </div>}
+      {approved.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:15, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
+        {approved.map(d => <DemandCard key={d.id} d={d} accent={B.green} statusLabel="Aprovado" />)}
+      </div>}
+      {inProd.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:B.muted }} /><p style={{ fontSize:15, fontWeight:800, color:B.muted }}>Em produção ({inProd.length})</p></div>
+        {inProd.map(d => <DemandCard key={d.id} d={d} accent={B.muted} statusLabel="Produzindo" />)}
+      </div>}
+      {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p></Card>}
+    </>;
+  };
 
   const HEADERS = { home:{icon:IC.home,label:"Portal",title:"Meu Marketing"}, content:{icon:IC.content,label:"Aprovação",title:"Conteúdo"}, calendar:{icon:IC.calendar,label:"Eventos",title:"Agenda"}, chat:{icon:IC.chat,label:"Mensagens",title:"Chat"}, more:{icon:IC.settings,label:"Opções",title:"Mais"} };
   const hdr = HEADERS[tab] || HEADERS.home;
@@ -14994,6 +15047,28 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       setDemandsLoaded(true);
     });
   }, [clientsLoaded, demandsLoaded]);
+
+  /* ── Auto-refetch demands when tab becomes visible (catches client responses) ── */
+  useEffect(() => {
+    if (!supabase || !clientsLoaded) return;
+    const refetchDemands = () => {
+      if (document.visibilityState !== "visible") return;
+      supaLoadDemands().then(rows => {
+        if (!rows || rows.length === 0) return;
+        const dbDemands = rows.map(r => {
+          const dem = mergeSupaDemand(r);
+          const cl = sharedClients.find(c => c.supaId === r.client_id || c.id === r.client_id);
+          if (cl) dem.client = cl.name;
+          return dem;
+        });
+        setSharedDemands(dbDemands);
+      });
+    };
+    document.addEventListener("visibilitychange", refetchDemands);
+    /* Also refetch every 30s while page is visible */
+    const interval = setInterval(() => { if (document.visibilityState === "visible") refetchDemands(); }, 30000);
+    return () => { document.removeEventListener("visibilitychange", refetchDemands); clearInterval(interval); };
+  }, [clientsLoaded, sharedClients]);
 
   /* Load news articles at startup so dashboard shows them immediately */
   const [articlesLoaded, setArticlesLoaded] = useState(false);
