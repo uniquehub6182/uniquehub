@@ -14395,6 +14395,8 @@ function MainClientApp({ user, onLogout, dark }) {
   const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); return s ? JSON.parse(s) : CLIENT_DASH_DEFAULT; } catch { return CLIENT_DASH_DEFAULT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
+  const [metaInfoOpen, setMetaInfoOpen] = useState(false);
+  const [metricsSlide, setMetricsSlide] = useState(0);
 
   const growthScore = 78, growthDelta = 6, growthZone = "Estratégica";
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
