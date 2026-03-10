@@ -9409,11 +9409,11 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
       id: Date.now(), type: eventType, title: form.title.trim(), time: form.time || "09:00",
       color: et?.c || B.blue, day: selDay, month: curMonth, year: curYear,
       createdBy: userName, createdById: propUser?.id || null, notes: form.notes || "",
-      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: form.meetingScope || "internal", participants: form.participants || [], client: form.client || "", location: form.location || "" }),
-      ...(eventType === "recording" && { client: form.client || "", participants: form.participants || [], location: form.location || "", equipment: form.equipment || [] }),
-      ...(eventType === "event" && { participants: form.participants || [], location: form.location || "" }),
-      ...(eventType === "reminder" && {}),
-      ...(eventType === "deadline" && { client: form.client || "" }),
+      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: isClientView ? "client" : (form.meetingScope || "internal"), participants: form.participants || [], client: isClientView ? clientFilter : (form.client || ""), location: form.location || "" }),
+      ...(eventType === "recording" && { client: isClientView ? clientFilter : (form.client || ""), participants: form.participants || [], location: form.location || "", equipment: form.equipment || [] }),
+      ...(eventType === "event" && { client: isClientView ? clientFilter : "", participants: form.participants || [], location: form.location || "" }),
+      ...(eventType === "reminder" && { client: isClientView ? clientFilter : "" }),
+      ...(eventType === "deadline" && { client: isClientView ? clientFilter : (form.client || "") }),
     };
     const saved = await supaCreateEvent(ne);
     if (saved) { ne.id = saved.id; ne.supaId = saved.id; }
@@ -9572,18 +9572,18 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               ))}
             </div>
           </Card>
-          <Card style={{ marginBottom:8 }}>
+          {!isClientView && <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Tipo da reunião</label>
             <div style={{ display:"flex", gap:6 }}>
               {[{k:"internal",l:"Interna (equipe)",c:B.purple},{k:"client",l:"Com cliente",c:B.orange}].map(s=>(
                 <button key={s.k} onClick={()=>setForm(p=>({...p,meetingScope:s.k}))} style={{ flex:1, padding:"12px 0", borderRadius:10, border:`1.5px solid ${(form.meetingScope||"internal")===s.k?s.c:B.border}`, background:(form.meetingScope||"internal")===s.k?`${s.c}08`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:(form.meetingScope||"internal")===s.k?s.c:B.muted }}>{s.l}</button>
               ))}
             </div>
-          </Card>
+          </Card>}
         </>}
 
-        {/* Client picker (meeting with client, recording, deadline) */}
-        {((eventType==="meeting" && (form.meetingScope||"internal")==="client") || eventType==="recording" || eventType==="deadline") && (
+        {/* Client picker (meeting with client, recording, deadline) — hidden for client */}
+        {!isClientView && ((eventType==="meeting" && (form.meetingScope||"internal")==="client") || eventType==="recording" || eventType==="deadline") && (
           <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -9594,8 +9594,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           </Card>
         )}
 
-        {/* Participants (meeting, recording, event) */}
-        {(eventType==="meeting" || eventType==="recording" || eventType==="event") && (
+        {/* Participants (meeting, recording, event) — hidden for client */}
+        {!isClientView && (eventType==="meeting" || eventType==="recording" || eventType==="event") && (
           <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Participantes da equipe</label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -9621,8 +9621,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           </Card>
         )}
 
-        {/* Equipment (recording only) */}
-        {eventType === "recording" && (
+        {/* Equipment (recording only) — hidden for client */}
+        {!isClientView && eventType === "recording" && (
           <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Equipamentos</label>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
