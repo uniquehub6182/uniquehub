@@ -1442,21 +1442,7 @@ const Av = ({ src, name, sz = 40, fs = 16 }) => (
   </div>
 );
 /* ── CollapseHeader: reusable collapsible page header ── */
-const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => {
-  const desk = typeof window !== "undefined" && window.innerWidth >= 900;
-  if (desk) return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0 18px", borderBottom:`1px solid ${B.border}`, marginBottom:16 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}`, width:34, height:34 }}>{IC.back()}</button>}
-        <div>
-          <h2 style={{ fontSize:20, fontWeight:800, color:B.text, letterSpacing:"-0.3px" }}>{title}</h2>
-          {stats.length > 0 && <div style={{ display:"flex", gap:16, marginTop:4 }}>{stats.map((s,i) => <span key={i} style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text, fontWeight:700 }}>{s.val}</strong> {s.label}</span>)}</div>}
-        </div>
-      </div>
-      {onAdd && <button onClick={onAdd} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>}
-    </div>
-  );
-  return (
+const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => (
   <div style={{
     position:"sticky", top:0, zIndex:20, background:B.bgCard,
     borderBottom: collapsed ? `1px solid ${B.border}` : "none",
@@ -1503,8 +1489,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
       </div>
     )}
   </div>
-  );
-};
+);
 
 
 function useToast() {
@@ -2789,7 +2774,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk => { const p=PILLS[pk]; return p && (p.k !== "financial" || canFinancial); }).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
           </div>
         </div>
+        <div className={typeof window!=="undefined"&&window.innerWidth>=900?"d-dash-grid":""}>
         {cfg.sections.map(sk => renderSection(sk))}
+        </div>
       </div>
       {EditorSheetJSX}
     </div>
@@ -15143,7 +15130,9 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
     {/* SECTIONS */}
     <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:8 }}>
+      <div className={typeof window!=="undefined"&&window.innerWidth>=900?"d-dash-grid":""}>
       {clientDashSections.map(sk => renderDashSection(sk))}
+      </div>
     </div>
     <div style={{ height:16 }} />
 
@@ -15769,20 +15758,11 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
               if (t.k === "more") { setMore(!more); return; }
               if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
-            }} className="bt" style={{ flex:1, display:"flex", flexDirection:isDesktop?"row":"column", alignItems:"center", justifyContent:"center", gap:isDesktop?8:0, height:isDesktop?44:sz.h, padding:isDesktop?"8px 14px":0, background:isDesktop&&a?`${accentColor}15`:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1, borderRadius:isDesktop?12:0, transition:"all .15s" }}>
-              {isDesktop ? (
-                <>
-                  <span style={{ display:"flex", alignItems:"center" }}>{t.i(a ? accentColor : (dark?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.5)"))}</span>
-                  <span className="bt-label" style={{ display:"none", fontSize:12, fontWeight:a?700:500, color:a?accentColor:(dark?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.5)") }}>{t.l}</span>
-                </>
-              ) : (
-                <>
+            }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?circleBg:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${circleBg}50`:"none" }}>
                 {t.i(a ? circleIcon : inactiveColor)}
               </div>
               {a && uiPrefs.navLabels!==false && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:navTextColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
-                </>
-              )}
               {t.k === "content" && demandBadge > 0 && !a && <Badge n={demandBadge} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
               {t.k === "chat" && chatUnread > 0 && !a && <Badge n={chatUnread} style={{ position:"absolute", top:6, right:"calc(50% - 16px)" }} />}
             </button>
@@ -16200,9 +16180,8 @@ input,textarea,select{font-size:16px !important}
 .tag{display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:8px;font-size:10px;font-weight:600;background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"};color:${dark?"#9CA3AF":"#5E6468"}}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
 /* ── Desktop Layout ── */
-.d-sidebar{display:none}
-@media(min-width:900px){
 .d-sidebar{display:none!important}
+@media(min-width:900px){
 .d-main{width:100%;max-width:none!important;min-height:100vh}
 .d-main .app{max-width:none!important;position:relative!important;min-height:100vh}
 .d-main .content{max-width:1400px;margin:0 auto;padding:20px 40px 120px!important}
@@ -16212,13 +16191,9 @@ input,textarea,select{font-size:16px !important}
 .app{position:relative!important}
 .d-main input,.d-main textarea{font-size:14px!important}
 .d-main .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
-/* Desktop: floating navbar stays visible and centered */
-.bnav{bottom:20px!important;max-width:520px!important;width:auto!important;padding:6px 10px!important;border-radius:20px!important;backdrop-filter:blur(24px) saturate(1.6)!important;-webkit-backdrop-filter:blur(24px) saturate(1.6)!important;box-shadow:0 8px 40px rgba(0,0,0,0.25)!important}
-.bnav .bt{padding:8px 16px!important;border-radius:14px!important;gap:6px!important}
-/* Desktop: show labels next to nav icons */
-.bnav .bt-label{display:inline!important;font-size:12px;font-weight:600;letter-spacing:-0.2px}
-/* Desktop: CollapseHeader becomes flat */
-.d-main [style*="borderRadius: collapsed"]{border-radius:0!important;box-shadow:none!important}
+/* Desktop dashboard grid */
+.d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:16px!important;align-items:start!important}
+.d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:16px!important;align-items:start!important}
 }
 #root{overflow:auto!important}
 html,body{overflow:auto!important}
