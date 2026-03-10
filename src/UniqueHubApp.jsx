@@ -14301,6 +14301,17 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const [editMode, setEditMode] = useState(false);
   const [editTypes, setEditTypes] = useState([]);
   const [editComment, setEditComment] = useState("");
+  const [realScore, setRealScore] = useState(0);
+  /* ── Load real growth score from DB (must be before early returns) ── */
+  useEffect(() => {
+    if (!supabase || !user?.email) return;
+    (async () => {
+      const { data: cl } = await supabase.from("clients").select("id").eq("contact_email", user.email).maybeSingle();
+      if (!cl?.id) return;
+      const { data: scores } = await supabase.from("client_scores").select("points").eq("client_id", cl.id);
+      if (scores) setRealScore(Math.min(100, Math.round(scores.reduce((a, r) => a + Number(r.points), 0))));
+    })();
+  }, [user?.email]);
 
   useEffect(() => {
     if (!supabase || demandsLoaded || !user?.id) return;
@@ -14682,17 +14693,8 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const CLIENT_SECTIONS = { growth:"Growth Score", posts:"Posts Recentes", metricas:"Métricas", news:"Comunicados", match:"Match4Biz", relatorio:"Relatório" };
   const CLIENT_DASH_DEFAULT = ["news","posts","metricas","growth","match","relatorio"];
 
-  /* ── Load real growth score from DB ── */
-  const [realScore, setRealScore] = useState(0);
-  useEffect(() => {
-    if (!supabase || !myClientId_inner) return;
-    supabase.from("client_scores").select("points").eq("client_id", myClientId_inner).then(({ data }) => {
-      if (data) setRealScore(Math.min(100, Math.round(data.reduce((a, r) => a + Number(r.points), 0))));
-    });
-  }, [myClientId_inner]);
   const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
-
-  const growthScore = realScore, growthDelta = realScore > 0 ? realScore : 0, growthZone = getZoneLabel(realScore);
+  const growthScore = realScore, growthZone = getZoneLabel(realScore);
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
   const metricsData = [
     { network:"Instagram", metrics:[{l:"Alcance",v:"847K",d:"+18%"},{l:"Engajamento",v:"12.4%",d:"+3.2%"},{l:"Seguidores",v:"15.2K",d:"+420"},{l:"Salvamentos",v:"1.8K",d:"+32%"}] },
