@@ -14386,6 +14386,21 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
       await supabase.from("demands").update(updatePayload).eq("id", demand.id);
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: status === "approved" ? "published" : d.stage } : d));
 
+      /* ── Award gamification points IMMEDIATELY after status change ── */
+      const scoreClientId = demand.client_id || myClientId_inner;
+      console.log("[Gamify] Attempting score. status:", status, "clientId:", scoreClientId, "demand.client_id:", demand.client_id, "myClientId_inner:", myClientId_inner);
+      if (supabase && scoreClientId) {
+        if (status === "approved") {
+          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}` });
+          console.log("[Gamify] Approve insert result:", r.error ? r.error.message : "OK", r.data);
+        } else if (status === "revision") {
+          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}` });
+          console.log("[Gamify] Edit insert result:", r.error ? r.error.message : "OK");
+        }
+      } else {
+        console.warn("[Gamify] SKIP - No client ID. supabase:", !!supabase, "scoreClientId:", scoreClientId);
+      }
+
       /* ── Auto-publish via Meta API when client approves ── */
       if (status === "approved") {
         const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.editing?.files||[])];
@@ -14441,19 +14456,6 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
       if (status !== "approved") {
         showToast(status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
-      }
-      /* ── Award gamification points ── */
-      const scoreClientId = demand.client_id || myClientId_inner;
-      if (supabase && scoreClientId) {
-        if (status === "approved") {
-          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}` });
-          console.log("[Gamify] Approve score insert:", r.error ? r.error.message : "OK");
-        } else if (status === "revision") {
-          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}` });
-          console.log("[Gamify] Edit score insert:", r.error ? r.error.message : "OK");
-        }
-      } else {
-        console.warn("[Gamify] No client ID found for scoring. myClientId_inner:", myClientId_inner, "demand.client_id:", demand.client_id);
       }
       supaCreateNotificationForAll("post_approved", status === "approved" ? "Cliente aprovou post" : status === "revision" ? "Cliente pediu edição" : "Cliente reprovou post", demand.title, null, null);
       setSub(null);
