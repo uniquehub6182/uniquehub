@@ -14722,48 +14722,79 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
       const renderContent = () => {
     const revision = demands.filter(d => d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected");
     const inProd = demands.filter(d => !d.steps?.client?.mode && !d.steps?.client?.status);
-    const DemandCard = ({ d, accent, statusLabel }) => {
-      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-      return <Card onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", padding:0, overflow:"hidden", borderRadius:18 }}>
-        {imgs[0] && <div style={{ height:140, background:`url(${imgs[0].url}) center/cover`, position:"relative" }}>
-          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.7) 100%)" }} />
-          <div style={{ position:"absolute", bottom:10, left:12, right:12 }}>
-            <p style={{ fontSize:14, fontWeight:800, color:"#fff", lineHeight:1.3 }}>{d.title}</p>
-            <div style={{ display:"flex", gap:6, marginTop:6 }}>
-              <span style={{ fontSize:9, padding:"3px 10px", borderRadius:100, background:`${accent}20`, color:accent, fontWeight:700 }}>{statusLabel}</span>
-              <span style={{ fontSize:9, padding:"3px 8px", borderRadius:100, background:"rgba(255,255,255,0.15)", color:"#fff", fontWeight:600 }}>{d.network}</span>
-              <span style={{ fontSize:9, padding:"3px 8px", borderRadius:100, background:"rgba(255,255,255,0.15)", color:"#fff", fontWeight:600 }}>{d.format}</span>
-            </div>
-          </div>
+
+    const DemandCard = ({ d }) => {
+      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+      const caption = d.steps?.caption?.text || "";
+      const networks = d.networks || (d.network ? [d.network] : []);
+      const schedDate = d.scheduling?.date || d.schedule_date;
+      const schedTime = d.scheduling?.time || d.schedule_time;
+      const st = d.steps?.client?.status;
+      const isPend = d.steps?.client?.mode === "sent_to_client" && !st;
+      const isAppr = st === "approved";
+      const isRev = st === "revision" || st === "rejected";
+      const statusColor = isAppr ? B.green : isRev ? (B.orange||"#F59E0B") : isPend ? (B.orange||"#F59E0B") : B.muted;
+      const statusLabel = isAppr ? "Aprovado" : isRev ? "Edição solicitada" : isPend ? "Aguardando aprovação" : "Em produção";
+
+      return <Card onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:10, cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:18 }}>
+        {/* Done overlay */}
+        {isAppr && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.45)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:18 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 22px", borderRadius:100, background:B.green, color:"#fff" }}>{IC.check}<span style={{ fontSize:14, fontWeight:700 }}>Aprovado</span></div>
         </div>}
-        {!imgs[0] && <div style={{ padding:16 }}>
-          <p style={{ fontSize:14, fontWeight:700 }}>{d.title}</p>
-          <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
-            <span style={{ fontSize:9, padding:"3px 10px", borderRadius:100, background:`${accent}12`, color:accent, fontWeight:700 }}>{statusLabel}</span>
-            <span style={{ fontSize:9, padding:"3px 8px", borderRadius:100, background:`${B.muted}10`, color:B.muted, fontWeight:600 }}>{d.network} · {d.format}</span>
-            <span style={{ fontSize:9, color:B.muted }}>{d.createdAt}</span>
+
+        {/* Image preview */}
+        {imgs.length > 0 ? <div style={{ position:"relative", aspectRatio:"16/9", overflow:"hidden", borderRadius:"18px 18px 0 0" }}>
+          <img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+          {/* Format badge */}
+          <div style={{ position:"absolute", top:10, left:10, display:"flex", gap:4 }}>
+            <span style={{ fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(6px)" }}>{d.format || "Post"}{imgs.length>1?` · ${imgs.length}`:""}</span>
           </div>
+          {/* Status badge */}
+          <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${statusColor}dd`, color:"#fff" }}>{statusLabel}</span>
+          {/* Network icons */}
+          <div style={{ position:"absolute", bottom:10, left:10, display:"flex", gap:4 }}>
+            {networks.map((n,ni) => <div key={ni} style={{ padding:"4px 10px", borderRadius:8, background:"rgba(0,0,0,0.5)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", gap:4 }}>
+              <span style={{ fontSize:10, fontWeight:600, color:"#fff" }}>{n}</span>
+            </div>)}
+          </div>
+        </div> : <div style={{ height:80, background:`linear-gradient(135deg, ${statusColor}15, ${C.card})`, borderRadius:"18px 18px 0 0", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
+          <span style={{ color:statusColor, opacity:0.3 }}>{IC.content(statusColor)}</span>
+          <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${statusColor}dd`, color:"#fff" }}>{statusLabel}</span>
         </div>}
+
+        {/* Body */}
+        <div style={{ padding:"12px 16px 14px" }}>
+          <p style={{ fontSize:15, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+          <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>{d.client} · {d.createdAt}</p>
+          {caption && <p style={{ fontSize:12, marginTop:8, lineHeight:1.5, opacity:0.75, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
+          {/* Schedule + status row */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, paddingTop:8, borderTop:`1px solid ${C.brd}`, flexWrap:"wrap" }}>
+            <div style={{ width:8, height:8, borderRadius:4, background:statusColor, flexShrink:0 }} />
+            <span style={{ fontSize:11, fontWeight:700 }}>{statusLabel}</span>
+            {schedDate && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, color:C.mut, fontWeight:600, marginLeft:"auto" }}>📅 {(() => { try { return new Date(schedDate+"T"+(schedTime||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}) + (schedTime ? ` ${schedTime}` : ""); } catch { return schedDate; } })()}</span>}
+          </div>
+        </div>
       </Card>;
     };
+
     return <>
-      {pendingApproval.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:15, fontWeight:800 }}>Aguardando sua aprovação ({pendingApproval.length})</p></div>
-        {pendingApproval.map(d => <DemandCard key={d.id} d={d} accent={B.orange||"#F59E0B"} statusLabel="Aguardando" />)}
+      {pendingApproval.length > 0 && <div style={{ marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:16, fontWeight:800 }}>Aguardando aprovação ({pendingApproval.length})</p></div>
+        {pendingApproval.map(d => <DemandCard key={d.id} d={d} />)}
       </div>}
-      {revision.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:"#F59E0B" }} /><p style={{ fontSize:15, fontWeight:800 }}>Em edição ({revision.length})</p></div>
-        {revision.map(d => <DemandCard key={d.id} d={d} accent="#F59E0B" statusLabel="Edição solicitada" />)}
+      {revision.length > 0 && <div style={{ marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:"#F59E0B" }} /><p style={{ fontSize:16, fontWeight:800 }}>Em edição ({revision.length})</p></div>
+        {revision.map(d => <DemandCard key={d.id} d={d} />)}
       </div>}
-      {approved.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:15, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
-        {approved.map(d => <DemandCard key={d.id} d={d} accent={B.green} statusLabel="Aprovado" />)}
+      {approved.length > 0 && <div style={{ marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
+        {approved.map(d => <DemandCard key={d.id} d={d} />)}
       </div>}
-      {inProd.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:B.muted }} /><p style={{ fontSize:15, fontWeight:800, color:B.muted }}>Em produção ({inProd.length})</p></div>
-        {inProd.map(d => <DemandCard key={d.id} d={d} accent={B.muted} statusLabel="Produzindo" />)}
+      {inProd.length > 0 && <div style={{ marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:C.mut }} /><p style={{ fontSize:16, fontWeight:800, color:C.mut }}>Em produção ({inProd.length})</p></div>
+        {inProd.map(d => <DemandCard key={d.id} d={d} />)}
       </div>}
-      {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:B.muted }}>{IC.content(B.muted)}</span><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p></Card>}
+      {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:C.mut }}>{IC.content(C.mut)}</span><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:12, color:C.mut, marginTop:4 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p></Card>}
     </>;
   };
 
