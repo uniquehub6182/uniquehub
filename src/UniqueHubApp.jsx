@@ -9650,7 +9650,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         <Card style={{ marginBottom:8, background:`${B.muted}04` }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <Av name="Matheus" sz={28} fs={10} />
-            <div><p style={{ fontSize:11, color:B.muted }}>Criado por</p><p style={{ fontSize:12, fontWeight:600 }}>{sel?.createdBy || userName}</p></div>
+            <div><p style={{ fontSize:11, color:B.muted }}>Criado por</p><p style={{ fontSize:12, fontWeight:600 }}>{userName}</p></div>
           </div>
         </Card>
 
