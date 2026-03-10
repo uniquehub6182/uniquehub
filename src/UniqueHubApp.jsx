@@ -14020,7 +14020,7 @@ function ClientOnboarding({ onComplete, onBack }) {
   /* Start conversation */
   useEffect(() => {
     (async () => {
-      await addBot("Olá! Eu sou a Luna, assistente virtual da Unique Marketing 360. 👋", 800);
+      await addBot("Olá! Eu sou a Munique, assistente virtual da Unique Marketing 360. 👋", 800);
       await addBot("Vou te ajudar a criar sua conta em poucos passos. Vai ser rápido e fácil!", 1000);
       await addBot("Para começar, qual é o seu nome?", 700);
       setStep(1);
@@ -14106,7 +14106,7 @@ function ClientOnboarding({ onComplete, onBack }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><circle cx="12" cy="21" r="1"/></svg>
         </div>
         <div>
-          <p style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Luna</p>
+          <p style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Munique</p>
           <p style={{ fontSize:10, color:"#9CA3AF" }}>Assistente Unique Marketing</p>
         </div>
       </div>
