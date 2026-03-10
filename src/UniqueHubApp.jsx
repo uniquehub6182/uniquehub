@@ -475,7 +475,7 @@ const parseNewsRow = (r) => {
 /* ── Supabase: Team CRUD ── */
 const supaLoadTeam = async () => {
   if (!supabase) return [];
-  try { const { data } = await supabase.from("agency_members").select("*").order("created_at"); return data || []; } catch(e) { return []; }
+  try { const { data } = await supabase.from("agency_members").select("*").neq("role", "cliente").order("created_at"); return data || []; } catch(e) { return []; }
 };
 const supaCreateMember = async (m) => {
   if (!supabase) return null;
