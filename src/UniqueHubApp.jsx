@@ -14222,6 +14222,9 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const [editSections, setEditSections] = useState([]);
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
   const [metricsSlide, setMetricsSlide] = useState(0);
+  const [editMode, setEditMode] = useState(false);
+  const [editTypes, setEditTypes] = useState([]);
+  const [editComment, setEditComment] = useState("");
 
   useEffect(() => {
     if (!supabase || demandsLoaded || !user?.id) return;
@@ -14425,7 +14428,30 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
                 <button onClick={()=>respondDemand(d,"approved","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.check} Aprovar</button>
                 <button onClick={()=>respondDemand(d,"rejected","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.red||"#FF6B6B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Reprovar</button>
               </div>
-              <button onClick={()=>{ const fb=prompt("Descreva o que gostaria de alterar:"); if(fb&&fb.trim()) respondDemand(d,"revision",fb.trim()); }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.bgCard, border:`1.5px solid ${B.orange||"#F59E0B"}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.orange||"#F59E0B" }}>Pedir edição</button>
+              {!editMode ? (
+                <button onClick={()=>setEditMode(true)} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.bgCard, border:`1.5px solid ${B.orange||"#F59E0B"}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.orange||"#F59E0B" }}>Pedir edição</button>
+              ) : (
+                <Card style={{ marginTop:4, border:`1.5px solid ${B.orange||"#F59E0B"}30`, padding:16 }}>
+                  <p style={{ fontSize:13, fontWeight:700, marginBottom:12 }}>O que precisa ser alterado?</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
+                    {[{k:"arte",l:"Arte / Imagem",em:"🎨"},{k:"video",l:"Vídeo",em:"🎬"},{k:"legenda",l:"Legenda / Texto",em:"✍️"}].map(opt => {
+                      const sel = editTypes.includes(opt.k);
+                      return <button key={opt.k} onClick={()=>setEditTypes(prev => sel ? prev.filter(x=>x!==opt.k) : [...prev, opt.k])} style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", borderRadius:12, border: sel ? `2px solid ${B.orange||"#F59E0B"}` : `1.5px solid ${B.border}`, background: sel ? `${B.orange||"#F59E0B"}08` : "transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                        <span style={{ fontSize:18 }}>{opt.em}</span>
+                        <span style={{ fontSize:13, fontWeight:600, color: sel ? (B.orange||"#F59E0B") : B.text, flex:1 }}>{opt.l}</span>
+                        <div style={{ width:22, height:22, borderRadius:6, border: sel ? `2px solid ${B.orange||"#F59E0B"}` : `2px solid ${B.muted}40`, background: sel ? (B.orange||"#F59E0B") : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          {sel && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </div>
+                      </button>;
+                    })}
+                  </div>
+                  <textarea value={editComment} onChange={e=>setEditComment(e.target.value)} placeholder="Descreva o que precisa mudar..." rows={3} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, background:"transparent", fontFamily:"inherit", fontSize:13, color:B.text, outline:"none", resize:"vertical", boxSizing:"border-box" }} />
+                  <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                    <button onClick={()=>{setEditMode(false);setEditTypes([]);setEditComment("");}} style={{ flex:1, padding:"12px 0", borderRadius:12, background:`${B.muted}08`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Cancelar</button>
+                    <button disabled={editTypes.length===0} onClick={()=>{ const typeLabels = editTypes.map(k=>({arte:"Arte/Imagem",video:"Vídeo",legenda:"Legenda"}[k])).join(", "); const fb = `[${typeLabels}] ${editComment}`.trim(); respondDemand(d,"revision",fb); setEditMode(false);setEditTypes([]);setEditComment(""); }} style={{ flex:1, padding:"12px 0", borderRadius:12, background: editTypes.length>0 ? (B.orange||"#F59E0B") : `${B.muted}20`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color: editTypes.length>0 ? "#fff" : B.muted }}>Enviar pedido</button>
+                  </div>
+                </Card>
+              )}
             </div>}
           </div>
         </div>
