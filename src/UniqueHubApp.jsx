@@ -1637,6 +1637,12 @@ function LoginPage({ onAuth, onClientAuth }) {
         const extrasRaw = settingsMap[`profile_extras_${data.user.id}`] || null;
         const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
         const photo = profile?.photo_url || settingsMap[`profile_photo_${data.user.id}`] || null;
+        /* ── Block clients from logging into agency panel ── */
+        if (profile?.role === "cliente" || data.user.user_metadata?.role === "cliente") {
+          clearTimeout(loginTimeout); setLoginLoading(false);
+          setError("Esta conta é de cliente. Use a aba \"Sou Cliente\" para acessar.");
+          await supabase.auth.signOut(); return;
+        }
         const userObj = {
           id: data.user.id, name: profile?.name || data.user.user_metadata?.name || email.split("@")[0],
           email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
@@ -1747,6 +1753,11 @@ function LoginPage({ onAuth, onClientAuth }) {
       if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
       let profile = null;
       try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
+      /* ── Block agency users from logging into client portal ── */
+      if (profile?.role === "admin" || profile?.role === "member") {
+        setError("Esta conta é de colaborador. Use a aba \"Colaborador\" para acessar.");
+        await supabase.auth.signOut(); setLoginLoading(false); return;
+      }
       if (onClientAuth) onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } });
       setLoginLoading(false);
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
@@ -15270,7 +15281,7 @@ export default function App() {
         try {
           const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
           /* ── Block non-approved members (approval check on session restore) ── */
-          if (!profile || profile.role !== "admin") {
+          if (!profile || (profile.role !== "admin" && profile.role !== "cliente")) {
             try {
               const { data: memberRow, error: memberErr } = await supabase.from("agency_members").select("status").eq("user_id", session.user.id).maybeSingle();
               if (memberErr) console.warn("[Auth] agency_members query error:", memberErr);
@@ -15289,7 +15300,19 @@ export default function App() {
           const cloudPrefs = settingsMap[`visual_prefs_${session.user.id}`] || null;
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           const photo = profile?.photo_url || photoSetting || null;
-          setUserAndRef({
+          const isCliente = profile?.role === "cliente" || session.user.user_metadata?.role === "cliente";
+          if (isCliente) {
+            /* ── CLIENT user: restore to client portal ── */
+            setClientUser({
+              id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
+              email: session.user.email, role: "cliente", supaRole: "cliente", photo,
+              nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
+              phone: profile?.phone || session.user.user_metadata?.phone || "",
+              company: session.user.user_metadata?.company || "",
+            });
+          } else {
+            /* ── AGENCY user: restore to agency panel ── */
+            setUserAndRef({
             id: session.user.id, name: profile?.name || session.user.user_metadata?.name || session.user.email.split("@")[0],
             email: session.user.email, role: profile?.role === "admin" ? "CEO" : profile?.role === "member" ? (profile?.nick || "Colaborador") : "Cliente",
             supaRole: profile?.role || "member", photo,
@@ -15307,13 +15330,14 @@ export default function App() {
               if (vp.nav)  { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} setCloudNav(vp.nav); }
             }
           } catch(e) { console.warn("Visual prefs load failed:", e); }
+          } /* end else (agency user) */
         } catch(e) { console.error("Profile load failed, blocking:", e); await supabase.auth.signOut(); }
       }
       clearTimeout(timeout);
       setAuthLoading(false);
     }).catch(() => { clearTimeout(timeout); setAuthLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") { setUserAndRef(null); }
+      if (event === "SIGNED_OUT") { setUserAndRef(null); setClientUser(null); }
     });
     return () => subscription?.unsubscribe();
   }, []);
