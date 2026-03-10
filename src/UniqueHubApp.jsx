@@ -15584,7 +15584,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   return (
     <div style={{ display:"flex" }}>
-      {isDesktop && <DesktopSidebar tabs={TABS} activeTab={tab} onTabChange={(k) => { setSub(null); setTab(k); setMore(false); }} user={user} title="Unique Marketing" accentColor={B.accent} onLogout={onLogout} />}
+      {isDesktop && <DesktopSidebar tabs={ALL_TABS.filter(t=>t.k!=="search" && t.k!=="more")} activeTab={sub || tab} onTabChange={(k) => { const mainTabs = ["home","content","chat","clients","team","calendar"]; if (mainTabs.includes(k)) { setSub(null); setTab(k); } else { goSub(k); } setMore(false); }} user={user} title="Unique Marketing" accentColor={B.accent} onLogout={onLogout} />}
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background: B.bg, color: B.text }}>
       {ToastEl}
@@ -15723,7 +15723,6 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 
       {more && <MoreSheet onClose={() => setMore(false)} goSub={goSub} />}
       {showNavEdit && <NavEditSheet picks={navPicks} setPicks={(p) => setNavPicksAndSave(p, user?.id)} onClose={() => setShowNavEdit(false)} />}
-    </div>
     </div>
     </div>
     </div>
