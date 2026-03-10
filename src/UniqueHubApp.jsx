@@ -1055,6 +1055,29 @@ const useIsDesktop = () => {
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
+  /* Force scroll behavior on desktop via JS — aggressive approach */
+  useEffect(() => {
+    if (!isDesktop) return;
+    let applying = false;
+    const applyDesktopScroll = () => {
+      if (applying) return;
+      applying = true;
+      const s = (el, styles) => { if(el) Object.assign(el.style, styles); };
+      s(document.documentElement, { overflow:"auto", height:"auto", overscrollBehavior:"auto" });
+      s(document.body, { overflow:"auto", height:"auto", overscrollBehavior:"auto" });
+      s(document.getElementById("root"), { overflow:"visible", height:"auto" });
+      document.querySelectorAll(".app").forEach(el => { s(el, { overflow:"visible", position:"relative", height:"auto" }); });
+      document.querySelectorAll(".content").forEach(el => { s(el, { overflow:"visible", height:"auto", maxHeight:"none" }); });
+      requestAnimationFrame(() => { applying = false; });
+    };
+    applyDesktopScroll();
+    /* Re-apply on DOM changes (React re-renders) */
+    const observer = new MutationObserver(() => applyDesktopScroll());
+    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+    /* Safety net interval */
+    const interval = setInterval(applyDesktopScroll, 3000);
+    return () => { observer.disconnect(); clearInterval(interval); };
+  }, [isDesktop]);
   return isDesktop;
 };
 
@@ -16190,7 +16213,7 @@ input,textarea,select{font-size:16px !important}
 .d-main .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 .d-main input,.d-main textarea{font-size:14px!important}
 .d-main .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
-html,body,#root{overflow:auto!important;height:auto!important;min-height:100vh!important}
+html,body,#root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important}
 .bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
 .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:16px!important;align-items:start!important}
 .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:16px!important;align-items:start!important}

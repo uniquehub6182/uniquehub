@@ -37,6 +37,14 @@
         overscroll-behavior: none;
         background: #0F1419;
       }
+      @media (min-width: 900px) {
+        html, body, #root {
+          overflow: auto !important;
+          height: auto !important;
+          min-height: 100vh;
+          overscroll-behavior: auto !important;
+        }
+      }
     </style>
   </head>
   <body>
