@@ -14228,6 +14228,8 @@ function MainClientApp({ user, onLogout, dark }) {
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
+  const [metaInfoOpen, setMetaInfoOpen] = useState(false);
+  const [metricsSlide, setMetricsSlide] = useState(0);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -14439,30 +14441,39 @@ function MainClientApp({ user, onLogout, dark }) {
   const growthDelta = 6;
   const growthZone = "Estratégica";
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
-  const metrics = { reach:"847K", reachD:"+18%", engagement:"12.4%", engD:"+3.2%", clicks:"3.2K", clicksD:"+24%", roas:"4.8x", roasD:"+0.6" };
+  const metricsData = [
+    { network:"Instagram", metrics:[{l:"Alcance",v:"847K",d:"+18%"},{l:"Engajamento",v:"12.4%",d:"+3.2%"},{l:"Seguidores",v:"15.2K",d:"+420"},{l:"Salvamentos",v:"1.8K",d:"+32%"}] },
+    { network:"Facebook", metrics:[{l:"Alcance",v:"324K",d:"+12%"},{l:"Curtidas",v:"8.4K",d:"+1.1K"},{l:"Compartilhamentos",v:"2.1K",d:"+15%"},{l:"Cliques",v:"3.2K",d:"+24%"}] },
+    { network:"Google Ads", metrics:[{l:"Impressões",v:"1.2M",d:"+22%"},{l:"Cliques",v:"18K",d:"+31%"},{l:"ROAS",v:"4.8x",d:"+0.6"},{l:"Conversões",v:"342",d:"+28%"}] },
+  ];
 
   const renderHome = () => <>
     {/* HEADER */}
     <div style={{ background:isDark?"#0D0D0D":"#fff", margin:"-14px -16px 0", padding:"20px 20px 20px", borderRadius:"0 0 28px 28px", boxShadow:isDark?"none":"0 4px 20px rgba(0,0,0,0.05)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <Av name={user.name||"C"} sz={48} fs={18} />
+          <Av name={user.name||"C"} src={user.photo} sz={48} fs={18} />
           <div>
             <p style={{ fontSize:18, fontWeight:900, color:C.txt }}>{greeting}, {(user.name||"Cliente").split(" ")[0]}</p>
-            <p style={{ fontSize:11, color:C.mut }}>Unique Hub · Seu marketing em dia</p>
+            <p style={{ fontSize:11, color:C.mut }}>UniqueHub · Seu marketing em dia</p>
           </div>
         </div>
         <div style={{ display:"flex", gap:8 }}>
-          <div style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(C.mut)}</div>
-          <div style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.calendar(C.mut)}</div>
+          <div onClick={()=>goTab("chat")} style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.chat(C.mut)}</div>
+          <div onClick={()=>setSub("settings")} style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.settings(C.mut)}</div>
         </div>
       </div>
     </div>
 
-    {/* META DO MES */}
-    <Card style={{ marginTop:12, padding:0, overflow:"hidden" }}>
+    {/* META DO MES — clicável com info */}
+    <Card style={{ marginTop:12, padding:0, overflow:"hidden", cursor:"pointer" }} onClick={()=>setMetaInfoOpen(!metaInfoOpen)}>
       <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
-        <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
+          <div style={{ width:20, height:20, borderRadius:6, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="3" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          </div>
+        </div>
         <div style={{ display:"flex", alignItems:"baseline", gap:10, marginTop:8 }}>
           <span style={{ fontSize:40, fontWeight:900, color:LIME }}>{monthGoal.pct}%</span>
           <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</span>
@@ -14471,32 +14482,48 @@ function MainClientApp({ user, onLogout, dark }) {
           <div style={{ height:6, borderRadius:3, background:LIME, width:`${monthGoal.pct}%`, boxShadow:`0 0 8px ${LIME}40` }} />
         </div>
       </div>
+      {metaInfoOpen && <div style={{ padding:"14px 20px", borderTop:`1px solid ${C.brd}` }}>
+        <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>O que é a Meta Mensal?</p>
+        <p style={{ fontSize:11, color:C.mut, lineHeight:1.6 }}>A meta mensal é definida em conjunto com a agência e representa o objetivo de crescimento do seu negócio. Pode ser em leads, vendas, seguidores ou outra métrica relevante para o seu momento.</p>
+        <button onClick={(e)=>{e.stopPropagation();setSub("reports");}} style={{ marginTop:10, padding:"8px 16px", borderRadius:10, background:`${LIME}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:LIME }}>Ver relatório completo →</button>
+      </div>}
     </Card>
 
-    {/* GROWTH SCORE */}
+    {/* GROWTH SCORE — com explicações */}
     <Card onClick={()=>setSub("gamify")} style={{ marginTop:8, cursor:"pointer" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
         <div>
-          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Growth Score</p>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:6 }}>
-            <span style={{ fontSize:32, fontWeight:900, color:LIME }}>{growthScore}</span>
-            <span style={{ fontSize:12, fontWeight:700, color:B.green }}>+{growthDelta} este mês</span>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <p style={{ fontSize:12, fontWeight:700 }}>Growth Score</p>
+            <span style={{ fontSize:9, color:C.mut, background:`${C.mut}10`, padding:"2px 6px", borderRadius:4 }}>Índice de Crescimento</span>
           </div>
-          <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>#4 de 23 · Zona {growthZone}</p>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:8 }}>
+            <span style={{ fontSize:32, fontWeight:900, color:LIME }}>{growthScore}</span>
+            <span style={{ fontSize:11, color:C.mut }}>/100 pts</span>
+            <span style={{ fontSize:11, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>+{growthDelta} este mês</span>
+          </div>
+          <p style={{ fontSize:10, color:C.mut, marginTop:4 }}>Posição #4 entre 23 clientes da agência</p>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, background:`${LIME}10`, padding:"3px 8px", borderRadius:6 }}>
+            <div style={{ width:6, height:6, borderRadius:3, background:LIME }} />
+            <span style={{ fontSize:10, fontWeight:600, color:LIME }}>Zona {growthZone} (61-80 pts)</span>
+          </div>
         </div>
-        <div style={{ width:56, height:56, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <span style={{ fontSize:18, fontWeight:900, color:LIME }}>{growthScore}</span>
+        <div style={{ width:52, height:52, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <span style={{ fontSize:16, fontWeight:900, color:LIME }}>{growthScore}</span>
         </div>
       </div>
-      <div style={{ display:"flex", gap:4, marginTop:12 }}>
-        {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}>
+      <div style={{ display:"flex", gap:6, marginTop:14 }}>
+        {[{n:"Execução",v:82,c:"#10B981"},{n:"Estratégia",v:74,c:"#BBF246"},{n:"Educação",v:65,c:"#F59E0B"},{n:"Ecossistema",v:58,c:"#EF4444"},{n:"Crescimento",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+            <span style={{ fontSize:7, color:C.mut }}>{p.n}</span>
+            <span style={{ fontSize:7, fontWeight:700, color:p.c }}>{p.v}%</span>
+          </div>
           <div style={{ height:4, borderRadius:2, background:`${p.c}15` }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div>
-          <p style={{ fontSize:8, color:C.mut, marginTop:3, textAlign:"center" }}>{p.n}</p>
         </div>)}
       </div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, paddingTop:8, borderTop:`1px solid ${C.brd}` }}>
-        <span style={{ fontSize:11, color:C.mut }}>{IC.gamify(C.mut)} 4 missões pendentes</span>
-        <span style={{ fontSize:11, color:LIME, fontWeight:600 }}>Ver detalhes →</span>
+        <span style={{ fontSize:10, color:C.mut }}>4 missões pendentes</span>
+        <span style={{ fontSize:10, color:LIME, fontWeight:600 }}>Ver detalhes →</span>
       </div>
     </Card>
 
@@ -14535,38 +14562,48 @@ function MainClientApp({ user, onLogout, dark }) {
       </div>
     </>}
 
-    {/* MATCH4BIZ */}
-    <Card onClick={()=>setSub("match4biz")} style={{ marginTop:14, cursor:"pointer" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, #8B5CF630, #BBF24620)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+    {/* MATCH4BIZ — chamativo */}
+    <Card onClick={()=>setSub("match4biz")} style={{ marginTop:12, cursor:"pointer", padding:0, overflow:"hidden" }}>
+      <div style={{ background:`linear-gradient(135deg, #8B5CF615, ${LIME}08)`, padding:"18px 20px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #8B5CF630, #BBF24630)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:16, fontWeight:800 }}>Match4Biz</p>
+            <p style={{ fontSize:11, color:C.mut, lineHeight:1.4, marginTop:2 }}>Encontre parceiros de negócios entre os clientes da agência. Conecte-se e cresça junto!</p>
+            <div style={{ display:"flex", gap:6, marginTop:6 }}><Tag color={LIME}>3 matches</Tag><Tag color="#8B5CF6">6 empresas</Tag></div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
-        <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Match4Biz</p><p style={{ fontSize:11, color:C.mut }}>3 matches</p></div>
-        <Tag color={LIME}>Novo</Tag>
       </div>
     </Card>
 
-    {/* METRICAS */}
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:14 }}>
-      {[{label:"Alcance",value:metrics.reach,delta:metrics.reachD,ic:IC.reports},{label:"Engajamento",value:metrics.engagement,delta:metrics.engD,ic:IC.chat},{label:"Cliques",value:metrics.clicks,delta:metrics.clicksD,ic:IC.content},{label:"ROAS",value:metrics.roas,delta:metrics.roasD,ic:IC.financial}].map((m,i) => (
-        <Card key={i} style={{ padding:14 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-            <span style={{ color:C.mut }}>{typeof m.ic==="function"?m.ic(C.mut):m.ic}</span>
-            <span style={{ fontSize:9, fontWeight:600, letterSpacing:1, color:C.mut, textTransform:"uppercase" }}>{m.label}</span>
-          </div>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-            <span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.value}</span>
-            <span style={{ fontSize:11, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>{m.delta}</span>
+    {/* MÉTRICAS — swipe por rede social */}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 0 8px" }}>
+      <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Métricas das redes</p>
+      <span onClick={()=>setSub("reports")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver tudo →</span>
+    </div>
+    <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+      {metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"6px 14px", borderRadius:10, border:metricsSlide===i?"none":`1px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:11, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{md.network}</button>)}
+    </div>
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+      {metricsData[metricsSlide]?.metrics.map((m,i) => (
+        <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer" }}>
+          <span style={{ fontSize:9, fontWeight:600, letterSpacing:1, color:C.mut, textTransform:"uppercase" }}>{m.l}</span>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:6 }}>
+            <span style={{ fontSize:20, fontWeight:900, color:C.txt }}>{m.v}</span>
+            <span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>{m.d}</span>
           </div>
         </Card>
       ))}
     </div>
 
-    {/* RELATORIO */}
-    <Card style={{ marginTop:8, cursor:"pointer" }}>
+    {/* RELATORIO — clicável */}
+    <Card onClick={()=>setSub("reports")} style={{ marginTop:8, cursor:"pointer", background:`linear-gradient(135deg, ${LIME}06, ${C.card})`, border:`1px solid ${LIME}15` }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:44, height:44, borderRadius:14, background:`${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(C.mut) : IC.content(C.mut)}</div>
-        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:11, color:C.mut }}>ROAS 4.2x · 280 leads</p></div>
+        <div style={{ width:44, height:44, borderRadius:14, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div>
+        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:11, color:C.mut }}>Confira a performance completa do mês</p></div>
         <Tag color={LIME}>Novo</Tag>
       </div>
     </Card>
@@ -14580,15 +14617,18 @@ function MainClientApp({ user, onLogout, dark }) {
       const items = (articles.length > 0 ? articles : (articlesLoaded ? fallback : [])).slice(0,3);
       if (items.length === 0) return null;
       return <>
-        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>News</p>
-        {items[0] && <div style={{borderRadius:18,overflow:"hidden",marginBottom:10,position:"relative",height:170}}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 0 8px" }}>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase", marginTop:16 }}>News</p>
+          <span onClick={()=>setSub("news")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer", marginTop:16 }}>Ver todas →</span>
+        </div>
+        {items[0] && <div onClick={()=>setSub("news")} style={{borderRadius:18,overflow:"hidden",marginBottom:10,position:"relative",height:170,cursor:"pointer"}}>
           <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
           <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
           <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[items[0].cat]||"Geral"}</span>
           <div style={{position:"absolute",bottom:14,left:14,right:14}}><p style={{fontSize:14,fontWeight:800,color:"#fff",lineHeight:1.3}}>{items[0].title}</p></div>
         </div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          {items.slice(1,3).map((a,i) => <div key={a.id||i} style={{borderRadius:14,overflow:"hidden",position:"relative",height:100}}>
+          {items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{borderRadius:14,overflow:"hidden",position:"relative",height:100,cursor:"pointer"}}>
             <img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
             <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
             <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
@@ -14623,7 +14663,7 @@ function MainClientApp({ user, onLogout, dark }) {
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
       <div className="content" ref={scrollRef} onScroll={e=>setHeaderC(e.currentTarget.scrollTop>60)}>
-        <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />
+        {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />}
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
