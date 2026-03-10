@@ -536,6 +536,15 @@ const supaSetSetting = async (key, value) => {
     return true;
   } catch(e) { console.error("[setSetting] CATCH:", key, e); return false; }
 };
+/* ── Asaas Integration Helper ── */
+const asaasCall = async (action, data = {}) => {
+  if (!supabase) return { error: "supabase not initialized" };
+  try {
+    const { data: result, error } = await supabase.functions.invoke("asaas-proxy", { body: { action, data } });
+    if (error) { console.error("[Asaas]", action, error); return { error: error.message }; }
+    return result;
+  } catch(e) { console.error("[Asaas]", action, e); return { error: e.message }; }
+};
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
   try {
@@ -14305,6 +14314,22 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
   const [metricsSlide, setMetricsSlide] = useState(0);
   const [finView, setFinView] = useState("main");
+  const [asaasPayments, setAsaasPayments] = useState([]);
+  const [asaasLoading, setAsaasLoading] = useState(false);
+  const [asaasPixData, setAsaasPixData] = useState(null);
+  const [asaasBoletoData, setAsaasBoletoData] = useState(null);
+  /* Load Asaas payments when financial tab opens */
+  useEffect(() => {
+    if (sub !== "financial" || !supabase) return;
+    (async () => {
+      const cl = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase());
+      if (!cl?.asaas_customer_id) return;
+      setAsaasLoading(true);
+      const result = await asaasCall("list_payments", { customer: cl.asaas_customer_id, limit: "20" });
+      if (result?.data) setAsaasPayments(result.data);
+      setAsaasLoading(false);
+    })();
+  }, [sub]);
   const [editMode, setEditMode] = useState(false);
   const [editTypes, setEditTypes] = useState([]);
   const [editComment, setEditComment] = useState("");
@@ -14527,6 +14552,63 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     const plan = PLAN_INFO[myClient.plan] || PLAN_INFO.free;
     const monthlyVal = myClient.monthly_value ? `R$ ${Number(myClient.monthly_value).toLocaleString("pt-BR")}` : "Gratuito";
 
+    /* Load Asaas payments */
+    const loadAsaasPayments = async () => {
+      if (!myClient.asaas_customer_id) return;
+      setAsaasLoading(true);
+      const result = await asaasCall("list_payments", { customer: myClient.asaas_customer_id, limit: "20" });
+      if (result?.data) setAsaasPayments(result.data);
+      setAsaasLoading(false);
+    };
+
+    const getPixQR = async (paymentId) => {
+      setAsaasPixData(null);
+      const result = await asaasCall("pix_qrcode", { paymentId });
+      if (result?.encodedImage) setAsaasPixData({ ...result, paymentId });
+      else showToast("Pix não disponível para esta cobrança");
+    };
+
+    const getBoleto = async (paymentId) => {
+      setAsaasBoletoData(null);
+      const result = await asaasCall("boleto_barcode", { paymentId });
+      if (result?.identificationField) setAsaasBoletoData({ ...result, paymentId });
+      else showToast("Boleto não disponível para esta cobrança");
+    };
+
+    const statusLabel = (s) => ({ PENDING:"Pendente", RECEIVED:"Pago", CONFIRMED:"Confirmado", OVERDUE:"Vencido", REFUNDED:"Estornado", RECEIVED_IN_CASH:"Pago (dinheiro)" }[s] || s);
+    const statusColor = (s) => ({ PENDING:B.orange||"#F59E0B", RECEIVED:B.green, CONFIRMED:B.green, OVERDUE:B.red||"#FF6B6B", REFUNDED:B.muted }[s] || B.muted);
+
+    /* ── Pix QR code view ── */
+    if (finView === "pix" && asaasPixData) return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="Pagar com Pix" onBack={() => { setFinView("main"); setAsaasPixData(null); }} />
+        <div className="content" style={{ padding:"0 16px", textAlign:"center" }}>
+          <Card style={{ padding:24 }}>
+            <p style={{ fontSize:14, fontWeight:700, marginBottom:16 }}>Escaneie o QR Code ou copie o código</p>
+            <img src={`data:image/png;base64,${asaasPixData.encodedImage}`} alt="QR Code Pix" style={{ width:220, height:220, margin:"0 auto", display:"block", borderRadius:12 }} />
+            <div style={{ marginTop:16, padding:12, background:B.bg, borderRadius:10, wordBreak:"break-all", fontSize:11, color:B.muted, fontFamily:"monospace" }}>{asaasPixData.payload}</div>
+            <button onClick={() => { navigator.clipboard.writeText(asaasPixData.payload); showToast("Código Pix copiado!"); }} style={{ marginTop:12, width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Copiar código Pix</button>
+            <p style={{ fontSize:10, color:B.muted, marginTop:12 }}>Após o pagamento, o status será atualizado automaticamente.</p>
+          </Card>
+        </div>
+      </div>
+    );
+
+    /* ── Boleto view ── */
+    if (finView === "boleto" && asaasBoletoData) return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="Boleto" onBack={() => { setFinView("main"); setAsaasBoletoData(null); }} />
+        <div className="content" style={{ padding:"0 16px", textAlign:"center" }}>
+          <Card style={{ padding:24 }}>
+            <p style={{ fontSize:14, fontWeight:700, marginBottom:16 }}>Linha digitável do boleto</p>
+            <div style={{ padding:14, background:B.bg, borderRadius:10, fontSize:13, fontFamily:"monospace", wordBreak:"break-all", lineHeight:1.6, letterSpacing:0.5 }}>{asaasBoletoData.identificationField}</div>
+            <button onClick={() => { navigator.clipboard.writeText(asaasBoletoData.identificationField); showToast("Código de barras copiado!"); }} style={{ marginTop:12, width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Copiar código de barras</button>
+            {asaasBoletoData.nossoNumero && <p style={{ fontSize:10, color:B.muted, marginTop:12 }}>Nosso número: {asaasBoletoData.nossoNumero}</p>}
+          </Card>
+        </div>
+      </div>
+    );
+
     if (finView === "plans") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
         <Head title="Nossos Planos" onBack={() => setFinView("main")} />
@@ -14597,11 +14679,42 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
           <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>O que inclui</p>
           {plan.features.map((item,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{item}</span></div>)}
         </Card>
-        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Faturas recentes</p>
-        <Card style={{ textAlign:"center", padding:24 }}>
-          <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Nenhuma fatura disponível</p>
-          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Suas faturas aparecerão aqui quando disponíveis.</p>
-        </Card>
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Faturas</p>
+        {!myClient.asaas_customer_id ? (
+          <Card style={{ textAlign:"center", padding:24 }}>
+            <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Integração Asaas não configurada</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>A agência precisa vincular seu cadastro ao Asaas para habilitar pagamentos online.</p>
+          </Card>
+        ) : asaasLoading ? (
+          <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, color:B.muted }}>Carregando faturas...</p></Card>
+        ) : asaasPayments.length === 0 ? (
+          <Card style={{ textAlign:"center", padding:24 }}>
+            <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Nenhuma fatura encontrada</p>
+            <button onClick={loadAsaasPayments} style={{ marginTop:10, padding:"8px 20px", borderRadius:10, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.accent }}>Verificar novamente</button>
+          </Card>
+        ) : (
+          <>
+            {asaasPayments.map((p,i) => (
+              <Card key={p.id} style={{ marginBottom:6 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                  <div>
+                    <p style={{ fontSize:13, fontWeight:600 }}>{p.description || "Fatura"}</p>
+                    <p style={{ fontSize:11, color:B.muted }}>Venc: {new Date(p.dueDate+"T12:00").toLocaleDateString("pt-BR")} · R$ {Number(p.value).toLocaleString("pt-BR",{minimumFractionDigits:2})}</p>
+                  </div>
+                  <Tag color={statusColor(p.status)}>{statusLabel(p.status)}</Tag>
+                </div>
+                {(p.status === "PENDING" || p.status === "OVERDUE") && (
+                  <div style={{ display:"flex", gap:6 }}>
+                    {(p.billingType === "PIX" || p.billingType === "UNDEFINED") && <button onClick={() => { getPixQR(p.id); setFinView("pix"); }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:`${B.green}10`, border:`1.5px solid ${B.green}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.green }}>Pix</button>}
+                    {(p.billingType === "BOLETO" || p.billingType === "UNDEFINED") && <button onClick={() => { getBoleto(p.id); setFinView("boleto"); }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:`${B.blue||"#3B82F6"}10`, border:`1.5px solid ${B.blue||"#3B82F6"}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.blue||"#3B82F6" }}>Boleto</button>}
+                    {p.invoiceUrl && <button onClick={() => window.open(p.invoiceUrl, "_blank")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent }}>Pagar</button>}
+                  </div>
+                )}
+                {p.status === "RECEIVED" && p.confirmedDate && <p style={{ fontSize:10, color:B.green, marginTop:2 }}>Pago em {new Date(p.confirmedDate).toLocaleDateString("pt-BR")}</p>}
+              </Card>
+            ))}
+          </>
+        )}
         <Card style={{ marginTop:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
           <p style={{ fontSize:14, fontWeight:700 }}>Quer mais resultados?</p>
           <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Faça upgrade e tenha acesso a tráfego pago, produção audiovisual e muito mais.</p>
