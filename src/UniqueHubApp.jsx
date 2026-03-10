@@ -1387,7 +1387,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
   }}>
     {collapsed ? (
       <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 20px" }}>
-        {onBack && <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", color:B.text, padding:0, flexShrink:0 }}>{IC.back()}</button>}
+        {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}`, flexShrink:0 }}>{IC.back()}</button>}
         <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           {typeof icon === "function" ? icon(B.accent) : icon}
         </div>
@@ -1401,7 +1401,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
       </div>
     ) : (
       <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
-        {onBack && <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", color:B.text, padding:0, marginBottom:8 }}>{IC.back()}</button>}
+        {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}`, marginBottom:8 }}>{IC.back()}</button>}
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:stats.length?16:0 }}>
           <div>
             <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>{label}</p>
@@ -11517,7 +11517,7 @@ function IdeasPage({ onBack, user, clients: propClients }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC} />
+      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC} onBack={onBack} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       
       {/* Stats */}
@@ -14205,9 +14205,7 @@ function ClientOnboarding({ onComplete, onBack }) {
     <div className="app" style={{ background:"#F5F5F5", color:"#1A1D23" }}>
       {/* Header */}
       <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:"#1A1D23" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
+        <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}` }}>{IC.back()}</button>
         <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><circle cx="12" cy="21" r="1"/></svg>
         </div>
