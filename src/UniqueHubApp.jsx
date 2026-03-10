@@ -14340,16 +14340,55 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     try {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
       const updatePayload = { steps: JSON.stringify(steps) };
-      /* When client approves, advance stage to published (scheduled or immediate) */
       if (status === "approved") {
         updatePayload.stage = "published";
       }
       await supabase.from("demands").update(updatePayload).eq("id", demand.id);
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: status === "approved" ? "published" : d.stage } : d));
-      showToast(status === "approved" ? "Conteúdo aprovado! Será publicado conforme agendado." : status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
+
+      /* ── Auto-publish via Meta API when client approves ── */
+      if (status === "approved") {
+        const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.editing?.files||[])];
+        const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+        if (imgFiles.length > 0) {
+          const imgUrls = imgFiles.map(f => f.url);
+          const caption = demand.steps?.caption?.text || demand.title || "";
+          const hashtags = demand.steps?.caption?.hashtags || "";
+          const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption;
+          const scheduling = demand.scheduling || {};
+          const schedTs = getScheduledTimestamp(scheduling);
+          const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
+          const clientId = demand.client_id || demand.id;
+          const isStories = (demand.format||"").toLowerCase() === "stories";
+
+          /* Try Instagram */
+          if (networks.some(n => n.includes("instagram"))) {
+            const type = isStories ? "STORIES" : "FEED";
+            const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, type, schedTs);
+            if (r?.error) { console.warn("Auto-publish IG:", r.error); }
+            else {
+              const pubSteps = { ...steps, igPublished: { platform:"instagram", type, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs } };
+              await supabase.from("demands").update({ steps: JSON.stringify(pubSteps) }).eq("id", demand.id);
+              showToast(schedTs ? "✓ Aprovado e agendado no Instagram!" : "✓ Aprovado e publicado no Instagram!");
+            }
+          }
+          /* Try Facebook */
+          if (networks.some(n => n.includes("facebook"))) {
+            const r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+            if (r?.error) { console.warn("Auto-publish FB:", r.error); }
+            else { showToast(schedTs ? "✓ Aprovado e agendado no Facebook!" : "✓ Aprovado e publicado no Facebook!"); }
+          }
+        }
+      }
+
+      if (status !== "approved") {
+        showToast(status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
+      } else if (!showToast._called) {
+        showToast("Conteúdo aprovado! Será publicado conforme agendado.");
+      }
       supaCreateNotificationForAll("post_approved", status === "approved" ? "Cliente aprovou post" : status === "revision" ? "Cliente pediu edição" : "Cliente reprovou post", demand.title, null, null);
       setSub(null);
-    } catch(e) { showToast("Erro ao responder"); }
+    } catch(e) { console.error("respondDemand error:", e); showToast("Erro ao responder"); }
   };
 
   const goTab = (k) => { setTab(k); setSub(null); setHeaderC(false); };
