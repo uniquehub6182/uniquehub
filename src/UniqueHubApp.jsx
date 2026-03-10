@@ -10022,7 +10022,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
   );
 }
 
-function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
+function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientView }) {
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [tab, setTab] = useState("overview");
@@ -10413,7 +10413,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   /* ── MAIN REPORTS ── */
   const TABS = [
     { k:"overview", l:"Visão Geral", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> },
-    { k:"clients", l:"Por Cliente", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> },
+    ...(!isClientView ? [{ k:"clients", l:"Por Cliente", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> }] : []),
     { k:"instagram", l:"Instagram", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> },
     { k:"facebook", l:"Facebook", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg> },
   ];
@@ -10421,7 +10421,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" collapsed={pgC} stats={[]} />
+      <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" collapsed={pgC} stats={[]} onBack={isClientView ? onBack : undefined} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Tab selector */}
@@ -10460,14 +10460,14 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
           <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>{dateSince} → {dateUntil}</p>
         </Card>
 
-        {/* Status bar */}
-        <Card style={{ marginBottom:12, padding:10, background:`${totals.connectedCount > 0 ? B.green : B.orange}06`, border:`1px solid ${totals.connectedCount > 0 ? B.green : B.orange}15` }}>
+        {/* Status bar — hidden for client view */}
+        {!isClientView && <Card style={{ marginBottom:12, padding:10, background:`${totals.connectedCount > 0 ? B.green : B.orange}06`, border:`1px solid ${totals.connectedCount > 0 ? B.green : B.orange}15` }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ width:8, height:8, borderRadius:4, background:totals.connectedCount > 0 ? B.green : B.orange }} />
             <p style={{ fontSize:11, color:B.text }}><strong>{totals.connectedCount}</strong> de <strong>{CDATA.length}</strong> clientes com API conectada</p>
             {totals.connectedCount === 0 && <span style={{ fontSize:10, color:B.muted }}> · Conecte redes sociais na aba de Clientes</span>}
           </div>
-        </Card>
+        </Card>}
 
         {/* ── OVERVIEW TAB ── */}
         {tab === "overview" && <>
@@ -14283,7 +14283,7 @@ function MainClientApp({ user, onLogout, dark }) {
   if (sub === "ideas") return <SubWrap title="Ideias"><IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /></SubWrap>;
   if (sub === "ai") return <SubWrap title="Assistente IA"><AIPage onBack={() => setSub(null)} user={user} /></SubWrap>;
   if (sub === "help") return <SubWrap title="Ajuda"><HelpPage onBack={() => setSub(null)} /></SubWrap>;
-  if (sub === "reports") return <SubWrap title="Relatórios"><ReportsPage onBack={() => setSub(null)} clients={clients} team={team} /></SubWrap>;
+  if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; }
   if (sub === "settings") return <SubWrap title="Configurações"><SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /></SubWrap>;
   if (sub === "financial") return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
