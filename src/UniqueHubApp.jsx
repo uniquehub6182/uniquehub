@@ -6569,6 +6569,19 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             {/* Caption preview */}
             {caption && <p style={{ fontSize:12, color:B.text, marginTop:8, lineHeight:1.5, opacity:0.75, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
 
+            {/* Client response indicator */}
+            {d.steps?.client?.status === "revision" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25` }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.orange||"#F59E0B" }}>Cliente pediu edição</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps.client.feedback?.substring(0,60)}{(d.steps.client.feedback?.length||0)>60?"...":""}</p></div>
+            </div>}
+            {d.steps?.client?.status === "approved" && d.stage === "client" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1.5px solid ${B.green}25` }}>
+              {IC.check}<div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Cliente aprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pronto para publicar · {d.steps.client.respondedBy||""}</p></div>
+            </div>}
+            {d.steps?.client?.status === "rejected" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${(B.red||"#FF6B6B")}08`, border:`1.5px solid ${(B.red||"#FF6B6B")}25` }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.red||"#FF6B6B" }}>Cliente reprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps.client.feedback?.substring(0,60)||""}</p></div>
+            </div>}
+
             {/* Stage progress */}
             <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
               <div style={{ width:8, height:8, borderRadius:4, background:STAGE_CFG[d.stage].c, flexShrink:0 }} />
