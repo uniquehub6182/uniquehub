@@ -14227,14 +14227,20 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     if (!supabase || demandsLoaded || !user?.id) return;
     (async () => {
       try {
-        const { data: clients } = await supabase.from("clients").select("id, name");
-        const { data: allDemands } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
-        const clientNames = (clients||[]).map(c => c.name);
-        setDemands((allDemands||[]).filter(d => clientNames.some(cn => cn.toLowerCase() === (d.client_name||d.client||"").toLowerCase())).map(d => ({
-          id: d.id, title: d.title, type: d.type, client: d.client_name || d.client,
+        /* Find which client record belongs to this logged-in user (match by email or company name) */
+        const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
+        const myClient = (allClients||[]).find(c => 
+          (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase() ||
+          (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase()
+        );
+        if (!myClient) { console.warn("[Client] No matching client record for", user?.email); setDemandsLoaded(true); return; }
+        /* Load demands for THIS client only */
+        const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
+        setDemands((clientDemands||[]).map(d => ({
+          id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id,
           stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}),
           files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]),
-          network: d.network, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "",
+          network: (d.networks||[])[0] || d.type, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "",
         })));
       } catch(e) { console.error("Client demands:", e); }
       setDemandsLoaded(true);
