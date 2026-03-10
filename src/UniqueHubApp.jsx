@@ -14176,8 +14176,6 @@ function MainClientApp({ user, onLogout, dark }) {
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
-  const [metaInfoOpen, setMetaInfoOpen] = useState(false);
-  const [metricsSlide, setMetricsSlide] = useState(0);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -14391,9 +14389,14 @@ function MainClientApp({ user, onLogout, dark }) {
   const inProduction = demands.filter(d => !["published","completed"].includes(d.stage) && d.steps?.client?.status !== "approved");
   const nav = (k) => goTab(k);
 
-  const growthScore = 78;
-  const growthDelta = 6;
-  const growthZone = "Estratégica";
+  /* ═══ DASHBOARD CONFIG ═══ */
+  const CLIENT_SECTIONS = { meta:"Meta do Mês", growth:"Growth Score", aprovacao:"Aprovações", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz", relatorio:"Relatório", news:"Notícias" };
+  const CLIENT_DASH_DEFAULT = ["meta","growth","aprovacao","posts","metricas","match","relatorio","news"];
+  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); return s ? JSON.parse(s) : CLIENT_DASH_DEFAULT; } catch { return CLIENT_DASH_DEFAULT; } });
+  const [showDashEdit, setShowDashEdit] = useState(false);
+  const [editSections, setEditSections] = useState([]);
+
+  const growthScore = 78, growthDelta = 6, growthZone = "Estratégica";
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
   const metricsData = [
     { network:"Instagram", metrics:[{l:"Alcance",v:"847K",d:"+18%"},{l:"Engajamento",v:"12.4%",d:"+3.2%"},{l:"Seguidores",v:"15.2K",d:"+420"},{l:"Salvamentos",v:"1.8K",d:"+32%"}] },
@@ -14401,200 +14404,147 @@ function MainClientApp({ user, onLogout, dark }) {
     { network:"Google Ads", metrics:[{l:"Impressões",v:"1.2M",d:"+22%"},{l:"Cliques",v:"18K",d:"+31%"},{l:"ROAS",v:"4.8x",d:"+0.6"},{l:"Conversões",v:"342",d:"+28%"}] },
   ];
 
-  const renderHome = () => <>
-    {/* HEADER */}
-    <div style={{ background:isDark?"#0D0D0D":"#fff", margin:"-14px -16px 0", padding:"20px 20px 20px", borderRadius:"0 0 28px 28px", boxShadow:isDark?"none":"0 4px 20px rgba(0,0,0,0.05)" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <Av name={user.name||"C"} src={user.photo} sz={48} fs={18} />
-          <div>
-            <p style={{ fontSize:18, fontWeight:900, color:C.txt }}>{greeting}, {(user.name||"Cliente").split(" ")[0]}</p>
-            <p style={{ fontSize:11, color:C.mut }}>UniqueHub · Seu marketing em dia</p>
-          </div>
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-          <div onClick={()=>goTab("chat")} style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.chat(C.mut)}</div>
-          <div onClick={()=>setSub("settings")} style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.settings(C.mut)}</div>
-        </div>
-      </div>
-    </div>
-
-    {/* META DO MES — clicável com info */}
-    <Card style={{ marginTop:12, padding:0, overflow:"hidden", cursor:"pointer" }} onClick={()=>setMetaInfoOpen(!metaInfoOpen)}>
-      <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
+  const renderDashSection = (key) => {
+    if (key === "meta") return <Card key="meta" style={{ padding:0, overflow:"hidden", cursor:"pointer" }} onClick={()=>setMetaInfoOpen(!metaInfoOpen)}>
+      <div style={{ background:isDark?"#111":"#0D0D0D", padding:"16px 18px", color:"#fff" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
-          <div style={{ width:20, height:20, borderRadius:6, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="3" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
         </div>
-        <div style={{ display:"flex", alignItems:"baseline", gap:10, marginTop:8 }}>
-          <span style={{ fontSize:40, fontWeight:900, color:LIME }}>{monthGoal.pct}%</span>
-          <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</span>
+        <div style={{ display:"flex", alignItems:"baseline", gap:8, marginTop:6 }}>
+          <span style={{ fontSize:36, fontWeight:900, color:LIME }}>{monthGoal.pct}%</span>
+          <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</span>
         </div>
-        <div style={{ height:6, borderRadius:3, background:"rgba(255,255,255,0.1)", marginTop:10 }}>
-          <div style={{ height:6, borderRadius:3, background:LIME, width:`${monthGoal.pct}%`, boxShadow:`0 0 8px ${LIME}40` }} />
+        <div style={{ height:5, borderRadius:3, background:"rgba(255,255,255,0.08)", marginTop:8 }}>
+          <div style={{ height:5, borderRadius:3, background:LIME, width:`${monthGoal.pct}%` }} />
         </div>
       </div>
-      {metaInfoOpen && <div style={{ padding:"14px 20px", borderTop:`1px solid ${C.brd}` }}>
-        <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>O que é a Meta Mensal?</p>
-        <p style={{ fontSize:11, color:C.mut, lineHeight:1.6 }}>A meta mensal é definida em conjunto com a agência e representa o objetivo de crescimento do seu negócio. Pode ser em leads, vendas, seguidores ou outra métrica relevante para o seu momento.</p>
-        <button onClick={(e)=>{e.stopPropagation();setSub("reports");}} style={{ marginTop:10, padding:"8px 16px", borderRadius:10, background:`${LIME}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:LIME }}>Ver relatório completo →</button>
+      {metaInfoOpen && <div style={{ padding:"12px 18px", borderTop:`1px solid ${C.brd}` }}>
+        <p style={{ fontSize:12, fontWeight:600, marginBottom:4 }}>O que é a Meta Mensal?</p>
+        <p style={{ fontSize:11, color:C.mut, lineHeight:1.5 }}>Objetivo definido com a agência para medir o crescimento do seu negócio — pode ser leads, vendas, seguidores ou outra métrica.</p>
+        <button onClick={(e)=>{e.stopPropagation();setSub("reports");}} style={{ marginTop:8, padding:"7px 14px", borderRadius:8, background:`${LIME}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:LIME }}>Ver relatório completo →</button>
       </div>}
-    </Card>
+    </Card>;
 
-    {/* GROWTH SCORE — com explicações */}
-    <Card onClick={()=>setSub("gamify")} style={{ marginTop:8, cursor:"pointer" }}>
+    if (key === "growth") return <Card key="growth" onClick={()=>setSub("gamify")} style={{ cursor:"pointer" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <div>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <p style={{ fontSize:12, fontWeight:700 }}>Growth Score</p>
-            <span style={{ fontSize:9, color:C.mut, background:`${C.mut}10`, padding:"2px 6px", borderRadius:4 }}>Índice de Crescimento</span>
-          </div>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:8 }}>
-            <span style={{ fontSize:32, fontWeight:900, color:LIME }}>{growthScore}</span>
-            <span style={{ fontSize:11, color:C.mut }}>/100 pts</span>
-            <span style={{ fontSize:11, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>+{growthDelta} este mês</span>
-          </div>
-          <p style={{ fontSize:10, color:C.mut, marginTop:4 }}>Posição #4 entre 23 clientes da agência</p>
-          <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, background:`${LIME}10`, padding:"3px 8px", borderRadius:6 }}>
-            <div style={{ width:6, height:6, borderRadius:3, background:LIME }} />
-            <span style={{ fontSize:10, fontWeight:600, color:LIME }}>Zona {growthZone} (61-80 pts)</span>
-          </div>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}><span style={{ fontSize:12, fontWeight:700 }}>Growth Score</span><span style={{ fontSize:9, color:C.mut, background:`${C.mut}10`, padding:"2px 6px", borderRadius:4 }}>Índice de Crescimento</span></div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:6 }}><span style={{ fontSize:28, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:10, color:C.mut }}>/100 pts</span><span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"1px 5px", borderRadius:4 }}>+{growthDelta}</span></div>
+          <p style={{ fontSize:9, color:C.mut, marginTop:3 }}>Posição #4 entre 23 clientes · <span style={{ color:LIME, fontWeight:600 }}>Zona {growthZone}</span></p>
         </div>
-        <div style={{ width:52, height:52, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          <span style={{ fontSize:16, fontWeight:900, color:LIME }}>{growthScore}</span>
-        </div>
+        <div style={{ width:46, height:46, borderRadius:"50%", border:`2.5px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:15, fontWeight:900, color:LIME }}>{growthScore}</span></div>
       </div>
-      <div style={{ display:"flex", gap:6, marginTop:14 }}>
-        {[{n:"Execução",v:82,c:"#10B981"},{n:"Estratégia",v:74,c:"#BBF246"},{n:"Educação",v:65,c:"#F59E0B"},{n:"Ecossistema",v:58,c:"#EF4444"},{n:"Crescimento",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-            <span style={{ fontSize:7, color:C.mut }}>{p.n}</span>
-            <span style={{ fontSize:7, fontWeight:700, color:p.c }}>{p.v}%</span>
-          </div>
-          <div style={{ height:4, borderRadius:2, background:`${p.c}15` }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div>
-        </div>)}
+      <div style={{ display:"flex", gap:4, marginTop:10 }}>
+        {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:3, borderRadius:2, background:`${p.c}15` }}><div style={{ height:3, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div><div style={{ display:"flex", justifyContent:"space-between", marginTop:2 }}><span style={{ fontSize:7, color:C.mut }}>{p.n}</span><span style={{ fontSize:7, fontWeight:600, color:p.c }}>{p.v}%</span></div></div>)}
       </div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, paddingTop:8, borderTop:`1px solid ${C.brd}` }}>
-        <span style={{ fontSize:10, color:C.mut }}>4 missões pendentes</span>
-        <span style={{ fontSize:10, color:LIME, fontWeight:600 }}>Ver detalhes →</span>
-      </div>
-    </Card>
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, paddingTop:6, borderTop:`1px solid ${C.brd}` }}><span style={{ fontSize:9, color:C.mut }}>4 missões pendentes</span><span style={{ fontSize:9, color:LIME, fontWeight:600 }}>Ver detalhes →</span></div>
+    </Card>;
 
-    {/* PENDING ALERT */}
-    {pendingApproval.length > 0 && <Card onClick={()=>nav("content")} style={{ marginTop:8, cursor:"pointer", borderLeft:`3px solid ${LIME}` }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <span style={{ color:LIME }}>{IC.check}</span>
-        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{pendingApproval.length} post{pendingApproval.length>1?"s":""} para aprovar</p><p style={{ fontSize:11, color:C.mut }}>Toque para revisar</p></div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </Card>}
+    if (key === "aprovacao" && pendingApproval.length > 0) return <Card key="aprovacao" onClick={()=>nav("content")} style={{ cursor:"pointer", borderLeft:`3px solid ${LIME}` }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}><div style={{ width:32, height:32, borderRadius:10, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.check}</div><div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{pendingApproval.length} post{pendingApproval.length>1?"s":""} para aprovar</p><p style={{ fontSize:10, color:C.mut }}>Toque para revisar</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </Card>;
 
-    {/* POSTS RECENTES */}
-    {demands.length > 0 && <>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"18px 0 10px" }}>
-        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Posts recentes</p>
-        <span onClick={()=>nav("content")} style={{ fontSize:11, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todos →</span>
-      </div>
-      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", marginRight:-16, paddingRight:16 }}>
-        {demands.slice(0,6).map((d,i) => {
-          const st = d.steps?.client?.status;
-          const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?B.orange||"#F59E0B":C.mut;
-          const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Em Análise":"Em produção";
+    if (key === "posts" && demands.length > 0) return <div key="posts">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 8px" }}><p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Posts recentes</p><span onClick={()=>nav("content")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todos →</span></div>
+      <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", marginRight:-16, paddingRight:16 }}>
+        {demands.slice(0,5).map((d) => {
+          const st = d.steps?.client?.status; const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
+          const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
           const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:180, borderRadius:16, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
-            <div style={{ height:120, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}20, ${stColor}08)`, position:"relative" }}>
-              {!imgs[0] && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.content(stColor)}</div>}
-              <div style={{ position:"absolute", bottom:8, left:8, right:8 }}><p style={{ fontSize:11, fontWeight:700, color:"#fff", textShadow:"0 1px 4px rgba(0,0,0,0.6)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div>
-            </div>
-            <div style={{ padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontSize:10, color:C.mut }}>{d.createdAt}</span>
-              <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:9, fontWeight:600, color:stColor }}>{stLabel}</span></div>
-            </div>
+          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:150, borderRadius:14, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
+            <div style={{ height:100, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}15, ${C.card})`, position:"relative" }}>{!imgs[0]&&<div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}>{IC.content(stColor)}</div>}<div style={{ position:"absolute", bottom:6, left:6, right:6 }}><p style={{ fontSize:10, fontWeight:600, color:"#fff", textShadow:"0 1px 3px rgba(0,0,0,0.5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div></div>
+            <div style={{ padding:"6px 8px", display:"flex", justifyContent:"space-between", alignItems:"center" }}><span style={{ fontSize:8, color:C.mut }}>{d.createdAt}</span><div style={{ display:"flex", alignItems:"center", gap:2 }}><div style={{ width:4, height:4, borderRadius:2, background:stColor }} /><span style={{ fontSize:7, fontWeight:600, color:stColor }}>{stLabel}</span></div></div>
           </div>;
         })}
       </div>
-    </>}
+    </div>;
 
-    {/* MATCH4BIZ — chamativo */}
-    <Card onClick={()=>setSub("match4biz")} style={{ marginTop:12, cursor:"pointer", padding:0, overflow:"hidden" }}>
-      <div style={{ background:`linear-gradient(135deg, #8B5CF615, ${LIME}08)`, padding:"18px 20px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #8B5CF630, #BBF24630)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          </div>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:16, fontWeight:800 }}>Match4Biz</p>
-            <p style={{ fontSize:11, color:C.mut, lineHeight:1.4, marginTop:2 }}>Encontre parceiros de negócios entre os clientes da agência. Conecte-se e cresça junto!</p>
-            <div style={{ display:"flex", gap:6, marginTop:6 }}><Tag color={LIME}>3 matches</Tag><Tag color="#8B5CF6">6 empresas</Tag></div>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    if (key === "metricas") return <div key="metricas">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 8px" }}><p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Métricas</p><span onClick={()=>setSub("reports")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver tudo →</span></div>
+      <div style={{ display:"flex", gap:6, marginBottom:8 }}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"5px 12px", borderRadius:8, border:metricsSlide===i?"none":`1px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:10, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>{md.network}</button>)}</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>{metricsData[metricsSlide]?.metrics.map((m,i) => <Card key={i} onClick={()=>setSub("reports")} style={{ padding:12, cursor:"pointer" }}><span style={{ fontSize:8, fontWeight:600, letterSpacing:0.8, color:C.mut, textTransform:"uppercase" }}>{m.l}</span><div style={{ display:"flex", alignItems:"baseline", gap:4, marginTop:4 }}><span style={{ fontSize:18, fontWeight:900, color:C.txt }}>{m.v}</span><span style={{ fontSize:9, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"1px 5px", borderRadius:4 }}>{m.d}</span></div></Card>)}</div>
+    </div>;
+
+    if (key === "match") return <Card key="match" onClick={()=>setSub("match4biz")} style={{ cursor:"pointer", padding:0, overflow:"hidden" }}>
+      <div style={{ background:`linear-gradient(135deg, #8B5CF610, ${LIME}06)`, padding:"14px 16px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:14, background:"linear-gradient(135deg, #8B5CF625, #BBF24625)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Match4Biz</p><p style={{ fontSize:10, color:C.mut, marginTop:2 }}>Encontre parceiros entre clientes da agência</p></div>
+          <div style={{ display:"flex", gap:4 }}><Tag color={LIME}>3</Tag><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
       </div>
-    </Card>
+    </Card>;
 
-    {/* MÉTRICAS — swipe por rede social */}
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 0 8px" }}>
-      <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Métricas das redes</p>
-      <span onClick={()=>setSub("reports")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver tudo →</span>
-    </div>
-    <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-      {metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"6px 14px", borderRadius:10, border:metricsSlide===i?"none":`1px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:11, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{md.network}</button>)}
-    </div>
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-      {metricsData[metricsSlide]?.metrics.map((m,i) => (
-        <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer" }}>
-          <span style={{ fontSize:9, fontWeight:600, letterSpacing:1, color:C.mut, textTransform:"uppercase" }}>{m.l}</span>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:6 }}>
-            <span style={{ fontSize:20, fontWeight:900, color:C.txt }}>{m.v}</span>
-            <span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>{m.d}</span>
-          </div>
-        </Card>
-      ))}
-    </div>
+    if (key === "relatorio") return <Card key="relatorio" onClick={()=>setSub("reports")} style={{ cursor:"pointer" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}><div style={{ width:38, height:38, borderRadius:12, background:`${LIME}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div><div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>Relatório de Fevereiro</p><p style={{ fontSize:10, color:C.mut }}>Performance completa do mês</p></div><Tag color={LIME}>Novo</Tag></div>
+    </Card>;
 
-    {/* RELATORIO — clicável */}
-    <Card onClick={()=>setSub("reports")} style={{ marginTop:8, cursor:"pointer", background:`linear-gradient(135deg, ${LIME}06, ${C.card})`, border:`1px solid ${LIME}15` }}>
-      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:44, height:44, borderRadius:14, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div>
-        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:11, color:C.mut }}>Confira a performance completa do mês</p></div>
-        <Tag color={LIME}>Novo</Tag>
+    if (key === "news") { const catPhoto=(c)=>({"trends":"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80","updates":"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","tips":"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80"}[c]||"https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80"); const catColor={"trends":"#7C3AED","updates":"#2563EB","tips":"#D97706","cases":"#059669","novidade":"#EC4899","branding":"#8B5CF6","ia":"#6366F1"}; const catLabel={"trends":"Tendência","updates":"Atualização","tips":"Dica","cases":"Case","novidade":"Novidade","branding":"Branding","ia":"IA"};
+      const fb=[{id:"f1",title:"IA no Marketing: como usar em 2025",cat:"trends"},{id:"f2",title:"Instagram muda algoritmo do Reels",cat:"updates"},{id:"f3",title:"5 técnicas para dobrar o engajamento",cat:"tips"}];
+      const items = (articles.length>0?articles:(articlesLoaded?fb:[])).slice(0,3);
+      if (!items.length) return null;
+      return <div key="news">
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 8px" }}><p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>News</p><span onClick={()=>setSub("news")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todas →</span></div>
+        {items[0] && <div onClick={()=>setSub("news")} style={{ borderRadius:14, overflow:"hidden", marginBottom:8, position:"relative", height:140, cursor:"pointer" }}><img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)" }} /><span style={{ position:"absolute", top:10, left:10, background:catColor[items[0].cat]||"#6366F1", color:"#fff", fontSize:7, fontWeight:800, padding:"2px 8px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[items[0].cat]||"Geral"}</span><p style={{ position:"absolute", bottom:10, left:10, right:10, fontSize:12, fontWeight:700, color:"#fff", lineHeight:1.3 }}>{items[0].title}</p></div>}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>{items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{ borderRadius:12, overflow:"hidden", position:"relative", height:80, cursor:"pointer" }}><img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)" }} /><span style={{ position:"absolute", top:6, left:6, background:catColor[a.cat]||"#6366F1", color:"#fff", fontSize:6, fontWeight:800, padding:"1px 6px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[a.cat]||"Geral"}</span><p style={{ position:"absolute", bottom:6, left:6, right:6, fontSize:9, fontWeight:600, color:"#fff", lineHeight:1.2, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{a.title}</p></div>)}</div>
+      </div>;
+    }
+    return null;
+  };
+
+  const renderHome = () => <>
+    {/* HEADER */}
+    <div style={{ margin:"-14px -16px 0", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <Av name={user.name||"C"} src={user.photo} sz={42} fs={16} />
+        <div>
+          <p style={{ fontSize:16, fontWeight:800, color:C.txt }}>{greeting}, {(user.name||"Cliente").split(" ")[0]}</p>
+          <p style={{ fontSize:10, color:C.mut }}>UniqueHub · Seu marketing em dia</p>
+        </div>
       </div>
-    </Card>
+      <div style={{ display:"flex", gap:6 }}>
+        <div onClick={()=>setShowDashEdit(true)} style={{ width:32, height:32, borderRadius:10, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></div>
+        <div onClick={()=>goTab("chat")} style={{ width:32, height:32, borderRadius:10, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.chat(C.mut)}</div>
+        <div onClick={()=>setSub("settings")} style={{ width:32, height:32, borderRadius:10, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.settings(C.mut)}</div>
+      </div>
+    </div>
 
-    {/* NEWS */}
-    {(() => {
-      const catPhoto = (cat) => ({ trends:"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80", updates:"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80", tips:"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80", cases:"https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80" }[cat] || "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80");
-      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",novidade:"#EC4899",branding:"#8B5CF6",ia:"#6366F1"};
-      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",novidade:"Novidade",branding:"Branding",ia:"IA"};
-      const fallback = [{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA transformando campanhas digitais.",cat:"trends"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates"},{id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias para aumentar alcance.",cat:"tips"}];
-      const items = (articles.length > 0 ? articles : (articlesLoaded ? fallback : [])).slice(0,3);
-      if (items.length === 0) return null;
-      return <>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 0 8px" }}>
-          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase", marginTop:16 }}>News</p>
-          <span onClick={()=>setSub("news")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer", marginTop:16 }}>Ver todas →</span>
+    {/* SECTIONS */}
+    <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:8 }}>
+      {clientDashSections.map(sk => renderDashSection(sk))}
+    </div>
+    <div style={{ height:16 }} />
+
+    {/* DASH EDIT MODAL */}
+    {showDashEdit && <div style={{ position:"fixed", inset:0, zIndex:999, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end" }} onClick={()=>setShowDashEdit(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:C.card, borderRadius:"24px 24px 0 0", width:"100%", maxHeight:"70vh", overflowY:"auto", padding:"20px 20px calc(20px + env(safe-area-inset-bottom,0px))" }}>
+        <div style={{ width:40, height:4, borderRadius:2, background:C.brd, margin:"0 auto 16px" }} />
+        <p style={{ fontSize:16, fontWeight:800, marginBottom:4 }}>Personalizar Dashboard</p>
+        <p style={{ fontSize:11, color:C.mut, marginBottom:16 }}>Arraste para reordenar ou oculte seções</p>
+        {(editSections.length?editSections:clientDashSections).map((sk,i) => <div key={sk} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:C.bg, borderRadius:12, marginBottom:6, border:`1px solid ${C.brd}` }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:2, cursor:"grab", color:C.mut }}><div style={{ width:12, height:2, borderRadius:1, background:C.mut }} /><div style={{ width:12, height:2, borderRadius:1, background:C.mut }} /><div style={{ width:12, height:2, borderRadius:1, background:C.mut }} /></div>
+          <span style={{ flex:1, fontSize:13, fontWeight:600 }}>{CLIENT_SECTIONS[sk]||sk}</span>
+          <div style={{ display:"flex", gap:4 }}>
+            {i>0 && <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections)];[a[i-1],a[i]]=[a[i],a[i-1]];setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${C.mut}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="3" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>}
+            {i<(editSections.length?editSections:clientDashSections).length-1 && <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections)];[a[i],a[i+1]]=[a[i+1],a[i]];setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${C.mut}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>}
+            <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections)].filter(x=>x!==sk);setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${(B.red||"#FF6B6B")}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>)}
+        {/* Hidden sections */}
+        {Object.keys(CLIENT_SECTIONS).filter(k=>!(editSections.length?editSections:clientDashSections).includes(k)).map(sk => <div key={sk} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:`${C.mut}05`, borderRadius:12, marginBottom:6, border:`1px dashed ${C.brd}`, opacity:0.5 }}>
+          <span style={{ flex:1, fontSize:13, fontWeight:600 }}>{CLIENT_SECTIONS[sk]||sk}</span>
+          <button onClick={()=>{const a=[...(editSections.length?editSections:clientDashSections),sk];setEditSections(a);}} style={{ width:26, height:26, borderRadius:8, background:`${B.green}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>)}
+        <div style={{ display:"flex", gap:8, marginTop:12 }}>
+          <button onClick={()=>{setEditSections(CLIENT_DASH_DEFAULT);}} style={{ flex:1, padding:"11px 0", borderRadius:12, background:`${C.mut}08`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:C.mut }}>Restaurar</button>
+          <button onClick={()=>{const s=editSections.length?editSections:clientDashSections;setClientDashSections(s);try{localStorage.setItem("uh_client_dash",JSON.stringify(s));}catch{}setEditSections([]);setShowDashEdit(false);}} style={{ flex:1, padding:"11px 0", borderRadius:12, background:LIME, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Salvar</button>
         </div>
-        {items[0] && <div onClick={()=>setSub("news")} style={{borderRadius:18,overflow:"hidden",marginBottom:10,position:"relative",height:170,cursor:"pointer"}}>
-          <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
-          <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[items[0].cat]||"Geral"}</span>
-          <div style={{position:"absolute",bottom:14,left:14,right:14}}><p style={{fontSize:14,fontWeight:800,color:"#fff",lineHeight:1.3}}>{items[0].title}</p></div>
-        </div>}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          {items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{borderRadius:14,overflow:"hidden",position:"relative",height:100,cursor:"pointer"}}>
-            <img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
-            <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
-            <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
-          </div>)}
-        </div>
-      </>;
-    })()}
-    <div style={{ height:20 }} />
+      </div>
+    </div>}
   </>;
 
-    const renderContent = () => <>
+      const renderContent = () => <>
     {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprovação ({pendingApproval.length})</p>
       {pendingApproval.map(d => { const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")); return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
         <div style={{ display:"flex", gap:10 }}>
