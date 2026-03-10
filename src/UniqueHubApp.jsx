@@ -14275,6 +14275,11 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
+  const [editCfg, setEditCfg] = useState(null);
+  const CLIENT_CARDS_MAP = { meta:{l:"Meta do Mês"}, aprovacoes:{l:"Aprovações"}, growth:{l:"Growth Score"}, match:{l:"Match4Biz"} };
+  const CLIENT_PILLS_MAP = { conteudo:{l:"Conteúdo",k:"content"}, relatorios:{l:"Relatórios",k:"reports"}, suporte:{l:"Suporte",k:"help"}, growth:{l:"Growth",k:"gamify"}, match:{l:"Match4Biz",k:"match4biz"}, calendario:{l:"Agenda",k:"calendar"}, biblioteca:{l:"Biblioteca",k:"library"}, noticias:{l:"Notícias",k:"news"}, ideias:{l:"Ideias",k:"ideas"}, ia:{l:"Assistente IA",k:"ai"}, config:{l:"Configurações",k:"settings"} };
+  const [clientCards, setClientCards] = useState(() => { try { const s = localStorage.getItem("uh_client_cards"); return s ? JSON.parse(s) : ["meta","aprovacoes"]; } catch { return ["meta","aprovacoes"]; } });
+  const [clientPills, setClientPills] = useState(() => { try { const s = localStorage.getItem("uh_client_pills"); return s ? JSON.parse(s) : ["conteudo","relatorios","suporte"]; } catch { return ["conteudo","relatorios","suporte"]; } });
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
   const [metricsSlide, setMetricsSlide] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -14744,27 +14749,25 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
       </div>
-      {/* Two accent cards */}
+      {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
-        <div onClick={()=>setSub("reports")} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
-          <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>META DO MÊS</div>
-          <div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{monthGoal.pct}%</div>
-          <div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</div>
-          <div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-        </div>
-        <div onClick={()=>goTab("content")} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
-          <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>APROVAÇÕES</div>
-          <div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{String(pendingCount).padStart(2,"0")}</div>
-          <div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>Aguardando você</div>
-          <div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-        </div>
+        {clientCards.slice(0,2).map((ck,i) => {
+          const CARD_DATA = { meta:{label:"META DO MÊS",val:`${monthGoal.pct}%`,sub:`${monthGoal.current}/${monthGoal.total} ${monthGoal.unit}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:"Aguardando você",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:"78",sub:"Posição #4",action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"3",sub:"Matches ativos",action:()=>setSub("match4biz")} };
+          const cd = CARD_DATA[ck]; if(!cd) return null;
+          return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
+            <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{cd.label}</div>
+            <div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{cd.val}</div>
+            <div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{cd.sub}</div>
+            <div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>;
+        })}
       </div>
     </div>
-    {/* Quick action pills */}
+    {/* Dynamic quick action pills from config */}
     <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
       <button onClick={()=>setShowDashEdit(true)} style={{width:38,height:38,borderRadius:"50%",background:C.pill||C.card,border:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
       <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
-        {[{l:"Conteúdo",k:"content",ic:IC.content},{l:"Relatórios",k:"reports",ic:IC.reports||IC.content},{l:"Suporte",k:"help",ic:IC.help||IC.settings}].map((p,i)=><div key={i} onClick={()=>{if(p.k==="content")goTab("content");else setSub(p.k==="reports"?"reports":"help");}} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill||C.card,border:`1px solid ${C.brd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{typeof p.ic==="function"?p.ic(LIME):p.ic}</div>{p.l}</div>)}
+        {clientPills.map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") goTab("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); }; return <div key={pk} onClick={nav} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill||C.card,border:`1px solid ${C.brd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}</div>; })}
       </div>
     </div>
 
@@ -14774,41 +14777,51 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     </div>
     <div style={{ height:16 }} />
 
-    {/* DASH EDIT MODAL — redesigned with toggles */}
-    {showDashEdit && <div style={{ position:"fixed", inset:0, zIndex:999, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end" }} onClick={()=>setShowDashEdit(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.card, borderRadius:"28px 28px 0 0", width:"100%", maxHeight:"75vh", overflowY:"auto", padding:"20px 24px calc(24px + env(safe-area-inset-bottom,0px))" }}>
-        <div style={{ width:40, height:4, borderRadius:2, background:C.brd, margin:"0 auto 20px" }} />
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <div><p style={{ fontSize:20, fontWeight:800 }}>Personalizar</p><p style={{ fontSize:12, color:C.mut, marginTop:2 }}>Ative ou desative seções do dashboard</p></div>
-          <button onClick={()=>{setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{ padding:"8px 14px", borderRadius:10, background:`${C.mut}08`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:C.mut }}>Resetar</button>
+    {/* DASH EDIT — agency-style editor */}
+    {showDashEdit && (() => {
+      const ec = editCfg || { cards:[...clientCards], pills:[...clientPills], sections:[...(editSections.length?editSections:clientDashSections)] };
+      const toggle = (arr, key, max) => { const idx = ec[arr].indexOf(key); let n; if (idx>=0) n=ec[arr].filter(x=>x!==key); else if(!max||ec[arr].length<max) n=[...ec[arr],key]; else return; setEditCfg({...ec,[arr]:n}); if(arr==="sections") setEditSections(n); };
+      const moveSection = (i,dir) => { const s=[...ec.sections]; const j=i+dir; if(j<0||j>=s.length) return; [s[i],s[j]]=[s[j],s[i]]; setEditCfg({...ec,sections:s}); setEditSections(s); };
+      const Chip = ({on,label,onTap,disabled}) => <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:disabled?"default":"pointer",fontFamily:"inherit",opacity:disabled?0.4:1}}>{label}</button>;
+      const saveCfg = () => {
+        setClientCards(ec.cards); setClientPills(ec.pills); setClientDashSections(ec.sections);
+        try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); localStorage.setItem("uh_client_dash",JSON.stringify(ec.sections)); } catch {}
+        setEditCfg(null); setEditSections([]); setShowDashEdit(false);
+      };
+      return <><div onClick={()=>{setEditCfg(null);setShowDashEdit(false);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999,touchAction:"none"}} />
+      <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:430,margin:"0 auto",background:C.card,borderRadius:"28px 28px 0 0",zIndex:1000,padding:"20px 24px calc(24px + env(safe-area-inset-bottom,0px))",maxHeight:"85vh",overflowY:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 -4px 30px rgba(0,0,0,0.15)"}}>
+        <div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}} />
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3>
+          <button onClick={saveCfg} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button>
         </div>
-        {(() => {
-          const SEC_ICONS = { news:"📰", posts:"📋", metricas:"📊", growth:"🏆", match:"💜", relatorio:"📈" };
-          const SEC_DESC = { news:"Notícias e comunicados", posts:"Conteúdos para aprovação", metricas:"Performance das redes", growth:"Índice de crescimento", match:"Parcerias entre clientes", relatorio:"Relatório mensal" };
-          const current = editSections.length ? editSections : clientDashSections;
-          const allKeys = Object.keys(CLIENT_SECTIONS);
-          const inactiveKeys = allKeys.filter(k => !current.includes(k));
-          const orderedKeys = [...current, ...inactiveKeys];
-          return orderedKeys.map((sk) => {
-            const active = current.includes(sk);
-            const idx = current.indexOf(sk);
-            return <div key={sk} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 0", borderBottom:`1px solid ${C.brd}` }}>
-              <span style={{ fontSize:22 }}>{SEC_ICONS[sk]||"📌"}</span>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color: active ? C.txt : C.mut }}>{CLIENT_SECTIONS[sk]}</p>
-                <p style={{ fontSize:11, color:C.mut, marginTop:1 }}>{SEC_DESC[sk]||""}</p>
-              </div>
-              {active && idx > 0 && <button onClick={()=>{const a=[...current];[a[idx-1],a[idx]]=[a[idx],a[idx-1]];setEditSections(a);}} style={{ width:30, height:30, borderRadius:8, background:`${C.mut}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>}
-              {active && idx < current.length-1 && <button onClick={()=>{const a=[...current];[a[idx],a[idx+1]]=[a[idx+1],a[idx]];setEditSections(a);}} style={{ width:30, height:30, borderRadius:8, background:`${C.mut}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>}
-              <button onClick={()=>{let a=[...current]; if(active) a=a.filter(x=>x!==sk); else a.push(sk); setEditSections(a);}} style={{ width:48, height:28, borderRadius:14, background:active?LIME:`${C.mut}15`, border:"none", cursor:"pointer", position:"relative", transition:"background .2s" }}>
-                <div style={{ width:22, height:22, borderRadius:11, background:"#fff", position:"absolute", top:3, left:active?23:3, transition:"left .2s", boxShadow:"0 1px 4px rgba(0,0,0,0.2)" }} />
-              </button>
-            </div>;
-          });
-        })()}
-        <button onClick={()=>{const s=editSections.length?editSections.filter(k=>Object.keys(CLIENT_SECTIONS).includes(k)):clientDashSections.filter(k=>Object.keys(CLIENT_SECTIONS).includes(k));setClientDashSections(s);try{localStorage.setItem("uh_client_dash",JSON.stringify(s));}catch{}setEditSections([]);setShowDashEdit(false);}} style={{ width:"100%", marginTop:20, padding:"15px 0", borderRadius:16, background:LIME, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:800, color:B.textOnAccent||"#0D0D0D" }}>Salvar alterações</button>
-      </div>
-    </div>}
+        <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+          {Object.entries(CLIENT_CARDS_MAP).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k,2)} disabled={!ec.cards.includes(k)&&ec.cards.length>=2} />)}
+        </div>
+        <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+          {Object.entries(CLIENT_PILLS_MAP).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k)} />)}
+        </div>
+        <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
+        <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Toque para ativar/desativar. Use as setas para reordenar.</p>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+          {ec.sections.map((sk,i) => <div key={sk} style={{display:"flex",alignItems:"center",gap:0,background:`${LIME}08`,borderRadius:12,overflow:"hidden",border:`1.5px solid ${LIME}30`}}>
+            <div style={{display:"flex",flexDirection:"column",borderRight:`1px solid ${C.brd}`}}>
+              <button onClick={()=>moveSection(i,-1)} disabled={i===0} style={{width:36,height:28,background:"none",border:"none",cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?0.25:1,color:C.txt}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+              <button onClick={()=>moveSection(i,1)} disabled={i===ec.sections.length-1} style={{width:36,height:28,background:"none",border:"none",cursor:i===ec.sections.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===ec.sections.length-1?0.25:1,color:C.txt}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
+            <span style={{flex:1,padding:"12px 14px",fontSize:14,fontWeight:700}}>{CLIENT_SECTIONS[sk]||sk}</span>
+            <div style={{width:10,height:10,borderRadius:5,background:LIME,marginRight:10}} />
+            <button onClick={()=>{const s=ec.sections.filter(x=>x!==sk);setEditCfg({...ec,sections:s});setEditSections(s);}} style={{width:36,height:56,background:"none",border:"none",borderLeft:`1px solid ${C.brd}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:C.mut}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>)}
+        </div>
+        {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6,marginBottom:16}}>
+          {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).map(sk => <button key={sk} onClick={()=>{const s=[...ec.sections,sk];setEditCfg({...ec,sections:s});setEditSections(s);}} style={{padding:"7px 14px",borderRadius:10,border:`1.5px dashed ${C.brd}`,background:"transparent",fontSize:12,fontWeight:500,color:C.mut,cursor:"pointer",fontFamily:"inherit"}}>+ {CLIENT_SECTIONS[sk]}</button>)}
+        </div>}
+        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+      </div></>;
+    })()}
   </>; }
 
       const renderContent = () => {
