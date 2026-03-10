@@ -1068,41 +1068,41 @@ const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accen
     { label: "Sistema", keys: ["checkin","help","settings"] },
   ];
   return (
-    <div className="d-sidebar">
-      {/* Brand */}
-      <div style={{ padding:"18px 18px 14px", display:"flex", alignItems:"center", gap:10 }}>
-        {logo ? <img src={logo} alt="" style={{ width:34, height:34, borderRadius:10, objectFit:"cover" }} /> : <div style={{ width:34, height:34, borderRadius:10, background:accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:900, color:"#0D0D0D" }}>{(title||"U")[0]}</div>}
+    <div className="d-sidebar" style={{ fontFamily:"'Figtree',sans-serif" }}>
+      {/* Brand header */}
+      <div style={{ padding:"22px 20px 18px", display:"flex", alignItems:"center", gap:12 }}>
+        {logo ? <img src={logo} alt="" style={{ width:36, height:36, borderRadius:11, objectFit:"cover" }} /> : <div style={{ width:36, height:36, borderRadius:11, background:`linear-gradient(135deg, ${accent}, ${accent}BB)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#0D0D0D", boxShadow:`0 2px 10px ${accent}40` }}>{(title||"U")[0]}</div>}
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:14, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{title || "UniqueHub"}</p>
+          <p style={{ fontSize:15, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing:"-0.3px" }}>{title || "UniqueHub"}</p>
         </div>
       </div>
-      {/* Nav */}
-      <div style={{ flex:1, overflowY:"auto", padding:"0 10px", scrollbarWidth:"thin" }}>
+      {/* Navigation sections */}
+      <div style={{ flex:1, overflowY:"auto", padding:"0 12px", scrollbarWidth:"thin", scrollbarColor:`${B.border} transparent` }}>
         {SECTIONS.map((sec, si) => {
           const items = sec.keys.map(k => tabs.find(t => t.k === k)).filter(Boolean);
           if (items.length === 0) return null;
-          return <div key={si} style={{ marginBottom:4 }}>
-            {sec.label && <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, padding:"12px 10px 4px", opacity:0.6 }}>{sec.label}</p>}
+          return <div key={si} style={{ marginBottom:6 }}>
+            {sec.label && <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, padding:"14px 8px 6px", opacity:0.5 }}>{sec.label}</p>}
             {items.map(t => {
               const isActive = activeTab === t.k;
-              return <button key={t.k} onClick={() => onTabChange(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"9px 10px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isActive?700:500, color:isActive?B.text:B.muted, background:isActive?`${accent}15`:"transparent", marginBottom:1, transition:"all .15s", textAlign:"left" }}>
-                <span style={{ width:20, display:"flex", justifyContent:"center", flexShrink:0, opacity:isActive?1:0.6 }}>{typeof t.i === "function" ? t.i(isActive?accent:B.muted) : t.i}</span>
+              return <button key={t.k} onClick={() => onTabChange(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"8px 10px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isActive?600:400, color:isActive?B.text:`${B.muted}`, background:isActive?`${accent}12`:"transparent", marginBottom:1, transition:"all .12s ease", textAlign:"left", letterSpacing:"-0.1px" }}>
+                <span style={{ width:18, height:18, display:"flex", justifyContent:"center", alignItems:"center", flexShrink:0, opacity:isActive?1:0.5 }}>{typeof t.i === "function" ? t.i(isActive?accent:B.muted) : t.i}</span>
                 <span style={{ flex:1 }}>{t.l}</span>
-                {t.badge > 0 && <span style={{ background:accent, color:"#0D0D0D", fontSize:10, fontWeight:700, padding:"1px 7px", borderRadius:10, minWidth:18, textAlign:"center" }}>{t.badge}</span>}
+                {t.badge > 0 && <span style={{ background:accent, color:"#0D0D0D", fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:8, minWidth:16, textAlign:"center" }}>{t.badge}</span>}
               </button>;
             })}
           </div>;
         })}
       </div>
-      {/* User + Logout */}
-      <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
-        <div style={{ width:32, height:32, borderRadius:10, background:`${accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:accent, flexShrink:0 }}>{(user?.name||user?.email||"U")[0].toUpperCase()}</div>
+      {/* User footer */}
+      <div style={{ padding:"14px 16px", borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ width:34, height:34, borderRadius:10, background:`${accent}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:accent, flexShrink:0 }}>{(user?.name||user?.email||"U")[0].toUpperCase()}</div>
         <div style={{ flex:1, minWidth:0 }}>
           <p style={{ fontSize:12, fontWeight:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.name || user?.email}</p>
-          <p style={{ fontSize:10, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.role || user?.email}</p>
+          <p style={{ fontSize:10, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.role || ""}</p>
         </div>
-        {onLogout && <button onClick={onLogout} title="Sair" style={{ width:30, height:30, borderRadius:8, border:"none", cursor:"pointer", background:"transparent", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, flexShrink:0 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        {onLogout && <button onClick={onLogout} title="Sair" style={{ width:28, height:28, borderRadius:8, border:"none", cursor:"pointer", background:"transparent", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, flexShrink:0, opacity:0.5 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>}
       </div>
     </div>
@@ -1441,7 +1441,21 @@ const Av = ({ src, name, sz = 40, fs = 16 }) => (
   </div>
 );
 /* ── CollapseHeader: reusable collapsible page header ── */
-const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => (
+const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => {
+  const desk = typeof window !== "undefined" && window.innerWidth >= 900;
+  if (desk) return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0 18px", borderBottom:`1px solid ${B.border}`, marginBottom:16 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}`, width:34, height:34 }}>{IC.back()}</button>}
+        <div>
+          <h2 style={{ fontSize:20, fontWeight:800, color:B.text, letterSpacing:"-0.3px" }}>{title}</h2>
+          {stats.length > 0 && <div style={{ display:"flex", gap:16, marginTop:4 }}>{stats.map((s,i) => <span key={i} style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text, fontWeight:700 }}>{s.val}</strong> {s.label}</span>)}</div>}
+        </div>
+      </div>
+      {onAdd && <button onClick={onAdd} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>}
+    </div>
+  );
+  return (
   <div style={{
     position:"sticky", top:0, zIndex:20, background:B.bgCard,
     borderBottom: collapsed ? `1px solid ${B.border}` : "none",
@@ -1488,7 +1502,8 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
       </div>
     )}
   </div>
-);
+  );
+};
 
 
 function useToast() {
@@ -16154,16 +16169,27 @@ input,textarea,select{font-size:16px !important}
 /* ── Desktop Layout ── */
 .d-sidebar{display:none}
 @media(min-width:900px){
-.d-sidebar{display:flex;flex-direction:column;width:250px;min-width:250px;height:100vh;background:${dark?"#12161A":"#FAFAFA"};border-right:1px solid ${dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)"};position:fixed;left:0;top:0;z-index:60;transition:width .2s}
-.d-sidebar button:hover{background:${dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.04)"}!important}
-.d-main{margin-left:250px;width:calc(100% - 250px);max-width:none!important}
-.d-main .app{max-width:none!important;position:relative!important}
-.d-main .content{max-width:1100px;margin:0 auto;padding-bottom:40px!important}
-.d-main .pg{max-width:1100px;margin:0 auto;padding-top:20px!important}
-.d-main .card{transition:box-shadow .15s,transform .15s}
-.d-main .card:hover{box-shadow:0 4px 16px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.1)"}}
+.d-sidebar{display:flex;flex-direction:column;width:260px;min-width:260px;height:100vh;background:${dark?"#0D1117":"#FFFFFF"};border-right:1px solid ${dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.06)"};position:fixed;left:0;top:0;z-index:60;overflow:hidden}
+.d-sidebar button:hover{background:${dark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.03)"}!important}
+.d-main{margin-left:260px;width:calc(100% - 260px);max-width:none!important;min-height:100vh}
+.d-main .app{max-width:none!important;position:relative!important;min-height:100vh}
+.d-main .content{max-width:1200px;margin:0 auto;padding:24px 32px 40px!important;padding-bottom:40px!important}
+.d-main .pg{max-width:1200px;margin:0 auto;padding:24px 32px 20px!important}
+.d-main .card{transition:box-shadow .2s,transform .15s;border-radius:14px!important}
+.d-main .card:hover{box-shadow:0 6px 24px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.08)"}!important}
 .bnav{display:none!important}
 .app{position:relative!important}
+.d-main input,.d-main textarea{font-size:14px!important}
+.d-main .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
+/* Desktop: CollapseHeader becomes a flat top bar */
+.d-main [style*="borderRadius: collapsed"]{border-radius:0!important;box-shadow:none!important}
+/* Desktop: remove safe-area-inset padding */
+.d-main [style*="safe-area-inset"]{padding-top:0!important}
+/* Desktop: search bar wider */
+.d-main .hscroll{scrollbar-width:none}
+/* Desktop: grid for horizontal scroll sections */
+.d-main .htabs{flex-wrap:wrap}
+}
 #root{overflow:auto!important}
 html,body{overflow:auto!important}
 }
