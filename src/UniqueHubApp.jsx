@@ -14558,7 +14558,9 @@ function MainClientApp({ user, onLogout, dark }) {
           const SEC_DESC = { news:"Notícias e comunicados", posts:"Conteúdos para aprovação", metricas:"Performance das redes", growth:"Índice de crescimento", match:"Parcerias entre clientes", relatorio:"Relatório mensal" };
           const current = editSections.length ? editSections : clientDashSections;
           const allKeys = Object.keys(CLIENT_SECTIONS);
-          return allKeys.map((sk) => {
+          const inactiveKeys = allKeys.filter(k => !current.includes(k));
+          const orderedKeys = [...current, ...inactiveKeys];
+          return orderedKeys.map((sk) => {
             const active = current.includes(sk);
             const idx = current.indexOf(sk);
             return <div key={sk} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 0", borderBottom:`1px solid ${C.brd}` }}>
