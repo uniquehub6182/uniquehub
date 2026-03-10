@@ -6120,7 +6120,37 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   </div>
                 );
 
-                /* ── STEP 2A: Sent to client — waiting + force publish ── */
+                /* ── STEP 2A: Sent to client — check if client already responded ── */
+                if (clientMode === "sent_to_client" && sel.steps?.client?.status === "approved") return (
+                  <div style={{ padding:12, textAlign:"center" }}>
+                    <div style={{ width:48, height:48, borderRadius:24, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>{IC.check}</div>
+                    <p style={{ fontSize:15, fontWeight:800, color:B.green }}>✓ Aprovado pelo cliente</p>
+                    <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Respondido por {sel.steps?.client?.respondedBy || "cliente"}</p>
+                    <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{sel.steps?.client?.respondedAt ? new Date(sel.steps.client.respondedAt).toLocaleString("pt-BR") : ""}</p>
+                    <p style={{ fontSize:12, color:B.muted, marginTop:10, lineHeight:1.5 }}>O conteúdo está liberado para publicação.</p>
+                    {hasApi && imgFiles.length > 0 && <div style={{ marginTop:12 }}>{publishButtons()}</div>}
+                    <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", marginTop:10, padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent||"#0D0D0D", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Marcar como publicado</button>
+                  </div>
+                );
+
+                if (clientMode === "sent_to_client" && (sel.steps?.client?.status === "revision" || sel.steps?.client?.status === "rejected")) return (
+                  <div style={{ padding:12 }}>
+                    <div style={{ textAlign:"center", marginBottom:14 }}>
+                      <div style={{ width:48, height:48, borderRadius:24, background:`${(B.orange||"#F59E0B")}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      </div>
+                      <p style={{ fontSize:15, fontWeight:800, color:B.orange||"#F59E0B" }}>Cliente pediu edição</p>
+                      <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Respondido por {sel.steps?.client?.respondedBy || "cliente"}</p>
+                    </div>
+                    {sel.steps?.client?.feedback && <Card style={{ background:`${(B.orange||"#F59E0B")}06`, border:`1px solid ${(B.orange||"#F59E0B")}20` }}>
+                      <p style={{ fontSize:11, fontWeight:700, color:B.orange||"#F59E0B", marginBottom:6 }}>Feedback do cliente:</p>
+                      <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{sel.steps.client.feedback}</p>
+                    </Card>}
+                    <button onClick={() => { updateStep("client", { mode:undefined, status:undefined, feedback:undefined }); }} style={{ width:"100%", marginTop:12, padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent||"#0D0D0D", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>Voltar para edição e reenviar</button>
+                  </div>
+                );
+
+                /* ── STEP 2A (original): Sent to client — still waiting ── */
                 if (clientMode === "sent_to_client") return (
                   <div style={{ padding:12 }}>
                     <div style={{ textAlign:"center", marginBottom:14 }}>
@@ -14399,6 +14429,19 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
           <Head title={d.title} onBack={() => setSub(null)} />
           <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"14px 16px calc(90px + env(safe-area-inset-bottom,0px))" }}>
+            {/* Approved banner */}
+            {isApproved && <Card style={{ background:`${B.green}08`, border:`1.5px solid ${B.green}25`, textAlign:"center", padding:20, marginBottom:10 }}>
+              <div style={{ width:48, height:48, borderRadius:24, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>{IC.check}</div>
+              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovado e publicado</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Conteúdo aprovado por você e encaminhado para publicação.</p>
+            </Card>}
+            {/* Revision banner */}
+            {isRejected && <Card style={{ background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25`, padding:16, marginBottom:10 }}>
+              <p style={{ fontSize:14, fontWeight:800, color:B.orange||"#F59E0B" }}>Edição solicitada</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>A agência está trabalhando nas alterações. Você receberá uma nova versão em breve.</p>
+              {d.steps?.client?.feedback && <div style={{ marginTop:8, padding:10, borderRadius:10, background:`${(B.orange||"#F59E0B")}06`, border:`1px solid ${(B.orange||"#F59E0B")}15` }}><p style={{ fontSize:11, fontWeight:600, color:B.muted }}>Seu feedback:</p><p style={{ fontSize:12, marginTop:4, lineHeight:1.5 }}>{d.steps.client.feedback}</p></div>}
+            </Card>}
+            <div style={{ opacity: isApproved ? 0.5 : 1, pointerEvents: isApproved ? "none" : "auto" }}>
             <Card><div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
               <Tag color={B.accent}>{d.network || "Social"}</Tag>
               <Tag color={B.accent}>{d.format || d.type}</Tag>
@@ -14414,14 +14457,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
               <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{caption}</p>
               {hashtags && <p style={{ fontSize:11, color:B.accent, marginTop:8 }}>{hashtags}</p>}
             </Card>}
-            {isApproved && <Card style={{ marginTop:8, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
-              <span style={{ display:"flex", justifyContent:"center", marginBottom:6, color:B.green }}>{IC.check}</span>
-              <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Aprovado</p>
-            </Card>}
-            {isRejected && <Card style={{ marginTop:8, background:`${(B.orange||"#F59E0B")}08`, border:`1px solid ${(B.orange||"#F59E0B")}20`, textAlign:"center" }}>
-              <p style={{ fontSize:14, fontWeight:700, color:B.orange||"#F59E0B" }}>Edição solicitada</p>
-              {d.steps?.client?.feedback && <p style={{ fontSize:12, color:B.muted, marginTop:6, fontStyle:"italic" }}>{d.steps.client.feedback}</p>}
-            </Card>}
+            </div>{/* end opacity wrapper */}
             {isPending && <div style={{ marginTop:14 }}>
               <p className="sl" style={{ marginBottom:10, textAlign:"center" }}>O que achou?</p>
               <div style={{ display:"flex", gap:8, marginBottom:8 }}>
