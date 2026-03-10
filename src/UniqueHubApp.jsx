@@ -14100,12 +14100,23 @@ function ClientOnboarding({ onComplete, onBack }) {
         options: { data: { name: data.name, company: data.company, phone: data.phone, role: "cliente" } }
       });
       if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
-      /* Save client profile extras */
+      /* Save client profile extras + create client record for agency */
       if (authData?.user?.id) {
         await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
+        /* Create entry in clients table so it appears in agency app */
+        await supabase.from("clients").insert({
+          name: data.company || data.name,
+          contact_name: data.name,
+          contact_email: data.email,
+          contact_phone: data.phone,
+          status: "ativo",
+          plan: "free",
+          start_date: new Date().toISOString().split("T")[0],
+          notes: `Cadastro via UniqueHub por ${data.name}`,
+        }).catch(e => console.warn("Client insert:", e));
       }
       await addBot(`Conta criada com sucesso, ${data.name}! 🎉`, 600);
-      await addBot("Verifique seu e-mail para confirmar a conta e depois faça login.", 800);
+      await addBot("Você já pode fazer login com seu e-mail e senha.", 800);
       setTimeout(() => onBack(), 3000);
     } catch(e) {
       setError(e.message);
