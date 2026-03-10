@@ -4153,7 +4153,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 }
 
 /* ═══════════════════════ ACADEMY PAGE ═══════════════════════ */
-function AcademyPage({ onBack }) {
+function AcademyPage({ onBack, isClientView }) {
   const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
   const [selCourse, setSelCourse] = useState(null);
@@ -4451,7 +4451,7 @@ function AcademyPage({ onBack }) {
             <div style={{ textAlign:"center" }}><p style={{ fontSize:22, fontWeight:900 }}>{courses.length}</p><p style={{ fontSize:9, opacity:.6 }}>Cursos</p></div>
             <div style={{ textAlign:"center" }}><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{[...new Set(courses.map(c=>c.category))].length}</p><p style={{ fontSize:9, opacity:.6 }}>Categorias</p></div>
           </div>
-          <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0 }}>{IC.plus} Novo Curso</button>
+          {!isClientView && <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0 }}>{IC.plus} Novo Curso</button>}
         </div>
       </Card>
       {courses.length === 0 ? (
@@ -4459,7 +4459,7 @@ function AcademyPage({ onBack }) {
           <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.academy(B.accent)}</div>
           <p style={{ fontSize:15, fontWeight:700 }}>Nenhum curso criado</p>
           <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5 }}>Crie treinamentos com texto, fotos e vídeos para sua equipe.</p>
-          <button onClick={()=>{setForm({});setCreating(true);}} className="pill full accent" style={{ marginTop:16, padding:"12px 0" }}>Criar primeiro curso</button>
+          {!isClientView && <button onClick={()=>{setForm({});setCreating(true);}} className="pill full accent" style={{ marginTop:16, padding:"12px 0" }}>Criar primeiro curso</button>}
         </Card>
       ) : courses.map((course, i) => {
         const c = CAT_COLORS[course.category] || B.accent;
@@ -10004,7 +10004,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" collapsed={pgC} stats={[]} />
+      <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" collapsed={pgC} stats={[]} onBack={onBack} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Stats */}
@@ -12110,7 +12110,7 @@ function GamifyPage({ onBack, user, team }) {
   );
 }
 
-function AIPage({ onBack, user, agencyIdentity }) {
+function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
@@ -12129,7 +12129,16 @@ function AIPage({ onBack, user, agencyIdentity }) {
 
   const AI_HISTORY_KEY = `ai_history_${user?.id || "anon"}`;
 
-  const PRESETS = [
+  const PRESETS = isClientView ? [
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>, label: "Ideias para meu negócio", prompt: "Me dê ideias criativas de marketing e conteúdo para minha empresa " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, label: "Entender métricas", prompt: "Me explique de forma simples o que significam métricas de marketing digital como alcance, engajamento, impressões e CTR. " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, label: "Melhorar meu perfil", prompt: "Dê dicas para melhorar o perfil do Instagram da minha empresa. Como ter uma bio atrativa, destaques organizados e feed harmonioso? " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>, label: "Como atrair clientes", prompt: "Quais as melhores estratégias para atrair mais clientes usando redes sociais? Considere Instagram, Facebook e WhatsApp. " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.purple} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, label: "O que postar hoje?", prompt: "Sugira 5 ideias de conteúdo que eu posso pedir para minha agência criar hoje. Pode ser post, stories ou reels. " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>, label: "Texto para WhatsApp", prompt: "Crie um texto comercial para enviar no WhatsApp para divulgar " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>, label: "Promoção criativa", prompt: "Crie uma promoção criativa e atrativa para minha empresa divulgar nas redes sociais. " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>, label: "Tirar uma dúvida", prompt: "" },
+  ] : [
     { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, label: "Criar legenda", prompt: "Crie uma legenda criativa para um post de Instagram sobre " },
     { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, label: "Estratégia", prompt: "Sugira uma estratégia de marketing digital para " },
     { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>, label: "Roteiro Reels", prompt: "Escreva um roteiro para um Reels de 30 segundos sobre " },
@@ -12437,7 +12446,7 @@ function AIPage({ onBack, user, agencyIdentity }) {
         <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
           <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
         </div>
-        <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.nick || user?.name || "equipe"}!</h3>
+        <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.name || user?.nick || "equipe"}!</h3>
         <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
 
         {aiReady && ((activeProvider==="gemini"&&!aiKeys.gemini_key)||(activeProvider!=="gemini"&&!aiKeys.openai_key)) && (
@@ -14495,12 +14504,12 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   );
   if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
-  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
+  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} isClientView />;
   if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} />;
   if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />;
   if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} isClientView />;
   if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
-  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} isClientView />;
   if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
   if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; }
   if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
