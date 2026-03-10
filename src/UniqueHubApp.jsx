@@ -13692,15 +13692,30 @@ function ClientMatch4Biz({ onBack, user }) {
 /* ═══════════════════════════════════════════════════════════════════
    CLIENT GAMIFICATION — Sistema de engajamento do cliente
    ═══════════════════════════════════════════════════════════════════ */
-function ClientGamification({ onBack, user, demands }) {
+function ClientGamification({ onBack, user, clients, demands }) {
   const [tab, setTab] = useState("score");
   const { showToast, ToastEl } = useToast();
 
-  const score = 78;
-  const scoreDelta = 6;
-  const rank = 4;
-  const totalClients = 23;
-  const zone = "Estratégica";
+  /* ── Generate deterministic scores for each client based on name hash ── */
+  const hashName = (name) => { let h = 0; for (let i = 0; i < (name||"").length; i++) { h = ((h << 5) - h) + name.charCodeAt(i); h |= 0; } return Math.abs(h); };
+  const genScore = (name) => { const h = hashName(name); return 40 + (h % 55); }; /* 40–94 range */
+  const genDelta = (name) => { const h = hashName(name+"d"); return 1 + (h % 10); };
+  const getZone = (s) => s >= 96 ? "Escala" : s >= 81 ? "Crescimento" : s >= 61 ? "Estratégica" : s >= 41 ? "Organização" : "Estruturação";
+
+  /* ── Build ranking from real clients ── */
+  const realClients = (clients || []).filter(c => c.name && c.status !== "inativo");
+  const RANKING = realClients.map(c => {
+    const isMe = (user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (user?.client_name||"").toLowerCase() === (c.name||"").toLowerCase();
+    const s = isMe ? 78 : genScore(c.name);
+    return { name: c.name, score: s, delta: isMe ? 6 : genDelta(c.name), zone: getZone(s), isMe };
+  }).sort((a, b) => b.score - a.score);
+
+  const myEntry = RANKING.find(r => r.isMe);
+  const score = myEntry?.score || 78;
+  const scoreDelta = myEntry?.delta || 6;
+  const rank = myEntry ? RANKING.indexOf(myEntry) + 1 : Math.ceil(realClients.length / 2);
+  const totalClients = realClients.length || 1;
+  const zone = getZone(score);
   const PILLARS = [
     { name:"Execução", score:82, color:"#10B981", desc:"Aprovação de conteúdos no prazo, cumprimento de prazos e entregas consistentes.", weight:"25%" },
     { name:"Estratégia", score:74, color:"#BBF246", desc:"Alinhamento com planejamento, briefings respondidos e metas definidas.", weight:"25%" },
@@ -13731,15 +13746,7 @@ function ClientGamification({ onBack, user, demands }) {
   const mDone = MISSIONS.filter(m=>m.done).length;
   const mPending = MISSIONS.filter(m=>!m.done).length;
   const mPts = MISSIONS.filter(m=>!m.done).reduce((a,m)=>a+m.pts,0);
-  const RANKING = [
-    { name:"Studio Bella", score:94, delta:8, zone:"Crescimento" },
-    { name:"Tech Solutions", score:89, delta:5, zone:"Crescimento" },
-    { name:"Arq & Design", score:85, delta:6, zone:"Crescimento" },
-    { name:user?.name||"Você", score, delta:scoreDelta, zone, isMe:true },
-    { name:"Casa Nova Imóveis", score:72, delta:4, zone:"Estratégica" },
-    { name:"Fit Academy", score:68, delta:2, zone:"Estratégica" },
-    { name:"Escola Viva", score:55, delta:1, zone:"Organização" },
-  ].sort((a,b)=>b.score-a.score);
+  /* RANKING is now dynamically built from real clients above */
   const SCORING = [
     { action:"Aprovar conteúdo no prazo (até 24h)", pts:"+1.5", pillar:"Execução", c:"#10B981" },
     { action:"Aprovar conteúdo com atraso (>24h)", pts:"+0.5", pillar:"Execução", c:"#10B981" },
@@ -14255,7 +14262,7 @@ function MainClientApp({ user, onLogout, dark }) {
       <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
     </div>
   );
-  if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} />;
+  if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
   if (sub === "academy") return <SubWrap title="Academy"><AcademyPage onBack={() => setSub(null)} /></SubWrap>;
   if (sub === "calendar") return <SubWrap title="Calendário"><CalendarPage onBack={() => setSub(null)} clients={clients} team={team} /></SubWrap>;
