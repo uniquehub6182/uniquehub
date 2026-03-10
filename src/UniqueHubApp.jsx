@@ -14513,54 +14513,103 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
   if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; }
   if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
-  if (sub === "financial") return (
+  if (sub === "financial") {
+    const [finView, setFinView] = React.useState("main");
+    const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
+    const PLAN_INFO = {
+      free:{ name:"Free", desc:"Plano gratuito de entrada", features:["Acesso ao Hub do cliente","Aprovação de conteúdos","Chat com a agência","Relatórios básicos"] },
+      starter:{ name:"Starter", desc:"Para quem está começando", features:["Social Media básico","Até 8 posts/mês","Stories semanais","Suporte via chat"] },
+      traction:{ name:"Traction", desc:"Startups & PMEs", features:["Gestão de Tráfego OU Social Media","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"] },
+      growth360:{ name:"Growth 360°", desc:"Scale-ups & Expansão", features:["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"] },
+      partner:{ name:"Partner", desc:"Grandes Contas & Business", features:["Tudo do Plano Growth 360°","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"] },
+      enterprise:{ name:"Enterprise", desc:"Soluções corporativas", features:["Tudo do Partner","Equipe dedicada","SLA prioritário","Relatórios personalizados"] },
+    };
+    const plan = PLAN_INFO[myClient.plan] || PLAN_INFO.free;
+    const monthlyVal = myClient.monthly_value ? `R$ ${Number(myClient.monthly_value).toLocaleString("pt-BR")}` : "Gratuito";
+
+    if (finView === "plans") return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="Nossos Planos" onBack={() => setFinView("main")} />
+        <div className="content" style={{ padding:"0 16px" }}>
+          {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
+            const isCurrent = k === myClient.plan;
+            return <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
+              {isCurrent && <div style={{ position:"absolute", top:0, right:0, padding:"4px 14px", borderRadius:"0 0 0 12px", background:B.accent, fontSize:10, fontWeight:700, color:"#0D0D0D" }}>Seu plano</div>}
+              <p style={{ fontSize:18, fontWeight:900 }}>{p.name}</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
+              <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
+              {!isCurrent && <button onClick={() => { showToast("Fale com a agência para fazer upgrade!"); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>Solicitar upgrade</button>}
+            </Card>;
+          })}
+        </div>
+      </div>
+    );
+
+    if (finView === "service") return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title={finView.title || "Serviço"} onBack={() => setFinView("main")} />
+        <div className="content" style={{ padding:"0 16px" }}>
+          <Card style={{ textAlign:"center", padding:24 }}>
+            <p style={{ fontSize:14, fontWeight:700 }}>Interessado neste serviço?</p>
+            <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Entre em contato com a agência para solicitar um orçamento personalizado.</p>
+            <button onClick={() => showToast("Fale com a agência pelo chat!")} style={{ marginTop:14, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Falar com a agência</button>
+          </Card>
+        </div>
+      </div>
+    );
+
+    if (finView === "contract") return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="Contrato" onBack={() => setFinView("main")} />
+        <div className="content" style={{ padding:"0 16px" }}>
+          <Card><p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Termos de Serviço</p>
+            <p style={{ fontSize:12, lineHeight:1.8, color:B.muted }}>
+              Este contrato estabelece os termos de prestação de serviços entre a Unique Marketing 360 ("Agência") e o cliente contratante.{"\n\n"}
+              <strong style={{ color:B.text }}>1. Objeto</strong>{"\n"}O presente contrato tem por objeto a prestação de serviços de marketing digital conforme o plano contratado ({plan.name}).{"\n\n"}
+              <strong style={{ color:B.text }}>2. Vigência</strong>{"\n"}O contrato tem vigência conforme acordado entre as partes, sem fidelidade obrigatória, podendo ser cancelado com 30 dias de antecedência.{"\n\n"}
+              <strong style={{ color:B.text }}>3. Valores</strong>{"\n"}O valor mensal é de {monthlyVal}, com vencimento conforme acordado.{"\n\n"}
+              <strong style={{ color:B.text }}>4. Serviços inclusos</strong>{"\n"}{plan.features.join(", ")}.{"\n\n"}
+              <strong style={{ color:B.text }}>5. Responsabilidades do cliente</strong>{"\n"}Aprovar conteúdos no prazo, fornecer briefings e materiais solicitados, e manter comunicação ativa com a agência.{"\n\n"}
+              <strong style={{ color:B.text }}>6. Confidencialidade</strong>{"\n"}Ambas as partes se comprometem a manter sigilo sobre informações comerciais e estratégicas compartilhadas.
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+
+    return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <Head title="Financeiro" onBack={() => setSub(null)} />
       <div className="content" style={{ padding:"0 16px" }}>
-        {/* Plano atual */}
         <Card style={{ padding:0, overflow:"hidden" }}>
           <div style={{ background:B.dark||"#111", padding:"20px", color:"#fff" }}>
             <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
-            <p style={{ fontSize:22, fontWeight:900, marginTop:6 }}>Premium</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Gestão completa de redes sociais</p>
+            <p style={{ fontSize:22, fontWeight:900, marginTop:6 }}>{plan.name}</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>{plan.desc}</p>
           </div>
           <div style={{ padding:"14px 20px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Valor mensal</span><span style={{ fontSize:14, fontWeight:700, color:B.accent }}>R$ 3.500</span></div>
-            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Próximo vencimento</span><span style={{ fontSize:12, fontWeight:600 }}>15/04/2026</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Valor mensal</span><span style={{ fontSize:14, fontWeight:700, color:B.accent }}>{monthlyVal}</span></div>
             <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Status</span><Tag color={B.green}>Ativo</Tag></div>
-            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0" }}><span style={{ fontSize:12, color:B.muted }}>Contrato até</span><span style={{ fontSize:12, fontWeight:600 }}>Março/2027</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0" }}><span style={{ fontSize:12, color:B.muted }}>Plano sem fidelidade</span><span style={{ fontSize:12, fontWeight:600 }}>Início imediato</span></div>
           </div>
         </Card>
-        {/* O que inclui */}
         <Card style={{ marginTop:8 }}>
           <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>O que inclui</p>
-          {["Gestão de Instagram e Facebook","Até 20 posts por mês","3 Reels/mês","Stories diários","Relatório mensal de performance","Reunião mensal de alinhamento","Suporte via chat no Hub","Acesso ao Match4Biz","Academy completa"].map((item,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0" }}>
-              <span style={{ color:B.green }}>{IC.check}</span>
-              <span style={{ fontSize:12 }}>{item}</span>
-            </div>
-          ))}
+          {plan.features.map((item,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{item}</span></div>)}
         </Card>
-        {/* Faturas */}
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Faturas recentes</p>
-        {[{m:"Mar/2026",v:"R$ 3.500",s:"pending"},{m:"Fev/2026",v:"R$ 3.500",s:"paid"},{m:"Jan/2026",v:"R$ 3.500",s:"paid"},{m:"Dez/2025",v:"R$ 3.500",s:"paid"}].map((f,i) => (
-          <Card key={i} style={{ marginBottom:6 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div><p style={{ fontSize:13, fontWeight:600 }}>{f.m}</p><p style={{ fontSize:11, color:B.muted }}>{f.v}</p></div>
-              <Tag color={f.s==="paid"?B.green:(B.orange||"#F59E0B")}>{f.s==="paid"?"Pago":"Pendente"}</Tag>
-            </div>
-          </Card>
-        ))}
-        {/* Upgrade */}
-        <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+        <Card style={{ textAlign:"center", padding:24 }}>
+          <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Nenhuma fatura disponível</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Suas faturas aparecerão aqui quando disponíveis.</p>
+        </Card>
+        <Card style={{ marginTop:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
           <p style={{ fontSize:14, fontWeight:700 }}>Quer mais resultados?</p>
           <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Faça upgrade e tenha acesso a tráfego pago, produção audiovisual e muito mais.</p>
-          <button style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
+          <button onClick={() => setFinView("plans")} style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
         </Card>
-        {/* Serviços extras */}
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
-        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Desenvolvimento de App",d:"Aplicativo iOS e Android",v:"Sob consulta"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}].map((s,i) => (
-          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }}>
+        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}].map((s,i) => (
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => showToast(`Para contratar "${s.l}", fale com a agência pelo chat!`)}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
               <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
@@ -14568,8 +14617,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
             </div>
           </Card>
         ))}
-        {/* Contrato */}
-        <Card style={{ marginTop:8 }}>
+        <Card style={{ marginTop:8, cursor:"pointer" }} onClick={() => setFinView("contract")}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div style={{ width:40, height:40, borderRadius:12, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.library(B.muted)}</div>
             <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>Contrato</p><p style={{ fontSize:10, color:B.muted }}>Visualizar termos e condições</p></div>
@@ -14579,6 +14627,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
       </div>
     </div>
   );
+  }
 
   /* DEMAND DETAIL */
   if (sub && sub.startsWith("demand_")) {
