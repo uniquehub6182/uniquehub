@@ -156,6 +156,7 @@ const mergeSupaClient = (row, existing) => ({
   contact: row.contact_name || "", phone: row.contact_phone || "",
   email: row.contact_email || "", cnpj: row.cnpj || existing?.cnpj || "", address: row.address || existing?.address || "",
   segment: row.segment || existing?.segment || "", notes: row.notes || existing?.notes || "",
+  access_code: row.access_code || "",
   since: existing?.since || new Date(row.created_at).toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}),
   socials: existing?.socials || { instagram:{connected:false}, facebook:{connected:false}, google:{connected:false}, tiktok:{connected:false}, linkedin:{connected:false}, youtube:{connected:false} },
   files: existing?.files || [],
@@ -1772,6 +1773,9 @@ function LoginPage({ onAuth, onClientAuth }) {
   const handleRegister = async () => {
     const BLOCKED_REG = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
     if (BLOCKED_REG.some(b => rEmail.trim().toLowerCase().replace(/\s/g,"") === b)) { setError("Este email está bloqueado. Entre em contato com o administrador."); return; }
+    /* ── Only @uniquemkt.com.br emails can register as collaborator ── */
+    const emailDomain = (rEmail||"").trim().toLowerCase().split("@")[1];
+    if (emailDomain !== "uniquemkt.com.br") { setError("Apenas e-mails @uniquemkt.com.br podem se cadastrar como colaborador."); return; }
     if (supabase) {
       setLoginLoading(true); setError(""); setRegSuccess("");
       try {
@@ -1796,7 +1800,7 @@ function LoginPage({ onAuth, onClientAuth }) {
           await supaLinkInvite(inviteData.id, data.user.id);
         }
         setLoginLoading(false);
-        setRegSuccess("Cadastro enviado para aprovação! Verifique seu e-mail para confirmar a conta.");
+        setRegSuccess("Cadastro enviado! Aguarde a aprovação do administrador para acessar o app.");
         setMode("pending"); setStep(1); setInviteData(null);
       } catch (e) { setError("Erro de conexão"); setLoginLoading(false); }
       return;
@@ -3706,6 +3710,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Nome", value:sel.contact },
               { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Telefone", value:sel.phone },
               { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"E-mail", value:sel.email },
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.purple||"#8B5CF6"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>, label:"Código de Acesso", value:sel.access_code || "—" },
             ].map((item,i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{item.icon}</div>
@@ -14227,19 +14232,27 @@ function ClientOnboarding({ onComplete, onBack }) {
   useEffect(() => {
     (async () => {
       await addBot("Olá! Eu sou a Munique, assistente virtual da Unique Marketing 360. 👋", 800);
-      await addBot("Vou te ajudar a criar sua conta em poucos passos. Vai ser rápido e fácil!", 1000);
-      await addBot("Para começar, qual é o seu nome?", 700);
+      await addBot("Vou te ajudar a criar sua conta em poucos passos!", 1000);
+      await addBot("Para começar, digite o código de acesso fornecido pela sua agência:", 700);
       setStep(1);
     })();
   }, []);
 
+  const [validatedClient, setValidatedClient] = useState(null);
+
   const STEPS = {
-    1: { field:"name", next: async (val) => {
-      await addBot(`Prazer, ${val}! Que bom ter você aqui.`, 600);
-      await addBot("Qual o nome da sua empresa ou negócio?", 700);
+    1: { field:"_code", validate: (v) => v.trim().length >= 4 ? null : "O código precisa ter pelo menos 4 caracteres.", next: async (val) => {
+      /* Validate access code against clients table */
+      if (!supabase) { await addBot("Erro de conexão. Tente novamente.", 500); return "retry"; }
+      const { data: clientMatch } = await supabase.from("clients").select("id,name,access_code").eq("access_code", val.trim().toUpperCase()).maybeSingle();
+      if (!clientMatch) { await addBot("Código inválido. Verifique com sua agência e tente novamente.", 600); return "retry"; }
+      setValidatedClient(clientMatch);
+      setData(prev => ({ ...prev, company: clientMatch.name }));
+      await addBot(`Código verificado! Bem-vindo(a), cliente ${clientMatch.name}! 🎉`, 600);
+      await addBot("Qual é o seu nome completo?", 700);
     }},
-    2: { field:"company", next: async (val) => {
-      await addBot(`${val}, ótimo! Vamos cuidar bem do marketing de vocês.`, 600);
+    2: { field:"name", next: async (val) => {
+      await addBot(`Prazer, ${val}!`, 600);
       await addBot("Agora preciso do seu melhor e-mail para criar sua conta:", 700);
     }},
     3: { field:"email", validate: (v) => v.includes("@") && v.includes(".") ? null : "Hmm, isso não parece um e-mail válido. Tenta de novo?", next: async (val) => {
@@ -14269,10 +14282,11 @@ function ClientOnboarding({ onComplete, onBack }) {
     }
 
     /* Save data */
-    setData(prev => ({ ...prev, [s.field]: val }));
+    if (s.field !== "_code") setData(prev => ({ ...prev, [s.field]: val }));
 
     /* Next step */
-    await s.next(val);
+    const result = await s.next(val);
+    if (result === "retry") return; /* Stay on same step */
     setStep(prev => prev + 1);
   };
 
@@ -14289,32 +14303,25 @@ function ClientOnboarding({ onComplete, onBack }) {
       /* Save client profile extras + sync with existing client record */
       if (authData?.user?.id) {
         await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
-        /* Check if a client already exists by email or company name */
-        const { data: existingByEmail } = await supabase.from("clients").select("id").eq("contact_email", data.email).maybeSingle();
-        const { data: existingByName } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).maybeSingle() : { data: null };
-        const existingClient = existingByEmail || existingByName;
-        if (existingClient) {
-          /* Client already exists — sync: update with contact info */
+        /* Use validated client from access code — exact match, no searching needed */
+        if (validatedClient?.id) {
           await supabase.from("clients").update({
             contact_email: data.email,
             contact_name: data.name,
             contact_phone: data.phone,
             status: "ativo",
-          }).eq("id", existingClient.id).catch(e => console.warn("Client sync:", e));
-          console.log("[Onboarding] Synced with existing client:", existingClient.id);
+          }).eq("id", validatedClient.id).catch(e => console.warn("Client sync:", e));
+          console.log("[Onboarding] Synced with validated client:", validatedClient.id, validatedClient.name);
         } else {
-          /* No match — create new client record */
-          await supabase.from("clients").insert({
-            name: data.company || data.name,
-            contact_name: data.name,
-            contact_email: data.email,
-            contact_phone: data.phone,
-            status: "ativo",
-            plan: "free",
-            start_date: new Date().toISOString().split("T")[0],
-            notes: `Cadastro via UniqueHub por ${data.name}`,
-          }).catch(e => console.warn("Client insert:", e));
-          console.log("[Onboarding] Created new client record");
+          /* Fallback: search by email or name */
+          const { data: existingByEmail } = await supabase.from("clients").select("id").eq("contact_email", data.email).maybeSingle();
+          const { data: existingByName } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).maybeSingle() : { data: null };
+          const existingClient = existingByEmail || existingByName;
+          if (existingClient) {
+            await supabase.from("clients").update({ contact_email: data.email, contact_name: data.name, contact_phone: data.phone, status: "ativo" }).eq("id", existingClient.id).catch(e => console.warn("Client sync:", e));
+          } else {
+            await supabase.from("clients").insert({ name: data.company || data.name, contact_name: data.name, contact_email: data.email, contact_phone: data.phone, status: "ativo", plan: "free", start_date: new Date().toISOString().split("T")[0], notes: `Cadastro via UniqueHub por ${data.name}` }).catch(e => console.warn("Client insert:", e));
+          }
         }
         /* Create profile with role=cliente */
         await supabase.from("profiles").upsert({
@@ -14390,7 +14397,7 @@ function ClientOnboarding({ onComplete, onBack }) {
       {/* Input */}
       {!done && <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8, alignItems:"center" }}>
         <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()}
-          placeholder={step===1?"Seu nome...":step===2?"Nome da empresa...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
+          placeholder={step===1?"Digite o código de acesso...":step===2?"Seu nome completo...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
           type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
           style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(0,0,0,0.1)", background:"#fff", color:"#1A1D23", fontFamily:"inherit", fontSize:15, outline:"none" }}
         />
