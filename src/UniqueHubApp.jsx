@@ -1594,7 +1594,7 @@ function OnboardingSlides({ onDone }) {
 function LoginPage({ onAuth, onClientAuth }) {
   const [portal, setPortal] = useState("team"); /* "team" | "client" */
   const [mode, setMode] = useState("login");
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   /* Login fields */
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -1646,7 +1646,7 @@ function LoginPage({ onAuth, onClientAuth }) {
     const params = new URLSearchParams(window.location.search);
     const conviteEmail = params.get("convite");
     if (conviteEmail) {
-      setMode("register"); setREmail(conviteEmail); setFromInviteLink(true);
+      setMode("register"); setREmail(conviteEmail); setFromInviteLink(true); setStep(1);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -1696,7 +1696,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   const birthRaw = rBirth.replace(/\D/g, "");
   const phoneRaw = rPhone.replace(/\D/g, "");
   const step1Valid = rName.trim().length >= 3 && rNick.trim() && cpfRaw.length === 11 && birthRaw.length === 8;
-  const step2Valid = phoneRaw.length >= 10 && rEmailValid;
+  const step2Valid = phoneRaw.length >= 10;
   const step3Valid = !!rCargo;
   const step4Valid = supabase ? (rPw.length >= 6 && rPw === rPwConfirm) : (pwStrong(rPw) && rPw === rPwConfirm);
 
@@ -1801,7 +1801,7 @@ function LoginPage({ onAuth, onClientAuth }) {
         }
         setLoginLoading(false);
         setRegSuccess("Cadastro enviado! Aguarde a aprovação do administrador para acessar o app.");
-        setMode("pending"); setStep(1); setInviteData(null);
+        setMode("pending"); setStep(0); setInviteData(null);
       } catch (e) { setError("Erro de conexão"); setLoginLoading(false); }
       return;
     }
@@ -1811,8 +1811,15 @@ function LoginPage({ onAuth, onClientAuth }) {
 
   const nextStep = async () => {
     setError("");
+    /* Step 0: Email validation gate */
+    if (step === 0) {
+      const emailDomain = (rEmail||"").trim().toLowerCase().split("@")[1];
+      if (!rEmail.includes("@") || !rEmail.includes(".")) { setError("Informe um e-mail válido"); return; }
+      if (emailDomain !== "uniquemkt.com.br") { setError("Apenas e-mails @uniquemkt.com.br podem se cadastrar como colaborador."); return; }
+      setStep(1); return;
+    }
     if (step === 1 && !step1Valid) { setError("Preencha todos os campos corretamente"); return; }
-    if (step === 2 && !step2Valid) { setError("Preencha telefone e e-mail válido"); return; }
+    if (step === 2 && !step2Valid) { setError("Preencha o telefone"); return; }
     if (step === 3 && !step3Valid) { setError("Selecione seu cargo"); return; }
     if (step === 4) { if (!step4Valid) { setError("Verifique a senha"); return; } handleRegister(); return; }
     /* Check invite when going from step 2→3 */
@@ -1828,8 +1835,9 @@ function LoginPage({ onAuth, onClientAuth }) {
     setStep(s => s + 1);
   };
 
-  const stepLabels = ["Dados","Contato","Função","Segurança"];
-  const stepValid = [step1Valid, step2Valid, step3Valid, step4Valid];
+  const stepLabels = ["E-mail","Dados","Contato","Função","Segurança"];
+  const step0Valid = rEmail.trim().length > 0 && rEmail.includes("@") && rEmail.trim().toLowerCase().split("@")[1] === "uniquemkt.com.br";
+  const stepValid = [step0Valid, step1Valid, step2Valid, step3Valid, step4Valid];
 
   /* Client login handler */
   const handleClientLogin = async () => {
@@ -1872,7 +1880,7 @@ function LoginPage({ onAuth, onClientAuth }) {
         </div>
       </Card>
       <p style={{ fontSize: 12, color: B.muted, textAlign: "center", marginTop: 12 }}>Você receberá uma notificação por e-mail assim que for aprovado.</p>
-      <button onClick={() => { setMode("login"); setStep(1); }} className="pill accent" style={{ marginTop: 24, padding: "12px 28px" }}>Voltar ao Login</button>
+      <button onClick={() => { setMode("login"); setStep(0); }} className="pill accent" style={{ marginTop: 24, padding: "12px 28px" }}>Voltar ao Login</button>
     </div>
   );
 
@@ -1888,7 +1896,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   const stepperJSX = (
     <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 24, width: "100%" }}>
       {stepLabels.map((l, i) => {
-        const num = i + 1;
+        const num = i;
         const done = step > num;
         const active = step === num;
         return (
@@ -1901,11 +1909,11 @@ function LoginPage({ onAuth, onClientAuth }) {
                 fontSize: 13, fontWeight: 800, transition: "all .3s",
                 boxShadow: active ? `0 0 0 3px ${B.accent}30` : "none",
               }}>
-                {done ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : num}
+                {done ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : num + 1}
               </div>
               <span style={{ fontSize: 9, fontWeight: active ? 800 : 500, color: active ? B.dark : B.muted, marginTop: 4, whiteSpace: "nowrap" }}>{l}</span>
             </div>
-            {i < 3 && <div style={{ flex: 1, height: 2, background: done ? B.accent : `${B.border}`, margin: "0 4px", marginBottom: 16, borderRadius: 1, transition: "all .3s" }} />}
+            {i < stepLabels.length - 1 && <div style={{ flex: 1, height: 2, background: done ? B.accent : `${B.border}`, margin: "0 4px", marginBottom: 16, borderRadius: 1, transition: "all .3s" }} />}
           </React.Fragment>
         );
       })}
@@ -1919,6 +1927,22 @@ function LoginPage({ onAuth, onClientAuth }) {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 340 }}>
         {logoJSX(20)}
         {stepperJSX}
+
+        {/* Step 0 — Email Gate */}
+        {step === 0 && <div style={{ width: "100%", animation: "fadeUp .3s" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>E-mail corporativo</h3>
+          <p style={{ fontSize: 12, color: B.muted, marginBottom: 16 }}>Informe seu e-mail @uniquemkt.com.br para continuar</p>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>E-mail *</label>
+            <input value={rEmail} onChange={e => setREmail(e.target.value)} placeholder="seu.nome@uniquemkt.com.br" className="tinput" type="email" autoFocus />
+          </div>
+          {rEmail.trim().length > 3 && !rEmail.trim().toLowerCase().endsWith("@uniquemkt.com.br") && rEmail.includes("@") && (
+            <div style={{ padding:"10px 14px", borderRadius:10, background:"#FF6B6B10", border:"1.5px solid #FF6B6B30", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:14 }}>🔒</span>
+              <p style={{ fontSize:11, color:"#FF6B6B", fontWeight:600 }}>Apenas e-mails @uniquemkt.com.br são aceitos para cadastro de colaboradores.</p>
+            </div>
+          )}
+        </div>}
 
         {/* Step 1 — Dados Pessoais */}
         {step === 1 && <div style={{ width: "100%", animation: "fadeUp .3s" }}>
@@ -1959,10 +1983,11 @@ function LoginPage({ onAuth, onClientAuth }) {
             {phoneRaw.length >= 10 && <p style={{ fontSize: 10, color: B.green, marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}><span style={{ display: "flex" }}>{IC.check}</span>Telefone válido</p>}
           </div>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>E-mail corporativo *</label>
-            <input value={rEmail} onChange={e => supabase ? setREmail(e.target.value) : handleEmailField(e.target.value, setREmail)} placeholder={supabase ? "seu@email.com" : `seu.nome${emailDomain}`} className="tinput" />
-            {rEmail && !rEmailValid && <p style={{ fontSize: 10, color: B.red, marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}><span style={{ display: "flex" }}>{IC.x}</span>Use @uniquemkt.com.br</p>}
-            {rEmailValid && <p style={{ fontSize: 10, color: B.green, marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}><span style={{ display: "flex" }}>{IC.check}</span>E-mail válido</p>}
+            <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>E-mail</label>
+            <div style={{ padding:"12px 14px", borderRadius:14, background:"rgba(187,242,70,0.06)", border:"1.5px solid rgba(187,242,70,0.2)", fontSize:14, color:B.text, display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ color:B.green, display:"flex" }}>{IC.check}</span>
+              {rEmail}
+            </div>
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Rede social principal (opcional)</label>
@@ -2065,12 +2090,12 @@ function LoginPage({ onAuth, onClientAuth }) {
 
         {/* Navigation buttons */}
         <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 16 }}>
-          {step > 1 ? (
+          {step > 0 ? (
             <button onClick={() => { setStep(s => s - 1); setError(""); }} className="pill full outline" style={{ flex: 1 }}>
               {IC.back()} Voltar
             </button>
           ) : (
-            <button onClick={() => { setMode("login"); setStep(1); setError(""); }} className="pill full outline" style={{ flex: 1 }}>
+            <button onClick={() => { setMode("login"); setStep(0); setError(""); }} className="pill full outline" style={{ flex: 1 }}>
               {IC.back()} Login
             </button>
           )}
