@@ -14296,13 +14296,13 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   );
   if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
-  if (sub === "academy") return <SubWrap title="Academy"><AcademyPage onBack={() => setSub(null)} /></SubWrap>;
-  if (sub === "calendar") return <SubWrap title="Calendário"><CalendarPage onBack={() => setSub(null)} clients={clients} team={team} /></SubWrap>;
-  if (sub === "library") return <SubWrap title="Biblioteca"><LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} /></SubWrap>;
-  if (sub === "news") return <SubWrap title="Notícias"><NewsPage onBack={() => setSub(null)} user={user} /></SubWrap>;
-  if (sub === "ideas") return <SubWrap title="Ideias"><IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /></SubWrap>;
-  if (sub === "ai") return <SubWrap title="Assistente IA"><AIPage onBack={() => setSub(null)} user={user} /></SubWrap>;
-  if (sub === "help") return <SubWrap title="Ajuda"><HelpPage onBack={() => setSub(null)} /></SubWrap>;
+  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
+  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} />;
+  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
+  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
+  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
   if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; }
   if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
   if (sub === "financial") return (
