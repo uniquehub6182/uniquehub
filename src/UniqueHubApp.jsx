@@ -2367,43 +2367,12102 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const totalRevenue = `R$ ${totalRevNum.toLocaleString("pt-BR")}`;
   const pendingApprovals = CDATA.reduce((a, c) => a + (c.pending||0), 0);
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
+  const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
+  const [searchQ, setSearchQ] = useState("");
+  const [searchFocus, setSearchFocus] = useState(false);
+  const searchRef = useRef(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [dashCfg, setDashCfg] = useState(() => { if (cloudDash) return cloudDash; try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
+  useEffect(() => { if (cloudDash) setDashCfg(cloudDash); }, [cloudDash]);
+  const [ec, setEc] = useState(null); // editor copy — initialized when sheet opens
+  const saveCfg = (c) => {
+    setDashCfg(c);
+    try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {}
+    savePrefsToCloud(undefined, undefined, undefined, user?.id, c, undefined);
+  };
+  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:"registro diário",val:"—",k:"checkin"} };
+  const PILLS = {
+    home:      {l:"Home",        k:"home",      tab:true},
+    conteudo:  {l:"Conteúdo",    k:"content",   tab:true,  badge:pendingApprovals},
+    clientes:  {l:"Clientes",    k:"clients",   tab:true},
+    chat:      {l:"Chat",        k:"chat",       tab:true},
+    financeiro:{l:"Financeiro",  k:"financial"},
+    calendar:  {l:"Agenda",      k:"calendar"},
+    relatorios:{l:"Relatórios",  k:"reports"},
+    equipe:    {l:"Equipe",      k:"team"},
+    checkin:   {l:"Check-in",    k:"checkin"},
+    ia:        {l:"IA",          k:"ai"},
+    academy:   {l:"Academy",     k:"academy"},
+    biblioteca:{l:"Biblioteca",  k:"library"},
+    noticias:  {l:"Notícias",    k:"news"},
+    ideias:    {l:"Ideias",      k:"ideas"},
+    gamify:    {l:"Gamify",      k:"gamify"},
+    match4biz: {l:"Match4Biz",   k:"match4biz"},
+    suporte:   {l:"Suporte",     k:"help"},
+    ajustes:   {l:"Ajustes",     k:"settings"},
+  };
+  const ACTIONS = {
+    aprovar:   {l:"Aprovar conteúdos",  k:"content"},
+    novoConteudo:{l:"Novo conteúdo",    k:"content"},
+    trafego:   {l:"Gestão de tráfego", k:"content"},
+    relatorio:  {l:"Ver relatório",      k:"reports"},
+    agenda:    {l:"Ver agenda",          k:"calendar"},
+    novoEvento:{l:"Novo evento",         k:"calendar"},
+    chat:      {l:"Falar com equipe",    k:"chat",    tab:true},
+    checkin:   {l:"Fazer check-in",      k:"checkin"},
+    ia:        {l:"Assistente IA",       k:"ai"},
+    biblioteca:{l:"Ir à biblioteca",     k:"library"},
+    noticias:  {l:"Ler notícias",        k:"news"},
+    ideias:    {l:"Ver ideias",          k:"ideas"},
+    gamify:    {l:"Gamify / Ranking",    k:"gamify"},
+    match4biz: {l:"Match4Biz",          k:"match4biz"},
+    academy:   {l:"Academy",            k:"academy"},
+    equipe:    {l:"Ver equipe",          k:"team"},
+    clientes:  {l:"Ver clientes",        k:"clients",  tab:true},
+    financeiro:{l:"Ver financeiro",      k:"financial"},
+    suporte:   {l:"Suporte / Ajuda",     k:"help"},
+    ajustes:   {l:"Ajustes",            k:"settings"},
+  };
+  const SECTIONS = { comunicados:"Comunicados", acoes:"Ações rápidas", resumo:"Resumo", posts:"Posts Recentes", equipe:"Equipe", clientes:"Clientes recentes" };
+  const cfgDefault = isAdmin
+    ? { cards:canFinancial ? ["investimento","aprovacoes"] : ["aprovacoes","clientes"], pills:["suporte","aprovacoes","conteudo","relatorios"].filter(k => PILLS[k]?.k !== "financial" || canFinancial), actions:["aprovar","trafego","relatorio","chat"].filter(k => ACTIONS[k]?.k !== "financial" || canFinancial), sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
+    : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
+  const cfg = dashCfg || cfgDefault;
+  const isDark = B.bg === "#0D0D0D";
+  const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
+  const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
+  const LIME = "#C6F135";
+  const SHADOW = isDark ? "0 12px 40px rgba(0,0,0,0.3)" : "0 12px 40px rgba(0,0,0,0.08)";
+  const initials = user?.name?.charAt(0).toUpperCase() || "U";
+  const nav = (k) => { if(["home","content","chat","clients"].includes(k)) goTab(k); else goSub(k); };
+  const pillIcon = (pk) => {
+    const icons = {
+      home:       IC.home,
+      conteudo:   IC.content,
+      clientes:   IC.clients,
+      chat:       IC.chat,
+      financeiro: IC.financial,
+      calendar:   IC.calendar,
+      relatorios: IC.reports,
+      equipe:     IC.team,
+      checkin:    IC.checkin,
+      ia:         IC.ai,
+      academy:    IC.academy,
+      biblioteca: IC.library,
+      noticias:   IC.news,
+      ideias:     IC.ideas,
+      gamify:     IC.gamify,
+      match4biz:  IC.match4biz,
+      suporte:    IC.help,
+      ajustes:    IC.settings,
+    };
+    const fn = icons[pk];
+    return typeof fn === "function" ? fn(LIME) : fn ? React.cloneElement(fn, {style:{...fn.props?.style, color:LIME}}) : IC.more(LIME);
+  };
+  const actionIcon = (ak) => {
+    const icons = {
+      aprovar:      IC.check,
+      novoConteudo: IC.content,
+      trafego:      IC.target,
+      relatorio:    IC.reports,
+      agenda:       IC.calendar,
+      novoEvento:   IC.calendar,
+      chat:         IC.chat,
+      checkin:      IC.checkin,
+      ia:           IC.ai,
+      biblioteca:   IC.library,
+      noticias:     IC.news,
+      ideias:       IC.ideas,
+      gamify:       IC.gamify,
+      match4biz:    IC.match4biz,
+      academy:      IC.academy,
+      equipe:       IC.team,
+      clientes:     IC.clients,
+      financeiro:   IC.financial,
+      suporte:      IC.help,
+      ajustes:      IC.settings,
+    };
+    const fn = icons[ak];
+    return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor");
+  };
+  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
+  const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
+  const renderSection = (key) => {
+    if(key==="comunicados") {
+      const catPhoto = (cat,seed) => {
+        const photos = {
+          trends:["https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=600&q=80","https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&q=80","https://images.unsplash.com/photo-1655720408254-e786a5b44e98?w=600&q=80"],
+          updates:["https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600&q=80","https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80","https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&q=80"],
+          tips:["https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80","https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80","https://images.unsplash.com/photo-1434626881859-194d67b2b86f?w=600&q=80"],
+          cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80","https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600&q=80","https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&q=80"],
+          tools:["https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=600&q=80","https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&q=80","https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&q=80"],
+          default:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80","https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=600&q=80"],
+        };
+        const pool = photos[cat]||photos.default;
+        return pool[seed % pool.length];
+      };
+      const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
+      const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Marketing Digital",ia:"Inteligência Artificial"};
+      const fallback = [
+        {id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de inteligência artificial estão transformando campanhas digitais e otimizando resultados.",cat:"trends",date:"Hoje"},
+        {id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original e penaliza reposts sem crédito.",cat:"updates",date:"Ontem"},
+        {id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para aumentar o alcance orgânico nos Stories e Feed.",cat:"tips",date:"2 dias"},
+        {id:"f4",title:"Case: como triplicamos o ROI de um e-commerce",summary:"Estudo de caso real com dados de campanha no Google e Meta Ads.",cat:"cases",date:"3 dias"},
+        {id:"f5",title:"As melhores ferramentas de automação para agências",summary:"Plataformas que economizam horas de trabalho em gestão de clientes e conteúdo.",cat:"tools",date:"4 dias"},
+      ];
+      const items = ((articles||[]).length>0 ? articles : (articlesLoaded ? fallback : [])).slice(0,5);
+      if (!articlesLoaded && (articles||[]).length === 0) {
+        return <div key="com">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+            <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
+          </div>
+          <div style={{borderRadius:20,overflow:"hidden",marginBottom:10,height:190,background:C.card,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{fontSize:12,color:C.mut,fontWeight:600}}>Carregando notícias...</span>
+          </div>
+        </div>;
+      }
+      const featured = items[0];
+      const rest = items.slice(1,5);
+      return <div key="com">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+          <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Comunicados</h3>
+          <span onClick={()=>goSub("news")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+        </div>
+        {featured && (
+          <div onClick={()=>goSub("news", featured.id)} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
+            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(featured.cat,0);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
+            <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
+            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
+              <p style={{fontSize:15,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{featured.title}</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,0.75)",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{featured.summary||""}</p>
+            </div>
+          </div>
+        )}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {rest.map((a,i)=>(
+            <div key={a.id||i} onClick={()=>goSub("news", a.id)} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
+              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(a.cat,i+1);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
+              <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
+              <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,margin:0,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+            </div>
+          ))}
+        </div>
+      </div>;
+    }
+    if(key==="acoes") return <div key="acoes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Ações rápidas</h3></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[...cfg.actions].sort((a,b)=>(ACTIONS[a]?.l||"").localeCompare(ACTIONS[b]?.l||"","pt")).map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return<div key={i} onClick={()=>nav(a.k)} style={{background:C.card,borderRadius:22,padding:"20px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",border:`1px solid ${C.brd}`}}><div style={{width:42,height:42,borderRadius:"50%",background:C.aicn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.mut}}>{actionIcon(ak)}</div><span style={{fontSize:13,fontWeight:700,color:C.txt,lineHeight:1.3}}>{a.l}</span></div>;})}</div></div>;
+    if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥",fin:false},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰",fin:true},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐",fin:false},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳",fin:false}].filter(s => !s.fin || canFinancial).map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
+    if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
+    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av src={c.logo} name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"}{canFinancial ? ` · ${c.monthly||"—"}/mês` : ""}</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
+    if(key==="posts") {
+      const recentDemands = (demands||[]).slice(0,8);
+      if(recentDemands.length===0) return null;
+      const stageColor = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
+      const stageName = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
+      const bgPalette = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
+      return <div key="posts">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}>
+          <h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Conteúdos em Produção</h3>
+          <span onClick={()=>goTab("content")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+        </div>
+        <div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4,marginRight:-16,paddingRight:16}}>
+          {recentDemands.map((d,i)=>{
+            const sc = stageColor[d.stage]||"#8B8F92";
+            const sn = stageName[d.stage]||d.stage;
+            const bg = bgPalette[i % bgPalette.length];
+            const allFiles = [...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
+            const imgFile = allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const initials = (d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+            return (
+              <div key={d.id||i} onClick={()=>goTab("content", d.id)} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
+                <div style={{position:"relative",height:140}}>
+                  {imgFile
+                    ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bg}ee,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <span style={{fontSize:32,fontWeight:900,color:"rgba(255,255,255,0.2)",letterSpacing:-1}}>{initials}</span>
+                      </div>
+                  }
+                  <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 45%,rgba(0,0,0,0.65) 100%)"}}/>
+                  <span style={{position:"absolute",top:7,left:7,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.4}}>{d.format||d.network||"Post"}</span>
+                  <span style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</span>
+                </div>
+                <div style={{padding:"7px 9px",display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:sc,flexShrink:0}}/>
+                  <span style={{fontSize:10,color:C.mut,fontWeight:600,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>
+                  <span style={{fontSize:9,color:sc,fontWeight:700,flexShrink:0}}>{sn}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>;
+    }
+    return null;
+  };
+  const editorToggle = (arr, key, max) => {
+    if (!ec) return;
+    const idx = ec[arr].indexOf(key);
+    if (idx >= 0) setEc({...ec, [arr]: ec[arr].filter(x => x !== key)});
+    else if (!max || ec[arr].length < max) setEc({...ec, [arr]: [...ec[arr], key]});
+  };
+  const editorMoveSection = (i, dir) => {
+    if (!ec) return;
+    const s = [...ec.sections];
+    const j = i + dir;
+    if (j < 0 || j >= s.length) return;
+    [s[i], s[j]] = [s[j], s[i]];
+    setEc({...ec, sections: s});
+  };
+  const EditorChip = ({on, label, onTap, disabled}) => (
+    <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px", borderRadius:10, border: on ? `2px solid ${LIME}` : `1.5px solid ${C.brd}`, background: on ? `${LIME}15` : "transparent", fontSize:12, fontWeight: on ? 700 : 500, color: on ? LIME : C.mut, cursor: disabled ? "default" : "pointer", fontFamily:"inherit", opacity: disabled ? 0.4 : 1}}>{label}</button>
+  );
+  const EditorSheetJSX = !showEditor || !ec ? null : (
+      <>
+        <div onClick={()=>setShowEditor(false)} className="overlay" style={{touchAction:"none"}} onTouchMove={e=>e.preventDefault()}/>
+        <div className="sheet" onTouchMove={e=>e.stopPropagation()} style={{paddingBottom:48}}>
+          <div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+            <h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3>
+            <button onClick={()=>{saveCfg(ec);setShowEditor(false);}} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button>
+          </div>
+
+          {/* Cards */}
+          <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 2)</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+            {Object.entries(WIDGETS).filter(([k,v]) => v.k !== "financial" || canFinancial).map(([k,v]) => (
+              <EditorChip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>editorToggle("cards",k,2)} disabled={!ec.cards.includes(k) && ec.cards.length>=2}/>
+            ))}
+          </div>
+
+          {/* Atalhos */}
+          <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+            {Object.entries(PILLS).filter(([k,v]) => v.k !== "financial" || canFinancial).map(([k,v]) => (
+              <EditorChip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>editorToggle("pills",k)}/>
+            ))}
+          </div>
+
+          {/* Ações */}
+          <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ações rápidas</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+            {Object.entries(ACTIONS).filter(([k,v]) => v.k !== "financial" || canFinancial).map(([k,v]) => (
+              <EditorChip key={k} on={ec.actions.includes(k)} label={v.l} onTap={()=>editorToggle("actions",k)}/>
+            ))}
+          </div>
+
+          {/* Seções */}
+          <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
+          <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Toque para ativar/desativar. Use as setas para reordenar.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+            {ec.sections.map((k, i) => (
+              <div key={k} style={{display:"flex",alignItems:"center",gap:0,background:isDark?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.04)",borderRadius:12,overflow:"hidden",border:`1.5px solid ${LIME}30`}}>
+                <div style={{display:"flex",flexDirection:"column",borderRight:`1px solid ${C.brd}`}}>
+                  <button onClick={()=>editorMoveSection(i,-1)} disabled={i===0} style={{width:36,height:28,background:"none",border:"none",cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?0.25:1,color:C.txt}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                  </button>
+                  <button onClick={()=>editorMoveSection(i,1)} disabled={i===ec.sections.length-1} style={{width:36,height:28,background:"none",border:"none",cursor:i===ec.sections.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===ec.sections.length-1?0.25:1,color:C.txt}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                </div>
+                <span style={{flex:1,fontSize:13,fontWeight:700,color:C.txt,paddingLeft:12}}>{SECTIONS[k]||k}</span>
+                <div style={{display:"flex",alignItems:"center",gap:4,paddingRight:10}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:LIME}}/>
+                  <button onClick={()=>editorToggle("sections",k)} style={{background:"none",border:"none",cursor:"pointer",padding:6,color:C.mut,display:"flex"}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+            {Object.entries(SECTIONS).filter(([k])=>!ec.sections.includes(k)).map(([k,v]) => (
+              <div key={k} onClick={()=>editorToggle("sections",k)} style={{display:"flex",alignItems:"center",gap:12,background:"transparent",borderRadius:12,padding:"10px 14px",border:`1.5px dashed ${C.brd}`,cursor:"pointer"}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span style={{fontSize:13,fontWeight:600,color:C.mut}}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={()=>setEc({...cfgDefault})} style={{marginTop:12,width:"100%",padding:"10px",background:"transparent",border:`1px solid ${C.brd}`,borderRadius:10,color:C.mut,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
+        </div>
+      </>
+  );
+
+  return (
+    <div className="pg" style={{ padding:0, minHeight:"100%" }}>
+      <div style={{ background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:`calc(env(safe-area-inset-top, 0px) + 16px)`, paddingBottom:28, boxShadow:SHADOW }}>
+        <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div style={{ width:56, height:56, borderRadius:"50%", background:"linear-gradient(135deg,#08FB9D 0%,#05C97A 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
+            <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {user?.nick || user?.name || "Usuário"}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>{agencyIdentity?.name || "Unique Marketing 360"}</div></div>
+          </div>
+          <div style={{ display:"flex", gap:12 }}>
+            <button onClick={()=>goTab("chat")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:H.btnC}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+            <button onClick={()=>goSub("notifs")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:H.btnC,position:"relative"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{(notifCount>0)&&<span style={{position:"absolute",top:10,right:10,width:9,height:9,borderRadius:"50%",background:"#FF3B30",border:`2px solid ${H.bg}`}}/>}</button>
+          </div>
+        </div>
+        <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", position:"relative" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:16,color:H.txt,outline:"none",flex:1,width:"100%"}}/>
+          {searchQ&&<button onClick={()=>{setSearchQ("");searchRef.current?.focus();}} style={{background:"none",border:"none",cursor:"pointer",color:H.srchT,display:"flex",padding:2}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+          {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:8,background:isDark?"#1A1A1A":"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",border:`1px solid ${C.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"12px 18px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${C.brd}`:"none",display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div><p style={{fontSize:14,fontWeight:600,color:C.txt}}>{r.l}</p>{r.sub&&<p style={{fontSize:11,color:C.mut}}>{r.sub}</p>}</div></div>)}</div>}
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
+          {cfg.cards.slice(0,2).filter(ck => { const w=WIDGETS[ck]; return w && (w.k !== "financial" || canFinancial); }).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return<div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}><div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{w.l}</div><div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{w.val}</div><div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{w.sub}</div><div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>;})}
+        </div>
+      </div>
+      <div style={{ padding:"0 24px 0" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
+          <button onClick={()=>{ setEc(JSON.parse(JSON.stringify(cfg))); setShowEditor(true); }} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+          <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
+            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk => { const p=PILLS[pk]; return p && (p.k !== "financial" || canFinancial); }).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
+          </div>
+        </div>
+        {cfg.sections.map(sk => renderSection(sk))}
+      </div>
+      {EditorSheetJSX}
+    </div>
+  );
+}
+
+
+
+/* ═══════════════════════ CHECK-IN SYSTEM ═══════════════════════ */
+function CheckinPage({ onBack, user }) {
+  const isAdmin = user?.supaRole === "admin";
+  const [adminView, setAdminView] = useState(false); /* false = meu ponto, true = equipe */
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [activeCheckin, setActiveCheckin] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [elapsed, setElapsed] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [adminTab, setAdminTab] = useState("today");
+  const [teamData, setTeamData] = useState([]);
+  const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
+
+  const [teamError, setTeamError] = useState(null);
+
+  /* Load personal data on mount (always) */
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      setLoading(true);
+      const [active, hist] = await Promise.all([supaGetActiveCheckin(user.id), supaGetCheckinHistory(user.id)]);
+      setActiveCheckin(active);
+      setHistory(hist);
+      setLoading(false);
+    };
+    load();
+  }, [user?.id]);
+
+  /* Load team data when admin switches to team view */
+  useEffect(() => {
+    if (!isAdmin || !adminView || !user?.id) return;
+    const load = async () => {
+      setLoading(true);
+      setTeamError(null);
+      try {
+        const { data: checkins, error } = await supabase.from("checkins").select("*").order("check_in_at", { ascending: false }).limit(200);
+        if (error) { setTeamError(error.message || "Erro ao carregar dados"); setTeamData([]); setLoading(false); return; }
+        /* Fetch profile names separately */
+        const uids = [...new Set((checkins || []).map(c => c.user_id))];
+        let profileMap = {};
+        if (uids.length > 0) {
+          const { data: profs } = await supabase.from("profiles").select("id, name, email").in("id", uids);
+          (profs || []).forEach(p => { profileMap[p.id] = p; });
+        }
+        setTeamData((checkins || []).map(c => ({ ...c, profiles: profileMap[c.user_id] || { name: "—", email: "" } })));
+      } catch(e) { setTeamError(String(e)); setTeamData([]); }
+      setLoading(false);
+    };
+    load();
+  }, [adminView, isAdmin, user?.id]);
+
+  /* Timer */
+  useEffect(() => {
+    if (!activeCheckin) { setElapsed(0); return; }
+    const calc = () => Math.floor((Date.now() - new Date(activeCheckin.check_in_at).getTime()) / 1000);
+    setElapsed(calc());
+    const iv = setInterval(() => setElapsed(calc()), 1000);
+    return () => clearInterval(iv);
+  }, [activeCheckin]);
+
+  const formatTime = (s) => { const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; };
+  const fmtMin = (min) => { if (!min && min !== 0) return "—"; const h=Math.floor(min/60), m=min%60; return `${h}h ${m}m`; };
+  const fmtDate = (iso) => { const d = new Date(iso); return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}); };
+  const fmtHour = (iso) => { const d = new Date(iso); return d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); };
+
+  const handleCheckin = async () => {
+    setActionLoading(true);
+    showToast("Registrando entrada...");
+    const result = await supaCheckin(user.id);
+    if (result) { setActiveCheckin(result); showToast("Check-in registrado ✓ (+15 XP)"); supaAddXp(user.id, "checkin", "Check-in no horário", 15); }
+    else showToast("Erro ao registrar check-in");
+    setActionLoading(false);
+  };
+  const handleCheckout = async () => {
+    if (!activeCheckin) return;
+    setActionLoading(true);
+    showToast("Registrando saída...");
+    const result = await supaCheckout(activeCheckin.id);
+    if (result) { setActiveCheckin(null); setHistory(prev => [result, ...prev]); showToast("Check-out registrado ✓"); }
+    else showToast("Erro ao registrar check-out");
+    setActionLoading(false);
+  };
+
+  /* Totals */
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekMin = history.filter(h => new Date(h.check_in_at) >= weekStart).reduce((s, h) => s + (h.duration_minutes || 0), 0) + (activeCheckin ? Math.floor(elapsed / 60) : 0);
+  const monthMin = history.filter(h => new Date(h.check_in_at) >= monthStart).reduce((s, h) => s + (h.duration_minutes || 0), 0) + (activeCheckin ? Math.floor(elapsed / 60) : 0);
+
+  /* Admin date filter */
+  const loadAdminData = async (period) => {
+    setAdminTab(period);
+    setLoading(true);
+    setTeamError(null);
+    const start = new Date(); start.setHours(0,0,0,0);
+    if (period === "week") start.setDate(start.getDate() - start.getDay());
+    else if (period === "month") { start.setDate(1); }
+    try {
+      const { data: checkins, error } = await supabase.from("checkins").select("*").gte("check_in_at", start.toISOString()).order("check_in_at", { ascending: false }).limit(200);
+      if (error) { setTeamError(error.message); setTeamData([]); setLoading(false); return; }
+      const uids = [...new Set((checkins || []).map(c => c.user_id))];
+      let profileMap = {};
+      if (uids.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, name, email").in("id", uids);
+        (profs || []).forEach(p => { profileMap[p.id] = p; });
+      }
+      setTeamData((checkins || []).map(c => ({ ...c, profiles: profileMap[c.user_id] || { name: "—", email: "" } })));
+    } catch(e) { setTeamError(String(e)); setTeamData([]); }
+    setLoading(false);
+  };
+
+  /* Admin summary by user */
+  const adminSummary = React.useMemo(() => {
+    const map = {};
+    teamData.forEach(c => {
+      const uid = c.user_id;
+      if (!map[uid]) map[uid] = { name: c.profiles?.name || c.profiles?.email || "—", totalMin: 0, count: 0, active: false };
+      if (c.check_out_at) { map[uid].totalMin += c.duration_minutes || 0; map[uid].count++; }
+      else { map[uid].active = true; map[uid].totalMin += Math.floor((Date.now() - new Date(c.check_in_at).getTime()) / 60000); }
+    });
+    return Object.values(map).sort((a, b) => b.totalMin - a.totalMin);
+  }, [teamData]);
+
+  if (loading) return (<div className="pg"><Head title="Check-in" onBack={onBack} /><Card style={{textAlign:"center",padding:40}}><p style={{color:B.muted,fontSize:13}}>Carregando...</p></Card></div>);
+
+  /* ── Admin Toggle ── */
+  const adminToggle = isAdmin ? (
+    <div style={{display:"flex",gap:6,marginBottom:14}}>
+      <button className={`htab${!adminView?" a":""}`} onClick={() => setAdminView(false)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Meu Ponto</button>
+      <button className={`htab${adminView?" a":""}`} onClick={() => setAdminView(true)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Equipe</button>
+    </div>
+  ) : null;
+
+  /* ── Admin Team View ── */
+  if (isAdmin && adminView) return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Ponto — Equipe" onBack={onBack} />
+      {adminToggle}
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {["today","week","month"].map(p => (
+          <button key={p} className={`htab${adminTab===p?" a":""}`} onClick={() => loadAdminData(p)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{p==="today"?"Hoje":p==="week"?"Semana":"Mês"}</button>
+        ))}
+      </div>
+      {teamError && <Card style={{marginBottom:10,background:`${B.red}10`,border:`1px solid ${B.red}30`}}><p style={{color:B.red,fontSize:12,fontWeight:600}}>Erro: {teamError}</p></Card>}
+      {adminSummary.length === 0 && !teamError && <Card style={{textAlign:"center",padding:30}}><p style={{color:B.muted,fontSize:13}}>Nenhum registro encontrado</p></Card>}
+      {adminSummary.map((m, i) => (
+        <Card key={i} delay={0.05+i*0.03} style={{marginTop:i?6:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:36,height:36,borderRadius:10,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:B.accent}}>{m.name.charAt(0).toUpperCase()}</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:13,fontWeight:700}}>{m.name}</p>
+              <p style={{fontSize:11,color:B.muted}}>{m.count} registro{m.count!==1?"s":""}{m.active ? " · Em jornada" : ""}</p>
+            </div>
+            <Tag color={m.active ? B.green : B.accent}>{fmtMin(m.totalMin)}</Tag>
+          </div>
+        </Card>
+      ))}
+      <p className="sl" style={{marginTop:16,marginBottom:8}}>Registros detalhados</p>
+      {teamData.map((c, i) => (
+        <Card key={c.id} delay={0.1+i*0.02} style={{marginTop:i?4:0,padding:12}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:28,height:28,borderRadius:8,background:`${B.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:B.accent}}>{fmtDate(c.check_in_at).split("/")[0]}</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:12,fontWeight:600}}>{c.profiles?.name || "—"}</p>
+              <p style={{fontSize:10,color:B.muted}}>{fmtHour(c.check_in_at)} — {c.check_out_at ? fmtHour(c.check_out_at) : "..."}</p>
+              <div style={{display:"flex",gap:8,marginTop:1}}>
+                {c.check_in_lat && <GeoPin lat={c.check_in_lat} lng={c.check_in_lng} label="Entrada" />}
+                {c.check_out_lat && <GeoPin lat={c.check_out_lat} lng={c.check_out_lng} label="Saída" />}
+              </div>
+            </div>
+            <span style={{fontSize:11,fontWeight:700,color:c.check_out_at?B.accent:B.green}}>{c.check_out_at ? fmtMin(c.duration_minutes) : "Ativo"}</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  /* ── Member View ── */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.checkin} label="Presença" title="Check-in" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      {ToastEl}
+      {adminToggle}
+      <Card style={{ background: B.dark, color: "#fff", border: "none", textAlign: "center", padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+          <span style={{ color: B.accent, display: "flex" }}>{IC.clock}</span>
+          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>PONTO DIGITAL</p>
+        </div>
+        {activeCheckin ? (<>
+          <p style={{ fontSize: 44, fontWeight: 900, color: B.accent, fontVariantNumeric: "tabular-nums", letterSpacing: 2 }}>{formatTime(elapsed)}</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>Entrada às {fmtHour(activeCheckin.check_in_at)}</p>
+          {activeCheckin.check_in_lat && <div style={{marginTop:6}}><GeoPin lat={activeCheckin.check_in_lat} lng={activeCheckin.check_in_lng} label="Entrada" /></div>}
+          <div style={{ width: 10, height: 10, borderRadius: 5, background: B.green, margin: "10px auto 0", animation: "skPulse 1.5s ease infinite" }} />
+        </>) : (<>
+          <p style={{ fontSize: 44, fontWeight: 900, color: "rgba(255,255,255,0.15)", fontVariantNumeric: "tabular-nums" }}>00:00:00</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>Aguardando check-in</p>
+        </>)}
+      </Card>
+      <button disabled={actionLoading} onClick={activeCheckin ? handleCheckout : handleCheckin} style={{ width: "100%", padding: 16, marginTop: 12, borderRadius: 16, border: "none", background: activeCheckin ? `${B.red}12` : B.accent, color: activeCheckin ? B.red : B.dark, fontSize: 16, fontWeight: 800, cursor: actionLoading ? "wait" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "all .2s", opacity: actionLoading ? 0.6 : 1 }}>
+        <span style={{ display: "flex" }}>{activeCheckin ? IC.pause : IC.play}</span>
+        {actionLoading ? "Processando..." : activeCheckin ? "Encerrar Jornada" : "Iniciar Jornada"}
+      </button>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginTop: 14 }}>
+        <Card delay={0.06}><p style={{ fontSize: 9, color: B.muted, textTransform: "uppercase", letterSpacing: 1 }}>Esta semana</p><p style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{fmtMin(weekMin)}</p></Card>
+        <Card delay={0.08}><p style={{ fontSize: 9, color: B.muted, textTransform: "uppercase", letterSpacing: 1 }}>Este mês</p><p style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{fmtMin(monthMin)}</p></Card>
+      </div>
+      {history.length > 0 && <>
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Histórico</p>
+        {history.map((h, i) => (
+          <Card key={h.id} delay={0.1 + i * 0.03} style={{ marginTop: i ? 6 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.accent, fontSize: 11, fontWeight: 800 }}>{fmtDate(h.check_in_at).split("/")[0]}</div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 600 }}>{fmtDate(h.check_in_at)}</p>
+                <p style={{ fontSize: 11, color: B.muted }}>{fmtHour(h.check_in_at)} — {fmtHour(h.check_out_at)}</p>
+                <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                  {h.check_in_lat && <GeoPin lat={h.check_in_lat} lng={h.check_in_lng} label="Entrada" />}
+                  {h.check_out_lat && <GeoPin lat={h.check_out_lat} lng={h.check_out_lng} label="Saída" />}
+                </div>
+              </div>
+              <Tag color={B.green}>{fmtMin(h.duration_minutes)}</Tag>
+            </div>
+          </Card>
+        ))}
+      </>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════ CLIENTS PAGE ═══════════════════════ */
+const SOCIAL_PLATFORMS = [
+  /* Redes Sociais */
+  { key:"instagram", name:"Instagram", icon:"instagram", c:"#E1306C", urlBase:"instagram.com/", cat:"social" },
+  { key:"facebook", name:"Facebook", icon:"facebook", c:"#1877F2", urlBase:"facebook.com/", cat:"social" },
+  { key:"linkedin", name:"LinkedIn", icon:"linkedin", c:"#0A66C2", urlBase:"linkedin.com/company/", cat:"social" },
+  { key:"tiktok", name:"TikTok", icon:"tiktok", c:"#010101", urlBase:"tiktok.com/@", cat:"social" },
+  { key:"youtube", name:"YouTube", icon:"youtube", c:"#FF0000", urlBase:"youtube.com/@", cat:"social" },
+  { key:"twitter", name:"X (Twitter)", icon:"twitter", c:"#1D9BF0", urlBase:"x.com/", cat:"social" },
+  { key:"pinterest", name:"Pinterest", icon:null, c:"#E60023", urlBase:"pinterest.com/", cat:"social" },
+  { key:"threads", name:"Threads", icon:null, c:"#000000", urlBase:"threads.net/@", cat:"social" },
+  /* Google */
+  { key:"google", name:"Google Meu Negócio", icon:null, c:"#4285F4", urlBase:"business.google.com", cat:"google" },
+  { key:"ga4", name:"Google Analytics 4", icon:null, c:"#E37400", urlBase:"analytics.google.com", cat:"google" },
+  /* Ads & Tráfego */
+  { key:"meta_ads", name:"Meta Ads", icon:null, c:"#0081FB", urlBase:"business.facebook.com", cat:"ads", soon:true },
+  { key:"google_ads", name:"Google Ads", icon:null, c:"#4285F4", urlBase:"ads.google.com", cat:"ads", soon:true },
+  { key:"linkedin_ads", name:"LinkedIn Ads", icon:null, c:"#0A66C2", urlBase:"linkedin.com/campaignmanager", cat:"ads", soon:true },
+  { key:"tiktok_ads", name:"TikTok Ads", icon:null, c:"#010101", urlBase:"ads.tiktok.com", cat:"ads", soon:true },
+  /* CRM & Automação */
+  { key:"rd_station", name:"RD Station", icon:null, c:"#00C4B3", urlBase:"rdstation.com", cat:"crm", soon:true },
+];
+
+function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user, canAccess: ca }) {
+  const canAccessFn = ca || (() => true);
+  const [localClients, localSetClients] = useState([]);
+  const clients = propClients || localClients;
+  const setClients = propSetClients || localSetClients;
+  const [filter, setFilter] = useState("all");
+  const isAdmin = user?.supaRole === "admin";
+  const canFinancial = canAccessFn("financial") || canAccessFn("financial.view") || canAccessFn("clients.financial");
+  const canSocials = canAccessFn("clients.socials") || isAdmin;
+
+  const [sel, setSel] = useState(null);
+  const [profileTab, setProfileTab] = useState("info");
+  const [clientIdeas, setClientIdeas] = useState([]);
+  const [clientIdeasLoaded, setClientIdeasLoaded] = useState(null); /* client id that was loaded */
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({});
+  const [editingSocial, setEditingSocial] = useState(null);
+  const [socialForm, setSocialForm] = useState({});
+  const [search, setSearch] = useState("");
+  const [libCat, setLibCat] = useState("all");
+  const [viewClientFile, setViewClientFile] = useState(null);
+  const [addingFile, setAddingFile] = useState(false);
+  const [fileForm, setFileForm] = useState({});
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef(null);
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !sel) return;
+    const cid = sel.supaId || sel.id;
+    setLogoUploading(true);
+    const url = await supaUploadClientLogo(cid, file);
+    if (url) {
+      setSel(prev => ({ ...prev, logo: url }));
+      setClients(prev => prev.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, logo: url } : c));
+      showToast("Logo atualizado ✓");
+    } else { showToast("Erro ao enviar logo"); }
+    setLogoUploading(false);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+  /* Load ideas for selected client when ideas tab is opened */
+  useEffect(() => {
+    if (profileTab !== "ideas" || !sel || !supabase) return;
+    if (clientIdeasLoaded === sel.name) return;
+    supaLoadIdeas().then(rows => {
+      const filtered = (rows || []).filter(r => r.client_name === sel.name || r.client_name === "Todos");
+      setClientIdeas(filtered.map(r => ({ id: r.id, title: r.title, desc: r.description || "", author: r.author || "—", date: new Date(r.created_at).toLocaleDateString("pt-BR"), votes: r.votes || 0, status: r.status || "pending", tags: r.tags || [], comments: r.comments || [] })));
+      setClientIdeasLoaded(sel.name);
+    });
+  }, [profileTab, sel]);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [editClient, setEditClient] = useState(false);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
+  const { showToast, ToastEl } = useToast();
+
+  /* Check for Meta OAuth results after redirect */
+  const metaChecked = useRef(false);
+  useEffect(() => {
+    if (metaChecked.current || clients.length === 0) return;
+    try {
+      const metaResult = sessionStorage.getItem("uh_meta_connected");
+      const metaError = sessionStorage.getItem("uh_meta_error");
+      if (metaResult) {
+        metaChecked.current = true;
+        sessionStorage.removeItem("uh_meta_connected");
+        const result = JSON.parse(metaResult);
+        const clientId = result.clientId;
+        console.log("[Meta Connect] Looking for client:", clientId, "in", clients.length, "clients");
+        console.log("[Meta Connect] Client IDs:", clients.map(c => `id=${c.id} supaId=${c.supaId}`).join(", "));
+        /* Try multiple matching strategies */
+        const client = clients.find(c => 
+          String(c.id) === String(clientId) || 
+          String(c.supaId) === String(clientId) ||
+          c.id === clientId ||
+          c.supaId === clientId
+        );
+        if (client) {
+          console.log("[Meta Connect] Found client:", client.name);
+          const ns = {
+            ...client.socials,
+            facebook: { connected: true, user: result.page_name || "", followers: "", oauth: true, page_id: result.page_id }
+          };
+          /* Only mark Instagram as connected if actually linked */
+          if (result.ig_username) {
+            ns.instagram = { connected: true, user: result.ig_username, followers: "", oauth: true, ig_user_id: result.ig_user_id };
+          }
+          updateClient(client.id, { socials: ns });
+          setSel({ ...client, socials: ns });
+          setProfileTab("socials");
+          showToast(result.ig_username ? "Instagram e Facebook conectados via Meta! ✓" : "Facebook conectado via Meta! ✓ (Instagram não vinculado à página)");
+        } else {
+          console.warn("[Meta Connect] Client not found for id:", clientId);
+          /* Still show success even if client not found - token is saved */
+          showToast(`Meta conectado! (${result.ig_username || result.page_name || "OK"}) — abra o cliente para ver`);
+        }
+      }
+      if (metaError) {
+        metaChecked.current = true;
+        sessionStorage.removeItem("uh_meta_error");
+        showToast(`Erro Meta: ${metaError}`);
+      }
+      /* ── Instagram direct connection (Instagram Business Login API) ── */
+      const igResult = sessionStorage.getItem("uh_ig_connected");
+      if (igResult) {
+        metaChecked.current = true;
+        sessionStorage.removeItem("uh_ig_connected");
+        const result = JSON.parse(igResult);
+        const clientId = result.clientId;
+        console.log("[IG Connect] Looking for client:", clientId);
+        const client = clients.find(c =>
+          String(c.id) === String(clientId) ||
+          String(c.supaId) === String(clientId) ||
+          c.id === clientId ||
+          c.supaId === clientId
+        );
+        if (client) {
+          console.log("[IG Connect] Found client:", client.name);
+          const ns = {
+            ...client.socials,
+            instagram: { connected: true, user: `@${result.username}`, followers: result.followers_count ? `${result.followers_count}` : "", oauth: true, ig_user_id: result.ig_user_id, profile_picture_url: result.profile_picture_url }
+          };
+          updateClient(client.id, { socials: ns });
+          setSel({ ...client, socials: ns });
+          setProfileTab("socials");
+          showToast(`Instagram @${result.username} conectado! ✓`);
+        } else {
+          console.warn("[IG Connect] Client not found for id:", clientId);
+          showToast(`Instagram @${result.username} conectado! — abra o cliente para ver`);
+        }
+      }
+    } catch(e) { console.error("[Meta Connect] Error:", e); }
+  }, [clients]);
+  const filtered = clients.filter(c => {
+    if (filter !== "all" && c.status !== filter) return false;
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+  const f = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const saveClient = async () => {
+    if (!form.name?.trim()) return showToast("Informe o nome da empresa");
+    const nc = {
+      id: Date.now(), name: form.name.trim(), plan: form.plan || "Traction", status: form.status || "trial",
+      monthly: form.monthly || "R$ 0", pending: 0, score: 0,
+      contact: form.contact || "", phone: form.phone || "", email: form.email || "",
+      cnpj: form.cnpj || "", address: form.address || "", segment: form.segment || "", since: new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}),
+      socials: { instagram:{connected:false}, facebook:{connected:false}, google:{connected:false}, tiktok:{connected:false}, linkedin:{connected:false}, youtube:{connected:false}, twitter:{connected:false}, pinterest:{connected:false} },
+    };
+    /* Save to Supabase */
+    const result = await supaCreateClient(nc);
+    if (result?.data) { nc.id = result.data.id; nc.supaId = result.data.id; }
+    else if (supabase) { showToast("Erro: " + (result?.err || "desconhecido")); }
+    setClients(p => [...p, nc]);
+    setCreating(false); setForm({}); 
+    if (result?.data) showToast("Cliente cadastrado! ✓");
+    else if (!supabase) showToast("Cliente cadastrado! ✓");
+  };
+
+  const updateClient = (id, data) => {
+    setClients(p => p.map(c => c.id === id ? { ...c, ...data } : c));
+    if (sel?.id === id) setSel(p => ({ ...p, ...data }));
+    /* Sync to Supabase */
+    const client = clients.find(c => c.id === id);
+    console.log("[updateClient] id:", id, "client found:", !!client, "supaId:", client?.supaId, "has files:", data.files !== undefined, "files count:", data.files?.length);
+    if (client?.supaId) supaUpdateClient(client.supaId, data);
+    /* Persist file metadata separately via settings — use supaId for consistency */
+    if (data.files !== undefined) {
+      const fid = client?.supaId || id;
+      console.log("[updateClient] Saving files to key:", `client_files_${fid}`, "count:", data.files.length);
+      supaSetSetting(`client_files_${fid}`, JSON.stringify(data.files)).then(ok => {
+        console.log("[updateClient] supaSetSetting result:", ok);
+      });
+    }
+    /* Persist socials separately via settings */
+    if (data.socials !== undefined) {
+      const cid = client?.supaId || id;
+      supaSetSetting(`client_socials_${cid}`, JSON.stringify(data.socials));
+    }
+  };
+
+  const connectSocial = (platformKey) => {
+    if (!sel) return;
+    if (!canSocials) { showToast("Sem permissão para gerenciar redes sociais"); return; }
+    const plat = SOCIAL_PLATFORMS.find(p => p.key === platformKey);
+    if (plat?.soon) { showToast(`${plat.name} será disponibilizado em breve!`); return; }
+    /* For Instagram & Facebook, offer real Meta OAuth */
+    if ((platformKey === "instagram" || platformKey === "facebook") && supabase) {
+      const current = sel.socials?.[platformKey] || {};
+      if (current.connected) {
+        /* Already connected — open manage modal */
+        setEditingSocial(platformKey);
+        setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
+      } else {
+        /* Offer choice: manual or OAuth */
+        setEditingSocial(platformKey);
+        setSocialForm({ user: "", followers: "", reviews: "", showOAuth: true });
+      }
+      return;
+    }
+    const current = sel.socials?.[platformKey] || {};
+    setEditingSocial(platformKey);
+    setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
+  };
+
+  const saveSocial = () => {
+    if (!editingSocial || !sel) return;
+    const ns = { ...sel.socials, [editingSocial]: { connected: true, user: socialForm.user || "", followers: socialForm.followers || "", reviews: socialForm.reviews || "" } };
+    updateClient(sel.id, { socials: ns });
+    setEditingSocial(null); setSocialForm({});
+    showToast("Rede conectada! ✓");
+  };
+
+  const GoogleIcon = ({sz=18}) => <svg width={sz} height={sz} viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
+  const PinterestIcon = ({sz=18}) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="#E60023"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.15 9.42 7.6 11.18-.1-.95-.2-2.42.04-3.46.22-.94 1.4-5.95 1.4-5.95s-.36-.72-.36-1.78c0-1.66.97-2.9 2.17-2.9 1.02 0 1.52.77 1.52 1.7 0 1.03-.66 2.58-1 4.01-.28 1.2.6 2.18 1.78 2.18 2.13 0 3.77-2.25 3.77-5.5 0-2.87-2.06-4.88-5.01-4.88-3.41 0-5.42 2.56-5.42 5.21 0 1.03.4 2.14.89 2.74.1.12.11.22.08.34-.09.37-.29 1.2-.33 1.36-.05.22-.18.26-.4.16-1.5-.7-2.43-2.88-2.43-4.64 0-3.78 2.75-7.25 7.92-7.25 4.16 0 7.4 2.97 7.4 6.93 0 4.14-2.61 7.46-6.23 7.46-1.22 0-2.36-.63-2.75-1.38l-.75 2.85c-.27 1.04-1 2.35-1.49 3.15C9.57 23.81 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>;
+
+  /* ── SOCIAL CONNECTION MODAL ── */
+  if (editingSocial) {
+    const plat = SOCIAL_PLATFORMS.find(p => p.key === editingSocial);
+    const isGoogleType = plat.key === "google" || plat.key === "ga4";
+    const isMetaType = plat.key === "instagram" || plat.key === "facebook";
+    const current = sel?.socials?.[editingSocial] || {};
+    const isDisconnecting = current.connected;
+    const hasOAuth = current.oauth;
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={isDisconnecting ? `Gerenciar ${plat.name}` : `Conectar ${plat.name}`} onBack={() => setEditingSocial(null)} />
+        <Card style={{ textAlign:"center", marginBottom:16 }}>
+          <div style={{ width:56, height:56, borderRadius:16, background:`${plat.c}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+            {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={28} active /> : plat.key === "google" ? <GoogleIcon sz={28} /> : plat.key === "pinterest" ? <PinterestIcon sz={28} /> : plat.key === "ga4" ? <span style={{ fontSize:13, fontWeight:800, color:plat.c }}>GA4</span> : <span style={{ fontSize:16, fontWeight:700, color:plat.c }}>@</span>}
+          </div>
+          <p style={{ fontSize:16, fontWeight:700 }}>{isDisconnecting ? plat.name : `Conectar ${plat.name}`}</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Perfil de <strong>{sel?.name}</strong></p>
+          {current.connected && <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:8, padding:"4px 12px", borderRadius:8, background:`${B.green}12` }}>
+            <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
+            <span style={{ fontSize:10, fontWeight:700, color:B.green }}>{hasOAuth ? "Conectado via Meta" : "Conectado"}</span>
+          </div>}
+        </Card>
+
+        {/* Meta OAuth option for Facebook only */}
+        {editingSocial === "facebook" && !current.connected && supabase && <>
+          <Card style={{ marginBottom:12, background:"#1877F215", border:"1.5px solid #1877F230" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão automática via Meta</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Facebook com OAuth oficial. Permite publicar e gerenciar a página.</p>
+              <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/></svg>
+                Conectar Facebook
+              </button>
+            </div>
+          </Card>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+            <div style={{ flex:1, height:1, background:B.border }} />
+            <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
+            <div style={{ flex:1, height:1, background:B.border }} />
+          </div>
+        </>}
+
+        {/* Instagram OAuth — login direto pelo Instagram */}
+        {editingSocial === "instagram" && !current.connected && supabase && <>
+          <Card style={{ marginBottom:12, background:"#E1306C15", border:"1.5px solid #E1306C30" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão direta via Instagram</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Instagram Business/Creator diretamente. Permite publicar, acessar métricas e gerenciar comentários.</p>
+              <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startInstagramOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                Conectar Instagram
+              </button>
+            </div>
+          </Card>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+            <div style={{ flex:1, height:1, background:B.border }} />
+            <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
+            <div style={{ flex:1, height:1, background:B.border }} />
+          </div>
+        </>}
+
+        {/* Reconnect option when already connected via Meta OAuth */}
+        {isMetaType && current.connected && hasOAuth && supabase && <>
+          <Card style={{ marginBottom:12, background:"#F59E0B10", border:"1.5px solid #F59E0B25" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>Trocar página / Reconectar</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Conectou a página errada? Refaça o OAuth para selecionar outra página.</p>
+              <button onClick={() => { startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:"#F59E0B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                🔄 Reconectar com Meta
+              </button>
+            </div>
+          </Card>
+        </>}
+
+        {/* Quick publish test for Instagram */}
+        {editingSocial === "instagram" && current.connected && current.oauth && supabase && <>
+          <Card style={{ marginBottom:12, background:"#E1306C08", border:"1.5px solid #E1306C20" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4 }}>Teste de Publicação</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Envie uma imagem de teste para o Instagram. A imagem precisa ser uma URL pública.</p>
+              <input id="ig_test_url" placeholder="URL da imagem (https://...)" className="tinput" style={{ marginBottom:8, textAlign:"center", fontSize:12 }} />
+              <input id="ig_test_caption" placeholder="Legenda (opcional para feed)" className="tinput" style={{ marginBottom:10, textAlign:"center", fontSize:12 }} />
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={async () => {
+                  const url = document.getElementById("ig_test_url")?.value;
+                  if (!url) { showToast("Cole a URL da imagem"); return; }
+                  const caption = document.getElementById("ig_test_caption")?.value || "";
+                  showToast("Publicando no Feed...");
+                  const r = await publishToInstagram(sel.supaId || sel.id, url, caption, "FEED");
+                  if (r.error) showToast(`Erro: ${r.error}`);
+                  else showToast(r.message || "Post publicado!");
+                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> Feed
+                </button>
+                <button onClick={async () => {
+                  const url = document.getElementById("ig_test_url")?.value;
+                  if (!url) { showToast("Cole a URL da imagem"); return; }
+                  showToast("Publicando Story...");
+                  const r = await publishToInstagram(sel.supaId || sel.id, url, "", "STORIES");
+                  if (r.error) showToast(`Erro: ${r.error}`);
+                  else showToast(r.message || "Story publicado!");
+                }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Story
+                </button>
+              </div>
+            </div>
+          </Card>
+        </>}
+
+        {/* Steps guide for manual connection */}
+        {!current.connected && !isMetaType && <Card style={{ marginBottom:12, background:`${B.accent}04`, border:`1px solid ${B.accent}12` }}>
+          <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Como conectar:</p>
+          {[
+            `Acesse ${plat.urlBase} e faça login na conta que deseja gerenciar`,
+            "Preencha o nome de usuário/perfil abaixo",
+            "Clique em Conectar para vincular ao UniqueHub"
+          ].map((step, i) => (
+            <div key={i} style={{ display:"flex", gap:8, marginBottom:6 }}>
+              <div style={{ width:20, height:20, borderRadius:10, background:`${plat.c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>
+                <span style={{ fontSize:10, fontWeight:800, color:plat.c }}>{i+1}</span>
+              </div>
+              <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>{step}</p>
+            </div>
+          ))}
+        </Card>}
+
+        <Card>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>@ Usuário / Perfil</label>
+          <input value={socialForm.user||""} onChange={e=>setSocialForm(p=>({...p,user:e.target.value}))} placeholder={`Ex: ${plat.urlBase}nome`} className="tinput" style={{ marginBottom:12 }} />
+          {isGoogleType ? <>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>{plat.key==="ga4"?"ID da propriedade":"Nota média (avaliações)"}</label>
+            <input value={socialForm.reviews||""} onChange={e=>setSocialForm(p=>({...p,reviews:e.target.value}))} placeholder={plat.key==="ga4"?"Ex: 123456789":"Ex: 4.7★"} className="tinput" />
+          </> : <>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Seguidores / Inscritos</label>
+            <input value={socialForm.followers||""} onChange={e=>setSocialForm(p=>({...p,followers:e.target.value}))} placeholder="Ex: 12.4k" className="tinput" />
+          </>}
+        </Card>
+
+        <div style={{ display:"flex", gap:8, marginTop:16 }}>
+          {current.connected && canSocials && <button onClick={() => { const ns = { ...sel.socials, [editingSocial]: { connected: false } }; updateClient(sel.id, { socials: ns }); setEditingSocial(null); showToast("Desconectado"); }} style={{ flex:1, padding:"14px 0", borderRadius:14, border:`1.5px solid ${B.red}40`, background:`${B.red}08`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Desconectar</button>}
+          <button onClick={saveSocial} className="pill full accent" style={{ flex:current.connected?1:undefined, padding:"14px 0" }}>
+            {current.connected ? "Salvar" : `Conectar ${plat.name} manualmente`}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── ADD CLIENT FORM ── */
+  if (creating) return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Novo Cliente" onBack={() => { setCreating(false); setForm({}); }} />
+
+      <p className="sl" style={{ marginBottom:6 }}>Dados da empresa</p>
+      <Card>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome da empresa *</label>
+        <input value={form.name||""} onChange={e=>f("name",e.target.value)} placeholder="Ex: Casa Nova Imóveis" className="tinput" style={{ marginBottom:10 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>CNPJ</label>
+        <input value={form.cnpj||""} onChange={e=>f("cnpj",e.target.value)} placeholder="00.000.000/0001-00" className="tinput" style={{ marginBottom:10 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Segmento</label>
+        <input value={form.segment||""} onChange={e=>f("segment",e.target.value)} placeholder="Ex: Imobiliário, Estética, Tecnologia..." className="tinput" style={{ marginBottom:10 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Endereço</label>
+        <input value={form.address||""} onChange={e=>f("address",e.target.value)} placeholder="Rua, número - Cidade/UF" className="tinput" />
+      </Card>
+
+      <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Contato principal</p>
+      <Card>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do contato</label>
+        <input value={form.contact||""} onChange={e=>f("contact",e.target.value)} placeholder="Ex: Roberto Silva" className="tinput" style={{ marginBottom:10 }} />
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          <div>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
+            <input value={form.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(24) 99999-9999" className="tinput" />
+          </div>
+          <div>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label>
+            <input value={form.email||""} onChange={e=>f("email",e.target.value)} placeholder="email@empresa.com" className="tinput" />
+          </div>
+        </div>
+      </Card>
+
+      <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Plano e valor</p>
+      <Card>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Plano</label>
+        <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+          {["Traction","Growth 360","Partner"].map(p=>(
+            <button key={p} onClick={()=>{f("plan",p);f("monthly",PLAN_VALUES[p]);}} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}{canFinancial && <span style={{display:"block",fontSize:9,opacity:0.6,marginTop:2}}>{PLAN_VALUES[p]}</span>}</button>
+          ))}
+        </div>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Valor mensal</label>
+        <input value={form.monthly||""} onChange={e=>f("monthly",e.target.value)} placeholder="R$ 2.500" className="tinput" style={{ marginBottom:10 }} />
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Status</label>
+        <div style={{ display:"flex", gap:6 }}>
+          {[{k:"ativo",l:"Ativo"},{k:"trial",l:"Trial"}].map(s=>(
+            <button key={s.k} onClick={()=>f("status",s.k)} className={`htab${form.status===s.k?" a":""}`} style={{ flex:1 }}>{s.l}</button>
+          ))}
+        </div>
+      </Card>
+
+      <button onClick={saveClient} className="pill full accent" style={{ marginTop:20, padding:"14px 0" }}>Cadastrar Cliente</button>
+    </div>
+  );
+
+  /* ── CLIENT DETAIL / PROFILE ── */
+  if (sel) {
+    const connectedCount = Object.values(sel.socials||{}).filter(s=>s.connected).length;
+    const files = sel.files || [];
+    const invoices = sel.invoices || [
+      { id:1, month:"Mar/2026", value:sel.monthly, status:"pendente", paidAt:null },
+    ];
+    const contract = sel.contract || {
+      type: "Sem fidelidade",
+      startDate: sel.since ? `01/${sel.since}` : "01/01/2025",
+      endDate: "Sem fidelidade",
+      services: sel.plan === "Partner"
+        ? ["Tudo do Plano Growth 360º","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"]
+        : sel.plan === "Growth 360"
+        ? ["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"]
+        : ["Gestão de Tráfego OU Social Media","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"],
+      posts: sel.plan === "Partner" ? "Ilimitado" : sel.plan === "Growth 360" ? "12/mês" : "8/mês",
+      payment: "Boleto bancário",
+      status: "ativo",
+    };
+
+    const LIB_CATS = [
+      { key:"brand", label:"Manual de Marca", icon:"📕", c:B.red, desc:"Logo, paleta, tipografia, brandbook" },
+      { key:"feed", label:"Posts Feed", icon:"📱", c:B.blue, desc:"Artes para feed do Instagram/Facebook" },
+      { key:"stories", label:"Stories", icon:"📲", c:B.pink, desc:"Artes de stories para Instagram" },
+      { key:"reels", label:"Capas de Reels", icon:"🎬", c:B.purple, desc:"Thumbnails e capas de reels" },
+      { key:"videos", label:"Vídeos", icon:"🎥", c:B.orange, desc:"Reels, TikTok, YouTube" },
+      { key:"digital", label:"Artes Digitais", icon:"🖥️", c:B.cyan, desc:"Banners, thumbnails, ads" },
+      { key:"print", label:"Material Impresso", icon:"🖨️", c:B.green, desc:"Cartões, flyers, banners físicos" },
+      { key:"docs", label:"Documentos", icon:"📄", c:B.muted, desc:"Contratos, briefings, relatórios" },
+      { key:"ref", label:"Referências", icon:"💡", c:B.yellow, desc:"Moodboards, inspirações" },
+      { key:"other", label:"Outros", icon:"📁", c:B.muted, desc:"Demais arquivos" },
+    ];
+    const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
+    const getFileCat = (f) => catMap[f.category] || "other";
+
+    const addFile = async () => {
+      if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
+      if (fileForm.file) {
+        try {
+        showToast("Enviando arquivo...");
+        const clientId = sel.supaId || sel.id;
+        console.log("[Library] Upload start:", clientId, fileForm.file.name, fileForm.file.size);
+        const result = await supaUploadClientFile(fileForm.file, clientId);
+        console.log("[Library] Upload done:", JSON.stringify(result));
+        if (result?.error) { showToast("Erro: " + result.error); return; }
+        const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
+        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
+        const newFiles = [...files, nf];
+        const saveKey = `client_files_${clientId}`;
+        console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
+        const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+        console.log("[Library] Save result:", saved);
+        if (!saved) { console.error("[Library] SAVE FAILED key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
+        /* Update local state */
+        setSel(p => ({ ...p, files: newFiles }));
+        setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
+        setAddingFile(false); setFileForm({});
+        showToast("Arquivo salvo ✓");
+        } catch(err) { console.error("[Library] CRASH:", err); showToast("Erro inesperado: " + (err.message||err)); }
+      } else {
+        showToast("Selecione um arquivo para enviar");
+      }
+    };
+
+    const removeFile = async (fid) => {
+      const newFiles = files.filter(f=>f.id!==fid);
+      const saveKey = `client_files_${sel.supaId || sel.id}`;
+      await supaSetSetting(saveKey, JSON.stringify(newFiles));
+      setSel(p => ({ ...p, files: newFiles }));
+      setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
+      showToast("Arquivo removido");
+    };
+
+    const filteredFiles = libCat === "all" ? files : files.filter(f => getFileCat(f) === libCat);
+
+    const fileIcon = (name) => {
+      const ext = name.split(".").pop()?.toLowerCase();
+      if (["jpg","jpeg","png","gif","webp","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
+      if (["mp4","mov","avi","mkv"].includes(ext)) return { ic: IC.vid, c: B.orange };
+      if (["pdf"].includes(ext)) return { ic: IC.doc, c: B.red };
+      if (["psd","ai","fig","xd"].includes(ext)) return { ic: IC.palette, c: B.purple };
+      if (["doc","docx","txt"].includes(ext)) return { ic: IC.doc, c: B.blue };
+      return { ic: IC.doc, c: B.muted };
+    };
+
+    const PLANS = [
+      { key:"Traction", price:"R$ 1.480", services:["Gestão de Tráfego OU Social Media","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"], posts:"8/mês", desc:"Estrutura essencial para profissionalizar sua presença digital", target:"Startups & PMEs" },
+      { key:"Growth 360", price:"R$ 2.480", services:["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"], posts:"12/mês", desc:"Operação de marketing completa focada em ROI e Market Share", target:"Scale-ups & Expansão" },
+      { key:"Partner", price:"R$ 4.480", services:["Tudo do Plano Growth 360º","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"], posts:"Ilimitado", desc:"Solução definitiva com acesso à diretoria e produção de elite", target:"Grandes Contas & Business" },
+    ];
+
+    const changePlan = (newPlan) => {
+      const planData = PLANS.find(p => p.key === newPlan);
+      updateClient(sel.id, { plan: newPlan, monthly: planData.price });
+      setShowPlanPicker(false);
+      showToast(`Plano alterado para ${newPlan}! ✓`);
+    };
+
+    const executeClientAction = (type) => {
+      if (type === "pause") { updateClient(sel.id, { status: "pausado" }); showToast("Cliente pausado ⏸"); }
+      else if (type === "cancel") { updateClient(sel.id, { status: "cancelado" }); showToast("Cliente cancelado"); }
+      else if (type === "reactivate") { updateClient(sel.id, { status: "ativo" }); showToast("Cliente reativado! ✓"); }
+      setConfirmAction(null);
+    };
+
+    /* CONFIRM ACTION MODAL */
+    if (confirmAction) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={confirmAction.label} onBack={() => setConfirmAction(null)} />
+        <Card style={{ textAlign:"center", padding:24 }}>
+          <div style={{ width:56, height:56, borderRadius:28, background: confirmAction.type==="cancel" ? `${B.red}12` : confirmAction.type==="pause" ? `${B.orange}12` : `${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+            {confirmAction.type === "cancel"
+              ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              : confirmAction.type === "pause"
+              ? <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+              : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            }
+          </div>
+          <h3 style={{ fontSize:16, fontWeight:800 }}>{confirmAction.label}</h3>
+          <p style={{ fontSize:13, color:B.muted, marginTop:6, lineHeight:1.5 }}>
+            {confirmAction.type === "cancel" && `Tem certeza que deseja cancelar o contrato de ${sel.name}? O cliente perderá acesso a todos os serviços.`}
+            {confirmAction.type === "pause" && `O cliente ${sel.name} será pausado. Os serviços serão suspensos temporariamente mas o contrato continua ativo.`}
+            {confirmAction.type === "reactivate" && `Reativar todos os serviços de ${sel.name}?`}
+          </p>
+        </Card>
+        <div style={{ display:"flex", gap:8, marginTop:16 }}>
+          <button onClick={() => setConfirmAction(null)} style={{ flex:1, padding:"14px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text }}>Voltar</button>
+          <button onClick={() => executeClientAction(confirmAction.type)} style={{ flex:1, padding:"14px 0", borderRadius:12, border:"none", background: confirmAction.type==="cancel"?B.red:confirmAction.type==="pause"?B.orange:B.green, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Confirmar</button>
+        </div>
+      </div>
+    );
+
+    /* PLAN PICKER MODAL */
+    if (showPlanPicker) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Alterar Plano" onBack={() => setShowPlanPicker(false)} />
+        <Card style={{ marginBottom:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+          <p style={{ fontSize:12, color:B.text }}>Plano atual: <strong>{sel.plan}</strong>{canFinancial ? ` — ${sel.monthly}/mês` : ""}</p>
+        </Card>
+        {PLANS.map((plan, i) => {
+          const isCurrent = plan.key === sel.plan;
+          const curIdx = PLANS.findIndex(p=>p.key===sel.plan);
+          return (
+            <Card key={plan.key} style={{ marginTop: i?8:0, borderLeft:`4px solid ${isCurrent ? B.accent : B.border}`, opacity: isCurrent ? 0.7 : 1 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <div>
+                  <p style={{ fontSize:15, fontWeight:800 }}>{plan.key}</p>
+                  <p style={{ fontSize:18, fontWeight:900, color:B.green }}>{plan.price}<span style={{ fontSize:11, color:B.muted, fontWeight:400 }}>/mês</span></p>
+                </div>
+                {isCurrent ? <Tag color={B.accent}>Atual</Tag> : (
+                  <button onClick={() => changePlan(plan.key)} style={{ padding:"8px 16px", borderRadius:10, background: i > curIdx ? B.accent : `${B.orange}15`, border: i > curIdx ? "none" : `1.5px solid ${B.orange}40`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color: i > curIdx ? B.dark : B.orange }}>
+                    {i > curIdx ? "⬆ Upgrade" : "⬇ Downgrade"}
+                  </button>
+                )}
+              </div>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:4 }}>{plan.desc}</p>
+              <Tag color={B.purple} style={{ marginBottom:8 }}>{plan.target}</Tag>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:6 }}>Sem fidelidade · Início imediato</p>
+              {plan.services.map((s,j) => (
+                <div key={j} style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 0" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span style={{ fontSize:12 }}>{s}</span>
+                </div>
+              ))}
+            </Card>
+          );
+        })}
+      </div>
+    );
+
+    /* ADD FILE FORM */
+    if (addingFile) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Novo Arquivo" onBack={() => { setAddingFile(false); setFileForm({}); }} />
+        <Card>
+          <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do arquivo *</label>
+          <input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Ex: post_lancamento_feed.png" className="tinput" style={{ marginBottom:12 }} />
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Categoria</label>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            {LIB_CATS.filter(c=>c.key!=="other").map(cat => (
+              <button key={cat.key} onClick={() => setFileForm(p=>({...p,category:cat.label}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", borderRadius:10, border:`1.5px solid ${fileForm.category===cat.label ? B.accent : B.border}`, background: fileForm.category===cat.label ? `${B.accent}10` : B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <span style={{ fontSize:16 }}>{cat.icon}</span>
+                <span style={{ fontSize:11, fontWeight:600 }}>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+        <Card style={{ marginTop:10 }}>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Selecionar arquivo</label>
+          <label htmlFor="client-file-input" style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file?`${B.green}06`:`${B.accent}04`, cursor:"pointer" }}>
+            <input id="client-file-input" type="file" style={{ display:"none" }} onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) {
+                setFileForm(p => ({ ...p, file: f, name: p.name || f.name }));
+                showToast(`Arquivo selecionado: ${f.name}`);
+              }
+            }} />
+            {fileForm.file ? <>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polyline points="20 6 9 17 4 12"/></svg>
+              <p style={{ fontSize:13, fontWeight:700, color:B.green }}>{fileForm.file.name}</p>
+              <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{(fileForm.file.size / (1024 * 1024)).toFixed(1)} MB</p>
+            </> : <>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Toque para selecionar</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, documentos (até 100MB)</p>
+            </>}
+          </label>
+        </Card>
+        <button onClick={addFile} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>{fileForm.file ? "Enviar Arquivo" : "Adicionar Arquivo"}</button>
+      </div>
+    );
+
+    return (
+    <div className="pg">
+      {ToastEl}
+      <Head title={sel.name} onBack={() => { setSel(null); setProfileTab("info"); setEditClient(false); }} />
+      <Card style={{ textAlign:"center", marginBottom:10 }}>
+        <input ref={logoInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleLogoUpload} />
+        <div onClick={() => canAccessFn("clients.edit") && logoInputRef.current?.click()} style={{ position:"relative", display:"inline-block", cursor: canAccessFn("clients.edit") ? "pointer" : "default" }}>
+          <Av src={sel.logo} name={sel.name} sz={64} fs={24} />
+          {canAccessFn("clients.edit") && <div style={{ position:"absolute", bottom:-2, right:-2, width:22, height:22, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", border:`2px solid ${B.bgCard}` }}>
+            {logoUploading ? <div style={{ width:10, height:10, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} />
+            : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="3" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+          </div>}
+        </div>
+        <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{sel.name}</h3>
+        {sel.segment && <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{sel.segment}</p>}
+        <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
+          <Tag color={B.accent}>{sel.plan}</Tag>
+          <Tag color={sel.status==="ativo"?B.green:sel.status==="pausado"?B.orange:sel.status==="cancelado"?B.red:B.orange}>{sel.status==="ativo"?"Ativo":sel.status==="pausado"?"Pausado":sel.status==="cancelado"?"Cancelado":"Trial"}</Tag>
+          <Tag color={B.blue}>Desde {sel.since}</Tag>
+        </div>
+      </Card>
+      <div style={{ display:"grid", gridTemplateColumns:(isAdmin && canFinancial)?"repeat(4,1fr)":"repeat(3,1fr)", gap:6, marginBottom:10 }}>
+        {isAdmin && canFinancial && <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:8, color:B.muted }}>Mensal</p></Card>}
+        <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{sel.pending}</p><p style={{ fontSize:8, color:B.muted }}>Pendentes</p></Card>
+        <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.blue }}>{connectedCount}</p><p style={{ fontSize:8, color:B.muted }}>Redes</p></Card>
+        <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
+      </div>
+      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
+          <button key={t.k} onClick={()=>{setProfileTab(t.k);setViewClientFile(null);}} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
+        ))}
+      </div>
+
+      {profileTab === "info" && <>
+        {!editClient ? (<>
+          {/* ── READ-ONLY VIEW ── */}
+          <p className="sl" style={{ marginBottom:6 }}>Contato principal</p>
+          <Card>
+            {[
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Nome", value:sel.contact },
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Telefone", value:sel.phone },
+              { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"E-mail", value:sel.email },
+            ].map((item,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{item.icon}</div>
+                <div><p style={{ fontSize:10, color:B.muted }}>{item.label}</p><p style={{ fontSize:13, fontWeight:600 }}>{item.value || "—"}</p></div>
+              </div>
+            ))}
+          </Card>
+          <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados da empresa</p>
+          <Card>
+            {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Endereço",value:sel.address},{label:"Valor mensal",value:sel.monthly,fin:true},{label:"Cliente desde",value:sel.since}].filter(item => !item.fin || canFinancial).map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:11, color:B.muted }}>{item.label}</span>
+                <span style={{ fontSize:13, fontWeight:600, textAlign:"right", maxWidth:"60%" }}>{item.value||"—"}</span>
+              </div>
+            ))}
+          </Card>
+          {sel.notes && <><p className="sl" style={{ marginTop:16, marginBottom:6 }}>Observações</p><Card><p style={{ fontSize:13, lineHeight:1.5 }}>{sel.notes}</p></Card></>}
+          {canAccessFn("clients.edit") && <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar informações
+          </button>}
+        </>) : (<>
+          {/* ── EDIT MODE ── */}
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando cliente</p>
+              <button onClick={()=>{setEditClient(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome da empresa</label>
+            <input value={sel.name||""} onChange={e=>updateClient(sel.id,{name:e.target.value})} className="tinput" style={{ marginBottom:10, fontWeight:700, fontSize:15 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do contato</label>
+            <input value={sel.contact||""} onChange={e=>updateClient(sel.id,{contact:e.target.value})} placeholder="Nome completo" className="tinput" style={{ marginBottom:10 }} />
+
+            <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label><input value={sel.phone||""} onChange={e=>updateClient(sel.id,{phone:e.target.value})} placeholder="(00) 00000-0000" className="tinput" /></div>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label><input value={sel.email||""} onChange={e=>updateClient(sel.id,{email:e.target.value})} placeholder="email@empresa.com" className="tinput" /></div>
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Plano</label>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {[{k:"Traction",p:"R$ 1.480"},{k:"Growth 360",p:"R$ 2.480"},{k:"Partner",p:"R$ 4.480"}].map(({k,p})=>(
+                <button key={k} onClick={()=>updateClient(sel.id,{plan:k,monthly:p})} style={{ flex:1, padding:"8px 4px", borderRadius:10, cursor:"pointer", fontFamily:"inherit", textAlign:"center", border:sel.plan===k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel.plan===k?`${B.accent}15`:B.bgCard, color:sel.plan===k?B.accent:B.muted }}>
+                  <span style={{ display:"block", fontSize:11, fontWeight:700 }}>{k}</span>
+                  <span style={{ display:"block", fontSize:9, opacity:0.8, marginTop:1 }}>{p}/mês</span>
+                </button>
+              ))}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Status</label>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {["ativo","pausado","cancelado"].map(s=>{
+                const sc = s==="ativo"?B.green:s==="pausado"?B.orange:B.red;
+                return <button key={s} onClick={()=>updateClient(sel.id,{status:s})} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, border:sel.status===s?`2px solid ${sc}`:`1.5px solid ${B.border}`, background:sel.status===s?`${sc}15`:B.bgCard, color:sel.status===s?sc:B.muted, textTransform:"capitalize" }}>{s}</button>;
+              })}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Valor mensal</label>
+            <input value={sel.monthly||""} onChange={e=>updateClient(sel.id,{monthly:e.target.value})} placeholder="R$ 0" className="tinput" style={{ marginBottom:10, fontWeight:700 }} />
+
+            <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>CNPJ</label><input value={sel.cnpj||""} onChange={e=>updateClient(sel.id,{cnpj:e.target.value})} placeholder="00.000.000/0000-00" className="tinput" /></div>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Segmento</label><input value={sel.segment||""} onChange={e=>updateClient(sel.id,{segment:e.target.value})} placeholder="Ex: Restaurante" className="tinput" /></div>
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Endereço</label>
+            <input value={sel.address||""} onChange={e=>updateClient(sel.id,{address:e.target.value})} placeholder="Rua, nº, bairro, cidade" className="tinput" style={{ marginBottom:10 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente desde</label>
+            <input value={sel.since||""} onChange={e=>updateClient(sel.id,{since:e.target.value})} placeholder="MM/AAAA" className="tinput" style={{ marginBottom:10 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações</label>
+            <textarea value={sel.notes||""} onChange={e=>updateClient(sel.id,{notes:e.target.value})} placeholder="Anotações internas sobre o cliente..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+          </Card>
+        </>)}
+      </>}
+
+      {profileTab === "socials" && <>
+        <Card style={{ marginBottom:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <div><p style={{ fontSize:13, fontWeight:700, color:B.text }}>Contas conectadas: {connectedCount}</p><p style={{ fontSize:11, color:B.muted }}>Gerencie as redes e plataformas de {sel?.name}</p></div>
+          </div>
+        </Card>
+
+        {/* Redes Sociais */}
+        <p className="sl" style={{ marginBottom:8, marginTop:4 }}>Redes Sociais</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="social").map((plat) => {
+            const data = sel.socials?.[plat.key] || {}; const connected = data.connected;
+            return (
+              <Card key={plat.key} style={{ cursor:"pointer", textAlign:"center", padding:"16px 10px", position:"relative" }} onClick={()=>connectSocial(plat.key)}>
+                {data.oauth && <span style={{ position:"absolute", top:6, right:6, padding:"2px 6px", borderRadius:4, background:"#1877F2", color:"#fff", fontSize:7, fontWeight:800, letterSpacing:0.3 }}>META</span>}
+                <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}${connected?"15":"08"}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                  {plat.icon ? <NetworkIcon name={plat.name.split(" ")[0]} sz={22} active={connected} /> : plat.key==="pinterest" ? <PinterestIcon sz={22}/> : <span style={{ fontSize:18, fontWeight:700 }}>@</span>}
+                </div>
+                <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+                {connected ? (
+                  <div style={{ marginTop:6 }}>
+                    <p style={{ fontSize:10, color:plat.c, fontWeight:500 }}>{data.user}</p>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, padding:"2px 8px", borderRadius:6, background:`${B.green}12` }}>
+                      <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
+                      <span style={{ fontSize:9, fontWeight:700, color:B.green }}>Conectado</span>
+                    </div>
+                  </div>
+                ) : canSocials ? (
+                  <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:plat.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Conectar</button>
+                ) : (
+                  <p style={{ marginTop:8, fontSize:10, color:B.muted }}>Não conectado</p>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Google */}
+        <p className="sl" style={{ marginBottom:8 }}>Google</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="google").map((plat) => {
+            const data = sel.socials?.[plat.key] || {}; const connected = data.connected;
+            return (
+              <Card key={plat.key} style={{ cursor:"pointer", textAlign:"center", padding:"16px 10px" }} onClick={()=>connectSocial(plat.key)}>
+                <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}${connected?"15":"08"}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                  {plat.key==="google" ? <GoogleIcon sz={22}/> : <span style={{ fontSize:11, fontWeight:800, color:plat.c }}>GA4</span>}
+                </div>
+                <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+                {connected ? (
+                  <div style={{ marginTop:6 }}>
+                    <p style={{ fontSize:10, color:plat.c, fontWeight:500 }}>{data.user || data.reviews}</p>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, padding:"2px 8px", borderRadius:6, background:`${B.green}12` }}>
+                      <div style={{ width:6, height:6, borderRadius:3, background:B.green }} />
+                      <span style={{ fontSize:9, fontWeight:700, color:B.green }}>Conectado</span>
+                    </div>
+                  </div>
+                ) : canSocials ? (
+                  <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:plat.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Conectar</button>
+                ) : (
+                  <p style={{ marginTop:8, fontSize:10, color:B.muted }}>Não conectado</p>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Ads & Tráfego */}
+        <p className="sl" style={{ marginBottom:8 }}>Ads & Tráfego</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="ads").map((plat) => (
+            <Card key={plat.key} style={{ textAlign:"center", padding:"16px 10px", position:"relative", opacity:0.7 }}>
+              {plat.soon && <span style={{ position:"absolute", top:6, right:6, padding:"2px 6px", borderRadius:4, background:B.red, color:"#fff", fontSize:8, fontWeight:800, letterSpacing:0.5 }}>NOVO</span>}
+              <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                {plat.key==="meta_ads" ? <span style={{ fontSize:16, fontWeight:800, color:plat.c }}>M</span> : plat.key==="google_ads" ? <GoogleIcon sz={22}/> : plat.key==="linkedin_ads" ? <NetworkIcon name="LinkedIn" sz={22} active={false} /> : <NetworkIcon name="TikTok" sz={22} active={false} />}
+              </div>
+              <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+              <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:"transparent", border:`1.5px solid ${plat.c}40`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:plat.c }}>Em breve</button>
+            </Card>
+          ))}
+        </div>
+
+        {/* CRM & Automação */}
+        <p className="sl" style={{ marginBottom:8 }}>CRM & Automação</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:8, marginBottom:16 }}>
+          {SOCIAL_PLATFORMS.filter(p=>p.cat==="crm").map((plat) => (
+            <Card key={plat.key} style={{ textAlign:"center", padding:"16px 10px", position:"relative", opacity:0.7 }}>
+              {plat.soon && <span style={{ position:"absolute", top:6, right:6, padding:"2px 6px", borderRadius:4, background:B.red, color:"#fff", fontSize:8, fontWeight:800, letterSpacing:0.5 }}>NOVO</span>}
+              <div style={{ width:44, height:44, borderRadius:14, background:`${plat.c}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                <span style={{ fontSize:14, fontWeight:800, color:plat.c }}>RD</span>
+              </div>
+              <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{plat.name}</p>
+              <button style={{ marginTop:8, padding:"6px 16px", borderRadius:8, background:"transparent", border:`1.5px solid ${plat.c}40`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:plat.c }}>Em breve</button>
+            </Card>
+          ))}
+        </div>
+      </>}
+
+      {profileTab === "library" && viewClientFile && (() => {
+        const f = viewClientFile;
+        const fi = fileIcon(f.name);
+        const ext = f.name.split(".").pop()?.toLowerCase();
+        const isImage = ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
+        const isVideo = ["mp4","mov","avi","mkv","webm"].includes(ext);
+        const hasUrl = !!f.url;
+        return <>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+            <button onClick={()=>setViewClientFile(null)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
+            <p style={{ fontSize:14, fontWeight:700 }}>Detalhes do arquivo</p>
+          </div>
+          {/* Preview */}
+          {hasUrl && isImage && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12, background:B.bgCard }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:250, objectFit:"contain" }} /></div>}
+          {hasUrl && isVideo && <video src={f.url} controls style={{ width:"100%", maxHeight:250, borderRadius:16, marginBottom:12 }} />}
+          {!isImage && !isVideo && <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
+            <div style={{ width:56, height:56, borderRadius:16, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", transform:"scale(1.5)" }}>{fi.ic}</div>
+            <p style={{ fontSize:15, fontWeight:700, marginTop:8 }}>{f.name}</p>
+            <p style={{ fontSize:11, color:B.muted }}>{f.size} · {f.date}</p>
+          </Card>}
+          {/* Actions */}
+          <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+            {hasUrl && <button onClick={()=>{const a=document.createElement("a");a.href=f.url;a.download=f.name;a.target="_blank";a.rel="noopener";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download iniciado ✓");}} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>
+              {IC.download} Download
+            </button>}
+            {hasUrl && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+              Abrir
+            </button>}
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+            {hasUrl && <button onClick={()=>navigator.clipboard.writeText(f.url).then(()=>showToast("Link copiado! ✓")).catch(()=>showToast("Erro ao copiar"))} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:12, borderRadius:14, background:`${B.blue}08`, border:`1.5px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.blue }}>
+              Copiar link
+            </button>}
+            {hasUrl && <button onClick={()=>{if(navigator.share){navigator.share({title:f.name,url:f.url}).catch(()=>{});}else{navigator.clipboard.writeText(f.url).then(()=>showToast("Link copiado!"));}}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:12, borderRadius:14, background:`${B.green}08`, border:`1.5px solid ${B.green}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>
+              Compartilhar
+            </button>}
+          </div>
+          {/* File info */}
+          <Card>
+            <p className="sl" style={{ marginBottom:8 }}>Informações</p>
+            {[{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date},{l:"Extensão",v:ext?.toUpperCase()},{l:"Armazenamento",v:hasUrl?"Supabase Storage":"Local"}].map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+                <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
+              </div>
+            ))}
+          </Card>
+        </>;
+      })()}
+      {profileTab === "library" && !viewClientFile && <>
+        <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:10, overflowX:"auto", paddingBottom:4 }}>
+          <button onClick={()=>setLibCat("all")} className={`htab${libCat==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todos ({files.length})</button>
+          {LIB_CATS.map(cat => {
+            const count = files.filter(f=>getFileCat(f)===cat.key).length;
+            if (count===0 && libCat!==cat.key) return null;
+            return <button key={cat.key} onClick={()=>setLibCat(cat.key)} className={`htab${libCat===cat.key?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{cat.icon} {cat.label} ({count})</button>;
+          })}
+        </div>
+        {libCat === "all" && LIB_CATS.map(cat => {
+          const catFiles = files.filter(f=>getFileCat(f)===cat.key);
+          if (catFiles.length===0) return null;
+          return (
+            <div key={cat.key}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, marginBottom:6 }}>
+                <p className="sl">{cat.icon} {cat.label}</p>
+                <span style={{ fontSize:10, color:B.muted }}>{catFiles.length} arquivo{catFiles.length>1?"s":""}</span>
+              </div>
+              {catFiles.map(f => { const fi=fileIcon(f.name); return (
+                <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
+                    <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
+                    {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ background:`${B.accent}10`, border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:6, borderRadius:8, flexShrink:0 }}>{IC.download}</a>}
+                    <button onClick={e=>{e.stopPropagation();removeFile(f.id);}} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </Card>
+              );})}
+            </div>
+          );
+        })}
+        {libCat !== "all" && (filteredFiles.length===0 ? (
+          <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:20 }}>{LIB_CATS.find(c=>c.key===libCat)?.icon}</p><p style={{ fontSize:13, fontWeight:600, marginTop:6 }}>Nenhum arquivo nesta categoria</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{LIB_CATS.find(c=>c.key===libCat)?.desc}</p></Card>
+        ) : filteredFiles.map(f => { const fi=fileIcon(f.name); return (
+          <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
+              <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
+              {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ background:`${B.accent}10`, border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:6, borderRadius:8, flexShrink:0 }}>{IC.download}</a>}
+              <button onClick={e=>{e.stopPropagation();removeFile(f.id);}} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </div>
+          </Card>
+        );}))}
+        <button onClick={()=>setAddingFile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:16, marginTop:12, borderRadius:14, border:`2px dashed ${B.accent}30`, background:`${B.accent}04`, cursor:"pointer", color:B.accent, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>{IC.upload} Adicionar arquivo à biblioteca</button>
+      </>}
+
+      {profileTab === "ideas" && <>
+        <p className="sl" style={{ marginBottom:6 }}>Ideias relacionadas a {sel.name}</p>
+        {clientIdeas.length === 0 && <Card style={{ textAlign:"center", padding:20 }}>
+          <p style={{ fontSize:13, color:B.muted }}>Nenhuma ideia cadastrada para este cliente.</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Crie ideias na seção "Ideias" e associe a este cliente.</p>
+        </Card>}
+        {clientIdeas.map((idea, i) => {
+          const statusCfg = { approved:{ l:"Aprovada", c:B.green }, review:{ l:"Em análise", c:B.orange }, pending:{ l:"Pendente", c:B.muted }, rejected:{ l:"Rejeitada", c:B.red } };
+          const st = statusCfg[idea.status] || statusCfg.pending;
+          return (
+            <Card key={idea.id} delay={i*0.03} style={{ marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:13, fontWeight:700 }}>{idea.title}</p>
+                  {idea.desc && <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{idea.desc}</p>}
+                </div>
+                <Tag color={st.c}>{st.l}</Tag>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8, flexWrap:"wrap" }}>
+                <span style={{ fontSize:10, color:B.muted }}>{idea.author} · {idea.date}</span>
+                <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>▲ {idea.votes}</span>
+                {(idea.tags||[]).map((t,j) => <span key={j} style={{ fontSize:9, padding:"2px 6px", borderRadius:6, background:`${B.accent}10`, color:B.accent, fontWeight:600 }}>{t}</span>)}
+              </div>
+            </Card>
+          );
+        })}
+      </>}
+
+      {profileTab === "contract" && <>
+        <Card style={{ marginBottom:10, borderLeft:`4px solid ${sel.status==="ativo"?B.green:sel.status==="cancelado"?B.red:B.orange}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:44, height:44, borderRadius:14, background:`${sel.status==="ativo"?B.green:B.red}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sel.status==="ativo"?B.green:B.red} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Contrato {sel.contractType||contract.type}</p><p style={{ fontSize:11, color:B.muted }}>Status: <span style={{ fontWeight:700, color:sel.status==="ativo"?B.green:sel.status==="cancelado"?B.red:B.orange }}>{sel.status==="ativo"?"Ativo":sel.status==="pausado"?"Pausado":"Cancelado"}</span></p></div>
+            <Tag color={B.accent}>{sel.plan}</Tag>
+          </div>
+        </Card>
+        {!editClient ? (<>
+          <p className="sl" style={{ marginBottom:6 }}>Detalhes do contrato</p>
+          <Card>
+            {[{label:"Tipo",value:sel.contractType||contract.type},{label:"Início",value:sel.contractStart||contract.startDate},{label:"Vigência",value:sel.contractEnd||contract.endDate},{label:"Valor",value:sel.monthly,fin:true},{label:"Pagamento",value:sel.contractPayment||contract.payment},{label:"Posts/mês",value:sel.contractPosts||contract.posts}].filter(item => !item.fin || canFinancial).map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:13, fontWeight:600 }}>{item.value||"—"}</span></div>
+            ))}
+          </Card>
+          {canAccessFn("clients.edit") && <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar contrato
+          </button>}
+        </>) : (<>
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando contrato</p>
+              <button onClick={()=>{setEditClient(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
+            </div>
+            {[{label:"Tipo de contrato",field:"contractType",ph:"Ex: Sem fidelidade, 6 meses...",fallback:contract.type},
+              {label:"Data de início",field:"contractStart",ph:"DD/MM/AAAA",fallback:contract.startDate},
+              {label:"Vigência",field:"contractEnd",ph:"Ex: 12 meses, Sem fidelidade",fallback:contract.endDate},
+              {label:"Valor mensal",field:"monthly",ph:"R$ 0",fallback:sel.monthly},
+              {label:"Forma de pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
+              {label:"Posts por mês",field:"contractPosts",ph:"8/mês",fallback:contract.posts}
+            ].map((item,i)=>(
+              <div key={i} style={{ marginBottom:10 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>{item.label}</label>
+                <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" />
+              </div>
+            ))}
+          </Card>
+        </>)}
+        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Serviços — {sel.plan}</p>
+        <Card>
+          {contract.services.map((s,i)=>(
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <div style={{ width:22, height:22, borderRadius:11, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <span style={{ fontSize:13, fontWeight:500 }}>{s}</span>
+            </div>
+          ))}
+        </Card>
+      </>}
+
+      {profileTab === "financial" && <>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
+          <Card style={{ textAlign:"center", padding:12, background:`${B.green}08`, border:`1px solid ${B.green}15` }}><p style={{ fontSize:20, fontWeight:900, color:B.green }}>{sel.monthly}</p><p style={{ fontSize:10, color:B.muted }}>Mensal</p></Card>
+          <Card style={{ textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:900, color:B.text }}>R$ {(parseBRL(sel.monthly)*12).toLocaleString("pt-BR",{minimumFractionDigits:0})}</p><p style={{ fontSize:10, color:B.muted }}>Anual estimada</p></Card>
+        </div>
+        <p className="sl" style={{ marginBottom:6 }}>Plano e status</p>
+        <Card style={{ marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+            <div><p style={{ fontSize:14, fontWeight:700 }}>Plano {sel.plan}</p><p style={{ fontSize:12, color:B.muted }}>{sel.monthly}/mês</p></div>
+            <button onClick={()=>setShowPlanPicker(true)} style={{ padding:"8px 14px", borderRadius:10, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>Alterar plano</button>
+          </div>
+          <div style={{ display:"flex", gap:6 }}>
+            {(sel.status==="ativo"||sel.status==="trial") && <>
+              <button onClick={()=>setConfirmAction({type:"pause",label:"Pausar Cliente"})} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.orange}30`, background:`${B.orange}06`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.orange }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar
+              </button>
+              <button onClick={()=>setConfirmAction({type:"cancel",label:"Cancelar Cliente"})} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.red}30`, background:`${B.red}06`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Cancelar
+              </button>
+            </>}
+            {(sel.status==="pausado"||sel.status==="cancelado") && (
+              <button onClick={()=>setConfirmAction({type:"reactivate",label:"Reativar Cliente"})} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.green}30`, background:`${B.green}06`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reativar
+              </button>
+            )}
+          </div>
+        </Card>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+          <p className="sl">Faturas</p>
+          <button onClick={()=>{const nInv={id:Date.now(),month:new Date().toLocaleDateString("pt-BR",{month:"short",year:"numeric"}),value:sel.monthly,status:"pendente",paidAt:null};updateClient(sel.id,{invoices:[nInv,...invoices]});showToast("Fatura gerada! ✓");}} style={{ fontSize:10, fontWeight:600, color:B.accent, background:`${B.accent}10`, border:"none", padding:"4px 10px", borderRadius:8, cursor:"pointer", fontFamily:"inherit" }}>+ Nova fatura</button>
+        </div>
+        {invoices.map((inv,i)=>(
+          <Card key={inv.id||i} style={{ marginTop:i?6:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:inv.status==="pago"?`${B.green}10`:`${B.orange}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {inv.status==="pago"?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+              </div>
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{inv.month}</p><p style={{ fontSize:11, color:B.muted }}>{inv.status==="pago"?`Pago em ${inv.paidAt}`:"Aguardando pagamento"}</p></div>
+              <div style={{ textAlign:"right" }}><p style={{ fontSize:14, fontWeight:700, color:inv.status==="pago"?B.green:B.orange }}>{inv.value}</p><Tag color={inv.status==="pago"?B.green:B.orange}>{inv.status==="pago"?"Pago":"Pendente"}</Tag></div>
+            </div>
+            {inv.status!=="pago" && <button onClick={()=>{updateClient(sel.id,{invoices:invoices.map(x=>x.id===inv.id?{...x,status:"pago",paidAt:new Date().toLocaleDateString("pt-BR")}:x)});showToast("Pagamento confirmado! ✓");}} style={{ width:"100%", marginTop:8, padding:"8px 0", borderRadius:10, border:`1.5px solid ${B.green}30`, background:`${B.green}06`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>Confirmar pagamento</button>}
+          </Card>
+        ))}
+        <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados de cobrança</p>
+        {!editClient ? (<>
+          <Card>
+            {[{label:"Pagamento",value:sel.contractPayment||contract.payment},{label:"Vencimento",value:sel.billingDueDay||"Dia 05"},{label:"CNPJ",value:sel.cnpj},{label:"E-mail NF",value:sel.billingEmail||sel.email}].map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.label}</span><span style={{ fontSize:12, fontWeight:600, textAlign:"right", maxWidth:"55%" }}>{item.value||"—"}</span></div>
+            ))}
+          </Card>
+          {canAccessFn("clients.edit") && <button onClick={()=>setEditClient(true)} style={{ marginTop:14, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar cobrança
+          </button>}
+        </>) : (<>
+          <Card>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando cobrança</p>
+              <button onClick={()=>{setEditClient(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
+            </div>
+            {[{label:"Forma de pagamento",field:"contractPayment",ph:"Boleto, Pix, Cartão...",fallback:contract.payment},
+              {label:"Dia de vencimento",field:"billingDueDay",ph:"Dia 05",fallback:"Dia 05"},
+              {label:"CNPJ",field:"cnpj",ph:"00.000.000/0000-00",fallback:sel.cnpj},
+              {label:"E-mail para NF",field:"billingEmail",ph:"email@empresa.com",fallback:sel.billingEmail||sel.email}
+            ].map((item,i)=>(
+              <div key={i} style={{ marginBottom:i<3?10:0 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>{item.label}</label>
+                <input value={sel[item.field]||item.fallback||""} onChange={e=>updateClient(sel.id,{[item.field]:e.target.value})} placeholder={item.ph} className="tinput" />
+              </div>
+            ))}
+          </Card>
+        </>)}
+      </>}
+
+      {profileTab === "actions" && <>
+        {[
+          { l:"Ver conteúdos", ic:IC.content, c:B.accent, desc:"Demandas e posts do cliente", act:()=>onNavigate?.("content") },
+          { l:"Abrir chat", ic:IC.chat, c:B.blue, desc:"Conversar com o cliente", act:()=>onNavigate?.("chat") },
+          { l:"Biblioteca", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>, c:B.purple, desc:`${files.length} arquivos do cliente`, act:()=>setProfileTab("library") },
+          { l:"Redes Sociais", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, c:B.pink, desc:`${connectedCount} redes conectadas`, act:()=>setProfileTab("socials") },
+          ...(isAdmin ? [
+            { l:"Contrato", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, c:B.cyan, desc:`Plano ${sel.plan} — ${contract.type}`, act:()=>setProfileTab("contract") },
+            { l:"Financeiro", ic:IC.financial, c:B.green, desc:canFinancial ? `${sel.monthly}/mês` : "Acesso restrito", act:()=>setProfileTab("financial") },
+            { l:"Alterar plano", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, c:B.orange, desc:"Upgrade ou downgrade", act:()=>setShowPlanPicker(true) },
+            { l:"Excluir cliente", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, c:B.red, desc:"Remover permanentemente", act:async ()=>{
+            if (!confirm(`Excluir ${sel.name}? Essa ação não pode ser desfeita.`)) return;
+            if (sel.supaId) await supaDeleteClient(sel.supaId);
+            setClients(p=>p.filter(c=>c.id!==sel.id));
+            setSel(null); showToast("Cliente excluído ✓");
+          } },
+          ] : []),
+        ].map((a,i) => (
+          <Card key={i} delay={i*0.03} onClick={a.act} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${a.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:a.c }}>{typeof a.ic==="function"?a.ic("currentColor"):a.ic}</div>
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{a.l}</p><p style={{ fontSize:11, color:B.muted }}>{a.desc}</p></div>
+              {IC.chev()}
+            </div>
+          </Card>
+        ))}
+      </>}
+    </div>
+    );
+  }
+
+  /* ── CLIENT LIST ── */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      {/* Summary */}
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ color:B.accent, display:"flex" }}>{IC.users}</span>
+            <div><p style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{clients.length}</p><p style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>clientes cadastrados</p></div>
+          </div>
+          {canAccessFn("clients.edit") && <button onClick={() => setCreating(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.text }}>
+            {IC.plus} Novo
+          </button>}
+        </div>
+      </Card>
+      {/* Search */}
+      <div style={{ position:"relative", marginBottom:10 }}>
+        <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</span>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente..." className="tinput" style={{ paddingLeft:40 }} />
+      </div>
+      {/* Filter tabs */}
+      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+        {[{k:"all",l:"Todos"},{k:"ativo",l:"Ativos"},{k:"trial",l:"Trial"},{k:"pausado",l:"Pausados"},{k:"cancelado",l:"Cancelados"}].map(ft=>{
+          const count = clients.filter(c=>ft.k==="all"||c.status===ft.k).length;
+          if (count === 0 && ft.k !== "all" && ft.k !== "ativo") return null;
+          return <button key={ft.k} onClick={()=>setFilter(ft.k)} className={`htab${filter===ft.k?" a":""}`}>{ft.l} <span style={{ fontSize:9, marginLeft:2 }}>({count})</span></button>;
+        })}
+      </div>
+      {/* Client cards */}
+      {filtered.map((c,i) => {
+        const socialCount = Object.values(c.socials||{}).filter(s=>s.connected).length;
+        return (
+        <Card key={c.id} delay={i*0.03} onClick={()=>setSel(c)} style={{ marginTop: i?6:0, cursor:"pointer" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <Av src={c.logo} name={c.name} sz={42} fs={16} />
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:14, fontWeight:600 }}>{c.name}</p>
+              <div style={{ display:"flex", gap:4, marginTop:3, alignItems:"center" }}>
+                <Tag color={B.accent}>{c.plan}</Tag>
+                <Tag color={c.status==="ativo"?B.green:B.orange}>{c.status==="ativo"?"Ativo":"Trial"}</Tag>
+                {socialCount > 0 && <span style={{ fontSize:9, color:B.muted }}>{socialCount} rede{socialCount>1?"s":""}</span>}
+              </div>
+            </div>
+            <div style={{ textAlign:"right" }}>
+              {isAdmin && canFinancial && <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>}
+              {c.pending > 0 && <p style={{ fontSize:10, color:B.orange, fontWeight:600 }}>{c.pending} pendente{c.pending>1?"s":""}</p>}
+            </div>
+          </div>
+        </Card>
+        );
+      })}
+      {filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+        <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhum cliente encontrado</p>
+        <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar a busca ou adicione um novo cliente.</p>
+      </Card>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════ ACADEMY PAGE ═══════════════════════ */
+function AcademyPage({ onBack }) {
+  const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
+  const [selCourse, setSelCourse] = useState(null);
+  const [selLesson, setSelLesson] = useState(null); /* must be at top — cannot be inside if block */
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({});
+  // Lesson builder state
+  const [addingLesson, setAddingLesson] = useState(false);
+  const [editLessonIdx, setEditLessonIdx] = useState(null);
+  const [lessonForm, setLessonForm] = useState({});
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
+
+  const CAT_OPTS = ["Marketing Digital","Tráfego Pago","Design","Social Media","Audiovisual","Vendas","Ferramentas","Conduta & RH","Outro"];
+  const CAT_COLORS = { "Marketing Digital":B.accent, "Tráfego Pago":B.blue, "Design":B.purple, "Social Media":B.pink, "Audiovisual":B.orange, "Vendas":B.green, "Ferramentas":B.cyan, "Conduta & RH":B.red, "Outro":B.muted };
+
+  const handleThumb = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setForm(p => ({ ...p, thumb: ev.target.result }));
+    reader.readAsDataURL(file);
+  };
+
+  const lessons = form.lessons || [];
+
+  const saveLesson = () => {
+    if (!lessonForm.title?.trim()) return showToast("Informe o título da aula");
+    const lesson = { id: editLessonIdx !== null ? lessons[editLessonIdx]?.id : Date.now(), title: lessonForm.title.trim(), videoUrl: lessonForm.videoUrl || "", duration: lessonForm.duration || "", desc: lessonForm.desc || "" };
+    if (editLessonIdx !== null) {
+      const updated = lessons.map((l, i) => i === editLessonIdx ? lesson : l);
+      setForm(p => ({ ...p, lessons: updated }));
+    } else {
+      setForm(p => ({ ...p, lessons: [...(p.lessons || []), lesson] }));
+    }
+    setAddingLesson(false); setEditLessonIdx(null); setLessonForm({});
+  };
+
+  const removeLesson = (idx) => { setForm(p => ({ ...p, lessons: (p.lessons || []).filter((_, i) => i !== idx) })); };
+
+  const moveLesson = (idx, dir) => {
+    const ls = [...lessons];
+    const to = idx + dir;
+    if (to < 0 || to >= ls.length) return;
+    [ls[idx], ls[to]] = [ls[to], ls[idx]];
+    setForm(p => ({ ...p, lessons: ls }));
+  };
+
+  const saveCourse = () => {
+    if (!form.title?.trim()) return showToast("Informe o título do curso");
+    if (editing !== null) {
+      const updated = courses.map((c, i) => i === editing ? { ...c, ...form } : c);
+      saveCourses(updated);
+      setEditing(null);
+    } else {
+      const nc = { id: Date.now(), title: form.title.trim(), category: form.category || "Outro", desc: form.desc || "", thumb: form.thumb || null, lessons: form.lessons || [], createdAt: new Date().toLocaleDateString("pt-BR") };
+      saveCourses([nc, ...courses]);
+      setCreating(false);
+    }
+    setForm({}); setAddingLesson(false); setEditLessonIdx(null); setLessonForm({});
+    showToast(editing !== null ? "Curso atualizado ✓" : "Curso criado ✓");
+  };
+
+  const deleteCourse = (idx) => {
+    if (!confirm("Excluir este curso?")) return;
+    saveCourses(courses.filter((_, i) => i !== idx));
+    setSelCourse(null);
+    showToast("Curso excluído");
+  };
+
+  const getYTEmbed = (url) => {
+    if (!url) return null;
+    const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}`;
+    const vm = url.match(/vimeo\.com\/(\d+)/);
+    if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+    return null;
+  };
+
+  /* ── LESSON FORM ── */
+  if (addingLesson || editLessonIdx !== null) return (
+    <div className="pg">{ToastEl}
+      <Head title={editLessonIdx !== null ? "Editar Aula" : "Nova Aula"} onBack={() => { setAddingLesson(false); setEditLessonIdx(null); setLessonForm({}); }} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Título da aula *</label>
+        <input value={lessonForm.title||""} onChange={e=>setLessonForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Introdução ao Google Ads" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Duração</label>
+        <input value={lessonForm.duration||""} onChange={e=>setLessonForm(p=>({...p,duration:e.target.value}))} placeholder="Ex: 12 min" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição / Ementa</label>
+        <textarea value={lessonForm.desc||""} onChange={e=>setLessonForm(p=>({...p,desc:e.target.value}))} placeholder="O que será abordado nesta aula..." className="tinput" style={{ minHeight:70, resize:"vertical", marginBottom:0 }} />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Link do vídeo</label>
+        <input value={lessonForm.videoUrl||""} onChange={e=>setLessonForm(p=>({...p,videoUrl:e.target.value}))} placeholder="YouTube, Vimeo, Google Drive..." className="tinput" style={{ marginBottom:8 }} />
+        <p style={{ fontSize:10, color:B.muted }}>Cole o link do YouTube, Vimeo ou qualquer URL de vídeo</p>
+        {lessonForm.videoUrl && getYTEmbed(lessonForm.videoUrl) && (
+          <div style={{ marginTop:10, borderRadius:10, overflow:"hidden", background:B.dark }}>
+            <div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}>
+              <iframe src={getYTEmbed(lessonForm.videoUrl)} title="preview" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media" allowFullScreen />
+            </div>
+          </div>
+        )}
+      </Card>
+      <button onClick={saveLesson} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>
+        {editLessonIdx !== null ? "Salvar Aula" : "Adicionar Aula"}
+      </button>
+    </div>
+  );
+
+  /* ── COURSE FORM (create/edit) ── */
+  const courseForm = (
+    <div className="pg">{ToastEl}
+      <Head title={editing !== null ? "Editar Curso" : "Novo Curso"} onBack={() => { setCreating(false); setEditing(null); setForm({}); setAddingLesson(false); setEditLessonIdx(null); setLessonForm({}); }} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
+        <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Google Ads — Avançado" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Categoria</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          {CAT_OPTS.map(c => <button key={c} onClick={()=>setForm(p=>({...p,category:c}))} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${form.category===c ? CAT_COLORS[c]||B.accent : B.border}`, background:form.category===c?`${CAT_COLORS[c]||B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>{c}</button>)}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição</label>
+        <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva o conteúdo do curso, objetivos e o que o aluno vai aprender..." className="tinput" style={{ minHeight:90, resize:"vertical" }} />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:8 }}>Capa do curso (foto)</label>
+        <div style={{ position:"relative", border:`2px dashed ${form.thumb?B.green:B.accent}30`, borderRadius:12, overflow:"hidden", background:form.thumb?undefined:`${B.accent}04`, cursor:"pointer", minHeight:120, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>document.getElementById("acad-thumb-input")?.click()}>
+          <input id="acad-thumb-input" type="file" accept="image/*" style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} onChange={handleThumb} />
+          {form.thumb ? <img src={form.thumb} alt="thumb" style={{ width:"100%", maxHeight:180, objectFit:"cover", display:"block" }} /> : <div style={{ textAlign:"center", padding:20 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p style={{ fontSize:12, color:B.accent, fontWeight:600, marginTop:6 }}>Adicionar foto de capa</p></div>}
+        </div>
+        {form.thumb && <button onClick={()=>setForm(p=>({...p,thumb:null}))} style={{ marginTop:8, fontSize:11, color:B.red, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit" }}>Remover foto</button>}
+      </Card>
+
+      {/* ── LESSONS BUILDER ── */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+        <p style={{ fontSize:13, fontWeight:700 }}>Aulas <span style={{ fontSize:11, color:B.muted, fontWeight:400 }}>({lessons.length})</span></p>
+        <button onClick={()=>{ setAddingLesson(true); setLessonForm({}); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>
+          {IC.plus} Adicionar Aula
+        </button>
+      </div>
+
+      {lessons.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:20, border:`2px dashed ${B.border}`, background:"transparent", marginBottom:8 }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <p style={{ fontSize:12, color:B.muted }}>Nenhuma aula adicionada</p>
+          <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Adicione aulas com título, descrição e link de vídeo</p>
+        </Card>
+      ) : lessons.map((lesson, i) => (
+        <Card key={lesson.id||i} style={{ marginBottom:6, borderLeft:`3px solid ${B.accent}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:26, height:26, borderRadius:13, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <span style={{ fontSize:10, fontWeight:800, color:B.accent }}>{i+1}</span>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{lesson.title}</p>
+              <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                {lesson.duration && <span style={{ fontSize:10, color:B.muted }}>{lesson.duration}</span>}
+                {lesson.videoUrl && <span style={{ fontSize:10, color:B.blue, display:"flex", alignItems:"center", gap:3 }}><svg width="9" height="9" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg>Vídeo</span>}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+              <button onClick={()=>moveLesson(i,-1)} disabled={i===0} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:i===0?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===0?0.3:1 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
+              <button onClick={()=>moveLesson(i,1)} disabled={i===lessons.length-1} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:i===lessons.length-1?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===lessons.length-1?0.3:1 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <button onClick={()=>{ setEditLessonIdx(i); setLessonForm({title:lesson.title,videoUrl:lesson.videoUrl||"",duration:lesson.duration||"",desc:lesson.desc||""}); }} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button onClick={()=>removeLesson(i)} style={{ width:26, height:26, borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      <button onClick={saveCourse} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>{editing !== null ? "Salvar Alterações" : "Criar Curso"}</button>
+    </div>
+  );
+
+  if (creating) return courseForm;
+  if (editing !== null) return courseForm;
+
+  if (selCourse !== null) {
+    const course = courses[selCourse];
+    if (!course) { setSelCourse(null); return null; }
+    const c = CAT_COLORS[course.category] || B.accent;
+
+    if (selLesson !== null) {
+      const lesson = (course.lessons||[])[selLesson];
+      if (!lesson) { setSelLesson(null); return null; }
+      const embed = getYTEmbed(lesson.videoUrl);
+      return (
+        <div className="pg">{ToastEl}
+          <Head title="" onBack={()=>setSelLesson(null)} />
+          <Card style={{ marginBottom:10, borderLeft:`4px solid ${c}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+              <div style={{ width:28, height:28, borderRadius:14, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <span style={{ fontSize:11, fontWeight:800, color:c }}>{selLesson+1}</span>
+              </div>
+              <h3 style={{ fontSize:16, fontWeight:800 }}>{lesson.title}</h3>
+            </div>
+            {lesson.duration && <p style={{ fontSize:11, color:B.muted, marginLeft:36 }}>{lesson.duration}</p>}
+            {lesson.desc && <p style={{ fontSize:13, color:B.text, lineHeight:1.6, marginTop:8 }}>{lesson.desc}</p>}
+          </Card>
+          {embed ? (
+            <Card style={{ padding:0, overflow:"hidden", borderRadius:12, marginBottom:10 }}>
+              <div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}>
+                <iframe src={embed} title={lesson.title} style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              </div>
+            </Card>
+          ) : lesson.videoUrl ? (
+            <Card style={{ marginBottom:10 }}>
+              <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, fontWeight:600, color:B.blue, textDecoration:"none" }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                Assistir vídeo
+              </a>
+            </Card>
+          ) : (
+            <Card style={{ marginBottom:10, textAlign:"center", padding:20 }}>
+              <p style={{ fontSize:12, color:B.muted }}>Sem vídeo vinculado a esta aula</p>
+            </Card>
+          )}
+          <div style={{ display:"flex", gap:8, marginTop:8 }}>
+            {selLesson > 0 && <button onClick={()=>setSelLesson(selLesson-1)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text }}>← Anterior</button>}
+            {selLesson < (course.lessons||[]).length-1 && <button onClick={()=>setSelLesson(selLesson+1)} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Próxima →</button>}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="pg">{ToastEl}
+        <Head title="" onBack={()=>setSelCourse(null)} right={
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={()=>{ setForm({ title:course.title, category:course.category, desc:course.desc, thumb:course.thumb, lessons:course.lessons||[] }); setEditing(selCourse); setSelCourse(null); }} className="ib" style={{ width:34, height:34 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onClick={()=>deleteCourse(selCourse)} className="ib" style={{ width:34, height:34, color:B.red }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+        } />
+        {course.thumb && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12 }}><img src={course.thumb} alt="capa" style={{ width:"100%", maxHeight:180, objectFit:"cover", display:"block" }} /></div>}
+        <Card style={{ marginBottom:10, borderLeft:`4px solid ${c}` }}>
+          <Tag color={c} style={{ marginBottom:8 }}>{course.category}</Tag>
+          <h2 style={{ fontSize:18, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{course.title}</h2>
+          {course.desc && <p style={{ fontSize:13, lineHeight:1.6, color:B.text }}>{course.desc}</p>}
+          <div style={{ display:"flex", gap:10, marginTop:10 }}>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:800, color:B.accent }}>{(course.lessons||[]).length}</p><p style={{ fontSize:9, color:B.muted }}>Aulas</p></div>
+            {(course.lessons||[]).filter(l=>l.videoUrl).length > 0 && <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:800, color:B.blue }}>{(course.lessons||[]).filter(l=>l.videoUrl).length}</p><p style={{ fontSize:9, color:B.muted }}>Com vídeo</p></div>}
+          </div>
+        </Card>
+        {(course.lessons||[]).length > 0 ? <>
+          <p className="sl" style={{ marginBottom:8 }}>Aulas do curso</p>
+          {(course.lessons||[]).map((lesson, i) => (
+            <Card key={lesson.id||i} delay={i*0.03} style={{ marginTop:i?6:0, cursor:"pointer" }} onClick={()=>setSelLesson(i)}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:36, height:36, borderRadius:12, background:`${c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <span style={{ fontSize:13, fontWeight:800, color:c }}>{i+1}</span>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{lesson.title}</p>
+                  <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                    {lesson.duration && <span style={{ fontSize:10, color:B.muted }}>{lesson.duration}</span>}
+                    {lesson.videoUrl && <span style={{ fontSize:10, color:B.blue, display:"flex", alignItems:"center", gap:3 }}><svg width="9" height="9" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg>Vídeo</span>}
+                    {lesson.desc && <span style={{ fontSize:10, color:B.muted }}>+ descrição</span>}
+                  </div>
+                </div>
+                {IC.chev()}
+              </div>
+            </Card>
+          ))}
+        </> : (
+          <Card style={{ textAlign:"center", padding:20 }}>
+            <p style={{ fontSize:12, color:B.muted }}>Nenhuma aula cadastrada neste curso</p>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.academy} label="Aprendizado" title="Academy" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", gap:20 }}>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:22, fontWeight:900 }}>{courses.length}</p><p style={{ fontSize:9, opacity:.6 }}>Cursos</p></div>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{[...new Set(courses.map(c=>c.category))].length}</p><p style={{ fontSize:9, opacity:.6 }}>Categorias</p></div>
+          </div>
+          <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0 }}>{IC.plus} Novo Curso</button>
+        </div>
+      </Card>
+      {courses.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:32 }}>
+          <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.academy(B.accent)}</div>
+          <p style={{ fontSize:15, fontWeight:700 }}>Nenhum curso criado</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5 }}>Crie treinamentos com texto, fotos e vídeos para sua equipe.</p>
+          <button onClick={()=>{setForm({});setCreating(true);}} className="pill full accent" style={{ marginTop:16, padding:"12px 0" }}>Criar primeiro curso</button>
+        </Card>
+      ) : courses.map((course, i) => {
+        const c = CAT_COLORS[course.category] || B.accent;
+        return (
+          <Card key={course.id} delay={i*0.04} onClick={()=>setSelCourse(i)} style={{ marginTop:i?8:0, cursor:"pointer" }}>
+            <div style={{ display:"flex", gap:12 }}>
+              {course.thumb ? <div style={{ width:64, height:64, borderRadius:12, overflow:"hidden", flexShrink:0 }}><img src={course.thumb} alt="thumb" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div> : <div style={{ width:64, height:64, borderRadius:12, background:`${c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:c }}>{IC.academy(c)}</div>}
+              <div style={{ flex:1, minWidth:0 }}>
+                <Tag color={c} style={{ marginBottom:4, fontSize:9 }}>{course.category}</Tag>
+                <p style={{ fontSize:14, fontWeight:700, lineHeight:1.3 }}>{course.title}</p>
+                {course.desc && <p style={{ fontSize:11, color:B.muted, marginTop:3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{course.desc}</p>}
+                <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                  {course.lessons?.length > 0 && <span style={{ fontSize:10, color:B.muted }}>{course.lessons.length} aula{course.lessons.length!==1?"s":""}</span>}
+                  {course.videoUrl && <span style={{ fontSize:10, color:B.blue }}>▶ Vídeo</span>}
+                </div>
+              </div>
+              {IC.chev()}
+            </div>
+          </Card>
+        );
+      })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════ FINANCIAL PAGE ═══════════════════════ */
+/* ── Reusable Field (outside component to avoid re-mount on state change) ── */
+const FinField = ({ label, value, onChange, placeholder, type, mono, helpText }) => (
+  <div style={{ marginBottom:10 }}>
+    <label className="sl" style={{ display:"block", marginBottom:4 }}>{label}</label>
+    <input type={type||"text"} value={value||""} onChange={e => onChange(e.target.value)} placeholder={placeholder||""} className="tinput" style={ mono ? { fontFamily:"monospace", fontSize:12 } : type==="date" ? { maxWidth:"100%", width:"100%", boxSizing:"border-box" } : {}} />
+    {helpText && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{helpText}</p>}
+  </div>
+);
+
+function FinancialPage({ onBack, clients: propClients }) {
+  const CDATA = propClients || [];
+  const totalRevReal = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
+  const payingClients = CDATA.filter(c => c.status === "ativo" && c.plan !== "Trial").length;
+  const trialClients = CDATA.filter(c => c.status === "trial" || c.plan === "Trial").length;
+  const ticketMedio = payingClients > 0 ? Math.round(totalRevReal / payingClients) : 0;
+  const months = [
+    { m: "Mar 2026", revenue: `R$ ${totalRevReal.toLocaleString("pt-BR")}`, clients: CDATA.length, paying: payingClients, trial: trialClients, ticket: `R$ ${ticketMedio.toLocaleString("pt-BR")}`, growth: "—", expenses: "R$ 0", profit: `R$ ${totalRevReal.toLocaleString("pt-BR")}` },
+  ];
+  const [sel, setSel] = useState(null);
+  const cur = sel || months[0];
+  const [finTab, setFinTab] = useState("dashboard");
+  const { showToast, ToastEl } = useToast();
+
+  /* ── Config state ── */
+  const FIN_DEFAULT = {
+    agencyName:"Unique Marketing 360", cnpj:"", ie:"", im:"", razaoSocial:"", address:"", city:"Petrópolis", state:"RJ", cep:"",
+    bankName:"", bankAgency:"", bankAccount:"", bankType:"corrente", pixType:"cnpj", pixKey:"",
+    defaultDueDay:5, defaultPayMethod:"PIX", lateFeePercent:2, lateInterestPercent:1, trialDays:7,
+    currency:"BRL", taxRegime:"simples", simplesRate:6, issRate:5, invoicePrefix:"UMK", invoiceNextNum:1,
+    monthlyGoal:0, yearlyGoal:0,
+    asaasApiKey:"", asaasMode:"sandbox", /* sandbox or production */
+    expenseCategories:["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório/Coworking","Impostos","Outros"],
+    invoiceFooter:"Obrigado pela confiança! Qualquer dúvida entre em contato.", invoiceObs:"",
+  };
+  const [finCfg, setFinCfg] = useState(null);
+  const [finCfgLoaded, setFinCfgLoaded] = useState(false);
+  const [finCfgSaving, setFinCfgSaving] = useState(false);
+  /* Real data */
+  const [invoices, setInvoices] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [invForm, setInvForm] = useState(null); /* null = hidden, {} = creating */
+  const [expForm, setExpForm] = useState(null);
+
+  useEffect(() => {
+    if (!finCfgLoaded) {
+      supaGetSetting("fin_config").then(raw => {
+        try { setFinCfg({ ...FIN_DEFAULT, ...(raw ? JSON.parse(raw) : {}) }); } catch { setFinCfg({ ...FIN_DEFAULT }); }
+        setFinCfgLoaded(true);
+      });
+    }
+    if (!dataLoaded) {
+      Promise.all([supaLoadInvoices(), supaLoadExpenses()]).then(([inv, exp]) => { setInvoices(inv); setExpenses(exp); setDataLoaded(true); });
+    }
+  }, []);
+
+  const fc = finCfg || FIN_DEFAULT;
+  const upd = (k, v) => setFinCfg(prev => ({ ...prev, [k]: v }));
+  const saveFin = async () => {
+    setFinCfgSaving(true);
+    const ok = await supaSetSetting("fin_config", JSON.stringify(fc));
+    setFinCfgSaving(false);
+    if (ok) showToast("Configurações salvas ✓");
+    else showToast("Erro ao salvar. Verifique a tabela app_settings no Supabase.");
+  };
+
+  const TABS = [
+    { k:"dashboard", l:"Dashboard", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
+    { k:"invoices", l:"Cobranças", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+    { k:"realExpenses", l:"Despesas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
+    { k:"agency", l:"Dados Fiscais", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { k:"bank", l:"Bancário", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
+    { k:"billing", l:"Config", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09"/></svg> },
+    { k:"goals", l:"Metas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> },
+    { k:"asaas", l:"Asaas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="14" x2="10" y2="14"/></svg> },
+  ];
+
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.financial} label="Receita" title="Financeiro" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+
+      {/* Tabs */}
+      <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4 }}>
+        {TABS.map(t => (
+          <button key={t.k} onClick={() => setFinTab(t.k)} className={`htab${finTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
+            <span>{t.icon}</span>{t.l}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══ TAB: DASHBOARD ═══ */}
+      {finTab === "dashboard" && <>
+        {(() => {
+          const now = new Date();
+          const monthInvoices = invoices.filter(i => { const d = new Date(i.due_date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+          const monthPaid = monthInvoices.filter(i => i.status==="paid").reduce((a,i)=>a+Number(i.paid_amount||i.amount||0),0);
+          const monthPending = monthInvoices.filter(i => i.status==="pending").reduce((a,i)=>a+Number(i.amount||0),0);
+          const monthOverdue = monthInvoices.filter(i => i.status==="pending" && new Date(i.due_date)<now).length;
+          const monthExp = expenses.filter(e => { const d = new Date(e.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); }).reduce((a,e)=>a+Number(e.amount||0),0);
+          const revenue = monthPaid > 0 ? monthPaid : totalRevReal;
+          const profit = revenue - monthExp;
+          return <>
+        <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.dollar}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>FINANCEIRO — {cur.m.toUpperCase()}</p></div>
+          <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>R$ {revenue.toLocaleString("pt-BR")}</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{monthPaid > 0 ? "Receita recebida" : "Receita prevista"}</p>
+          <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
+            <div><span style={{ fontSize: 14, fontWeight: 800, color: B.red }}>R$ {monthExp.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Despesas</p></div>
+            <div><span style={{ fontSize: 14, fontWeight: 800, color: profit>=0?B.green:B.red }}>R$ {profit.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Lucro</p></div>
+            {monthPending > 0 && <div><span style={{ fontSize: 14, fontWeight: 800, color: B.orange }}>R$ {monthPending.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>A receber</p></div>}
+          </div>
+        </Card>
+        {monthOverdue > 0 && <Card delay={0.01} style={{ marginTop:6, background:`${B.red}08`, border:`1px solid ${B.red}20` }}>
+          <p style={{ fontSize:12, fontWeight:700, color:B.red }}>⚠️ {monthOverdue} cobrança{monthOverdue>1?"s":""} atrasada{monthOverdue>1?"s":""}</p>
+          <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Verifique na aba Cobranças.</p>
+        </Card>}
+          </>;
+        })()}
+        {/* Goal progress if configured */}
+        {finCfgLoaded && fc.monthlyGoal > 0 && (() => {
+          const pct = Math.min(100, Math.round((totalRevReal / fc.monthlyGoal) * 100));
+          return (
+            <Card delay={0.02} style={{ marginTop:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:11, fontWeight:600 }}>🎯 Meta mensal</span>
+                <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}% · R$ {fc.monthlyGoal.toLocaleString("pt-BR")}</span>
+              </div>
+              <div style={{ height:8, borderRadius:4, background:`${B.border}` }}>
+                <div style={{ height:"100%", borderRadius:4, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
+              </div>
+            </Card>
+          );
+        })()}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 6, marginTop: 10 }}>
+          <Card delay={0.04} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.blue, marginBottom: 4 }}>{IC.users}</span><p style={{ fontSize: 20, fontWeight: 800 }}>{cur.clients}</p><p style={{ fontSize: 10, color: B.muted }}>Total clientes</p></Card>
+          <Card delay={0.06} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.green, marginBottom: 4 }}>{IC.check}</span><p style={{ fontSize: 20, fontWeight: 800, color: B.green }}>{cur.paying}</p><p style={{ fontSize: 10, color: B.muted }}>Pagantes</p></Card>
+          <Card delay={0.08} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.orange, marginBottom: 4 }}>{IC.clock}</span><p style={{ fontSize: 20, fontWeight: 800, color: B.orange }}>{cur.trial}</p><p style={{ fontSize: 10, color: B.muted }}>Trial / Gratuito</p></Card>
+          <Card delay={0.1} style={{ textAlign: "center", padding: 12 }}><span style={{ display: "flex", justifyContent: "center", color: B.accent, marginBottom: 4 }}>{IC.trending}</span><p style={{ fontSize: 16, fontWeight: 800 }}>{cur.ticket}</p><p style={{ fontSize: 10, color: B.muted }}>Ticket médio</p></Card>
+        </div>
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Despesas vs Receita</p>
+        <Card delay={0.12}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div><p style={{ fontSize: 12, color: B.muted }}>Receita</p><p style={{ fontSize: 16, fontWeight: 800, color: B.green }}>{cur.revenue}</p></div>
+            <div style={{ textAlign: "right" }}><p style={{ fontSize: 12, color: B.muted }}>Despesas</p><p style={{ fontSize: 16, fontWeight: 800, color: B.red }}>{cur.expenses}</p></div>
+          </div>
+          <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden" }}><div style={{ width: "55%", background: B.green, borderRadius: "6px 0 0 6px" }} /><div style={{ width: "45%", background: B.red, borderRadius: "0 6px 6px 0" }} /></div>
+          <div style={{ marginTop: 10, padding: "10px 14px", background: `${B.green}06`, borderRadius: 10, textAlign: "center" }}><p style={{ fontSize: 10, color: B.muted }}>Lucro líquido</p><p style={{ fontSize: 20, fontWeight: 900, color: B.green }}>{cur.profit}</p></div>
+        </Card>
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Receita por cliente</p>
+        {CDATA.map((c, i) => (
+          <Card key={c.id} delay={0.15 + i * 0.03} style={{ marginTop: i ? 6 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Av src={c.logo} name={c.name} sz={34} fs={13} /><div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</p><Tag color={c.status === "ativo" ? B.green : B.orange}>{c.plan}</Tag></div><p style={{ fontSize: 14, fontWeight: 700 }}>{c.monthly}</p></div>
+          </Card>
+        ))}
+        <p className="sl" style={{ marginTop: 16, marginBottom: 8 }}>Histórico mensal</p>
+        {months.map((m, i) => (
+          <Card key={i} delay={0.3 + i * 0.03} onClick={() => setSel(m)} style={{ marginTop: i ? 6 : 0, cursor: "pointer", border: cur.m === m.m ? `1.5px solid ${B.accent}` : undefined }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{m.m}</p><p style={{ fontSize: 11, color: B.muted }}>{m.clients} clientes · {m.paying} pagantes</p></div><div style={{ textAlign: "right" }}><p style={{ fontSize: 14, fontWeight: 800, color: B.green }}>{m.revenue}</p><p style={{ fontSize: 10, color: B.green }}>{m.growth}</p></div></div>
+          </Card>
+        ))}
+      </>}
+
+      {/* ═══ TAB: DADOS FISCAIS ═══ */}
+      {finTab === "agency" && <>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Dados da Agência</p>
+          <FinField label="Razão Social" value={fc.razaoSocial} onChange={v => upd("razaoSocial", v)} placeholder="Unique Marketing 360 Ltda" />
+          <FinField label="Nome Fantasia" value={fc.agencyName} onChange={v => upd("agencyName", v)} placeholder="Unique Marketing 360" />
+          <FinField label="CNPJ" value={fc.cnpj} onChange={v => upd("cnpj", v)} placeholder="00.000.000/0001-00" mono />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Inscrição Estadual" value={fc.ie} onChange={v => upd("ie", v)} placeholder="Isento" /></div>
+            <div style={{ flex:1 }}><FinField label="Inscrição Municipal" value={fc.im} onChange={v => upd("im", v)} placeholder="000000" /></div>
+          </div>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Endereço</p>
+          <FinField label="Endereço completo" value={fc.address} onChange={v => upd("address", v)} placeholder="Rua, número, complemento" />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:2 }}><FinField label="Cidade" value={fc.city} onChange={v => upd("city", v)} placeholder="Petrópolis" /></div>
+            <div style={{ flex:1 }}><FinField label="UF" value={fc.state} onChange={v => upd("state", v)} placeholder="RJ" /></div>
+            <div style={{ flex:1 }}><FinField label="CEP" value={fc.cep} onChange={v => upd("cep", v)} placeholder="00000-000" mono /></div>
+          </div>
+        </Card>
+        <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Regime Tributário</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
+            {[{k:"simples",l:"Simples Nacional"},{k:"presumido",l:"Lucro Presumido"},{k:"real",l:"Lucro Real"},{k:"mei",l:"MEI"}].map(r => (
+              <button key={r.k} onClick={() => upd("taxRegime", r.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.taxRegime===r.k?B.accent:B.border}`, background:fc.taxRegime===r.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.taxRegime===r.k?B.accent:B.muted }}>{r.l}</button>
+            ))}
+          </div>
+          {fc.taxRegime === "simples" && <FinField label="Alíquota Simples Nacional (%)" value={fc.simplesRate} onChange={v => upd("simplesRate", parseFloat(v)||0)} type="number" helpText="Alíquota efetiva da faixa atual no Anexo III ou V" />}
+          <FinField label="Alíquota ISS (%)" value={fc.issRate} onChange={v => upd("issRate", parseFloat(v)||0)} type="number" helpText="ISS sobre serviços de marketing/publicidade da sua cidade" />
+        </Card>
+      </>}
+
+      {/* ═══ TAB: BANCÁRIO ═══ */}
+      {finTab === "bank" && <>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Conta Bancária</p>
+          <FinField label="Banco" value={fc.bankName} onChange={v => upd("bankName", v)} placeholder="Nubank, Itaú, Bradesco..." />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Agência" value={fc.bankAgency} onChange={v => upd("bankAgency", v)} placeholder="0001" mono /></div>
+            <div style={{ flex:1 }}><FinField label="Conta" value={fc.bankAccount} onChange={v => upd("bankAccount", v)} placeholder="12345-6" mono /></div>
+          </div>
+          <p className="sl" style={{ marginBottom:6 }}>Tipo de conta</p>
+          <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+            {["corrente","poupança"].map(t => (
+              <button key={t} onClick={() => upd("bankType", t)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${fc.bankType===t?B.accent:B.border}`, background:fc.bankType===t?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:fc.bankType===t?B.accent:B.muted, textTransform:"capitalize" }}>{t}</button>
+            ))}
+          </div>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Chave PIX</p>
+          <p className="sl" style={{ marginBottom:6 }}>Tipo da chave</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
+            {[{k:"cnpj",l:"CNPJ"},{k:"cpf",l:"CPF"},{k:"email",l:"E-mail"},{k:"phone",l:"Telefone"},{k:"random",l:"Aleatória"}].map(t => (
+              <button key={t.k} onClick={() => upd("pixType", t.k)} style={{ padding:"8px 12px", borderRadius:10, border:`1.5px solid ${fc.pixType===t.k?B.accent:B.border}`, background:fc.pixType===t.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.pixType===t.k?B.accent:B.muted }}>{t.l}</button>
+            ))}
+          </div>
+          <FinField label="Chave PIX" value={fc.pixKey} onChange={v => upd("pixKey", v)} placeholder={fc.pixType==="cnpj"?"00.000.000/0001-00":fc.pixType==="email"?"email@agencia.com.br":fc.pixType==="phone"?"(24) 99999-9999":"chave"} mono />
+        </Card>
+        <Card style={{ background:`${B.green}06`, border:`1px solid ${B.green}20` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <p style={{ fontSize:11, color:B.green, lineHeight:1.5 }}>Estes dados ficam armazenados de forma segura e são usados apenas para gerar faturas e boletos para seus clientes.</p>
+          </div>
+        </Card>
+      </>}
+
+      {/* ═══ TAB: FATURAMENTO ═══ */}
+      {finTab === "billing" && <>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Configurações Padrão</p>
+          <FinField label="Dia de vencimento padrão" value={fc.defaultDueDay} onChange={v => upd("defaultDueDay", parseInt(v)||5)} type="number" helpText="Dia do mês para vencimento das faturas (1-28)" />
+          <p className="sl" style={{ marginBottom:6 }}>Forma de pagamento padrão</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+            {["PIX","Boleto","Transferência","Cartão","Dinheiro"].map(m => (
+              <button key={m} onClick={() => upd("defaultPayMethod", m)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${fc.defaultPayMethod===m?B.accent:B.border}`, background:fc.defaultPayMethod===m?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.defaultPayMethod===m?B.accent:B.muted }}>{m}</button>
+            ))}
+          </div>
+          <FinField label="Dias de trial / cortesia" value={fc.trialDays} onChange={v => upd("trialDays", parseInt(v)||0)} type="number" helpText="Período de teste grátis para novos clientes" />
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Multa e Juros por Atraso</p>
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Multa (%)" value={fc.lateFeePercent} onChange={v => upd("lateFeePercent", parseFloat(v)||0)} type="number" helpText="Multa fixa sobre o valor (máx. legal: 2%)" /></div>
+            <div style={{ flex:1 }}><FinField label="Juros ao mês (%)" value={fc.lateInterestPercent} onChange={v => upd("lateInterestPercent", parseFloat(v)||0)} type="number" helpText="Juros mora mensal (máx. legal: 1%)" /></div>
+          </div>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Numeração de Faturas</p>
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Prefixo" value={fc.invoicePrefix} onChange={v => upd("invoicePrefix", v.toUpperCase().slice(0,5))} placeholder="UMK" helpText="Prefixo das faturas (ex: UMK-001)" /></div>
+            <div style={{ flex:1 }}><FinField label="Próximo número" value={fc.invoiceNextNum} onChange={v => upd("invoiceNextNum", parseInt(v)||1)} type="number" helpText="Número sequencial da próxima fatura" /></div>
+          </div>
+          <Card style={{ background:`${B.accent}06`, padding:12, border:`1px solid ${B.accent}15`, marginTop:8 }}>
+            <p style={{ fontSize:11, color:B.muted }}>Próxima fatura:</p>
+            <p style={{ fontSize:16, fontWeight:800, color:B.accent, fontFamily:"monospace", marginTop:2 }}>{fc.invoicePrefix}-{String(fc.invoiceNextNum).padStart(3,"0")}</p>
+          </Card>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Mensagem na Fatura</p>
+          <div style={{ marginBottom:10 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Rodapé / Observação</label>
+            <textarea value={fc.invoiceFooter||""} onChange={e => upd("invoiceFooter", e.target.value)} placeholder="Texto que aparece no rodapé de todas as faturas..." className="tinput" style={{ minHeight:60, resize:"vertical" }} />
+            <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Mensagem exibida em todas as faturas geradas pelo sistema</p>
+          </div>
+          <div>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações internas</label>
+            <textarea value={fc.invoiceObs||""} onChange={e => upd("invoiceObs", e.target.value)} placeholder="Notas internas sobre faturamento (não aparece na fatura)..." className="tinput" style={{ minHeight:50, resize:"vertical" }} />
+          </div>
+        </Card>
+      </>}
+
+      {/* ═══ TAB: METAS ═══ */}
+      {finTab === "goals" && <>
+        <Card style={{ marginBottom:12, textAlign:"center", padding:20, background:B.dark, color:"#fff", border:"none" }}>
+          <div style={{ width:48, height:48, borderRadius:16, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", color:B.accent }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+          <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>Metas Financeiras</h3>
+          <p style={{ fontSize:11, opacity:.5, marginTop:4 }}>Defina metas para acompanhar o crescimento da agência</p>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Mensal</p>
+          <FinField label="Meta mensal (R$)" value={fc.monthlyGoal} onChange={v => upd("monthlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita mensal recorrente" />
+          {fc.monthlyGoal > 0 && (() => {
+            const pct = Math.min(100, Math.round((totalRevReal / fc.monthlyGoal) * 100));
+            return (
+              <div style={{ marginTop:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:11, fontWeight:600 }}>R$ {totalRevReal.toLocaleString("pt-BR")} / R$ {fc.monthlyGoal.toLocaleString("pt-BR")}</span>
+                  <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}%</span>
+                </div>
+                <div style={{ height:10, borderRadius:5, background:`${B.border}` }}>
+                  <div style={{ height:"100%", borderRadius:5, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
+                </div>
+                {pct >= 100 && <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:6, textAlign:"center" }}>🎉 Meta atingida!</p>}
+              </div>
+            );
+          })()}
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Meta de Receita Anual</p>
+          <FinField label="Meta anual (R$)" value={fc.yearlyGoal} onChange={v => upd("yearlyGoal", parseFloat(v)||0)} type="number" helpText="Valor desejado de receita acumulada no ano" />
+          {fc.yearlyGoal > 0 && (() => {
+            const yearEst = totalRevReal * 12;
+            const pct = Math.min(100, Math.round((yearEst / fc.yearlyGoal) * 100));
+            return (
+              <div style={{ marginTop:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ fontSize:11, fontWeight:600 }}>Projeção: R$ {yearEst.toLocaleString("pt-BR")} / R$ {fc.yearlyGoal.toLocaleString("pt-BR")}</span>
+                  <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}%</span>
+                </div>
+                <div style={{ height:10, borderRadius:5, background:`${B.border}` }}>
+                  <div style={{ height:"100%", borderRadius:5, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
+                </div>
+                <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>Projeção baseada na receita mensal atual × 12 meses</p>
+              </div>
+            );
+          })()}
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Metas por Indicador</p>
+          {[
+            { label:"Ticket médio desejado (R$)", key:"goalTicket", ph:"2.500" },
+            { label:"Nº de clientes pagantes", key:"goalClients", ph:"15" },
+            { label:"Taxa de inadimplência máx. (%)", key:"goalChurnMax", ph:"10" },
+          ].map((g, i) => (
+            <FinField key={i} label={g.label} value={fc[g.key]||""} onChange={v => upd(g.key, v)} placeholder={g.ph} type="number" />
+          ))}
+        </Card>
+      </>}
+
+      {/* ═══ TAB: CATEGORIAS DE DESPESA ═══ */}
+      {finTab === "expenses" && <>
+        <Card style={{ marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+            <p style={{ fontSize:14, fontWeight:700 }}>Categorias de Despesa</p>
+            <button onClick={() => {
+              const name = prompt("Nome da nova categoria:");
+              if (name && name.trim()) upd("expenseCategories", [...(fc.expenseCategories||[]), name.trim()]);
+            }} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}12`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>+ Nova</button>
+          </div>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Categorias usadas para classificar despesas e custos operacionais da agência.</p>
+          {(fc.expenseCategories||[]).map((cat, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+              </div>
+              <p style={{ fontSize:13, fontWeight:500, flex:1 }}>{cat}</p>
+              <button onClick={() => upd("expenseCategories", (fc.expenseCategories||[]).filter((_,j)=>j!==i))} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, fontSize:16, padding:4 }}>×</button>
+            </div>
+          ))}
+          {(fc.expenseCategories||[]).length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma categoria cadastrada</p>}
+        </Card>
+        <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg><p style={{ fontSize:12, fontWeight:600 }}>Sugestões de categorias</p></div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+            {["Ferramentas/Software","Freelancers","Anúncios (mídia)","Equipamentos","Escritório","Impostos","Marketing próprio","Viagens","Treinamentos","Telefone/Internet"].map(s => {
+              const exists = (fc.expenseCategories||[]).includes(s);
+              return (
+                <button key={s} disabled={exists} onClick={() => !exists && upd("expenseCategories", [...(fc.expenseCategories||[]), s])} style={{ padding:"5px 10px", borderRadius:8, border:`1px solid ${exists?B.green:B.border}30`, background:exists?`${B.green}08`:B.bgCard, cursor:exists?"default":"pointer", fontFamily:"inherit", fontSize:10, fontWeight:500, color:exists?B.green:B.muted, opacity:exists?0.6:1 }}>{exists?"✓ ":""}{s}</button>
+              );
+            })}
+          </div>
+        </Card>
+      </>}
+
+      {/* ═══ TAB: COBRANÇAS (Real Invoices) ═══ */}
+      {finTab === "invoices" && <>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <p className="sl">Cobranças</p>
+          <button onClick={() => setInvForm({ client_id:"", description:"", amount:"", due_date: new Date(new Date().getFullYear(), new Date().getMonth()+1, fc.defaultDueDay||5).toISOString().split("T")[0], payment_method: fc.defaultPayMethod||"PIX" })} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>+ Nova cobrança</button>
+        </div>
+        {invForm && <Card style={{ marginBottom:12, border:`2px solid ${B.accent}` }}>
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>{invForm.id ? "Editar cobrança" : "Nova cobrança"}</p>
+          <p className="sl" style={{ marginBottom:4 }}>Cliente</p>
+          <select value={invForm.client_id||""} onChange={e=>setInvForm(p=>({...p,client_id:e.target.value}))} className="tinput" style={{ marginBottom:8 }}>
+            <option value="">Selecione...</option>
+            {CDATA.map(c => <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+          </select>
+          <FinField label="Descrição" value={invForm.description||""} onChange={v=>setInvForm(p=>({...p,description:v}))} placeholder="Mensalidade Mar/2026, Gestão de tráfego..." />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Valor (R$)" value={invForm.amount||""} onChange={v=>setInvForm(p=>({...p,amount:v}))} type="number" placeholder="3500" /></div>
+            <div style={{ flex:1 }}><FinField label="Vencimento" value={invForm.due_date||""} onChange={v=>setInvForm(p=>({...p,due_date:v}))} type="date" /></div>
+          </div>
+          <p className="sl" style={{ marginBottom:4, marginTop:4 }}>Forma de pagamento</p>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+            {["PIX","Boleto","Transferência","Cartão"].map(m => (
+              <button key={m} onClick={() => setInvForm(p=>({...p,payment_method:m}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${invForm.payment_method===m?B.accent:B.border}`, background:invForm.payment_method===m?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:invForm.payment_method===m?B.accent:B.muted }}>{m}</button>
+            ))}
+          </div>
+          <FinField label="Observações" value={invForm.notes||""} onChange={v=>setInvForm(p=>({...p,notes:v}))} placeholder="Notas internas..." />
+          <div style={{ display:"flex", gap:8, marginTop:8 }}>
+            <button onClick={async () => {
+              if (!invForm.client_id || !invForm.amount) { showToast("Preencha cliente e valor"); return; }
+              const num = `${fc.invoicePrefix||"UMK"}-${String(fc.invoiceNextNum||1).padStart(3,"0")}`;
+              const inv = { client_id: invForm.client_id, number: num, description: invForm.description, amount: parseFloat(invForm.amount), due_date: invForm.due_date, payment_method: invForm.payment_method, notes: invForm.notes, status: "pending" };
+              const created = await supaCreateInvoice(inv);
+              if (created) {
+                setInvoices(p => [created, ...p]); upd("invoiceNextNum", (fc.invoiceNextNum||1)+1); saveFin(); setInvForm(null);
+                supaCreateNotificationForAll("system", "Nova cobrança", `${num} — R$ ${parseFloat(invForm.amount).toLocaleString("pt-BR")}`, "💰", null);
+                /* Sync with Asaas if configured */
+                if (fc.asaasApiKey) {
+                  const client = CDATA.find(c => (c.supaId||c.id) === invForm.client_id);
+                  const asaasR = await asaasCall("create_payment", {
+                    customer: client?.asaasId || undefined,
+                    billingType: invForm.payment_method === "PIX" ? "PIX" : invForm.payment_method === "Boleto" ? "BOLETO" : invForm.payment_method === "Cartão" ? "CREDIT_CARD" : "UNDEFINED",
+                    value: parseFloat(invForm.amount), dueDate: invForm.due_date,
+                    description: invForm.description || `${num} — ${client?.name || ""}`,
+                    externalReference: created.id
+                  });
+                  if (asaasR?.id) { showToast("Cobrança criada no UniqueHub + Asaas ✓"); await supaUpdateInvoice(created.id, { notes: `Asaas ID: ${asaasR.id}` }); }
+                  else showToast("Cobrança criada ✓ (Asaas: " + (asaasR?.error || asaasR?.errors?.[0]?.description || "erro") + ")");
+                } else { showToast("Cobrança criada ✓"); }
+              }
+              else showToast("Erro ao criar cobrança");
+            }} className="pill accent" style={{ flex:1, padding:"12px 0" }}>💰 Criar cobrança</button>
+            <button onClick={() => setInvForm(null)} className="pill" style={{ padding:"12px 16px", background:B.bgCard, border:`1px solid ${B.border}`, color:B.muted }}>Cancelar</button>
+          </div>
+        </Card>}
+        {(() => {
+          const pending = invoices.filter(i => i.status === "pending");
+          const overdue = invoices.filter(i => i.status === "pending" && new Date(i.due_date) < new Date());
+          const paid = invoices.filter(i => i.status === "paid");
+          const totalPending = pending.reduce((a,i) => a + Number(i.amount||0), 0);
+          const totalPaid = paid.reduce((a,i) => a + Number(i.paid_amount || i.amount || 0), 0);
+          return <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:12 }}>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.orange }}>{pending.length}</p><p style={{ fontSize:9, color:B.muted }}>Pendentes</p><p style={{ fontSize:10, fontWeight:600, color:B.orange }}>R$ {totalPending.toLocaleString("pt-BR")}</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>{overdue.length}</p><p style={{ fontSize:9, color:B.muted }}>Atrasadas</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.green }}>{paid.length}</p><p style={{ fontSize:9, color:B.muted }}>Pagas</p><p style={{ fontSize:10, fontWeight:600, color:B.green }}>R$ {totalPaid.toLocaleString("pt-BR")}</p></Card>
+            </div>
+            {invoices.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:28, marginBottom:8 }}>💰</p><p style={{ fontSize:13, fontWeight:600 }}>Nenhuma cobrança ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Crie sua primeira cobrança clicando no botão acima.</p></Card>}
+            {invoices.map((inv, i) => {
+              const client = CDATA.find(c => (c.supaId||c.id) === inv.client_id);
+              const isOverdue = inv.status === "pending" && new Date(inv.due_date) < new Date();
+              const statusColor = inv.status === "paid" ? B.green : isOverdue ? B.red : B.orange;
+              const statusLabel = inv.status === "paid" ? "Paga" : inv.status === "cancelled" ? "Cancelada" : isOverdue ? "Atrasada" : "Pendente";
+              return (
+                <Card key={inv.id} style={{ marginTop:i?6:0, borderLeft:`3px solid ${statusColor}` }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <p style={{ fontSize:12, fontWeight:700 }}>{inv.number}</p>
+                        <Tag color={statusColor}>{statusLabel}</Tag>
+                      </div>
+                      <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{client?.name || "Cliente"} — {inv.description || "Sem descrição"}</p>
+                      <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Venc: {new Date(inv.due_date).toLocaleDateString("pt-BR")} · {inv.payment_method || "PIX"}</p>
+                    </div>
+                    <div style={{ textAlign:"right" }}>
+                      <p style={{ fontSize:16, fontWeight:800, color:statusColor }}>R$ {Number(inv.amount).toLocaleString("pt-BR")}</p>
+                      {inv.status === "pending" && <button onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Marcar ${inv.number} como paga? (R$ ${Number(inv.amount).toLocaleString("pt-BR")})`)) return;
+                        const r = await supaUpdateInvoice(inv.id, { status:"paid", paid_at: new Date().toISOString(), paid_amount: inv.amount });
+                        if (r) { setInvoices(p => p.map(x => x.id === inv.id ? r : x)); showToast("Marcada como paga ✓"); }
+                      }} style={{ marginTop:4, padding:"4px 10px", borderRadius:6, background:`${B.green}12`, border:`1px solid ${B.green}30`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.green }}>✓ Paga</button>}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </>;
+        })()}
+      </>}
+
+      {/* ═══ TAB: DESPESAS REAIS ═══ */}
+      {finTab === "realExpenses" && <>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <p className="sl">Despesas</p>
+          <button onClick={() => setExpForm({ category:(fc.expenseCategories||[])[0]||"Outros", description:"", amount:"", date: new Date().toISOString().split("T")[0], recurring:false })} style={{ padding:"6px 14px", borderRadius:8, background:B.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>+ Nova despesa</button>
+        </div>
+        {expForm && <Card style={{ marginBottom:12, border:`2px solid ${B.red}` }}>
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Nova despesa</p>
+          <p className="sl" style={{ marginBottom:4 }}>Categoria</p>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
+            {(fc.expenseCategories||["Outros"]).map(c => (
+              <button key={c} onClick={() => setExpForm(p=>({...p,category:c}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${expForm.category===c?B.accent:B.border}`, background:expForm.category===c?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:expForm.category===c?B.accent:B.muted }}>{c}</button>
+            ))}
+          </div>
+          <FinField label="Descrição" value={expForm.description||""} onChange={v=>setExpForm(p=>({...p,description:v}))} placeholder="Canva Pro, Freelancer design..." />
+          <div style={{ display:"flex", gap:8 }}>
+            <div style={{ flex:1 }}><FinField label="Valor (R$)" value={expForm.amount||""} onChange={v=>setExpForm(p=>({...p,amount:v}))} type="number" placeholder="199.90" /></div>
+            <div style={{ flex:1 }}><FinField label="Data" value={expForm.date||""} onChange={v=>setExpForm(p=>({...p,date:v}))} type="date" /></div>
+          </div>
+          <label style={{ display:"flex", alignItems:"center", gap:8, marginTop:8, cursor:"pointer" }}>
+            <input type="checkbox" checked={expForm.recurring||false} onChange={e=>setExpForm(p=>({...p,recurring:e.target.checked}))} />
+            <span style={{ fontSize:11, color:B.text }}>Despesa recorrente (mensal)</span>
+          </label>
+          <div style={{ display:"flex", gap:8, marginTop:10 }}>
+            <button onClick={async () => {
+              if (!expForm.description || !expForm.amount) { showToast("Preencha descrição e valor"); return; }
+              const exp = { category: expForm.category, description: expForm.description, amount: parseFloat(expForm.amount), date: expForm.date, recurring: expForm.recurring, notes: expForm.notes };
+              const created = await supaCreateExpense(exp);
+              if (created) { setExpenses(p => [created, ...p]); setExpForm(null); showToast("Despesa registrada ✓"); }
+              else showToast("Erro ao registrar");
+            }} className="pill" style={{ flex:1, padding:"12px 0", background:B.red, color:"#fff", border:"none" }}>💸 Registrar despesa</button>
+            <button onClick={() => setExpForm(null)} className="pill" style={{ padding:"12px 16px", background:B.bgCard, border:`1px solid ${B.border}`, color:B.muted }}>Cancelar</button>
+          </div>
+        </Card>}
+        {(() => {
+          const now = new Date();
+          const thisMonth = expenses.filter(e => { const d = new Date(e.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+          const totalMonth = thisMonth.reduce((a,e) => a + Number(e.amount||0), 0);
+          const totalAll = expenses.reduce((a,e) => a + Number(e.amount||0), 0);
+          const byCat = {}; thisMonth.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0); });
+          return <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>R$ {totalMonth.toLocaleString("pt-BR")}</p><p style={{ fontSize:9, color:B.muted }}>Este mês</p></Card>
+              <Card style={{ textAlign:"center", padding:10 }}><p style={{ fontSize:18, fontWeight:800, color:B.muted }}>R$ {totalAll.toLocaleString("pt-BR")}</p><p style={{ fontSize:9, color:B.muted }}>Total acumulado</p></Card>
+            </div>
+            {Object.keys(byCat).length > 0 && <Card style={{ marginBottom:12 }}>
+              <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Por categoria (este mês)</p>
+              {Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat, val], i) => (
+                <div key={cat} style={{ display:"flex", alignItems:"center", gap:8, marginTop:i?6:0 }}>
+                  <div style={{ flex:1 }}><p style={{ fontSize:11, fontWeight:600 }}>{cat}</p>
+                    <div style={{ height:6, borderRadius:3, background:`${B.border}`, marginTop:3 }}><div style={{ height:"100%", borderRadius:3, background:B.red, width:`${Math.min(100, (val/totalMonth)*100)}%` }} /></div>
+                  </div>
+                  <p style={{ fontSize:12, fontWeight:700, color:B.red, flexShrink:0 }}>R$ {val.toLocaleString("pt-BR")}</p>
+                </div>
+              ))}
+            </Card>}
+            {expenses.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:28, marginBottom:8 }}>💸</p><p style={{ fontSize:13, fontWeight:600 }}>Nenhuma despesa registrada</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Registre despesas para acompanhar custos operacionais.</p></Card>}
+            {expenses.map((exp, i) => (
+              <Card key={exp.id} style={{ marginTop:i?6:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>💸</div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ fontSize:12, fontWeight:600 }}>{exp.description}</p>
+                    <p style={{ fontSize:10, color:B.muted }}>{exp.category} · {new Date(exp.date).toLocaleDateString("pt-BR")}{exp.recurring ? " · 🔄 Recorrente" : ""}</p>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:B.red }}>R$ {Number(exp.amount).toLocaleString("pt-BR")}</p>
+                    <button onClick={async () => { if (!confirm("Excluir esta despesa?")) return; await supaDeleteExpense(exp.id); setExpenses(p => p.filter(x => x.id !== exp.id)); showToast("Despesa excluída"); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:9, color:B.muted, marginTop:2 }}>excluir</button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </>;
+        })()}
+      </>}
+
+      {/* Save button for config tabs */}
+      {/* ═══ TAB: ASAAS ═══ */}
+      {finTab === "asaas" && <>
+        <Card style={{ marginBottom:12, background:B.dark, color:"#fff", border:"none", textAlign:"center", padding:20 }}>
+          <p style={{ fontSize:22, fontWeight:900 }}>💳 Asaas</p>
+          <p style={{ fontSize:11, opacity:.5, marginTop:4 }}>Integração com o sistema de cobranças Asaas</p>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Configuração da API</p>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Acesse <strong>asaas.com</strong> → Minha Conta → Integração → Gerar API Key.</p>
+          <p className="sl" style={{ marginBottom:6 }}>Ambiente</p>
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            {[{k:"sandbox",l:"🧪 Sandbox"},{k:"production",l:"🟢 Produção"}].map(m => (
+              <button key={m.k} onClick={()=>upd("asaasMode",m.k)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${fc.asaasMode===m.k?B.accent:B.border}`, background:fc.asaasMode===m.k?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fc.asaasMode===m.k?B.accent:B.muted }}>{m.l}</button>
+            ))}
+          </div>
+          <FinField label="API Key" value={fc.asaasApiKey||""} onChange={v=>upd("asaasApiKey",v)} placeholder="$aas_..." mono helpText={fc.asaasMode==="sandbox"?"Chave Sandbox para testes":"Chave de produção"} />
+          {fc.asaasApiKey && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada · {fc.asaasMode==="production"?"Produção":"Sandbox"}</p>}
+        </Card>
+        <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Funcionalidades via Asaas</p>
+          <div style={{ fontSize:10, color:B.muted, lineHeight:1.7 }}>
+            <p>✓ PIX (QR Code) · ✓ Boleto bancário · ✓ Cartão de crédito</p>
+            <p>✓ Cobranças recorrentes · ✓ Notificações automáticas</p>
+            <p>✓ Link de pagamento · ✓ Nota fiscal eletrônica</p>
+          </div>
+        </Card>
+      </>}
+
+      {["agency","bank","billing","goals","expenses","asaas"].includes(finTab) && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════ STAGE BAR (shared) ═══════════════════════ */
+function StageBar({ type, current, compact }) {
+  const getStages = t => t === "campaign" ? CAMPAIGN_STAGES : t === "video" ? VIDEO_STAGES : SOCIAL_STAGES;
+  const stages = getStages(type);
+  const idx = stages.indexOf(current);
+  const pct = stages.length > 1 ? (idx / (stages.length - 1)) * 100 : 100;
+  if (compact) {
+    /* List card: single gradient bar */
+    return (
+      <div style={{ width:"100%", height:4, borderRadius:2, background:`${B.border}` }}>
+        <div style={{ width:`${pct}%`, height:"100%", borderRadius:2, background:`linear-gradient(90deg, ${B.accent}90, ${B.accent})`, transition:"width .4s ease" }} />
+      </div>
+    );
+  }
+  /* Detail view: segmented bar */
+  return (
+    <div style={{ display:"flex", gap:3, alignItems:"center" }}>
+      {stages.map((s,i) => {
+        const done = i <= idx; const active = i === idx;
+        const opacity = done ? 0.4 + (i / stages.length) * 0.6 : 0;
+        return (<div key={s} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+          <div style={{ width:"100%", height:5, borderRadius:3, background: done ? B.accent : "#eee", opacity: done ? opacity : 1, transition:"all .3s", boxShadow: active ? `0 0 6px ${B.accent}40` : "none" }} />
+          <span style={{ fontSize:7, color: done ? B.dark : B.muted, fontWeight: active ? 800 : 500, whiteSpace:"nowrap" }}>{STAGE_CFG[s].l}</span>
+        </div>);
+      })}
+    </div>
+  );
+}
+
+/* ═══════════════════════ CONTENT / DEMAND PAGE ═══════════════════════ */
+/* ── Carousel/Image Preview Component ── */
+function PostPreview({ format, client, slides, compact, children, uploadedFiles }) {
+  const [cur, setCur] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const vidRef = React.useRef(null);
+  const detailColors = {"Casa Nova Imóveis":["#1a5276","#2e86c1"],"Bella Estética":["#6c3483","#af7ac5"],"TechSmart":["#1b4f72","#2980b9"],"Padaria Real":["#7e5109","#d4ac0d"],"Studio Fitness":["#1e8449","#2ecc71"]};
+  const [cA,cB] = detailColors[client] || ["#1C2228","#C8FA5F"];
+  const arrowSz = compact ? 28 : 36;
+
+  const imgFiles = (uploadedFiles||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+  const vidFiles = (uploadedFiles||[]).filter(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
+  const hasReal = imgFiles.length > 0 || vidFiles.length > 0;
+
+  /* Carrossel = formato Carrossel OU múltiplas imagens uploaded */
+  const isCarousel = format === "Carrossel" || imgFiles.length > 1;
+  const total = isCarousel ? Math.max(imgFiles.length, slides || 2) : 1;
+  const slideCount = imgFiles.length > 1 ? imgFiles.length : total;
+
+  /* Aspect ratio por formato */
+  const isVertical = ["Stories","Reels","Shorts"].includes(format) || vidFiles.length > 0;
+  const aspect = isVertical ? "9/16" : "4/5";
+
+  const togglePlay = (e) => {
+    e.stopPropagation();
+    if (!vidRef.current) return;
+    if (playing) { vidRef.current.pause(); setPlaying(false); }
+    else { vidRef.current.play(); setPlaying(true); }
+  };
+
+  return (
+    <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
+      {hasReal ? (
+        <div style={{ position:"relative", aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+          {imgFiles.length > 0 ? (
+            <img src={imgFiles[Math.min(cur, imgFiles.length-1)]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+          ) : vidFiles.length > 0 ? (<>
+            <video ref={vidRef} src={vidFiles[0]?.url+"#t=0.1"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} preload="metadata" playsInline loop onClick={togglePlay} />
+            <div onClick={togglePlay} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1, cursor:"pointer", background: playing ? "transparent" : "rgba(0,0,0,0.25)", transition:"background .3s" }}>
+              {!playing && <div style={{ width:compact?40:60, height:compact?40:60, borderRadius:"50%", background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                <svg width={compact?18:28} height={compact?18:28} viewBox="0 0 24 24" fill="#111" style={{ marginLeft:compact?2:3 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>}
+              {playing && <div style={{ position:"absolute", bottom:compact?8:14, right:compact?8:14, width:compact?28:36, height:compact?28:36, borderRadius:"50%", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width={compact?10:14} height={compact?10:14} viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              </div>}
+            </div>
+          </>) : null}
+          {isCarousel && imgFiles.length > 1 && <div style={{ position:"absolute", top:compact?6:10, right:compact?6:10, padding:"2px 8px", borderRadius:10, background:"rgba(0,0,0,0.55)", zIndex:2 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{Math.min(cur+1,imgFiles.length)}/{imgFiles.length}</span>
+          </div>}
+        </div>
+      ) : (
+        <div style={{ aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative" }}>
+          <span style={{ fontSize:compact?28:40, opacity:0.25 }}>{isCarousel?(cur===0?"📸":cur===total-1?"📲":"🖼️"):(format==="Reels"||format==="Stories"?"🎬":"📸")}</span>
+          {isCarousel && <p style={{ fontSize:compact?11:14, color:"rgba(255,255,255,0.7)", marginTop:4, fontWeight:700 }}>Slide {cur+1} de {total}</p>}
+          <p style={{ fontSize:compact?12:15, color:"rgba(255,255,255,0.8)", marginTop:compact?2:4, fontWeight:700 }}>{client}</p>
+        </div>
+      )}
+      {/* Carousel arrows */}
+      {isCarousel && slideCount > 1 && cur > 0 && <button onClick={e=>{e.stopPropagation();setCur(p=>p-1);}} style={{ position:"absolute", left:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+        <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>}
+      {isCarousel && cur < slideCount-1 && <button onClick={e=>{e.stopPropagation();setCur(p=>p+1);}} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", width:arrowSz, height:arrowSz, borderRadius:arrowSz/2, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+        <svg width={compact?12:16} height={compact?12:16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>}
+      {/* Carousel dots */}
+      {isCarousel && slideCount > 1 && <div style={{ position:"absolute", bottom:compact?6:10, left:"50%", transform:"translateX(-50%)", display:"flex", gap:compact?3:5 }}>
+        {Array.from({length:slideCount}).map((_,di) => <div key={di} style={{ width:di===cur?(compact?12:18):(compact?5:8), height:compact?5:8, borderRadius:4, background:di===cur?"#fff":"rgba(255,255,255,0.35)", transition:"all .25s" }} />)}
+      </div>}
+      {children}
+    </div>
+  );
+}
+
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca }) {
+  const canAccessFn = ca || (() => true);
+  const CDATA = propClients || [];
+  const TEAM = propTeam || [];
+  const [filter, setFilter] = useState("all");
+  const [clientFilter, setClientFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("");
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calMonth, setCalMonth] = useState(null);
+  const [calYear, setCalYear] = useState(null);
+  const [sel, setSel] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [createType, setCreateType] = useState(null);
+  const [form, setForm] = useState({});
+  const [editMode, setEditMode] = useState(false);
+  const [quickPub, setQuickPub] = useState(false);
+  const [qpForm, setQpForm] = useState({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
+  const [qpLoading, setQpLoading] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const contentScrollRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
+  useEffect(() => {
+    if (initialDemandId && demands?.length) {
+      const d = demands.find(x => x.id === initialDemandId);
+      if (d) { setSel(d); if (onOpenIdConsumed) onOpenIdConsumed(); if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0; }
+    }
+  }, [initialDemandId, demands]);
+
+  const filtered = demands.filter(d => {
+    if (filter !== "all" && d.type !== filter) return false;
+    if (clientFilter !== "all" && d.client !== clientFilter) return false;
+    if (dateFilter) {
+      const dDate = d.createdAt; /* format DD/MM */
+      const [y, m, dy] = dateFilter.split("-");
+      const target = `${dy}/${m}`;
+      if (dDate !== target) return false;
+    }
+    return true;
+  });
+  const uniqueClients = [...new Set(demands.map(d => d.client))].sort();
+  const getStages = t => t === "campaign" ? CAMPAIGN_STAGES : t === "video" ? VIDEO_STAGES : SOCIAL_STAGES;
+  const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
+  const priorityColor = p => p === "alta" ? B.red : p === "média" ? B.orange : B.green;
+  const typeLabel = t => t === "social" ? "Post" : t === "campaign" ? "Campanha" : t === "video" ? "Vídeo" : "Outro";
+  const typeColor = t => t === "social" ? B.blue : t === "campaign" ? B.purple : t === "video" ? B.orange : B.muted;
+
+  /* ── Advance Stage ── */
+  const syncMilestones = (demand, stageKey) => {
+    if (demand.type !== "campaign" || !demand.campaign?.milestones?.length) return demand;
+    const stages = CAMPAIGN_STAGES;
+    const stageIdx = stages.indexOf(stageKey);
+    const ms = demand.campaign.milestones.map((m, i) => ({ ...m, done: i <= stageIdx - 1 }));
+    return { ...demand, campaign: { ...demand.campaign, milestones: ms } };
+  };
+
+  const advanceStage = (d) => {
+    const stages = getStages(d.type);
+    const idx = stages.indexOf(d.stage);
+    if (idx < stages.length - 1) {
+      const next = stages[idx + 1];
+      setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
+      setSel(prev => syncMilestones({ ...prev, stage: next }, next));
+      if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
+      showToast(`Avançou para: ${STAGE_CFG[next].l}`);
+      supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
+    }
+  };
+
+  const rejectToStage = (d, targetStage, feedbackNote) => {
+    const updated = { ...d, stage: targetStage };
+    /* Store the review feedback in the target step so the person can see what needs fixing */
+    if (feedbackNote) {
+      const steps = { ...(updated.steps || {}) };
+      if (targetStage === "design" || targetStage === "caption") {
+        steps[targetStage] = { ...(steps[targetStage] || {}), reviewFeedback: feedbackNote, reviewFeedbackBy: user?.name || "Matheus", reviewFeedbackDate: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+      }
+      /* If rejecting to both (arte+legenda), store feedback in both steps */
+      if (targetStage === "design" && d._rejectBoth) {
+        steps.caption = { ...(steps.caption || {}), reviewFeedback: feedbackNote, reviewFeedbackBy: user?.name || "Matheus", reviewFeedbackDate: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+      }
+      updated.steps = steps;
+    }
+    const synced = syncMilestones(updated, targetStage);
+    setDemands(prev => prev.map(x => x.id === d.id ? synced : x));
+    setSel(synced);
+    if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage, steps: updated.steps });
+    showToast(`Voltou para: ${STAGE_CFG[targetStage].l}`);
+    supaCreateNotificationForAll("post_rejected", `Demanda devolvida: ${STAGE_CFG[targetStage].l}`, `${d.title || d.type} — ${feedbackNote || ""}`.slice(0,100), "❌", null, user?.id);
+  };
+
+  /* ── Create New Demand ── */
+  const handleCreate = async () => {
+    if (!createType) return;
+    const newD = {
+      id: Date.now(), type: createType, client: form.client || "Novo Cliente", title: form.title || "Nova demanda",
+      stage: createType === "campaign" ? "planning" : "idea", priority: form.priority || "média",
+      network: (form.networks && form.networks.length > 0) ? form.networks.join(", ") : "Instagram", format: form.format || "Feed", sponsored: form.sponsored || false,
+      assignees: form.assignees || [user?.name || "Matheus"], createdAt: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
+      steps: { idea: { by: user?.name || "Matheus", text: form.idea || "", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) } },
+      scheduling: { date: form.schedDate || "", time: form.schedTime || "" }, traffic: { budget: form.budget || "" },
+      ...(createType === "campaign" ? { campaign: { desc: form.desc || "", refs: form.refs || "", dateStart: form.dateStart || "", dateEnd: form.dateEnd || "", location: form.location || "", needs: [], clientTeam: [], budget: form.budget || "", budgetBreakdown: [], milestones: [] } } : {}),
+    };
+    /* Find client ID for Supabase */
+    const clientObj = CDATA.find(c => c.name === form.client);
+    const result = await supaCreateDemand(newD, clientObj?.supaId || clientObj?.id);
+    let toastMsg = "Demanda criada!";
+    if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; toastMsg = "Demanda criada! ✓"; }
+    else if (result?.err) { toastMsg = "Erro: " + result.err; }
+    setDemands(prev => [newD, ...prev]);
+    setCreating(false); setCreateType(null); setForm({});
+    showToast(toastMsg);
+    if (result?.data) supaCreateNotificationForAll("demand_created", "Nova demanda criada", `${newD.title || newD.type} — ${newD.clientName || ""}`, "📋", null, user?.id);
+  };
+
+  /* ── QUICK PUBLISH ── */
+  if (quickPub) {
+    const connectedClients = CDATA.filter(c => c.socials?.facebook?.oauth || c.socials?.instagram?.oauth);
+    const selClient = connectedClients.find(c => c.name === qpForm.client) || connectedClients[0];
+    const hasFB = selClient?.socials?.facebook?.oauth;
+    const hasIG = selClient?.socials?.instagram?.oauth;
+    const doQuickPublish = async (platform) => {
+      if (!qpForm.imageUrl) { showToast("Cole a URL da imagem"); return; }
+      if (!selClient) { showToast("Selecione um cliente"); return; }
+      setQpLoading(true);
+      const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption;
+      const clientId = selClient.supaId || selClient.id;
+      try {
+        let r;
+        if (platform === "both") {
+          const [rFb, rIg] = await Promise.all([
+            hasFB ? publishToMeta(clientId, qpForm.imageUrl, caption) : null,
+            hasIG ? publishToInstagram(clientId, [qpForm.imageUrl], caption, "FEED") : null
+          ]);
+          if (rFb?.error) { showToast("Erro FB: " + rFb.error); setQpLoading(false); return; }
+          if (rIg?.error) { showToast("Erro IG: " + rIg.error); setQpLoading(false); return; }
+          showToast("✓ Publicado no " + [hasFB && "Facebook", hasIG && "Instagram"].filter(Boolean).join(" e ") + "!");
+        } else if (platform === "facebook") {
+          r = await publishToMeta(clientId, qpForm.imageUrl, caption);
+          if (r?.error) { showToast("Erro: " + r.error); setQpLoading(false); return; }
+          showToast("✓ Publicado no Facebook!");
+        } else {
+          r = await publishToInstagram(clientId, [qpForm.imageUrl], caption, "FEED");
+          if (r?.error) { showToast("Erro: " + r.error); setQpLoading(false); return; }
+          showToast("✓ Publicado no Instagram!");
+        }
+        supaCreateNotificationForAll("post_created", "Post publicado", `${selClient.name} — ${platform === "both" ? "FB + IG" : platform}`, "📝", null, user?.id);
+        setQpLoading(false); setQuickPub(false); setQpForm({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
+      } catch(e) { showToast("Erro: " + e.message); setQpLoading(false); }
+    };
+    return (
+      <div className="pg" style={{ paddingTop: TOP }}>
+        {ToastEl}
+        <Head title="Publicação Rápida" onBack={() => setQuickPub(false)} />
+        {connectedClients.length === 0 ? <Card style={{ textAlign:"center", padding:30 }}>
+          <p style={{ fontSize:28, marginBottom:8 }}>📡</p>
+          <p style={{ fontSize:14, fontWeight:700 }}>Nenhum cliente com rede conectada</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Conecte Facebook ou Instagram de um cliente na aba Clientes → Redes.</p>
+        </Card> : <>
+          <p className="sl" style={{ marginBottom:6 }}>Cliente</p>
+          <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:12, paddingBottom:4 }}>
+            {connectedClients.map(c => (
+              <button key={c.name} onClick={()=>setQpForm(p=>({...p, client:c.name}))} style={{ flexShrink:0, padding:"8px 14px", borderRadius:10, border:qpForm.client===c.name?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:qpForm.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:qpForm.client===c.name?B.accent:B.text }}>
+                {c.name}
+                <div style={{ display:"flex", gap:3, marginTop:3, justifyContent:"center" }}>
+                  {c.socials?.facebook?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />}
+                  {c.socials?.instagram?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />}
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="sl" style={{ marginBottom:6 }}>Imagem (URL pública)</p>
+          <input value={qpForm.imageUrl} onChange={e=>setQpForm(p=>({...p,imageUrl:e.target.value}))} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ marginBottom:8, fontSize:12 }} />
+          {qpForm.imageUrl && <Card style={{ marginBottom:12, padding:6, textAlign:"center" }}>
+            <img src={qpForm.imageUrl} alt="Preview" style={{ maxWidth:"100%", maxHeight:200, borderRadius:10, objectFit:"contain" }} onError={e=>{e.target.style.display="none"}} />
+          </Card>}
+          <p className="sl" style={{ marginBottom:6 }}>Legenda</p>
+          <textarea value={qpForm.caption} onChange={e=>setQpForm(p=>({...p,caption:e.target.value}))} placeholder="Escreva a legenda do post..." className="tinput" rows={4} style={{ marginBottom:8, fontSize:13, lineHeight:1.5, resize:"vertical" }} />
+          <p className="sl" style={{ marginBottom:6 }}>Hashtags</p>
+          <input value={qpForm.hashtags} onChange={e=>setQpForm(p=>({...p,hashtags:e.target.value}))} placeholder="#marketing #digital #agencia" className="tinput" style={{ marginBottom:12, fontSize:12 }} />
+          <p className="sl" style={{ marginBottom:8 }}>Publicar em</p>
+          <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+            {hasFB && hasIG && <button onClick={()=>doQuickPublish("both")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
+              {qpLoading ? "⏳ Publicando..." : "📤 Facebook + Instagram"}
+            </button>}
+            {hasFB && <button onClick={()=>doQuickPublish("facebook")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
+              {qpLoading ? "..." : "Facebook"}
+            </button>}
+            {hasIG && <button onClick={()=>doQuickPublish("instagram")} disabled={qpLoading} style={{ flex:1, padding:"14px 0", borderRadius:14, background:"#E1306C", border:"none", cursor:qpLoading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", opacity:qpLoading?0.5:1 }}>
+              {qpLoading ? "..." : "Instagram"}
+            </button>}
+          </div>
+          <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, padding:12 }}>
+            <p style={{ fontSize:10, color:B.muted, lineHeight:1.6 }}>💡 A imagem precisa ser uma URL pública acessível pela internet. Para imagens locais, primeiro faça upload na Biblioteca e use o link gerado. Posts do Instagram precisam ser quadrados (1080x1080) idealmente.</p>
+          </Card>
+        </>}
+      </div>
+    );
+  }
+
+  /* ── CREATE SHEET ── */
+  if (creating) return (
+    <div className="pg" style={{ paddingTop: TOP }}>
+      {ToastEl}
+      <Head title={createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"} onBack={() => { if (createType) setCreateType(null); else setCreating(false); }} />
+      {!createType ? (
+        <div>
+          <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Que tipo de demanda você quer criar?</p>
+          {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels, carrossel",ic:IC.img,c:B.blue},
+            {k:"campaign",l:"Campanha Publicitária",d:"Evento, ação presencial ou online",ic:IC.target,c:B.purple},
+            {k:"video",l:"Produção de Vídeo",d:"Institucional, depoimento, produto",ic:IC.vid,c:B.orange},
+            {k:"email",l:"E-mail Marketing",d:"Newsletter, promoção, nutrição",ic:IC.mail,c:B.green},
+            {k:"blog",l:"Blog / SEO",d:"Artigo, landing page, conteúdo",ic:IC.doc,c:B.cyan},
+          ].map((t,i) => (
+            <Card key={t.k} delay={i*0.04} onClick={() => setCreateType(t.k)} style={{ marginTop: i?8:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:44, height:44, borderRadius:14, background:`${t.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:t.c }}>{t.ic}</div>
+                <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{t.l}</p><p style={{ fontSize:11, color:B.muted }}>{t.d}</p></div>
+                {IC.chev()}
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
+          <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:12 }}>
+            <option value="">Selecionar cliente...</option>
+            {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+          </select>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Título da demanda</label>
+          <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:12 }} />
+          {createType === "social" && <>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Redes sociais</label>
+            <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+              {["Instagram","Facebook","TikTok","LinkedIn","YouTube","Twitter"].map(n=>{
+                const nets = form.networks || [];
+                const sel = nets.includes(n);
+                return (
+                <button key={n} onClick={()=>setForm({...form, networks: sel ? nets.filter(x=>x!==n) : [...nets, n]})} style={{
+                  display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, cursor:"pointer", fontFamily:"inherit",
+                  border:`1.5px solid ${sel ? (NETWORK_CFG[n]?.c||B.accent) : B.border}`,
+                  background: sel ? `${NETWORK_CFG[n]?.c||B.accent}10` : B.bgCard,
+                  color: sel ? (NETWORK_CFG[n]?.c||B.text) : B.muted, fontSize:12, fontWeight:600, transition:"all .2s",
+                }}>
+                  <NetworkIcon name={n} sz={18} active={sel} />
+                  {n}
+                  {sel && <span style={{ marginLeft:2, display:"flex" }}>{IC.check}</span>}
+                </button>
+              );})}
+            </div>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Formato</label>
+            <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+              {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
+                <button key={f} onClick={()=>setForm({...form,format:f})} className={`htab${form.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
+              ))}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+              <span style={{ fontSize:13, fontWeight:600 }}>Post patrocinado?</span>
+              <Toggle on={form.sponsored||false} onToggle={()=>setForm({...form,sponsored:!form.sponsored})} />
+            </div>
+            {form.sponsored && <>
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>Orçamento do boost</label>
+              <input value={form.budget||""} onChange={e=>setForm({...form,budget:e.target.value})} placeholder="R$ 150" className="tinput" style={{ marginBottom:12 }} />
+            </>}
+          </>}
+          {createType === "campaign" && <>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Descrição da campanha</label>
+            <textarea value={form.desc||""} onChange={e=>setForm({...form,desc:e.target.value})} placeholder="Do que se trata, objetivos..." className="tinput" style={{ marginBottom:12, minHeight:80, resize:"vertical" }} />
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Referências</label>
+            <input value={form.refs||""} onChange={e=>setForm({...form,refs:e.target.value})} placeholder="Campanhas de referência..." className="tinput" style={{ marginBottom:12 }} />
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+              <div><label className="sl" style={{ display:"block", marginBottom:6 }}>Data início</label><input type="date" value={form.dateStart||""} onChange={e=>setForm({...form,dateStart:e.target.value})} className="tinput" /></div>
+              <div><label className="sl" style={{ display:"block", marginBottom:6 }}>Data fim</label><input type="date" value={form.dateEnd||""} onChange={e=>setForm({...form,dateEnd:e.target.value})} className="tinput" /></div>
+            </div>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Local</label>
+            <input value={form.location||""} onChange={e=>setForm({...form,location:e.target.value})} placeholder="Onde será a campanha" className="tinput" style={{ marginBottom:12 }} />
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Orçamento total</label>
+            <input value={form.budget||""} onChange={e=>setForm({...form,budget:e.target.value})} placeholder="R$ 5.000" className="tinput" style={{ marginBottom:12 }} />
+          </>}
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Ideia / Briefing inicial</label>
+          <textarea value={form.idea||""} onChange={e=>setForm({...form,idea:e.target.value})} placeholder="Descreva a ideia da demanda..." className="tinput" style={{ marginBottom:12, minHeight:80, resize:"vertical" }} />
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Prioridade</label>
+          <div style={{ display:"flex", gap:6, marginBottom:16 }}>
+            {["baixa","média","alta"].map(p=>(
+              <button key={p} onClick={()=>setForm({...form,priority:p})} style={{ flex:1, padding:"10px 0", borderRadius:12, border:`1.5px solid ${form.priority===p?priorityColor(p):B.border}`, background: form.priority===p?`${priorityColor(p)}12`:B.bgCard, color: form.priority===p?priorityColor(p):B.muted, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", textTransform:"capitalize" }}>{p}</button>
+            ))}
+          </div>
+          <button onClick={handleCreate} className="pill full accent" style={{ opacity:(form.title&&form.client)?1:0.4 }}>Criar Demanda {IC.arrowR()}</button>
+        </div>
+      )}
+    </div>
+  );
+
+  /* ── DETAIL VIEW ── */
+  if (sel) {
+    /* Safety: ensure sel has required properties */
+    if (!sel.type) sel.type = "social";
+    if (!sel.stage) sel.stage = "idea";
+    if (!sel.steps || typeof sel.steps !== "object") sel.steps = {};
+    if (!sel.assignees || !Array.isArray(sel.assignees)) sel.assignees = ["Equipe"];
+    const stages = getStages(sel.type);
+    const stageIdx = Math.max(0, stages.indexOf(sel.stage));
+    const curStageCfg = STAGE_CFG[sel.stage] || { l: sel.stage || "Pendente", c: "#888" };
+    const isCampaign = sel.type === "campaign";
+
+    /* helper: update a step field in sel and demands */
+    const updateStep = (stepKey, data) => {
+      const newSteps = { ...(sel.steps||{}), [stepKey]: { ...(sel.steps?.[stepKey]||{}), ...data } };
+      setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: newSteps } : x));
+      setSel(prev => ({ ...prev, steps: newSteps }));
+      if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: newSteps });
+    };
+    const updateField = (field, val) => {
+      setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, [field]: val } : x));
+      setSel(prev => ({ ...prev, [field]: val }));
+      if (sel.supaId) {
+        const supaField = field === "network" ? "networks" : field;
+        const supaVal = field === "network" ? (val ? val.split(", ") : []) : val;
+        supaUpdateDemand(sel.supaId, { [supaField]: supaVal });
+      }
+    };
+
+    /* Role label for each stage */
+    const stageRole = { idea:"Head / CEO", briefing:"Social Media", design:"Designer / Audiovisual", caption:"Social Media", review:"Gerente", client:"Cliente", published:"—",
+      planning:"Head / CEO", creation:"Equipe", execution:"Equipe", completed:"—", production:"Audiovisual", editing:"Editor" };
+    const stageIcon = { idea:IC.ideas, briefing:IC.doc, design:IC.img, caption:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+      review:IC.shield, client:IC.users, published:IC.check, planning:IC.ideas, creation:IC.img, execution:IC.target, completed:IC.check, production:IC.vid, editing:IC.vid };
+
+    /* Section render helper (NOT a component - avoids re-mount) */
+    const renderSection = (stageKey, children) => {
+      const idx = stages.indexOf(stageKey);
+      const done = idx < stageIdx; const active = idx === stageIdx; const future = idx > stageIdx;
+      const cfg = STAGE_CFG[stageKey] || { l: stageKey, c: "#888" };
+      return (
+        <div key={stageKey} style={{ marginBottom:8, borderRadius:16, border:`1.5px solid ${active ? cfg.c : done ? `${cfg.c}30` : B.border}`, background: active ? `${cfg.c}06` : B.bgCard, padding:14, opacity: future ? 0.45 : 1, position:"relative", transition:"all .3s" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: (done||active) ? 10 : 0 }}>
+            <div style={{ width:28, height:28, borderRadius:14, background: done ? cfg.c : active ? `${cfg.c}20` : `${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", color: done ? "#fff" : active ? cfg.c : B.muted, flexShrink:0 }}>
+              {done ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : <span style={{ display:"flex", transform:"scale(0.75)" }}>{stageIcon[stageKey]||IC.doc}</span>}
+            </div>
+            <div style={{ flex:1 }}>
+              <span style={{ fontSize:13, fontWeight:700, color: active ? cfg.c : done ? B.dark : B.muted }}>{cfg.l}</span>
+              <span style={{ fontSize:10, color:B.muted, marginLeft:6 }}>{stageRole[stageKey]}</span>
+            </div>
+            {active && <Tag color={cfg.c}>Etapa atual</Tag>}
+            {future && <span style={{ fontSize:10, color:B.muted }}>🔒</span>}
+          </div>
+          {(done || active) && children}
+        </div>
+      );
+    };
+
+    return (
+      <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
+      <div className="pg" style={{ paddingTop: TOP }}>
+        {ToastEl}
+        <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={async ()=>{
+            if (!confirm(`Excluir "${sel.title}"?`)) return;
+            if (sel.supaId) await supaDeleteDemand(sel.supaId);
+            setDemands(p=>p.filter(d=>d.id!==sel.id));
+            setSel(null); setEditMode(false); showToast("Demanda excluída ✓");
+          }} className="ib" style={{padding:8,border:`1.5px solid ${B.border}`}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>} />
+
+        {/* ═══ EDIT MODE ═══ */}
+        {editMode ? (
+          <Card style={{ marginBottom:14 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>Editando demanda</p>
+              <button onClick={()=>{setEditMode(false);showToast("Alterações salvas ✓");}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent}}>
+                {IC.check} Salvar
+              </button>
+            </div>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Título</label>
+            <input value={sel.title} onChange={e=>updateField("title",e.target.value)} className="tinput" style={{ marginBottom:10, fontWeight:700, fontSize:15 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente</label>
+            <select value={CDATA.find(c=>c.name===sel.client)?.supaId||""} onChange={e=>{
+              const cl = CDATA.find(c=>c.supaId===e.target.value);
+              if (cl) { updateField("client", cl.name); if(sel.supaId) supaUpdateDemand(sel.supaId,{client_id:cl.supaId}); }
+            }} className="tinput" style={{ marginBottom:10 }}>
+              <option value="">Selecionar cliente</option>
+              {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+            </select>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Prioridade</label>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {["baixa","média","alta"].map(p=>(
+                <button key={p} onClick={()=>updateField("priority",p)} style={{ flex:1, padding:"8px 0", borderRadius:10, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, border:sel.priority===p?`2px solid ${priorityColor(p)}`:`1.5px solid ${B.border}`, background:sel.priority===p?`${priorityColor(p)}15`:B.bgCard, color:sel.priority===p?priorityColor(p):B.muted, textTransform:"capitalize" }}>{p === "alta" ? "🔴 Alta" : p === "média" ? "🟡 Média" : "🟢 Baixa"}</button>
+              ))}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Redes</label>
+            <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
+              {["Instagram","Facebook","TikTok","LinkedIn","YouTube","Twitter"].map(n=>{
+                const nets = sel.network ? sel.network.split(", ") : [];
+                const on = nets.includes(n);
+                return <button key={n} onClick={()=>{
+                  const updated = on ? nets.filter(x=>x!==n) : [...nets, n];
+                  updateField("network", updated.join(", "));
+                }} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 10px", borderRadius:10, cursor:"pointer", fontFamily:"inherit", border:`1.5px solid ${on?(NETWORK_CFG[n]?.c||B.accent):B.border}`, background:on?`${NETWORK_CFG[n]?.c||B.accent}10`:B.bgCard, color:on?(NETWORK_CFG[n]?.c||B.text):B.muted, fontSize:11, fontWeight:600 }}>
+                  <NetworkIcon name={n} sz={14} active={on} />{n}
+                </button>;
+              })}
+            </div>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Formato</label>
+            <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
+              {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
+                <button key={f} onClick={()=>updateField("format",f)} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
+              ))}
+            </div>
+
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+              <span style={{ fontSize:13, fontWeight:600 }}>Patrocinado?</span>
+              <Toggle on={sel.sponsored||false} onToggle={()=>updateField("sponsored",!sel.sponsored)} />
+            </div>
+
+            <div style={{ display:"flex", gap:10 }}>
+              <div style={{ flex:1 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>Data</label>
+                <input value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} placeholder="DD/MM" className="tinput" />
+              </div>
+              <div style={{ flex:1 }}>
+                <label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label>
+                <input value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" />
+              </div>
+            </div>
+
+            {sel.sponsored && <div style={{ marginTop:10 }}>
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento tráfego</label>
+              <input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" />
+            </div>}
+          </Card>
+        ) : (
+        <div style={{ textAlign:"center", marginBottom:14 }}>
+          <Av src={(propClients||[]).find(c=>c.name===sel.client)?.logo} name={sel.client} sz={48} fs={18} />
+          <h2 style={{ fontSize:17, fontWeight:800, marginTop:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>{sel.title}</h2>
+          <p style={{ fontSize:12, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sel.client} · {typeLabel(sel.type)} · {sel.createdAt}</p>
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8, flexWrap:"wrap" }}>
+            <Tag color={typeColor(sel.type)}>{typeLabel(sel.type)}</Tag>
+            <Tag color={curStageCfg.c}>{curStageCfg.l}</Tag>
+            {sel.network && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 10px", borderRadius:20, background:`${NETWORK_CFG[sel.network]?.c||B.blue}10`, fontSize:11, fontWeight:600, color:NETWORK_CFG[sel.network]?.c||B.blue }}>
+              <NetworkIcon name={sel.network} sz={14} active />{sel.network}
+            </span>}
+            {sel.format && <Tag color={B.cyan}>{sel.format}</Tag>}
+            {sel.sponsored && <Tag color={B.orange}>Patrocinado</Tag>}
+            {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
+          </div>
+          <button onClick={()=>setEditMode(true)} style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"10px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar demanda
+          </button>
+        </div>
+        )}
+        {/* ═══ POST PREVIEW ═══ */}
+        {sel.type === "social" && (() => {
+          const selNetworks = sel.network ? sel.network.split(", ") : [];
+          const isSelCarousel = sel.format === "Carrossel";
+          const selSlides = isSelCarousel ? parseInt(sel.steps?.briefing?.text?.match(/(\d+)\s*slide/i)?.[1]) || 5 : 0;
+          const selCaption = sel.steps?.caption?.text || "";
+          return (
+            <Card style={{ marginBottom:10, padding:0, overflow:"hidden" }}>
+              <p className="sl" style={{ padding:"12px 14px 8px" }}>Preview do post</p>
+              <div style={{ margin:"0 14px", borderRadius:12, overflow:"hidden" }}>
+                <PostPreview format={sel.format} client={sel.client} slides={selSlides} uploadedFiles={[...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])]}>
+                  <div style={{ position:"absolute", top:10, left:10 }}>
+                    <span style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff" }}>{sel.format}{isSelCarousel?` · ${selSlides} slides`:""}</span>
+                  </div>
+                  <div style={{ position:"absolute", top:10, right:10, display:"flex", gap:4 }}>
+                    {selNetworks.map((n,ni) => (
+                      <div key={ni} style={{ width:28, height:28, borderRadius:9, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <NetworkIcon name={n.trim()} sz={15} active />
+                      </div>
+                    ))}
+                  </div>
+                </PostPreview>
+              </div>
+              <div style={{ padding:"12px 14px 14px" }}>
+                {selCaption && <p style={{ fontSize:13, color:B.text, lineHeight:1.6, whiteSpace:"pre-wrap", marginBottom:10, maxHeight:120, overflow:"auto" }}>{selCaption}</p>}
+                {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.accent, marginBottom:10 }}>{sel.steps?.caption?.hashtags}</p>}
+                <div style={{ display:"flex", flexWrap:"wrap", gap:8, alignItems:"center" }}>
+                  {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
+                  {sel.traffic?.budget ? <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${B.orange}12`, color:B.orange }}>ADS · {sel.traffic.budget}</span> : <span style={{ fontSize:10, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${B.muted}08`, color:B.muted }}>Orgânico</span>}
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* Stage Bar */}
+        <Card style={{ marginBottom:10 }}><StageBar type={sel.type} current={sel.stage} /></Card>
+
+        {/* Assignees */}
+        <Card style={{ marginBottom:10 }}>
+          <p className="sl" style={{ marginBottom:8 }}>Equipe responsável</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            {(sel.assignees||[]).map(a=>{
+              const m = TEAM.find(t=>t.name===a);
+              return (<div key={a} style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 10px 4px 4px", borderRadius:20, background:`${B.accent}08`, border:`1px solid ${B.accent}15` }}>
+                <Av src={m?.photo} name={a} sz={24} fs={10} /><span style={{ fontSize:11, fontWeight:600 }}>{a}</span>
+                {m?.role && <span style={{ fontSize:9, color:B.muted }}>· {m.role}</span>}
+              </div>);
+            })}
+          </div>
+        </Card>
+
+        {/* ═══ CAMPAIGN DETAIL ═══ */}
+        {isCampaign && sel.campaign && <>
+          <Card style={{ marginBottom:8 }}>
+            <p className="sl" style={{ marginBottom:6 }}>Sobre a campanha</p>
+            <p style={{ fontSize:13, lineHeight:1.6 }}>{sel.campaign.desc}</p>
+            {sel.campaign.refs && <><p className="sl" style={{ marginTop:10, marginBottom:4 }}>Referências</p><p style={{ fontSize:12, color:B.muted }}>{sel.campaign.refs}</p></>}
+          </Card>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <Card style={{ padding:12, textAlign:"center" }}><p style={{ fontSize:9, color:B.muted, textTransform:"uppercase" }}>Início</p><p style={{ fontSize:14, fontWeight:800 }}>{sel.campaign.dateStart}</p></Card>
+            <Card style={{ padding:12, textAlign:"center" }}><p style={{ fontSize:9, color:B.muted, textTransform:"uppercase" }}>Fim</p><p style={{ fontSize:14, fontWeight:800 }}>{sel.campaign.dateEnd}</p></Card>
+          </div>
+          <Card style={{ marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><span style={{ color:B.green, display:"flex" }}>{IC.dollar}</span><p style={{ fontSize:13, fontWeight:600 }}>Orçamento: <span style={{ color:B.green }}>{sel.campaign.budget}</span></p></div>
+            {sel.campaign.budgetBreakdown?.map((b,i)=>(<div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderTop: i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:12 }}>{b.item}</span><span style={{ fontSize:12, fontWeight:700 }}>{b.val}</span></div>))}
+          </Card>
+          {sel.campaign.milestones?.length > 0 && <Card style={{ marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+              <p className="sl">Andamento</p>
+              <span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{sel.campaign.milestones.filter(m=>m.done).length}/{sel.campaign.milestones.length}</span>
+            </div>
+            <div style={{ height:6, borderRadius:3, background:`${B.muted}15`, marginBottom:12 }}>
+              <div style={{ width:`${(sel.campaign.milestones.filter(m=>m.done).length/sel.campaign.milestones.length)*100}%`, height:"100%", borderRadius:3, background:B.green, transition:"width .4s" }} />
+            </div>
+            {sel.campaign.milestones.map((m,i)=>(<div key={i} onClick={() => {
+              const updated = sel.campaign.milestones.map((ms,j) => j===i ? {...ms, done:!ms.done} : ms);
+              const newSel = {...sel, campaign:{...sel.campaign, milestones:updated}};
+              setSel(newSel);
+              setDemands(prev => prev.map(x => x.id===sel.id ? newSel : x));
+            }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none", cursor:"pointer" }}>
+              <div style={{ width:24, height:24, borderRadius:12, background: m.done?B.green:`${B.muted}15`, display:"flex", alignItems:"center", justifyContent:"center", transition:"all .2s", flexShrink:0 }}>{m.done && <span style={{ color:"#fff", display:"flex", transform:"scale(0.7)" }}>{IC.check}</span>}</div>
+              <span style={{ fontSize:13, fontWeight: m.done?400:600, textDecoration: m.done?"line-through":"none", color: m.done?B.muted:B.text, flex:1 }}>{m.l}</span>
+              {m.done && <span style={{ fontSize:10, color:B.green, fontWeight:600 }}>Concluído</span>}
+            </div>))}
+          </Card>}
+        </>}
+
+        {/* ═══ SOCIAL/VIDEO WORKFLOW SECTIONS ═══ */}
+        {!isCampaign && <>
+          <p className="sl" style={{ marginBottom:8, marginTop:4 }}>Workflow da demanda</p>
+
+          {/* ── 1. IDEIA (Head/CEO) ── */}
+          {renderSection("idea", <>
+            {sel.stage === "idea" ? <>
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Descreva a ideia / conceito</label>
+              <textarea value={sel.steps?.idea?.text||""} onChange={e=>updateStep("idea",{text:e.target.value, by:user?.name||"Matheus", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Ex: Post carrossel mostrando os diferenciais do produto..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+            </> : sel.steps?.idea?.text && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps?.idea?.by} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.idea?.by || "Equipe"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.idea?.date}</span>
+              </div>
+              <p style={{ fontSize:13, lineHeight:1.6, background:B.bgCard, padding:10, borderRadius:10, border:`1px solid ${B.border}` }}>{sel.steps?.idea?.text}</p>
+            </>}
+          </>)}
+
+          {/* ── 2. BRIEFING (Social Media → Designer) ── */}
+          {renderSection("briefing", <>
+            {sel.stage === "briefing" ? <>
+              <div style={{ background:`${STAGE_CFG.idea.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.idea.c}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.idea.c, marginBottom:4 }}>💡 Ideia do Head:</p>
+                <p style={{ fontSize:12, lineHeight:1.5 }}>{sel.steps?.idea?.text || "—"}</p>
+              </div>
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Instruções para o Designer / Audiovisual</label>
+              <textarea value={sel.steps?.briefing?.text||""} onChange={e=>updateStep("briefing",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Ex: 5 slides 1080x1080. Slide 1: fachada com logo. Tons quentes. Fonte: Montserrat..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Inclua: dimensões, quantidade de peças, paleta de cores, referências visuais, textos obrigatórios</p>
+            </> : sel.steps?.briefing?.text && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps?.briefing?.by} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.briefing?.by || "Equipe"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.briefing?.date}</span>
+              </div>
+              <div style={{ background:B.bgCard, padding:12, borderRadius:10, border:`1px solid ${B.border}` }}>
+                <p className="sl" style={{ marginBottom:4, fontSize:10 }}>📋 Orientações para o Designer / Audiovisual:</p>
+                <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text}</p>
+              </div>
+            </>}
+          </>)}
+
+          {/* ── 3. DESIGN (Designer/Audiovisual) ── */}
+          {renderSection("design", <>
+            {sel.stage === "design" ? <>
+              {/* Show review feedback if this was rejected */}
+              {sel.steps?.design?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.design.reviewFeedbackBy} · {sel.steps.design.reviewFeedbackDate}):</p>
+                <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.design.reviewFeedback}</p>
+              </div>}
+              {/* Show briefing instructions for designer to read */}
+              <div style={{ background:`${STAGE_CFG.briefing.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.briefing.c}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.briefing.c, marginBottom:4 }}>📋 Briefing da Social Media:</p>
+                <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text || "—"}</p>
+              </div>
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>
+                {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
+              </label>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {(sel.steps?.design?.files||[]).map((f,i) => {
+                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
+                  const fUrl = f.url || null;
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
+                    {isImg && fUrl ? <img src={fUrl} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                     <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{f.size > 1048576 ? `${(f.size/1048576).toFixed(1)} MB` : `${(f.size/1024).toFixed(0)} KB`}</p>}
+                    </div>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
+                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.design?.files||[])]; nf.splice(i,1); updateStep("design",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                  </div>
+                  );
+                })}
+                <input type="file" id="designUpload" multiple accept="image/*,video/*,.psd,.ai,.pdf,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
+                  const files = Array.from(e.target.files);
+                  if (!files.length) return;
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  const uploaded = results.filter(r => !r.error);
+                  const errors = results.filter(r => r.error);
+                  if (errors.length) showToast(`${errors.length} erro${errors.length>1?"s":""} no envio`);
+                  if (uploaded.length > 0) {
+                    updateStep("design", { files: [...(sel.steps?.design?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
+                  }
+                  e.target.value = "";
+                }} />
+                <button onClick={()=>document.getElementById("designUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} Selecionar arquivos
+                </button>
+              </div>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>
+            </> : sel.steps?.design?.files?.length > 0 && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps?.design?.by||"Designer"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.design?.by||"Designer"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.design?.date}</span>
+              </div>
+              {/* Thumbnail grid for images */}
+              {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
+                  {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
+                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
+                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                {sel.steps?.design?.files.map((f,i)=>{
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
+                  const fUrl = f.url || null;
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
+                    {isVid ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                     <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
+                    <span style={{ fontSize:12, fontWeight:600, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</span>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
+                  </div>);
+                })}
+              </div>
+            </>}
+          </>)}
+
+          {/* ── 3b. PRODUÇÃO (Vídeo — Audiovisual) ── */}
+          {sel.type === "video" && renderSection("production", <>
+            {sel.stage === "production" ? <>
+              {sel.steps?.briefing?.text && <div style={{ background:`${STAGE_CFG.briefing.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.briefing.c}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.briefing.c, marginBottom:4 }}>📋 Briefing:</p>
+                <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text || "—"}</p>
+              </div>}
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>Enviar material gravado</label>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {(sel.steps?.production?.files||[]).map((f,i) => {
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
+                  const fUrl = f.url || null;
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
+                  const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fName);
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
+                    {isImg && fUrl ? <img src={fUrl} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                     <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024/1024).toFixed(1)} MB</p>}
+                    </div>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
+                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.production?.files||[])]; nf.splice(i,1); updateStep("production",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                  </div>);
+                })}
+                <input type="file" id="productionUpload" multiple accept="video/*,image/*,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
+                  const files = Array.from(e.target.files);
+                  if (!files.length) return;
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  const uploaded = results.filter(r => !r.error);
+                  if (uploaded.length > 0) {
+                    updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
+                  }
+                  e.target.value = "";
+                }} />
+                <button onClick={()=>document.getElementById("productionUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.orange}40`, background:`${B.orange}04`, cursor:"pointer", color:B.orange, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} Selecionar vídeos / fotos
+                </button>
+              </div>
+              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>MP4, MOV, JPG, PNG, Premiere, After Effects</p>
+            </> : sel.steps?.production?.files?.length > 0 && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps?.production?.by||"Audiovisual"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.production?.by||"Audiovisual"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.production?.date}</span>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                {sel.steps?.production?.files.map((f,i)=>{
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url || null;
+                  return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <span style={{ fontSize:12, fontWeight:600, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</span>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
+                  </div>);
+                })}
+              </div>
+            </>}
+          </>)}
+
+          {/* ── 3c. EDIÇÃO (Vídeo — Editor) ── */}
+          {sel.type === "video" && renderSection("editing", <>
+            {sel.stage === "editing" ? <>
+              {sel.steps?.production?.files?.length > 0 && <div style={{ background:`${B.orange}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.orange}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.orange, marginBottom:6 }}>🎬 Material gravado:</p>
+                {sel.steps?.production?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span></div>))}
+              </div>}
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Notas de edição</label>
+              <textarea value={sel.steps?.editing?.text||""} onChange={e=>updateStep("editing",{text:e.target.value, by:user?.name||"Allan", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Cortes, transições, trilha sonora, legendas..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+              <label className="sl" style={{ display:"block", marginBottom:6, marginTop:10 }}>Enviar vídeo editado</label>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {(sel.steps?.editing?.files||[]).map((f,i) => {
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url || null;
+                  return (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024/1024).toFixed(1)} MB</p>}
+                    </div>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
+                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.editing?.files||[])]; nf.splice(i,1); updateStep("editing",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                  </div>);
+                })}
+                <input type="file" id="editingUpload" multiple accept="video/*,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
+                  const files = Array.from(e.target.files);
+                  if (!files.length) return;
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  const uploaded = results.filter(r => !r.error);
+                  if (uploaded.length > 0) {
+                    updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
+                  }
+                  e.target.value = "";
+                }} />
+                <button onClick={()=>document.getElementById("editingUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.cyan}40`, background:`${B.cyan}04`, cursor:"pointer", color:B.cyan, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} Enviar vídeo editado
+                </button>
+              </div>
+            </> : sel.steps?.editing?.text && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps?.editing?.by||"Editor"} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.editing?.by||"Editor"}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.editing?.date}</span>
+              </div>
+              <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.editing?.text}</p>
+              {sel.steps?.editing?.files?.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6 }}>
+                {sel.steps?.editing?.files.map((f,i)=>{
+                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url||null;
+                  return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    <span style={{ fontSize:12, fontWeight:600, flex:1 }}>{fName}</span>
+                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
+                  </div>);
+                })}
+              </div>}
+            </>}
+          </>)}
+
+          {/* ── 4. LEGENDA (Social Media) ── */}
+          {renderSection("caption", <>
+            {sel.stage === "caption" ? <>
+              {/* Show review feedback if this was rejected */}
+              {sel.steps?.caption?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
+                <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.caption.reviewFeedback}</p>
+              </div>}
+              {/* Show design files for reference */}
+              {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
+                {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
+              </div>}
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>{sel.format === "Stories" ? "Texto para Story (referência)" : "Legenda do post"}</label>
+              {sel.format !== "Stories" ? <>
+              <textarea value={sel.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value, by:user?.name||"Alice", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." className="tinput" style={{ minHeight:100, resize:"vertical" }} />
+              <label className="sl" style={{ display:"block", marginBottom:4, marginTop:8 }}>Hashtags</label>
+              <input value={sel.steps?.caption?.hashtags||""} onChange={e=>updateStep("caption",{hashtags:e.target.value})} placeholder="#marketing #mktdigital" className="tinput" />
+              </> : <p style={{ fontSize:11, color:B.muted, padding:10, background:`${B.orange}08`, borderRadius:10, lineHeight:1.5, display:"flex", alignItems:"center", gap:6 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Stories do Instagram não suportam legenda ou hashtags. Apenas a imagem/vídeo será publicada.</p>}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:10, maxWidth:"100%", overflow:"hidden" }}>
+                <div style={{ minWidth:0 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Data de publicação</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }} /></div>
+                <div style={{ minWidth:0 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }} /></div>
+              </div>
+              {sel.sponsored && <div style={{ marginTop:8 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento do boost</label><input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" /></div>}
+            </> : sel.steps?.caption?.text && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Av name={sel.steps?.caption?.by} sz={22} fs={9} />
+                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.caption?.by}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.caption?.date}</span>
+              </div>
+              <div style={{ background:B.bgCard, padding:12, borderRadius:10, border:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps?.caption?.text}</p>
+                {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.blue, marginTop:6 }}>{sel.steps?.caption?.hashtags}</p>}
+              </div>
+              {sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
+                <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>📎 Material do designer:</p>
+                {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {typeof f === "string" ? f : f.name || "arquivo"}</span>))}
+              </div>}
+              {sel.scheduling?.date && <div style={{ display:"flex", gap:10, marginTop:10, padding:10, background:`${B.accent}06`, borderRadius:10, flexWrap:"wrap", maxWidth:"100%", overflow:"hidden", boxSizing:"border-box" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:4 }}><span style={{ color:B.accent, display:"flex" }}>{IC.calendar(B.accent)}</span><span style={{ fontSize:12, fontWeight:600 }}>{sel.scheduling.date}</span></div>
+                <div style={{ display:"flex", alignItems:"center", gap:4 }}><span style={{ color:B.accent, display:"flex" }}>{IC.clock}</span><span style={{ fontSize:12, fontWeight:600 }}>{sel.scheduling.time}</span></div>
+                {sel.network && <div style={{ display:"flex", alignItems:"center", gap:4 }}><NetworkIcon name={sel.network} sz={14} active /><span style={{ fontSize:12, fontWeight:600, color:NETWORK_CFG[sel.network]?.c }}>{sel.network}</span></div>}
+              </div>}
+            </>}
+          </>)}
+
+          {/* ── 5. REVISÃO INTERNA (Gerente) ── */}
+          {renderSection("review", <>
+            {sel.stage === "review" ? <>
+              {/* Preview da Arte */}
+              {(() => {
+                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                return imgFiles.length > 0 && <div style={{ marginBottom:10 }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:6 }}>🎨 Arte para revisão:</p>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt={f.name} style={{ width:60, height:60, borderRadius:8, objectFit:"cover", border:`1px solid ${B.border}` }} />)}
+                    {imgFiles.length > 4 && <div style={{ width:60, height:60, borderRadius:8, background:B.bgCard, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:B.muted }}>+{imgFiles.length-4}</div>}
+                  </div>
+                </div>;
+              })()}
+              {/* Preview da Legenda */}
+              {sel.steps?.caption?.text && <div style={{ marginBottom:10, padding:10, background:B.bgCard, borderRadius:10, border:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:4 }}>📝 Legenda para revisão:</p>
+                <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line", color:B.text, maxHeight:80, overflow:"auto" }}>{sel.steps.caption.text}</p>
+                {sel.steps?.caption?.hashtags && <p style={{ fontSize:10, color:B.blue, marginTop:4 }}>{sel.steps.caption.hashtags}</p>}
+              </div>}
+              {/* Feedback textarea */}
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>Observação / O que precisa corrigir</label>
+              <textarea value={sel.steps?.review?.note||""} onChange={e=>updateStep("review",{note:e.target.value})} placeholder="Descreva o que está errado ou precisa ser alterado..." className="tinput" style={{ marginBottom:12, minHeight:70, resize:"vertical" }} />
+              {/* Action buttons */}
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                <button onClick={() => { updateStep("review",{status:"approved",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); setTimeout(()=>advanceStage(sel),100); }} style={{ flex:"1 1 100%", padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Aprovar</button>
+                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"design",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); rejectToStage(sel,"design",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.orange, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Arte</button>
+                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"caption",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); rejectToStage(sel,"caption",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.red, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Legenda</button>
+                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"both",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); const d = {...sel, _rejectBoth:true}; rejectToStage(d,"design",note); }} style={{ flex:"1 1 100%", padding:"10px 0", borderRadius:14, background:B.dark, color:"#fff", border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Arte + Legenda</button>
+              </div>
+            </> : sel.steps?.review?.status && <>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                <Tag color={sel.steps?.review?.status==="approved"?B.green:B.red}>{sel.steps?.review?.status==="approved"?"✓ Aprovado":sel.steps?.review?.target==="both"?"✗ Revisar Arte + Legenda":sel.steps?.review?.target==="design"?"✗ Revisar Arte":"✗ Revisar Legenda"}</Tag>
+                <span style={{ fontSize:11, color:B.muted }}>{sel.steps?.review?.by} · {sel.steps?.review?.date}</span>
+              </div>
+              {sel.steps?.review?.note && <div style={{ padding:10, background:`${B.red}08`, borderRadius:10, border:`1px solid ${B.red}20` }}>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4 }}>📋 Feedback da revisão:</p>
+                <p style={{ fontSize:12, fontStyle:"italic", color:B.text, lineHeight:1.5 }}>{sel.steps?.review?.note}</p>
+              </div>}
+            </>}
+          </>)}
+
+          {/* ── 6. APROVAÇÃO CLIENTE ── */}
+          {renderSection("client", <>
+            {sel.stage === "client" ? <>
+              {(() => {
+                const clientMode = sel.steps?.client?.mode;
+                const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const clientObj = CDATA.find(c => c.name === sel.client);
+                const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
+                const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
+                const networks = (sel.network||"").toLowerCase();
+                const hasIG = networks.includes("instagram") && igConnected;
+                const hasFB = networks.includes("facebook") && fbConnected;
+                const isStories = sel.format === "Stories";
+                const schedTs = getScheduledTimestamp(sel.scheduling);
+                const schedLabel = schedTs ? `${sel.scheduling.date} às ${sel.scheduling.time}` : "";
+                const hasApi = hasIG || hasFB;
+
+                const doPublish = async (platform, type) => {
+                  if (imgFiles.length === 0) { showToast("Nenhuma imagem disponível"); return; }
+                  const imgUrls = imgFiles.map(f => f.url);
+                  const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                  const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                  const clientId = clientObj.supaId || clientObj.id;
+                  const isCarousel = imgUrls.length > 1 && type === "FEED";
+                  showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
+                  let r;
+                  if (platform === "instagram") {
+                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
+                  } else {
+                    r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                  }
+                  if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                  updateStep("client", { ...sel.steps?.client, status:"approved", by: schedTs ? "Publicação agendada" : "Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                  updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
+                  setTimeout(() => advanceStage(sel), 200);
+                  showToast(schedTs ? `✓ Agendado com sucesso! (${schedLabel})` : `✓ Publicado!`);
+                };
+
+                const publishButtons = () => (
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</button>}
+                    {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
+                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+                  </div>
+                );
+
+                /* ── STEP 1: Initial choice — send to client or not? ── */
+                if (!clientMode) return (
+                  <div style={{ padding:12 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>Enviar para o cliente?</p>
+                    <p style={{ fontSize:11, color:B.muted, marginBottom:14, textAlign:"center", lineHeight:1.5 }}>Escolha se deseja enviar a demanda para aprovação do cliente ou publicar diretamente.</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => updateStep("client", { mode:"sent_to_client", sentAt:new Date().toISOString() })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+                        Sim, enviar
+                      </button>
+                      <button onClick={() => updateStep("client", { mode:"publish_direct" })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.bgCard, color:B.text, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Não, publicar direto
+                      </button>
+                    </div>
+                  </div>
+                );
+
+                /* ── STEP 2A: Sent to client — waiting + force publish ── */
+                if (clientMode === "sent_to_client") return (
+                  <div style={{ padding:12 }}>
+                    <div style={{ textAlign:"center", marginBottom:14 }}>
+                      <div style={{ width:44, height:44, borderRadius:22, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
+                      </div>
+                      <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Enviado para o cliente</p>
+                      <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5 }}>Aguardando aprovação no app do cliente.</p>
+                      <div style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:10, padding:"6px 14px", borderRadius:20, background:`${B.orange}10`, border:`1px solid ${B.orange}20` }}>
+                        <div style={{ width:8, height:8, borderRadius:4, background:B.orange, animation:"skPulse 1.5s ease infinite" }} />
+                        <span style={{ fontSize:11, fontWeight:600, color:B.orange }}>Aguardando aprovação</span>
+                      </div>
+                    </div>
+                    {/* Force publish option */}
+                    {hasApi && imgFiles.length > 0 && <div style={{ padding:12, borderRadius:12, background:`${B.orange}06`, border:`1px dashed ${B.orange}30`, marginTop:4 }}>
+                      <p style={{ fontSize:11, fontWeight:700, color:B.orange, marginBottom:8, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Forçar publicação</p>
+                      <p style={{ fontSize:10, color:B.muted, marginBottom:10, lineHeight:1.4 }}>Se o cliente não responder, publique sem aguardar aprovação.</p>
+                      {schedTs && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B25" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span style={{ fontSize:10, fontWeight:600, color:"#F59E0B" }}>Agendado: {schedLabel}</span>
+                      </div>}
+                      {publishButtons()}
+                    </div>}
+                    {/* Skip client without API */}
+                    <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Aprovação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", marginTop:10, padding:"10px 0", borderRadius:10, background:"transparent", color:B.muted, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:600, cursor:"pointer" }}>✓ Marcar como aprovado manualmente</button>
+                    <button onClick={() => updateStep("client", { mode:undefined })} style={{ width:"100%", marginTop:6, padding:"8px 0", borderRadius:10, background:"transparent", color:B.muted, border:"none", fontFamily:"inherit", fontSize:10, cursor:"pointer", textDecoration:"underline" }}>← Voltar</button>
+                  </div>
+                );
+
+                /* ── STEP 2B: Publish direct — now or scheduled ── */
+                if (clientMode === "publish_direct") return (
+                  <div style={{ padding:12 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:10, textAlign:"center" }}>Publicar sem aprovação do cliente</p>
+                    {hasApi && imgFiles.length > 0 ? <>
+                      {schedTs ? <div style={{ marginBottom:12 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"8px 12px", borderRadius:10, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <div>
+                            <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Publicar no horário agendado</p>
+                            <p style={{ fontSize:10, color:B.muted }}>{schedLabel}</p>
+                          </div>
+                        </div>
+                        {publishButtons()}
+                      </div> : <div style={{ marginBottom:12 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"8px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+                          <div>
+                            <p style={{ fontSize:11, fontWeight:700, color:B.green }}>Publicação imediata</p>
+                            <p style={{ fontSize:10, color:B.muted }}>O post será publicado agora mesmo.</p>
+                          </div>
+                        </div>
+                        {publishButtons()}
+                      </div>}
+                    </> : <div style={{ textAlign:"center", padding:10 }}>
+                      <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>{imgFiles.length === 0 ? "Nenhuma imagem disponível para publicar." : "Nenhuma rede social com API conectada."}</p>
+                      <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Marcar como publicado</button>
+                    </div>}
+                    <button onClick={() => updateStep("client", { mode:undefined })} style={{ width:"100%", marginTop:6, padding:"8px 0", borderRadius:10, background:"transparent", color:B.muted, border:"none", fontFamily:"inherit", fontSize:10, cursor:"pointer", textDecoration:"underline" }}>← Voltar</button>
+                  </div>
+                );
+
+                return null;
+              })()}
+            </> : sel.steps?.client?.status && sel.steps?.client?.status !== "pending" && <>
+              <Tag color={sel.steps?.client?.status==="approved"?B.green:B.red}>{sel.steps?.client?.status==="approved"?"✓ Aprovado pelo cliente":"✗ Cliente pediu ajustes"}</Tag>
+              {sel.steps?.client?.note && <p style={{ fontSize:12, fontStyle:"italic", color:B.muted, marginTop:6, padding:8, background:B.bgCard, borderRadius:8, border:`1px solid ${B.border}` }}>"{sel.steps?.client?.note}"</p>}
+            </>}
+          </>)}
+
+          {/* ── 7. PUBLICADO ── */}
+          {renderSection("published", <>
+            {sel.stage === "published" && <div style={{ textAlign:"center", padding:12 }}>
+              <div style={{ width:48, height:48, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", color:B.accent }}>{IC.check}</div>
+              <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Post publicado!</p>
+              {sel.scheduling?.date && <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{sel.scheduling.date} às {sel.scheduling.time} · {sel.network}</p>}
+              {sel.steps?.igPublished && <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:sel.steps.igPublished.platform==="facebook"?"#1877F210":"#E1306C10", border:sel.steps.igPublished.platform==="facebook"?"1px solid #1877F220":"1px solid #E1306C20", display:"inline-flex", alignItems:"center", gap:6 }}>
+                {sel.steps.igPublished.platform === "facebook" 
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C" stroke="none"/></svg>}
+                <span style={{ fontSize:11, fontWeight:700, color:sel.steps.igPublished.platform==="facebook"?"#1877F2":"#E1306C" }}>
+                  Publicado no {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}{sel.steps.igPublished.type==="STORIES"?" (Story)":""}
+                </span>
+              </div>}
+            </div>}
+            {/* Publish buttons — show when there are uploaded images and connected social */}
+            {(() => {
+              const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+              const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+              const clientObj = CDATA.find(c => c.name === sel.client);
+              const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
+              const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
+              const networks = (sel.network||"").toLowerCase();
+              const hasIG = networks.includes("instagram") && igConnected;
+              const hasFB = networks.includes("facebook") && fbConnected;
+              const isStories = sel.format === "Stories";
+              const schedTs = getScheduledTimestamp(sel.scheduling);
+              if ((!hasIG && !hasFB) || imgFiles.length === 0) return null;
+              if (sel.steps?.igPublished) return null;
+              const doPublish = async (platform, type) => {
+                const imgUrls = imgFiles.map(f => f.url);
+                const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                const clientId = clientObj.supaId || clientObj.id;
+                const isCarousel = imgUrls.length > 1 && type === "FEED";
+                showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
+                let r;
+                if (platform === "instagram") {
+                  r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
+                } else {
+                  r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                }
+                if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
+                showToast(schedTs ? `✓ Agendado!` : `✓ Publicado!`);
+              };
+              return (
+                <Card style={{ marginTop:8, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1.5px solid ${hasIG?"#E1306C":"#1877F2"}15` }}>
+                  <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg> Publicar nas redes</p>
+                  <p style={{ fontSize:11, color:B.muted, marginBottom:8, textAlign:"center", lineHeight:1.5 }}>
+                    {imgFiles.length} {imgFiles.length===1?"imagem":"imagens"} · {sel.client}
+                  </p>
+                  {imgFiles.length > 0 && <div style={{ display:"flex", gap:6, justifyContent:"center", marginBottom:10, flexWrap:"wrap" }}>
+                    {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />)}
+                  </div>}
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    {hasIG && !isStories && <button onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</button>}
+                    {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
+                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+                  </div>
+                </Card>
+              );
+            })()}
+          </>)}
+        </>}
+
+        {/* Action buttons — only for non-review/client stages */}
+        {!isCampaign && sel.stage !== "published" && sel.stage !== "review" && sel.stage !== "client" && <div style={{ display:"flex", gap:8, marginTop:8 }}>
+          <button onClick={() => advanceStage(sel)} className="pill full accent">
+            Avançar → {STAGE_CFG[stages[stageIdx+1]]?.l || ""}
+          </button>
+        </div>}
+
+        {/* Campaign action buttons */}
+        {isCampaign && sel.stage !== "completed" && <div style={{ display:"flex", gap:8, marginTop:12 }}>
+          <button onClick={() => advanceStage(sel)} className="pill full accent">
+            Avançar → {STAGE_CFG[stages[stageIdx+1]]?.l || ""}
+          </button>
+        </div>}
+        <div style={{ height:20 }} />
+      </div>
+      </DemandDetailBoundary>
+    );
+  }
+
+  /* ── MAIN LIST ── */
+  const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
+  const totalCount = demands.length;
+  return (
+    <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+
+      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />
+
+      {/* Quick Publish button */}
+      <div style={{ padding:"8px 16px 0" }}>
+        <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Publicação Rápida (FB / IG)
+        </button>
+      </div>
+
+      {/* ── SCROLLABLE CONTENT ── */}
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
+
+      {/* Client selector */}
+      <div style={{ marginBottom:10 }}>
+        <button onClick={() => setShowClientPicker(!showClientPicker)} style={{
+          width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? B.accent : B.border}`,
+          background: clientFilter !== "all" ? `${B.accent}06` : B.bgCard, cursor:"pointer", fontFamily:"inherit", transition:"all .2s",
+        }}>
+          {clientFilter !== "all" ? <Av name={clientFilter} sz={28} fs={11} /> : <span style={{ width:28, height:28, borderRadius:14, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.muted }}>{IC.clients(B.muted)}</span>}
+          <div style={{ flex:1, textAlign:"left" }}>
+            <p style={{ fontSize:13, fontWeight:600, color:B.text }}>{clientFilter !== "all" ? clientFilter : "Todos os clientes"}</p>
+            {clientFilter !== "all" && <p style={{ fontSize:10, color:B.muted }}>{demands.filter(d=>d.client===clientFilter).length} demandas</p>}
+          </div>
+          {clientFilter !== "all" && <button onClick={e => { e.stopPropagation(); setClientFilter("all"); setShowClientPicker(false); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}>{IC.x}</button>}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ transform: showClientPicker ? "rotate(180deg)" : "none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {showClientPicker && <Card style={{ marginTop:4, padding:6, maxHeight:200, overflowY:"auto" }}>
+          <div onClick={() => { setClientFilter("all"); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, cursor:"pointer", background: clientFilter==="all" ? `${B.accent}08` : "transparent" }}>
+            <span style={{ width:28, height:28, borderRadius:14, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.clients(B.accent)}</span>
+            <span style={{ fontSize:13, fontWeight:600, color:B.text }}>Todos os clientes</span>
+            <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{demands.length}</span>
+          </div>
+          {uniqueClients.map(c => (
+            <div key={c} onClick={() => { setClientFilter(c); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, cursor:"pointer", background: clientFilter===c ? `${B.accent}08` : "transparent" }}>
+              <Av name={c} sz={28} fs={11} />
+              <span style={{ fontSize:13, fontWeight:600, color:B.text }}>{c}</span>
+              <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{demands.filter(d=>d.client===c).length}</span>
+            </div>
+          ))}
+        </Card>}
+      </div>
+
+      {/* Type tabs + Date filter row */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+        <div style={{ flex:1, display:"flex", gap:6, overflowX:"auto" }}>
+          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"},{k:"video",l:"Vídeo"}].map(f=>(
+            <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
+          ))}
+        </div>
+        <button onClick={() => setShowCalendar(v => !v)} style={{
+          width:36, height:36, borderRadius:12, border:`1.5px solid ${dateFilter ? B.accent : B.border}`, background: dateFilter ? `${B.accent}08` : B.bgCard,
+          cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", flexShrink:0,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dateFilter ? B.accent : B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          {dateFilter && <div style={{ position:"absolute", top:-4, right:-4, width:16, height:16, borderRadius:8, background:B.red, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={e => { e.stopPropagation(); setDateFilter(""); setShowCalendar(false); }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>}
+        </button>
+      </div>
+
+      {/* Calendar dropdown */}
+      {showCalendar && (() => {
+        const today = new Date();
+        const cm = calMonth ?? today.getMonth();
+        const cy = calYear ?? today.getFullYear();
+        const firstDay = new Date(cy, cm, 1).getDay();
+        const daysInMonth = new Date(cy, cm + 1, 0).getDate();
+        const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        const pad = n => String(n).padStart(2, "0");
+        const cells = [];
+        for (let i = 0; i < firstDay; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+        /* Check which days have demands */
+        const daysWithDemands = new Set();
+        demands.forEach(dm => {
+          const [dd, mm] = (dm.createdAt||"").split("/");
+          if (parseInt(mm) === cm + 1) daysWithDemands.add(parseInt(dd));
+        });
+
+        return (
+          <Card style={{ marginBottom:10, padding:12 }}>
+            {/* Month nav */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+              <button onClick={() => { if (cm === 0) { setCalMonth(11); setCalYear(cy - 1); } else { setCalMonth(cm - 1); setCalYear(cy); } }} style={{ width:32, height:32, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <span style={{ fontSize:14, fontWeight:700, color:B.text }}>{monthNames[cm]} {cy}</span>
+              <button onClick={() => { if (cm === 11) { setCalMonth(0); setCalYear(cy + 1); } else { setCalMonth(cm + 1); setCalYear(cy); } }} style={{ width:32, height:32, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            {/* Day headers */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:2, marginBottom:4 }}>
+              {["D","S","T","Q","Q","S","S"].map((d,i) => (
+                <div key={i} style={{ textAlign:"center", fontSize:10, fontWeight:600, color:B.muted, padding:"4px 0" }}>{d}</div>
+              ))}
+            </div>
+            {/* Day grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:2 }}>
+              {cells.map((day, i) => {
+                if (!day) return <div key={`e${i}`} />;
+                const dateStr = `${cy}-${pad(cm+1)}-${pad(day)}`;
+                const isSelected = dateFilter === dateStr;
+                const isToday = day === today.getDate() && cm === today.getMonth() && cy === today.getFullYear();
+                const hasDemand = daysWithDemands.has(day);
+                return (
+                  <button key={i} onClick={() => { setDateFilter(isSelected ? "" : dateStr); if (!isSelected) setShowCalendar(false); }} style={{
+                    width:"100%", aspectRatio:"1", borderRadius:10, border: isSelected ? `2px solid ${B.accent}` : isToday ? `1.5px solid ${B.accent}40` : "1.5px solid transparent",
+                    background: isSelected ? B.accent : "transparent", color: isSelected ? B.dark : B.dark,
+                    fontSize:12, fontWeight: isSelected || isToday ? 700 : 400, cursor:"pointer", fontFamily:"inherit",
+                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, position:"relative",
+                  }}>
+                    {day}
+                    {hasDemand && !isSelected && <div style={{ width:4, height:4, borderRadius:2, background:B.accent }} />}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Quick actions */}
+            <div style={{ display:"flex", gap:6, marginTop:10 }}>
+              <button onClick={() => { setCalMonth(today.getMonth()); setCalYear(today.getFullYear()); setDateFilter(`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.text }}>Hoje</button>
+              <button onClick={() => { setDateFilter(""); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.muted }}>Limpar</button>
+            </div>
+          </Card>
+        );
+      })()}
+
+      {/* Active filters summary */}
+      {(clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+        <span style={{ fontSize:10, color:B.muted }}>Filtros:</span>
+        {clientFilter !== "all" && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
+          {clientFilter} <button onClick={()=>setClientFilter("all")} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </span>}
+        {dateFilter && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
+          {dateFilter.split("-").reverse().join("/")} <button onClick={()=>setDateFilter("")} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </span>}
+        <span style={{ fontSize:10, color:B.muted }}>· {filtered.length} resultado{filtered.length!==1?"s":""}</span>
+      </div>}
+
+      {/* Loading skeleton */}
+      {demands.length === 0 && filtered.length === 0 && <div>
+        {[1,2,3].map(i => <Card key={i} style={{ marginBottom:8, opacity: 0.5 }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+            <div className="skeleton" style={{ width:44, height:44, borderRadius:12, flexShrink:0 }} />
+            <div style={{ flex:1 }}>
+              <div className="skeleton" style={{ width:"70%", height:14, marginBottom:6 }} />
+              <div className="skeleton" style={{ width:"40%", height:10 }} />
+            </div>
+          </div>
+          <div className="skeleton" style={{ width:"100%", height:6, marginTop:12, borderRadius:3 }} />
+        </Card>)}
+      </div>}
+
+      {/* Empty state */}
+      {demands.length > 0 && filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+        <div style={{ width:48, height:48, borderRadius:24, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.muted }}>{IC.search(B.muted)}</div>
+        <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhuma demanda encontrada</p>
+        <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou criar uma nova demanda.</p>
+      </Card>}
+      {filtered.map((d,i) => {
+        const isDone = ["published","completed"].includes(d.stage);
+        const pColor = priorityColor(d.priority);
+        const stages = getStages(d.type);
+        const stageIdx = stages.indexOf(d.stage);
+        const stageTotal = stages.length;
+        const caption = d.steps?.caption?.text || "";
+        const networks = d.network ? d.network.split(", ") : [];
+        const isCarousel = d.format === "Carrossel";
+        const slides = isCarousel ? parseInt(d.steps?.briefing?.text?.match(/(\d+)\s*slide/i)?.[1]) || 5 : 0;
+        const schedDate = d.scheduling?.date;
+        const schedTime = d.scheduling?.time;
+        const hasBudget = !!d.traffic?.budget;
+        /* Mock image colors per client */
+        const clientColors = {"Casa Nova Imóveis":["#1a5276","#2e86c1"],"Bella Estética":["#6c3483","#af7ac5"],"TechSmart":["#1b4f72","#2980b9"],"Padaria Real":["#7e5109","#d4ac0d"],"Studio Fitness":["#1e8449","#2ecc71"]};
+        const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
+
+        return (
+        <Card key={d.id} delay={i*0.03} onClick={() => {setSel(d);setEditMode(false);}} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0 }}>
+          {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
+              {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
+            </div>
+          </div>}
+
+          {/* ── Post Preview Image / Carousel ── */}
+          {d.type === "social" && (
+            <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden" }}>
+              <PostPreview format={d.format} client={d.client} slides={slides} compact uploadedFiles={[...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])]}>
+                {/* Format badge overlay */}
+                <div style={{ position:"absolute", top:10, left:10, display:"flex", gap:4 }}>
+                  <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(6px)" }}>{d.format}{isCarousel?` · ${slides}`:""}</span>
+                </div>
+              </PostPreview>
+              {/* Priority badge overlay */}
+              <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${pColor}dd`, color:"#fff" }}>{d.priority === "alta" ? "🔴 Alta" : d.priority === "média" ? "🟡 Média" : "🟢 Baixa"}</span>
+              {/* Network icons overlay */}
+              <div style={{ position:"absolute", bottom:10, left:10, display:"flex", gap:4 }}>
+                {networks.map((n,ni) => (
+                  <div key={ni} style={{ width:26, height:26, borderRadius:8, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(6px)" }}>
+                    <NetworkIcon name={n.trim()} sz={14} active />
+                  </div>
+                ))}
+              </div>
+              {/* Ads badge overlay */}
+              {hasBudget && <div style={{ position:"absolute", bottom:10, right:10, display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(6px)" }}>
+                <span style={{ fontSize:10, fontWeight:700, color:B.orange }}>ADS</span>
+                <span style={{ fontSize:10, color:"#fff", fontWeight:600 }}>{d.traffic.budget}</span>
+              </div>}
+            </div>
+          )}
+
+          {/* ── Video preview with uploaded media ── */}
+          {d.type === "video" && (() => {
+            const vFiles = [...(d.steps?.design?.files||[]), ...(d.steps?.editing?.files||[]), ...(d.steps?.production?.files||[])];
+            const firstImg = vFiles.find(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
+            if (!firstImg && !firstVid) return null;
+            return (
+              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"9/16", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+                {firstImg ? <img src={firstImg.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> :
+                 firstVid ? <video src={firstVid.url+"#t=0.1"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} preload="metadata" muted playsInline /> : null}
+                <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.2)" }}>
+                  <div style={{ width:48, height:48, borderRadius:"50%", background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#111" style={{ marginLeft:3 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                </div>
+                <span style={{ position:"absolute", top:10, left:10, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff" }}>🎬 Vídeo</span>
+                <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${pColor}dd`, color:"#fff" }}>{d.priority === "alta" ? "🔴 Alta" : d.priority === "média" ? "🟡 Média" : "🟢 Baixa"}</span>
+              </div>
+            );
+          })()}
+
+          {/* ── Card body ── */}
+          <div style={{ padding:"12px 14px 14px" }}>
+            {/* Campaign/Video type header (no preview image) */}
+            {d.type !== "social" && !(d.type === "video" && (d.steps?.editing?.files?.some(f=>f.url) || d.steps?.production?.files?.some(f=>f.url))) && (
+              <div style={{ display:"flex", alignItems:"flex-start", gap:6, marginBottom:8 }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${pColor}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, flexShrink:0 }}>{d.type==="campaign"?"🎯":"🎬"}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <Tag color={d.type==="campaign"?B.red:B.blue}>{d.type==="campaign"?"Campanha":"Vídeo"}</Tag>
+                </div>
+                <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${pColor}12`, color:pColor }}>{d.priority==="alta"?"🔴 Alta":d.priority==="média"?"🟡 Média":"🟢 Baixa"}</span>
+              </div>
+            )}
+
+            {/* Title + client */}
+            <p style={{ fontSize:15, fontWeight:800, color:B.text, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client} · {d.createdAt}</p>
+
+            {/* Caption preview */}
+            {caption && <p style={{ fontSize:12, color:B.text, marginTop:8, lineHeight:1.5, opacity:0.75, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
+
+            {/* Stage progress */}
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
+              <div style={{ width:8, height:8, borderRadius:4, background:STAGE_CFG[d.stage].c, flexShrink:0 }} />
+              <span style={{ fontSize:11, fontWeight:700, color:B.text }}>{STAGE_CFG[d.stage].l}</span>
+              <div style={{ flex:1 }}><StageBar type={d.type} current={d.stage} compact /></div>
+              <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{stageIdx+1}/{stageTotal}</span>
+            </div>
+
+            {/* Schedule + meta row */}
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6, flexWrap:"wrap" }}>
+              {schedDate && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, color:B.muted, fontWeight:600 }}>{IC.clock} {schedDate}{schedTime ? ` às ${schedTime}` : ""}</span>}
+              {d.type === "social" && !hasBudget && <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:`${B.muted}08`, color:B.muted }}>Orgânico</span>}
+              <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:4 }}>
+                {(d.assignees||[]).slice(0,3).map((a,j)=>{ const m=TEAM.find(t=>t.name===a); return <div key={j} style={{ width:22, height:22, borderRadius:11, background:m?.photo?"transparent":`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft:j?-6:0, border:`2px solid ${B.bgCard}`, overflow:"hidden", zIndex:3-j }}>{m?.photo?<img src={m.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>:<span style={{ fontSize:8, fontWeight:800, color:B.accent }}>{a[0]}</span>}</div>;})}{(d.assignees||[]).length > 3 && <span style={{ fontSize:9, color:B.muted }}>+{(d.assignees||[]).length-3}</span>}
+              </div>
+            </div>
+          </div>
+        </Card>
+        );
+      })}
+      </div>{/* end scrollable content */}
+    </div>
+  );
+}
+
+/* ═══════════════════════ CHAT PAGE (Real-time Supabase) ═══════════════════════ */
+/* ═══ Chat sub-components (module-level to prevent remount) ═══ */
+
+/* GeoPin — clickable 📍 that opens Google Maps */
+const GeoPin = ({ lat, lng, label }) => {
+  if (!lat || !lng) return null;
+  const url = `https://www.google.com/maps?q=${lat},${lng}`;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} title={`${lat.toFixed(5)}, ${lng.toFixed(5)}`} style={{ display:"inline-flex", alignItems:"center", gap:2, fontSize:10, color:"#3B82F6", textDecoration:"none", fontWeight:600 }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="#3B82F6" stroke="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+      <span>{label || "ver mapa"}</span>
+    </a>
+  );
+};
+
+const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
+
+const AudioPlayer = ({ src, isMe, accent, muted }) => {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef(null);
+  const play = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); setPlaying(false); }
+    else { audioRef.current.play().catch(() => {}); setPlaying(true); }
+  };
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:180 }}>
+      <audio ref={audioRef} src={src} preload="metadata"
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onTimeUpdate={() => { const a = audioRef.current; if(a) setProgress(a.duration ? (a.currentTime/a.duration)*100 : 0); }}
+        onEnded={() => { setPlaying(false); setProgress(0); }}
+      />
+      <button onClick={play} style={{ width:32, height:32, borderRadius:16, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.06)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        {playing ?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> :
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isMe?"#192126":"currentColor"}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        }
+      </button>
+      <div style={{ flex:1, height:4, borderRadius:2, background:isMe?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.08)", overflow:"hidden" }}>
+        <div style={{ width:`${progress}%`, height:"100%", borderRadius:2, background:isMe?"#192126":accent, transition:"width 0.1s" }} />
+      </div>
+      <span style={{ fontSize:10, color:isMe?"rgba(0,0,0,0.5)":muted, flexShrink:0 }}>{fmtRecTime(Math.round(duration))}</span>
+    </div>
+  );
+};
+
+/* Checkmark (module-level) */
+const Checkmark = ({ read }) => (
+  <span style={{ display:"inline-flex", marginLeft:3, verticalAlign:"middle" }}>
+    <svg width="14" height="10" viewBox="0 0 16 11" fill="none">
+      <path d="M1 5.5L5.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 5.5L9.5 10L14.5 1" stroke={read ? "#34B7F1" : "rgba(0,0,0,0.3)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}/>
+    </svg>
+  </span>
+);
+/* TypingDots (module-level) */
+const TypingDots = () => (
+  <div style={{ display:"flex", gap:3, padding:"8px 14px", background:"var(--bg-card,#fff)", borderRadius:"4px 14px 14px 14px", width:"fit-content", boxShadow:"0 1px 2px rgba(0,0,0,0.06)" }}>
+    {[0,1,2].map(i => <div key={i} style={{ width:7, height:7, borderRadius:"50%", background:"#999", animation:`typingBounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+  </div>
+);
+const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
+
+function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
+  const [view, setView] = useState("list");
+  const [convs, setConvs] = useState([]);
+  const [selConv, setSelConv] = useState(null);
+  const [msgs, setMsgs] = useState([]);
+  const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [showAttach, setShowAttach] = useState(false);
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupMembers, setGroupMembers] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const typingTimeout = useRef(null);
+  const typingChanRef = useRef(null);
+  const msgEndRef = useRef(null);
+  const msgsContainerRef = useRef(null);
+  /* Audio recording */
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecRef = useRef(null);
+  const audioChunks = useRef([]);
+  const recordTimer = useRef(null);
+  /* Reactions */
+  const [reactMsgId, setReactMsgId] = useState(null);
+  const longPressTimer = useRef(null);
+  const fileRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
+  const [chatTab, setChatTab] = useState("all");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+
+  /* ── Online Presence: track who's currently in the app ── */
+  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const presenceChanRef = useRef(null);
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const chan = supabase.channel('uh-online-presence', { config: { presence: { key: user.id } } });
+    chan.on('presence', { event: 'sync' }, () => {
+      const state = chan.presenceState();
+      const ids = new Set(Object.values(state).flatMap(arr => arr.map(p => p.user_id)));
+      setOnlineUserIds(ids);
+    }).on('presence', { event: 'join' }, ({ key }) => {
+      setOnlineUserIds(prev => new Set([...prev, key]));
+    }).on('presence', { event: 'leave' }, ({ key }) => {
+      setOnlineUserIds(prev => { const n = new Set(prev); n.delete(key); return n; });
+    }).subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await chan.track({ user_id: user.id, online_at: new Date().toISOString() });
+      }
+    });
+    presenceChanRef.current = chan;
+    return () => { supabase.removeChannel(chan); };
+  }, [user?.id]);
+
+  /* ── Call modal (Jitsi Meet) ── */
+  const [callModal, setCallModal] = useState(null); /* null | 'video' | 'voice' */
+  const startCall = (type) => {
+    if (!selConv?.id) return;
+    setCallModal(type);
+  };
+
+  /* Load conversations + profiles on mount */
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    const load = async () => {
+      setLoading(true);
+      /* Parallel: conversations + team members at once */
+      const [c, membersRes] = await Promise.all([
+        supaLoadConversations(user.id),
+        supabase.from("agency_members").select("user_id").not("user_id", "is", null),
+      ]);
+      setConvs(c);
+      const memberIds = (membersRes.data || []).map(m => m.user_id).filter(id => id !== user.id);
+      if (memberIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, name, email, role, photo_url").in("id", memberIds);
+        setAllProfiles(profs || []);
+      } else {
+        setAllProfiles([]);
+      }
+      setLoading(false);
+    };
+    load();
+  }, [user?.id]);
+
+  /* Load messages + subscribe when conversation selected */
+  const markReadTimer = useRef(null);
+  useEffect(() => {
+    if (!selConv?.id || !supabase) return;
+    let channel;
+    const load = async () => {
+      const m = await supaLoadMessages(selConv.id, 100);
+      setMsgs(m);
+      supaMarkRead(selConv.id, user.id);
+      channel = supabase.channel(`msgs-${selConv.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
+        const newMsg = payload.new;
+        setMsgs(prev => {
+          if (prev.find(m => m.id === newMsg.id)) return prev;
+          /* Replace optimistic message from same sender with real one */
+          if (newMsg.sender_id === user.id) {
+            const optIdx = prev.findIndex(m => m._optimistic && m.sender_id === user.id && m.content === (newMsg.content || ""));
+            if (optIdx !== -1) {
+              const updated = [...prev];
+              updated[optIdx] = { ...newMsg, profiles: prev[optIdx].profiles };
+              return updated;
+            }
+          }
+          return [...prev, newMsg];
+        });
+        /* Debounce markRead — wait 500ms of no new messages before writing */
+        clearTimeout(markReadTimer.current);
+        markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 500);
+        if (!newMsg.profiles) {
+          supabase.from("profiles").select("name, email").eq("id", newMsg.sender_id).single().then(({ data }) => {
+            if (data) setMsgs(prev => prev.map(m => m.id === newMsg.id ? { ...m, profiles: data } : m));
+          });
+        }
+      }).on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
+        setMsgs(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
+      }).subscribe();
+    };
+    load();
+    /* Typing presence channel */
+    const typingChan = supabase.channel(`typing-${selConv.id}`);
+    typingChan.on("broadcast", { event: "typing" }, ({ payload: p }) => {
+      if (p?.user_id !== user.id) {
+        setOtherTyping(true);
+        clearTimeout(typingTimeout.current);
+        typingTimeout.current = setTimeout(() => setOtherTyping(false), 3000);
+      }
+    }).subscribe();
+    typingChanRef.current = typingChan;
+    return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); clearTimeout(markReadTimer.current); };
+  }, [selConv?.id]);
+
+  /* Polling fallback: refresh messages every 4s in case Realtime fails */
+  React.useEffect(() => {
+    if (!selConv?.id || !supabase) return;
+    const poll = setInterval(async () => {
+      const freshMsgs = await supaLoadMessages(selConv.id, 100);
+      if (freshMsgs && freshMsgs.length > 0) {
+        setMsgs(prev => {
+          /* Only update if there are new messages we don't have */
+          const prevIds = new Set(prev.filter(m => !m._optimistic).map(m => m.id));
+          const hasNew = freshMsgs.some(m => !prevIds.has(m.id));
+          if (!hasNew && freshMsgs.length <= prev.filter(m => !m._optimistic).length) return prev;
+          /* Merge: keep optimistic msgs that aren't in the fresh set */
+          const freshIds = new Set(freshMsgs.map(m => m.id));
+          const stillOptimistic = prev.filter(m => m._optimistic && !freshIds.has(m.id));
+          return [...freshMsgs, ...stillOptimistic];
+        });
+      }
+      /* Also refresh read receipts for blue checkmarks */
+      try {
+        const { data: members } = await supabase.from("conversation_members").select("user_id, last_read_at").eq("conversation_id", selConv.id);
+        if (members) {
+          const other = members.find(m => m.user_id !== user.id);
+          if (other?.last_read_at) {
+            setConvs(prev => prev.map(c => c.id === selConv.id ? { ...c, _otherLastRead: other.last_read_at } : c));
+            if (selConv._otherLastRead !== other.last_read_at) {
+              selConv._otherLastRead = other.last_read_at;
+            }
+          }
+        }
+      } catch(e) {}
+    }, 4000);
+    return () => clearInterval(poll);
+  }, [selConv?.id]);
+
+  /* Auto-scroll to bottom on new messages */
+  const scrollToBottom = (smooth=true) => {
+    const el = msgsContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "instant" });
+  };
+  useEffect(() => { scrollToBottom(); }, [msgs]);
+
+  /* iOS keyboard fix: track visualViewport height and apply to conv container */
+  const [vpHeight, setVpHeight] = useState(() => window.visualViewport?.height || window.innerHeight);
+  const [vpTop, setVpTop] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      setVpHeight(vv.height);
+      setVpTop(vv.offsetTop);
+      /* After layout settles, snap to bottom */
+      requestAnimationFrame(() => scrollToBottom(false));
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
+  }, []);
+
+  /* Realtime: update conversation list locally instead of full reload */
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const channel = supabase.channel("chat-list").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+      const nm = payload.new;
+      /* Update the affected conversation's lastMsg in place — no DB queries */
+      setConvs(prev => {
+        const idx = prev.findIndex(c => c.id === nm.conversation_id);
+        if (idx === -1) return prev; /* unknown conv, ignore for now */
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id ? 1 : updated[idx].unread };
+        return updated;
+      });
+    }).subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user?.id]);
+
+  /* Polling fallback: refresh conversation list every 6s */
+  React.useEffect(() => {
+    if (!user?.id || !supabase) return;
+    const poll = setInterval(async () => {
+      if (view === "list") { /* Only poll when viewing the list */
+        const fresh = await supaLoadConversations(user.id);
+        if (fresh && fresh.length > 0) setConvs(fresh);
+      }
+    }, 6000);
+    return () => clearInterval(poll);
+  }, [user?.id, view]);
+
+  const getOtherName = (conv) => {
+    if (conv.type === "group") return conv.name || "Grupo";
+    const other = (conv.members || []).find(m => m.id !== user.id);
+    return other?.name || "Conversa";
+  };
+
+  const fmtTime = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const fmtDate = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return "Hoje";
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Ontem";
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  };
+
+  const sendMsg = async () => {
+    if (!input.trim() || !selConv) return;
+    const text = input.trim();
+    setInput("");
+    /* Optimistic: show immediately */
+    const optimistic = { id: `opt-${Date.now()}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true };
+    setMsgs(prev => [...prev, optimistic]);
+    /* Send to DB */
+    try {
+      const result = await supaSendMessage(selConv.id, user.id, text);
+      if (!result) {
+        console.error("Chat: sendMsg returned null — check RLS policies or Realtime config");
+        showToast("Erro ao enviar — verifique conexão");
+        /* Mark optimistic as failed */
+        setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+      }
+    } catch(err) {
+      console.error("Chat: sendMsg error:", err);
+      showToast("Erro ao enviar mensagem");
+      setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+    }
+  };
+
+  const lastTypingEmit = useRef(0);
+  const emitTyping = () => {
+    const now = Date.now();
+    if (now - lastTypingEmit.current < 2000) return; /* throttle: max once per 2s */
+    lastTypingEmit.current = now;
+    if (typingChanRef.current && selConv?.id) {
+      typingChanRef.current.send({ type: "broadcast", event: "typing", payload: { user_id: user.id } });
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    emitTyping();
+  };
+
+  /* Check if other user has read a message (for DMs only) */
+  const isRead = (msg) => {
+    if (msg.sender_id !== user.id || !selConv) return false;
+    const otherMember = (selConv.members || []).find(m => m.id !== user.id);
+    if (!otherMember) return false;
+    const otherLastRead = selConv.myLastRead; /* We track our own, but for others we need conversation_members */
+    /* For now, check if the other user's last_read_at >= message created_at */
+    const otherMembership = selConv._otherLastRead;
+    if (otherMembership && new Date(otherMembership) >= new Date(msg.created_at)) return true;
+    return false;
+  };
+
+  /* Checkmark + TypingDots are at module level now */
+
+  /* Audio recording */
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4" });
+      audioChunks.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks.current, { type: mr.mimeType });
+        if (blob.size < 1000) { showToast("Áudio muito curto"); return; }
+        const ext = mr.mimeType.includes("webm") ? "webm" : "m4a";
+        const file = new File([blob], `audio_${Date.now()}.${ext}`, { type: mr.mimeType });
+        showToast("Enviando áudio...");
+        const result = await supaUploadChatFile(file);
+        if (result && selConv) {
+          await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+          showToast("Áudio enviado ✓");
+        } else { showToast("Erro ao enviar áudio"); }
+      };
+      mr.start();
+      mediaRecRef.current = mr;
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordTimer.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch(e) { showToast("Permita acesso ao microfone"); }
+  };
+  const stopRecording = () => {
+    if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+      mediaRecRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(recordTimer.current);
+  };
+  const cancelRecording = () => {
+    if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+      mediaRecRef.current.ondataavailable = null;
+      mediaRecRef.current.onstop = () => { mediaRecRef.current.stream?.getTracks().forEach(t => t.stop()); };
+      mediaRecRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(recordTimer.current);
+    showToast("Gravação cancelada");
+  };
+
+  /* Reactions */
+  const handleMsgPress = (msgId) => {
+    longPressTimer.current = setTimeout(() => { setReactMsgId(msgId); }, 500);
+  };
+  const handleMsgRelease = () => { clearTimeout(longPressTimer.current); };
+  const addReaction = async (msgId, emoji) => {
+    const msg = msgs.find(m => m.id === msgId);
+    const newReactions = await supaToggleReaction(msgId, emoji, user.id, msg?.reactions);
+    if (newReactions !== null) {
+      setMsgs(prev => prev.map(m => m.id === msgId ? { ...m, reactions: newReactions } : m));
+    }
+    setReactMsgId(null);
+  };
+
+  /* AudioPlayer is now at module level */
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selConv) return;
+    showToast("Enviando arquivo...");
+    const result = await supaUploadChatFile(file);
+    if (result) {
+      await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+      showToast("Arquivo enviado ✓");
+    } else { showToast("Erro ao enviar arquivo"); }
+    setShowAttach(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const togglePin = async (msg) => {
+    await supaTogglePin(msg.id, msg.pinned);
+    setMsgs(prev => prev.map(m => m.id === msg.id ? { ...m, pinned: !m.pinned } : m));
+    showToast(msg.pinned ? "Mensagem desafixada" : "Mensagem fixada ✓");
+  };
+
+  const startDM = async (profileId) => {
+    const convId = await supaFindOrCreateDM(user.id, profileId);
+    if (convId) {
+      const refreshed = await supaLoadConversations(user.id);
+      setConvs(refreshed);
+      const found = refreshed.find(c => c.id === convId);
+      if (found) { setSelConv(found); setView("chat"); }
+    }
+    setShowNewChat(false);
+  };
+
+  const createGroup = async () => {
+    if (!groupName.trim() || groupMembers.length < 1) return showToast("Nome e pelo menos 1 membro");
+    const convId = await supaCreateGroup(groupName.trim(), user.id, groupMembers);
+    if (convId) {
+      const refreshed = await supaLoadConversations(user.id);
+      setConvs(refreshed);
+      const found = refreshed.find(c => c.id === convId);
+      if (found) { setSelConv(found); setView("chat"); }
+      showToast("Grupo criado ✓");
+    }
+    setShowNewGroup(false); setGroupName(""); setGroupMembers([]);
+  };
+
+  const pinnedMsgs = msgs.filter(m => m.pinned);
+
+  /* ── TERMS ── */
+  if (!chatTermsOk) return (
+    <div className="pg" style={{ paddingTop: TOP, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"80vh" }}>
+      <div style={{ width:70, height:70, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
+        <span style={{ color:B.accent }}>{IC.shield}</span>
+      </div>
+      <h2 style={{ fontSize:20, fontWeight:800, textAlign:"center" }}>Termos de Uso do Chat</h2>
+      <p style={{ fontSize:13, color:B.muted, textAlign:"center", marginTop:10, lineHeight:1.7 }}>Para utilizar o chat interno da UniqueHub, você precisa aceitar nossos termos de uso.</p>
+      <Card style={{ marginTop:16, width:"100%" }}>
+        <div style={{ maxHeight:200, overflowY:"auto", fontSize:12, lineHeight:1.7, color:B.muted }}>
+          <p style={{ fontWeight:700, color:B.text, marginBottom:6 }}>Termos de Uso — Chat UniqueHub Agency</p>
+          <p>1. <b>Confidencialidade:</b> Todas as conversas são confidenciais e de uso exclusivo profissional.</p>
+          <p style={{ marginTop:6 }}>2. <b>Conduta profissional:</b> O chat deve ser utilizado exclusivamente para assuntos de trabalho.</p>
+          <p style={{ marginTop:6 }}>3. <b>Arquivos e dados:</b> Arquivos compartilhados pelo chat são de propriedade da empresa e dos clientes.</p>
+          <p style={{ marginTop:6 }}>4. <b>Comunicação com clientes:</b> Mantenha o tom profissional alinhado com a identidade da Unique Marketing 360.</p>
+          <p style={{ marginTop:6 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança conforme LGPD.</p>
+        </div>
+      </Card>
+      <button onClick={() => { setChatTermsOk(true); localStorage.setItem("uh_chat_terms", "1"); }} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
+    </div>
+  );
+
+  /* ── CHAT CONVERSATION ── */
+  if (view === "chat" && selConv) {
+    const convName = getOtherName(selConv);
+    const isGroup = selConv.type === "group";
+    const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
+    const avBg = bgPal[convName.charCodeAt(0)%bgPal.length];
+    /* Presence: is the other person actually online? */
+    const otherMember = selConv?.members?.find(m => m.id !== user.id);
+    const otherUserId = otherMember?.id;
+    const otherIsOnline = otherUserId ? onlineUserIds.has(otherUserId) : false;
+    /* Jitsi call */
+    const openCall = (type) => {
+      const roomId = `uniquehub-${(selConv.id||'').replace(/-/g,'').slice(0,12)}`;
+      const params = type === 'voice' ? '#config.startWithVideoMuted=true' : '';
+      window.open(`https://meet.jit.si/${roomId}${params}`, '_blank', 'noopener');
+    };
+    return (
+      <div style={{ position:"fixed", top:vpTop, left:0, right:0, height:vpHeight, zIndex:100, display:"flex", flexDirection:"column", background:B.bgCard, overflow:"hidden" }}>
+        {ToastEl}
+        <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
+
+        {/* HEADER */}
+        <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:`calc(env(safe-area-inset-top,0px) + 12px) 16px 12px`, display:"flex", alignItems:"center", gap:12, flexShrink:0, boxShadow:"0 1px 8px rgba(0,0,0,0.06)" }}>
+          <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:36, height:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div style={{ position:"relative", flexShrink:0 }}>
+            {isGroup
+              ? <div style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+              : <Av src={allProfiles.find(p=>p.id===selConv?.members?.find(m=>m.id!==user.id)?.id)?.photo_url} name={convName} sz={44} fs={16} />
+            }
+            {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
+            <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
+              {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : (otherIsOnline ? "Online" : "Offline")}
+            </p>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={()=>openCall('video')} title="Videochamada" style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </button>
+            <button onClick={()=>openCall('voice')} title="Chamada de voz" style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            </button>
+            {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.red}30`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>}
+          </div>
+        </div>
+
+        {/* MESSAGES */}
+        <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
+          {pinnedOpen && msgs.filter(m=>m.pinned).length>0 && (
+            <div style={{ background:`${B.accent}10`, border:`1px solid ${B.accent}30`, borderRadius:12, padding:"8px 12px", marginBottom:8, fontSize:12, color:B.accent, fontWeight:600 }}>
+              📌 {msgs.find(m=>m.pinned)?.content}
+            </div>
+          )}
+          {msgs.map((m, i) => {
+            const isMe = m.sender_id === user.id;
+            const showAvatar = !isMe && (i === 0 || msgs[i-1]?.sender_id !== m.sender_id);
+            const senderName = !isMe && isGroup ? (allProfiles.find(p=>p.id===m.sender_id)?.name||"").split(" ")[0] : null;
+            return (
+              <div key={m.id} style={{ display:"flex", width:"100%", justifyContent:isMe?"flex-end":"flex-start", marginBottom:2, opacity:m._optimistic&&!m._failed?0.6:1, transition:"opacity .2s" }}>
+                <div style={{ display:"flex", alignItems:"flex-end", gap:6, maxWidth:"78%", flexDirection:isMe?"row-reverse":"row" }}>
+                  {!isMe && (
+                    <div style={{flexShrink:0, opacity:showAvatar?1:0}}>
+                      <Av src={allProfiles.find(p=>p.id===m.sender_id)?.photo_url} name={isGroup?(allProfiles.find(p=>p.id===m.sender_id)?.name||convName):convName} sz={28} fs={10} />
+                    </div>
+                  )}
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", minWidth:0 }}>
+                    {senderName && <span style={{ fontSize:10, color:B.muted, marginBottom:2, fontWeight:600 }}>{senderName}</span>}
+                    <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.5, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"break-word", maxWidth:"100%" }}>
+                      {m.file_url ? (
+                        m.file_type?.startsWith("image") ? (
+                          <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
+                        ) : m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"") ? (
+                          <div style={{ padding:"6px 8px", minWidth:180 }}>
+                            <AudioPlayer src={m.file_url} isMe={isMe} accent={B.accent} muted={B.muted} />
+                          </div>
+                        ) : (
+                          <a href={m.file_url} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", background:isMe?"rgba(0,0,0,0.1)":"rgba(0,0,0,0.04)", borderRadius:10, textDecoration:"none", color:isMe?"#0D0D0D":B.text }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span style={{fontSize:12,fontWeight:600}}>{m.file_name||"Arquivo"}</span>
+                          </a>
+                        )
+                      ) : (
+                        <>
+                          {m.content}
+                          {m.reactions && Object.keys(m.reactions).length>0 && (
+                            <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
+                              {Object.entries(m.reactions).map(([emoji,users])=>users.length>0&&(
+                                <span key={emoji} style={{ background:"rgba(0,0,0,0.08)", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{emoji} {users.length}</span>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
+                      <span style={{ fontSize:10, color:m._failed?B.red:B.muted }}>{m._failed ? "❌ Falha ao enviar" : m._optimistic ? "⏳ Enviando..." : fmtTime(m.created_at)}</span>
+                      {isMe && !m._optimistic && !m._failed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {m._failed && <button onClick={()=>{ setMsgs(prev=>prev.filter(x=>x.id!==m.id)); setInput(m.content); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:10, color:B.accent, fontWeight:600, padding:0 }}>Tentar novamente</button>}
+                    </div>
+                    {reactMsgId===m.id && (
+                      <div onClick={ev=>ev.stopPropagation()} style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
+                        {["👍","❤️","😂","😮","😢","🙏"].map(em=>(
+                          <button key={em} onClick={(ev)=>{ev.stopPropagation();addReaction(m.id,em);}} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{em}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={msgEndRef}/>
+        </div>
+
+        {/* INPUT BAR */}
+        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:`0 0 0 100px ${B.bgCard}` }}>
+          {isRecording ? (
+            <>
+              <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+              <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, background:`${B.red}10`, borderRadius:22, padding:"10px 16px" }}>
+                <div style={{ width:8, height:8, borderRadius:"50%", background:B.red }}/>
+                <span style={{ fontSize:13, color:B.red, fontWeight:600 }}>Gravando... {recordingTime}s</span>
+              </div>
+              <button onClick={stopRecording} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", background:showAttach?`${B.accent}20`:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              {showAttach && (
+                <button onClick={()=>fileRef.current?.click()} style={{ width:36, height:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+              )}
+              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none" }}/>
+              {input.trim() ? (
+                <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              ) : (
+                <button onClick={startRecording} style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+
+  /* ── NEW CHAT MODAL ── */
+  const NewChatModal = showNewChat ? (
+    <>
+      <div className="overlay" onClick={() => setShowNewChat(false)} />
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
+        <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Nova conversa</h3>
+        <button onClick={() => { setShowNewChat(false); setShowNewGroup(true); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit", borderBottom:`1px solid ${B.border}` }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.accent }}>{IC.users}</span></div>
+          <span style={{ fontSize:14, fontWeight:600 }}>Criar grupo</span>
+        </button>
+        <p className="sl" style={{ marginTop:12, marginBottom:6 }}>Membros da equipe</p>
+        {allProfiles.map(p => (
+          <button key={p.id} onClick={() => startDM(p.id)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
+            <Av src={p.photo_url} name={p.name} sz={38} fs={14} />
+            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.email}</p></div>
+          </button>
+        ))}
+        {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro ativo na equipe. Convide membros em Equipe e peça que acessem o link de convite.</p>}
+        <div style={{ height:60 }} />
+      </div>
+    </>
+  ) : null;
+
+  /* ── NEW GROUP MODAL ── */
+  const NewGroupModal = showNewGroup ? (
+    <>
+      <div className="overlay" onClick={() => setShowNewGroup(false)} />
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
+        <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Novo grupo</h3>
+        <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nome do grupo" className="tinput" style={{ marginBottom:12 }} />
+        <p className="sl" style={{ marginBottom:6 }}>Selecione os membros</p>
+        {allProfiles.map(p => {
+          const sel = groupMembers.includes(p.id);
+          return (
+            <button key={p.id} onClick={() => setGroupMembers(prev => sel ? prev.filter(x => x !== p.id) : [...prev, p.id])} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
+              <div style={{ width:22, height:22, borderRadius:6, border:`2px solid ${sel ? B.accent : B.border}`, background:sel ? B.accent : "none", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {sel && <span style={{ color:B.text, display:"flex" }}>{IC.check}</span>}
+              </div>
+              <Av src={p.photo_url} name={p.name} sz={34} fs={12} />
+              <span style={{ fontSize:13, fontWeight:600 }}>{p.name}</span>
+            </button>
+          );
+        })}
+        <button onClick={createGroup} className="pill full accent" style={{ marginTop:16 }}>Criar grupo ({groupMembers.length} selecionados)</button>
+        <div style={{ height:60 }} />
+      </div>
+    </>
+  ) : null;
+
+  /* ── CONVERSATION LIST ── */
+  const sortedConvs = [...convs].sort((a, b) => {
+    const ta = a.lastMsg?.created_at || a.created_at;
+    const tb = b.lastMsg?.created_at || b.created_at;
+    return new Date(tb) - new Date(ta);
+  });
+  const filteredConvs = sortedConvs.filter(c => getOtherName(c).toLowerCase().includes(search.toLowerCase()));
+  const groups = filteredConvs.filter(c => c.type === "group");
+  const dms = filteredConvs.filter(c => c.type === "dm");
+  const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:50, display:"flex", flexDirection:"column", background:B.bgCard }}>
+      {NewChatModal}{NewGroupModal}
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto"}}>
+        {ToastEl}
+        <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />
+        <div style={{ padding:"14px 16px 0" }}>
+        <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
+          <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
+          </button>
+          <button onClick={()=>setShowNewGroup(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </button>
+        </div>
+        <div style={{ position:"relative", marginBottom:14 }}>
+          <svg style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar conversa..." style={{ width:"100%", background:B.bgCard, border:`1.5px solid ${B.border}`, borderRadius:12, padding:"10px 14px 10px 36px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none", boxSizing:"border-box" }}/>
+        </div>
+        <div style={{ display:"flex", gap:6, marginBottom:14 }}>
+          {[{k:"all",l:"Todos"},{k:"dm",l:"Direto"},{k:"group",l:"Grupos"}].map(t=>(
+            <button key={t.k} onClick={()=>setChatTab(t.k)} style={{ padding:"7px 16px", borderRadius:100, border:chatTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, background:chatTab===t.k?B.accent:"transparent", color:chatTab===t.k?"#0D0D0D":B.muted, transition:"all .15s" }}>{t.l}</button>
+          ))}
+        </div>
+        <div>
+        {loading && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Carregando...</p>}
+        {!loading && convs.length===0 && (
+          <div style={{ textAlign:"center", padding:60 }}>
+            <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <p style={{ fontSize:15, fontWeight:700, color:B.text, marginBottom:6 }}>Nenhuma conversa</p>
+            <p style={{ fontSize:12, color:B.muted }}>Inicie uma conversa com sua equipe</p>
+          </div>
+        )}
+        {!loading && (chatTab==="all"?filteredConvs:chatTab==="dm"?dms:groups).map((c,i)=>{
+          const isGroup = c.type==="group";
+          const other = !isGroup ? (c.members||[]).find(m=>m.id!==user.id) : null;
+          const name = isGroup ? (c.name||"Grupo") : (other?.name||"Usuário");
+          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content||"Sem mensagens");
+          const lastIsMe = c.lastMsg?.sender_id===user.id;
+          const initials = name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+          const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
+          const avBg = bgPal[name.charCodeAt(0)%bgPal.length];
+          return (
+            <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");}}
+              style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 20px", borderBottom:`1px solid ${B.border}`, cursor:"pointer", background:B.bgCard, transition:"background .15s" }}
+              onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`}
+              onMouseLeave={e=>e.currentTarget.style.background=B.bgCard}
+            >
+              <div style={{ position:"relative", flexShrink:0 }}>
+                <div style={{ width:54, height:54, borderRadius:"50%", background:isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+                  {other?.photo_url ? <img src={other.photo_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+                    : isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                    : <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{initials}</span>}
+                </div>
+                {!isGroup && <div style={{ position:"absolute", bottom:2, right:2, width:12, height:12, borderRadius:"50%", background:onlineUserIds.has(other?.id)?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
+                  <p style={{ fontSize:15, fontWeight:c.unread?800:600, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"65%" }}>{name}</p>
+                  <span style={{ fontSize:11, color:c.unread?B.accent:B.muted, flexShrink:0 }}>{fmtTime(c.lastMsg?.created_at)}</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                  <p style={{ fontSize:13, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0, flex:1 }}>{lastIsMe?"Você: ":""}{lastText}</p>
+                  {c.unread>0 && (
+                    <div style={{ width:22, height:22, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{fontSize:10,fontWeight:900,color:"#0D0D0D"}}>{c.unread>9?"9+":c.unread}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+/* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
+function NotifsPage({ onBack, user }) {
+  const [notifs, setNotifs] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  useEffect(() => { if (!loaded && user?.id) { supaLoadNotifications(user.id, 50).then(d => { setNotifs(d); setLoaded(true); }); } }, [loaded, user?.id]);
+  const unreadCount = notifs.filter(n => !n.read).length;
+  const markRead = async (id) => { await supaMarkNotificationRead(id); setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n)); };
+  const markAll = async () => { if (!user?.id) return; await supaMarkAllNotificationsRead(user.id); setNotifs(p => p.map(n => ({ ...n, read: true }))); showToast("Todas marcadas como lidas"); };
+  const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
+  const timeAgo = (d) => { const s = Math.floor((Date.now()-new Date(d).getTime())/1000); if(s<60) return "Agora"; if(s<3600) return Math.floor(s/60)+"min"; if(s<86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; };
+
+  return (
+    <div className="pg">
+      {ToastEl}
+      <Head title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} right={unreadCount > 0 ?
+        <button onClick={markAll} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Marcar todas como lidas</button>
+      : null} />
+      {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:40 }}>Carregando...</p>}
+      {loaded && notifs.length === 0 && <Card style={{ textAlign:"center", padding:30 }}><p style={{ fontSize:28, marginBottom:8 }}>🔔</p><p style={{ fontSize:14, fontWeight:600 }}>Sem notificações</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Quando houver atividades na agência, elas aparecerão aqui.</p></Card>}
+      {notifs.map((n, i) => (
+        <Card key={n.id} delay={i * 0.02} onClick={() => !n.read && markRead(n.id)} style={{ marginTop: i ? 6 : 0, opacity: n.read ? 0.5 : 1, cursor: n.read ? "default" : "pointer", borderLeft: `3px solid ${n.read ? B.border : B.accent}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>{typeIcon[n.type] || n.icon || "🔔"}</div>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: n.read ? 400 : 600 }}>{n.title}</p>{n.body && <p style={{ fontSize: 11, color: B.muted, marginTop:2 }}>{n.body}</p>}<p style={{ fontSize: 10, color: B.muted, marginTop:2 }}>{timeAgo(n.created_at)}{n.read ? " · Lida" : ""}</p></div>
+            {!n.read && <div style={{ width: 8, height: 8, borderRadius: 4, background: B.accent, flexShrink: 0 }} />}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════ SETTINGS PAGE ═══════════════════════ */
+/* ═══════════════════════ APPROVALS PAGE ═══════════════════════ */
+function ApprovalsPage({ onBack }) {
+  const [pendingMembers, setPendingMembers] = useState([]);
+  const [pendingLoaded, setPendingLoaded] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  useEffect(() => {
+    if (pendingLoaded) return;
+    supaLoadTeam().then(rows => {
+      setPendingMembers((rows || []).filter(r => r.status === "pendente"));
+      setPendingLoaded(true);
+    });
+  }, [pendingLoaded]);
+  const approveMember = async (m) => {
+    try {
+      const { error } = await supabase.from("agency_members").update({ status: "ativo" }).eq("id", m.id);
+      if (error) { showToast("Erro ao aprovar: " + error.message); return; }
+      setPendingMembers(p => p.filter(x => x.id !== m.id));
+      showToast(`${m.name} aprovado ✓`);
+      /* Notify the approved member */
+      if (m.user_id) supaCreateNotification(m.user_id, "member_approved", "Cadastro aprovado!", "Você foi aprovado na agência. Bem-vindo à equipe!", "🎉", null);
+      /* Notify all others */
+      supaCreateNotificationForAll("member_joined", "Novo membro na equipe", `${m.name} entrou na agência`, "👋", null, m.user_id);
+    } catch(e) { showToast("Erro: " + (e.message || e)); }
+  };
+  const rejectMember = async (m) => {
+    if (!confirm(`Recusar cadastro de "${m.name}"? O registro será removido.`)) return;
+    await supaDeleteMember(m.id, m.user_id);
+    setPendingMembers(p => p.filter(x => x.id !== m.id));
+    showToast(`${m.name} recusado e removido`);
+  };
+  return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Aprovações de Cadastro" onBack={onBack} />
+      <Card style={{ background: `${B.orange}06`, border: `1px solid ${B.orange}20`, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: B.orange, display: "flex" }}>{IC.shield}</span>
+          <p style={{ fontSize: 12, color: B.orange }}>Apenas CEO e Gerentes podem aprovar novos cadastros.</p>
+        </div>
+      </Card>
+      {!pendingLoaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
+      {pendingLoaded && pendingMembers.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, fontWeight:600 }}>Nenhum cadastro pendente</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Todos os membros já foram aprovados.</p></Card>}
+      {pendingMembers.map((r, i) => (
+        <Card key={r.id} delay={i * 0.04} style={{ marginTop: i ? 8 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <Av name={r.name} sz={40} fs={16} />
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</p><p style={{ fontSize: 11, color: B.muted }}>{r.email} · {r.role || r.job_title || "—"}</p><p style={{ fontSize: 10, color: B.muted }}>Solicitado em {r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</p></div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => approveMember(r)} className="pill accent" style={{ flex: 1, padding: "10px 14px" }}>{IC.check} Aprovar</button>
+            <button onClick={() => rejectMember(r)} style={{ flex: 1, padding: "10px 14px", borderRadius: 50, border: `1.5px solid ${B.red}40`, background: `${B.red}10`, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: B.red, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>{IC.x} Recusar</button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+const profileFieldIcon = (k) => {
+  if (k==="user") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+  if (k==="smile") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>;
+  if (k==="calendar") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+  if (k==="heart") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>;
+  if (k==="id") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+  if (k==="mail") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
+  if (k==="phone") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.62a16 16 0 006.29 6.29l1.15-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>;
+  if (k==="phone2") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.62a16 16 0 006.29 6.29l1.15-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>;
+  if (k==="instagram") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>;
+  if (k==="pix") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="9" y2="15"/><line x1="12" y1="15" x2="14" y2="15"/></svg>;
+  if (k==="briefcase") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>;
+  if (k==="refresh") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>;
+  if (k==="clock") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+  if (k==="sos") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+  if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
+  return <span style={{fontSize:14}}>•</span>;
+};
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud }) {
+  const [sub, setSub] = useState(null);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [twoFA, setTwoFA] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  const accentColor = themeColor === "custom" ? (uiPrefs?.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
+
+  /* Permissions state (must be before any conditional returns) */
+  const [permRole, setPermRole] = useState(null);
+  const [permMap, setPermMap] = useState({});
+  const [permLoaded, setPermLoaded] = useState(false);
+  const [permSaving, setPermSaving] = useState(false);
+  const [expandedPerm, setExpandedPerm] = useState(null);
+  const [aparTab, setAparTab] = useState("temas");
+
+  /* Pending approvals count */
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    supaLoadTeam().then(rows => {
+      setPendingCount((rows || []).filter(r => r.status === "pendente").length);
+    });
+  }, [sub]);
+
+  /* Profile editing */
+  const [editProfile, setEditProfile] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [pf, setPf] = useState({
+    name: user?.name || "", nick: user?.nick || "", phone: user?.phone || "",
+    social: user?.social || "", birth: user?.birth || "", blood: user?.blood || "",
+    bio: user?.bio || "", emergency_name: user?.emergency_name || "",
+    emergency_phone: user?.emergency_phone || "", emergency_relation: user?.emergency_relation || "",
+    pix: user?.pix || "", shirt_size: user?.shirt_size || "",
+    work_pref: user?.work_pref || "hibrido", availability: user?.availability || "integral",
+    skills: user?.skills || [], cpf: user?.cpf || "",
+  });
+  const pfUp = (k, v) => setPf(p => ({ ...p, [k]: v }));
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = React.useRef(null);
+
+  /* Load full profile from Supabase on mount */
+  useEffect(() => {
+    if (profileLoaded || !supabase || !user?.id) return;
+    (async () => {
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const extrasRaw = await supaGetSetting(`profile_extras_${user.id}`);
+      const extras = extrasRaw ? (typeof extrasRaw === "string" ? (() => { try { return JSON.parse(extrasRaw); } catch { return {}; } })() : extrasRaw) : {};
+      if (prof || Object.keys(extras).length) {
+        const merged = {
+          name: prof?.name || user.name || "", nick: prof?.nick || user.nick || "",
+          phone: prof?.phone || user.phone || "", social: extras.social || "",
+          birth: extras.birth || "", blood: extras.blood || "", bio: extras.bio || "",
+          emergency_name: extras.emergency_name || "", emergency_phone: extras.emergency_phone || "",
+          emergency_relation: extras.emergency_relation || "", pix: extras.pix || "",
+          shirt_size: extras.shirt_size || "", work_pref: extras.work_pref || "hibrido",
+          availability: extras.availability || "integral", skills: extras.skills || [],
+          cpf: extras.cpf || "",
+        };
+        setPf(merged);
+        let photo = prof?.photo_url || null;
+        if (!photo) { const fp = await supaGetSetting(`profile_photo_${user.id}`); if (fp) photo = fp; }
+        if (photo && photo !== user.photo) {
+          setUser(prev => ({ ...prev, photo, name: prof?.name || prev.name, nick: prof?.nick || prev.nick, phone: prof?.phone || prev.phone }));
+        }
+      }
+      setProfileLoaded(true);
+    })();
+  }, [profileLoaded, user?.id]);
+
+  const saveProfile = async () => {
+    if (!supabase || !user?.id) { showToast("Sem conexão com o banco"); return; }
+    setProfileSaving(true);
+    try {
+      /* Update profiles table (safe columns only) */
+      const { error } = await supabase.from("profiles").update({ name: pf.name, nick: pf.nick, phone: pf.phone }).eq("id", user.id);
+      if (error) console.warn("profiles update:", error.message);
+
+      /* Store extras in settings table (always works) */
+      const extras = { social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio, cpf: pf.cpf, emergency_name: pf.emergency_name, emergency_phone: pf.emergency_phone, emergency_relation: pf.emergency_relation, pix: pf.pix, shirt_size: pf.shirt_size, work_pref: pf.work_pref, availability: pf.availability, skills: pf.skills };
+      await supaSetSetting(`profile_extras_${user.id}`, JSON.stringify(extras));
+
+      setUser(prev => ({ ...prev, name: pf.name, nick: pf.nick, phone: pf.phone, social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio }));
+      setEditProfile(false);
+      showToast("Perfil salvo ✓");
+    } catch(e) { console.error("saveProfile:", e); showToast("Erro ao salvar"); }
+    setProfileSaving(false);
+  };
+
+  const uploadPhoto = async (file) => {
+    if (!supabase || !user?.id || !file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast("Máximo 5MB"); return; }
+    if (!file.type.startsWith("image/")) { showToast("Apenas imagens (JPG, PNG, etc)"); return; }
+    setPhotoUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const b64raw = ev.target.result;
+        const img = new window.Image();
+        img.onload = async () => {
+          try {
+            const maxSz = 200;
+            const scale = Math.min(maxSz / img.width, maxSz / img.height, 1);
+            const c = document.createElement("canvas");
+            c.width = Math.round(img.width * scale);
+            c.height = Math.round(img.height * scale);
+            const ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            const compressed = c.toDataURL("image/jpeg", 0.7);
+            const { error } = await supabase.from("profiles").update({ photo_url: compressed }).eq("id", user.id);
+            if (error) {
+              console.warn("profiles photo_url failed, using settings fallback:", error.message);
+              /* Fallback: save photo in settings table */
+              const ok = await supaSetSetting(`profile_photo_${user.id}`, compressed);
+              if (ok) {
+                setUser(prev => ({ ...prev, photo: compressed }));
+                showToast("Foto atualizada ✓");
+              } else {
+                showToast("Erro ao salvar foto");
+              }
+            } else {
+              setUser(prev => ({ ...prev, photo: compressed }));
+              showToast("Foto atualizada ✓");
+            }
+          } catch(err) { console.error("photo compress error:", err); showToast("Erro ao processar imagem"); }
+          setPhotoUploading(false);
+        };
+        img.onerror = () => { showToast("Erro ao carregar imagem. Tente outro formato."); setPhotoUploading(false); };
+        img.src = b64raw;
+      };
+      reader.onerror = () => { showToast("Erro ao ler arquivo"); setPhotoUploading(false); };
+      reader.readAsDataURL(file);
+    } catch(e) { console.error("uploadPhoto:", e); showToast("Erro no upload"); setPhotoUploading(false); }
+  };
+
+  /* Security */
+  const [changePw, setChangePw] = useState(false);
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [sessions, setSessions] = useState(false);
+  /* 2FA states */
+  const [twoFASetup, setTwoFASetup] = useState(null); // null | 'qr' | 'disable'
+  const [twoFAQR, setTwoFAQR] = useState("");
+  const [twoFAFactorId, setTwoFAFactorId] = useState("");
+  const [twoFAChallengeId, setTwoFAChallengeId] = useState("");
+  const [twoFACode, setTwoFACode] = useState("");
+  const [twoFALoading, setTwoFALoading] = useState(false);
+
+  /* Auto-start 2FA enrollment when entering 'qr' mode */
+  useEffect(() => {
+    if (twoFASetup !== 'qr' || !supabase) return;
+    const startEnroll = async () => {
+      setTwoFALoading(true);
+      try {
+        const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
+        if (error) throw error;
+        setTwoFAQR(data.totp.qr_code);
+        setTwoFAFactorId(data.id);
+        setTwoFASetup('verify');
+      } catch(e) { showToast("Erro ao gerar QR code: " + (e?.message || "")); setTwoFASetup(null); }
+      setTwoFALoading(false);
+    };
+    startEnroll();
+  }, [twoFASetup]);
+  /* Sessions data */
+  const [sessionInfo, setSessionInfo] = useState(null);
+
+  /* Notifications */
+  const [notifChat, setNotifChat] = useState(true);
+  const [notifChatPriv, setNotifChatPriv] = useState(true);
+  const [notifChatMention, setNotifChatMention] = useState(true);
+  const [notifTask, setNotifTask] = useState(true);
+  const [notifTaskAssigned, setNotifTaskAssigned] = useState(true);
+  const [notifTaskDeadline, setNotifTaskDeadline] = useState(true);
+  const [notifTaskComplete, setNotifTaskComplete] = useState(true);
+  const [notifClient, setNotifClient] = useState(true);
+  const [notifClientApproval, setNotifClientApproval] = useState(true);
+  const [notifClientFeedback, setNotifClientFeedback] = useState(true);
+  const [notifClientNew, setNotifClientNew] = useState(true);
+  const [notifFinancial, setNotifFinancial] = useState(true);
+  const [notifFinPaid, setNotifFinPaid] = useState(true);
+  const [notifFinOverdue, setNotifFinOverdue] = useState(true);
+  const [notifCalendar, setNotifCalendar] = useState(true);
+  const [notifCal15, setNotifCal15] = useState(true);
+  const [notifCal60, setNotifCal60] = useState(false);
+  const [notifCalDaily, setNotifCalDaily] = useState(true);
+  const [notifTeam, setNotifTeam] = useState(true);
+  const [notifTeamCheckin, setNotifTeamCheckin] = useState(false);
+  const [notifTeamRegister, setNotifTeamRegister] = useState(true);
+  const [notifEmail, setNotifEmail] = useState(false);
+  const [notifEmailDigest, setNotifEmailDigest] = useState("daily");
+  const [notifSound, setNotifSound] = useState(true);
+  const [notifVibrate, setNotifVibrate] = useState(true);
+  const [notifPreview, setNotifPreview] = useState(true);
+  const [dndActive, setDndActive] = useState(false);
+  const [dndStart, setDndStart] = useState("22:00");
+  const [dndEnd, setDndEnd] = useState("07:00");
+
+  /* AI Config */
+  const [agCfg, setAgCfg] = useState({ name:"", slogan:"", city:"", logo_url:"" });
+  const [agLoaded, setAgLoaded] = useState(false);
+  const [agSaving, setAgSaving] = useState(false);
+
+  const [aiCfgKeys, setAiCfgKeys] = useState({ openai_key:"", ai_provider:"openai", claude_key:"" });
+  const [aiCfgLoaded, setAiCfgLoaded] = useState(false);
+
+  // Load agency identity
+  React.useEffect(() => {
+    supaGetSetting("agency_identity").then(raw => {
+      if (raw) { try { setAgCfg(prev => ({ ...prev, ...JSON.parse(raw) })); } catch {} }
+      setAgLoaded(true);
+    });
+  }, []);
+  const [aiCfgSaving, setAiCfgSaving] = useState(false);
+  const [showApiKey, setShowApiKey] = useState({});
+
+  const themes = [
+    { k: "default", l: "Lime", c: "#BBF246" }, { k: "blue", l: "Azul", c: "#3B82F6" }, { k: "purple", l: "Roxo", c: "#8B5CF6" },
+    { k: "pink", l: "Rosa", c: "#EC4899" }, { k: "orange", l: "Laranja", c: "#F59E0B" }, { k: "red", l: "Vermelho", c: "#EF4444" }, { k: "cyan", l: "Ciano", c: "#06B6D4" }
+  ];
+
+  const maskPhone = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d.length ? "(" + d : "";
+    if (d.length <= 7) return "(" + d.slice(0,2) + ") " + d.slice(2);
+    return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+  };
+  const maskDate = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 8);
+    if (d.length <= 2) return d;
+    if (d.length <= 4) return d.slice(0,2) + "/" + d.slice(2);
+    return d.slice(0,2) + "/" + d.slice(2,4) + "/" + d.slice(4);
+  };
+  const maskCpfPf = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + "." + d.slice(3);
+    if (d.length <= 9) return d.slice(0,3) + "." + d.slice(3,6) + "." + d.slice(6);
+    return d.slice(0,3) + "." + d.slice(3,6) + "." + d.slice(6,9) + "-" + d.slice(9);
+  };
+  const fmtBirth = (v) => { if (!v || v === "—") return "—"; const d = v.replace(/\D/g, ""); if (d.length === 8) return d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4); return v; };
+  const fmtCpf = (v) => { if (!v || v === "—") return "—"; const d = v.replace(/\D/g, ""); if (d.length === 11) return d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9); return v; };
+  const copyToClipboard = (text) => { navigator.clipboard.writeText(text).then(()=>showToast("Copiado ✓")).catch(()=>{}); };
+
+  const pwChecks = (p) => [
+    { label: "Mínimo 8 caracteres", ok: p.length >= 8 },
+    { label: "Letra maiúscula", ok: /[A-Z]/.test(p) },
+    { label: "Letra minúscula", ok: /[a-z]/.test(p) },
+    { label: "Número", ok: /[0-9]/.test(p) },
+    { label: "Caractere especial", ok: /[!@#$%^&*(),.?":{}|<>]/.test(p) },
+  ];
+  const pwStrong = (p) => pwChecks(p).every(c => c.ok);
+
+  const savePw = async () => {
+    if (!pwStrong(newPw)) { showToast("Senha não atende os critérios"); return; }
+    if (newPw !== confirmPw) { showToast("As senhas não conferem"); return; }
+    if (!supabase) { showToast("Erro: sem conexão"); return; }
+    /* Re-authenticate with old password first */
+    try {
+      const userEmail = supabase.auth.getUser ? (await supabase.auth.getUser())?.data?.user?.email : null;
+      if (userEmail && oldPw) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email: userEmail, password: oldPw });
+        if (signInErr) { showToast("Senha atual incorreta"); return; }
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) { showToast("Erro: " + error.message); return; }
+      setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw("");
+      showToast("Senha alterada com sucesso ✓");
+    } catch(e) { showToast("Erro ao alterar senha"); }
+  };
+
+  const EyeBtn = ({ show, toggle }) => (
+    <button onClick={toggle} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex" }}>
+      {show ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><line x1="1" y1="1" x2="23" y2="23"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+    </button>
+  );
+
+  /* ═══ PROFILE ═══ */
+  if (sub === "profile") return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Meu Perfil" onBack={() => { setSub(null); setEditProfile(false); }} />
+
+      <Card style={{ textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", marginBottom:14, padding:20 }}>
+        <div style={{ position:"relative", marginBottom:12 }}>
+          <Av src={user?.photo} name={user?.name} sz={80} fs={30} />
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e => { if(e.target.files?.[0]) uploadPhoto(e.target.files[0]); e.target.value=""; }} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={photoUploading} style={{ position:"absolute", bottom:-2, right:-2, width:30, height:30, borderRadius:15, background:B.accent, border:"3px solid "+B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#000" }}>
+            {photoUploading ? <span style={{fontSize:10}}>...</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+          </button>
+        </div>
+        <p style={{ fontSize:18, fontWeight:800 }}>{user?.name || "—"}</p>
+        <p style={{ fontSize:12, color:B.muted }}>{user?.email || ""}</p>
+        <div style={{ display:"flex", gap:6, marginTop:8 }}>
+          <Tag color={B.accent}>{user?.role || "Colaborador"}</Tag>
+          <Tag color={B.green}>Ativo</Tag>
+        </div>
+        {pf.bio && !editProfile && <p style={{ fontSize:12, color:B.muted, marginTop:10, lineHeight:1.5, fontStyle:"italic" }}>{pf.bio}</p>}
+      </Card>
+
+      {editProfile ? <div>
+        <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome completo</label>
+          <input value={pf.name} onChange={e => pfUp("name",e.target.value)} className="tinput" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Apelido</label>
+          <input value={pf.nick} onChange={e => pfUp("nick",e.target.value)} className="tinput" placeholder="Como quer ser chamado(a)" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio</label>
+          <textarea value={pf.bio || ""} onChange={e => pfUp("bio",e.target.value)} className="tinput" rows={2} placeholder="Uma frase sobre você..." style={{ marginBottom:10, resize:"vertical" }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>CPF</label>
+          <input value={pf.cpf || ""} onChange={e => pfUp("cpf",maskCpfPf(e.target.value))} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Data de nascimento</label>
+          <input value={pf.birth || ""} onChange={e => pfUp("birth",maskDate(e.target.value))} className="tinput" placeholder="DD/MM/AAAA" inputMode="numeric" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Tipo sanguíneo</label>
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+            {["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"].map(b => (
+              <button key={b} onClick={() => pfUp("blood",b)} style={{ padding:"6px 11px", borderRadius:8, border:"1.5px solid "+(pf.blood===b?B.accent:B.border), background:pf.blood===b?B.accent+"15":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:pf.blood===b?B.accent:B.muted }}>{b}</button>
+            ))}
+          </div>
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Contato</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Telefone / WhatsApp</label>
+          <input value={pf.phone || ""} onChange={e => pfUp("phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Instagram / Rede social</label>
+          <input value={pf.social || ""} onChange={e => pfUp("social",e.target.value)} className="tinput" placeholder="@seuperfil" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Chave PIX</label>
+          <input value={pf.pix || ""} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" />
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Modelo de trabalho</label>
+          <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+            {[["presencial","Presencial"],["remoto","Remoto"],["hibrido","Híbrido"]].map(w => (
+              <button key={w[0]} onClick={() => pfUp("work_pref",w[0])} style={{ flex:1, padding:"10px 6px", borderRadius:10, border:"1.5px solid "+(pf.work_pref===w[0]?B.accent:B.border), background:pf.work_pref===w[0]?B.accent+"15":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center", fontSize:11, fontWeight:600, color:pf.work_pref===w[0]?B.accent:B.muted }}>{w[1]}</button>
+            ))}
+          </div>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Disponibilidade</label>
+          {[["integral","Integral","Seg-Sex, horário comercial"],["meio","Meio período","4-6h por dia"],["freelancer","Freelancer","Horários flexíveis"]].map(a => (
+            <div key={a[0]} onClick={() => pfUp("availability",a[0])} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, border:"1.5px solid "+(pf.availability===a[0]?B.accent:B.border), cursor:"pointer", marginBottom:6 }}>
+              <div style={{ width:16, height:16, borderRadius:8, border:"2px solid "+(pf.availability===a[0]?B.accent:B.muted), display:"flex", alignItems:"center", justifyContent:"center" }}>{pf.availability===a[0] && <div style={{ width:8, height:8, borderRadius:4, background:B.accent }} />}</div>
+              <div><p style={{ fontSize:12, fontWeight:600 }}>{a[1]}</p><p style={{ fontSize:10, color:B.muted }}>{a[2]}</p></div>
+            </div>
+          ))}
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Skills</p>
+        <Card style={{ marginBottom:10 }}>
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+            {["Design Gráfico","Social Media","Copywriting","Tráfego Pago","SEO","Fotografia","Vídeo/Reels","Motion Design","Atendimento","Planejamento","Branding","E-mail Marketing","Analytics","WordPress","Figma","Canva","Adobe Suite","Premiere","After Effects","CapCut"].map(s => {
+              const has = Array.isArray(pf.skills) && pf.skills.includes(s);
+              return <button key={s} onClick={() => pfUp("skills", has ? pf.skills.filter(x=>x!==s) : [...(pf.skills||[]),s])} style={{ padding:"5px 10px", borderRadius:8, border:"1.5px solid "+(has?B.accent:B.border), background:has?B.accent+"15":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:has?600:400, color:has?B.accent:B.muted }}>{has?"✓ ":""}{s}</button>;
+            })}
+          </div>
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
+        <Card style={{ marginBottom:10 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome</label>
+          <input value={pf.emergency_name || ""} onChange={e => pfUp("emergency_name",e.target.value)} className="tinput" placeholder="Nome do contato" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Telefone</label>
+          <input value={pf.emergency_phone || ""} onChange={e => pfUp("emergency_phone",maskPhone(e.target.value))} className="tinput" inputMode="tel" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Parentesco</label>
+          <input value={pf.emergency_relation || ""} onChange={e => pfUp("emergency_relation",e.target.value)} className="tinput" placeholder="Mãe, pai, cônjuge..." />
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Info extra</p>
+        <Card style={{ marginBottom:14 }}>
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Tamanho de camiseta</label>
+          <div style={{ display:"flex", gap:5 }}>
+            {["PP","P","M","G","GG","XGG"].map(s => (
+              <button key={s} onClick={() => pfUp("shirt_size",s)} style={{ flex:1, padding:"8px 4px", borderRadius:8, border:"1.5px solid "+(pf.shirt_size===s?B.accent:B.border), background:pf.shirt_size===s?B.accent+"15":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:pf.shirt_size===s?B.accent:B.muted }}>{s}</button>
+            ))}
+          </div>
+        </Card>
+
+        <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+          <button onClick={() => setEditProfile(false)} style={{ flex:1, padding:14, borderRadius:14, background:B.bgCard, border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.dark }}>Cancelar</button>
+          <button onClick={saveProfile} disabled={profileSaving} style={{ flex:1, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#000" }}>{profileSaving ? "Salvando..." : "Salvar"}</button>
+        </div>
+      </div> : <div>
+        <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
+        <Card style={{ marginBottom:10 }}>
+          {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",fmtBirth(pf.birth)||"—","calendar"],["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",fmtCpf(pf.cpf)||"—","id"]].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+              <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
+            </div>
+          ))}
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Contato</p>
+        <Card style={{ marginBottom:10 }}>
+          {[["E-mail",user?.email||"—","mail"],["Telefone",pf.phone||"—","phone"],["Rede social",pf.social||"—","instagram"],["Chave PIX",pf.pix||"—","pix"]].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+              <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
+              {f[2]==="pix" && pf.pix && pf.pix!=="—" && <button onClick={()=>copyToClipboard(pf.pix)} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", gap:4 }}>{IC.clipboard}<span>Copiar</span></button>}
+            </div>
+          ))}
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
+        <Card style={{ marginBottom:10 }}>
+          {[["Cargo",user?.role||"—","briefcase"],["Modelo",pf.work_pref||"—","refresh"],["Disponibilidade",pf.availability||"—","clock"]].map((f,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+              <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
+            </div>
+          ))}
+        </Card>
+
+        {Array.isArray(pf.skills) && pf.skills.length > 0 && <div>
+          <p className="sl" style={{ marginBottom:6 }}>Skills</p>
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+              {pf.skills.map(s => <Tag key={s} color={B.accent}>{s}</Tag>)}
+            </div>
+          </Card>
+        </div>}
+
+        {pf.emergency_name ? <div>
+          <p className="sl" style={{ marginBottom:6 }}>Contato de emergência</p>
+          <Card style={{ marginBottom:10 }}>
+            {[["Nome",pf.emergency_name,IC.sos],["Telefone",pf.emergency_phone||"—",IC.phone2],["Parentesco",pf.emergency_relation||"—",IC.users]].map((f,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?"1px solid "+B.border:"none" }}>
+                <span style={{ display:"flex", alignItems:"center", color:B.accent }}>{f[2]}</span>
+                <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
+              </div>
+            ))}
+          </Card>
+        </div> : null}
+
+        {pf.shirt_size ? <Card style={{ marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0}}><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.86H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.86l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>
+            <div><p style={{ fontSize:10, color:B.muted }}>Camiseta</p><p style={{ fontSize:13, fontWeight:600 }}>{pf.shirt_size}</p></div>
+          </div>
+        </Card> : null}
+
+        <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:14, borderRadius:14, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent, marginBottom:10 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Editar meu perfil
+        </button>
+      </div>}
+    </div>
+  );
+
+
+  /* ═══ APPEARANCE ═══ */
+  if (sub === "aparencia") {
+    const UP = uiPrefs || {};
+    const setP = (k, v) => { updateUiPrefs({ [k]: v }); showToast("Aplicado ✓"); };
+
+    /* ═══ PRESET THEMES ═══ */
+    const PRESETS = [
+      { k:"default", name:"UniqueHub", desc:"O visual padrão do app", emoji:"💚", dark:false, theme:"default",
+        pr:{ fontSize:"normal",fontFamily:"system",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"solid",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:320,navBlur:true,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:null,customBgCard:null,customText:null,customMuted:null,customBorder:null,iconColor:null,blockBg:null,navActiveColor:null,navInactiveColor:null }},
+      { k:"v2", name:"UniqueHub Dark", desc:"Header branco, fundo escuro", emoji:"🖤", dark:true, theme:"default",
+        pr:{ fontSize:"normal",fontFamily:"inter",boldTitles:true,cardRadius:"round",cardStyle:"elevated",density:"normal",bgTemplate:"uh_v2_dark",navSize:"md",navStyle:"pill",navPosition:"float",navWidth:340,navBlur:false,navLabels:true,iconWeight:"normal",iconSize:22,iconFill:"outlined",customBg:"#0D0D0D",customBgCard:"#1A1A1A",customText:"#FFFFFF",customMuted:"rgba(255,255,255,0.35)",customBorder:"#2A2A2A",iconColor:"#C6F135",blockBg:"rgba(198,241,53,0.04)",navActiveColor:"#0D0D0D",navInactiveColor:"rgba(255,255,255,0.30)" }},
+    ];
+
+    const BG_TEMPLATES = [
+      { k:"solid", css:B.bg },
+      { k:"uh_v2_light", css:"#F5F5F5" },
+    ];
+
+    const applyPreset = (p) => {
+      /* Apply all three changes locally */
+      setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr);
+      /* Force a single correct cloud save with all new values */
+      if (typeof savePrefsToCloud === "function" && user?.id) {
+        setTimeout(() => savePrefsToCloud(p.dark, p.theme, p.pr, user.id), 50);
+      }
+      showToast(p.name+" aplicado ✓");
+    };
+
+    /* Helpers */
+    const OR = ({ options, current, onPick, renderOption }) => <div style={{ display:"flex", gap:6 }}>{options.map(o => { const a=current===o.k; return <button key={o.k} onClick={() => onPick(o.k)} style={{ flex:1, padding:"10px 6px", borderRadius:12, border:"1.5px solid "+(a?B.accent:B.border), background:a?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>{renderOption(o,a)}</button>; })}</div>;
+    const TogRow = ({ label, desc, on, onToggle }) => <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 0" }}><div><p style={{ fontSize:13, fontWeight:600 }}>{label}</p>{desc && <p style={{ fontSize:10, color:B.muted }}>{desc}</p>}</div><Toggle on={on} onToggle={onToggle} /></div>;
+    const Sli = ({ value, min, max, step, onChange, label, unit }) => <div style={{ marginBottom:4 }}><div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ fontSize:11, color:B.muted }}>{label}</span><span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{value}{unit||""}</span></div><input type="range" min={min} max={max} step={step||1} value={value} onChange={e => onChange(Number(e.target.value))} style={{ width:"100%", accentColor:B.accent, height:4 }} /></div>;
+    const SL = ({ icon, title }) => <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:18, marginBottom:8 }}><span style={{ fontSize:15 }}>{icon}</span><p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>{title}</p></div>;
+
+    const navW=UP.navWidth||320, navSt=UP.navStyle||"pill", navPos=UP.navPosition||"float", navSz=UP.navSize||"md", navBlur=UP.navBlur!==false, navLabels=UP.navLabels!==false;
+
+    const tabs = [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
+
+    return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Aparência" onBack={() => setSub(null)} />
+
+      {/* Tab bar */}
+      <div style={{ display:"flex", gap:4, marginBottom:16, background:dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)", borderRadius:12, padding:3 }}>
+        {tabs.map(t => <button key={t.k} onClick={() => setAparTab(t.k)} style={{ flex:1, padding:"10px 6px", borderRadius:10, background:aparTab===t.k?B.accent:"transparent", color:aparTab===t.k?B.textOnAccent:B.muted, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aparTab===t.k?700:500 }}>{t.l}</button>)}
+      </div>
+
+      {/* ═══ TAB TEMAS ═══ */}
+      {aparTab === "temas" && <>
+        <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Escolha um tema e tudo muda: cores, fundo, fonte, ícones e layout.</p>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {PRESETS.map(p => {
+            const pAccent = THEME_MAP[p.theme]||"#BBF246";
+            const pBg = p.pr.customBg || (p.dark?"#0F1419":"#F7F7F8");
+            const pCard = p.pr.customBgCard || (p.dark?"#1C2228":"#fff");
+            const pText = p.pr.customText || (p.dark?"#E8EAED":"#192126");
+            const pMuted = p.pr.customMuted || (p.dark?"#8B9099":"#8B8F92");
+            const pIcon = p.pr.iconColor || pAccent;
+            const bgT = BG_TEMPLATES.find(b => b.k===p.pr.bgTemplate) || null;
+            const rad = ({sharp:"4px",round:"12px",pill:"20px"})[p.pr.cardRadius]||"12px";
+            const isActive = themeColor===p.theme && dark===p.dark && (UP.bgTemplate||"solid")===p.pr.bgTemplate;
+            return (
+              <button key={p.k} onClick={() => applyPreset(p)} style={{ position:"relative", overflow:"hidden", borderRadius:16, border:isActive?"2.5px solid "+pAccent:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left", padding:0, background:"none" }}>
+                <div style={{ padding:14, background:bgT?.css||pBg, minHeight:90, display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative" }}>
+                  {bgT?.overlay && <div style={{ position:"absolute", inset:0, backgroundImage:bgT.overlay, backgroundSize:bgT.overlaySize||"auto", opacity:0.5 }} />}
+                  <div style={{ position:"relative", zIndex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:14, fontWeight:700, color:pText, fontFamily:({system:"inherit",inter:"'Inter',sans-serif",mono:"monospace",serif:"Georgia,serif"})[p.pr.fontFamily]||"inherit" }}>{p.name}</p>
+                        <p style={{ fontSize:10, color:pMuted }}>{p.desc}</p>
+                      </div>
+                      {isActive && <div style={{ padding:"3px 8px", borderRadius:8, background:pAccent, fontSize:8, fontWeight:800, color:p.dark?"#192126":"#fff" }}>ATIVO</div>}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:6, position:"relative", zIndex:1 }}>
+                    {[1,2,3].map(i => (
+                      <div key={i} style={{ flex:1, height:20, borderRadius:rad, background:p.pr.cardStyle==="glass"?(p.dark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.5)"):pCard, border:p.pr.cardStyle==="outlined"?"1px solid "+(p.dark?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.08)"):"none", boxShadow:p.pr.cardStyle==="elevated"?"0 1px 4px rgba(0,0,0,0.1)":"none", position:"relative", overflow:"hidden" }}>
+                        <div style={{ position:"absolute", top:6, left:6, width:i===1?16:10, height:3, borderRadius:1, background:i===1?pIcon:pMuted, opacity:i===1?0.8:0.3 }} />
+                        <div style={{ position:"absolute", top:11, left:6, width:20, height:2, borderRadius:1, background:pMuted, opacity:0.15 }} />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"center", marginTop:8, position:"relative", zIndex:1 }}>
+                    <div style={{ width:p.pr.navWidth?Math.min(p.pr.navWidth*0.35,140):110, padding:"4px 6px", borderRadius:({pill:10,rounded:7,bar:0,minimal:5})[p.pr.navStyle]||10, background:p.dark?"rgba(10,15,18,0.85)":"rgba(25,33,38,0.9)", display:"flex", justifyContent:"space-around", alignItems:"center", borderTop:p.pr.navStyle==="bar"?"2px solid "+pAccent:"none" }}>
+                      {[1,2,3,4].map(i => <div key={i} style={{ width:i===2?8:5, height:i===2?8:5, borderRadius:i===2?4:2, background:i===2?pAccent:"rgba(255,255,255,0.3)" }} />)}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </>}
+
+      {/* ═══ TAB AJUSTES ═══ */}
+      {aparTab === "ajustes" && <>
+
+
+
+        {/* Cards */}
+        <SL icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>} title="Cards" />
+        <Card>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Bordas</p>
+          <OR current={UP.cardRadius||"round"} onPick={v => setP("cardRadius",v)} options={[{k:"sharp",l:"Reto"},{k:"round",l:"Redondo"},{k:"pill",l:"Pílula"}]} renderOption={(o,a) => <div><div style={{ width:28, height:18, borderRadius:o.k==="sharp"?"2px":o.k==="round"?"6px":"9px", border:"2px solid "+(a?B.accent:B.muted), margin:"0 auto 4px", opacity:a?1:0.5 }} /><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
+          <div style={{ marginTop:10 }}>
+            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Estilo</p>
+            <OR current={UP.cardStyle||"elevated"} onPick={v => setP("cardStyle",v)} options={[{k:"flat",l:"Flat"},{k:"elevated",l:"Elevado"},{k:"glass",l:"Glass"},{k:"outlined",l:"Contorno"}]} renderOption={(o,a) => <div><div style={{ width:26, height:16, borderRadius:3, background:o.k==="glass"?"rgba(128,128,128,0.15)":o.k==="flat"?B.border+"40":a?B.accent+"10":"rgba(128,128,128,0.08)", boxShadow:o.k==="elevated"?"0 2px 5px rgba(0,0,0,0.12)":"none", border:o.k==="outlined"?"1.5px solid "+B.muted:"1px solid transparent", margin:"0 auto 4px" }} /><span style={{ fontSize:8, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
+          </div>
+        </Card>
+
+        {/* Barra de Navegação */}
+        <SL icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>} title="Barra de Navegação" />
+        <div style={{ marginBottom:10, padding:14, background:dark?"#1a1f24":"#f0f0f2", borderRadius:14, border:"1px solid "+B.border, position:"relative", minHeight:70, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div style={{ width:"72%", maxWidth:220, padding:"6px", borderRadius:18, background:UP.navBgColor||(navBlur?(dark?"rgba(10,15,18,0.8)":"rgba(25,33,38,0.85)"):(dark?"#0A0F12":"#192126")), boxShadow:"0 4px 12px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", justifyContent:"space-around", overflow:"visible", position:"relative" }}>
+            {[1,2,3,4,5].map(i => { const circleBgPrev=UP.navCircleBg||B.accent; const circleIconPrev=UP.navCircleIcon||(dark?"#0D0D0D":"#fff"); return <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", position:"relative" }}><div style={{ width:i===2?18:10, height:i===2?18:10, borderRadius:"50%", background:i===2?circleBgPrev:"rgba(255,255,255,0.3)", transform:i===2?"translateY(-8px)":"none", boxShadow:i===2?`0 0 0 3px ${dark?"#1a1f24":"#192126"}`:"none", transition:"all .3s", display:"flex", alignItems:"center", justifyContent:"center" }}>{i===2&&<div style={{width:6,height:6,borderRadius:"50%",background:circleIconPrev,opacity:0.8}}/>}</div><div style={{fontSize:7,color:UP.navTextColor||"rgba(255,255,255,0.5)",marginTop:2,fontWeight:700}}>{i===2?"●":""}</div></div>; })}
+          </div>
+          <span style={{ position:"absolute", top:4, right:6, fontSize:7, color:B.muted }}>PREVIEW</span>
+        </div>
+        <Card>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor do indicador ativo</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[
+              {c:"#BBF246",k:"default"},{c:"#C6F135",k:"custom"},{c:"#08FB9D",k:"emerald"},{c:"#60A5FA",k:"blue"},{c:"#8B5CF6",k:"purple"},{c:"#F87171",k:"red"},{c:"#EC4899",k:"pink"},{c:"#F59E0B",k:"orange"},{c:"#fff",k:"custom_w"}
+            ].map(({c,k}) => (
+              <div key={c} onClick={() => { if(k.startsWith("custom")) { setThemeColor("custom"); updateUiPrefs({customColor:c}); } else { setThemeColor(k); } showToast("Cor aplicada ✓"); }} style={{ width:32, height:32, borderRadius:10, background:c, cursor:"pointer", border:accentColor===c?`3px solid ${B.text}`:`2px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {accentColor===c && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={k==="custom_w"?"#0D0D0D":"#0D0D0D"} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor dos ícones inativos</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"rgba(255,255,255,0.5)","rgba(255,255,255,0.3)","rgba(255,255,255,0.15)","rgba(0,0,0,0.3)","rgba(0,0,0,0.5)"].map((c,i) => {
+              const cur = UP.navInactiveColor || "rgba(255,255,255,0.45)";
+              const isActive = c === null ? !UP.navInactiveColor : UP.navInactiveColor === c;
+              return <div key={i} onClick={() => setP("navInactiveColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||"rgba(255,255,255,0.45)", cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}` }} />;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Fundo da barra</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#192126","#0D0D0D","#1A1A2E","#1C1C1C","#2D1B69","#FFFFFF","#F5F5F5","#E8F5E9"].map((c,i) => {
+              const isActive = c === null ? !UP.navBgColor : UP.navBgColor === c;
+              return <div key={i} onClick={() => setP("navBgColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||"auto", cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <span style={{ fontSize:9, color:B.muted, position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>AUTO</span>}
+                {c===null && <div style={{ position:"absolute", inset:2, borderRadius:8, background:`linear-gradient(135deg, #192126 50%, #fff 50%)` }} />}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Cor do texto/label</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#FFFFFF","#BBF246","#C6F135","#60A5FA","#F87171","#F59E0B","#0D0D0D","rgba(255,255,255,0.7)"].map((c,i) => {
+              const isActive = c === null ? !UP.navTextColor : UP.navTextColor === c;
+              return <div key={i} onClick={() => setP("navTextColor",c)} style={{ width:32, height:32, borderRadius:10, background:c||(dark?"#fff":"#192126"), cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <div style={{ position:"absolute", inset:2, borderRadius:8, background:`linear-gradient(135deg, #192126 50%, #fff 50%)` }} />}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Fundo da bolinha ativa</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#BBF246","#C6F135","#08FB9D","#60A5FA","#8B5CF6","#F87171","#EC4899","#FFFFFF","#0D0D0D"].map((c,i) => {
+              const isActive = c === null ? !UP.navCircleBg : UP.navCircleBg === c;
+              return <div key={i} onClick={() => setP("navCircleBg",c)} style={{ width:32, height:32, borderRadius:10, background:c||accentColor, cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <span style={{ fontSize:7, color:c===null?"#0D0D0D":B.muted, position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>AUTO</span>}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Ícone da bolinha ativa</p>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[null,"#0D0D0D","#192126","#FFFFFF","#BBF246","#C6F135","#60A5FA","#8B5CF6","#F87171"].map((c,i) => {
+              const isActive = c === null ? !UP.navCircleIcon : UP.navCircleIcon === c;
+              return <div key={i} onClick={() => setP("navCircleIcon",c)} style={{ width:32, height:32, borderRadius:10, background:c||(dark?"#0D0D0D":"#fff"), cursor:"pointer", border:isActive?`3px solid ${B.accent}`:`2px solid ${B.border}`, position:"relative" }}>
+                {c===null && <div style={{ position:"absolute", inset:2, borderRadius:8, background:`linear-gradient(135deg, #0D0D0D 50%, #fff 50%)` }} />}
+              </div>;
+            })}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Tamanho</p>
+          <OR current={navSz} onPick={v => setP("navSize",v)} options={[{k:"sm",l:"Pequeno"},{k:"md",l:"Médio"},{k:"lg",l:"Grande"}]} renderOption={(o,a) => <div><div style={{ width:o.k==="sm"?20:o.k==="md"?28:36, height:o.k==="sm"?6:o.k==="md"?8:11, borderRadius:4, background:a?B.accent:B.muted, margin:"0 auto 4px", opacity:a?0.8:0.3 }} /><span style={{ fontSize:9, fontWeight:a?700:500, color:a?B.accent:B.muted }}>{o.l}</span></div>} />
+        </Card>
+        <Card style={{ marginTop:6 }}>
+          <Sli label="Largura" value={navW} min={220} max={400} step={10} unit="px" onChange={v => setP("navWidth",v)} />
+          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Efeito blur" desc="Transparência com desfoque" on={navBlur} onToggle={() => setP("navBlur",!navBlur)} /></div>
+          <div style={{ borderTop:"1px solid "+B.border, paddingTop:6 }}><TogRow label="Mostrar nomes" desc="Texto do ícone ativo" on={navLabels} onToggle={() => setP("navLabels",!navLabels)} /></div>
+        </Card>
+
+        {/* Reset */}
+        <button onClick={() => { applyPreset(PRESETS[0]); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:14, borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginTop:16, marginBottom:20 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          Restaurar padrão
+        </button>
+      </>}
+    </div>
+    );
+  }
+
+  /* ═══ NOTIFICATIONS ═══ */
+  if (sub === "notifs") {
+    const NotifSection = ({ icon, color, title, desc, master, onMaster, children }) => (
+      <div style={{ marginBottom: 14 }}>
+        <Card style={{ borderLeft: `4px solid ${color}`, marginBottom: children && master ? 4 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}12`, display: "flex", alignItems: "center", justifyContent: "center", color }}>{icon}</div>
+              <div><p style={{ fontSize: 14, fontWeight: 600 }}>{title}</p><p style={{ fontSize: 11, color: B.muted }}>{desc}</p></div>
+            </div>
+            <Toggle on={master} onToggle={() => { onMaster(); showToast(master ? `${title} desativado` : `${title} ativado ✓`); }} />
+          </div>
+        </Card>
+        {master && children && <div style={{ marginLeft: 16, borderLeft: `2px solid ${B.border}`, paddingLeft: 12 }}>{children}</div>}
+      </div>
+    );
+
+    const SubNotif = ({ label, on, toggle }) => (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${B.border}` }}>
+        <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+        <Toggle on={on} onToggle={toggle} />
+      </div>
+    );
+
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Notificações" onBack={() => setSub(null)} />
+
+        {/* DND */}
+        <Card style={{ marginBottom: 14, background: dndActive ? `${B.purple}08` : B.bgCard, border: dndActive ? `1.5px solid ${B.purple}30` : "none" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: dndActive ? 12 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.purple}12`, display: "flex", alignItems: "center", justifyContent: "center", color: B.purple }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+              </div>
+              <div><p style={{ fontSize: 14, fontWeight: 700 }}>Não Perturbe</p><p style={{ fontSize: 11, color: B.muted }}>Silenciar todas as notificações</p></div>
+            </div>
+            <Toggle on={dndActive} onToggle={() => { setDndActive(!dndActive); showToast(dndActive ? "Não Perturbe desativado" : "Não Perturbe ativado 🌙"); }} />
+          </div>
+          {dndActive && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: B.muted, display: "block", marginBottom: 4 }}>Início</label>
+                <input type="time" value={dndStart} onChange={e => setDndStart(e.target.value)} className="tinput" style={{ padding: "8px 10px" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: B.muted, display: "block", marginBottom: 4 }}>Fim</label>
+                <input type="time" value={dndEnd} onChange={e => setDndEnd(e.target.value)} className="tinput" style={{ padding: "8px 10px" }} />
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <p className="sl" style={{ marginBottom: 8 }}>Canais de Notificação</p>
+
+        {/* Chat */}
+        <NotifSection icon={IC.chat} color={B.blue} title="Chat & Mensagens" desc="Conversas e menções" master={notifChat} onMaster={() => setNotifChat(!notifChat)}>
+          <SubNotif label="Mensagens privadas" on={notifChatPriv} toggle={() => setNotifChatPriv(!notifChatPriv)} />
+          <SubNotif label="Menções (@você)" on={notifChatMention} toggle={() => setNotifChatMention(!notifChatMention)} />
+        </NotifSection>
+
+        {/* Tasks */}
+        <NotifSection icon={IC.clipboard} color={B.orange} title="Tarefas & Demandas" desc="Atribuições e prazos" master={notifTask} onMaster={() => setNotifTask(!notifTask)}>
+          <SubNotif label="Nova tarefa atribuída a mim" on={notifTaskAssigned} toggle={() => setNotifTaskAssigned(!notifTaskAssigned)} />
+          <SubNotif label="Prazo se aproximando (24h)" on={notifTaskDeadline} toggle={() => setNotifTaskDeadline(!notifTaskDeadline)} />
+          <SubNotif label="Tarefa concluída pela equipe" on={notifTaskComplete} toggle={() => setNotifTaskComplete(!notifTaskComplete)} />
+        </NotifSection>
+
+        {/* Clients */}
+        <NotifSection icon={IC.clients} color={B.green} title="Clientes" desc="Aprovações e feedbacks" master={notifClient} onMaster={() => setNotifClient(!notifClient)}>
+          <SubNotif label="Conteúdo aguardando aprovação" on={notifClientApproval} toggle={() => setNotifClientApproval(!notifClientApproval)} />
+          <SubNotif label="Feedback recebido do cliente" on={notifClientFeedback} toggle={() => setNotifClientFeedback(!notifClientFeedback)} />
+          <SubNotif label="Novo cliente cadastrado" on={notifClientNew} toggle={() => setNotifClientNew(!notifClientNew)} />
+        </NotifSection>
+
+        {/* Financial */}
+        <NotifSection icon={IC.dollar} color={B.green} title="Financeiro" desc="Pagamentos e cobranças" master={notifFinancial} onMaster={() => setNotifFinancial(!notifFinancial)}>
+          <SubNotif label="Pagamento recebido" on={notifFinPaid} toggle={() => setNotifFinPaid(!notifFinPaid)} />
+          <SubNotif label="Fatura vencida / atrasada" on={notifFinOverdue} toggle={() => setNotifFinOverdue(!notifFinOverdue)} />
+        </NotifSection>
+
+        {/* Calendar */}
+        <NotifSection icon={IC.clock} color={B.purple} title="Calendário & Agenda" desc="Eventos e lembretes" master={notifCalendar} onMaster={() => setNotifCalendar(!notifCalendar)}>
+          <SubNotif label="Lembrete 15 min antes" on={notifCal15} toggle={() => setNotifCal15(!notifCal15)} />
+          <SubNotif label="Lembrete 1 hora antes" on={notifCal60} toggle={() => setNotifCal60(!notifCal60)} />
+          <SubNotif label="Resumo diário da agenda (8h)" on={notifCalDaily} toggle={() => setNotifCalDaily(!notifCalDaily)} />
+        </NotifSection>
+
+        {/* Team */}
+        <NotifSection icon={IC.team(B.cyan)} color={B.cyan} title="Equipe" desc="Check-ins e cadastros" master={notifTeam} onMaster={() => setNotifTeam(!notifTeam)}>
+          <SubNotif label="Check-in/Check-out da equipe" on={notifTeamCheckin} toggle={() => setNotifTeamCheckin(!notifTeamCheckin)} />
+          <SubNotif label="Novo cadastro pendente" on={notifTeamRegister} toggle={() => setNotifTeamRegister(!notifTeamRegister)} />
+        </NotifSection>
+
+        <p className="sl" style={{ marginTop: 4, marginBottom: 8 }}>Preferências</p>
+
+        {/* Sound & Vibrate */}
+        <Card style={{ marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: B.accent, display: "flex" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg></span>
+              <div><p style={{ fontSize: 14, fontWeight: 600 }}>Som</p><p style={{ fontSize: 11, color: B.muted }}>Alerta sonoro</p></div>
+            </div>
+            <Toggle on={notifSound} onToggle={() => { setNotifSound(!notifSound); showToast(notifSound ? "Som desativado" : "Som ativado ✓"); }} />
+          </div>
+        </Card>
+        <Card style={{ marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: B.accent, display: "flex" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.11 2 2 0 014.11 2h3"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>
+              <div><p style={{ fontSize: 14, fontWeight: 600 }}>Vibração</p><p style={{ fontSize: 11, color: B.muted }}>Vibrar ao receber</p></div>
+            </div>
+            <Toggle on={notifVibrate} onToggle={() => { setNotifVibrate(!notifVibrate); showToast(notifVibrate ? "Vibração desativada" : "Vibração ativada ✓"); }} />
+          </div>
+        </Card>
+        <Card style={{ marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: B.accent, display: "flex" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+              <div><p style={{ fontSize: 14, fontWeight: 600 }}>Preview na notificação</p><p style={{ fontSize: 11, color: B.muted }}>Mostrar conteúdo no alerta</p></div>
+            </div>
+            <Toggle on={notifPreview} onToggle={() => { setNotifPreview(!notifPreview); showToast(notifPreview ? "Preview desativado" : "Preview ativado ✓"); }} />
+          </div>
+        </Card>
+
+        {/* Email */}
+        <p className="sl" style={{ marginTop: 14, marginBottom: 8 }}>E-mail</p>
+        <Card style={{ marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: notifEmail ? 12 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: B.accent, display: "flex" }}>{IC.mail}</span>
+              <div><p style={{ fontSize: 14, fontWeight: 600 }}>Notificações por e-mail</p><p style={{ fontSize: 11, color: B.muted }}>Receber resumos por e-mail</p></div>
+            </div>
+            <Toggle on={notifEmail} onToggle={() => { setNotifEmail(!notifEmail); showToast(notifEmail ? "E-mail desativado" : "E-mail ativado ✓"); }} />
+          </div>
+          {notifEmail && (
+            <div>
+              <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 6 }}>Frequência do resumo</label>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[{k:"realtime",l:"Tempo real"},{k:"daily",l:"Diário"},{k:"weekly",l:"Semanal"}].map(opt => (
+                  <button key={opt.k} onClick={() => { setNotifEmailDigest(opt.k); showToast(`Resumo ${opt.l.toLowerCase()} selecionado`); }} style={{ flex: 1, padding: "9px 6px", borderRadius: 10, border: `1.5px solid ${notifEmailDigest === opt.k ? B.accent : B.border}`, background: notifEmailDigest === opt.k ? `${B.accent}12` : "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: notifEmailDigest === opt.k ? B.accent : B.muted }}>{opt.l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  /* ═══ SECURITY ═══ */
+  if (sub === "sec") {
+    /* Change password sub-view */
+    if (changePw) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Alterar Senha" onBack={() => { setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw(""); }} />
+        <Card style={{ marginBottom: 8 }}>
+          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Senha atual</label>
+          <div style={{ position: "relative" }}>
+            <input type={showOldPw ? "text" : "password"} value={oldPw} onChange={e => setOldPw(e.target.value)} className="tinput" style={{ paddingRight: 40 }} />
+            <EyeBtn show={showOldPw} toggle={() => setShowOldPw(!showOldPw)} />
+          </div>
+        </Card>
+        <Card style={{ marginBottom: 8 }}>
+          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Nova senha</label>
+          <div style={{ position: "relative" }}>
+            <input type={showNewPw ? "text" : "password"} value={newPw} onChange={e => setNewPw(e.target.value)} className="tinput" style={{ paddingRight: 40 }} />
+            <EyeBtn show={showNewPw} toggle={() => setShowNewPw(!showNewPw)} />
+          </div>
+          {newPw && <div style={{ marginTop: 8 }}>
+            {pwChecks(newPw).map((c, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                <span style={{ display: "flex", color: c.ok ? B.green : B.muted }}>{c.ok ? IC.check : IC.x}</span>
+                <span style={{ fontSize: 10, color: c.ok ? B.green : B.muted }}>{c.label}</span>
+              </div>
+            ))}
+          </div>}
+        </Card>
+        <Card style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Confirmar nova senha</label>
+          <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} className="tinput" />
+          {confirmPw && <p style={{ fontSize: 10, marginTop: 4, color: newPw === confirmPw ? B.green : B.red, display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ display: "flex" }}>{newPw === confirmPw ? IC.check : IC.x}</span>{newPw === confirmPw ? "Senhas conferem" : "Senhas não conferem"}</p>}
+        </Card>
+        <button onClick={savePw} className="pill full accent" style={{ opacity: pwStrong(newPw) && newPw === confirmPw ? 1 : 0.4 }}>Salvar Nova Senha</button>
+      </div>
+    );
+
+    /* 2FA setup view - QR code enrollment */
+    if (twoFASetup === 'qr') {
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Ativar 2FA" onBack={() => setTwoFASetup(null)} />
+          <Card style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 24, minHeight: 120 }}>
+            <p style={{ fontSize: 13, color: B.muted }}>Gerando QR code…</p>
+          </Card>
+        </div>
+      );
+    }
+
+    /* 2FA verify view - scan QR and enter code */
+    if (twoFASetup === 'verify') {
+      const verifyEnroll = async () => {
+        if (twoFACode.length !== 6) return;
+        setTwoFALoading(true);
+        try {
+          const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: twoFAFactorId });
+          if (chErr) throw chErr;
+          const { error: vErr } = await supabase.auth.mfa.verify({ factorId: twoFAFactorId, challengeId: ch.id, code: twoFACode });
+          if (vErr) throw vErr;
+          setTwoFA(true);
+          setTwoFASetup(null);
+          setTwoFACode("");
+          showToast("2FA ativado com sucesso ✓");
+        } catch(e) { showToast("Código inválido. Tente novamente."); setTwoFACode(""); }
+        setTwoFALoading(false);
+      };
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Ativar 2FA" onBack={async () => { try { await supabase.auth.mfa.unenroll({ factorId: twoFAFactorId }); } catch(e){} setTwoFASetup(null); setTwoFAQR(""); setTwoFACode(""); }} />
+          <Card style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>1. Escaneie com seu app autenticador</p>
+            <p style={{ fontSize: 11, color: B.muted, marginBottom: 12 }}>Use Google Authenticator, Authy ou similar.</p>
+            {twoFAQR && <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: twoFAQR.replace(/width="[^"]*"/, 'width="180"').replace(/height="[^"]*"/, 'height="180"') }} />}
+          </Card>
+          <Card style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>2. Digite o código de 6 dígitos</p>
+            <input
+              type="number"
+              value={twoFACode}
+              onChange={e => setTwoFACode(e.target.value.slice(0, 6))}
+              placeholder="000000"
+              className="tinput"
+              style={{ textAlign: "center", letterSpacing: 8, fontSize: 22, fontWeight: 700 }}
+              onKeyDown={e => e.key === "Enter" && verifyEnroll()}
+            />
+          </Card>
+          <button onClick={verifyEnroll} className="pill full accent" disabled={twoFALoading || twoFACode.length !== 6} style={{ opacity: twoFACode.length === 6 ? 1 : 0.4 }}>
+            {twoFALoading ? "Verificando…" : "Confirmar e Ativar 2FA"}
+          </button>
+        </div>
+      );
+    }
+
+    /* 2FA disable view - verify before disabling */
+    if (twoFASetup === 'disable') {
+      const doDisable = async () => {
+        if (twoFACode.length !== 6) return;
+        setTwoFALoading(true);
+        try {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const totp = factors?.totp?.[0];
+          if (totp) {
+            const { data: ch } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+            await supabase.auth.mfa.verify({ factorId: totp.id, challengeId: ch.id, code: twoFACode });
+            await supabase.auth.mfa.unenroll({ factorId: totp.id });
+          }
+          setTwoFA(false);
+          setTwoFASetup(null);
+          setTwoFACode("");
+          showToast("2FA desativado ✓");
+        } catch(e) { showToast("Código inválido. Tente novamente."); setTwoFACode(""); }
+        setTwoFALoading(false);
+      };
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Desativar 2FA" onBack={() => { setTwoFASetup(null); setTwoFACode(""); }} />
+          <Card style={{ marginBottom: 8, background: `${B.red}08`, border: `1px solid ${B.red}20` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: B.red, fontSize: 20 }}>⚠️</span>
+              <p style={{ fontSize: 12, color: B.red }}>Desativar o 2FA reduz a segurança da sua conta.</p>
+            </div>
+          </Card>
+          <Card style={{ marginBottom: 12 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Confirme com seu app autenticador</p>
+            <p style={{ fontSize: 11, color: B.muted, marginBottom: 12 }}>Digite o código atual do seu app para desativar.</p>
+            <input
+              type="number"
+              value={twoFACode}
+              onChange={e => setTwoFACode(e.target.value.slice(0, 6))}
+              placeholder="000000"
+              className="tinput"
+              style={{ textAlign: "center", letterSpacing: 8, fontSize: 22, fontWeight: 700 }}
+              onKeyDown={e => e.key === "Enter" && doDisable()}
+            />
+          </Card>
+          <button onClick={doDisable} className="pill full" disabled={twoFALoading || twoFACode.length !== 6} style={{ opacity: twoFACode.length === 6 ? 1 : 0.4, background: B.red, color: "#fff", border: "none" }}>
+            {twoFALoading ? "Verificando…" : "Desativar 2FA"}
+          </button>
+        </div>
+      );
+    }
+
+    /* Sessions sub-view */
+    if (sessions) {
+      /* Detect current device from userAgent */
+      const ua = navigator.userAgent;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+      const isTablet = /iPad|Tablet/i.test(ua);
+      const deviceType = isTablet ? "Tablet" : isMobile ? "Celular" : "Computador";
+      const browser = ua.includes("Chrome") && !ua.includes("Edg") ? "Chrome"
+        : ua.includes("Safari") && !ua.includes("Chrome") ? "Safari"
+        : ua.includes("Firefox") ? "Firefox"
+        : ua.includes("Edg") ? "Edge"
+        : "Navegador";
+      const platform = ua.includes("iPhone") ? "iPhone" : ua.includes("iPad") ? "iPad"
+        : ua.includes("Android") ? "Android" : ua.includes("Mac") ? "Mac"
+        : ua.includes("Windows") ? "Windows" : ua.includes("Linux") ? "Linux" : "Dispositivo";
+
+      const signOutOthers = async () => {
+        try {
+          await supabase.auth.signOut({ scope: 'others' });
+          showToast("Todas as outras sessões encerradas ✓");
+        } catch(e) { showToast("Erro ao encerrar sessões"); }
+      };
+
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Sessões Ativas" onBack={() => setSessions(false)} />
+          <Card delay={0} style={{ marginBottom: 8, borderLeft: `4px solid ${B.green}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: `${B.green}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.green }}>
+                {IC.device}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{platform}</p>
+                  <Tag color={B.green}>Sessão atual</Tag>
+                </div>
+                <p style={{ fontSize: 11, color: B.muted }}>{browser} · {deviceType}</p>
+                <p style={{ fontSize: 10, color: B.muted }}>Sessão ativa agora</p>
+              </div>
+            </div>
+          </Card>
+          <Card style={{ marginBottom: 12, background: `${B.muted}05`, border: `1px solid ${B.muted}15` }}>
+            <p style={{ fontSize: 11, color: B.muted, textAlign: "center" }}>
+              Outras sessões ativas em outros dispositivos não são visíveis aqui por segurança.
+            </p>
+          </Card>
+          <button onClick={signOutOthers} className="pill full outline" style={{ marginTop: 8, color: B.red, borderColor: `${B.red}30` }}>
+            🔐 Encerrar todas as outras sessões
+          </button>
+        </div>
+      );
+    }
+
+    /* Load 2FA status on first render of security page */
+    const check2FA = async () => {
+      try {
+        const { data } = await supabase.auth.mfa.listFactors();
+        const enrolled = data?.totp?.length > 0 && data.totp[0].status === 'verified';
+        setTwoFA(enrolled);
+      } catch(e) {}
+    };
+
+    /* Security main */
+    return (
+      <div className="pg" ref={el => el && check2FA()}>
+        {ToastEl}
+        <Head title="Segurança" onBack={() => setSub(null)} />
+        <Card onClick={() => setChangePw(true)} style={{ cursor: "pointer", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ color: B.accent, display: "flex" }}>{IC.lock}</span>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Alterar Senha</p><p style={{ fontSize: 11, color: B.muted }}>Gerenciar credenciais de acesso</p></div>
+            {IC.chev()}
+          </div>
+        </Card>
+        <Card style={{ marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ color: B.accent, display: "flex" }}>{IC.shield}</span>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>Autenticação 2 Fatores</p>
+                <p style={{ fontSize: 11, color: twoFA ? B.green : B.muted }}>{twoFA ? "✓ Ativado" : "Desativado"}</p>
+              </div>
+            </div>
+            <Toggle on={twoFA} onToggle={() => { if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
+          </div>
+        </Card>
+        <Card onClick={() => setSessions(true)} style={{ cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ color: B.accent, display: "flex" }}>{IC.device}</span>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Sessões Ativas</p><p style={{ fontSize: 11, color: B.muted }}>Ver e gerenciar dispositivos conectados</p></div>
+            {IC.chev()}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ═══ PERMISSIONS ═══ */
+  const PERM_ROLES = ["Social Media","Designer","Audiovisual / Vídeo","Redator(a)","Gestor de Tráfego","Atendimento","Gerente","Head de Marketing","Analista de Dados","Estagiário(a)"];
+  const PERM_AREAS = [
+    { k:"home", l:"Home / Dashboard", ic:IC.home, subs:[
+      { k:"home.view", l:"Visualizar dashboard" },
+      { k:"home.metrics", l:"Ver métricas financeiras" },
+      { k:"home.export", l:"Exportar dados" },
+    ]},
+    { k:"content", l:"Demandas / Conteúdo", ic:IC.content, subs:[
+      { k:"content.view", l:"Visualizar demandas" },
+      { k:"content.create", l:"Criar novas demandas" },
+      { k:"content.edit", l:"Editar demandas" },
+      { k:"content.delete", l:"Excluir demandas" },
+      { k:"content.approve", l:"Aprovar/rejeitar etapas" },
+      { k:"content.upload", l:"Upload de arquivos" },
+    ]},
+    { k:"chat", l:"Chat", ic:IC.chat, subs:[
+      { k:"chat.view", l:"Visualizar conversas" },
+      { k:"chat.send", l:"Enviar mensagens" },
+      { k:"chat.group", l:"Criar grupos" },
+    ]},
+    { k:"clients", l:"Clientes", ic:IC.clients, subs:[
+      { k:"clients.view", l:"Visualizar clientes" },
+      { k:"clients.edit", l:"Editar dados do cliente" },
+      { k:"clients.financial", l:"Ver financeiro do cliente" },
+      { k:"clients.socials", l:"Conectar/desconectar redes sociais" },
+      { k:"clients.files", l:"Gerenciar arquivos" },
+      { k:"clients.delete", l:"Excluir clientes" },
+    ]},
+    { k:"team", l:"Equipe", ic:IC.team, subs:[
+      { k:"team.view", l:"Visualizar membros" },
+      { k:"team.edit", l:"Editar membros" },
+      { k:"team.add", l:"Adicionar/remover membros" },
+    ]},
+    { k:"financial", l:"Financeiro", ic:IC.financial, subs:[
+      { k:"financial.view", l:"Visualizar receitas" },
+      { k:"financial.invoices", l:"Ver e gerar faturas" },
+      { k:"financial.edit", l:"Editar valores" },
+      { k:"financial.export", l:"Exportar relatórios" },
+    ]},
+    { k:"calendar", l:"Calendário", ic:IC.calendar, subs:[
+      { k:"calendar.view", l:"Visualizar eventos" },
+      { k:"calendar.create", l:"Criar/editar eventos" },
+    ]},
+    { k:"reports", l:"Relatórios", ic:IC.reports, subs:[
+      { k:"reports.view", l:"Visualizar relatórios" },
+      { k:"reports.generate", l:"Gerar relatórios" },
+    ]},
+    { k:"academy", l:"Academy", ic:IC.academy, subs:[
+      { k:"academy.view", l:"Ver cursos" },
+      { k:"academy.manage", l:"Gerenciar cursos" },
+    ]},
+    { k:"library", l:"Biblioteca", ic:IC.library, subs:[
+      { k:"library.view", l:"Visualizar biblioteca" },
+      { k:"library.upload", l:"Upload de materiais" },
+    ]},
+    { k:"checkin", l:"Check-in", ic:IC.checkin, subs:[
+      { k:"checkin.own", l:"Fazer próprio check-in" },
+      { k:"checkin.viewAll", l:"Ver check-ins de todos" },
+    ]},
+    { k:"gamify", l:"Gamificação", ic:IC.trophy, subs:[
+      { k:"gamify.view", l:"Ver ranking" },
+      { k:"gamify.award", l:"Conceder XP/badges" },
+    ]},
+    { k:"news", l:"News", ic:IC.news, subs:[
+      { k:"news.view", l:"Ler notícias" },
+      { k:"news.create", l:"Criar/editar artigos" },
+    ]},
+    { k:"ideas", l:"Ideias", ic:IC.ideas, subs:[
+      { k:"ideas.view", l:"Visualizar ideias" },
+      { k:"ideas.create", l:"Enviar ideias" },
+    ]},
+    { k:"settings", l:"Configurações", ic:IC.settings, subs:[
+      { k:"settings.own", l:"Configurações próprias" },
+      { k:"settings.admin", l:"Configurações da agência" },
+    ]},
+    { k:"ai", l:"Assistente IA", ic:IC.ai, subs:[
+      { k:"ai.use", l:"Usar assistente" },
+    ]},
+    { k:"match4biz", l:"Match4Biz", ic:IC.match4biz, subs:[
+      { k:"match4biz.view", l:"Visualizar matches" },
+    ]},
+  ];
+
+  const loadPerms = async () => { const m = await supaLoadPermissions(); setPermMap(m); setPermLoaded(true); };
+  const togglePerm = (area) => {
+    setPermMap(prev => {
+      const rolePerms = { ...(prev[permRole] || {}) };
+      rolePerms[area] = rolePerms[area] === false ? true : false;
+      return { ...prev, [permRole]: rolePerms };
+    });
+  };
+  const toggleAreaMaster = (area) => {
+    setPermMap(prev => {
+      const rolePerms = { ...(prev[permRole] || {}) };
+      const a = PERM_AREAS.find(x => x.k === area);
+      const allSubs = a?.subs || [];
+      const allBlocked = allSubs.every(s => rolePerms[s.k] === false);
+      /* If all blocked, enable all. Otherwise block all. Also toggle master. */
+      if (allBlocked) {
+        rolePerms[area] = true;
+        allSubs.forEach(s => { delete rolePerms[s.k]; });
+      } else {
+        rolePerms[area] = false;
+        allSubs.forEach(s => { rolePerms[s.k] = false; });
+      }
+      return { ...prev, [permRole]: rolePerms };
+    });
+  };
+  const savePerms = async () => {
+    if (!permRole) return;
+    setPermSaving(true);
+    await supaSavePermissions(permRole, permMap[permRole] || {});
+    setPermSaving(false);
+    showToast("Permissões salvas ✓");
+  };
+
+  if (sub === "permissions") {
+    if (!permLoaded) { loadPerms(); return <div className="pg"><Head title="Permissões" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
+    if (!permRole) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Permissões" onBack={() => { setSub(null); setPermLoaded(false); }} />
+        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Selecione o cargo para configurar o acesso às áreas do app.</p>
+        <p className="sl" style={{ marginBottom:8, fontSize:10, color:B.muted }}>CEO / Proprietário tem acesso total (não editável)</p>
+        {PERM_ROLES.map((r, i) => {
+          const perms = permMap[r] || {};
+          const blockedCount = PERM_AREAS.filter(a => perms[a.k] === false).length;
+          const subBlockedCount = PERM_AREAS.reduce((acc, a) => acc + (a.subs || []).filter(s => perms[s.k] === false).length, 0);
+          const totalBlocked = blockedCount + subBlockedCount;
+          return (
+            <Card key={r} delay={i * 0.03} onClick={() => setPermRole(r)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={r} sz={38} fs={13} />
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:600 }}>{r}</p>
+                  <p style={{ fontSize:11, color:totalBlocked > 0 ? B.orange : B.green }}>{totalBlocked > 0 ? `${totalBlocked} restrição${totalBlocked>1?"ões":""}` : "Acesso total"}</p>
+                </div>
+                {IC.chev()}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    );
+    /* Role selected → show toggles with sub-options */
+    const rolePerms = permMap[permRole] || {};
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={permRole} onBack={() => { setPermRole(null); setExpandedPerm(null); }} right={
+          <button onClick={savePerms} disabled={permSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar"}</button>
+        } />
+        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Configure o acesso detalhado para <strong>{permRole}</strong>. Clique em cada área para ver as sub-opções.</p>
+        {PERM_AREAS.map((a, i) => {
+          const masterAllowed = rolePerms[a.k] !== false;
+          const isExpanded = expandedPerm === a.k;
+          const subBlocked = (a.subs || []).filter(s => rolePerms[s.k] === false).length;
+          return (
+            <div key={a.k} style={{ marginTop:i?6:0 }}>
+              <Card style={{ borderBottomLeftRadius: isExpanded?0:undefined, borderBottomRightRadius: isExpanded?0:undefined }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:masterAllowed?`${B.accent}10`:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", color:masterAllowed?B.accent:B.red }}>{typeof a.ic === "function" ? a.ic(masterAllowed?B.accent:B.red) : a.ic}</div>
+                  <div style={{ flex:1, cursor:"pointer" }} onClick={() => setExpandedPerm(isExpanded ? null : a.k)}>
+                    <p style={{ fontSize:13, fontWeight:600 }}>{a.l}</p>
+                    {subBlocked > 0 && masterAllowed && <p style={{ fontSize:10, color:B.orange }}>{subBlocked} sub-opção{subBlocked>1?"ões":""} restrita{subBlocked>1?"s":""}</p>}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    {a.subs?.length > 0 && <button onClick={() => setExpandedPerm(isExpanded ? null : a.k)} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", transform:isExpanded?"rotate(90deg)":"none", transition:"transform .2s" }}>{IC.chev()}</button>}
+                    <Toggle on={masterAllowed} onToggle={() => toggleAreaMaster(a.k)} />
+                  </div>
+                </div>
+              </Card>
+              {isExpanded && a.subs?.length > 0 && (
+                <div style={{ background:`${B.accent}04`, border:`1px solid ${B.border}`, borderTop:"none", borderBottomLeftRadius:16, borderBottomRightRadius:16, padding:"4px 0" }}>
+                  {a.subs.map((s, j) => {
+                    const subAllowed = rolePerms[s.k] !== false && masterAllowed;
+                    return (
+                      <div key={s.k} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px 10px 60px", opacity: masterAllowed ? 1 : 0.35 }}>
+                        <div style={{ flex:1 }}><p style={{ fontSize:12, color: subAllowed ? B.text : B.muted }}>{s.l}</p></div>
+                        <Toggle on={subAllowed} onToggle={() => masterAllowed && togglePerm(s.k)} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <button onClick={savePerms} disabled={permSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar Permissões"}</button>
+      </div>
+    );
+  }
+
+  /* ═══ AI CONFIG (admin only) ═══ */
+  /* ═══ IDENTIDADE DA AGÊNCIA (admin only) ═══ */
+  if (sub === "agencyid") {
+    if (!agLoaded) return <div className="pg"><Head title="Identidade" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
+
+    const saveAg = async () => {
+      setAgSaving(true);
+      const ok = await supaSetSetting("agency_identity", JSON.stringify(agCfg));
+      setAgSaving(false);
+      if (ok) { showToast("Identidade salva ✓"); if(onAgencyUpdate) onAgencyUpdate(agCfg); }
+      else showToast("Erro ao salvar");
+    };
+
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Identidade da Agência" onBack={() => setSub(null)} />
+
+        {/* Preview card */}
+        <Card style={{ marginBottom:16, background:`${B.accent}08`, border:`1.5px solid ${B.accent}20` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            {agCfg.logo_url
+              ? <img src={agCfg.logo_url} style={{ width:48, height:48, borderRadius:12, objectFit:"contain", background:B.bg }} onError={e=>e.target.style.display="none"} />
+              : <div style={{ width:48, height:48, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🏢</div>
+            }
+            <div>
+              <p style={{ fontSize:15, fontWeight:800, color:B.text }}>{agCfg.name || "Nome da Agência"}</p>
+              <p style={{ fontSize:12, color:B.muted }}>{agCfg.slogan || "Slogan / descrição"}</p>
+              {agCfg.city && <p style={{ fontSize:11, color:B.accent, marginTop:2 }}>📍 {agCfg.city}</p>}
+            </div>
+          </div>
+        </Card>
+
+        <Card style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Nome da agência</p>
+          <input value={agCfg.name} onChange={e=>setAgCfg(p=>({...p,name:e.target.value}))} placeholder="Ex: Unique Marketing 360" className="tinput" />
+        </Card>
+        <Card style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Slogan / descrição curta</p>
+          <input value={agCfg.slogan} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} placeholder="Ex: Agência de marketing 360" className="tinput" />
+        </Card>
+        <Card style={{ marginBottom:10 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Cidade / localização</p>
+          <input value={agCfg.city} onChange={e=>setAgCfg(p=>({...p,city:e.target.value}))} placeholder="Ex: Petrópolis, RJ" className="tinput" />
+        </Card>
+        <Card style={{ marginBottom:16 }}>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>URL do logo (opcional)</p>
+          <input value={agCfg.logo_url} onChange={e=>setAgCfg(p=>({...p,logo_url:e.target.value}))} placeholder="https://..." className="tinput" />
+          <p style={{ fontSize:10, color:B.muted, marginTop:6 }}>Cole o link direto de uma imagem (PNG, SVG). Use imgur.com ou similar para hospedar.</p>
+        </Card>
+
+        <button onClick={saveAg} disabled={agSaving} className="pill full accent" style={{ padding:"14px 0", opacity:agSaving?0.5:1 }}>{agSaving?"Salvando...":"Salvar Identidade"}</button>
+      </div>
+    );
+  }
+
+  if (sub === "aiconfig") {
+    if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
+    const saveAI = async () => {
+      setAiCfgSaving(true);
+      await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
+      await supaSetSetting("gemini_key", aiCfgKeys.gemini_key || "");
+      await supaSetSetting("claude_key", aiCfgKeys.claude_key || "");
+      const ok = await supaSetSetting("ai_provider", aiCfgKeys.ai_provider || "openai");
+      setAiCfgSaving(false);
+      if (ok) showToast("Configuração salva ✓");
+      else showToast("Erro ao salvar.");
+    };
+    const curProvider = aiCfgKeys.ai_provider || "openai";
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Assistente IA" onBack={() => setSub(null)} />
+
+        {/* Provider selector */}
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:8 }}>Provedor ativo</p>
+          <div style={{ display:"flex", gap:8 }}>
+            {[{k:"openai",l:"OpenAI"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p => (
+              <button key={p.k} onClick={() => setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px 8px", borderRadius:12, border:`1.5px solid ${curProvider===p.k?B.accent:B.border}`, background:curProvider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:13, color:curProvider===p.k?B.accent:B.muted }}>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                  {p.k==="openai"
+                    ? <svg width="18" height="18" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    : p.k==="claude"
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="currentColor" opacity="0.85"/><path d="M15.5 8.5L12 15.5 8.5 8.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="8" r="1.5" fill="white"/></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="currentColor" opacity="0.8"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="white"/></svg>
+                  }
+                  <span>{p.l}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* OpenAI key */}
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:4 }}>Chave OpenAI</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em platform.openai.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showApiKey.openai?"text":"password"} value={aiCfgKeys.openai_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, openai_key:e.target.value}))} placeholder="sk-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowApiKey(p=>({...p,openai:!p.openai}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.openai?"🙈":"👁️"}</button>
+          </div>
+          {aiCfgKeys.openai_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — GPT-4o-mini</p>}
+        </Card>
+
+        {/* Gemini key */}
+        <Card style={{ marginBottom:12 }}>
+          <p className="sl" style={{ marginBottom:4 }}>Chave Gemini</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em aistudio.google.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showApiKey.gemini?"text":"password"} value={aiCfgKeys.gemini_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, gemini_key:e.target.value}))} placeholder="AIza..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowApiKey(p=>({...p,gemini:!p.gemini}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.gemini?"🙈":"👁️"}</button>
+          </div>
+          {aiCfgKeys.gemini_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Gemini 2.0 Flash</p>}
+        </Card>
+
+        <Card style={{ marginBottom:10, padding:12 }}>
+          <p style={{ fontSize:12, fontWeight:700, marginBottom:6 }}>🟠 Claude (Anthropic)</p>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em console.anthropic.com → API Keys</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={showApiKey.claude?"text":"password"} value={aiCfgKeys.claude_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, claude_key:e.target.value}))} placeholder="sk-ant-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={() => setShowApiKey(p=>({...p,claude:!p.claude}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.claude?"🙈":"👁️"}</button>
+          </div>
+          {aiCfgKeys.claude_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Claude Sonnet 4</p>}
+        </Card>
+
+        <button onClick={saveAI} disabled={aiCfgSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar Configuração"}</button>
+      </div>
+    );
+  }
+
+  /* ═══ ABOUT ═══ */
+  if (sub === "about") return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Sobre" onBack={() => setSub(null)} />
+      <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12 }}>
+        <Logo size={48} />
+        <p style={{ fontSize: 14, fontWeight: 700, marginTop: 8 }}>UniqueHub Agency</p>
+        <p style={{ fontSize: 12, color: B.muted, marginTop: 4 }}>v1.0.0</p>
+      </Card>
+      <Card style={{ marginBottom: 8 }}>
+        {[
+          { l: "Desenvolvido por", v: "Unique Marketing 360" },
+          { l: "Localização", v: "Petrópolis, RJ — Brasil" },
+          { l: "Website", v: "www.uniquemkt.com.br" },
+          { l: "Versão do sistema", v: "1.0.0 (build 2026.03)" },
+          { l: "Última atualização", v: "01/03/2026" },
+        ].map((item, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
+            <span style={{ fontSize: 12, color: B.muted }}>{item.l}</span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>{item.v}</span>
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <p style={{ fontSize: 11, color: B.muted, lineHeight: 1.6 }}>© 2025-2026 Unique Marketing 360. Todos os direitos reservados. Este software é propriedade exclusiva da Unique Marketing 360 e não pode ser reproduzido sem autorização prévia.</p>
+      </Card>
+    </div>
+  );
+
+  /* ═══ APPROVALS ═══ */
+  if (sub === "approvals") return <ApprovalsPage onBack={() => setSub(null)} />;
+
+  /* ═══ SETTINGS MAIN ═══ */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      {ToastEl}
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Av src={user?.photo} name={user?.name} sz={48} fs={18} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 16, fontWeight: 700 }}>{user?.name}</p>
+            <p style={{ fontSize: 12, color: B.muted }}>{user?.role || "Colaborador"}</p>
+          </div>
+          <Tag color={B.green}>Ativo</Tag>
+        </div>
+      </Card>
+      {[
+        { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
+        ...(user?.supaRole === "admin" ? [{ k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "agencyid", l: "Identidade da Agência", ic: IC.clients(B.accent), desc: "Nome, slogan, logo e localização" }] : []),
+        ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
+        { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema, fontes, cards, densidade e mais" },
+        { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
+        { k: "navmenu", l: "Personalizar Menu", ic: IC.more(B.accent), desc: "Escolha os itens do menu", act: () => onNavEdit && onNavEdit() },
+        { k: "sec", l: "Segurança", ic: IC.lock, desc: "Senha, 2FA, sessões" },
+        { k: "about", l: "Sobre", ic: IC.info, desc: "Versão e termos" },
+      ].map((s, i) => (
+        <Card key={s.k} delay={i * 0.04} onClick={() => s.act ? s.act() : setSub(s.k)} style={{ marginTop: 8, cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.accent }}>{typeof s.ic === "function" ? s.ic(B.accent) : s.ic}</div>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>{s.l}</p><p style={{ fontSize: 11, color: B.muted }}>{s.desc}</p></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {s.badge === "pending" && pendingCount > 0 && <div style={{ width: 20, height: 20, borderRadius: 10, background: B.red, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{pendingCount}</div>}
+              {typeof s.badge === "number" && s.badge > 0 && <div style={{ width: 20, height: 20, borderRadius: 10, background: B.red, color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.badge}</div>}
+              {IC.chev()}
+            </div>
+          </div>
+        </Card>
+      ))}
+      <button onClick={onLogout} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 14, width: "100%", background: `${B.red}08`, borderRadius: 14, border: `1px solid ${B.red}20`, cursor: "pointer", color: B.red, fontFamily: "inherit", marginTop: 20, fontSize: 14 }}>{IC.logout()} Sair da Conta</button>
+      <p style={{ fontSize: 11, color: B.muted, textAlign: "center", marginTop: 12 }}>UniqueHub Agency v1.0 (build 3.04A)</p>
+      </div>
+    </div>
+  );
+}
+
+
+/* ═══════════════════════ NAV SYSTEM ═══════════════════════ */
+const ALL_TABS = [
+  { k: "home", l: "Home", i: IC.home },
+  { k: "content", l: "Conteúdo", i: IC.content },
+  { k: "chat", l: "Chat", i: IC.chat },
+  { k: "clients", l: "Clientes", i: IC.clients },
+  { k: "team", l: "Equipe", i: IC.team },
+  { k: "checkin", l: "Check-in", i: IC.checkin },
+  { k: "academy", l: "Academy", i: IC.academy },
+  { k: "financial", l: "Financeiro", i: IC.financial },
+  { k: "calendar", l: "Calendário", i: IC.calendar },
+  { k: "library", l: "Biblioteca", i: IC.library },
+  { k: "reports", l: "Relatórios", i: IC.reports },
+  { k: "news", l: "News", i: IC.news },
+  { k: "ideas", l: "Ideias", i: IC.ideas },
+  { k: "ai", l: "IA", i: IC.ai },
+  { k: "gamify", l: "Ranking", i: IC.gamify },
+  { k: "match4biz", l: "Match4Biz", i: IC.match4biz },
+  { k: "help", l: "Ajuda", i: IC.help },
+  { k: "search", l: "Buscar", i: IC.search },
+  { k: "settings", l: "Config", i: IC.settings },
+];
+const DEFAULT_NAV = ["home", "content", "chat", "clients"];
+const moreItems = [
+  { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
+  { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
+  { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
+  { k: "ai", l: "Assistente IA" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
+];
+
+function MoreSheet({ onClose, goSub }) {
+  return (
+    <>
+      <div onClick={onClose} className="overlay" />
+      <div className="sheet">
+        <div style={{ width: 32, height: 4, borderRadius: 2, background: B.border, margin: "0 auto 12px" }} />
+        <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: B.text }}>Mais funcionalidades</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+          {moreItems.map(it => {
+            const tab = ALL_TABS.find(t => t.k === it.k);
+            return (
+              <button key={it.k} onClick={() => { goSub(it.k); onClose(); }} className="grid-btn">
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.accent, marginBottom: 2 }}>{tab?.i(B.accent)}</div>
+                <span style={{ fontSize: 10, fontWeight: 600, color: B.text }}>{it.l}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function NavEditSheet({ picks, setPicks, onClose }) {
+  const avail = ALL_TABS.filter(t => t.k !== "more");
+  const toggle = k => { if (picks.includes(k)) { if (picks.length <= 3) return; setPicks(p => p.filter(x => x !== k)); } else { if (picks.length >= 5) return; setPicks(p => [...p, k]); } };
+  const moveNav = (i, d) => { setPicks(prev => { const n = [...prev]; const j = i + d; if (j < 0 || j >= n.length) return prev; [n[i], n[j]] = [n[j], n[i]]; return n; }); };
+
+  return (
+    <>
+      <div onClick={onClose} className="overlay" />
+      <div className="sheet" style={{ maxHeight: "80vh", overflowY: "auto" }}>
+        <div style={{ width: 32, height: 4, borderRadius: 2, background: B.border, margin: "0 auto 12px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div><h3 style={{ fontSize: 16, fontWeight: 800 }}>Personalizar Menu</h3><p style={{ fontSize: 11, color: B.muted, marginTop: 2 }}>Escolha 3 a 5 itens</p></div>
+          <button onClick={onClose} style={{ background: B.accent, color: B.textOnAccent, border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Pronto</button>
+        </div>
+        <p style={{ fontSize: 11, fontWeight: 600, color: B.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Selecionados ({picks.length}/5)</p>
+        {picks.map((k, i) => {
+          const t = ALL_TABS.find(x => x.k === k);
+          if (!t) return null;
+          return (
+            <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: `${B.accent}08`, border: `1.5px solid ${B.accent}20`, marginTop: i ? 6 : 0 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: B.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.i("#192126")}</div>
+              <p style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{t.l}</p>
+              <div style={{ display: "flex", gap: 3 }}>
+                <button disabled={i === 0} onClick={() => moveNav(i, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${B.border}`, background: i === 0 ? "transparent" : `${B.accent}08`, cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: i === 0 ? .3 : 1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="18 15 12 9 6 15" /></svg></button>
+                <button disabled={i === picks.length - 1} onClick={() => moveNav(i, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${B.border}`, background: i === picks.length - 1 ? "transparent" : `${B.accent}08`, cursor: i === picks.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: i === picks.length - 1 ? .3 : 1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="6 9 12 15 18 9" /></svg></button>
+                <button onClick={() => toggle(k)} style={{ width: 28, height: 28, borderRadius: 8, border: "none", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+              </div>
+            </div>
+          );
+        })}
+        <p style={{ fontSize: 11, fontWeight: 600, color: B.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 8 }}>Disponíveis</p>
+        {avail.filter(t => !picks.includes(t.k)).map((t, i) => (
+          <div key={t.k} onClick={() => toggle(t.k)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: B.bgCard, border: `1.5px solid ${B.border}`, marginTop: i ? 6 : 0, cursor: picks.length >= 5 ? "default" : "pointer", opacity: picks.length >= 5 ? .4 : 1 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: `${B.muted}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.i(B.muted)}</div>
+            <p style={{ fontSize: 13, fontWeight: 500, flex: 1, color: B.muted }}>{t.l}</p>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center" }}>{IC.plus}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* ═══════════════════════ PLACEHOLDER PAGES ═══════════════════════ */
+/* ═══════════════════════ TEAM PAGE ═══════════════════════ */
+function TeamPage({ onBack, user, onTeamChange }) {
+  const [sel, setSel] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [editMember, setEditMember] = useState(false);
+  const [form, setForm] = useState({});
+  const [members, setMembers] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [memberExtras, setMemberExtras] = useState(null);
+  const [extrasLoading, setExtrasLoading] = useState(false);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
+  const isAdmin = user?.supaRole === "admin";
+
+  /* Load extras for selected member */
+  useEffect(() => {
+    if (!sel) { setMemberExtras(null); return; }
+    const uid = sel.user_id;
+    if (!uid) { setMemberExtras(null); return; }
+    setExtrasLoading(true);
+    supaGetSetting(`profile_extras_${uid}`).then(raw => {
+      if (raw) {
+        try { setMemberExtras(typeof raw === "string" ? JSON.parse(raw) : raw); }
+        catch { setMemberExtras(null); }
+      } else { setMemberExtras(null); }
+      setExtrasLoading(false);
+    }).catch(() => { setMemberExtras(null); setExtrasLoading(false); });
+  }, [sel]);
+
+  useEffect(() => {
+    if (loaded) return;
+    supaLoadTeam().then(async (rows) => {
+      if (rows.length) {
+        /* Auto-link: link user_id to pending members who registered, but keep status pendente for admin approval */
+        const pending = rows.filter(r => r.status === "pendente" && !r.user_id && r.email);
+        if (pending.length > 0 && supabase) {
+          const emails = pending.map(p => p.email);
+          const { data: profiles } = await supabase.from("profiles").select("id, email").in("email", emails);
+          if (profiles?.length) {
+            for (const p of profiles) {
+              const match = pending.find(m => m.email === p.email);
+              if (match) {
+                await supabase.from("agency_members").update({ user_id: p.id }).eq("id", match.id);
+                match.user_id = p.id;
+                /* Keep status "pendente" — admin must approve manually */
+              }
+            }
+          }
+        }
+        const uids = rows.filter(r=>r.user_id).map(r=>r.user_id);
+        let pm = {};
+        if (uids.length && supabase) {
+          const { data: profs } = await supabase.from("profiles").select("id, photo_url").in("id", uids);
+          (profs||[]).forEach(p => { pm[p.id] = p.photo_url; });
+        }
+        setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", user_id:r.user_id||null, supaId:r.id, photo_url:pm[r.user_id]||null })));
+      }
+      setLoaded(true);
+    });
+  }, [loaded]);
+
+  const ROLES = ["CEO / Proprietário","Gerente","Head de Marketing","Social Media","Designer","Audiovisual / Vídeo","Redator(a)","Gestor de Tráfego","Atendimento","Analista de Dados","Estagiário(a)"];
+
+  const addMember = async () => {
+    if (!form.name?.trim()) return showToast("Informe o nome");
+    if (!form.email?.trim() || !form.email.includes("@")) return showToast("Informe o e-mail (essencial para o convite)");
+    const m = { name:form.name.trim(), role:form.role||"Social Media", email:form.email||"", phone:form.phone||"", since:new Date().toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}), skills:form.skills?form.skills.split(",").map(s=>s.trim()).filter(Boolean):[] };
+    /* Auto-link if profile with this email already exists */
+    if (supabase) {
+      const { data: existingProfile } = await supabase.from("profiles").select("id").eq("email", form.email.trim()).limit(1);
+      if (existingProfile?.[0]?.id) { m.user_id = existingProfile[0].id; m.status = "offline"; }
+    }
+    const row = await supaCreateMember(m);
+    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",user_id:row.user_id||null,supaId:row.id}]); setAdding(false); setForm({}); showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); if(onTeamChange) onTeamChange(); }
+    else { showToast("Erro ao adicionar membro"); }
+  };
+
+  const saveMember = async () => {
+    if (!sel?.supaId) return;
+    const u = { name:form.name||sel.name, role:form.role||sel.role, job_title:form.role||sel.role, email:form.email??sel.email, phone:form.phone??sel.phone, since:form.since??sel.since, skills:form.skills?form.skills.split(",").map(s=>s.trim()).filter(Boolean):sel.skills };
+    await supaUpdateMember(sel.supaId, u);
+    const updated = {...sel,...u};
+    setMembers(p=>p.map(m=>m.id===sel.id?updated:m));
+    setSel(updated); setEditMember(false); setForm({}); showToast("Membro atualizado ✓"); if(onTeamChange) onTeamChange();
+  };
+
+  const deleteMember = async (m) => {
+    if (!confirm(`Remover "${m.name}" da equipe? ${m.user_id ? "A conta de acesso será excluída permanentemente." : ""}`)) return;
+    if (m.supaId) await supaDeleteMember(m.supaId, m.user_id);
+    setMembers(p=>p.filter(x=>x.id!==m.id)); setSel(null); showToast("Membro removido ✓"); if(onTeamChange) onTeamChange();
+  };
+
+  const memberFormJSX = (isEdit) => (
+    <Card>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome *</label>
+      <input value={form.name ?? (isEdit ? sel?.name ?? "" : "")} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Nome completo" className="tinput" style={{ marginBottom:12 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Cargo</label>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+        {ROLES.map(r=>( <button key={r} onClick={()=>setForm(p=>({...p,role:r}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.role ?? (isEdit?sel?.role:""))===r?B.accent:B.border}`, background:(form.role ?? (isEdit?sel?.role:""))===r?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{r}</button> ))}
+      </div>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail *</label>
+      <input value={form.email ?? (isEdit ? sel?.email ?? "" : "")} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="email@uniquemkt.com.br" className="tinput" style={{ marginBottom:12 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
+      <input value={form.phone ?? (isEdit ? sel?.phone ?? "" : "")} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="(24) 99999-0000" className="tinput" style={{ marginBottom:12 }} />
+      {isEdit && <><label className="sl" style={{ display:"block", marginBottom:4 }}>Na equipe desde</label>
+      <input value={form.since ?? (isEdit ? sel?.since ?? "" : "")} onChange={e=>setForm(p=>({...p,since:e.target.value}))} placeholder="01/2023" className="tinput" style={{ marginBottom:12 }} /></>}
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Habilidades (separadas por vírgula)</label>
+      <input value={form.skills ?? (isEdit ? (sel?.skills||[]).join(", ") : "")} onChange={e=>setForm(p=>({...p,skills:e.target.value}))} placeholder="Design, Copywriting, Tráfego" className="tinput" />
+    </Card>
+  );
+
+  if (adding) return (
+    <div className="pg">{ToastEl}
+      <Head title="Novo Membro" onBack={()=>{setAdding(false);setForm({});}} />
+      {memberFormJSX(false)}
+      <button onClick={addMember} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>Adicionar Membro</button>
+    </div>
+  );
+
+  if (sel) {
+    const m = sel;
+    if (editMember) return (
+      <div className="pg">{ToastEl}
+        <Head title="Editar Membro" onBack={()=>{setEditMember(false);setForm({});}} />
+        {memberFormJSX(true)}
+        <button onClick={saveMember} className="pill full accent" style={{ marginTop:16, padding:"14px 0" }}>Salvar</button>
+      </div>
+    );
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={()=>{setSel(null);setEditMember(false);}} right={isAdmin ?
+          <button onClick={()=>deleteMember(m)} className="ib" style={{ color:B.red }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        : null} />
+        <Card style={{ textAlign:"center", marginBottom:12 }}>
+          <div style={{ position:"relative", display:"inline-block" }}>
+            <Av src={m.photo_url} name={m.name} sz={72} fs={28} />
+            <div style={{ position:"absolute", bottom:2, right:2, width:14, height:14, borderRadius:7, background:m.status==="pendente"?B.orange:B.green, border:"3px solid #fff" }} />
+          </div>
+          <h3 style={{ fontSize:18, fontWeight:800, marginTop:8 }}>{m.name}</h3>
+          <p style={{ fontSize:13, color:B.accent, fontWeight:600 }}>{m.role}</p>
+          {m.status==="pendente" ? <div style={{ marginTop:8, padding:"6px 14px", borderRadius:8, background:`${B.orange}12`, display:"inline-flex", alignItems:"center", gap:6 }}>
+            <div style={{ width:8, height:8, borderRadius:4, background:B.orange }} />
+            <span style={{ fontSize:11, fontWeight:700, color:B.orange }}>Aguardando cadastro</span>
+          </div> : <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Cadastrado no sistema</p>}
+        </Card>
+        {m.status==="pendente" && <button onClick={()=>{
+          const link = `${window.location.origin}?convite=${encodeURIComponent(m.email)}`;
+          navigator.clipboard.writeText(link).then(()=>showToast("Link copiado ✓")).catch(()=>{
+            const ta=document.createElement("textarea"); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); showToast("Link copiado ✓");
+          });
+        }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.orange}10`, border:`1.5px solid ${B.orange}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.orange, marginBottom:12 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          Copiar link de convite
+        </button>}
+        <p className="sl" style={{ marginBottom:6 }}>Informações</p>
+        <Card>
+          {[{l:"E-mail",v:m.email},{l:"Telefone",v:m.phone},{l:"Na equipe desde",v:m.since},{l:"Cargo",v:m.role}].map((item,i)=>(
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+              <span style={{ fontSize:13, fontWeight:600 }}>{item.v||"—"}</span>
+            </div>
+          ))}
+        </Card>
+        {sel.user_id && <>
+          <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Dados adicionais</p>
+          {extrasLoading ? <Card><p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:8 }}>Carregando...</p></Card> :
+          memberExtras && (memberExtras.social || memberExtras.birth || memberExtras.blood || memberExtras.cpf || memberExtras.pix) ? <Card>
+            {[
+              {l:"Rede social",v:memberExtras.social},
+              {l:"Data nascimento",v:memberExtras.birth ? (()=>{ const d=memberExtras.birth.replace(/\D/g,""); return d.length===8?d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4):memberExtras.birth; })() : null},
+              {l:"Tipo sanguíneo",v:memberExtras.blood},
+              {l:"CPF",v:memberExtras.cpf ? (()=>{ const d=memberExtras.cpf.replace(/\D/g,""); return d.length===11?d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9):memberExtras.cpf; })() : null},
+            ].filter(x=>x.v).map((item,i)=>(
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+                <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
+              </div>
+            ))}
+            {memberExtras.pix && <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
+              <div>
+                <span style={{ fontSize:11, color:B.muted }}>Chave PIX</span>
+                <p style={{ fontSize:13, fontWeight:600 }}>{memberExtras.pix}</p>
+              </div>
+              <button onClick={()=>{ navigator.clipboard.writeText(memberExtras.pix).then(()=>showToast("PIX copiado ✓")).catch(()=>{}); }} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", gap:4 }}>{IC.clipboard}<span>Copiar</span></button>
+            </div>}
+          </Card> :
+          <Card><p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:8 }}>Membro ainda não preencheu dados extras no perfil.</p></Card>}
+        </>}
+        {m.skills && m.skills.length > 0 && <>
+          <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Habilidades</p>
+          <Card>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {m.skills.map((s,i) => <Tag key={i} color={B.accent}>{s}</Tag>)}
+            </div>
+          </Card>
+        </>}
+        {isAdmin && <button onClick={()=>{setEditMember(true);setForm({name:m.name,role:m.role,email:m.email,phone:m.phone,since:m.since,skills:(m.skills||[]).join(", ")});}} style={{ marginTop:12, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar membro
+        </button>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.team} label="Pessoas" title="Equipe" collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
+            <div><p style={{ fontSize:22, fontWeight:900 }}>{members.length}</p><p style={{ fontSize:10, opacity:.7 }}>Membros</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{members.filter(m=>m.status!=="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Cadastrados</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{members.filter(m=>m.status==="pendente").length}</p><p style={{ fontSize:10, opacity:.7 }}>Pendentes</p></div>
+          </div>
+          {isAdmin && <button onClick={()=>{setForm({});setAdding(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>{IC.plus} Novo</button>}
+        </div>
+      </Card>
+      {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Carregando...</p>}
+      {loaded && members.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20 }}>Nenhum membro cadastrado</p>}
+      {members.map((m,i) => (
+        <Card key={m.id} delay={i*0.03} onClick={() => setSel(m)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ position:"relative" }}>
+              <Av src={m.photo_url} name={m.name} sz={44} fs={16} />
+              <div style={{ position:"absolute", bottom:0, right:0, width:12, height:12, borderRadius:6, background:m.status==="pendente"?B.orange:B.green, border:"2px solid #fff" }} />
+            </div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>{m.name}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <p style={{ fontSize:11, color:B.accent, fontWeight:500 }}>{m.role}</p>
+                {m.status==="pendente" && <span style={{ fontSize:9, fontWeight:700, color:B.orange, background:`${B.orange}12`, padding:"2px 6px", borderRadius:6 }}>Aguardando cadastro</span>}
+              </div>
+            </div>
+            <div style={{ textAlign:"right" }}>
+              <p style={{ fontSize:10, color:B.muted }}>Desde {m.since||"—"}</p>
+            </div>
+          </div>
+        </Card>
+      ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
+function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
+  const CDATA = propClients || [];
+  const TEAM = propTeam || [];
+  const today = new Date();
+  const [curMonth, setCurMonth] = useState(today.getMonth());
+  const [curYear, setCurYear] = useState(today.getFullYear());
+  const [selDay, setSelDay] = useState(today.getDate());
+  const [viewEvent, setViewEvent] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [eventType, setEventType] = useState(null);
+  const [form, setForm] = useState({});
+  const { showToast, ToastEl } = useToast();
+
+  const EVENT_TYPES = [
+    { k:"meeting", l:"Reunião", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>, c:B.blue, desc:"Interna ou com cliente, online ou presencial" },
+    { k:"recording", l:"Gravação", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>, c:B.orange, desc:"Vídeo, foto, produção audiovisual" },
+    { k:"event", l:"Evento", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, c:B.purple, desc:"Workshop, feira, inauguração, live" },
+    { k:"reminder", l:"Lembrete", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>, c:B.cyan, desc:"Prazo, entrega, tarefa, nota pessoal" },
+    { k:"deadline", l:"Deadline", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, c:B.red, desc:"Data limite de entrega" },
+  ];
+
+  const EQUIPMENTS = ["Câmera DSLR","Câmera Mirrorless","Tripé","Gimbal","Drone","Ring Light","Softbox","Microfone Lapela","Microfone Boom","Luz LED Portátil","Rebatedor","Fundo Chroma","Cartão de Memória Extra","Bateria Extra","Notebook p/ Review","HD Externo"];
+
+  const EVENTS_MOCK = [
+    { id:1, type:"meeting", title:"Reunião semanal — TechSmart", time:"09:00", color:B.blue, day:3, month:2, year:2026, createdBy:"Matheus", meetingMode:"online", meetingScope:"client", client:"TechSmart", participants:["Matheus","Alice"], location:"Google Meet", notes:"Alinhamento de pauta mensal" },
+    { id:2, type:"deadline", title:"Entrega posts — Casa Nova", time:"12:00", color:B.red, day:3, month:2, year:2026, createdBy:"Alice", notes:"8 posts para feed + 5 stories" },
+    { id:3, type:"recording", title:"Gravar vídeos — Studio Fitness", time:"14:00", color:B.orange, day:4, month:2, year:2026, createdBy:"Victoria", client:"Studio Fitness", participants:["Victoria","Matheus"], location:"Academia Studio Fitness, Petrópolis", equipment:["Câmera Mirrorless","Gimbal","Microfone Lapela","Luz LED Portátil","Bateria Extra"], notes:"3 reels de exercícios + 1 depoimento de aluno" },
+    { id:4, type:"meeting", title:"Review mensal — Bella Estética", time:"10:00", color:B.blue, day:5, month:2, year:2026, createdBy:"Matheus", meetingMode:"presencial", meetingScope:"client", client:"Bella Estética", participants:["Matheus","Alice"], location:"Clínica Bella Estética, Av. Brasil 456", notes:"Apresentar relatório de performance de fevereiro" },
+    { id:5, type:"deadline", title:"Publicar campanha — Pet Love", time:"16:00", color:B.red, day:5, month:2, year:2026, createdBy:"Alice", client:"Pet Love Shop", notes:"Campanha de março, 4 posts agendados" },
+    { id:6, type:"recording", title:"Sessão de fotos — Padaria Real", time:"08:00", color:B.orange, day:6, month:2, year:2026, createdBy:"Victoria", client:"Padaria Real", participants:["Victoria"], location:"Padaria Real, Rua do Pão 10", equipment:["Câmera DSLR","Tripé","Softbox","Rebatedor","Cartão de Memória Extra"], notes:"Fotos de produtos novos para cardápio digital" },
+    { id:7, type:"meeting", title:"Planejamento mensal", time:"09:00", color:B.blue, day:7, month:2, year:2026, createdBy:"Matheus", meetingMode:"presencial", meetingScope:"internal", participants:["Matheus","Alice","Allan","Victoria"], location:"Escritório Unique", notes:"Planejamento do mês de março, metas e KPIs" },
+    { id:8, type:"reminder", title:"Enviar relatórios mensais", time:"18:00", color:B.cyan, day:10, month:2, year:2026, createdBy:"Matheus", notes:"Enviar relatórios para todos os clientes Premium" },
+    { id:9, type:"meeting", title:"Onboarding — Clínica Saúde+", time:"11:00", color:B.blue, day:12, month:2, year:2026, createdBy:"Matheus", meetingMode:"online", meetingScope:"client", client:"Clínica Saúde+", participants:["Matheus","Alice"], location:"Zoom", notes:"Primeiro alinhamento — coletar briefing e acessos" },
+    { id:10, type:"recording", title:"Gravar reels — TechSmart", time:"15:00", color:B.orange, day:14, month:2, year:2026, createdBy:"Victoria", client:"TechSmart", participants:["Victoria","Allan"], location:"Loja TechSmart, Rua Tech 789", equipment:["Câmera Mirrorless","Gimbal","Microfone Lapela","Ring Light","Notebook p/ Review","HD Externo"], notes:"5 reels de review de produtos, unboxing rápido" },
+    { id:11, type:"event", title:"Workshop de Redes Sociais", time:"19:00", color:B.purple, day:17, month:2, year:2026, createdBy:"Matheus", participants:["Matheus","Alice","Allan"], location:"Espaço Coworking, Centro Petrópolis", notes:"Workshop aberto para clientes e prospects, 2h de duração" },
+    { id:12, type:"meeting", title:"Reunião alinhamento equipe", time:"09:00", color:B.blue, day:20, month:2, year:2026, createdBy:"Matheus", meetingMode:"presencial", meetingScope:"internal", participants:["Matheus","Alice","Allan","Victoria"], location:"Escritório Unique", notes:"Revisão de processos e feedback" },
+    { id:13, type:"deadline", title:"Publicar campanha março", time:"10:00", color:B.red, day:1, month:2, year:2026, createdBy:"Alice" },
+  ];
+  const [events, setEvents] = useState([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [pgC, setPgC] = useState(false);
+  const pgRef = useRef(null);
+
+  useEffect(() => {
+    if (!supabase || eventsLoaded) return;
+    supaLoadEvents().then(rows => {
+      if (rows) {
+        if (rows.length > 0) {
+          setEvents(rows.map(r => mergeSupaEvent(r)));
+        } else {
+          setEvents([]);
+        }
+      } else {
+        setEvents(EVENTS_MOCK);
+      }
+      setEventsLoaded(true);
+    });
+  }, [eventsLoaded]);
+
+  const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const DAYS_W = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  const firstDow = new Date(curYear, curMonth, 1).getDay();
+
+  const dayEvents = events.filter(e => e.day === selDay && e.month === curMonth && e.year === curYear);
+  const hasEvents = (d) => events.some(e => e.day === d && e.month === curMonth && e.year === curYear);
+  const isToday = (d) => d === today.getDate() && curMonth === today.getMonth() && curYear === today.getFullYear();
+  const prevMonth = () => { if (curMonth===0){setCurMonth(11);setCurYear(y=>y-1);}else setCurMonth(m=>m-1); setSelDay(1); };
+  const nextMonth = () => { if (curMonth===11){setCurMonth(0);setCurYear(y=>y+1);}else setCurMonth(m=>m+1); setSelDay(1); };
+
+  const toggleArr = (arr, val) => arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val];
+
+  const saveEvent = async () => {
+    if (!form.title?.trim()) return showToast("Informe o título do evento");
+    const et = EVENT_TYPES.find(t=>t.k===eventType);
+    const ne = {
+      id: Date.now(), type: eventType, title: form.title.trim(), time: form.time || "09:00",
+      color: et?.c || B.blue, day: selDay, month: curMonth, year: curYear,
+      createdBy: "Matheus", notes: form.notes || "",
+      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: form.meetingScope || "internal", participants: form.participants || [], client: form.client || "", location: form.location || "" }),
+      ...(eventType === "recording" && { client: form.client || "", participants: form.participants || [], location: form.location || "", equipment: form.equipment || [] }),
+      ...(eventType === "event" && { participants: form.participants || [], location: form.location || "" }),
+      ...(eventType === "reminder" && {}),
+      ...(eventType === "deadline" && { client: form.client || "" }),
+    };
+    const saved = await supaCreateEvent(ne);
+    if (saved) { ne.id = saved.id; ne.supaId = saved.id; }
+    setEvents(p=>[...p, ne]);
+    setAdding(false); setEventType(null); setForm({});
+    showToast("Adicionado ao calendário! ✓");
+  };
+
+  const deleteEvent = (id) => {
+    const ev = events.find(e => e.id === id);
+    if (ev?.supaId) supaDeleteEvent(ev.supaId);
+    setEvents(p=>p.filter(e=>e.id!==id)); setViewEvent(null); showToast("Evento removido");
+  };
+
+  const etCfg = (type) => EVENT_TYPES.find(t=>t.k===type) || EVENT_TYPES[0];
+
+  /* ── VIEW EVENT DETAIL ── */
+  if (viewEvent) {
+    const ev = viewEvent;
+    const et = etCfg(ev.type);
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={() => setViewEvent(null)} right={
+          <button onClick={() => deleteEvent(ev.id)} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 12px", borderRadius:10, background:`${B.red}08`, border:`1.5px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Excluir
+          </button>
+        } />
+        <Card style={{ marginBottom:12, borderLeft:`4px solid ${et.c}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+            <div style={{ width:44, height:44, borderRadius:14, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c }}>{et.icon}</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:16, fontWeight:800 }}>{ev.title}</p>
+              <p style={{ fontSize:12, color:B.muted }}>{et.l} · {ev.day} de {MONTHS[ev.month]} de {ev.year}</p>
+            </div>
+          </div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            <Tag color={et.c}>{et.l}</Tag>
+            <Tag color={B.dark}>{ev.time}</Tag>
+            {ev.meetingMode && <Tag color={ev.meetingMode==="online"?B.blue:B.green}>{ev.meetingMode==="online"?"Online":"Presencial"}</Tag>}
+            {ev.meetingScope && <Tag color={ev.meetingScope==="internal"?B.purple:B.orange}>{ev.meetingScope==="internal"?"Interna":"Com cliente"}</Tag>}
+          </div>
+        </Card>
+
+        {/* Details */}
+        <Card>
+          {[
+            { l:"Criado por", v:ev.createdBy, show:true },
+            { l:"Horário", v:ev.time, show:true },
+            { l:"Local", v:ev.location, show:!!ev.location },
+            { l:"Cliente", v:ev.client, show:!!ev.client },
+            { l:"Modo", v:ev.meetingMode==="online"?"Online (remoto)":"Presencial", show:!!ev.meetingMode },
+            { l:"Escopo", v:ev.meetingScope==="internal"?"Reunião interna (equipe)":"Reunião com cliente", show:!!ev.meetingScope },
+          ].filter(x=>x.show).map((item,i) => (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+              <span style={{ fontSize:13, fontWeight:600, textAlign:"right", maxWidth:"60%" }}>{item.v||"—"}</span>
+            </div>
+          ))}
+        </Card>
+
+        {/* Participants */}
+        {ev.participants && ev.participants.length > 0 && <>
+          <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Participantes ({ev.participants.length})</p>
+          <Card>
+            {ev.participants.map((name,i) => {
+              const m = TEAM.find(t=>t.name===name);
+              return (
+                <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                  <Av name={name} sz={32} fs={12} />
+                  <div><p style={{ fontSize:13, fontWeight:600 }}>{name}</p><p style={{ fontSize:10, color:B.muted }}>{m?.role||"Equipe"}</p></div>
+                </div>
+              );
+            })}
+          </Card>
+        </>}
+
+        {/* Equipment */}
+        {ev.equipment && ev.equipment.length > 0 && <>
+          <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Equipamentos ({ev.equipment.length})</p>
+          <Card>
+            {ev.equipment.map((eq,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+                <div style={{ width:24, height:24, borderRadius:8, background:`${B.orange}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span style={{ fontSize:12, fontWeight:500 }}>{eq}</span>
+              </div>
+            ))}
+          </Card>
+        </>}
+
+        {/* Notes */}
+        {ev.notes && <>
+          <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Observações</p>
+          <Card><p style={{ fontSize:13, lineHeight:1.6 }}>{ev.notes}</p></Card>
+        </>}
+      </div>
+    );
+  }
+
+  /* ── ADD EVENT: PICK TYPE ── */
+  if (adding && !eventType) return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Novo no Calendário" onBack={() => { setAdding(false); setForm({}); }} />
+      <Card style={{ marginBottom:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+        <p style={{ fontSize:13, fontWeight:700 }}>{selDay} de {MONTHS[curMonth]} de {curYear}</p>
+        <p style={{ fontSize:11, color:B.muted }}>Escolha o tipo de evento</p>
+      </Card>
+      {EVENT_TYPES.map((et, i) => (
+        <Card key={et.k} delay={i*0.03} onClick={() => setEventType(et.k)} style={{ marginTop:i?8:0, cursor:"pointer", borderLeft:`4px solid ${et.c}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:44, height:44, borderRadius:14, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c }}>{et.icon}</div>
+            <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{et.l}</p><p style={{ fontSize:11, color:B.muted }}>{et.desc}</p></div>
+            {IC.chev()}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  /* ── ADD EVENT: FORM ── */
+  if (adding && eventType) {
+    const et = etCfg(eventType);
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={`Nova ${et.l}`} onBack={() => { setEventType(null); setForm({}); }} />
+        <Card style={{ marginBottom:12, background:`${et.c}06`, border:`1px solid ${et.c}15` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ color:et.c }}>{et.icon}</div>
+            <div><p style={{ fontSize:13, fontWeight:700, color:et.c }}>{et.l}</p><p style={{ fontSize:11, color:B.muted }}>{selDay} de {MONTHS[curMonth]} de {curYear}</p></div>
+          </div>
+        </Card>
+
+        {/* Title */}
+        <Card style={{ marginBottom:8 }}>
+          <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
+          <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder={eventType==="meeting"?"Ex: Reunião mensal com TechSmart":eventType==="recording"?"Ex: Gravar reels no Studio Fitness":eventType==="event"?"Ex: Workshop de Redes Sociais":"Ex: Enviar relatórios mensais"} className="tinput" />
+        </Card>
+
+        {/* Time */}
+        <Card style={{ marginBottom:8 }}>
+          <label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label>
+          <input type="time" value={form.time||"09:00"} onChange={e=>setForm(p=>({...p,time:e.target.value}))} className="tinput" />
+        </Card>
+
+        {/* Meeting-specific */}
+        {eventType === "meeting" && <>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Modalidade</label>
+            <div style={{ display:"flex", gap:6 }}>
+              {[{k:"online",l:"Online",ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>},{k:"presencial",l:"Presencial",ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>}].map(m=>(
+                <button key={m.k} onClick={()=>setForm(p=>({...p,meetingMode:m.k}))} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", borderRadius:10, border:`1.5px solid ${(form.meetingMode||"online")===m.k?B.accent:B.border}`, background:(form.meetingMode||"online")===m.k?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:(form.meetingMode||"online")===m.k?B.accent:B.muted }}>{m.ic} {m.l}</button>
+              ))}
+            </div>
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Tipo da reunião</label>
+            <div style={{ display:"flex", gap:6 }}>
+              {[{k:"internal",l:"Interna (equipe)",c:B.purple},{k:"client",l:"Com cliente",c:B.orange}].map(s=>(
+                <button key={s.k} onClick={()=>setForm(p=>({...p,meetingScope:s.k}))} style={{ flex:1, padding:"12px 0", borderRadius:10, border:`1.5px solid ${(form.meetingScope||"internal")===s.k?s.c:B.border}`, background:(form.meetingScope||"internal")===s.k?`${s.c}08`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:(form.meetingScope||"internal")===s.k?s.c:B.muted }}>{s.l}</button>
+              ))}
+            </div>
+          </Card>
+        </>}
+
+        {/* Client picker (meeting with client, recording, deadline) */}
+        {((eventType==="meeting" && (form.meetingScope||"internal")==="client") || eventType==="recording" || eventType==="deadline") && (
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {CDATA.map(c=>(
+                <button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{c.name}</button>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Participants (meeting, recording, event) */}
+        {(eventType==="meeting" || eventType==="recording" || eventType==="event") && (
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Participantes da equipe</label>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {TEAM.map(m=>{
+                const selected = (form.participants||[]).includes(m.name);
+                return (
+                  <button key={m.id} onClick={()=>setForm(p=>({...p,participants:toggleArr(p.participants||[],m.name)}))} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:10, border:`1.5px solid ${selected?B.accent:B.border}`, background:selected?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit" }}>
+                    <Av name={m.name} sz={20} fs={8} />
+                    <span style={{ fontSize:11, fontWeight:600 }}>{m.name}</span>
+                    {selected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Location */}
+        {(eventType==="meeting" || eventType==="recording" || eventType==="event") && (
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Local</label>
+            <input value={form.location||""} onChange={e=>setForm(p=>({...p,location:e.target.value}))} placeholder={eventType==="meeting"?(form.meetingMode||"online")==="online"?"Ex: Google Meet, Zoom":"Ex: Escritório Unique, Rua...":"Ex: Endereço do cliente, estúdio..."} className="tinput" />
+          </Card>
+        )}
+
+        {/* Equipment (recording only) */}
+        {eventType === "recording" && (
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Equipamentos</label>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
+              {EQUIPMENTS.map(eq => {
+                const selected = (form.equipment||[]).includes(eq);
+                return (
+                  <button key={eq} onClick={()=>setForm(p=>({...p,equipment:toggleArr(p.equipment||[],eq)}))} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 10px", borderRadius:8, border:`1.5px solid ${selected?B.orange:B.border}`, background:selected?`${B.orange}08`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                    {selected ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : <div style={{ width:14, height:14, borderRadius:4, border:`1.5px solid ${B.border}` }}/>}
+                    <span style={{ fontSize:10, fontWeight:selected?600:400, color:selected?B.dark:B.muted }}>{eq}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {(form.equipment||[]).length > 0 && <p style={{ fontSize:10, color:B.orange, fontWeight:600, marginTop:6 }}>{(form.equipment||[]).length} equipamento{(form.equipment||[]).length>1?"s":""} selecionado{(form.equipment||[]).length>1?"s":""}</p>}
+          </Card>
+        )}
+
+        {/* Notes */}
+        <Card style={{ marginBottom:8 }}>
+          <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações</label>
+          <textarea value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Detalhes adicionais..." className="tinput" style={{ minHeight:60, resize:"vertical" }} />
+        </Card>
+
+        {/* Creator info */}
+        <Card style={{ marginBottom:8, background:`${B.muted}04` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <Av name="Matheus" sz={28} fs={10} />
+            <div><p style={{ fontSize:11, color:B.muted }}>Criado por</p><p style={{ fontSize:12, fontWeight:600 }}>Matheus</p></div>
+          </div>
+        </Card>
+
+        <button onClick={saveEvent} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, marginTop:4 }}>
+          {et.icon} Salvar {et.l}
+        </button>
+      </div>
+    );
+  }
+
+  /* ── MAIN CALENDAR VIEW ── */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.calendar} label="Agenda" title="Calendário" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <Card style={{ marginBottom:10 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+          <button onClick={prevMonth} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
+          <p style={{ fontSize:15, fontWeight:800 }}>{MONTHS[curMonth]} {curYear}</p>
+          <button onClick={nextMonth} className="ib" style={{ width:32, height:32 }}>{IC.chev()}</button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, textAlign:"center", marginBottom:4 }}>
+          {DAYS_W.map(d=><span key={d} style={{ fontSize:10, fontWeight:600, color:B.muted }}>{d}</span>)}
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
+          {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`}/>)}
+          {Array.from({length:daysInMonth}).map((_,i) => {
+            const d=i+1; const selected=d===selDay; const tdy=isToday(d); const has=hasEvents(d);
+            const dayEvCount = events.filter(e=>e.day===d&&e.month===curMonth&&e.year===curYear).length;
+            return (
+              <button key={d} onClick={()=>setSelDay(d)} style={{ width:"100%", aspectRatio:"1", borderRadius:12, border:tdy&&!selected?`2px solid ${B.accent}`:"2px solid transparent", background:selected?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:selected||tdy?800:400, color:selected?B.dark:tdy?B.accent:B.dark, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, position:"relative" }}>
+                {d}
+                {has && <div style={{ display:"flex", gap:2, position:"absolute", bottom:2 }}>
+                  {dayEvCount <= 3 ? Array.from({length:dayEvCount}).map((_,j)=><div key={j} style={{ width:4, height:4, borderRadius:2, background:selected?B.dark:B.accent }}/>) : <div style={{ width:4, height:4, borderRadius:2, background:selected?B.dark:B.accent }}/>}
+                </div>}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Events */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+        <p className="sl">{selDay} de {MONTHS[curMonth]} — {dayEvents.length} evento{dayEvents.length!==1?"s":""}</p>
+        <button onClick={()=>setAdding(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>{IC.plus} Novo</button>
+      </div>
+      {dayEvents.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:24 }}>
+          <p style={{ fontSize:12, color:B.muted }}>Nenhum evento neste dia</p>
+          <button onClick={()=>setAdding(true)} style={{ marginTop:8, padding:"8px 16px", borderRadius:8, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.accent }}>+ Adicionar evento</button>
+        </Card>
+      ) : dayEvents.sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
+        const et = etCfg(ev.type);
+        return (
+          <Card key={ev.id} delay={i*0.03} onClick={()=>setViewEvent(ev)} style={{ marginTop:i?6:0, borderLeft:`4px solid ${et.c}`, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c }}>{et.icon}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                  <span style={{ fontSize:10, color:B.muted }}>{ev.time}</span>
+                  <span style={{ fontSize:10, color:et.c, fontWeight:600 }}>{et.l}</span>
+                  {ev.participants && ev.participants.length > 0 && <span style={{ fontSize:10, color:B.muted }}> · {ev.participants.length} pessoa{ev.participants.length>1?"s":""}</span>}
+                </div>
+              </div>
+              {ev.participants && ev.participants.length > 0 && (
+                <div style={{ display:"flex" }}>
+                  {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-8:0, zIndex:3-j }}><Av name={name} sz={24} fs={9} /></div>)}
+                </div>
+              )}
+            </div>
+            {ev.createdBy && <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>Criado por {ev.createdBy}{ev.location ? ` · ${ev.location}` : ""}</p>}
+          </Card>
+        );
+      })}
+      </div>
+    </div>
+  );
+}
+
+function LibraryPage({ onBack, clients: propClients, onUpdateClients }) {
+  const CDATA = propClients || [];
+  const [filterClient, setFilterClient] = useState("all");
+  const [filterCat, setFilterCat] = useState("all");
+  const [search, setSearch] = useState("");
+  const [viewFile, setViewFile] = useState(null);
+  const [addingFile, setAddingFile] = useState(false);
+  const [fileForm, setFileForm] = useState({});
+  const [uploading, setUploading] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
+
+  const LIB_CATS = [
+    { key:"brand", label:"Manual de Marca", icon:"📕", c:B.red },
+    { key:"feed", label:"Posts Feed", icon:"📱", c:B.blue },
+    { key:"stories", label:"Stories", icon:"📲", c:B.pink },
+    { key:"reels", label:"Capas de Reels", icon:"🎬", c:B.purple },
+    { key:"videos", label:"Vídeos", icon:"🎥", c:B.orange },
+    { key:"digital", label:"Artes Digitais", icon:"🖥️", c:B.cyan },
+    { key:"print", label:"Material Impresso", icon:"🖨️", c:B.green },
+    { key:"docs", label:"Documentos", icon:"📄", c:B.muted },
+    { key:"ref", label:"Referências", icon:"💡", c:B.yellow },
+    { key:"other", label:"Outros", icon:"📁", c:B.muted },
+  ];
+  const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
+  const getFileCat = (f) => catMap[f.category] || "other";
+
+  const fileIcon = (name) => {
+    const ext = name.split(".").pop()?.toLowerCase();
+    if (["jpg","jpeg","png","gif","webp","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
+    if (["mp4","mov","avi","mkv"].includes(ext)) return { ic: IC.vid, c: B.orange };
+    if (["pdf"].includes(ext)) return { ic: IC.doc, c: B.red };
+    if (["psd","ai","fig","xd"].includes(ext)) return { ic: IC.palette, c: B.purple };
+    if (["doc","docx","txt"].includes(ext)) return { ic: IC.doc, c: B.blue };
+    return { ic: IC.doc, c: B.muted };
+  };
+
+  // Gather all files from all clients
+  const allFiles = CDATA.flatMap(c => (c.files||[]).map(f => ({ ...f, clientName: c.name, clientId: c.id })));
+
+  const filtered = allFiles.filter(f => {
+    if (filterClient !== "all" && f.clientName !== filterClient) return false;
+    if (filterCat !== "all" && getFileCat(f) !== filterCat) return false;
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      if (!f.name.toLowerCase().includes(s) && !f.clientName.toLowerCase().includes(s) && !(f.category||"").toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  // Stats
+  const totalFiles = allFiles.length;
+  const clientsWithFiles = [...new Set(allFiles.map(f => f.clientName))].length;
+  const catCounts = {};
+  allFiles.forEach(f => { const k = getFileCat(f); catCounts[k] = (catCounts[k]||0)+1; });
+  const topCat = Object.entries(catCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  // Group by category or client
+  const grouped = {};
+  filtered.forEach(f => {
+    const key = filterClient !== "all" ? (f.category || "Outros") : f.clientName;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(f);
+  });
+
+  /* ── FILE DETAIL VIEW ── */
+  if (viewFile) {
+    const f = viewFile;
+    const fi = fileIcon(f.name);
+    const cat = LIB_CATS.find(c => c.key === getFileCat(f));
+    const ext = f.name.split(".").pop()?.toLowerCase();
+    const isImage = ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
+    const isVideo = ["mp4","mov","avi","mkv","webm"].includes(ext);
+    const isPdf = ext === "pdf";
+    const hasUrl = !!f.url;
+
+    const handleDownload = () => {
+      if (hasUrl) {
+        const a = document.createElement("a");
+        a.href = f.url;
+        a.download = f.name;
+        a.target = "_blank";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast("Download iniciado ✓");
+      } else {
+        showToast("Arquivo de demonstração — sem URL real para download");
+      }
+    };
+
+    const handleOpen = () => {
+      if (hasUrl) {
+        window.open(f.url, "_blank", "noopener");
+      } else {
+        showToast("Arquivo de demonstração — sem URL real");
+      }
+    };
+
+    const handleCopyLink = () => {
+      if (hasUrl) {
+        navigator.clipboard.writeText(f.url).then(() => showToast("Link copiado! ✓")).catch(() => showToast("Erro ao copiar"));
+      } else {
+        showToast("Arquivo de demonstração — sem link para copiar");
+      }
+    };
+
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={() => setViewFile(null)} />
+
+        {/* Preview area */}
+        {hasUrl && isImage && (
+          <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
+            <img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain", background:`${B.dark}` }} />
+          </Card>
+        )}
+        {hasUrl && isVideo && (
+          <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
+            <video src={f.url+"#t=0.1"} controls playsInline preload="metadata" style={{ width:"100%", maxHeight:300, background:B.dark }} />
+          </Card>
+        )}
+
+        {/* File icon + name when no preview */}
+        <Card style={{ textAlign:"center", marginBottom:12 }}>
+          {!(hasUrl && (isImage || isVideo)) && (
+            <div style={{ width:64, height:64, borderRadius:20, background:`${fi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, margin:"0 auto 12px", transform:"scale(1.5)" }}>{fi.ic}</div>
+          )}
+          <h3 style={{ fontSize:15, fontWeight:800, marginTop: (hasUrl && (isImage||isVideo)) ? 0 : 16, wordBreak:"break-all" }}>{f.name}</h3>
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
+            <Tag color={fi.c}>{ext?.toUpperCase()}</Tag>
+            <Tag color={cat?.c || B.muted}>{cat?.icon} {cat?.label || "Outros"}</Tag>
+          </div>
+        </Card>
+
+        {/* ACTION BUTTONS */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <button onClick={handleDownload} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Baixar
+          </button>
+          <button onClick={handleOpen} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Abrir
+          </button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <button onClick={handleCopyLink} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:12, borderRadius:14, background:`${B.blue}08`, border:`1.5px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.blue }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            Copiar link
+          </button>
+          <button onClick={() => { if (hasUrl && navigator.share) { navigator.share({ title:f.name, url:f.url }).catch(()=>{}); } else { handleCopyLink(); } }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:12, borderRadius:14, background:`${B.green}08`, border:`1.5px solid ${B.green}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Compartilhar
+          </button>
+        </div>
+
+        {/* File info */}
+        <Card>
+          <p className="sl" style={{ marginBottom:8 }}>Informações</p>
+          {[
+            { l:"Cliente", v:f.clientName },
+            { l:"Categoria", v:f.category || "Outros" },
+            { l:"Tamanho", v:f.size },
+            { l:"Data", v:f.date },
+            { l:"Extensão", v:ext?.toUpperCase() },
+            ...(hasUrl ? [{ l:"Armazenamento", v:"Supabase Storage" }] : [{ l:"Armazenamento", v:"Demonstração" }]),
+          ].map((item,i) => (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
+              <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
+              <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+    );
+  }
+
+  /* ── MAIN LIBRARY VIEW ── */
+
+  /* ── ADD FILE FORM ── */
+  const uploadLibFile = async () => {
+    if (!fileForm.clientId) return showToast("Selecione o cliente");
+    if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
+    if (!fileForm.file) return showToast("Selecione um arquivo");
+    setUploading(true);
+    showToast("Enviando arquivo...");
+    const result = await supaUploadClientFile(fileForm.file, fileForm.clientId);
+    setUploading(false);
+    if (result?.error) return showToast("Erro: " + result.error);
+    const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
+    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
+    const client = CDATA.find(c => c.id === fileForm.clientId);
+    if (client) {
+      const newFiles = [...(client.files||[]), nf];
+      /* Persist to Supabase app_settings */
+      const saveKey = `client_files_${client.supaId || client.id}`;
+      const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+      if (!saved) { showToast("Erro ao salvar metadados — tente novamente"); return; }
+      /* Update local state */
+      if (onUpdateClients) {
+        const updatedClient = { ...client, files: newFiles };
+        onUpdateClients(CDATA.map(c => c.id === fileForm.clientId ? updatedClient : c));
+      }
+    }
+    setAddingFile(false); setFileForm({});
+    showToast("Arquivo enviado ✓");
+  };
+
+  const LIB_CATS_FORM = [
+    { key:"brand", label:"Manual de Marca", c:B.red },
+    { key:"feed", label:"Posts Feed", c:B.blue },
+    { key:"stories", label:"Stories", c:B.pink },
+    { key:"reels", label:"Capas de Reels", c:B.purple },
+    { key:"videos", label:"Vídeos", c:B.orange },
+    { key:"digital", label:"Artes Digitais", c:B.cyan },
+    { key:"print", label:"Material Impresso", c:B.green },
+    { key:"docs", label:"Documentos", c:B.muted },
+  ];
+
+  if (addingFile) return (
+    <div className="pg">{ToastEl}
+      <Head title="Novo Arquivo" onBack={()=>{setAddingFile(false);setFileForm({});}} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente *</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:4 }}>
+          {CDATA.map(c => (
+            <button key={c.id} onClick={()=>setFileForm(p=>({...p,clientId:c.id}))} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${fileForm.clientId===c.id?B.accent:B.border}`, background:fileForm.clientId===c.id?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fileForm.clientId===c.id?B.accent:B.text }}>{c.name}</button>
+          ))}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do arquivo *</label>
+        <input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Ex: post_lancamento_feed.png" className="tinput" style={{ marginBottom:12 }} />
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Categoria</label>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+          {LIB_CATS_FORM.map(cat => (
+            <button key={cat.key} onClick={()=>setFileForm(p=>({...p,category:cat.label}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", borderRadius:10, border:`1.5px solid ${fileForm.category===cat.label?B.accent:B.border}`, background:fileForm.category===cat.label?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <span style={{ fontSize:11, fontWeight:600, color:fileForm.category===cat.label?B.accent:B.text }}>{cat.label}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Arquivo *</label>
+        <label htmlFor="lib-file-input" style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file?`${B.green}06`:`${B.accent}04`, cursor:"pointer" }}>
+          <input id="lib-file-input" type="file" style={{ display:"none" }} onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) { setFileForm(p => ({ ...p, file: f, name: p.name || f.name })); showToast(`Selecionado: ${f.name}`); }
+          }} />
+          {fileForm.file ? <>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polyline points="20 6 9 17 4 12"/></svg>
+            <p style={{ fontSize:13, fontWeight:700, color:B.green }}>{fileForm.file.name}</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{(fileForm.file.size / (1024 * 1024)).toFixed(1)} MB</p>
+          </> : <>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Toque para selecionar</p>
+            <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, documentos (até 100MB)</p>
+          </>}
+        </label>
+      </Card>
+      <button onClick={uploadLibFile} disabled={uploading} className="pill full accent" style={{ marginTop:8, padding:"14px 0", opacity:uploading?0.6:1 }}>
+        {uploading ? "Enviando..." : "Enviar Arquivo"}
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+
+      {/* Stats */}
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
+            <div><p style={{ fontSize:22, fontWeight:900 }}>{totalFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Arquivos</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{clientsWithFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Clientes</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{LIB_CATS.filter(c=>catCounts[c.key]).length}</p><p style={{ fontSize:10, opacity:.7 }}>Categorias</p></div>
+          </div>
+          <button onClick={()=>{setFileForm({});setAddingFile(true);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>{IC.plus} Adicionar</button>
+        </div>
+      </Card>
+
+      {/* Search */}
+      <div style={{ position:"relative", marginBottom:10 }}>
+        <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</div>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo, cliente, categoria..." className="tinput" style={{ paddingLeft:40 }} />
+      </div>
+
+      {/* Client filter */}
+      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:6, overflowX:"auto", paddingBottom:4 }}>
+        <button onClick={()=>setFilterClient("all")} className={`htab${filterClient==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todos os clientes</button>
+        {CDATA.filter(c=>(c.files||[]).length>0).map(c => (
+          <button key={c.id} onClick={()=>setFilterClient(c.name)} className={`htab${filterClient===c.name?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.name} ({(c.files||[]).length})</button>
+        ))}
+      </div>
+
+      {/* Category filter */}
+      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        <button onClick={()=>setFilterCat("all")} className={`htab${filterCat==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todas categorias</button>
+        {LIB_CATS.map(cat => {
+          const count = allFiles.filter(f=>getFileCat(f)===cat.key).length;
+          if (count === 0) return null;
+          return <button key={cat.key} onClick={()=>setFilterCat(cat.key)} className={`htab${filterCat===cat.key?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{cat.icon} {cat.label} ({count})</button>;
+        })}
+      </div>
+
+      {/* Results count */}
+      <p style={{ fontSize:11, color:B.muted, marginBottom:8 }}>{filtered.length} arquivo{filtered.length!==1?"s":""} encontrado{filtered.length!==1?"s":""}</p>
+
+      {/* Grouped file list */}
+      {filtered.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:24 }}>
+          <p style={{ fontSize:14, fontWeight:700 }}>Nenhum arquivo encontrado</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou busca.</p>
+        </Card>
+      ) : Object.entries(grouped).map(([groupName, groupFiles]) => (
+        <div key={groupName}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, marginBottom:6 }}>
+            <p className="sl">{filterClient !== "all" ? (LIB_CATS.find(c=>c.label===groupName)?.icon||"📁")+" " : ""}{groupName}</p>
+            <span style={{ fontSize:10, color:B.muted }}>{groupFiles.length}</span>
+          </div>
+          {groupFiles.map(f => {
+            const fi = fileIcon(f.name);
+            const cat = LIB_CATS.find(c=>c.key===getFileCat(f));
+            return (
+              <Card key={`${f.clientId}-${f.id}`} onClick={() => setViewFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                      <span style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</span>
+                      {filterClient === "all" && <Tag color={cat?.c||B.muted} style={{ fontSize:8, padding:"1px 6px" }}>{cat?.icon}</Tag>}
+                    </div>
+                  </div>
+                  {filterClient === "all" && <span style={{ fontSize:9, color:B.muted, maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.clientName}</span>}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      ))}
+      </div>
+    </div>
+  );
+}
+
+function ReportsPage({ onBack, clients: propClients, team: propTeam }) {
+  const CDATA = propClients || [];
+  const TEAM = propTeam || [];
+  const [tab, setTab] = useState("overview");
+  const [selClient, setSelClient] = useState(null);
+  const [insights, setInsights] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  /* Date range */
+  const now = new Date();
+  const [datePreset, setDatePreset] = useState("month");
+  const [dateSince, setDateSince] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]);
+  const [dateUntil, setDateUntil] = useState(now.toISOString().split("T")[0]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const applyDatePreset = (preset) => {
+    const n = new Date(); let s, u = n.toISOString().split("T")[0];
+    if (preset === "7d") { s = new Date(n); s.setDate(n.getDate() - 7); }
+    else if (preset === "14d") { s = new Date(n); s.setDate(n.getDate() - 14); }
+    else if (preset === "30d") { s = new Date(n); s.setDate(n.getDate() - 30); }
+    else if (preset === "month") { s = new Date(n.getFullYear(), n.getMonth(), 1); }
+    else if (preset === "lastmonth") { s = new Date(n.getFullYear(), n.getMonth() - 1, 1); u = new Date(n.getFullYear(), n.getMonth(), 0).toISOString().split("T")[0]; }
+    else if (preset === "90d") { s = new Date(n); s.setDate(n.getDate() - 90); }
+    else return;
+    setDatePreset(preset); setDateSince(s.toISOString().split("T")[0]); setDateUntil(u);
+    setLoaded(false); setInsights({}); try { sessionStorage.removeItem("uh_insights_cache"); } catch {}
+  };
+  const applyCustomDates = () => { setDatePreset("custom"); setShowDatePicker(false); setLoaded(false); setInsights({}); try { sessionStorage.removeItem("uh_insights_cache"); } catch {} };
+  const dateLabel = { "7d":"7 dias", "14d":"14 dias", "30d":"30 dias", "month":"Este mês", "lastmonth":"Mês anterior", "90d":"90 dias", "custom":"Personalizado" }[datePreset] || "Este mês";
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
+
+  /* Fetch insights ONLY for connected clients, in parallel, with cache */
+  useEffect(() => {
+    if (loaded || CDATA.length === 0) return;
+    const cacheKey = `uh_insights_${dateSince}_${dateUntil}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < 5 * 60 * 1000) {
+          setInsights(data); setLoaded(true); return;
+        }
+      }
+    } catch {}
+    setLoading(true);
+    const fetchAll = async () => {
+      const results = {};
+      const connected = CDATA.filter(c => (c.socials?.facebook?.connected || c.socials?.instagram?.connected));
+      if (connected.length === 0) { setInsights({}); setLoading(false); setLoaded(true); return; }
+      const settled = await Promise.all(connected.map(async c => {
+        try { return { name: c.name, data: await fetchGraphInsights(c.supaId || c.id, dateSince, dateUntil) }; }
+        catch { return { name: c.name, data: null }; }
+      }));
+      settled.forEach(r => { results[r.name] = r.data; });
+      try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: results, ts: Date.now() })); } catch {}
+      setInsights(results); setLoading(false); setLoaded(true);
+    };
+    fetchAll();
+  }, [loaded, CDATA, dateSince, dateUntil]);
+
+  const formatNum = (n) => { if (n === null || n === undefined || isNaN(n)) return "0"; return n >= 1000000 ? (n/1000000).toFixed(1)+"M" : n >= 1000 ? (n/1000).toFixed(1)+"k" : n.toString(); };
+  const pctChange = (cur, prev) => { if (!prev) return null; const p = Math.round(((cur - prev) / prev) * 100); return p; };
+
+  const Bar = ({ value, max, color, h }) => (
+    <div style={{ width:"100%", height:h||8, borderRadius:4, background:`${color}15`, overflow:"hidden" }}>
+      <div style={{ width:`${Math.min((value/(max||1))*100,100)}%`, height:"100%", borderRadius:4, background:color, transition:"width 0.5s ease" }} />
+    </div>
+  );
+
+  /* Aggregate data per client */
+  const clientMetrics = CDATA.map(c => {
+    const ins = insights[c.name];
+    const hasData = !!ins && (!!ins.fb || !!ins.ig || !!ins.fbPosts || !!ins.fbPage || !!ins.igMedia);
+    const fbImpressions = sumInsight(ins?.fb, "page_posts_impressions") + sumInsight(ins?.fb, "page_views_total");
+    const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements");
+    const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
+    const fbFanAdds = sumInsight(ins?.fb, "page_daily_follows");
+    const fbPageViews = sumInsight(ins?.fb, "page_views_total");
+    const fbVideoViews = sumInsight(ins?.fb, "page_video_views");
+    const fbReactions = sumInsight(ins?.fb, "page_actions_post_reactions_total");
+    const fbPrevImp = sumInsight(ins?.fbPrev, "page_posts_impressions") + sumInsight(ins?.fbPrev, "page_views_total");
+    const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
+
+    const igImpressions = sumInsight(ins?.ig, "impressions");
+    const igReach = sumInsight(ins?.ig, "reach");
+    const igProfileViews = sumInsight(ins?.ig, "profile_views");
+    const igAccountsEngaged = sumInsight(ins?.ig, "accounts_engaged");
+    const igFollowerCount = sumInsight(ins?.ig, "follower_count");
+    const igPrevReach = sumInsight(ins?.igPrev, "reach");
+    const igPrevImp = sumInsight(ins?.igPrev, "impressions");
+
+    const mediaPosts = (ins?.igMedia || []);
+    const totalLikes = mediaPosts.reduce((a, p) => a + (p.like_count || 0), 0);
+    const totalComments = mediaPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
+    const totalSaved = mediaPosts.reduce((a, p) => {
+      const s = p.insights?.data?.find(i => i.name === "saved");
+      return a + (s?.values?.[0]?.value || 0);
+    }, 0);
+
+    /* FB Posts data (new — from published_posts) */
+    const fbPosts = ins?.fbPosts || [];
+    const fbPostLikes = fbPosts.reduce((a, p) => a + (p.likes_count || 0), 0);
+    const fbPostComments = fbPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
+    const fbPostShares = fbPosts.reduce((a, p) => a + (p.shares_count || 0), 0);
+    const fbPostCount = fbPosts.length;
+    const needsPermission = ins?.needsPermission || [];
+
+    const fbFollowers = ins?.fbPage?.followers_count || ins?.fbPage?.fan_count || 0;
+    const igFollowers = ins?.igProfile?.followers_count || 0;
+    const igMediaCount = ins?.igProfile?.media_count || 0;
+    const engRate = igReach > 0 ? ((igAccountsEngaged / igReach) * 100).toFixed(1) : "0.0";
+
+    return {
+      ...c, hasData, fbImpressions, fbEngagedUsers, fbPostEngagement,
+      fbFanAdds, fbPageViews, fbPrevImp, fbPrevEng, igImpressions, igReach, igProfileViews,
+      igAccountsEngaged, igFollowerCount, igPrevReach, igPrevImp, mediaPosts, totalLikes,
+      totalComments, totalSaved, fbFollowers, igFollowers, igMediaCount, engRate,
+      fbPosts, fbPostLikes, fbPostComments, fbPostShares, fbPostCount, needsPermission,
+      totalReach: fbImpressions + igReach, totalEngaged: fbEngagedUsers + igAccountsEngaged,
+      igProfile: ins?.igProfile, fbPage: ins?.fbPage,
+      igDaily: ins?.ig, fbDaily: ins?.fb, igPrev: ins?.igPrev, fbPrev: ins?.fbPrev,
+    };
+  });
+
+  const totals = {
+    reach: clientMetrics.reduce((a, c) => a + c.totalReach, 0),
+    engaged: clientMetrics.reduce((a, c) => a + c.totalEngaged, 0),
+    fbImp: clientMetrics.reduce((a, c) => a + c.fbImpressions, 0),
+    igImp: clientMetrics.reduce((a, c) => a + c.igImpressions, 0),
+    igReach: clientMetrics.reduce((a, c) => a + c.igReach, 0),
+    likes: clientMetrics.reduce((a, c) => a + c.totalLikes, 0),
+    comments: clientMetrics.reduce((a, c) => a + c.totalComments, 0),
+    saved: clientMetrics.reduce((a, c) => a + c.totalSaved, 0),
+    fbFans: clientMetrics.reduce((a, c) => a + c.fbFanAdds, 0),
+    fbPostsTotal: clientMetrics.reduce((a, c) => a + c.fbPostCount, 0),
+    fbPostLikes: clientMetrics.reduce((a, c) => a + c.fbPostLikes, 0),
+    fbPostComments: clientMetrics.reduce((a, c) => a + c.fbPostComments, 0),
+    fbFollowers: clientMetrics.reduce((a, c) => a + c.fbFollowers, 0),
+    igFollowers: clientMetrics.reduce((a, c) => a + c.igFollowers, 0),
+    connectedCount: clientMetrics.filter(c => c.hasData).length,
+    anyNeedsPermission: clientMetrics.some(c => c.needsPermission?.length > 0),
+  };
+
+  const ChangeBadge = ({ value }) => {
+    if (value === null || value === undefined) return null;
+    const color = value >= 0 ? B.green : B.red;
+    return <span style={{ fontSize:9, fontWeight:700, color, background:`${color}10`, padding:"2px 6px", borderRadius:6 }}>{value >= 0 ? "↑" : "↓"} {Math.abs(value)}%</span>;
+  };
+
+  const MetricCard = ({ label, value, sub, color, change, icon }) => (
+    <Card style={{ padding:12 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:4 }}>
+        <div style={{ width:28, height:28, borderRadius:8, background:`${color}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {icon || <div style={{ width:10, height:10, borderRadius:5, background:color }} />}
+        </div>
+        {change !== null && change !== undefined && <ChangeBadge value={change} />}
+      </div>
+      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:6 }}>{value}</p>
+      <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginTop:2 }}>{label}</p>
+      {sub && <p style={{ fontSize:9, color:B.muted, marginTop:1 }}>{sub}</p>}
+    </Card>
+  );
+
+  const DailyChart = ({ data, color, label, h }) => {
+    if (!data || data.length === 0) return <p style={{ fontSize:10, color:B.muted, textAlign:"center", padding:10 }}>Sem dados disponíveis</p>;
+    const max = Math.max(...data.map(d => d.value), 1);
+    return (
+      <div>
+        {label && <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginBottom:6 }}>{label}</p>}
+        <div style={{ display:"flex", alignItems:"flex-end", gap:1, height:h||60 }}>
+          {data.map((d, i) => (
+            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
+              <div style={{ width:"100%", borderRadius:2, background:color, height:`${Math.max((d.value/max)*(h||60)*0.85, 2)}px`, opacity: i === data.length-1 ? 1 : 0.6 }} title={`${d.date}: ${formatNum(d.value)}`} />
+            </div>
+          ))}
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:3 }}>
+          <span style={{ fontSize:7, color:B.muted }}>{data[0]?.date?.slice(5)}</span>
+          <span style={{ fontSize:7, color:B.muted }}>{data[data.length-1]?.date?.slice(5)}</span>
+        </div>
+      </div>
+    );
+  };
+
+  /* ── CLIENT DETAIL ── */
+  if (selClient) {
+    const c = clientMetrics.find(x => x.name === selClient) || clientMetrics[0];
+    if (!c) { setSelClient(null); return null; }
+    const allPosts = [
+      ...(c.fbPosts||[]).map(p=>({...p, _p:"fb", _date:p.created_time, _img:p.full_picture, _text:p.message, _likes:p.likes_count||0, _comments:p.comments_count||0, _shares:p.shares_count||0, _link:p.permalink_url, _type:"post"})),
+      ...(c.mediaPosts||[]).map(p=>({...p, _p:"ig", _date:p.timestamp, _img:p.thumbnail_url||p.media_url, _text:p.caption, _likes:p.like_count||0, _comments:p.comments_count||0, _shares:0, _link:p.permalink, _type:p.media_type==="VIDEO"?"reels":p.media_type==="CAROUSEL_ALBUM"?"carrossel":"imagem"}))
+    ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0));
+    const igPosts = allPosts.filter(p=>p._p==="ig");
+    const totalInteractions = allPosts.reduce((s,p)=>s+p._likes+p._comments+p._shares,0);
+    const avgLikes = igPosts.length ? Math.round(igPosts.reduce((s,p)=>s+p._likes,0)/igPosts.length) : 0;
+    const avgComments = igPosts.length ? Math.round(igPosts.reduce((s,p)=>s+p._comments,0)/igPosts.length) : 0;
+    const igEngRate = c.igFollowers > 0 && igPosts.length ? ((igPosts.reduce((s,p)=>s+p._likes+p._comments,0)/igPosts.length/c.igFollowers)*100).toFixed(2) : "0.00";
+    const typeCount = { imagem:0, reels:0, carrossel:0 }; igPosts.forEach(p => { typeCount[p._type]=(typeCount[p._type]||0)+1; });
+    const datesSet = new Set(allPosts.map(p=>p._date?.split("T")[0]).filter(Boolean));
+    const postsPerWeek = datesSet.size > 0 ? Math.round((allPosts.length/datesSet.size)*7*10)/10 : 0;
+    const bestPost = [...allPosts].sort((a,b)=>(b._likes+b._comments)-(a._likes+a._comments))[0];
+    const igDailyReach = dailyInsight(c.igDaily, "reach");
+    const fbDailyImp = dailyInsight(c.fbDaily, "page_views_total");
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={() => setSelClient(null)} />
+        {/* HEADER */}
+        <Card style={{ marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+            <Av src={c.logo} name={c.name} sz={48} fs={18} />
+            <div style={{ flex:1 }}>
+              <h3 style={{ fontSize:17, fontWeight:800 }}>{c.name}</h3>
+              <p style={{ fontSize:11, color:B.muted }}>{c.plan}{c.segment ? ` · ${c.segment}` : ""}</p>
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            {c.igProfile && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"#E1306C10" }}>
+              <div style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />
+              <span style={{ fontSize:10, fontWeight:700 }}>@{c.igProfile.username}</span>
+              <span style={{ fontSize:10, color:B.muted }}>{formatNum(c.igFollowers)} seg.</span>
+            </div>}
+            {c.fbPage && <div style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"#1877F210" }}>
+              <div style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />
+              <span style={{ fontSize:10, fontWeight:700 }}>{c.fbPage.name}</span>
+              <span style={{ fontSize:10, color:B.muted }}>{formatNum(c.fbFollowers)} seg.</span>
+            </div>}
+            {!c.hasData && <Tag color={B.orange}>Nenhuma rede conectada</Tag>}
+          </div>
+        </Card>
+
+        {!c.hasData ? <Card style={{ textAlign:"center", padding:30 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>{IC.reports(B.muted)}</div>
+          <p style={{ fontSize:14, fontWeight:700 }}>Sem dados disponíveis</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Conecte Facebook ou Instagram deste cliente na aba <strong>Redes</strong> para métricas reais.</p>
+        </Card> : <>
+          {/* RESUMO EXECUTIVO */}
+          <p className="sl" style={{ marginBottom:6 }}>Resumo executivo</p>
+          <Card style={{ marginBottom:12, padding:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, textAlign:"center" }}>
+              <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{formatNum(c.igFollowers+c.fbFollowers)}</p><p style={{ fontSize:9, color:B.muted }}>Audiência total</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900, color:"#E1306C" }}>{formatNum(totalInteractions)}</p><p style={{ fontSize:9, color:B.muted }}>Interações totais</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900, color:B.blue }}>{allPosts.length}</p><p style={{ fontSize:9, color:B.muted }}>Posts analisados</p></div>
+            </div>
+          </Card>
+          {/* AUDIENCIA POR CANAL */}
+          <p className="sl" style={{ marginBottom:6 }}>Audiência por canal</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+            <Card style={{ padding:12, borderLeft:"3px solid #E1306C" }}>
+              <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Instagram</p>
+              <p style={{ fontSize:22, fontWeight:900, color:"#E1306C" }}>{formatNum(c.igFollowers)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>seguidores</p>
+              {c.igProfile?.media_count > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{c.igProfile.media_count} publicações</p>}
+            </Card>
+            <Card style={{ padding:12, borderLeft:"3px solid #1877F2" }}>
+              <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Facebook</p>
+              <p style={{ fontSize:22, fontWeight:900, color:"#1877F2" }}>{formatNum(c.fbFollowers)}</p>
+              <p style={{ fontSize:9, color:B.muted }}>seguidores</p>
+              {c.fbPage?.talking_about_count > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{formatNum(c.fbPage.talking_about_count)} falando sobre</p>}
+            </Card>
+          </div>
+          {/* PERFORMANCE DE CONTEUDO */}
+          <p className="sl" style={{ marginBottom:6 }}>Performance de conteúdo</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <MetricCard label="Freq. de postagem" value={postsPerWeek+"/sem"} color={B.accent} sub={allPosts.length+" posts em "+datesSet.size+" dias"} />
+            <MetricCard label="Taxa engajamento" value={igEngRate+"%"} color={Number(igEngRate)>=3?B.green:Number(igEngRate)>=1?B.orange:B.red} sub={Number(igEngRate)>=3?"Excelente":Number(igEngRate)>=1?"Bom":"Abaixo da média"} />
+            <MetricCard label="Média curtidas/post" value={formatNum(avgLikes)} color="#E1306C" sub="Instagram" />
+            <MetricCard label="Média comentários" value={formatNum(avgComments)} color="#1877F2" sub="Instagram" />
+          </div>
+          {(c.igReach>0||c.igImpressions>0) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <MetricCard label="Alcance IG" value={formatNum(c.igReach)} color="#E1306C" change={pctChange(c.igReach, sumInsight(c.igPrev,"reach"))} sub="Contas únicas" />
+            <MetricCard label="Impressões IG" value={formatNum(c.igImpressions)} color="#833AB4" change={pctChange(c.igImpressions, sumInsight(c.igPrev,"impressions"))} sub="Total exibições" />
+          </div>}
+          {(c.fbImpressions>0||c.fbEngagedUsers>0) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+            <MetricCard label="Views página FB" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions,c.fbPrevImp)} sub="Visualizações" />
+            <MetricCard label="Engajamento FB" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers,c.fbPrevEng)} sub="Interações" />
+          </div>}
+          {c.needsPermission?.includes("pages_read_engagement") && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:8, padding:10 }}>
+            <p style={{ fontSize:10, color:B.orange }}>⚠️ Métricas avançadas requerem <strong>pages_read_engagement</strong> no Meta App.</p>
+          </Card>}
+          {/* DISTRIBUICAO DE CONTEUDO IG */}
+          {igPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Distribuição de conteúdo — Instagram</p>
+            <Card style={{ marginBottom:12 }}>
+              <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                {[{k:"imagem",l:"Imagens",c:"#833AB4",ic:"🖼"},{k:"reels",l:"Reels",c:"#E1306C",ic:"🎬"},{k:"carrossel",l:"Carrosséis",c:"#F77737",ic:"📱"}].map(t => (
+                  <div key={t.k} style={{ flex:1, padding:10, borderRadius:10, background:t.c+"08", textAlign:"center" }}>
+                    <p style={{ fontSize:16 }}>{t.ic}</p>
+                    <p style={{ fontSize:18, fontWeight:800, color:t.c }}>{typeCount[t.k]||0}</p>
+                    <p style={{ fontSize:9, color:B.muted }}>{t.l}</p>
+                  </div>
+                ))}
+              </div>
+              <Bar value={typeCount.imagem} max={igPosts.length} color="#833AB4" h={6} />
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+                <span style={{ fontSize:9, color:B.muted }}>Imagens {igPosts.length?Math.round(typeCount.imagem/igPosts.length*100):0}%</span>
+                <span style={{ fontSize:9, color:B.muted }}>Reels {igPosts.length?Math.round(typeCount.reels/igPosts.length*100):0}%</span>
+                <span style={{ fontSize:9, color:B.muted }}>Carrosséis {igPosts.length?Math.round(typeCount.carrossel/igPosts.length*100):0}%</span>
+              </div>
+            </Card>
+          </>}
+          {/* MELHOR POST */}
+          {bestPost && (bestPost._likes+bestPost._comments)>0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Melhor publicação</p>
+            <Card onClick={()=>bestPost._link&&window.open(bestPost._link,"_blank")} style={{ marginBottom:12, cursor:bestPost._link?"pointer":"default" }}>
+              <div style={{ display:"flex", gap:12 }}>
+                {bestPost._img && <img src={bestPost._img} alt="" style={{ width:80, height:80, borderRadius:10, objectFit:"cover", flexShrink:0 }} onError={e=>{e.target.style.display="none"}} />}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4 }}>
+                    <span style={{ padding:"2px 6px", borderRadius:4, background:bestPost._p==="ig"?"#E1306C":"#1877F2", color:"#fff", fontSize:8, fontWeight:800 }}>{bestPost._p==="ig"?"INSTAGRAM":"FACEBOOK"}</span>
+                    <span style={{ fontSize:9, color:B.muted }}>{bestPost._date?new Date(bestPost._date).toLocaleDateString("pt-BR"):""}</span>
+                  </div>
+                  <p style={{ fontSize:11, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(bestPost._text||"").slice(0,80)||"Sem texto"}</p>
+                  <div style={{ display:"flex", gap:12, marginTop:6 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#E1306C" }}>❤️ {formatNum(bestPost._likes)}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#1877F2" }}>💬 {formatNum(bestPost._comments)}</span>
+                    {bestPost._shares>0 && <span style={{ fontSize:12, fontWeight:700, color:B.green }}>↗️ {formatNum(bestPost._shares)}</span>}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </>}
+          {/* GRAFICOS DIARIOS */}
+          {igDailyReach.length > 0 && <Card style={{ marginBottom:8 }}>
+            <DailyChart data={igDailyReach} color="#E1306C" label="Alcance diário — Instagram" h={80} />
+          </Card>}
+          {fbDailyImp.length > 0 && <Card style={{ marginBottom:8 }}>
+            <DailyChart data={fbDailyImp} color="#1877F2" label="Views diárias — Facebook" h={80} />
+          </Card>}
+          {/* PUBLICACOES RECENTES */}
+          {allPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Publicações recentes ({allPosts.length})</p>
+            <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:8 }}>
+              {allPosts.slice(0,15).map((p,i) => (
+                <div key={i} onClick={()=>p._link&&window.open(p._link,"_blank")} style={{ flexShrink:0, width:150, borderRadius:12, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, cursor:p._link?"pointer":"default", position:"relative" }}>
+                  <div style={{ position:"absolute", top:6, left:6, padding:"2px 6px", borderRadius:6, background:p._p==="ig"?"#E1306C":"#1877F2", color:"#fff", fontSize:8, fontWeight:800, zIndex:1 }}>{p._p==="ig"?"IG":"FB"}</div>
+                  {p._img ? <img src={p._img} style={{ width:150, height:110, objectFit:"cover" }} alt="" onError={e=>{e.target.style.display="none"}} />
+                  : <div style={{ width:150, height:70, background:p._p==="ig"?"#E1306C08":"#1877F208", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, fontSize:10 }}>Sem imagem</div>}
+                  <div style={{ padding:8 }}>
+                    <p style={{ fontSize:9, color:B.muted }}>{p._date?new Date(p._date).toLocaleDateString("pt-BR"):""} · {p._type}</p>
+                    <p style={{ fontSize:10, fontWeight:600, lineHeight:1.3, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{(p._text||"").slice(0,60)||"Sem texto"}</p>
+                    <p style={{ fontSize:9, color:B.muted, marginTop:3 }}>❤️ {p._likes} · 💬 {p._comments}{p._shares>0?` · ↗️ ${p._shares}`:""}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>}
+          {/* TOP 5 POSTS IG */}
+          {igPosts.length > 0 && <>
+            <p className="sl" style={{ marginBottom:6 }}>Top 5 — Instagram (por engajamento)</p>
+            {[...igPosts].sort((a,b)=>(b._likes+b._comments)-(a._likes+a._comments)).slice(0,5).map((post,i) => (
+              <Card key={i} onClick={()=>post._link&&window.open(post._link,"_blank")} style={{ marginBottom:6, cursor:post._link?"pointer":"default" }}>
+                <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                  <div style={{ width:24, height:24, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color:B.accent, flexShrink:0 }}>{i+1}</div>
+                  {post._img && <div style={{ position:"relative", flexShrink:0 }}><img src={post._img} alt="" style={{ width:48, height:48, borderRadius:8, objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} /><span style={{ position:"absolute", top:-3, left:-3, background:"#E1306C", color:"#fff", fontSize:7, fontWeight:800, padding:"1px 4px", borderRadius:4 }}>IG</span></div>}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{(post._text||"").slice(0,50)||"Sem legenda"}</p>
+                    <div style={{ display:"flex", gap:8, marginTop:3 }}>
+                      <span style={{ fontSize:10, color:"#E1306C", fontWeight:600 }}>❤️ {post._likes}</span>
+                      <span style={{ fontSize:10, color:"#1877F2", fontWeight:600 }}>💬 {post._comments}</span>
+                      <span style={{ fontSize:10, color:B.muted }}>{post._type}</span>
+                      <span style={{ fontSize:9, color:B.muted }}>{post._date?.split("T")[0]}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </>}
+          {/* INSIGHTS AUTOMATICOS */}
+          <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, marginBottom:12, marginTop:8, padding:14 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Insights automáticos</p>
+            <div style={{ fontSize:10, color:B.muted, lineHeight:1.7 }}>
+              {Number(igEngRate)>=3 && <p>✅ Taxa de engajamento <strong>excelente</strong> ({igEngRate}%). Acima da média do mercado.</p>}
+              {Number(igEngRate)>0 && Number(igEngRate)<1 && <p>⚠️ Taxa de engajamento <strong>abaixo da média</strong> ({igEngRate}%). Considere conteúdo mais interativo.</p>}
+              {typeCount.reels > typeCount.imagem && <p>🎬 Mais <strong>Reels</strong> que imagens — ótimo para alcance orgânico.</p>}
+              {typeCount.reels < typeCount.imagem && igPosts.length>3 && <p>💡 Considere postar mais <strong>Reels</strong> — Instagram prioriza vídeo no alcance.</p>}
+              {postsPerWeek<3 && allPosts.length>0 && <p>📅 Frequência de {postsPerWeek} posts/sem. Tente manter pelo menos <strong>3-5/semana</strong>.</p>}
+              {postsPerWeek>=5 && <p>🔥 Frequência <strong>consistente</strong> ({postsPerWeek}/sem). Ótimo ritmo!</p>}
+              {c.fbFollowers>0 && !c.igProfile && <p>📱 Cliente sem <strong>IG Business</strong> vinculado ao Facebook.</p>}
+              {allPosts.length===0 && <p>📊 Sem posts recentes. Verifique se as redes estão conectadas.</p>}
+            </div>
+          </Card>
+        </>}
+      </div>
+    );
+  }
+
+
+  /* ── MAIN REPORTS ── */
+  const TABS = [
+    { k:"overview", l:"Visão Geral", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> },
+    { k:"clients", l:"Por Cliente", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> },
+    { k:"instagram", l:"Instagram", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> },
+    { k:"facebook", l:"Facebook", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg> },
+  ];
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" collapsed={pgC} stats={[]} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+
+      {/* Tab selector */}
+      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        {TABS.map(t => (
+          <button key={t.k} onClick={()=>setTab(t.k)} className={`htab${tab===t.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0, display:"flex", alignItems:"center", gap:4 }}>{t.ic} {t.l}</button>
+        ))}
+      </div>
+
+      {/* Loading state */}
+      {loading && <Card style={{ textAlign:"center", padding:24 }}>
+        <div style={{ width:40, height:40, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
+          <div style={{ width:20, height:20, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite" }} />
+        </div>
+        <p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p>
+        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Buscando dados do Facebook e Instagram via Graph API</p>
+      </Card>}
+
+      {!loading && <>
+        {/* Date Range Picker */}
+        <Card style={{ marginBottom:10, padding:10 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+            <p style={{ fontSize:11, fontWeight:700 }}>📅 Período: <span style={{ color:B.accent }}>{dateLabel}</span></p>
+            <button onClick={()=>setShowDatePicker(!showDatePicker)} style={{ background:`${B.accent}10`, border:"none", padding:"4px 10px", borderRadius:8, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>{showDatePicker?"Fechar":"Personalizar"}</button>
+          </div>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+            {[{k:"7d",l:"7d"},{k:"14d",l:"14d"},{k:"30d",l:"30d"},{k:"month",l:"Mês atual"},{k:"lastmonth",l:"Mês anterior"},{k:"90d",l:"90d"}].map(p=>(
+              <button key={p.k} onClick={()=>applyDatePreset(p.k)} style={{ padding:"5px 10px", borderRadius:8, fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"inherit", border:datePreset===p.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:datePreset===p.k?`${B.accent}12`:B.bgCard, color:datePreset===p.k?B.accent:B.muted }}>{p.l}</button>
+            ))}
+          </div>
+          {showDatePicker && <div style={{ marginTop:10, display:"flex", gap:8, alignItems:"flex-end" }}>
+            <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>De</label><input type="date" value={dateSince} onChange={e=>setDateSince(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+            <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted, display:"block", marginBottom:3 }}>Até</label><input type="date" value={dateUntil} onChange={e=>setDateUntil(e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+            <button onClick={applyCustomDates} style={{ padding:"8px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark, flexShrink:0 }}>Aplicar</button>
+          </div>}
+          <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>{dateSince} → {dateUntil}</p>
+        </Card>
+
+        {/* Status bar */}
+        <Card style={{ marginBottom:12, padding:10, background:`${totals.connectedCount > 0 ? B.green : B.orange}06`, border:`1px solid ${totals.connectedCount > 0 ? B.green : B.orange}15` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:8, height:8, borderRadius:4, background:totals.connectedCount > 0 ? B.green : B.orange }} />
+            <p style={{ fontSize:11, color:B.text }}><strong>{totals.connectedCount}</strong> de <strong>{CDATA.length}</strong> clientes com API conectada</p>
+            {totals.connectedCount === 0 && <span style={{ fontSize:10, color:B.muted }}> · Conecte redes sociais na aba de Clientes</span>}
+          </div>
+        </Card>
+
+        {/* ── OVERVIEW TAB ── */}
+        {tab === "overview" && <>
+          {totals.anyNeedsPermission && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+              <span style={{ color:B.orange, fontSize:16 }}>⚠️</span>
+              <div><p style={{ fontSize:11, fontWeight:600, color:B.orange }}>Permissões limitadas no Meta App</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Habilite <strong>pages_read_engagement</strong> no Facebook Login Configuration para métricas avançadas.</p></div>
+            </div>
+          </Card>}
+
+          {/* Audiência consolidada */}
+          <p className="sl" style={{ marginBottom:6 }}>Audiência total</p>
+          <Card style={{ marginBottom:12, padding:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20 }}>
+              <div style={{ textAlign:"center" }}><p style={{ fontSize:28, fontWeight:900, color:B.text }}>{formatNum(totals.fbFollowers + totals.igFollowers)}</p><p style={{ fontSize:10, color:B.muted }}>Seguidores totais</p></div>
+            </div>
+            <div style={{ display:"flex", gap:8, marginTop:12 }}>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:"#1877F208", textAlign:"center" }}>
+                <p style={{ fontSize:18, fontWeight:800, color:"#1877F2" }}>{formatNum(totals.fbFollowers)}</p>
+                <p style={{ fontSize:9, color:B.muted }}>Facebook</p>
+              </div>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:"#E1306C08", textAlign:"center" }}>
+                <p style={{ fontSize:18, fontWeight:800, color:"#E1306C" }}>{formatNum(totals.igFollowers)}</p>
+                <p style={{ fontSize:9, color:B.muted }}>Instagram</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Performance por canal */}
+          <p className="sl" style={{ marginBottom:6 }}>Performance por canal</p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+            {/* Facebook */}
+            <Card style={{ padding:12, borderTop:`3px solid #1877F2` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                <p style={{ fontSize:12, fontWeight:700, color:"#1877F2" }}>Facebook</p>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <div><p style={{ fontSize:16, fontWeight:800 }}>{formatNum(totals.fbPostsTotal)}</p><p style={{ fontSize:9, color:B.muted }}>Posts publicados</p></div>
+                {totals.fbImp > 0 && <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.fbImp)}</p><p style={{ fontSize:9, color:B.muted }}>Impressões</p></div>}
+                {totals.reach > 0 && <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.reach)}</p><p style={{ fontSize:9, color:B.muted }}>Alcance</p></div>}
+              </div>
+            </Card>
+            {/* Instagram */}
+            <Card style={{ padding:12, borderTop:`3px solid #E1306C` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                <p style={{ fontSize:12, fontWeight:700, color:"#E1306C" }}>Instagram</p>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <div><p style={{ fontSize:16, fontWeight:800 }}>{formatNum(totals.likes + totals.comments)}</p><p style={{ fontSize:9, color:B.muted }}>Interações totais</p></div>
+                <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.likes)}</p><p style={{ fontSize:9, color:B.muted }}>Curtidas</p></div>
+                <div><p style={{ fontSize:14, fontWeight:700 }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, color:B.muted }}>Comentários</p></div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Status por tipo (orgânico vs pago) */}
+          <p className="sl" style={{ marginBottom:6 }}>Tipo de conteúdo</p>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.green}08`, textAlign:"center" }}>
+                <p style={{ fontSize:14, fontWeight:800, color:B.green }}>Orgânico</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Publicações, stories, reels</p>
+                <p style={{ fontSize:9, color:B.green, marginTop:4, fontWeight:600 }}>✓ Ativo</p>
+              </div>
+              <div style={{ flex:1, padding:10, borderRadius:10, background:`${B.muted}08`, textAlign:"center" }}>
+                <p style={{ fontSize:14, fontWeight:800, color:B.muted }}>Pago</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Ads via Meta Business</p>
+                <p style={{ fontSize:9, color:B.orange, marginTop:4, fontWeight:600 }}>Requer permissão extra</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Dica */}
+          <Card style={{ background:`${B.accent}06`, border:`1px solid ${B.accent}15`, marginBottom:12, padding:14 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6 }}>💡 Como interpretar</p>
+            <p style={{ fontSize:10, color:B.muted, lineHeight:1.6 }}>
+              <strong>Orgânico</strong> = conteúdo publicado sem investimento. <strong>Pago</strong> = anúncios via Meta Ads (requer API de Ads separada). <strong>Engajamento</strong> = curtidas + comentários + compartilhamentos + salvamentos. Uma boa taxa de engajamento no Instagram é acima de 3%.
+            </p>
+          </Card>
+        </>}
+
+        {/* ── CLIENTS TAB ── */}
+        {tab === "clients" && <>
+          <p className="sl" style={{ marginBottom:6 }}>Relatório por cliente</p>
+          {clientMetrics.map((c, i) => (
+            <Card key={c.id || i} delay={i*0.03} onClick={() => setSelClient(c.name)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <Av src={c.logo} name={c.name} sz={36} fs={13} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
+                    <Tag color={c.hasData ? B.green : B.muted}>{c.hasData ? "Conectado" : "Sem API"}</Tag>
+                  </div>
+                  <p style={{ fontSize:10, color:B.muted }}>{c.plan} · {c.monthly}</p>
+                </div>
+              </div>
+              {c.hasData ? <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, textAlign:"center" }}>
+                <div><p style={{ fontSize:12, fontWeight:800, color:"#E1306C" }}>{formatNum(c.igReach)}</p><p style={{ fontSize:8, color:B.muted }}>Alcance IG</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:"#1877F2" }}>{formatNum(c.fbImpressions)}</p><p style={{ fontSize:8, color:B.muted }}>Views FB</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:B.green }}>{c.engRate}%</p><p style={{ fontSize:8, color:B.muted }}>Engaj.</p></div>
+                <div><p style={{ fontSize:12, fontWeight:800, color:B.orange }}>{formatNum(c.totalLikes)}</p><p style={{ fontSize:8, color:B.muted }}>Curtidas</p></div>
+              </div> : <p style={{ fontSize:10, color:B.muted, textAlign:"center", padding:6 }}>Conecte as redes sociais para ver métricas → Toque para ver detalhes</p>}
+            </Card>
+          ))}
+        </>}
+
+        {/* ── INSTAGRAM TAB ── */}
+        {tab === "instagram" && <>
+          <Card style={{ background:"linear-gradient(135deg, #833AB4, #E1306C, #F77737)", border:"none", color:"#fff", marginBottom:12, padding:16 }}>
+            <p style={{ fontSize:11, fontWeight:600, opacity:.8, marginBottom:8 }}>Instagram — Resumo do mês</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.igReach)}</p><p style={{ fontSize:9, opacity:.7 }}>Alcance total</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.igImp)}</p><p style={{ fontSize:9, opacity:.7 }}>Impressões</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.likes)}</p><p style={{ fontSize:9, opacity:.7 }}>Curtidas</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.saved)}</p><p style={{ fontSize:9, opacity:.7 }}>Salvamentos</p></div>
+            </div>
+          </Card>
+
+          {clientMetrics.filter(c => c.igDaily).map((c, i) => {
+            const daily = dailyInsight(c.igDaily, "reach");
+            return (
+              <Card key={c.name} style={{ marginBottom:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                  <Av src={c.logo} name={c.name} sz={28} fs={10} />
+                  <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>@{c.igProfile?.username || "—"} · {formatNum(c.igFollowers)} seg.</p></div>
+                  <span style={{ fontSize:12, fontWeight:800, color:"#E1306C" }}>{c.engRate}%</span>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, textAlign:"center", marginBottom:8 }}>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.igReach)}</p><p style={{ fontSize:7, color:B.muted }}>Alcance</p></div>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.igImpressions)}</p><p style={{ fontSize:7, color:B.muted }}>Impressões</p></div>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.totalLikes)}</p><p style={{ fontSize:7, color:B.muted }}>Curtidas</p></div>
+                  <div><p style={{ fontSize:11, fontWeight:800 }}>{formatNum(c.igProfileViews)}</p><p style={{ fontSize:7, color:B.muted }}>Visitas</p></div>
+                </div>
+                <DailyChart data={daily} color="#E1306C" h={40} />
+              </Card>
+            );
+          })}
+          {clientMetrics.filter(c => c.igDaily).length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum cliente com Instagram conectado via API.</p></Card>}
+        </>}
+
+        {/* ── FACEBOOK TAB ── */}
+        {tab === "facebook" && <>
+          <Card style={{ background:"#1877F2", border:"none", color:"#fff", marginBottom:12, padding:16 }}>
+            <p style={{ fontSize:11, fontWeight:600, opacity:.8, marginBottom:8 }}>Facebook — Resumo do mês</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.fbImp)}</p><p style={{ fontSize:9, opacity:.7 }}>Impressões totais</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.engaged)}</p><p style={{ fontSize:9, opacity:.7 }}>Engajamento</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>+{formatNum(totals.fbFans)}</p><p style={{ fontSize:9, opacity:.7 }}>Novos seguidores</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900 }}>{formatNum(totals.comments)}</p><p style={{ fontSize:9, opacity:.7 }}>Comentários</p></div>
+            </div>
+          </Card>
+
+          {clientMetrics.filter(c => c.fbDaily).map((c, i) => {
+            const daily = dailyInsight(c.fbDaily, "page_views_total");
+            return (
+              <Card key={c.name} style={{ marginBottom:8 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                  <Av src={c.logo} name={c.name} sz={28} fs={10} />
+                  <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:9, color:B.muted }}>{c.fbPage?.name || "—"} · {formatNum(c.fbFollowers)} seg.</p></div>
+                </div>
+                <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.blue}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.blue }}>{formatNum(c.fbPageViews)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Views</p>
+                  </div>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.green}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.green }}>{formatNum(c.fbPostEngagement)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Engajamento</p>
+                  </div>
+                  <div style={{ flex:1, padding:8, borderRadius:8, background:`${B.accent}08`, textAlign:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:800, color:B.accent }}>+{formatNum(c.fbFanAdds)}</p>
+                    <p style={{ fontSize:8, color:B.muted }}>Seguidores</p>
+                  </div>
+                </div>
+                <DailyChart data={daily} color="#1877F2" h={40} />
+              </Card>
+            );
+          })}
+          {clientMetrics.filter(c => c.fbDaily).length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum cliente com Facebook conectado via API.</p></Card>}
+        </>}
+      </>}
+
+      <div style={{ height:100 }} />
+      </div>
+    </div>
+  );
+}
+
+
+function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user }) {
+  const [tab, setTab] = useState("all");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [selArticle, setSelArticle] = useState(null);
+  const [articles, setArticles] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { if(onArticlesLoad) onArticlesLoad(articles); }, [articles]);
+  useEffect(() => {
+    if (initialArticleId && articles.length) {
+      const a = articles.find(x => x.id === initialArticleId || x.supaId === initialArticleId);
+      if (a) { setSelArticle(a); if (onOpenIdConsumed) onOpenIdConsumed(); }
+    }
+  }, [initialArticleId, articles]);
+  const [creating, setCreating] = useState(false);
+  const [editingArticle, setEditingArticle] = useState(false);
+  const [form, setForm] = useState({});
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const isAdmin = user?.supaRole === "admin";
+  const newsPhotoRef = React.useRef(null);
+  /* AI-assisted creation */
+  const [showCreateChoice, setShowCreateChoice] = useState(false);
+  const [aiMode, setAiMode] = useState(false); /* true = AI flow */
+  const [aiStep, setAiStep] = useState("url"); /* url → tone → loading → done */
+  const [aiUrl, setAiUrl] = useState("");
+  const [aiTone, setAiTone] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const startCreation = (mode) => {
+    setShowCreateChoice(false);
+    if (mode === "manual") { setCreating(true); setForm({}); setPhotoPreview(null); setAiMode(false); }
+    else { setAiMode(true); setAiStep("url"); setAiUrl(""); setAiTone(""); setAiError(""); }
+  };
+  const [aiPhotoSuggestions, setAiPhotoSuggestions] = useState(null); /* { keywords, extractedUrl } */
+  const [aiPhotoUrl, setAiPhotoUrl] = useState("");
+  const aiGenerateArticle = async () => {
+    if (!aiUrl.trim()) { setAiError("Cole o link da notícia"); return; }
+    if (!aiTone) { setAiError("Escolha o tom da reescrita"); return; }
+    setAiLoading(true); setAiError(""); setAiStep("loading"); setAiPhotoSuggestions(null); setAiPhotoUrl("");
+    try {
+      /* Step 1: Try to extract og:image from original URL */
+      let extractedPhoto = "";
+      try {
+        const pageRes = await fetch(aiUrl.trim(), { mode: "cors", headers: { "Accept": "text/html" } });
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+                          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+          if (ogMatch?.[1]) extractedPhoto = ogMatch[1];
+        }
+      } catch(fetchErr) { console.log("[AI News] og:image fetch failed (CORS):", fetchErr.message); }
+
+      const keys = await supaGetAIKeys();
+      const provider = keys.ai_provider || "openai";
+      const openaiKey = keys.openai_key;
+      const geminiKey = keys.gemini_key;
+      const claudeKey = keys.claude_key;
+      if ((provider === "gemini" && !geminiKey) || (provider === "claude" && !claudeKey) || (provider === "openai" && !openaiKey)) {
+        setAiError("Chave de API não configurada. Vá em Configurações → Assistente IA."); setAiLoading(false); setAiStep("url"); return;
+      }
+      const toneDesc = { descolado:"Informal, moderno, com gírias leves e humor. Como se um amigo do marketing estivesse contando a novidade.", serio:"Profissional e analítico. Tom de revista de negócios, com insights estratégicos.", inspirador:"Motivacional e empolgante. Foco em lições e aprendizados para profissionais.", provocativo:"Ousado e opinativo. Questiona, provoca reflexão e toma posição.", educativo:"Didático e informativo. Explica conceitos e contextualiza para quem não conhece o assunto." }[aiTone] || "Profissional e envolvente.";
+      const systemPrompt = `Você é o editor de conteúdo da Unique Marketing 360, uma agência de marketing digital. Sua tarefa é reescrever notícias no estilo da Unique.
+
+REGRAS:
+1. Reescreva completamente com suas próprias palavras — NÃO copie trechos do original
+2. Tom: ${toneDesc}
+3. Sempre termine com um insight prático para profissionais de marketing
+4. O texto deve ter 4-6 parágrafos
+5. Responda APENAS em JSON válido com esta estrutura exata (sem markdown, sem backticks):
+{"title":"título reescrito","summary":"resumo de 1 linha","body":"texto completo com \\n entre parágrafos","category":"uma das categorias: trends, updates, tips, cases, tools, novidade, branding, estrategia, publicidade, carreira, mktdigital, ia","tags":["tag1","tag2","tag3"],"source":"nome do veículo original","sourceUrl":"url original","readTime":"X min","photoKeywords":["3 a 5 palavras-chave para buscar foto relacionada ao tema, em português"]}`;
+
+      const userMsg = `Reescreva esta notícia no tom "${aiTone}". URL da notícia original: ${aiUrl.trim()}
+
+Acesse o conteúdo da URL, leia a notícia completa e reescreva no estilo Unique Marketing. Responda SOMENTE com o JSON, sem nenhum texto antes ou depois.`;
+
+      let aiText = "";
+      if (provider === "gemini") {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + "\n\n" + userMsg }] }] })
+        });
+        const d = await res.json();
+        aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else if (provider === "claude") {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: systemPrompt, messages: [{ role: "user", content: userMsg }] })
+        });
+        const d = await res.json();
+        aiText = d?.content?.[0]?.text || "";
+      } else {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
+          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMsg }], temperature: 0.7 })
+        });
+        const d = await res.json();
+        aiText = d?.choices?.[0]?.message?.content || "";
+      }
+      /* Parse JSON response */
+      const clean = aiText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(clean);
+      const photoFromOg = extractedPhoto || "";
+      const photoKeywords = parsed.photoKeywords || parsed.tags || [];
+      setForm({
+        title: parsed.title || "", summary: parsed.summary || "", body: parsed.body || "",
+        cat: normalizeCat(parsed.category || "novidade"),
+        tags: (parsed.tags || []).join(", "), source: parsed.source || "", sourceUrl: parsed.sourceUrl || aiUrl.trim(),
+        readTime: parsed.readTime || "4 min", pinned: false,
+        photo: photoFromOg || null,
+      });
+      if (photoFromOg) {
+        /* Photo found from og:image — go directly to edit form */
+        setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
+        showToast("Notícia gerada com foto — revise e publique!");
+      } else {
+        /* No photo — show photo suggestion step */
+        setAiPhotoSuggestions({ keywords: photoKeywords });
+        setAiStep("photo"); setAiLoading(false);
+      }
+    } catch(e) {
+      console.error("AI news generation error:", e);
+      setAiError("Erro ao gerar: " + (e.message || "tente novamente")); setAiLoading(false); setAiStep("url");
+    }
+  };
+
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  const handleNewsPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ""; /* reset so same file can be reselected */
+
+    /* Resize on canvas first, then upload the blob */
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new window.Image();
+      img.onload = async () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+
+        /* Show local preview immediately */
+        const b64Preview = canvas.toDataURL("image/jpeg", 0.85);
+        setForm(p => ({ ...p, photo: b64Preview }));
+
+        if (!supabase) return; /* offline: keep base64 as fallback */
+
+        setPhotoUploading(true);
+        try {
+          canvas.toBlob(async (blob) => {
+            const path = `news-covers/${Date.now()}_cover.jpg`;
+            const { error } = await supabase.storage.from("demand-files").upload(path, blob, { upsert: true, cacheControl: "3600", contentType: "image/jpeg" });
+            if (error) {
+              console.warn("News photo upload failed:", error.message);
+              showToast("⚠️ Foto salva localmente (storage indisponível)");
+            } else {
+              const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+              const url = pub?.publicUrl || b64Preview;
+              setForm(p => ({ ...p, photo: url, _photoPath: path }));
+            }
+            setPhotoUploading(false);
+          }, "image/jpeg", 0.85);
+        } catch (err) {
+          console.warn("News photo upload catch:", err);
+          setPhotoUploading(false);
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  const { showToast, ToastEl } = useToast();
+
+  useEffect(() => {
+    if (loaded) return;
+    supaLoadNews().then(rows => {
+      if (rows.length) {
+        setArticles(rows.map(parseNewsRow));
+      }
+      setLoaded(true);
+    });
+  }, [loaded]);
+
+  const CATS = [
+    { k:"all", l:"Tudo" },
+    { k:"trends", l:"Tendências" },
+    { k:"updates", l:"Atualizações" },
+    { k:"tips", l:"Dicas" },
+    { k:"cases", l:"Cases" },
+    { k:"tools", l:"Ferramentas" },
+    { k:"novidade", l:"Novidade" },
+    { k:"branding", l:"Branding" },
+    { k:"estrategia", l:"Estratégia" },
+    { k:"publicidade", l:"Publicidade" },
+    { k:"carreira", l:"Carreira" },
+    { k:"mktdigital", l:"Marketing Digital" },
+    { k:"ia", l:"Inteligência Artificial" },
+  ];
+  const [saved, setSaved] = useState([]);
+  const toggleSave = (id) => {
+    setSaved(p => p.includes(id) ? p.filter(x=>x!==id) : [...p, id]);
+    showToast(saved.includes(id) ? "Removido dos salvos" : "Salvo para ler depois ✓");
+  };
+
+  const saveArticle = async () => {
+    if (!form.title?.trim()) return showToast("Informe o título");
+    if (photoUploading) return showToast("Aguarde o upload da foto terminar...");
+    const sourceVal = form.sourceUrl ? `${form.source||""}||${form.sourceUrl}` : (form.source || "");
+    /* Only save real URLs, never base64 previews */
+    const safePhoto = (form.photo && !form.photo.startsWith("data:")) ? form.photo : null;
+    if (form.photo && !safePhoto) showToast("⚠️ Upload da foto falhou — artigo salvo sem imagem");
+    const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [], photo: safePhoto };
+    const row = await supaCreateNews(na);
+    if (row) {
+      const parsed = parseNewsRow(row);
+      /* Ensure photo is preserved from form even if DB doesn't return it */
+      if (!parsed.photo && form.photo) parsed.photo = form.photo;
+      setArticles(prev => [parsed, ...prev]);
+      setCreating(false); setForm({}); setPhotoPreview(null); showToast("Artigo publicado ✓");
+      /* Notify all team members */
+      supaCreateNotificationForAll("news_created", "Nova notícia publicada", form.title || "Novo artigo no News", "📰", null, user?.id);
+    } else {
+      showToast("Erro ao publicar artigo");
+    }
+  };
+
+  const updateArticle = async () => {
+    if (!selArticle?.supaId) return;
+    const updSourceVal = form.sourceUrl ? `${form.source || selArticle.source || ""}||${form.sourceUrl}` : (form.source ?? selArticle.source ?? "");
+    const photoToSave = form.photo !== undefined ? form.photo : selArticle.photo;
+    const safePhoto = (photoToSave && !photoToSave.startsWith("data:")) ? photoToSave : (selArticle.photo && !selArticle.photo.startsWith("data:") ? selArticle.photo : null);
+    const cleanBody = (form.body ?? selArticle.body ?? "").replace(/^__PHOTO__:[^\n]*\n?/, "");
+    const updates = { title: form.title || selArticle.title, body: cleanBody, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: safePhoto };
+    await supaUpdateNews(selArticle.supaId, updates);
+    const parsedSrc = updSourceVal.includes("||") ? updSourceVal.split("||") : [updSourceVal, ""];
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto } : a));
+    const updated = { ...selArticle, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto };
+    setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
+  };
+
+  const deleteArticle = async (a) => {
+    if (!confirm(`Excluir "${a.title}"?`)) return;
+    if (a.supaId) await supaDeleteNews(a.supaId);
+    setArticles(prev => prev.filter(x => x.id !== a.id));
+    setSelArticle(null); showToast("Artigo excluído ✓");
+  };
+
+  const filtered = tab === "all" ? articles : tab === "saved" ? articles.filter(a=>saved.includes(a.id)) : articles.filter(a=>a.cat===tab);
+
+  const catColor = (cat) => ({ trends:B.purple, updates:B.blue, tips:B.orange, cases:B.green, tools:B.cyan, novidade:"#EC4899", branding:"#8B5CF6", estrategia:"#0EA5E9", publicidade:"#F59E0B", carreira:"#10B981", mktdigital:B.accent, ia:"#6366F1" }[cat] || B.muted);
+  const catLabel = (cat) => ({ trends:"Tendência", updates:"Atualização", tips:"Dica", cases:"Case", tools:"Ferramenta", novidade:"Novidade", branding:"Branding", estrategia:"Estratégia", publicidade:"Publicidade", carreira:"Carreira", mktdigital:"Marketing Digital", ia:"Inteligência Artificial" }[cat] || cat);
+
+  /* ── ARTICLE FORM (create/edit) ── */
+  const newsFormJSX = (isEdit) => (
+    <Card style={{ marginBottom:10 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+        <p style={{ fontSize:14, fontWeight:700 }}>{isEdit ? "Editando artigo" : "Novo artigo"}</p>
+        <button onClick={isEdit ? updateArticle : saveArticle} disabled={photoUploading} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 14px",borderRadius:8,background:photoUploading?B.muted:B.accent,border:"none",cursor:photoUploading?"not-allowed":"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent,opacity:photoUploading?0.7:1}}>
+          {IC.check} {photoUploading ? "Enviando foto..." : (isEdit ? "Salvar" : "Publicar")}
+        </button>
+      </div>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
+      <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título do artigo" className="tinput" style={{ marginBottom:10, fontWeight:700 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Resumo</label>
+      <input value={form.summary||""} onChange={e=>setForm(p=>({...p,summary:e.target.value}))} placeholder="Resumo curto" className="tinput" style={{ marginBottom:10 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Categoria</label>
+      <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+        {CATS.filter(c=>c.k!=="all").map(c=>(
+          <button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 10px", borderRadius:8, fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"inherit", border:(form.cat||"geral")===c.k?`2px solid ${catColor(c.k)}`:`1.5px solid ${B.border}`, background:(form.cat||"geral")===c.k?`${catColor(c.k)}15`:B.bgCard, color:(form.cat||"geral")===c.k?catColor(c.k):B.muted }}>{c.l}</button>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+        <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Fonte</label><input value={form.source||""} onChange={e=>setForm(p=>({...p,source:e.target.value}))} placeholder="Ex: Social Media Today" className="tinput" /></div>
+        <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Tempo leitura</label><input value={form.readTime||""} onChange={e=>setForm(p=>({...p,readTime:e.target.value}))} placeholder="3 min" className="tinput" /></div>
+      </div>
+      <div style={{ marginBottom:10 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Link da fonte</label><input value={form.sourceUrl||""} onChange={e=>setForm(p=>({...p,sourceUrl:e.target.value}))} placeholder="https://socialmediatoday.com/artigo..." className="tinput" /></div>
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Conteúdo</label>
+      <textarea value={form.body||""} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Texto completo do artigo..." className="tinput" style={{ minHeight:120, resize:"vertical", marginBottom:10 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separadas por vírgula)</label>
+      <input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="Instagram, Meta, Reels" className="tinput" style={{ marginBottom:10 }} />
+      <label className="sl" style={{ display:"block", marginBottom:4 }}>Foto de capa</label>
+      <div style={{ marginBottom:14 }}>
+        <input ref={newsPhotoRef} type="file" accept="image/*" onChange={handleNewsPhoto} style={{ display:"none" }} />
+        {form.photo ? (
+          <div style={{ position:"relative" }}>
+            <img src={form.photo} alt="capa" style={{ width:"100%", height:160, objectFit:"cover", borderRadius:12, opacity: photoUploading ? 0.6 : 1 }} />
+            {photoUploading && (
+              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:12, background:"rgba(0,0,0,0.3)" }}>
+                <div style={{ fontSize:12, fontWeight:700, color:"#fff", background:"rgba(0,0,0,0.5)", padding:"6px 14px", borderRadius:20 }}>Enviando foto...</div>
+              </div>
+            )}
+            {!photoUploading && <button onClick={() => { setForm(p=>({...p,photo:null,_photoPath:undefined})); setPhotoPreview(null); }} style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>}
+          </div>
+        ) : (
+          <button onClick={() => newsPhotoRef.current?.click()} style={{ width:"100%", padding:"20px 0", borderRadius:12, border:`2px dashed ${B.border}`, background:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+            {IC.img}
+            <span>Adicionar foto de capa</span>
+            <span style={{ fontSize:10 }}>Aparece como thumbnail no dashboard e na lista de notícias</span>
+          </button>
+        )}
+      </div>
+      <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+        <input type="checkbox" checked={form.pinned||false} onChange={e=>setForm(p=>({...p,pinned:e.target.checked}))} /> Destacar artigo
+      </label>
+    </Card>
+  );
+
+  /* ── CHOOSE CREATE MODE ── */
+  if (showCreateChoice) return (
+    <div className="pg">{ToastEl}
+      <Head title="Nova notícia" onBack={()=>setShowCreateChoice(false)} />
+      <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
+        <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.news(B.accent)}</div>
+        <h3 style={{ fontSize:16, fontWeight:800 }}>Como quer criar?</h3>
+        <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha entre escrever manualmente ou usar IA para reescrever uma notícia de outra fonte.</p>
+      </Card>
+      <Card onClick={()=>startCreation("manual")} style={{ cursor:"pointer", marginBottom:8, border:`1.5px solid ${B.border}` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:14, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center", color:B.blue, flexShrink:0 }}>{IC.content(B.blue)}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar manualmente</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Escreva o título, conteúdo e detalhes do zero</p></div>
+          {IC.chev()}
+        </div>
+      </Card>
+      <Card onClick={()=>startCreation("ai")} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}30`, background:`${B.accent}04` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, flexShrink:0 }}>{IC.ai(B.accent)}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar com IA</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Cole o link de uma notícia e a IA reescreve no estilo Unique</p></div>
+          {IC.chev()}
+        </div>
+      </Card>
+    </div>
+  );
+
+  /* ── AI CREATION FLOW ── */
+  if (aiMode) return (
+    <div className="pg">{ToastEl}
+      <Head title="Criar com IA" onBack={()=>{setAiMode(false);setAiStep("url");setAiLoading(false);}} />
+      <Card style={{ textAlign:"center", padding:20, marginBottom:12 }}>
+        <div style={{ width:48, height:48, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:B.accent }}>{IC.ai(B.accent)}</div>
+        <h3 style={{ fontSize:15, fontWeight:800 }}>{aiStep==="loading"?"Gerando notícia...":aiStep==="photo"?"Notícia gerada!":"Notícia com assistência de IA"}</h3>
+        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{aiStep==="loading"?"Lendo o artigo original e reescrevendo no tom escolhido...":aiStep==="photo"?"Agora escolha a foto de capa para a notícia.":"Cole o link, escolha o tom e a IA faz o resto."}</p>
+      </Card>
+
+      {aiStep === "loading" && (
+        <Card style={{ textAlign:"center", padding:30 }}>
+          <div style={{ width:40, height:40, border:`3px solid ${B.border}`, borderTopColor:B.accent, borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 16px" }} />
+          <p style={{ fontSize:13, fontWeight:600 }}>Processando...</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Isso pode levar 10-20 segundos</p>
+        </Card>
+      )}
+
+      {aiStep === "url" && <>
+        {aiError && <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:10 }}><p style={{ fontSize:12, color:B.red }}>{aiError}</p></Card>}
+        <Card style={{ marginBottom:10 }}>
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Link da notícia original *</label>
+          <input value={aiUrl} onChange={e=>{setAiUrl(e.target.value);setAiError("");}} placeholder="https://forbes.com.br/artigo..." className="tinput" style={{ marginBottom:4 }} />
+          <p style={{ fontSize:10, color:B.muted }}>Cole o link completo da notícia que quer reescrever</p>
+        </Card>
+        <Card style={{ marginBottom:10 }}>
+          <label className="sl" style={{ display:"block", marginBottom:8 }}>Tom da reescrita *</label>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            {[
+              { k:"descolado", l:"Descolado", d:"Informal, moderno, com humor", ic:"😎", c:B.pink },
+              { k:"serio", l:"Sério / Analítico", d:"Tom de revista de negócios", ic:"📊", c:B.blue },
+              { k:"inspirador", l:"Inspirador", d:"Motivacional, foco em lições", ic:"🚀", c:B.green },
+              { k:"provocativo", l:"Provocativo", d:"Ousado, opinativo, questiona", ic:"🔥", c:B.orange },
+              { k:"educativo", l:"Educativo", d:"Didático, explica conceitos", ic:"📚", c:B.purple },
+            ].map(t => (
+              <button key={t.k} onClick={()=>{setAiTone(t.k);setAiError("");}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:`1.5px solid ${aiTone===t.k?t.c:B.border}`, background:aiTone===t.k?`${t.c}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <span style={{ fontSize:18 }}>{t.ic}</span>
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:aiTone===t.k?700:500, color:aiTone===t.k?t.c:B.text }}>{t.l}</p><p style={{ fontSize:10, color:B.muted }}>{t.d}</p></div>
+                {aiTone===t.k && <span style={{ color:t.c, display:"flex" }}>{IC.check}</span>}
+              </button>
+            ))}
+          </div>
+        </Card>
+        <button onClick={aiGenerateArticle} className="pill full accent" style={{ padding:"14px 0", opacity:(aiUrl.trim()&&aiTone)?1:0.4 }}>
+          {IC.ai(B.dark)} Gerar notícia com IA
+        </button>
+      </>}
+
+      {aiStep === "photo" && <>
+        <Card style={{ background:`${B.orange}06`, border:`1.5px solid ${B.orange}25`, marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>
+            <p style={{ fontSize:12, color:B.orange, lineHeight:1.5 }}>Não foi possível extrair a foto automaticamente. Escolha uma das opções abaixo.</p>
+          </div>
+        </Card>
+
+        <p className="sl" style={{ marginBottom:6 }}>Título gerado</p>
+        <Card style={{ marginBottom:12 }}><p style={{ fontSize:14, fontWeight:700 }}>{form.title}</p></Card>
+
+        {aiPhotoSuggestions?.keywords?.length > 0 && <>
+          <p className="sl" style={{ marginBottom:6 }}>Termos sugeridos pela IA para buscar foto</p>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {aiPhotoSuggestions.keywords.map((kw, i) => (
+                <span key={i} style={{ padding:"5px 12px", borderRadius:8, background:`${B.accent}10`, color:B.accent, fontSize:11, fontWeight:600 }}>{kw}</span>
+              ))}
+            </div>
+            <p style={{ fontSize:10, color:B.muted, marginTop:8 }}>Use esses termos no Google Imagens para encontrar uma foto adequada</p>
+          </Card>
+        </>}
+
+        <p className="sl" style={{ marginBottom:6 }}>Colar URL da foto</p>
+        <Card style={{ marginBottom:12 }}>
+          <div style={{ display:"flex", gap:8 }}>
+            <input value={aiPhotoUrl} onChange={e=>setAiPhotoUrl(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ flex:1 }} />
+          </div>
+          {aiPhotoUrl && <img src={aiPhotoUrl} alt="preview" style={{ width:"100%", height:140, objectFit:"cover", borderRadius:10, marginTop:10 }} onError={e=>{e.target.style.display="none";}} onLoad={e=>{e.target.style.display="block";}} />}
+        </Card>
+
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={() => { setForm(p=>({...p, photo: aiPhotoUrl || null})); setCreating(true); setAiMode(false); setAiStep("done"); showToast(aiPhotoUrl ? "Foto adicionada — revise e publique!" : "Notícia sem foto — você pode adicionar depois"); }} className="pill full accent" style={{ flex:2, padding:"14px 0" }}>
+            {aiPhotoUrl ? "Usar esta foto" : "Continuar sem foto"}
+          </button>
+        </div>
+        <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:8 }}>Você também pode adicionar ou trocar a foto na tela de edição</p>
+      </>}
+    </div>
+  );
+
+  /* ── CREATE VIEW ── */
+  if (creating) return (
+    <div className="pg">{ToastEl}
+      <Head title="Novo artigo" onBack={()=>{setCreating(false);setForm({});}} />
+      {newsFormJSX(false)}
+    </div>
+  );
+
+  /* ── ARTICLE DETAIL ── */
+  if (selArticle) {
+    const a = selArticle;
+    if (editingArticle) return (
+      <div className="pg">{ToastEl}
+        <Head title="Editar artigo" onBack={()=>{setEditingArticle(false);setForm({});}} />
+        {newsFormJSX(true)}
+      </div>
+    );
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={() => {setSelArticle(null);setEditingArticle(false);}} right={<div style={{display:"flex",gap:6}}>
+          <button onClick={() => toggleSave(a.id)} className="ib" style={{ color:saved.includes(a.id)?B.accent:B.muted }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={saved.includes(a.id)?B.accent:"none"} stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          </button>
+          <button onClick={()=>deleteArticle(a)} className="ib" style={{ color:B.red }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>} />
+
+        {/* Hero photo */}
+        {a.photo && (
+          <div style={{ marginBottom:12, borderRadius:16, overflow:"hidden", position:"relative", height:200 }}>
+            <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.parentElement.style.display="none";}} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,0.55) 100%)" }} />
+            <div style={{ position:"absolute", bottom:12, left:12, display:"flex", gap:6, flexWrap:"wrap" }}>
+              <Tag color={catColor(a.cat)} style={{ background:catColor(a.cat), color:"#fff" }}>{catLabel(a.cat)}</Tag>
+              {a.pinned && <Tag color={B.red} style={{ background:B.red, color:"#fff" }}>⭐ Destaque</Tag>}
+            </div>
+          </div>
+        )}
+
+        <Card style={{ marginBottom:12, borderLeft:`4px solid ${catColor(a.cat)}` }}>
+          {!a.photo && <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+            <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
+            <Tag color={B.muted}>{a.readTime}</Tag>
+            {a.pinned && <Tag color={B.red}>Destaque</Tag>}
+          </div>}
+          {a.photo && a.readTime && <p className="sl" style={{ marginBottom:6 }}>{a.readTime}</p>}
+          <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{a.title}</h3>
+          <p style={{ fontSize:11, color:B.muted }}>{a.sourceUrl ? <a href={a.sourceUrl.startsWith("http") ? a.sourceUrl : `https://${a.sourceUrl}`} target="_blank" rel="noopener noreferrer" style={{ color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : a.source} · {a.date}</p>
+        </Card>
+        <Card style={{ marginBottom:12 }}>
+          {(a.body||"").split("\n\n").map((p,i) => (
+            <p key={i} style={{ fontSize:13, lineHeight:1.7, marginTop:i?12:0, color:p.startsWith("•") || p.startsWith("1.") ? B.dark : B.text, fontWeight:p.length<50 && !p.startsWith("•") && !p.startsWith("'")? 700 : 400 }}>{p}</p>
+          ))}
+        </Card>
+        {a.tags && a.tags.length > 0 && (
+          <Card style={{ marginBottom:12 }}>
+            <p className="sl" style={{ marginBottom:6 }}>Tags</p>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {a.tags.map((t,i) => <Tag key={i} color={catColor(a.cat)}>#{t}</Tag>)}
+            </div>
+          </Card>
+        )}
+        <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar artigo
+        </button>
+      </div>
+    );
+  }
+
+  /* ── MAIN NEWS LIST ── */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={() => setShowCreateChoice(true)} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      {ToastEl}
+      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        {[...CATS, { k:"saved", l:`Salvos (${saved.length})` }].map(c => (
+          <button key={c.k} onClick={()=>setTab(c.k)} className={`htab${tab===c.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.l}</button>
+        ))}
+      </div>
+
+      {/* Pinned article */}
+      {tab === "all" && articles.filter(a=>a.pinned).map(a => (
+        <Card key={a.id} onClick={()=>setSelArticle(a)} style={{ marginBottom:12, cursor:"pointer", padding:0, overflow:"hidden", border:`1.5px solid ${B.accent}20` }}>
+          {a.photo
+            ? <div style={{ position:"relative", height:140 }}>
+                <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.02) 0%,rgba(0,0,0,0.6) 100%)" }} />
+                <span style={{ position:"absolute", top:10, left:10, background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"3px 10px", borderRadius:100, textTransform:"uppercase", letterSpacing:0.8 }}>⭐ Destaque</span>
+              </div>
+            : <div style={{ background:`${B.accent}06`, padding:"12px 12px 0 12px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={B.red} stroke={B.red} strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <span style={{ fontSize:10, fontWeight:700, color:B.red }}>DESTAQUE</span>
+                </div>
+              </div>
+          }
+          <div style={{ padding:12 }}>
+            <h3 style={{ fontSize:15, fontWeight:800, lineHeight:1.3, marginBottom:4, color: a.photo ? undefined : B.text }}>{a.title}</h3>
+            <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>{a.summary}</p>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+              <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
+              <span style={{ fontSize:10, color:B.muted }}>{a.readTime} · {a.source}</span>
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {filtered.length === 0 ? (
+        <Card style={{ textAlign:"center", padding:24 }}>
+          <p style={{ fontSize:13, fontWeight:600 }}>{tab === "saved" ? "Nenhum artigo salvo" : "Nenhum artigo nesta categoria"}</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{tab === "saved" ? "Salve artigos para ler depois." : "Volte em breve para novidades."}</p>
+        </Card>
+      ) : filtered.filter(a=> tab!=="all" || !a.pinned).map((a,i) => (
+        <Card key={a.id} delay={i*0.03} onClick={()=>setSelArticle(a)} style={{ marginTop:i?6:0, cursor:"pointer", padding:0, overflow:"hidden" }}>
+          {a.photo && <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:120, objectFit:"cover" }} />}
+          <div style={{ display:"flex", gap:10, padding:12 }}>
+            <div style={{ width:6, borderRadius:3, background:catColor(a.cat), flexShrink:0 }} />
+            <div style={{ flex:1, minWidth:0 }}>
+              <h4 style={{ fontSize:13, fontWeight:700, lineHeight:1.3, marginBottom:4 }}>{a.title}</h4>
+              <p style={{ fontSize:11, color:B.muted, lineHeight:1.4, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{a.summary}</p>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:6 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <Tag color={catColor(a.cat)}>{catLabel(a.cat)}</Tag>
+                  <span style={{ fontSize:9, color:B.muted }}>{a.readTime}</span>
+                  {a.source && (a.sourceUrl ? <a href={a.sourceUrl.startsWith("http") ? a.sourceUrl : `https://${a.sourceUrl}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ fontSize:9, color:B.accent, fontWeight:600, textDecoration:"underline" }}>{a.source} ↗</a> : <span style={{ fontSize:9, color:B.accent, fontWeight:600 }}>{a.source}</span>)}
+                </div>
+                <span style={{ fontSize:9, color:B.muted }}>{a.date}</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      ))}
+      </div>
+    </div>
+  );
+}
+
+function IdeasPage({ onBack, user, clients: propClients }) {
+  const IDEAS_MOCK = [];
+  const [ideas, setIdeas] = useState([]);
+  const [ideasLoaded, setIdeasLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!supabase || ideasLoaded) return;
+    supaLoadIdeas().then(rows => {
+      if (rows) {
+        if (rows.length > 0) {
+          setIdeas(rows.map(r => ({
+            id: r.id, supaId: r.id, title: r.title, desc: r.description || "",
+            author: r.author || "Matheus", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
+            votes: r.votes || 0, status: r.status || "pending",
+            client: r.client_name || "Todos", tags: r.tags || [], comments: r.comments || [],
+          })));
+        } else {
+          setIdeas([]);
+        }
+      } else {
+        setIdeas(IDEAS_MOCK);
+      }
+      setIdeasLoaded(true);
+    });
+  }, [ideasLoaded]);
+
+  const [filter, setFilter] = useState("all");
+  const [selIdea, setSelIdea] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [editingIdea, setEditingIdea] = useState(null);
+  const [form, setForm] = useState({});
+  const [newComment, setNewComment] = useState("");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const { showToast, ToastEl } = useToast();
+
+  const statusCfg = { approved:{ l:"Aprovada", c:B.green }, review:{ l:"Em análise", c:B.orange }, pending:{ l:"Pendente", c:B.muted }, rejected:{ l:"Rejeitada", c:B.red } };
+
+  const vote = (id) => {
+    setIdeas(p => p.map(i => i.id===id ? {...i, votes:i.votes+1} : i));
+    const idea = ideas.find(i => i.id === id);
+    if (idea?.supaId) supaUpdateIdea(idea.supaId, { votes: (idea.votes || 0) + 1 });
+  };
+
+  const addComment = (id) => {
+    if (!newComment.trim()) return;
+    const comment = { by: user?.name || "Matheus", text: newComment.trim(), date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+    setIdeas(p => p.map(i => {
+      if (i.id !== id) return i;
+      const updated = [...(i.comments||[]), comment];
+      if (i.supaId) supaUpdateIdea(i.supaId, { comments: updated });
+      return { ...i, comments: updated };
+    }));
+    setNewComment("");
+    showToast("Comentário adicionado ✓");
+  };
+
+  const addIdea = async () => {
+    if (!form.title?.trim()) return showToast("Informe o título da ideia");
+    const ni = { id:Date.now(), title:form.title.trim(), desc:form.desc||"", author:"Matheus", date:new Date().toLocaleDateString("pt-BR"), votes:0, status:"pending", client:form.client||"Todos", tags:form.tags?.split(",").map(t=>t.trim()).filter(Boolean)||[], comments:[] };
+    const saved = await supaCreateIdea(ni);
+    if (saved) { ni.id = saved.id; ni.supaId = saved.id; }
+    setIdeas(p=>[ni,...p]);
+    setAdding(false); setForm({});
+    showToast("Ideia adicionada! ✓");
+  };
+
+  const filtered = filter === "all" ? ideas : ideas.filter(i=>i.status===filter);
+
+  /* ── ADD IDEA ── */
+  if (adding) return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Nova Ideia" onBack={()=>{setAdding(false);setForm({});}} />
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Título da ideia *</label>
+        <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Série de Reels educativos..." className="tinput" />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição</label>
+        <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva a ideia em detalhes: objetivo, como executar, recursos necessários..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente relacionado</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          <button onClick={()=>setForm(p=>({...p,client:"Todos"}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.client||"Todos")==="Todos"?B.accent:B.border}`, background:(form.client||"Todos")==="Todos"?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>Todos</button>
+          {(propClients||[]).map(c=>(
+            <button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{c.name}</button>
+          ))}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separar por vírgula)</label>
+        <input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="Ex: Reels, Instagram, Conteúdo" className="tinput" />
+      </Card>
+      <button onClick={addIdea} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>Publicar Ideia</button>
+    </div>
+  );
+
+  /* ── IDEA DETAIL ── */
+  if (selIdea) {
+    const idea = ideas.find(i=>i.id===selIdea);
+    if (!idea) { setSelIdea(null); return null; }
+    const st = statusCfg[idea.status]||statusCfg.pending;
+
+    /* Edit mode */
+    if (editingIdea) {
+      return (
+        <div className="pg">
+          {ToastEl}
+          <Head title="Editar Ideia" onBack={()=>setEditingIdea(null)} />
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Título *</label>
+            <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} className="tinput" />
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição</label>
+            <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente</label>
+            <input value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput" />
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Status</label>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {["pending","review","approved","rejected"].map(s=>(
+                <button key={s} onClick={()=>setForm(p=>({...p,status:s}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.status===s?statusCfg[s].c:B.border}`, background:form.status===s?`${statusCfg[s].c}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:form.status===s?statusCfg[s].c:B.muted }}>{statusCfg[s].l}</button>
+              ))}
+            </div>
+          </Card>
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separar por vírgula)</label>
+            <input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} className="tinput" />
+          </Card>
+          <button onClick={async ()=>{
+            if (!form.title?.trim()) return showToast("Informe o título");
+            const updates = { title:form.title.trim(), desc:form.desc||"", client:form.client||"Todos", status:form.status||"pending", tags:form.tags?.split(",").map(t=>t.trim()).filter(Boolean)||[] };
+            setIdeas(p=>p.map(i=>i.id===idea.id?{...i,...updates}:i));
+            if (idea.supaId) await supaUpdateIdea(idea.supaId, { title:updates.title, description:updates.desc, client_name:updates.client, status:updates.status, tags:updates.tags });
+            setEditingIdea(null);
+            showToast("Ideia atualizada ✓");
+          }} className="pill full accent" style={{ marginTop:8, padding:"14px 0" }}>Salvar Alterações</button>
+        </div>
+      );
+    }
+
+    const deleteIdea = async () => {
+      if (!confirm(`Excluir ideia "${idea.title}"?`)) return;
+      if (idea.supaId) await supaDeleteIdea(idea.supaId);
+      setIdeas(p=>p.filter(i=>i.id!==idea.id));
+      setSelIdea(null);
+      showToast("Ideia excluída ✓");
+    };
+
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={()=>setSelIdea(null)} right={
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={()=>{ setForm({ title:idea.title, desc:idea.desc, client:idea.client, status:idea.status, tags:idea.tags?.join(", ")||"" }); setEditingIdea(idea.id); }} className="ib" style={{ width:34, height:34 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button onClick={deleteIdea} className="ib" style={{ width:34, height:34, color:B.red }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+        } />
+        <Card style={{ marginBottom:12, borderLeft:`4px solid ${st.c}` }}>
+          <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+            <Tag color={st.c}>{st.l}</Tag>
+            <Tag color={B.muted}>{idea.client}</Tag>
+          </div>
+          <h3 style={{ fontSize:16, fontWeight:800, lineHeight:1.3, marginBottom:6 }}>{idea.title}</h3>
+          <p style={{ fontSize:12, lineHeight:1.6, color:B.text }}>{idea.desc}</p>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <Av name={idea.author} sz={24} fs={9} />
+              <span style={{ fontSize:11, color:B.muted }}>{idea.author} · {idea.date}</span>
+            </div>
+            <button onClick={()=>vote(idea.id)} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 12px", borderRadius:8, background:`${B.accent}10`, border:`1.5px solid ${B.accent}25`, cursor:"pointer", fontFamily:"inherit" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+              <span style={{ fontSize:12, fontWeight:700, color:B.accent }}>{idea.votes}</span>
+            </button>
+          </div>
+        </Card>
+
+        {(idea.tags||[]).length > 0 && (
+          <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:12 }}>
+            {(idea.tags||[]).map((t,i)=><Tag key={i} color={B.accent}>#{t}</Tag>)}
+          </div>
+        )}
+
+        {/* Comments */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+          <p className="sl">Comentários ({(idea.comments||[]).length})</p>
+        </div>
+        {(idea.comments||[]).length === 0 ? (
+          <Card style={{ textAlign:"center", padding:16, marginBottom:8 }}>
+            <p style={{ fontSize:12, color:B.muted }}>Nenhum comentário ainda. Seja o primeiro!</p>
+          </Card>
+        ) : (idea.comments||[]).map((c,i) => (
+          <Card key={i} style={{ marginBottom:6, padding:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+              <Av name={c.by} sz={24} fs={9} />
+              <span style={{ fontSize:12, fontWeight:600 }}>{c.by}</span>
+              <span style={{ fontSize:9, color:B.muted }}>{c.date}</span>
+            </div>
+            <p style={{ fontSize:12, lineHeight:1.5, paddingLeft:32 }}>{c.text}</p>
+          </Card>
+        ))}
+
+        {/* Add comment */}
+        <div style={{ display:"flex", gap:6, marginTop:4 }}>
+          <input value={newComment} onChange={e=>setNewComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addComment(idea.id)} placeholder="Escreva um comentário..." className="tinput" style={{ flex:1 }} />
+          <button onClick={()=>addComment(idea.id)} style={{ width:40, height:40, borderRadius:12, background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── MAIN IDEAS LIST ── */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      
+      {/* Stats */}
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
+            <div><p style={{ fontSize:22, fontWeight:900 }}>{ideas.length}</p><p style={{ fontSize:9, opacity:.6 }}>Total</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{ideas.filter(i=>i.status==="approved").length}</p><p style={{ fontSize:9, opacity:.6 }}>Aprovadas</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{ideas.filter(i=>i.status==="review").length}</p><p style={{ fontSize:9, opacity:.6 }}>Em análise</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.muted }}>{ideas.filter(i=>i.status==="pending").length}</p><p style={{ fontSize:9, opacity:.6 }}>Pendentes</p></div>
+          </div>
+          <button onClick={()=>{setForm({});setAdding(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>
+            {IC.plus} Nova
+          </button>
+        </div>
+      </Card>
+
+      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        {[{k:"all",l:"Todas"},{k:"approved",l:"Aprovadas"},{k:"review",l:"Em análise"},{k:"pending",l:"Pendentes"}].map(f=>(
+          <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{f.l}</button>
+        ))}
+      </div>
+
+      {filtered.sort((a,b)=>b.votes-a.votes).map((idea,i) => {
+        const st = statusCfg[idea.status]||statusCfg.pending;
+        return (
+          <Card key={idea.id} delay={i*0.03} onClick={()=>setSelIdea(idea.id)} style={{ marginTop:i?8:0, cursor:"pointer" }}>
+            <div style={{ display:"flex", gap:10 }}>
+              {/* Vote column */}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, paddingTop:2 }} onClick={e=>{e.stopPropagation();vote(idea.id);}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                <span style={{ fontSize:14, fontWeight:900, color:B.accent }}>{idea.votes}</span>
+              </div>
+              {/* Content */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <h4 style={{ fontSize:13, fontWeight:700, lineHeight:1.3, marginBottom:4 }}>{idea.title}</h4>
+                <p style={{ fontSize:11, color:B.muted, lineHeight:1.4, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{idea.desc}</p>
+                <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:4, marginTop:6 }}>
+                  <Tag color={st.c}>{st.l}</Tag>
+                  <Tag color={B.muted}>{idea.client}</Tag>
+                  <span style={{ fontSize:9, color:B.muted }}>· {idea.author} · {idea.comments.length} comentário{idea.comments.length!==1?"s":""}</span>
+                </div>
+              </div>
+              {/* Edit / Delete */}
+              <div style={{ display:"flex", flexDirection:"column", gap:6, flexShrink:0, paddingTop:2 }} onClick={e=>e.stopPropagation()}>
+                <button onClick={()=>{setForm({title:idea.title,desc:idea.desc,client:idea.client,status:idea.status,tags:idea.tags?.join(", ")||""});setEditingIdea(idea.id);setSelIdea(idea.id);}} className="ib" style={{width:28,height:28}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button onClick={async ()=>{if(!confirm(`Excluir ideia "${idea.title}"?`))return;if(idea.supaId)await supaDeleteIdea(idea.supaId);setIdeas(p=>p.filter(i=>i.id!==idea.id));showToast("Excluída ✓");}} className="ib" style={{width:28,height:28,color:B.red}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+      </div>
+    </div>
+  );
+}
+
+function GamifyPage({ onBack, user, team }) {
+  const [tab, setTab] = useState("ranking");
+  const [selBadge, setSelBadge] = useState(null);
+  const [selReward, setSelReward] = useState(null);
+  const [redeemConfirm, setRedeemConfirm] = useState(false);
+  const [redeemed, setRedeemed] = useState(false);
+  const [xpEvents, setXpEvents] = useState([]);
+  const [xpLoaded, setXpLoaded] = useState(false);
+  const [awardUser, setAwardUser] = useState(null);
+  const [awardForm, setAwardForm] = useState({ xp:"", desc:"" });
+  const [resetConfirm, setResetConfirm] = useState(null); /* null | "all" | userId */
+  const { showToast, ToastEl } = useToast();
+  const isAdmin = user?.supaRole === "admin";
+
+  /* Load XP events from Supabase */
+  useEffect(() => {
+    if (xpLoaded) return;
+    supaLoadAllXp().then(rows => { setXpEvents(rows); setXpLoaded(true); });
+  }, [xpLoaded]);
+
+  /* ── LEVELS ── */
+  const LEVELS = [
+    { level:1, title:"Iniciante", min:0, max:500 },
+    { level:2, title:"Aprendiz", min:500, max:1200 },
+    { level:3, title:"Pleno", min:1200, max:2500 },
+    { level:4, title:"Sênior", min:2500, max:4500 },
+    { level:5, title:"Especialista", min:4500, max:7000 },
+    { level:6, title:"Líder", min:7000, max:10000 },
+    { level:7, title:"Master", min:10000, max:15000 },
+    { level:8, title:"Lenda", min:15000, max:99999 },
+  ];
+
+  const getLevel = xp => LEVELS.find(l => xp >= l.min && xp < l.max) || LEVELS[LEVELS.length-1];
+
+  /* ── TEAM DATA (real from Supabase) ── */
+  const teamData = React.useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const members = (team || []).map(m => {
+      const userXp = xpEvents.filter(e => e.user_id === m.user_id);
+      const totalXp = userXp.reduce((a, e) => a + (e.xp_amount || 0), 0);
+      const monthXp = userXp.filter(e => new Date(e.created_at) >= monthStart);
+      const checkins = monthXp.filter(e => e.action === "checkin").length;
+      const tasks = monthXp.filter(e => e.action === "task_done").length;
+      const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
+      return { id: m.id, user_id: m.user_id, name: m.name, role: m.role || m.job_title || "—", photo: null, xp: totalXp, events: userXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: userXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 };
+    });
+    /* Include current user if not already in team list */
+    if (user?.id && !members.find(m => m.user_id === user.id)) {
+      const myXp = xpEvents.filter(e => e.user_id === user.id);
+      const totalXp = myXp.reduce((a, e) => a + (e.xp_amount || 0), 0);
+      const monthXp = myXp.filter(e => new Date(e.created_at) >= monthStart);
+      const checkins = monthXp.filter(e => e.action === "checkin").length;
+      const tasks = monthXp.filter(e => e.action === "task_done").length;
+      const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
+      members.unshift({ id: "me", user_id: user.id, name: user.name || user.nick || "Eu", role: "Admin", photo: null, xp: totalXp, events: myXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: myXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 });
+    }
+    return members;
+  }, [team, xpEvents, user]);
+
+  const sorted = [...teamData].sort((a,b) => b.xp - a.xp);
+  const me = teamData.find(t => t.user_id === user?.id) || teamData[0] || { id:0, name:"—", xp:0, events:[], badges:[] };
+  /* Derive badges from XP events (action=badge) */
+  const myBadges = (me?.events || []).filter(e => e.action === "badge").map(e => e.description);
+  const myLevel = getLevel(me?.xp || 0);
+  const xpProgress = myLevel ? ((me.xp - myLevel.min) / (myLevel.max - myLevel.min)) * 100 : 0;
+  const myRank = sorted.findIndex(t => t.user_id === me?.user_id) + 1;
+
+  /* My recent XP history */
+  const myHistory = (me?.events || []).slice(0, 15);
+
+  /* ── BADGES ── */
+  const ALL_BADGES = [
+    { id:"firstPost", emoji:"🚀", name:"Primeiro Post", desc:"Publicou seu primeiro conteúdo", xpReward:50, rarity:"Comum" },
+    { id:"streak7", emoji:"🔥", name:"Em Chamas", desc:"7 dias consecutivos de check-in", xpReward:100, rarity:"Comum" },
+    { id:"streak30", emoji:"💎", name:"Inabalável", desc:"30 dias consecutivos de check-in", xpReward:500, rarity:"Épico" },
+    { id:"speed", emoji:"⚡", name:"Relâmpago", desc:"Completou 5 tarefas no mesmo dia", xpReward:150, rarity:"Raro" },
+    { id:"client10", emoji:"🤝", name:"Relacionista", desc:"Gerenciou 10+ clientes ativos", xpReward:200, rarity:"Raro" },
+    { id:"creative50", emoji:"🎨", name:"Criativo", desc:"Criou 50+ conteúdos diferentes", xpReward:300, rarity:"Raro" },
+    { id:"volume100", emoji:"📦", name:"Máquina", desc:"Completou 100+ tarefas no total", xpReward:400, rarity:"Épico" },
+    { id:"mentor", emoji:"🧠", name:"Mentor", desc:"Ajudou 3 colegas em suas tarefas", xpReward:250, rarity:"Raro" },
+    { id:"allStar", emoji:"⭐", name:"All Star", desc:"Nota máxima em satisfação do cliente", xpReward:350, rarity:"Épico" },
+    { id:"videoMaster", emoji:"🎬", name:"Cineasta", desc:"Produziu 20+ vídeos/reels", xpReward:300, rarity:"Raro" },
+    { id:"revenue", emoji:"💰", name:"Gerador", desc:"Contribuiu para R$50k+ em receita", xpReward:500, rarity:"Lendário" },
+    { id:"perfect", emoji:"🏆", name:"Perfeição", desc:"100% de entregas no prazo por 30 dias", xpReward:600, rarity:"Lendário" },
+  ];
+
+  const rarityColor = r => ({ "Comum":B.muted, "Raro":B.blue, "Épico":B.purple, "Lendário":"#F59E0B" }[r] || B.muted);
+
+  /* ── CHALLENGES ── */
+  const CHALLENGES = [
+    { id:1, title:"Maratona de Posts", desc:"Publique 10 posts esta semana", icon:"📱", reward:200, progress:7, total:10, deadline:"Sex, 07/03", type:"Semanal", color:B.blue },
+    { id:2, title:"Check-in Perfeito", desc:"Faça check-in todos os dias do mês", icon:"📍", reward:350, progress:18, total:22, deadline:"31/03", type:"Mensal", color:B.green },
+    { id:3, title:"Feedback Mestre", desc:"Receba 5 aprovações de cliente sem revisão", icon:"✅", reward:300, progress:3, total:5, deadline:"31/03", type:"Mensal", color:B.purple },
+    { id:4, title:"Velocity Sprint", desc:"Complete 8 tarefas em 2 dias", icon:"🏃", reward:250, progress:5, total:8, deadline:"Ter, 04/03", type:"Flash", color:B.orange },
+    { id:5, title:"Rei do Reels", desc:"Produza 5 Reels/Shorts esta semana", icon:"🎬", reward:200, progress:2, total:5, deadline:"Sex, 07/03", type:"Semanal", color:B.red },
+  ];
+
+  /* ── REWARDS SHOP ── */
+  const REWARDS = [
+    { id:1, name:"Day Off Extra", desc:"Um dia de folga adicional no mês", cost:3000, icon:"🏖️", cat:"Benefício", stock:2 },
+    { id:2, name:"Almoço com o CEO", desc:"Almoço especial para trocar ideias", cost:1500, icon:"🍽️", cat:"Experiência", stock:4 },
+    { id:3, name:"Gift Card R$100", desc:"Cartão presente para usar onde quiser", cost:2000, icon:"🎁", cat:"Prêmio", stock:5 },
+    { id:4, name:"Home Office Flexível", desc:"1 semana de home office livre", cost:2500, icon:"🏠", cat:"Benefício", stock:3 },
+    { id:5, name:"Curso Online", desc:"Curso à escolha pago pela agência", cost:4000, icon:"📚", cat:"Desenvolvimento", stock:3 },
+    { id:6, name:"Bônus R$250", desc:"Bônus direto no salário", cost:5000, icon:"💵", cat:"Prêmio", stock:2 },
+    { id:7, name:"Cadeira Ergonômica", desc:"Upgrade para cadeira premium", cost:6000, icon:"🪑", cat:"Escritório", stock:1 },
+    { id:8, name:"Horário Flexível", desc:"1 mês de horário flexível", cost:3500, icon:"⏰", cat:"Benefício", stock:2 },
+  ];
+
+  /* ── XP HISTORY (real from Supabase) ── */
+  const fmtXpTime = (d) => { const dt = new Date(d); const now = new Date(); const diff = now - dt; if (diff < 86400000) return `Hoje, ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`; if (diff < 172800000) return `Ontem, ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`; return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}); };
+  const actionIcon = (a) => ({ checkin:"📍", task_done:"✅", post_published:"📱", bonus:"🎁", badge:"🏆", reels:"🎬", feedback:"⭐" }[a] || "⚡");
+
+  /* ── Badge detail modal ── */
+  /* Badge and Reward detail are now rendered as overlays in the main return */
+
+  /* ── TABS ── */
+  const TABS_LIST = [
+    { k:"ranking", l:"Ranking" },
+    { k:"challenges", l:"Desafios" },
+    { k:"badges", l:"Conquistas" },
+    { k:"rewards", l:"Loja" },
+    { k:"history", l:"Histórico" },
+  ];
+
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column", position:"relative" }}>
+      {ToastEl}
+      <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+
+      {/* My Stats Card */}
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:14, padding:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ position:"relative" }}>
+            <Av src={me.photo} name={me.name} sz={56} fs={20} />
+            <div style={{ position:"absolute", bottom:-4, right:-4, width:24, height:24, borderRadius:12, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:"#192126", border:"2px solid #192126" }}>{myLevel.level}</div>
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:16, fontWeight:800 }}>{me.name}</p>
+            <p style={{ fontSize:11, opacity:.6 }}>{myLevel.title} · #{myRank} no ranking</p>
+            <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ flex:1, height:6, borderRadius:3, background:"rgba(255,255,255,0.15)" }}>
+                <div style={{ width:`${xpProgress}%`, height:"100%", borderRadius:3, background:B.accent, transition:"width .5s" }} />
+              </div>
+              <span style={{ fontSize:10, opacity:.7 }}>{me.xp.toLocaleString()}/{myLevel.max.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-around", marginTop:16, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.1)" }}>
+          <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.streak}</p><p style={{ fontSize:9, opacity:.5 }}>Dias seguidos</p></div>
+          <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800 }}>{me.tasksMonth}</p><p style={{ fontSize:9, opacity:.5 }}>Tarefas/mês</p></div>
+          <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800 }}>{me.postsMonth}</p><p style={{ fontSize:9, opacity:.5 }}>Posts/mês</p></div>
+          <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:me.onTimeRate>=90?B.green:B.orange }}>{me.onTimeRate}%</p><p style={{ fontSize:9, opacity:.5 }}>No prazo</p></div>
+        </div>
+      </Card>
+
+      {/* Tabs */}
+      <div className="htabs" style={{ marginBottom:14 }}>
+        {TABS_LIST.map(t => <button key={t.k} onClick={() => setTab(t.k)} className={`htab${tab===t.k?" a":""}`} style={{ fontSize:11 }}>{t.l}</button>)}
+      </div>
+
+      {/* ═══ RANKING TAB ═══ */}
+      {tab === "ranking" && <>
+        {/* Admin: Award XP button */}
+        {isAdmin && !awardUser && (
+          <button onClick={() => { setAwardUser(me?.user_id || user?.id); setAwardForm({xp:"",desc:""}); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", marginBottom:12, borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Atribuir XP
+          </button>
+        )}
+        {/* Admin: Award XP Modal */}
+        {isAdmin && awardUser && (() => {
+          const target = teamData.find(m => m.user_id === awardUser);
+          if (!target) return null;
+          return (
+            <Card style={{ marginBottom:12, border:`2px solid ${B.accent}`, padding:16 }}>
+              <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Atribuir XP para:</p>
+              {/* Member selector */}
+              <div style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", paddingBottom:4 }} className="hscroll">
+                {teamData.map(m => (
+                  <button key={m.user_id} onClick={() => setAwardUser(m.user_id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 12px", borderRadius:10, border:`1.5px solid ${awardUser===m.user_id?B.accent:B.border}`, background:awardUser===m.user_id?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    <Av src={m.photo_url} name={m.name} sz={28} fs={10} />
+                    <span style={{ fontSize:10, fontWeight:awardUser===m.user_id?700:500 }}>{m.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
+                {[{l:"Check-in",v:15,a:"checkin"},{l:"Tarefa",v:25,a:"task_done"},{l:"Post",v:30,a:"post_published"},{l:"Feedback",v:50,a:"feedback"},{l:"Bônus",v:100,a:"bonus"}].map(opt => (
+                  <button key={opt.l} onClick={() => setAwardForm({ xp:String(opt.v), desc:opt.l, action:opt.a })} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${awardForm.desc===opt.l?B.accent:B.border}`, background:awardForm.desc===opt.l?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>
+                    {opt.l} (+{opt.v})
+                  </button>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                <input value={awardForm.xp} onChange={e => setAwardForm(p=>({...p,xp:e.target.value}))} placeholder="XP" className="tinput" style={{ width:70 }} type="number" />
+                <input value={awardForm.desc} onChange={e => setAwardForm(p=>({...p,desc:e.target.value}))} placeholder="Descrição" className="tinput" style={{ flex:1 }} />
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                <button onClick={async () => {
+                  const xp = parseInt(awardForm.xp);
+                  if (!xp || xp <= 0) return showToast("Informe o XP");
+                  if (!awardForm.desc?.trim()) return showToast("Informe a descrição");
+                  const result = await supaAddXp(awardUser, awardForm.action||"bonus", awardForm.desc.trim(), xp);
+                  if (result) { setXpEvents(p=>[result,...p]); showToast(`+${xp} XP para ${target.name} ✓`); }
+                  else showToast("Erro ao atribuir XP");
+                  setAwardUser(null); setAwardForm({xp:"",desc:""});
+                }} className="pill full accent" style={{ flex:1, padding:"10px 0" }}>Confirmar</button>
+                <button onClick={() => { setAwardUser(null); setAwardForm({xp:"",desc:""}); }} className="pill full" style={{ flex:0, padding:"10px 16px", background:B.bgCard, border:`1px solid ${B.border}` }}>✕</button>
+              </div>
+            </Card>
+          );
+        })()}
+        {sorted.map((m, i) => {
+          const lv = getLevel(m.xp);
+          const isMe = m.id === me.id;
+          const medalColor = i===0?"#FFD700":i===1?"#C0C0C0":i===2?"#CD7F32":null;
+          return (
+            <Card key={m.id} delay={i*0.04} style={{ marginBottom:8, border:isMe?`2px solid ${B.accent}`:"none" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:30, textAlign:"center", flexShrink:0 }}>
+                  {medalColor ? <span style={{ fontSize:20 }}>{i===0?"🥇":i===1?"🥈":"🥉"}</span> : <span style={{ fontSize:16, fontWeight:800, color:B.muted }}>{i+1}</span>}
+                </div>
+                <div style={{ position:"relative" }}>
+                  <Av src={m.photo} name={m.name} sz={42} fs={16} />
+                  <div style={{ position:"absolute", bottom:-2, right:-2, width:18, height:18, borderRadius:9, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:900, color:"#192126", border:`1.5px solid ${B.bgCard}` }}>{lv.level}</div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <p style={{ fontSize:14, fontWeight:700 }}>{m.name}</p>
+                    {isMe && <Tag color={B.accent}>Você</Tag>}
+                  </div>
+                  <p style={{ fontSize:11, color:B.muted }}>{m.role} · Nv.{lv.level} {lv.title}</p>
+                  <div style={{ marginTop:4, display:"flex", alignItems:"center", gap:6 }}>
+                    <div style={{ flex:1, height:4, borderRadius:2, background:`${B.muted}15`, maxWidth:120 }}>
+                      <div style={{ width:`${((m.xp - lv.min)/(lv.max - lv.min))*100}%`, height:"100%", borderRadius:2, background:B.accent }} />
+                    </div>
+                    <span style={{ fontSize:10, color:B.muted }}>{m.xp.toLocaleString()} XP</span>
+                  </div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ fontSize:10, color:B.muted }}>🔥 {m.streak}d</p>
+                  <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{m.badgeCount||0} 🏅</p>
+                  {isAdmin && <button onClick={(e) => { e.stopPropagation(); setAwardUser(m.user_id); setAwardForm({xp:"",desc:""}); }} style={{ marginTop:4, padding:"3px 8px", borderRadius:6, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.accent }}>+ XP</button>}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+        <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1.5px solid ${B.accent}20` }}>
+          <p className="sl" style={{ marginBottom:6 }}>Como ganhar XP</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            {[
+              { a:"Check-in no horário", xp:"+15" },
+              { a:"Tarefa concluída no prazo", xp:"+25" },
+              { a:"Post publicado", xp:"+30" },
+              { a:"Feedback positivo do cliente", xp:"+50" },
+              { a:"Desafio completado", xp:"+100~350" },
+              { a:"Conquista desbloqueada", xp:"+50~600" },
+            ].map((r,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0" }}>
+                <span style={{ fontSize:12 }}>{r.a}</span>
+                <span style={{ fontSize:12, fontWeight:700, color:B.accent }}>{r.xp}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Admin: Reset XP section */}
+        {isAdmin && (
+          <Card style={{ marginTop:12, border:`1.5px solid ${B.red}20`, background:`${B.red}04` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              <span style={{ fontSize:16 }}>⚙️</span>
+              <p style={{ fontSize:13, fontWeight:700 }}>Gerenciar XP</p>
+            </div>
+            {!resetConfirm ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <button onClick={() => setResetConfirm("all")} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 0", borderRadius:10, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>
+                  🗑️ Zerar XP de todos os membros
+                </button>
+                <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                  {teamData.map(m => (
+                    <button key={m.user_id} onClick={() => setResetConfirm(m.user_id)} style={{ padding:"6px 10px", borderRadius:8, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:500, color:B.text }}>
+                      Zerar {m.name.split(" ")[0]}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Remove todos os eventos de XP do Supabase. Essa ação não pode ser desfeita.</p>
+              </div>
+            ) : (
+              <div>
+                <Card style={{ background:`${B.red}10`, border:`2px solid ${B.red}`, padding:14, marginBottom:8 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:B.red, marginBottom:6 }}>⚠️ Confirmar reset</p>
+                  <p style={{ fontSize:12, lineHeight:1.5 }}>
+                    {resetConfirm === "all"
+                      ? "Isso vai APAGAR todo o histórico de XP, conquistas e progresso de TODOS os membros. Deseja continuar?"
+                      : `Isso vai apagar todo o XP de ${teamData.find(m => m.user_id === resetConfirm)?.name || "este membro"}. Deseja continuar?`
+                    }
+                  </p>
+                </Card>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={async () => {
+                    const userId = resetConfirm === "all" ? null : resetConfirm;
+                    const ok = await supaResetXp(userId);
+                    if (ok) {
+                      if (userId) { setXpEvents(prev => prev.filter(e => e.user_id !== userId)); }
+                      else { setXpEvents([]); }
+                      showToast("XP zerado com sucesso ✓");
+                    } else { showToast("Erro ao zerar XP. Verifique o Supabase."); }
+                    setResetConfirm(null);
+                  }} style={{ flex:1, padding:"12px 0", borderRadius:10, background:B.red, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>
+                    Sim, zerar agora
+                  </button>
+                  <button onClick={() => setResetConfirm(null)} style={{ padding:"12px 16px", borderRadius:10, background:B.bgCard, border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600 }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+      </>}
+
+      {/* ═══ CHALLENGES TAB ═══ */}
+      {tab === "challenges" && <>
+        {CHALLENGES.map((ch, i) => {
+          const pct = Math.round((ch.progress/ch.total)*100);
+          const done = pct >= 100;
+          return (
+            <Card key={ch.id} delay={i*0.04} style={{ marginBottom:10, borderLeft:`4px solid ${done?B.green:ch.color}`, opacity:done?.7:1 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                <span style={{ fontSize:28, marginTop:2 }}>{ch.icon}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
+                    <p style={{ fontSize:14, fontWeight:700, textDecoration:done?"line-through":"none" }}>{ch.title}</p>
+                    <Tag color={ch.color}>{ch.type}</Tag>
+                  </div>
+                  <p style={{ fontSize:11, color:B.muted, marginBottom:8 }}>{ch.desc}</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <div style={{ flex:1, height:8, borderRadius:4, background:`${B.muted}10` }}>
+                      <div style={{ width:`${Math.min(pct,100)}%`, height:"100%", borderRadius:4, background:done?B.green:ch.color, transition:"width .5s" }} />
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, color:done?B.green:B.text }}>{ch.progress}/{ch.total}</span>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
+                    <span style={{ fontSize:10, color:B.muted }}>Prazo: {ch.deadline}</span>
+                    <span style={{ fontSize:10, fontWeight:700, color:B.accent }}>+{ch.reward} XP</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </>}
+
+      {/* ═══ BADGES TAB ═══ */}
+      {tab === "badges" && <>
+        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.accent }}>{myBadges.length}</p><p style={{ fontSize:10, color:B.muted }}>Conquistadas</p></Card>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800 }}>{ALL_BADGES.length}</p><p style={{ fontSize:10, color:B.muted }}>Total</p></Card>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.purple }}>{ALL_BADGES.filter(b=>b.rarity==="Épico"||b.rarity==="Lendário").filter(b=>myBadges.includes(b.id)).length}</p><p style={{ fontSize:10, color:B.muted }}>Raras+</p></Card>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
+          {ALL_BADGES.map((b, i) => {
+            const earned = myBadges.includes(b.id);
+            return (
+              <Card key={b.id} delay={i*0.03} onClick={() => setSelBadge(b.id)} style={{ cursor:"pointer", textAlign:"center", padding:14, opacity:earned?1:0.4, border:earned?`1.5px solid ${rarityColor(b.rarity)}30`:"none" }}>
+                <span style={{ fontSize:28, display:"block", marginBottom:6, filter:earned?"none":"grayscale(1)" }}>{b.emoji}</span>
+                <p style={{ fontSize:10, fontWeight:700, lineHeight:1.3 }}>{b.name}</p>
+                <div style={{ marginTop:4 }}><Tag color={rarityColor(b.rarity)}>{b.rarity}</Tag></div>
+              </Card>
+            );
+          })}
+        </div>
+      </>}
+
+      {/* ═══ REWARDS SHOP TAB ═══ */}
+      {tab === "rewards" && <>
+        <Card style={{ background:`${B.accent}08`, border:`1.5px solid ${B.accent}25`, marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <p style={{ fontSize:11, color:B.muted }}>Seu saldo</p>
+            <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{me.xp.toLocaleString()} <span style={{ fontSize:12, fontWeight:600 }}>XP</span></p>
+          </div>
+          <div style={{ width:44, height:44, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.gamify(B.accent)}</div>
+        </Card>
+        {REWARDS.map((r, i) => {
+          const canAfford = me.xp >= r.cost;
+          return (
+            <Card key={r.id} delay={i*0.04} onClick={() => { setSelReward(r.id); setRedeemConfirm(false); setRedeemed(false); }} style={{ marginBottom:8, cursor:"pointer", opacity:r.stock>0?1:0.5 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <span style={{ fontSize:32 }}>{r.icon}</span>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:700 }}>{r.name}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{r.desc}</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:4 }}>
+                    <Tag color={B.accent}>{r.cat}</Tag>
+                    <span style={{ fontSize:10, color:B.muted }}>{r.stock} disponível</span>
+                  </div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ fontSize:14, fontWeight:800, color:canAfford?B.accent:B.muted }}>{r.cost.toLocaleString()}</p>
+                  <p style={{ fontSize:9, color:B.muted }}>XP</p>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </>}
+
+      {/* ═══ HISTORY TAB ═══ */}
+      {tab === "history" && <>
+        <Card style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div><p style={{ fontSize:11, color:B.muted }}>XP total acumulado</p><p style={{ fontSize:22, fontWeight:900 }}>{me.xp.toLocaleString()}</p></div>
+          <div><p style={{ fontSize:11, color:B.muted, textAlign:"right" }}>Este mês</p><p style={{ fontSize:22, fontWeight:900, color:B.green, textAlign:"right" }}>+{(() => { const ms = new Date(); ms.setDate(1); ms.setHours(0,0,0,0); return (me.events||[]).filter(e => new Date(e.created_at)>=ms).reduce((a,e)=>a+(e.xp_amount||0),0); })().toLocaleString()}</p></div>
+        </Card>
+        {myHistory.length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum XP registrado ainda</p></Card>}
+        {myHistory.map((h, i) => (
+          <Card key={h.id||i} delay={i*0.03} style={{ marginBottom:6, padding:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:20 }}>{actionIcon(h.action)}</span>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:600 }}>{h.description || h.action}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{fmtXpTime(h.created_at)}</p>
+              </div>
+              <p style={{ fontSize:14, fontWeight:800, color:h.xp_amount>=0?B.green:B.red }}>{h.xp_amount>=0?"+":""}{h.xp_amount}</p>
+            </div>
+          </Card>
+        ))}
+      </>}
+      </div>
+
+      {/* ═══ BADGE DETAIL OVERLAY ═══ */}
+      {selBadge && (() => {
+        const b = ALL_BADGES.find(x => x.id === selBadge);
+        if (!b) return null;
+        const earned = myBadges.includes(selBadge);
+        return (
+          <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
+            <div style={{ paddingTop:16 }}>
+              <Head title="Conquista" onBack={() => setSelBadge(null)} />
+              <div style={{ textAlign:"center", padding:"20px 0" }}>
+                <div style={{ width:80, height:80, borderRadius:24, background:earned?`${rarityColor(b.rarity)}12`:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:`3px solid ${earned?rarityColor(b.rarity):B.border}`, fontSize:36 }}>{b.emoji}</div>
+                <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4, color:B.text }}>{b.name}</h3>
+                <Tag color={rarityColor(b.rarity)}>{b.rarity}</Tag>
+                <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{b.desc}</p>
+                <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>+{b.xpReward}</p><p style={{ fontSize:10, color:B.muted }}>XP Recompensa</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:earned?B.green:B.muted }}>{earned?"✓":"✗"}</p><p style={{ fontSize:10, color:B.muted }}>{earned?"Conquistado":"Bloqueado"}</p></div>
+                </Card>
+                {!earned && <p style={{ fontSize:11, color:B.muted, marginTop:12, fontStyle:"italic" }}>Continue trabalhando para desbloquear esta conquista!</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ═══ REWARD DETAIL OVERLAY ═══ */}
+      {selReward && (() => {
+        const r = REWARDS.find(x => x.id === selReward);
+        if (!r) return null;
+        const canAfford = me.xp >= r.cost;
+        const doRedeem = () => {
+          if (!canAfford || r.stock <= 0) return;
+          setRedeemConfirm(false);
+          setRedeemed(true);
+          setXpEvents(prev => [...prev, { id:"redeem_"+Date.now(), user_id:user?.id, action:"redeem", xp_amount:-r.cost, description:`Resgate: ${r.name}`, created_at:new Date().toISOString() }]);
+          r.stock = Math.max(0, r.stock - 1);
+          showToast(`${r.name} resgatado! 🎉`);
+        };
+        if (redeemed) return (
+          <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
+            <div style={{ paddingTop:16 }}>
+              <Head title="" onBack={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} />
+              <div style={{ textAlign:"center", padding:"60px 0" }}>
+                <div style={{ fontSize:72, marginBottom:16 }}>🎉</div>
+                <h3 style={{ fontSize:22, fontWeight:800, marginBottom:8, color:B.text }}>Resgatado!</h3>
+                <p style={{ fontSize:15, color:B.muted }}>{r.icon} {r.name}</p>
+                <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginTop:12 }}>Fale com seu gestor para receber sua recompensa.</p>
+                <Card style={{ marginTop:24, display:"flex", justifyContent:"space-around" }}>
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.red }}>-{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP descontado</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Saldo atual</p></div>
+                </Card>
+                <button onClick={() => { setSelReward(null); setRedeemed(false); setRedeemConfirm(false); }} style={{ marginTop:24, padding:"14px 32px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent }}>Voltar à Loja</button>
+              </div>
+            </div>
+          </div>
+        );
+        return (
+          <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
+            <div style={{ paddingTop:16 }}>
+              <Head title="Recompensa" onBack={() => { setSelReward(null); setRedeemConfirm(false); }} />
+              <div style={{ textAlign:"center", padding:"20px 0" }}>
+                <div style={{ fontSize:56, marginBottom:12 }}>{r.icon}</div>
+                <h3 style={{ fontSize:20, fontWeight:800, marginBottom:4, color:B.text }}>{r.name}</h3>
+                <Tag color={B.accent}>{r.cat}</Tag>
+                <p style={{ fontSize:13, color:B.muted, marginTop:12, lineHeight:1.6 }}>{r.desc}</p>
+                <Card style={{ marginTop:16, display:"flex", justifyContent:"space-around" }}>
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.orange }}>{r.cost.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>XP necessário</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()}</p><p style={{ fontSize:10, color:B.muted }}>Seu XP</p></div>
+                  <div style={{ width:1, background:B.border }} />
+                  <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:800, color:r.stock>0?B.green:B.red }}>{r.stock}</p><p style={{ fontSize:10, color:B.muted }}>Estoque</p></div>
+                </Card>
+                {!redeemConfirm ? (
+                  <button onClick={() => { if(canAfford && r.stock>0) setRedeemConfirm(true); else if(!canAfford) showToast("XP insuficiente"); else showToast("Sem estoque"); }} style={{ marginTop:20, width:"100%", padding:"14px 0", borderRadius:14, background:canAfford&&r.stock>0?B.accent:`${B.muted}30`, border:"none", cursor:canAfford&&r.stock>0?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:canAfford&&r.stock>0?B.textOnAccent:B.muted }}>
+                    {canAfford && r.stock>0 ? `Resgatar por ${r.cost.toLocaleString()} XP` : !canAfford ? `Faltam ${(r.cost - me.xp).toLocaleString()} XP` : "Sem estoque"}
+                  </button>
+                ) : (
+                  <Card style={{ marginTop:20, background:`${B.orange}08`, border:`1.5px solid ${B.orange}30` }}>
+                    <p style={{ fontSize:14, fontWeight:700, color:B.text, marginBottom:4 }}>Confirmar resgate?</p>
+                    <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>Serão descontados <strong>{r.cost.toLocaleString()} XP</strong> do seu saldo.</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => setRedeemConfirm(false)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Cancelar</button>
+                      <button onClick={doRedeem} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>✓ Confirmar</button>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+    </div>
+  );
+}
+
+function AIPage({ onBack, user, agencyIdentity }) {
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [conversations, setConversations] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [view, setView] = useState("history"); // "history" | "chat"
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [selPreset, setSelPreset] = useState(null);
+  const [aiKeys, setAiKeys] = useState({});
+  const [aiReady, setAiReady] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const scrollRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+  const { showToast, ToastEl } = useToast();
+
+  const AI_HISTORY_KEY = `ai_history_${user?.id || "anon"}`;
+
+  const PRESETS = [
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, label: "Criar legenda", prompt: "Crie uma legenda criativa para um post de Instagram sobre " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>, label: "Estratégia", prompt: "Sugira uma estratégia de marketing digital para " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>, label: "Roteiro Reels", prompt: "Escreva um roteiro para um Reels de 30 segundos sobre " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>, label: "Ideias de conteúdo", prompt: "Me dê 10 ideias de conteúdo para uma empresa de " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.purple} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label: "E-mail marketing", prompt: "Escreva um e-mail marketing para promover " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>, label: "Copy persuasiva", prompt: "Crie uma copy persuasiva para anúncio de " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>, label: "Hashtags", prompt: "Sugira 30 hashtags relevantes para um post sobre " },
+    { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, label: "Calendário editorial", prompt: "Monte um calendário editorial de 1 mês para uma empresa de " },
+  ];
+
+  /* Load AI keys + conversation history from Supabase */
+  React.useEffect(() => {
+    const init = async () => {
+      const k = await supaGetAIKeys();
+      setAiKeys(k);
+      setAiReady(true);
+      /* Load saved AI conversations */
+      const saved = await supaGetSetting(AI_HISTORY_KEY);
+      if (saved) {
+        try {
+          const parsed = typeof saved === "string" ? JSON.parse(saved) : saved;
+          if (Array.isArray(parsed)) setConversations(parsed);
+        } catch(e) { console.error("AI history parse error:", e); }
+      }
+      setHistoryLoaded(true);
+    };
+    init();
+  }, []);
+
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, loading]);
+
+  const startNewChat = () => {
+    const newId = "chat_" + Date.now();
+    setActiveChat(newId);
+    setMessages([]);
+    setView("chat");
+    setInput("");
+    setTimeout(() => inputRef.current?.focus(), 200);
+  };
+
+  const openChat = (conv) => {
+    setActiveChat(conv.id);
+    setMessages([...conv.messages]);
+    setView("chat");
+  };
+
+  const saveToHistory = (chatId, msgs) => {
+    if (msgs.length === 0) return;
+    const title = msgs[0]?.content?.substring(0, 60) + (msgs[0]?.content?.length > 60 ? "..." : "");
+    const now = new Date();
+    const ts = now.toLocaleDateString("pt-BR", {day:"2-digit",month:"2-digit",year:"numeric"}) + " " + now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    setConversations(prev => {
+      const exists = prev.find(c => c.id === chatId);
+      let updated;
+      if (exists) {
+        updated = prev.map(c => c.id === chatId ? { ...c, messages: msgs, title, updatedAt: ts } : c);
+      } else {
+        updated = [{ id: chatId, title, messages: msgs, updatedAt: ts, pinned: false }, ...prev];
+      }
+      /* Persist to Supabase (keep last 50 conversations, trim messages to last 30 per conversation) */
+      const toSave = updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) }));
+      supaSetSetting(AI_HISTORY_KEY, JSON.stringify(toSave)).catch(() => {});
+      return updated;
+    });
+  };
+
+  const deleteChat = (id) => {
+    setConversations(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      supaSetSetting(AI_HISTORY_KEY, JSON.stringify(updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) })))).catch(() => {});
+      return updated;
+    });
+    showToast("Conversa excluída ✓");
+  };
+
+  const togglePin = (id) => {
+    setConversations(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, pinned: !c.pinned } : c);
+      supaSetSetting(AI_HISTORY_KEY, JSON.stringify(updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) })))).catch(() => {});
+      return updated;
+    });
+  };
+
+  const agName = agencyIdentity?.name || "UniqueHub Agency";
+  const agCity = agencyIdentity?.city || "";
+  const SYSTEM_PROMPT = `Você é o Assistente IA da ${agName}${agCity ? ", "+agCity : ""}. Você ajuda a equipe com criação de conteúdo, estratégias de marketing, copywriting, legendas para redes sociais, roteiros, ideias criativas e planejamento. Responda sempre em português do Brasil, de forma prática e direta. O usuário atual é ${user?.name || "um colaborador"} (${user?.role || "equipe"}). Seja criativo, use emojis quando apropriado, e formate bem suas respostas.`;
+
+  const activeProvider = aiKeys.ai_provider || "openai";
+
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return;
+    const openaiKey = aiKeys.openai_key;
+    const geminiKey = aiKeys.gemini_key;
+    const claudeKey = aiKeys.claude_key;
+    const useGemini = activeProvider === "gemini";
+    const useClaude = activeProvider === "claude";
+    if (useGemini && !geminiKey) { showToast("Chave Gemini não configurada. Vá em Config → Assistente IA"); return; }
+    if (useClaude && !claudeKey) { showToast("Chave Claude não configurada. Vá em Config → Assistente IA"); return; }
+    if (!useGemini && !useClaude && !openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
+
+    const userMsg = { role: "user", content: text.trim() };
+    const newMsgs = [...messages, userMsg];
+    setMessages(newMsgs);
+    setInput("");
+    setSelPreset(null);
+    setLoading(true);
+
+    let chatId = activeChat;
+    if (!chatId) { chatId = "chat_" + Date.now(); setActiveChat(chatId); }
+    setView("chat");
+
+    try {
+      let aiText = "";
+      if (useGemini) {
+        const geminiMsgs = newMsgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents: geminiMsgs, generationConfig: { maxOutputTokens: 2000 } })
+        });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Gemini API retornou status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro Gemini");
+        if (!data.candidates?.length) throw new Error("Gemini não retornou resposta. Verifique a chave API.");
+        aiText = data.candidates[0]?.content?.parts?.[0]?.text || "Sem resposta.";
+      } else if (useClaude) {
+        const claudeMsgs = newMsgs.map(m => ({ role: m.role, content: m.content }));
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, system: SYSTEM_PROMPT, messages: claudeMsgs })
+        });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Claude API retornou status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro Claude");
+        aiText = data.content?.[0]?.text || "Sem resposta.";
+      } else {
+        const apiMessages = newMsgs.map(m => ({ role: m.role, content: m.content }));
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
+          body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 2000, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMessages] })
+        });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `OpenAI API retornou status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || "Erro OpenAI");
+        aiText = data.choices?.[0]?.message?.content || "Sem resposta.";
+      }
+      const finalMsgs = [...newMsgs, { role: "assistant", content: aiText }];
+      setMessages(finalMsgs);
+      saveToHistory(chatId, finalMsgs);
+    } catch (err) {
+      console.error("AI error:", err);
+      const finalMsgs = [...newMsgs, { role: "assistant", content: `⚠️ Erro: ${err.message || "Falha ao conectar com a IA"}` }];
+      setMessages(finalMsgs);
+    }
+    setLoading(false);
+  };
+
+  const goBackToHistory = () => {
+    if (messages.length > 0 && activeChat) saveToHistory(activeChat, messages);
+    setView("history");
+    setActiveChat(null);
+    setMessages([]);
+  };
+
+  /* ═══ HISTORY VIEW ═══ */
+  if (view === "history") {
+    const pinned = conversations.filter(c => c.pinned);
+    const recent = conversations.filter(c => !c.pinned);
+    const q = searchQ.toLowerCase().trim();
+    const filtered = q ? conversations.filter(c => c.title.toLowerCase().includes(q) || c.messages.some(m => m.content.toLowerCase().includes(q))) : null;
+    const showList = filtered || null;
+
+    return (
+      <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+        {ToastEl}
+
+        {/* Search */}
+        <div style={{ position:"relative", marginBottom:14 }}>
+          <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</span>
+          <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar conversas..." className="tinput" style={{ paddingLeft:42 }} />
+          {searchQ && <button onClick={() => setSearchQ("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex" }}>{IC.x}</button>}
+        </div>
+
+        {/* Search results */}
+        {showList && <>
+          <p className="sl" style={{ marginBottom:8 }}>Resultados ({showList.length})</p>
+          {showList.length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:13, color:B.muted }}>Nenhuma conversa encontrada</p></Card>}
+          {showList.map((c, i) => (
+            <Card key={c.id} delay={i*0.03} onClick={() => openChat(c)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{IC.ai(B.accent)}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.title}</p>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{c.messages.length} mensagens · {c.updatedAt}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Normal view */}
+        {!showList && <>
+          {/* Empty state */}
+          {conversations.length === 0 && (
+            <div style={{ textAlign:"center", padding:"40px 20px" }}>
+              <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
+              </div>
+              <h3 style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Nenhuma conversa ainda</h3>
+              <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:20 }}>Comece uma nova conversa com o assistente de IA!</p>
+              <button onClick={startNewChat} className="pill accent">Iniciar conversa</button>
+            </div>
+          )}
+
+          {/* Pinned */}
+          {pinned.length > 0 && <>
+            <p className="sl" style={{ marginBottom:8 }}>Fixadas</p>
+            {pinned.map((c, i) => (
+              <Card key={c.id} delay={i*0.03} style={{ marginBottom:8, border:`1.5px solid ${B.accent}20` }}>
+                <div onClick={() => openChat(c)} style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer" }}>
+                  <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{IC.ai(B.accent)}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ fontSize:12, color:B.accent }}>📌</span>
+                      <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{c.title}</p>
+                    </div>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{c.messages.length} mensagens · {c.updatedAt}</p>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:6, marginTop:8, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
+                  <button onClick={() => openChat(c)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:`1px solid ${B.border}`, background:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Continuar</button>
+                  <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.border}`, background:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>Desafixar</button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} style={{ padding:"6px 12px", borderRadius:8, border:"none", background:`${B.red}10`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red }}>Excluir</button>
+                </div>
+              </Card>
+            ))}
+          </>}
+
+          {/* Recent */}
+          {recent.length > 0 && <>
+            <p className="sl" style={{ marginBottom:8, marginTop:pinned.length?8:0 }}>Recentes</p>
+            {recent.map((c, i) => (
+              <Card key={c.id} delay={i*0.03} style={{ marginBottom:8 }}>
+                <div onClick={() => openChat(c)} style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer" }}>
+                  <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{IC.ai(B.accent)}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.title}</p>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.messages[c.messages.length-1]?.content?.substring(0,80)}...</p>
+                    <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>{c.messages.length} mensagens · {c.updatedAt}</p>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:6, marginTop:8, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
+                  <button onClick={() => openChat(c)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:`1px solid ${B.border}`, background:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Continuar</button>
+                  <button onClick={(e) => { e.stopPropagation(); togglePin(c.id); }} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.border}`, background:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>Fixar</button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteChat(c.id); }} style={{ padding:"6px 12px", borderRadius:8, border:"none", background:`${B.red}10`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red }}>Excluir</button>
+                </div>
+              </Card>
+            ))}
+          </>}
+
+          {/* Quick starts */}
+          {conversations.length > 0 && <>
+            <p className="sl" style={{ marginTop:12, marginBottom:8 }}>Atalhos rápidos</p>
+            <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }} className="hscroll">
+              {PRESETS.map((p, i) => (
+                <button key={i} onClick={() => { startNewChat(); setTimeout(() => setInput(p.prompt), 100); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text, whiteSpace:"nowrap", flexShrink:0 }}>
+                  <span style={{ display:"flex", alignItems:"center" }}>{p.icon}</span> {p.label}
+                </button>
+              ))}
+            </div>
+          </>}
+        </>}
+      </div>
+      </div>
+    );
+  }
+
+  /* ═══ NEW CHAT (empty state) ═══ */
+  if (view === "chat" && messages.length === 0 && !loading) return (
+    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
+      {ToastEl}
+      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 10px) 16px 0`, display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
+          <h2 style={{ fontSize:18, fontWeight:800 }}>Nova conversa</h2>
+        </div>
+      </div>
+
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"0 16px", overflowY:"auto" }}>
+        <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
+          <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
+        </div>
+        <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.nick || user?.name || "equipe"}!</h3>
+        <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
+
+        {aiReady && ((activeProvider==="gemini"&&!aiKeys.gemini_key)||(activeProvider!=="gemini"&&!aiKeys.openai_key)) && (
+          <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:16, width:"100%", textAlign:"left" }}>
+            <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {activeProvider==="gemini"?"Gemini":activeProvider==="claude"?"Claude":"OpenAI"}.</p>
+          </Card>
+        )}
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, width:"100%" }}>
+          {PRESETS.map((p, i) => (
+            <Card key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:12, textAlign:"left", border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
+                <p style={{ fontSize:12, fontWeight:700 }}>{p.label}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding:"12px 16px calc(env(safe-area-inset-bottom, 8px) + 8px)", display:"flex", gap:8, alignItems:"flex-end", flexShrink:0 }}>
+        <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+          placeholder="Pergunte qualquer coisa..."
+          className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12 }}
+        />
+        <button onClick={() => sendMessage(input)} disabled={!input.trim()} className="send-btn" style={{ opacity:input.trim()?1:0.4 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ═══ ACTIVE CHAT VIEW ═══ */
+  return (
+    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
+      {ToastEl}
+      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 10px) 16px 10px`, display:"flex", alignItems:"center", justifyContent:"space-between", background:B.bgCard, borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
+          <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
+          <div>
+            <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
+            <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+              {activeProvider==="gemini"
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="#4285F4"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="#fff"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="#10A37F" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="#10A37F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              }
+              <p style={{ fontSize:10, color:B.green, fontWeight:600 }}>{activeProvider==="gemini"?"Gemini 2.0 Flash":activeProvider==="claude"?"Claude Sonnet 4":"GPT-4o-mini"}</p>
+            </div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:6 }}>
+          <button onClick={() => { togglePin(activeChat); showToast(conversations.find(c=>c.id===activeChat)?.pinned ? "Desafixado" : "Fixado 📌"); }} className="ib" style={{ width:34, height:34 }} title="Fixar">
+            <span style={{ fontSize:14 }}>📌</span>
+          </button>
+          <button onClick={startNewChat} className="ib" style={{ width:34, height:34 }} title="Nova conversa">
+            {IC.plus}
+          </button>
+        </div>
+      </div>
+
+      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:16, display:"flex", flexDirection:"column", gap:12 }}>
+        {messages.map((m, i) => {
+          const isUser = m.role === "user";
+          return (
+            <div key={i} style={{ display:"flex", justifyContent:isUser?"flex-end":"flex-start", gap:8, alignItems:"flex-end" }}>
+              {!isUser && <div style={{ width:28, height:28, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ color:B.accent, transform:"scale(0.7)", display:"flex" }}>{IC.ai(B.accent)}</span></div>}
+              <div style={{
+                maxWidth:"80%", padding:"10px 14px", borderRadius:isUser?"16px 4px 16px 16px":"4px 16px 16px 16px",
+                background:isUser?B.accent:B.bgCard, color:isUser?"#192126":B.text,
+                boxShadow:`0 1px 3px ${isUser?"rgba(0,0,0,0.1)":"rgba(0,0,0,0.06)"}`,
+                fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap", wordBreak:"break-word",
+              }}>
+                {m.content}
+              </div>
+            </div>
+          );
+        })}
+        {loading && (
+          <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+            <div style={{ width:28, height:28, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.accent, transform:"scale(0.7)", display:"flex" }}>{IC.ai(B.accent)}</span></div>
+            <div style={{ padding:"12px 18px", borderRadius:"4px 16px 16px 16px", background:B.bgCard, display:"flex", gap:4, alignItems:"center" }}>
+              <div style={{ width:6, height:6, borderRadius:3, background:B.accent, animation:"skPulse 1s ease infinite" }} />
+              <div style={{ width:6, height:6, borderRadius:3, background:B.accent, animation:"skPulse 1s ease infinite .2s" }} />
+              <div style={{ width:6, height:6, borderRadius:3, background:B.accent, animation:"skPulse 1s ease infinite .4s" }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {messages.length > 0 && messages.length < 4 && !loading && (
+        <div style={{ padding:"0 16px 4px", display:"flex", gap:6, overflowX:"auto" }} className="hscroll">
+          {["Melhore isso", "Mais curto", "Mais criativo", "Versão formal", "Traduzir p/ inglês"].map((s, i) => (
+            <button key={i} onClick={() => sendMessage(s)} style={{ padding:"6px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text, whiteSpace:"nowrap", flexShrink:0 }}>{s}</button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ padding:"8px 16px calc(env(safe-area-inset-bottom, 8px) + 8px)", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"flex-end" }}>
+        <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+          placeholder="Escreva sua mensagem..."
+          className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12, border:`1.5px solid ${B.border}` }}
+        />
+        <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading} className="send-btn" style={{ opacity:(input.trim()&&!loading)?1:0.4 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+function HelpPage({ onBack }) {
+  const [selCat, setSelCat] = useState(null);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [selQ, setSelQ] = useState(null);
+  const [contactForm, setContactForm] = useState(false);
+  const [cMsg, setCMsg] = useState("");
+  const [cTopic, setCTopic] = useState("");
+  const [searchQ, setSearchQ] = useState("");
+  const [helpTab, setHelpTab] = useState("faq"); /* faq | guides | shortcuts | videos */
+  const { showToast, ToastEl } = useToast();
+
+  const FAQ = [
+    { cat:"Primeiros Passos", icon:IC.home, color:B.accent, questions:[
+      { q:"Como começo a usar o UniqueHub?", a:"Após o login, você será direcionado à Home/Dashboard. Explore o menu inferior para navegar entre as áreas. Recomendamos começar cadastrando seus clientes, depois crie a primeira demanda de conteúdo. Use Configurações > Personalizar Menu para organizar o menu como preferir." },
+      { q:"Como adicionar um novo cliente?", a:"Vá em Clientes no menu principal, toque no botão '+ Novo Cliente' no topo da página. Preencha os dados do cliente como nome, contato, plano e segmento, depois toque em 'Salvar'. O cliente aparecerá automaticamente na lista." },
+      { q:"Como fazer check-in de ponto?", a:"Acesse Check-in no menu ou pelo atalho na Home. Toque em 'Registrar Entrada' ao chegar e 'Registrar Saída' ao sair. O sistema registra automaticamente o horário e calcula as horas trabalhadas." },
+      { q:"Como personalizar meu menu de navegação?", a:"Vá em Configurações > Personalizar Menu. Lá você pode arrastar os itens para reordenar e escolher quais aparecem na barra de navegação inferior (máximo 5 itens)." },
+      { q:"Como alterar minha foto de perfil?", a:"Vá em Configurações > Perfil. Toque no ícone da câmera sobre sua foto de perfil atual e selecione uma nova imagem da sua galeria." },
+      { q:"Como funciona o sistema de login?", a:"O UniqueHub usa autenticação via Supabase. Ao criar uma conta, seus dados ficam vinculados ao e-mail informado. Após o cadastro, um administrador precisa aprovar sua conta em Configurações > Aprovações para que você tenha acesso completo." },
+      { q:"Posso usar o app no celular e no computador?", a:"Sim! O UniqueHub é responsivo e funciona em qualquer dispositivo com navegador. Sua sessão é sincronizada — alterações feitas no celular aparecem no computador em tempo real." },
+    ]},
+    { cat:"Demandas & Conteúdo", icon:IC.content, color:B.blue, questions:[
+      { q:"Como criar uma demanda de conteúdo?", a:"Na aba Conteúdo, selecione o pipeline desejado (Social, Campanhas ou Vídeo) e toque no '+'. Preencha o briefing com título, cliente, rede social e descrição. A demanda entrará na primeira etapa 'Ideia'." },
+      { q:"Quais são as etapas do workflow?", a:"O pipeline Social tem 7 etapas: Ideia → Briefing → Design → Legenda → Revisão → Aprovação do Cliente → Publicado. O pipeline de Vídeo tem etapas extras: Produção e Edição. Cada etapa é responsabilidade de um cargo diferente (Head, Social Media, Designer, etc.)." },
+      { q:"Como mover uma demanda entre etapas?", a:"Abra a demanda e preencha o conteúdo da etapa atual (ex: texto do briefing, upload de arte, etc.). Depois use o botão 'Avançar' para mover para a próxima etapa. Gerentes podem rejeitar e enviar de volta a etapas anteriores." },
+      { q:"Como fazer upload de arquivos na demanda?", a:"Na etapa de Design ou Produção, use o botão 'Selecionar arquivos'. Você pode enviar múltiplas imagens, vídeos, PSDs e PDFs de uma vez. Os arquivos ficam vinculados à demanda e podem ser baixados por qualquer membro." },
+      { q:"Como definir agendamento de publicação?", a:"Na etapa de Legenda, preencha os campos 'Data' e 'Horário' de agendamento. A data aparecerá no card da demanda e na etapa de publicação para referência." },
+      { q:"Posso criar demandas de campanha?", a:"Sim! No pipeline 'Campanhas', crie demandas com tipo campanha. Elas possuem campos especiais: orçamento, milestones, datas de início/fim, breakdown de custos e referências visuais." },
+      { q:"Como filtrar demandas?", a:"Na lista de demandas, use os filtros no topo: por pipeline (Social/Campanha/Vídeo), por status de etapa, por cliente, por prioridade (Alta/Média/Baixa) ou use a busca por texto." },
+      { q:"O que acontece quando a demanda é rejeitada?", a:"Na etapa de Revisão, o gerente pode rejeitar e enviar de volta para 'Arte' (refazer design) ou 'Legenda' (refazer texto). A demanda volta à etapa escolhida e o responsável é notificado." },
+      { q:"Como funciona a pré-visualização do post?", a:"Na etapa de Legenda, após upload da arte e texto da legenda, o sistema gera automaticamente uma pré-visualização do post como ficaria na rede social selecionada (Instagram Feed, Stories, Reels)." },
+    ]},
+    { cat:"Clientes", icon:IC.clients, color:"#10B981", questions:[
+      { q:"Como acessar os arquivos de um cliente?", a:"Vá em Clientes, toque no cliente desejado e selecione a aba 'Biblioteca'. Todos os arquivos do cliente estarão organizados por categoria (Manual de Marca, Posts, Stories, Vídeos, etc.). Você pode fazer upload diretamente nesta seção." },
+      { q:"Como enviar um contrato?", a:"No perfil do cliente, acesse a aba 'Contrato'. Lá você pode visualizar e gerenciar os termos contratuais, valores e datas de vigência." },
+      { q:"Como gerenciar faturas de um cliente?", a:"Na aba do cliente, acesse a seção de faturas. Você pode gerar novas faturas, marcar como pagas, ver o histórico de pagamentos e identificar faturas pendentes ou atrasadas." },
+      { q:"Como adicionar anotações sobre um cliente?", a:"No perfil do cliente, use o campo de observações para adicionar notas importantes. As anotações são visíveis para toda a equipe e ficam salvas no histórico." },
+      { q:"Posso fazer upload de arquivos reais nos clientes?", a:"Sim! Na aba 'Biblioteca' do cliente, clique em '+ Adicionar'. Selecione o arquivo do seu dispositivo, escolha a categoria (Manual de marca, Posts, Vídeos, etc.) e envie. O arquivo é armazenado no servidor e fica disponível para download." },
+      { q:"Como editar informações do cliente?", a:"Abra o perfil do cliente e toque no ícone de edição (lápis). Você pode alterar nome, contato, e-mail, segmento, plano mensal e todas as outras informações. Salve para aplicar as alterações." },
+    ]},
+    { cat:"Financeiro", icon:IC.dollar, color:B.green, questions:[
+      { q:"Como visualizar o faturamento mensal?", a:"Acesse Financeiro no menu principal ou pelo card na Home. O dashboard mostra receita total, quantidade de pagantes, ticket médio e status de cada cliente (pago, pendente, atrasado)." },
+      { q:"Como registrar um pagamento recebido?", a:"No Financeiro, localize o cliente na lista e toque em 'Marcar como Pago'. O sistema atualizará automaticamente o status e os totais do mês. A data do pagamento é registrada." },
+      { q:"Como gerar relatórios financeiros?", a:"Vá em Relatórios > Financeiro. Selecione o período desejado e visualize a evolução de receita, receita por plano e detalhamento por cliente." },
+      { q:"O que significam os status de pagamento?", a:"Pago (verde): Cliente pagou a mensalidade. Pendente (amarelo): Fatura emitida mas ainda não paga. Atrasado (vermelho): Pagamento com data vencida. O sistema calcula automaticamente com base na data de vencimento." },
+      { q:"Como gerar uma nova fatura?", a:"No perfil do cliente, seção de faturas, use o botão '+ Nova fatura'. O sistema gera automaticamente uma fatura com o valor do plano mensal do cliente, data atual e status 'pendente'." },
+    ]},
+    { cat:"Equipe & Chat", icon:IC.chat, color:B.purple, questions:[
+      { q:"Como usar o chat interno?", a:"Acesse Chat no menu principal. Você pode enviar mensagens para toda a equipe no chat geral ou tocar no nome de um membro para iniciar uma conversa privada. O chat suporta texto e mostra indicadores de leitura (✓✓ azul = lido)." },
+      { q:"Como ver quem está online?", a:"Na Home, a seção 'Equipe online' mostra todos os membros com indicador verde (online) ou cinza (offline). Também é possível ver o status na página Equipe." },
+      { q:"Como adicionar um membro à equipe?", a:"Vá em Equipe e toque em '+ Novo Membro'. Preencha nome, cargo, e-mail e telefone. Alternativamente, o membro pode se cadastrar pela tela de login e aguardar aprovação em Configurações > Aprovações." },
+      { q:"Como criar um grupo no chat?", a:"No Chat, toque no ícone '+ Novo' e selecione 'Grupo'. Defina o nome do grupo e adicione os participantes. Todos no grupo receberão as mensagens enviadas." },
+      { q:"Como funcionam os indicadores de leitura?", a:"✓ (cinza) = mensagem enviada. ✓✓ (azul) = mensagem lida pelo destinatário. Os indicadores atualizam em tempo real a cada poucos segundos." },
+      { q:"Como aprovar um novo membro?", a:"Apenas CEO e Gerentes podem aprovar cadastros. Vá em Configurações > Aprovações para ver solicitações pendentes. O badge vermelho indica quantas aprovações estão pendentes." },
+    ]},
+    { cat:"Calendário & Agenda", icon:IC.clock, color:B.orange, questions:[
+      { q:"Como criar um evento no calendário?", a:"Acesse Calendário, selecione o dia desejado e toque em '+ Novo'. Escolha o tipo (Reunião, Gravação, Evento, Lembrete ou Deadline), preencha os detalhes e salve." },
+      { q:"Quais tipos de evento posso criar?", a:"O calendário suporta 5 tipos: Reunião (online/presencial, interna/com cliente), Gravação (com lista de equipamentos e localização), Evento (externo), Lembrete (pessoal) e Deadline (prazo de entrega)." },
+      { q:"Como adicionar participantes a um evento?", a:"Ao criar ou editar uma Reunião ou Gravação, use o campo 'Participantes' para selecionar membros da equipe. Você pode adicionar múltiplos participantes." },
+      { q:"Os eventos são sincronizados entre membros?", a:"Sim! Todos os eventos criados são visíveis para toda a equipe. Cada membro pode ver os compromissos do dia na Home e no Calendário completo." },
+    ]},
+    { cat:"Gamificação & Ranking", icon:IC.trophy, color:"#F59E0B", questions:[
+      { q:"Como funciona o sistema de XP?", a:"Cada ação no app gera pontos de experiência (XP): check-in diário, demandas concluídas, posts publicados, cursos completados, etc. O XP acumulado define seu nível e posição no ranking." },
+      { q:"Quais são os níveis?", a:"São 8 níveis: Nv.1 Iniciante (0-500 XP) → Nv.2 Aprendiz (500-1.200) → Nv.3 Pleno (1.200-2.500) → Nv.4 Sênior (2.500-4.500) → Nv.5 Especialista (4.500-7.000) → Nv.6 Líder (7.000-10.000) → Nv.7 Master (10.000-15.000) → Nv.8 Lenda (15.000+)." },
+      { q:"Como ganhar XP?", a:"Faça check-in diário (+10 XP), conclua demandas (+25 XP), publique posts (+15 XP), complete cursos na Academy (+50 XP), receba aprovação de cliente (+20 XP). Administradores também podem conceder XP manualmente pelo Ranking." },
+      { q:"O ranking é visível para todos?", a:"Sim! Todos os membros da agência podem ver o ranking completo, incluindo XP total, streak de check-ins, tarefas do mês e badges conquistados." },
+      { q:"O que são badges?", a:"Badges são conquistas especiais ganhas por atingir marcos: primeiro post publicado, 7 dias consecutivos de check-in, 1.000 XP acumulados, etc. Eles aparecem no seu perfil de ranking." },
+    ]},
+    { cat:"Academy & Cursos", icon:IC.academy, color:"#8B5CF6", questions:[
+      { q:"Como acessar os cursos?", a:"Vá em Academy no menu. Você verá todos os cursos disponíveis organizados por categoria (Marketing Digital, Design, Vídeo, Copywriting, Estratégia, etc.)." },
+      { q:"Como completar um módulo?", a:"Abra o curso desejado, selecione o módulo e leia/assista o conteúdo. Ao finalizar, marque como concluído. Seu progresso é salvo automaticamente e você ganha XP pela conclusão." },
+      { q:"Posso sugerir novos cursos?", a:"Sim! Use a seção de Ideias para sugerir temas de cursos. Administradores revisam as sugestões e podem criar novos cursos baseados no feedback da equipe." },
+    ]},
+    { cat:"News & Notícias", icon:IC.news, color:"#EC4899", questions:[
+      { q:"O que é a seção News?", a:"News é o feed interno de notícias e tendências da agência. Administradores publicam artigos sobre novidades do mercado, dicas, tutoriais e atualizações importantes para a equipe." },
+      { q:"Como criar um artigo?", a:"Na seção News, toque em '+ Novo'. Preencha título, corpo do texto, categoria, fonte (com link clicável), tempo de leitura e tags. Você pode marcar o artigo como 'Destaque' para fixar no topo." },
+      { q:"Posso salvar artigos para ler depois?", a:"Sim! Toque no ícone de bookmark no artigo para salvar. Você pode filtrar por 'Salvos' na lista de artigos para encontrá-los facilmente." },
+    ]},
+    { cat:"Configurações & Segurança", icon:IC.lock, color:B.red, questions:[
+      { q:"Como alterar minha senha?", a:"Vá em Configurações > Segurança > Alterar Senha. Digite sua senha atual, depois a nova senha (que deve ter 8+ caracteres, maiúscula, minúscula, número e caractere especial) e confirme." },
+      { q:"Como ativar a autenticação em dois fatores?", a:"Vá em Configurações > Segurança e ative o toggle de 'Autenticação 2 Fatores'. Siga as instruções para configurar o app de autenticação." },
+      { q:"Como encerrar sessões em outros dispositivos?", a:"Vá em Configurações > Segurança > Sessões Ativas. Você pode encerrar sessões individualmente ou usar 'Encerrar todas as outras sessões' para manter apenas o dispositivo atual." },
+      { q:"Como aprovar um novo cadastro?", a:"Apenas CEO e Gerentes podem aprovar cadastros. Vá em Configurações > Aprovações para ver solicitações pendentes. Toque em Aprovar ou Recusar para cada solicitação." },
+      { q:"Como configurar permissões por cargo?", a:"Vá em Configurações > Permissões (apenas admins). Selecione o cargo e configure o acesso a cada área do app. Cada área possui sub-opções granulares (ex: Clientes → Visualizar, Editar, Excluir, Ver financeiro)." },
+      { q:"Como configurar o Assistente IA?", a:"Vá em Configurações > Assistente IA (apenas admins). Insira sua chave da API (OpenAI, Gemini ou Claude). Escolha o provedor preferido. O assistente gera legendas, estratégias e ideias de conteúdo." },
+      { q:"Como mudar o tema do app?", a:"Vá em Configurações > Aparência. Ative o Modo Escuro e/ou escolha uma cor de destaque diferente para personalizar a interface ao seu gosto." },
+      { q:"Como configurar notificações?", a:"Vá em Configurações > Notificações. Ative ou desative notificações por categoria: Chat, Conteúdo, Clientes, Equipe, Financeiro. Cada categoria tem sub-opções para controle granular." },
+    ]},
+    { cat:"Relatórios & Métricas", icon:IC.reports, color:"#3B82F6", questions:[
+      { q:"Que tipos de relatório existem?", a:"O UniqueHub oferece relatórios de: Performance de conteúdo (demandas por etapa, tempo médio), Financeiro (receita mensal, comparativo), Equipe (check-ins, produtividade), Clientes (satisfação, retenção)." },
+      { q:"Como exportar um relatório?", a:"Na seção Relatórios, após selecionar o tipo e período, use o botão 'Exportar' para gerar o relatório em formato compatível. Os dados podem ser usados para apresentações ou análises externas." },
+    ]},
+  ];
+
+  const GUIDES = [
+    { title:"Guia Completo: Workflow de Conteúdo", desc:"Entenda cada etapa do pipeline de demandas, do briefing à publicação", icon:IC.content, color:B.blue, steps:[
+      "1. Ideia — O Head/CEO cria a demanda com título, cliente e rede social",
+      "2. Briefing — Social Media detalha o que precisa ser criado (formato, referências, textos de apoio)",
+      "3. Design — Designer/Audiovisual faz upload das artes e materiais visuais",
+      "4. Legenda — Social Media escreve a legenda, hashtags e define data/hora de agendamento",
+      "5. Revisão Interna — Gerente revisa tudo e aprova, ou rejeita enviando de volta para etapas anteriores",
+      "6. Aprovação do Cliente — Cliente externo valida o material final",
+      "7. Publicado — Post é publicado na rede social e a demanda é concluída"
+    ]},
+    { title:"Guia: Gerenciando Clientes", desc:"Do cadastro ao acompanhamento completo de cada cliente", icon:IC.clients, color:B.green, steps:[
+      "1. Cadastre o cliente com nome, contato, e-mail, segmento e plano mensal",
+      "2. Acesse a aba de Contrato para definir termos e vigência",
+      "3. Use a Biblioteca para organizar os arquivos (manual de marca, posts, vídeos)",
+      "4. Acompanhe faturas e pagamentos na aba Financeiro do cliente",
+      "5. Crie demandas vinculadas ao cliente para organizar o conteúdo",
+      "6. Use observações para registrar informações importantes sobre o cliente"
+    ]},
+    { title:"Guia: Onboarding de Novo Membro", desc:"Passo a passo para integrar um novo colaborador na agência", icon:IC.team, color:B.cyan, steps:[
+      "1. Novo membro acessa o app e cria conta com e-mail, nome e cargo",
+      "2. Administrador recebe notificação e acessa Configurações > Aprovações",
+      "3. Após aprovação, membro ganha acesso ao app com permissões do seu cargo",
+      "4. Admin pode ajustar permissões específicas em Configurações > Permissões",
+      "5. Novo membro personaliza seu menu e faz o primeiro check-in",
+      "6. Equipe recebe notificação da entrada do novo membro"
+    ]},
+    { title:"Guia: Sistema de Gamificação", desc:"Como funciona o XP, níveis, badges e ranking da equipe", icon:IC.trophy, color:B.orange, steps:[
+      "1. Cada ação no app gera XP: check-in (+10), demanda concluída (+25), post publicado (+15)",
+      "2. XP acumulado define seu nível de 1 (Iniciante) a 8 (Lenda)",
+      "3. O Ranking mostra a classificação de todos os membros em tempo real",
+      "4. Badges são conquistas especiais por atingir marcos (primeiro post, streak de 7 dias, etc.)",
+      "5. Administradores podem conceder XP bonus diretamente pelo Ranking",
+      "6. Mantenha uma sequência de check-ins para subir no ranking mais rápido!"
+    ]},
+    { title:"Guia: Assistente de IA", desc:"Use inteligência artificial para otimizar seu trabalho", icon:IC.ai, color:B.accent, steps:[
+      "1. Configure a chave OpenAI em Configurações > Assistente IA (apenas admin)",
+      "2. Acesse o Assistente IA pelo menu para iniciar uma conversa",
+      "3. Peça ajuda para: gerar legendas, criar estratégias, brainstorm de ideias, análise de concorrência",
+      "4. O assistente conhece o contexto da agência e pode personalizar as sugestões",
+      "5. Copie as sugestões diretamente para as demandas de conteúdo",
+      "6. Quanto mais contexto você der, melhores serão as respostas"
+    ]},
+    { title:"Guia: Financeiro da Agência", desc:"Controle total de faturamento, faturas e indicadores financeiros", icon:IC.financial, color:B.green, steps:[
+      "1. Cada cliente tem um plano mensal (valor e tipo: Basic, Pro, Premium, Enterprise)",
+      "2. O dashboard Financeiro mostra receita total, pagantes, ticket médio e inadimplência",
+      "3. Gere faturas automáticas pelo perfil do cliente",
+      "4. Marque pagamentos recebidos para atualizar o status (pendente → pago)",
+      "5. Use Relatórios > Financeiro para comparar meses e identificar tendências",
+      "6. Cards na Home mostram um resumo rápido da saúde financeira da agência"
+    ]},
+  ];
+
+  const SHORTCUTS = [
+    { section:"Navegação Rápida", items:[
+      { keys:"Home → Cards", desc:"Clique nos cards de Receita, Clientes, Pendentes ou Score para ir direto à área correspondente" },
+      { keys:"Menu → Personalizar", desc:"Arraste os itens para reordenar ou trocar os 5 slots do menu inferior" },
+      { keys:"Busca Global", desc:"Use a busca (lupa) para encontrar clientes, membros, arquivos e menus por nome" },
+    ]},
+    { section:"Conteúdo", items:[
+      { keys:"Pipeline → Filtros", desc:"Toque nas abas Social/Campanhas/Vídeo para alternar pipelines" },
+      { keys:"Demanda → Avançar", desc:"Preencha a etapa atual e use o botão verde para avançar no workflow" },
+      { keys:"Upload Múltiplo", desc:"Na etapa de Design, selecione vários arquivos de uma vez (imagens, vídeos, PSD)" },
+    ]},
+    { section:"Chat", items:[
+      { keys:"Conversa → Leitura", desc:"Toque em uma conversa para abrir e marcar como lida automaticamente" },
+      { keys:"Nova Conversa", desc:"Toque no '+' para iniciar conversa privada ou criar grupo" },
+    ]},
+    { section:"Gestão", items:[
+      { keys:"Cliente → Abas", desc:"Navegue entre Geral, Contrato, Faturas e Biblioteca dentro de cada cliente" },
+      { keys:"Equipe → Perfil", desc:"Toque no membro para ver detalhes, skills e dados de contato" },
+      { keys:"Calendário → Tipos", desc:"Crie eventos com tipo específico (Reunião, Gravação, Evento, Lembrete, Deadline)" },
+    ]},
+  ];
+
+  const VIDEOS = [
+    { title:"Tour pelo Dashboard", desc:"Conheça a Home e os cards de métricas", dur:"3 min", icon:IC.home(B.accent) },
+    { title:"Criando sua primeira Demanda", desc:"Do briefing à publicação em 5 minutos", dur:"5 min", icon:IC.content(B.blue) },
+    { title:"Gerenciando Clientes", desc:"Cadastro, arquivos, faturas e contrato", dur:"4 min", icon:IC.clients(B.green) },
+    { title:"Pipeline de Conteúdo Avançado", desc:"Workflow completo com revisão e rejeição", dur:"6 min", icon:IC.content(B.orange) },
+    { title:"Chat e Comunicação", desc:"Mensagens, grupos e indicadores de leitura", dur:"3 min", icon:IC.chat },
+    { title:"Calendário e Eventos", desc:"Tipos de evento e agendamento", dur:"4 min", icon:IC.calendar(B.purple) },
+    { title:"Financeiro e Faturas", desc:"Dashboard financeiro e controle de pagamentos", dur:"5 min", icon:IC.financial(B.green) },
+    { title:"Gamificação e Ranking", desc:"Sistema de XP, níveis e badges", dur:"3 min", icon:IC.star },
+    { title:"Configurações e Permissões", desc:"Personalização, segurança e controle de acesso", dur:"4 min", icon:IC.settings(B.muted) },
+    { title:"Assistente de IA", desc:"Configuração e uso do assistente inteligente", dur:"4 min", icon:IC.ai(B.accent) },
+  ];
+
+  /* ── SEARCH ── */
+  const allQuestions = FAQ.flatMap((cat, ci) => cat.questions.map((q, qi) => ({ ...q, catIdx:ci, qIdx:qi, catName:cat.cat, color:cat.color })));
+  const searchResults = searchQ.trim().length >= 2 ? allQuestions.filter(q => q.q.toLowerCase().includes(searchQ.toLowerCase()) || q.a.toLowerCase().includes(searchQ.toLowerCase())) : [];
+
+  /* ── CONTACT FORM ── */
+  if (contactForm) return (
+    <div className="pg">
+      {ToastEl}
+      <Head title="Falar com Suporte" onBack={() => setContactForm(false)} />
+      <Card style={{ background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginBottom:12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ color:B.accent, display:"flex" }}>{IC.headset(B.accent)}</span>
+          <div><p style={{ fontSize:12, color:B.accent, fontWeight:600 }}>Suporte Unique Marketing 360</p><p style={{ fontSize:10, color:B.muted }}>Tempo médio de resposta: 2 horas úteis</p></div>
+        </div>
+      </Card>
+      <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Assunto</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          {["Bug / Erro","Dúvida de uso","Sugestão de melhoria","Problema financeiro","Problema de acesso","Outro"].map(t => (
+            <button key={t} onClick={() => setCTopic(t)} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${cTopic===t?B.accent:B.border}`, background:cTopic===t?`${B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:cTopic===t?B.dark:B.muted }}>{t}</button>
+          ))}
+        </div>
+      </Card>
+      <Card style={{ marginBottom:12 }}>
+        <label className="sl" style={{ display:"block", marginBottom:6 }}>Mensagem</label>
+        <textarea value={cMsg} onChange={e => setCMsg(e.target.value)} placeholder="Descreva sua dúvida ou problema com o máximo de detalhes possível. Inclua prints se necessário..." className="tinput" style={{ minHeight:120, resize:"vertical" }} />
+      </Card>
+      <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:12 }}>
+        <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>Dica: Quanto mais detalhes você incluir (tela onde ocorreu o erro, passos para reproduzir, etc.), mais rápido podemos resolver.</p>
+      </Card>
+      <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent" style={{ padding:"14px 0" }}>Enviar Mensagem</button>
+    </div>
+  );
+
+  /* ── GUIDE DETAIL ── */
+  if (selCat !== null && helpTab === "guides") {
+    const guide = GUIDES[selCat];
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="" onBack={() => setSelCat(null)} />
+        <Card style={{ marginBottom:12, textAlign:"center", padding:20 }}>
+          <div style={{ width:56, height:56, borderRadius:16, background:`${guide.color||B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:guide.color||B.accent }}>{typeof guide.icon === "function" ? guide.icon(guide.color||B.accent) : guide.icon}</div>
+          <h3 style={{ fontSize:16, fontWeight:800, marginTop:8 }}>{guide.title}</h3>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{guide.desc}</p>
+        </Card>
+        {guide.steps.map((step, i) => (
+          <Card key={i} delay={i*0.03} style={{ marginBottom:6, borderLeft:`3px solid ${B.accent}` }}>
+            <p style={{ fontSize:13, lineHeight:1.6 }}>{step}</p>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  /* ── FAQ DETAIL ── */
+  if (selCat !== null && helpTab === "faq") {
+    const cat = FAQ[selCat];
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={cat.cat} onBack={() => { setSelCat(null); setSelQ(null); }} />
+        <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>{cat.questions.length} perguntas frequentes</p>
+        {cat.questions.map((item, i) => (
+          <Card key={i} delay={i*0.03} style={{ marginBottom:8, borderLeft: selQ===i ? `3px solid ${cat.color}` : "none" }}>
+            <div onClick={() => setSelQ(selQ === i ? null : i)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", gap:8 }}>
+              <p style={{ fontSize:13, fontWeight:600, flex:1 }}>{item.q}</p>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" style={{ transition:"transform .2s", transform:selQ===i?"rotate(180deg)":"rotate(0)", flexShrink:0 }}><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            {selQ === i && <p style={{ fontSize:12, color:B.text, lineHeight:1.7, marginTop:10, paddingTop:10, borderTop:`1px solid ${B.border}` }}>{item.a}</p>}
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  /* ── MAIN HELP ── */
+  const tabs = [
+    { k:"faq", l:"FAQ", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
+    { k:"guides", l:"Guias", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue} strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg> },
+    { k:"shortcuts", l:"Atalhos", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
+    { k:"videos", l:"Tutoriais", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> },
+  ];
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.help} label="Suporte" title="Ajuda" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      {ToastEl}
+
+      {/* Hero */}
+      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12, textAlign:"center", padding:20 }}>
+        <div style={{ width:48, height:48, borderRadius:16, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:B.accent }}>{IC.help(B.accent)}</div>
+        <h3 style={{ fontSize:16, fontWeight:800 }}>Como podemos ajudar?</h3>
+        <p style={{ fontSize:11, opacity:.6, marginTop:4 }}>FAQ completo, guias passo a passo e suporte direto</p>
+      </Card>
+
+      {/* Search */}
+      <div style={{ position:"relative", marginBottom:12 }}>
+        <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar nas perguntas frequentes..." className="tinput" style={{ paddingLeft:36 }} />
+        <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      </div>
+
+      {/* Search Results */}
+      {searchQ.trim().length >= 2 && (
+        <div style={{ marginBottom:16 }}>
+          <p className="sl" style={{ marginBottom:8 }}>{searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""} encontrado{searchResults.length !== 1 ? "s" : ""}</p>
+          {searchResults.length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:13, color:B.muted }}>Nenhum resultado. Tente termos diferentes ou fale com o suporte.</p></Card>}
+          {searchResults.slice(0, 8).map((r, i) => (
+            <Card key={i} style={{ marginBottom:6, borderLeft:`3px solid ${r.color}`, cursor:"pointer" }} onClick={() => { setSearchQ(""); setHelpTab("faq"); setSelCat(r.catIdx); setSelQ(r.qIdx); }}>
+              <p style={{ fontSize:13, fontWeight:600 }}>{r.q}</p>
+              <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{r.catName}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs */}
+      {!searchQ.trim() && <>
+        <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto", paddingBottom:4 }}>
+          {tabs.map(t => (
+            <button key={t.k} onClick={() => setHelpTab(t.k)} className={`htab${helpTab===t.k?" a":""}`} style={{ fontSize:12, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
+              <span>{t.icon}</span>{t.l}
+            </button>
+          ))}
+        </div>
+
+        {/* FAQ Tab */}
+        {helpTab === "faq" && <>
+          <p className="sl" style={{ marginBottom:8 }}>{FAQ.length} categorias · {allQuestions.length} perguntas</p>
+          {FAQ.map((cat, i) => (
+            <Card key={i} delay={i*0.02} onClick={() => setSelCat(i)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${cat.color}10`, display:"flex", alignItems:"center", justifyContent:"center", color:cat.color }}>{typeof cat.icon === "function" ? cat.icon(cat.color) : cat.icon}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:600 }}>{cat.cat}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{cat.questions.length} perguntas</p>
+                </div>
+                {IC.chev()}
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Guides Tab */}
+        {helpTab === "guides" && <>
+          <p className="sl" style={{ marginBottom:8 }}>{GUIDES.length} guias disponíveis</p>
+          {GUIDES.map((g, i) => (
+            <Card key={i} delay={i*0.03} onClick={() => setSelCat(i)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:40, height:40, borderRadius:12, background:`${g.color||B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:g.color||B.accent }}>{typeof g.icon === "function" ? g.icon(g.color||B.accent) : g.icon}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:600 }}>{g.title}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{g.desc}</p>
+                </div>
+                <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{g.steps.length} passos</span>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Shortcuts Tab */}
+        {helpTab === "shortcuts" && <>
+          {SHORTCUTS.map((sec, si) => (
+            <div key={si} style={{ marginBottom:16 }}>
+              <p className="sl" style={{ marginBottom:8 }}>{sec.section}</p>
+              {sec.items.map((item, i) => (
+                <Card key={i} delay={(si*3+i)*0.02} style={{ marginBottom:6 }}>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                    <div style={{ padding:"4px 8px", borderRadius:6, background:`${B.accent}12`, fontSize:10, fontWeight:700, color:B.accent, whiteSpace:"nowrap", flexShrink:0, marginTop:1 }}>{item.keys}</div>
+                    <p style={{ fontSize:12, color:B.text, lineHeight:1.5 }}>{item.desc}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ))}
+        </>}
+
+        {/* Videos Tab */}
+        {helpTab === "videos" && <>
+          <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:12 }}>
+            <p style={{ fontSize:11, color:B.orange, lineHeight:1.5 }}>Tutoriais em vídeo estarão disponíveis em breve! Por enquanto, use os Guias passo a passo para aprender cada funcionalidade.</p>
+          </Card>
+          <p className="sl" style={{ marginBottom:8 }}>{VIDEOS.length} tutoriais planejados</p>
+          {VIDEOS.map((v, i) => (
+            <Card key={i} delay={i*0.02} style={{ marginBottom:6, opacity:0.6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{v.icon}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{v.title}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>{v.desc}</p>
+                </div>
+                <span style={{ fontSize:10, color:B.muted, fontWeight:600, background:`${B.muted}10`, padding:"3px 8px", borderRadius:6 }}>{v.dur}</span>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Support CTA */}
+        <div style={{ marginTop:20, marginBottom:8 }}>
+          <p className="sl" style={{ marginBottom:8 }}>Precisa de mais ajuda?</p>
+          <Card onClick={() => setContactForm(true)} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}25`, marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.headset(B.accent)}</div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:14, fontWeight:600 }}>Falar com Suporte</p>
+                <p style={{ fontSize:11, color:B.muted }}>Resposta em até 2 horas úteis</p>
+              </div>
+              {IC.chev()}
+            </div>
+          </Card>
+          <Card style={{ background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.mail}</div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:14, fontWeight:600 }}>E-mail direto</p>
+                <p style={{ fontSize:11, color:B.accent, fontWeight:600 }}>suporte@uniquemkt.com.br</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Version info */}
+        <div style={{ textAlign:"center", padding:"20px 0 8px", opacity:0.4 }}>
+          <p style={{ fontSize:10 }}>UniqueHub v1.0.0 · Unique Marketing 360</p>
+          <p style={{ fontSize:9, marginTop:2 }}>Petrópolis, RJ — Brasil</p>
+        </div>
+      </>}
+      </div>
+    </div>
+  );
+}
+
+function SearchPage({ onBack, team, clients }) {
+  const [query, setQuery] = useState("");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [filter, setFilter] = useState("all");
+  const inputRef = React.useRef(null);
+
+  React.useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, []);
+
+  const q = query.toLowerCase().trim();
+
+  const CDATA = clients || [];
+  const TDATA = team || [];
+
+  const clientResults = q ? CDATA.filter(c =>
+    c.name.toLowerCase().includes(q) || c.contact?.toLowerCase().includes(q) || c.segment?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)
+  ) : [];
+
+  const teamResults = q ? TDATA.filter(m =>
+    m.name?.toLowerCase().includes(q) || m.role?.toLowerCase().includes(q) || m.job_title?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q)
+  ) : [];
+
+  const fileResults = q ? CDATA.flatMap(c =>
+    (c.files||[]).filter(f => f.name.toLowerCase().includes(q) || f.category?.toLowerCase().includes(q)).map(f => ({...f, clientName:c.name}))
+  ).slice(0, 15) : [];
+
+  const MENU_ITEMS = [
+    { k:"home", l:"Home", d:"Dashboard principal", ic:IC.home },
+    { k:"content", l:"Conteúdo", d:"Pipeline de demandas", ic:IC.content },
+    { k:"chat", l:"Chat", d:"Mensagens da equipe", ic:IC.chat },
+    { k:"clients", l:"Clientes", d:"Gerenciar clientes", ic:IC.clients },
+    { k:"calendar", l:"Calendário", d:"Eventos e agenda", ic:IC.clock },
+    { k:"library", l:"Biblioteca", d:"Todos os arquivos", ic:IC.folder },
+    { k:"financial", l:"Financeiro", d:"Faturamento e pagamentos", ic:IC.dollar },
+    { k:"reports", l:"Relatórios", d:"Performance e métricas", ic:IC.reports },
+    { k:"team", l:"Equipe", d:"Membros da agência", ic:IC.team },
+    { k:"academy", l:"Academy", d:"Cursos e treinamentos", ic:IC.academy },
+    { k:"news", l:"News", d:"Notícias e tendências", ic:IC.news },
+    { k:"ideas", l:"Ideias", d:"Brainstorm da equipe", ic:IC.ideas },
+    { k:"ai", l:"Assistente IA", d:"Chat com inteligência artificial", ic:IC.ai },
+    { k:"gamify", l:"Ranking", d:"Gamificação e recompensas", ic:IC.gamify },
+    { k:"checkin", l:"Check-in", d:"Ponto digital", ic:IC.checkin },
+    { k:"settings", l:"Configurações", d:"Perfil e preferências", ic:IC.settings },
+    { k:"help", l:"Ajuda", d:"FAQ e suporte", ic:IC.help },
+  ];
+
+  const menuResults = q ? MENU_ITEMS.filter(m =>
+    m.l.toLowerCase().includes(q) || m.d.toLowerCase().includes(q)
+  ) : [];
+
+  const totalResults = clientResults.length + teamResults.length + fileResults.length + menuResults.length;
+
+  const hasResults = filter === "all" ? totalResults > 0 :
+    filter === "clients" ? clientResults.length > 0 :
+    filter === "team" ? teamResults.length > 0 :
+    filter === "files" ? fileResults.length > 0 :
+    menuResults.length > 0;
+
+  const catColor = (cat) => ({ "Manual de Marca":B.red, "Posts Feed":B.blue, "Stories":B.pink, "Capas de Reels":B.purple, "Vídeos":B.orange, "Artes Digitais":B.cyan, "Material Impresso":B.green, "Documentos":B.muted, "Referências":"#F59E0B", "Outros":B.muted }[cat] || B.muted);
+
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.search} label="Descoberta" title="Buscar" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+
+      {/* Search input */}
+      <div style={{ position:"relative", marginBottom:12 }}>
+        <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</span>
+        <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar clientes, equipe, arquivos, páginas..." className="tinput" style={{ paddingLeft:42 }} />
+        {query && <button onClick={() => setQuery("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex" }}>{IC.x}</button>}
+      </div>
+
+      {/* Filters */}
+      {q && <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
+        {[
+          { k:"all", l:`Tudo (${totalResults})` },
+          { k:"clients", l:`Clientes (${clientResults.length})` },
+          { k:"team", l:`Equipe (${teamResults.length})` },
+          { k:"files", l:`Arquivos (${fileResults.length})` },
+          { k:"pages", l:`Páginas (${menuResults.length})` },
+        ].map(f => (
+          <button key={f.k} onClick={() => setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{f.l}</button>
+        ))}
+      </div>}
+
+      {/* Empty state */}
+      {!q && (
+        <Card style={{ textAlign:"center", padding:28 }}>
+          <div style={{ width:48, height:48, borderRadius:16, background:`${B.muted}08`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.muted }}>{IC.search(B.muted)}</div>
+          <p style={{ fontSize:14, fontWeight:600, marginBottom:4 }}>Busca global</p>
+          <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>Pesquise em clientes, membros da equipe, arquivos da biblioteca e páginas do sistema.</p>
+        </Card>
+      )}
+
+      {q && !hasResults && (
+        <Card style={{ textAlign:"center", padding:24 }}>
+          <p style={{ fontSize:14, fontWeight:600 }}>Nenhum resultado para "{query}"</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente termos diferentes ou mais curtos.</p>
+        </Card>
+      )}
+
+      {/* Client results */}
+      {q && (filter === "all" || filter === "clients") && clientResults.length > 0 && <>
+        <p className="sl" style={{ marginBottom:6 }}>Clientes</p>
+        {clientResults.map((c,i) => (
+          <Card key={c.id} delay={i*0.03} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <Av src={c.logo} name={c.name} sz={36} fs={13} />
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:700 }}>{c.name}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{c.segment} · {c.plan} · {c.monthly}</p>
+              </div>
+              <Tag color={c.status==="ativo"?B.green:B.orange}>{c.status==="ativo"?"Ativo":"Trial"}</Tag>
+            </div>
+          </Card>
+        ))}
+      </>}
+
+      {/* Team results */}
+      {q && (filter === "all" || filter === "team") && teamResults.length > 0 && <>
+        <p className="sl" style={{ marginTop:filter==="all"&&clientResults.length?12:0, marginBottom:6 }}>Equipe</p>
+        {teamResults.map((m,i) => (
+          <Card key={m.id} delay={i*0.03} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ position:"relative" }}>
+                <Av name={m.name} sz={36} fs={13} />
+                <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:5, background:m.status==="online"?B.green:B.muted, border:"2px solid #fff" }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:700 }}>{m.name}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{m.role} · {m.email||""}</p>
+              </div>
+              <Tag color={m.status==="online"?B.green:B.muted}>{m.status==="online"?"Online":"Offline"}</Tag>
+            </div>
+          </Card>
+        ))}
+      </>}
+
+      {/* File results */}
+      {q && (filter === "all" || filter === "files") && fileResults.length > 0 && <>
+        <p className="sl" style={{ marginTop:12, marginBottom:6 }}>Arquivos</p>
+        {fileResults.map((f,i) => (
+          <Card key={f.id} delay={i*0.03} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${catColor(f.category)}10`, display:"flex", alignItems:"center", justifyContent:"center", color:catColor(f.category) }}>
+                {IC.doc}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{f.clientName} · {f.category} · {f.size}</p>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </>}
+
+      {/* Page results */}
+      {q && (filter === "all" || filter === "pages") && menuResults.length > 0 && <>
+        <p className="sl" style={{ marginTop:12, marginBottom:6 }}>Páginas</p>
+        {menuResults.map((m,i) => (
+          <Card key={m.k} delay={i*0.03} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>
+                {typeof m.ic === "function" ? m.ic(B.accent) : m.ic}
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:700 }}>{m.l}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{m.d}</p>
+              </div>
+              {IC.chev()}
+            </div>
+          </Card>
+        ))}
+      </>}
+      </div>
+    </div>
+  );
+}
+
+function PlaceholderPage({ title, onBack, icon }) {
+  return (
+    <div className="pg">
+      <Head title={title} onBack={onBack} />
+      <Card style={{ textAlign: "center", padding: 40 }}>
+        <div style={{ width: 60, height: 60, borderRadius: 16, background: `${B.accent}15`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: B.accent }}>{icon}</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800 }}>{title}</h3>
+        <p style={{ fontSize: 13, color: B.muted, marginTop: 8 }}>Em breve disponível!</p>
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════ MATCH4BIZ (AGENCY PANEL) ═══════════════════════ */
+function Match4BizPage({ onBack, clients, user }) {
+  const [view, setView] = useState("dashboard");
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [selMatch, setSelMatch] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [msgInput, setMsgInput] = useState("");
+  const { showToast, ToastEl } = useToast();
+
+  /* Mock match data — replace with Supabase later */
+  const [matches, setMatches] = useState([
+    { id:1, a:{ name:"Café Aroma Petrópolis", seg:"Alimentação", logo:"☕" }, b:{ name:"Distribuidora Serra Fluminense", seg:"Distribuição", logo:"📦" }, status:"negotiating", date:"2025-03-01", value:null, msgs:[
+      { from:"a", text:"Olá! Temos interesse em distribuir nosso café para sua rede.", ts:"2025-03-01T10:00" },
+      { from:"b", text:"Ótimo! Qual o volume mínimo por pedido?", ts:"2025-03-01T14:30" },
+      { from:"a", text:"A partir de 50kg por entrega, com frete incluso para Petrópolis.", ts:"2025-03-02T09:00" },
+    ]},
+    { id:2, a:{ name:"Studio Bella Estética", seg:"Beleza", logo:"💆" }, b:{ name:"Natura Cosméticos RJ", seg:"Cosméticos", logo:"🌿" }, status:"closed_won", date:"2025-02-15", value:12500, msgs:[
+      { from:"a", text:"Gostaríamos de revender produtos Natura no studio.", ts:"2025-02-15T11:00" },
+      { from:"b", text:"Temos um programa de parceria. Envio a proposta.", ts:"2025-02-15T16:00" },
+      { from:"agency", text:"Intermediei a negociação. Contrato assinado!", ts:"2025-02-20T10:00" },
+    ]},
+    { id:3, a:{ name:"Pet Shop Amigo Fiel", seg:"Pet", logo:"🐕" }, b:{ name:"Ração Premium Sul", seg:"Alimentação Animal", logo:"🦴" }, status:"closed_lost", date:"2025-02-10", value:null, msgs:[
+      { from:"a", text:"Precisamos de fornecedor de ração premium.", ts:"2025-02-10T09:00" },
+      { from:"b", text:"Infelizmente não atendemos a região de Petrópolis.", ts:"2025-02-11T08:00" },
+    ]},
+    { id:4, a:{ name:"Padaria Central", seg:"Alimentação", logo:"🥖" }, b:{ name:"Laticínios Vale do Imperador", seg:"Laticínios", logo:"🧀" }, status:"new", date:"2025-03-03", value:null, msgs:[] },
+    { id:5, a:{ name:"Fit Arena Gym", seg:"Fitness", logo:"💪" }, b:{ name:"Suplementos MaxPower", seg:"Suplementos", logo:"🏋️" }, status:"talking", date:"2025-02-28", value:null, msgs:[
+      { from:"a", text:"Queremos oferecer suplementos para nossos alunos.", ts:"2025-02-28T10:00" },
+      { from:"b", text:"Ótima ideia! Temos condições especiais para academias.", ts:"2025-02-28T15:00" },
+    ]},
+    { id:6, a:{ name:"Clínica Saúde Total", seg:"Saúde", logo:"🏥" }, b:{ name:"Farmácia Popular Plus", seg:"Farmácia", logo:"💊" }, status:"closed_won", date:"2025-01-20", value:8000, msgs:[
+      { from:"b", text:"Podemos fazer parceria de indicação?", ts:"2025-01-20T11:00" },
+      { from:"a", text:"Sim! Encaminhamos pacientes e vocês dão desconto.", ts:"2025-01-21T09:00" },
+      { from:"agency", text:"Acordo formalizado. Comissão de 5% para a Unique.", ts:"2025-01-25T14:00" },
+    ]},
+  ]);
+
+  const statusMap = {
+    new:{ l:"Novo", c:B.blue, bg:`${B.blue}15` },
+    talking:{ l:"Conversando", c:B.cyan||B.blue, bg:`${B.cyan||B.blue}15` },
+    negotiating:{ l:"Negociando", c:B.orange, bg:`${B.orange}15` },
+    closed_won:{ l:"Fechado ✓", c:B.green, bg:`${B.green}15` },
+    closed_lost:{ l:"Não rolou", c:B.red, bg:`${B.red}15` },
+  };
+
+  const filtered = filter === "all" ? matches : matches.filter(m => m.status === filter);
+  const totalMatches = matches.length;
+  const wonDeals = matches.filter(m => m.status === "closed_won");
+  const totalRevenue = wonDeals.reduce((s,m) => s + (m.value||0), 0);
+  const conversionRate = totalMatches > 0 ? Math.round((wonDeals.length / totalMatches) * 100) : 0;
+  const activeDeals = matches.filter(m => ["new","talking","negotiating"].includes(m.status)).length;
+
+  const updateStatus = (id, newStatus) => {
+    setMatches(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, status: newStatus }));
+    showToast("Status atualizado ✓");
+  };
+
+  const updateValue = (id, val) => {
+    const numVal = parseFloat(val) || 0;
+    setMatches(prev => prev.map(m => m.id === id ? { ...m, value: numVal } : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, value: numVal }));
+  };
+
+  const sendMsg = (id) => {
+    if (!msgInput.trim()) return;
+    const msg = { from:"agency", text:msgInput.trim(), ts:new Date().toISOString() };
+    setMatches(prev => prev.map(m => m.id === id ? { ...m, msgs:[...m.msgs, msg] } : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, msgs:[...prev.msgs, msg] }));
+    setMsgInput("");
+  };
+
+  /* ── MATCH DETAIL ── */
+  if (view === "detail" && selMatch) {
+    const m = matches.find(x => x.id === selMatch.id) || selMatch;
+    const st = statusMap[m.status] || statusMap.new;
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Detalhe do Match" onBack={() => { setView("list"); setSelMatch(null); }} />
+
+        {/* Companies */}
+        <Card>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.a.logo}</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>{m.a.name}</p>
+              <p style={{ fontSize:10, color:B.muted }}>{m.a.seg}</p>
+            </div>
+          </div>
+          <div style={{ textAlign:"center", margin:"10px 0", color:B.accent }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginTop:2 }}>MATCH</p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.purple}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.b.logo}</div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>{m.b.name}</p>
+              <p style={{ fontSize:10, color:B.muted }}>{m.b.seg}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Status + Value */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>STATUS DO NEGÓCIO</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {Object.entries(statusMap).map(([k,v]) => (
+              <button key={k} onClick={() => updateStatus(m.id, k)} style={{ padding:"6px 12px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:11, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
+            ))}
+          </div>
+          {m.status === "closed_won" && (
+            <div style={{ marginTop:12 }}>
+              <p style={{ fontSize:11, fontWeight:600, color:B.muted, marginBottom:4 }}>Valor do negócio (R$)</p>
+              <input value={m.value||""} onChange={e => updateValue(m.id, e.target.value)} placeholder="0,00" className="tinput" type="number" style={{ fontSize:16, fontWeight:700 }} />
+            </div>
+          )}
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:10, padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
+            <span style={{ fontSize:11, color:B.muted }}>Data do match</span>
+            <span style={{ fontSize:11, fontWeight:600 }}>{new Date(m.date).toLocaleDateString("pt-BR")}</span>
+          </div>
+        </Card>
+
+        {/* Chat History */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>HISTÓRICO DE CONVERSA</p>
+          {m.msgs.length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma mensagem ainda</p>}
+          <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:300, overflowY:"auto" }}>
+            {m.msgs.map((msg, i) => {
+              const isAgency = msg.from === "agency";
+              const sender = msg.from === "a" ? m.a.name : msg.from === "b" ? m.b.name : "Unique Marketing";
+              const senderIcon = msg.from === "a" ? m.a.logo : msg.from === "b" ? m.b.logo : "🏢";
+              return (
+                <div key={i} style={{ padding:"8px 10px", borderRadius:12, background:isAgency?`${B.accent}08`:`${B.muted}08`, border:isAgency?`1px solid ${B.accent}15`:"none" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                    <span style={{ fontSize:12 }}>{senderIcon}</span>
+                    <span style={{ fontSize:10, fontWeight:700, color:isAgency?B.accent:B.text }}>{sender}</span>
+                    <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
+                  </div>
+                  <p style={{ fontSize:12, lineHeight:1.5, color:B.text }}>{msg.text}</p>
+                </div>
+              );
+            })}
+          </div>
+          {/* Agency intervention input */}
+          <div style={{ display:"flex", gap:8, marginTop:10, paddingTop:10, borderTop:`1px solid ${B.border}` }}>
+            <input value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key==="Enter" && sendMsg(m.id)} placeholder="Intervir na conversa..." className="tinput" style={{ flex:1, fontSize:12 }} />
+            <button onClick={() => sendMsg(m.id)} disabled={!msgInput.trim()} style={{ width:36, height:36, borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}20`, border:"none", cursor:msgInput.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={msgInput.trim()?B.textOnAccent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ── MATCHES LIST ── */
+  if (view === "list") {
+    return (
+      <div className="pg">
+        {ToastEl}
+        <Head title="Todos os Matches" onBack={() => setView("dashboard")} />
+        {/* Filters */}
+        <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8, marginBottom:4 }}>
+          {[{ k:"all", l:"Todos" }, ...Object.entries(statusMap).map(([k,v]) => ({ k, l:v.l }))].map(f => (
+            <button key={f.k} onClick={() => setFilter(f.k)} style={{ padding:"6px 14px", borderRadius:10, border:filter===f.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:filter===f.k?`${B.accent}10`:"transparent", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{f.l} {f.k==="all"?`(${totalMatches})`:`(${matches.filter(m=>m.status===f.k).length})`}</button>
+          ))}
+        </div>
+        {/* Match cards */}
+        {filtered.length === 0 && <Card><p style={{ textAlign:"center", color:B.muted, fontSize:13 }}>Nenhum match encontrado</p></Card>}
+        {filtered.map((m,i) => {
+          const st = statusMap[m.status];
+          return (
+            <Card key={m.id} delay={i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?8:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <span style={{ fontSize:20 }}>{m.a.logo}</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                  <span style={{ fontSize:20 }}>{m.b.logo}</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:12, fontWeight:700 }}>{m.a.name.split(" ").slice(0,2).join(" ")} × {m.b.name.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:10, color:B.muted }}>{m.a.seg} + {m.b.seg}</p>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6, display:"inline-block" }}>{st.l}</span>
+                  {m.value && <p style={{ fontSize:11, fontWeight:700, color:B.green, marginTop:4 }}>R$ {m.value.toLocaleString("pt-BR")}</p>}
+                </div>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, paddingTop:6, borderTop:`1px solid ${B.border}` }}>
+                <span style={{ fontSize:10, color:B.muted }}>{new Date(m.date).toLocaleDateString("pt-BR")}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{m.msgs.length} msg{m.msgs.length!==1?"s":""}</span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ── DASHBOARD (default) ── */
+  return (
+    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={pgC} />
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      {ToastEl}
+
+      {/* Metrics */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+        {[
+          { label:"Total Matches", value:totalMatches, icon:"🤝", color:B.accent },
+          { label:"Em andamento", value:activeDeals, icon:"⏳", color:B.orange },
+          { label:"Fechados", value:wonDeals.length, icon:"✅", color:B.green },
+          { label:"Conversão", value:`${conversionRate}%`, icon:"📈", color:B.purple },
+        ].map((m,i) => (
+          <Card key={i} delay={i*0.04} style={{ padding:14, textAlign:"center" }}>
+            <span style={{ fontSize:22, display:"block", marginBottom:4 }}>{m.icon}</span>
+            <p style={{ fontSize:20, fontWeight:800, color:m.color }}>{m.value}</p>
+            <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginTop:2 }}>{m.label}</p>
+          </Card>
+        ))}
+      </div>
+
+      {/* Revenue */}
+      <Card delay={0.15} style={{ marginTop:8 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <p style={{ fontSize:11, fontWeight:600, color:B.muted }}>Receita gerada por matches</p>
+            <p style={{ fontSize:24, fontWeight:800, color:B.green, marginTop:4 }}>R$ {totalRevenue.toLocaleString("pt-BR")}</p>
+          </div>
+          <div style={{ width:48, height:48, borderRadius:14, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>💰</div>
+        </div>
+        {wonDeals.length > 0 && (
+          <div style={{ marginTop:10, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
+            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Negócios fechados</p>
+            {wonDeals.map((d,i) => (
+              <div key={d.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderTop:i?`1px solid ${B.border}05`:"none" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:14 }}>{d.a.logo}</span>
+                  <span style={{ fontSize:11, fontWeight:600 }}>{d.a.name.split(" ").slice(0,2).join(" ")} × {d.b.name.split(" ").slice(0,2).join(" ")}</span>
+                </div>
+                <span style={{ fontSize:12, fontWeight:700, color:B.green }}>R$ {(d.value||0).toLocaleString("pt-BR")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Recent matches */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12, marginBottom:8 }}>
+        <p className="sl">Matches recentes</p>
+        <button onClick={() => setView("list")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
+      </div>
+      {matches.slice(0, 4).map((m,i) => {
+        const st = statusMap[m.status];
+        return (
+          <Card key={m.id} delay={0.2+i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?6:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"center" }}>
+                <span style={{ fontSize:18 }}>{m.a.logo}</span>
+                <span style={{ fontSize:10, margin:"0 4px", color:B.accent }}>♥</span>
+                <span style={{ fontSize:18 }}>{m.b.logo}</span>
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:12, fontWeight:600 }}>{m.a.name.split(" ").slice(0,2).join(" ")} × {m.b.name.split(" ").slice(0,2).join(" ")}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{new Date(m.date).toLocaleDateString("pt-BR")} · {m.msgs.length} msgs</p>
+              </div>
+              <span style={{ fontSize:9, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6 }}>{st.l}</span>
+            </div>
+          </Card>
+        );
+      })}
+
+      {/* CTA */}
+      <Card delay={0.35} style={{ marginTop:12, textAlign:"center", background:`${B.accent}06`, border:`1.5px dashed ${B.accent}25` }}>
+        <span style={{ fontSize:28, display:"block", marginBottom:6 }}>💡</span>
+        <p style={{ fontSize:13, fontWeight:700, color:B.text }}>Como funciona</p>
+        <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, marginTop:4 }}>Os clientes da agência fazem match entre si no app. Aqui você acompanha cada conexão, intervém quando necessário e registra os negócios fechados.</p>
+      </Card>
+      </div>
+    </div>
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN CLIENT APP — Portal do Cliente
+   ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT ONBOARDING — Cadastro interativo com IA conversacional
+   ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT MATCH4BIZ — Tinder de negócios entre clientes
+   ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT GAMIFICATION — Sistema de XP, níveis, missões e conquistas
+   ═══════════════════════════════════════════════════════════════════ */
+function ClientMatch4Biz({ onBack, user }) {
+  const [accepted, setAccepted] = useState(false);
+  const [tab, setTab] = useState("discover");
+  const [credits, setCredits] = useState(10);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [matches, setMatches] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [selChat, setSelChat] = useState(null);
+  const [msgInput, setMsgInput] = useState("");
+  const [showBuy, setShowBuy] = useState(false);
+  const [selPack, setSelPack] = useState(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [swipeAnim, setSwipeAnim] = useState(null);
+  const { showToast, ToastEl } = useToast();
+
+  const PROFILES = [
+    { id:1, name:"Studio Criativo RJ", initials:"SC", city:"Rio de Janeiro", tags:["Vídeo","Foto","Reels"], desc:"Produtora audiovisual premium com 8 anos de mercado. Especializada em vídeos institucionais, reels e cobertura de eventos.", match:94, rating:4.8, clients:47, ticket:"R$5-15K", color:"#10B981" },
+    { id:2, name:"Café Artesanal SP", initials:"CA", city:"São Paulo", tags:["Food","Lifestyle"], desc:"Cafeteria artesanal com 3 unidades. Fornecemos grãos selecionados e temos programa de parceria para empresas.", match:87, rating:4.5, clients:120, ticket:"R$2-8K", color:"#F59E0B" },
+    { id:3, name:"TechSmart Solutions", initials:"TS", city:"Belo Horizonte", tags:["Tech","SaaS","B2B"], desc:"Desenvolvedora de soluções em automação comercial. Integrações com ERPs e CRMs para PMEs.", match:91, rating:4.7, clients:85, ticket:"R$10-50K", color:"#3B82F6" },
+    { id:4, name:"Bella Estética Premium", initials:"BE", city:"Curitiba", tags:["Beleza","Saúde","Bem-estar"], desc:"Rede de estética com 5 unidades. Especializada em tratamentos faciais e corporais de alto padrão.", match:78, rating:4.3, clients:200, ticket:"R$1-5K", color:"#EC4899" },
+    { id:5, name:"Distribuidora Nova Era", initials:"DN", city:"Campinas", tags:["Logística","Distribuição"], desc:"Distribuidora regional com frota própria. Atendemos todo interior de SP com entregas em 24h.", match:82, rating:4.1, clients:340, ticket:"R$5-20K", color:"#8B5CF6" },
+    { id:6, name:"Fit Arena Gym", initials:"FA", city:"Niterói", tags:["Fitness","Saúde","Esporte"], desc:"Academia completa com crossfit, musculação e pilates. Programa de parcerias corporativas.", match:75, rating:4.6, clients:500, ticket:"R$3-10K", color:"#EF4444" },
+  ];
+
+  const available = PROFILES.filter(p => !matches.some(m => m.id === p.id) && !connections.some(c => c.id === p.id));
+  const currentProfile = available[currentIdx % Math.max(available.length, 1)];
+
+  const handleLike = () => {
+    if (!currentProfile || credits < 10) return;
+    setSwipeAnim("like");
+    setTimeout(() => {
+      setCredits(c => c - 10);
+      setMatches(prev => [...prev, currentProfile]);
+      setCurrentIdx(i => i + 1);
+      setSwipeAnim(null);
+      showToast("Match! Você se conectou com " + currentProfile.name);
+    }, 300);
+  };
+
+  const handlePass = () => {
+    if (!currentProfile) return;
+    setSwipeAnim("pass");
+    setTimeout(() => {
+      setCurrentIdx(i => i + 1);
+      setSwipeAnim(null);
+    }, 300);
+  };
+
+  const sendMsg = () => {
+    if (!msgInput.trim() || !selChat) return;
+    setConnections(prev => prev.map(c => c.id === selChat.id ? { ...c, msgs: [...(c.msgs||[]), { from:"me", text:msgInput.trim(), ts:new Date().toISOString() }] } : c));
+    setSelChat(prev => ({ ...prev, msgs: [...(prev.msgs||[]), { from:"me", text:msgInput.trim(), ts:new Date().toISOString() }] }));
+    setMsgInput("");
+  };
+
+  /* CHAT VIEW */
+  if (selChat) {
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        {ToastEl}
+        <div style={{ padding:"12px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:`1px solid ${B.border}` }}>
+          <button onClick={()=>setSelChat(null)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex" }}>{IC.back()}</button>
+          <Av name={selChat.name} sz={36} fs={14} />
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{selChat.name}</p><p style={{ fontSize:10, color:B.muted }}>{selChat.city}</p></div>
+          <Tag color={B.accent}>{selChat.match}%</Tag>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ textAlign:"center", padding:20 }}>
+            <span style={{ color:`${B.accent}40` }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+            <p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Início da conversa com {selChat.name}</p>
+            <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:8 }}>{(selChat.tags||[]).map((t,i) => <Tag key={i} color={B.accent}>{t}</Tag>)}</div>
+          </div>
+          {(selChat.msgs||[]).map((m,i) => (
+            <div key={i} style={{ alignSelf:m.from==="me"?"flex-end":"flex-start", maxWidth:"80%" }}>
+              <div style={{ padding:"10px 14px", borderRadius:m.from==="me"?"14px 14px 4px 14px":"14px 14px 14px 4px", background:m.from==="me"?B.accent:`${B.muted}15`, color:m.from==="me"?B.textOnAccent||"#0D0D0D":B.text, fontSize:13, lineHeight:1.5 }}>{m.text}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
+          <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." style={{ flex:1, padding:"12px 16px", borderRadius:22, border:`1.5px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:14, outline:"none" }} />
+          <button onClick={sendMsg} disabled={!msgInput.trim()} className="send-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ONBOARDING */
+  if (!accepted) {
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        <Head title="" onBack={onBack} />
+        <div className="content" style={{ padding:"0 20px" }}>
+          <div style={{ textAlign:"center", padding:"30px 0 20px" }}>
+            <div style={{ width:80, height:80, borderRadius:"50%", background:`linear-gradient(135deg, ${B.accent}30, #8B5CF630)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            </div>
+            <p style={{ fontSize:24, fontWeight:900 }}>Match4Biz</p>
+            <p style={{ fontSize:13, color:B.muted, marginTop:6, lineHeight:1.5 }}>Encontre parceiros de negócios ideais com nosso algoritmo de compatibilidade inteligente.</p>
+          </div>
+          <Card style={{ border:`1.5px solid ${B.accent}20` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.financial(B.accent)}</div>
+              <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Seu Plano: Inicial</p><p style={{ fontSize:11, color:B.muted }}>10 créditos inclusos</p></div>
+              <Tag color={B.accent}>10</Tag>
+            </div>
+            <div style={{ background:`${B.muted}08`, borderRadius:10, padding:12 }}>
+              <p style={{ fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>{IC.help(B.muted)} Como funcionam os créditos?</p>
+              <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Cada match consome <b style={{ color:B.text }}>10 créditos</b>. Passar perfis é gratuito. Você pode comprar créditos extras a qualquer momento.</p>
+            </div>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>Termos de Uso</p>
+            {["O Match4Biz conecta empresas com base em compatibilidade.","Informações compartilhadas são confidenciais.","Mantenha postura profissional nas interações.","A Unique Marketing 360 não se responsabiliza por acordos entre partes.","Créditos consumidos em matches não são reembolsáveis."].map((t,i) => (
+              <p key={i} style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginBottom:6 }}>{i+1}. {t}</p>
+            ))}
+          </Card>
+          <button onClick={()=>setAccepted(true)} style={{ width:"100%", marginTop:14, marginBottom:20, padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Aceitar e Começar</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* BUY CREDITS SHEET */
+  const buySheet = showBuy && <><div onClick={()=>{setShowBuy(false);setSelPack(null);setShowPayment(false);}} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:100 }} />
+    <div className="sheet" style={{ zIndex:101 }}>
+      {!showPayment ? <>
+        <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 16px" }} />
+        <p style={{ fontSize:18, fontWeight:800 }}>Comprar Créditos</p>
+        <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>Saldo atual: <span style={{ color:B.accent, fontWeight:700 }}>{credits} créditos</span></p>
+        {[{n:10,price:"R$ 49,90",sub:"1 match · R$ 49,90/pacote"},{n:30,price:"R$ 119,90",sub:"3 matches · Economize 20%",popular:true},{n:50,price:"R$ 179,90",sub:"5 matches · Economize 28%"}].map((p,i) => (
+          <div key={i} onClick={()=>setSelPack(p)} style={{ padding:"14px 16px", borderRadius:14, border:selPack?.n===p.n?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:selPack?.n===p.n?`${B.accent}06`:"transparent", marginBottom:8, display:"flex", alignItems:"center", gap:12, cursor:"pointer", position:"relative" }}>
+            {p.popular && <span style={{ position:"absolute", top:-8, right:12, fontSize:9, fontWeight:700, background:B.accent, color:B.textOnAccent||"#0D0D0D", padding:"2px 8px", borderRadius:6 }}>Mais popular</span>}
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:B.accent }}>{p.n}</div>
+            <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{p.n} créditos</p><p style={{ fontSize:11, color:B.muted }}>{p.sub}</p></div>
+            <span style={{ fontSize:14, fontWeight:700, color:B.accent }}>{p.price}</span>
+            {selPack?.n===p.n && <span style={{ color:B.accent }}>{IC.check}</span>}
+          </div>
+        ))}
+        <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:8 }}>Aprovação imediata · Créditos instantâneos</p>
+        <button onClick={()=>{ if(selPack) setShowPayment(true); }} disabled={!selPack} style={{ width:"100%", marginTop:12, padding:"14px 0", borderRadius:14, background:selPack?B.accent:`${B.muted}20`, border:"none", cursor:selPack?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:selPack?(B.textOnAccent||"#0D0D0D"):B.muted }}>Continuar</button>
+      </> : <>
+        <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 16px" }} />
+        <p style={{ fontSize:18, fontWeight:800 }}>Forma de Pagamento</p>
+        <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>{selPack?.n} créditos · {selPack?.price}</p>
+        {[{l:"PIX",sub:"Aprovação instantânea",tag:"Recomendado",c:"#10B981"},{l:"Cartão de Crédito",sub:"Visa, Master, Elo",tag:"2-3 min",c:"#3B82F6"}].map((pm,i) => (
+          <div key={i} onClick={()=>{ setCredits(c=>c+selPack.n); setShowBuy(false); setSelPack(null); setShowPayment(false); showToast(`+${selPack.n} créditos adicionados!`); }} style={{ padding:"16px", borderRadius:14, border:`1.5px solid ${B.border}`, marginBottom:8, display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${pm.c}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              {i===0 ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pm.c} strokeWidth="2" strokeLinecap="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pm.c} strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>}
+            </div>
+            <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{pm.l}</p><p style={{ fontSize:11, color:B.muted }}>{pm.sub}</p></div>
+            <Tag color={pm.c}>{pm.tag}</Tag>
+          </div>
+        ))}
+        <button onClick={()=>{setShowPayment(false);}} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:B.muted, margin:"10px auto", display:"flex", alignItems:"center", gap:4 }}>{IC.back()} Voltar</button>
+      </>}
+    </div>
+  </>;
+
+  /* MAIN TABS */
+  const TABS_M4B = [{k:"discover",l:"Descobrir"},{k:"matches",l:`Matches (${matches.length})`},{k:"connections",l:"Conexões"},{k:"credits",l:"Créditos"}];
+
+  return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      {ToastEl} {buySheet}
+      <Head title="Conexões" onBack={onBack} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        {/* Credits bar */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:14, background:`${B.accent}06`, border:`1px solid ${B.accent}20`, marginBottom:12 }}>
+          <div style={{ width:32, height:32, borderRadius:10, background:credits>0?`${B.accent}15`:`${B.red}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>{credits>0 ? IC.financial(B.accent) : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}</div>
+          <div style={{ flex:1 }}>
+            <span style={{ fontSize:18, fontWeight:900, color:credits>0?B.accent:B.red }}>{credits}</span>
+            <span style={{ fontSize:12, color:B.muted, marginLeft:4 }}>créditos</span>
+            <div style={{ height:3, borderRadius:2, background:`${B.accent}15`, marginTop:4 }}><div style={{ height:3, borderRadius:2, background:B.accent, width:`${Math.min((credits/50)*100,100)}%`, transition:"width .3s" }} /></div>
+          </div>
+          <button onClick={()=>setShowBuy(true)} style={{ fontSize:12, fontWeight:700, color:B.accent, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Créditos</button>
+        </div>
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", scrollbarWidth:"none" }}>
+          {TABS_M4B.map(t => (
+            <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:"none", background:tab===t.k?B.accent:`${B.muted}10`, color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
+          ))}
+        </div>
+
+        {/* DISCOVER */}
+        {tab === "discover" && <>
+          {available.length > 0 && currentProfile ? (
+            <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)", position:"relative" }}>
+              {/* Locked overlay when no credits */}
+              {credits < 10 && <div style={{ position:"absolute", inset:0, zIndex:5, background:`${B.bg}90`, backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:20 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <p style={{ fontSize:13, fontWeight:700, color:B.text, marginTop:8 }}>Perfil bloqueado</p>
+                <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Compre créditos para continuar</p>
+              </div>}
+              {/* Gradient header */}
+              <div style={{ height:100, background:`linear-gradient(135deg, ${currentProfile.color}30, ${currentProfile.color}10, transparent)`, position:"relative", display:"flex", alignItems:"flex-end", justifyContent:"center", paddingBottom:0 }}>
+                <div style={{ position:"absolute", top:12, right:16, display:"flex", alignItems:"center", gap:4, background:"rgba(0,0,0,0.2)", borderRadius:8, padding:"4px 10px" }}>
+                  {IC.financial("#fff")} <span style={{ fontSize:11, fontWeight:700, color:"#fff" }}>10</span>
+                </div>
+                <div style={{ transform:"translateY(36px)" }}>
+                  <Av name={currentProfile.name} sz={72} fs={26} />
+                </div>
+              </div>
+              {/* Content */}
+              <div style={{ textAlign:"center", padding:"44px 20px 20px" }}>
+                <p style={{ fontSize:18, fontWeight:800 }}>{currentProfile.name}</p>
+                <p style={{ fontSize:12, color:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:4, marginTop:4 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {currentProfile.city}
+                </p>
+                <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:10, flexWrap:"wrap" }}>{currentProfile.tags.map((t,i) => <Tag key={i} color={currentProfile.color}>{t}</Tag>)}</div>
+                <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginTop:14, padding:"0 4px" }}>{currentProfile.desc}</p>
+                {/* Stats */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:16, padding:"14px 0", borderTop:`1px solid ${B.border}`, borderBottom:`1px solid ${B.border}` }}>
+                  <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{currentProfile.match}%</p><p style={{ fontSize:10, color:B.muted }}>Match</p></div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}><div style={{ display:"flex", alignItems:"center", gap:3 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span style={{ fontSize:18, fontWeight:900 }}>{currentProfile.rating}</span></div><p style={{ fontSize:10, color:B.muted }}>Rating</p></div>
+                  <div><p style={{ fontSize:22, fontWeight:900 }}>{currentProfile.clients}</p><p style={{ fontSize:10, color:B.muted }}>Clientes</p></div>
+                </div>
+                <div style={{ marginTop:12, padding:"10px 14px", borderRadius:12, background:`${B.muted}06`, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.financial(B.muted)} <span style={{ fontSize:13, fontWeight:600 }}>Ticket médio: {currentProfile.ticket}</span></div>
+              </div>
+            </div>
+          ) : <Card style={{ textAlign:"center", padding:40 }}>
+            <div style={{ width:64, height:64, borderRadius:"50%", background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+            <p style={{ fontSize:14, fontWeight:700 }}>Todos os perfis vistos!</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Novos parceiros em breve. Enquanto isso, confira seus matches!</p>
+          </Card>}
+          {/* Action buttons */}
+          {available.length > 0 && currentProfile && <>
+            {credits < 10 ? (
+              <div style={{ marginTop:16, textAlign:"center" }}>
+                <Card style={{ background:`${B.muted}06`, border:`1.5px solid ${B.border}` }}>
+                  <div style={{ width:48, height:48, borderRadius:"50%", background:`${(B.red||"#FF6B6B")}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  </div>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Créditos insuficientes</p>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Você precisa de pelo menos <b style={{ color:B.text }}>10 créditos</b> para dar match.</p>
+                  <p style={{ fontSize:12, color:B.red||"#FF6B6B", fontWeight:600, marginTop:6 }}>Saldo atual: {credits} créditos</p>
+                  <button onClick={()=>setShowBuy(true)} style={{ marginTop:12, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Comprar Créditos</button>
+                </Card>
+              </div>
+            ) : (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:24, marginTop:20 }}>
+                <button onClick={handlePass} style={{ width:56, height:56, borderRadius:"50%", background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 2px 12px ${B.red||"#FF6B6B"}15`, transition:"transform .15s" }} onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button onClick={handleLike} style={{ width:62, height:62, borderRadius:"50%", background:B.green, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 4px 20px ${B.green}40`, transition:"transform .15s" }} onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                </button>
+              </div>
+            )}
+            <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:12 }}>{credits >= 10 ? `${available.length} conexões restantes` : ""}</p>
+          </>}
+        </>}
+
+        {/* MATCHES */}
+        {tab === "matches" && <>
+          {matches.length === 0 && <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:14, fontWeight:600 }}>Nenhum match ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Explore perfis na aba Descobrir!</p></Card>}
+          {matches.map((m,i) => (
+            <Card key={m.id} delay={i*0.03} onClick={()=>{if(!connections.some(c=>c.id===m.id)){setConnections(prev=>[...prev,{...m,msgs:[]}]);}setSelChat(connections.find(c=>c.id===m.id)||{...m,msgs:[]});}} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={m.name} sz={44} fs={16} />
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{m.name}</p><p style={{ fontSize:10, color:B.muted }}>{m.city} · {m.match}% match</p><div style={{ display:"flex", gap:4, marginTop:4 }}>{m.tags.slice(0,2).map((t,j) => <Tag key={j} color={m.color}>{t}</Tag>)}</div></div>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(B.accent)}</div>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* CONNECTIONS */}
+        {tab === "connections" && <>
+          {connections.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+            <div style={{ width:56, height:56, borderRadius:"50%", background:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            <p style={{ fontSize:14, fontWeight:700 }}>Nenhuma conexão ainda</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Dê match com empresas para começar a conversar.</p>
+          </Card>}
+          {connections.map((c,i) => (
+            <Card key={c.id} delay={i*0.03} onClick={()=>setSelChat(c)} style={{ marginBottom:8, cursor:"pointer" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Av name={c.name} sz={44} fs={16} />
+                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:10, color:B.muted }}>{c.city} · {c.match}% match</p></div>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(B.accent)}</div>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* CREDITS */}
+        {tab === "credits" && <>
+          <Card style={{ textAlign:"center", padding:20 }}>
+            <p style={{ fontSize:36, fontWeight:900, color:B.accent }}>{credits}</p>
+            <p style={{ fontSize:12, color:B.muted }}>créditos disponíveis</p>
+            <div style={{ height:6, borderRadius:3, background:`${B.accent}15`, marginTop:12 }}><div style={{ height:6, borderRadius:3, background:B.accent, width:`${Math.min((credits/50)*100,100)}%` }} /></div>
+            <button onClick={()=>setShowBuy(true)} style={{ marginTop:16, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Comprar Créditos</button>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Como funcionam</p>
+            {[{l:"Passar perfis",v:"Grátis"},{l:"Dar match",v:"10 créditos"},{l:"Enviar mensagens",v:"Grátis"},{l:"Ver perfil completo",v:"Grátis"}].map((r,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<3?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:12, color:B.muted }}>{r.l}</span>
+                <span style={{ fontSize:12, fontWeight:600 }}>{r.v}</span>
+              </div>
+            ))}
+          </Card>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENT GAMIFICATION — Sistema de engajamento do cliente
+   ═══════════════════════════════════════════════════════════════════ */
+function ClientGamification({ onBack, user, demands }) {
+  const [tab, setTab] = useState("score");
+  const { showToast, ToastEl } = useToast();
+
+  const score = 78;
+  const scoreDelta = 6;
+  const rank = 4;
+  const totalClients = 23;
+  const zone = "Estratégica";
+  const PILLARS = [
+    { name:"Execução", score:82, color:"#10B981", desc:"Aprovação de conteúdos no prazo, cumprimento de prazos e entregas consistentes.", weight:"25%" },
+    { name:"Estratégia", score:74, color:"#BBF246", desc:"Alinhamento com planejamento, briefings respondidos e metas definidas.", weight:"25%" },
+    { name:"Educação", score:65, color:"#F59E0B", desc:"Cursos da Academy, participação em mentorias e aplicação de aprendizados.", weight:"20%" },
+    { name:"Ecossistema", score:58, color:"#EF4444", desc:"Conexões no Match4Biz, networking e parcerias ativas.", weight:"15%" },
+    { name:"Crescimento", score:80, color:"#10B981", desc:"Métricas de resultado: leads, vendas, ROI e crescimento mês a mês.", weight:"15%" },
+  ];
+  const EVOLUTION = [{m:"Set",v:62},{m:"Out",v:65},{m:"Nov",v:68},{m:"Dez",v:72},{m:"Jan",v:74},{m:"Fev",v:78}];
+  const IMPACTS = [
+    { text:"Aprovou posts no prazo", pts:"+1.2", color:B.green },
+    { text:"Concluiu missão do mês", pts:"+3", color:B.accent },
+    { text:"Meta parcial atingida", pts:"+5", color:"#8B5CF6" },
+  ];
+  const ZONES = [
+    { name:"Estruturação", range:"0–40", color:"#EF4444", desc:"Início da jornada. Foco em organizar processos básicos.", reward:"Diagnóstico gratuito + plano de ação personalizado" },
+    { name:"Organização", range:"41–60", color:"#F59E0B", desc:"Processos rodando. Hora de otimizar e ser mais estratégico.", reward:"Relatório mensal detalhado + 1 sessão de consultoria" },
+    { name:"Estratégica", range:"61–80", color:"#BBF246", desc:"Marketing maduro. Decisões orientadas por dados.", reward:"Dashboard avançado + prioridade no atendimento", current:true },
+    { name:"Crescimento", range:"81–95", color:"#10B981", desc:"Resultados consistentes. Expansão acelerada.", reward:"1 consultoria estratégica gratuita + badge premium" },
+    { name:"Escala", range:"96–100", color:"#3B82F6", desc:"Excelência total. Marketing como diferencial competitivo.", reward:"15% desconto no plano anual + destaque no portfólio + mentoria exclusiva" },
+  ];
+  const MISSIONS = [
+    { title:"Aprovar 2 posts pendentes", pts:3, done:false },
+    { title:"Responder briefing", pts:3, done:true },
+    { title:"Agendar reunião mensal", pts:4, done:false },
+    { title:"Completar curso da Academy", pts:5, done:false },
+    { title:"Revisar relatório semanal", pts:2, done:false },
+  ];
+  const mDone = MISSIONS.filter(m=>m.done).length;
+  const mPending = MISSIONS.filter(m=>!m.done).length;
+  const mPts = MISSIONS.filter(m=>!m.done).reduce((a,m)=>a+m.pts,0);
+  const RANKING = [
+    { name:"Studio Bella", score:94, delta:8, zone:"Crescimento" },
+    { name:"Tech Solutions", score:89, delta:5, zone:"Crescimento" },
+    { name:"Arq & Design", score:85, delta:6, zone:"Crescimento" },
+    { name:user?.name||"Você", score, delta:scoreDelta, zone, isMe:true },
+    { name:"Casa Nova Imóveis", score:72, delta:4, zone:"Estratégica" },
+    { name:"Fit Academy", score:68, delta:2, zone:"Estratégica" },
+    { name:"Escola Viva", score:55, delta:1, zone:"Organização" },
+  ].sort((a,b)=>b.score-a.score);
+  const SCORING = [
+    { action:"Aprovar conteúdo no prazo (até 24h)", pts:"+1.5", pillar:"Execução", c:"#10B981" },
+    { action:"Aprovar conteúdo com atraso (>24h)", pts:"+0.5", pillar:"Execução", c:"#10B981" },
+    { action:"Responder briefing completo", pts:"+2.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Definir meta mensal", pts:"+3.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Participar de reunião mensal", pts:"+4.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Completar curso da Academy", pts:"+5.0", pillar:"Educação", c:"#F59E0B" },
+    { action:"Assistir 1 aula da Academy", pts:"+0.5", pillar:"Educação", c:"#F59E0B" },
+    { action:"Enviar ideia/sugestão", pts:"+1.0", pillar:"Estratégia", c:"#BBF246" },
+    { action:"Fazer conexão no Match4Biz", pts:"+2.0", pillar:"Ecossistema", c:"#EF4444" },
+    { action:"Indicar novo cliente", pts:"+6.0", pillar:"Ecossistema", c:"#EF4444" },
+    { action:"Atingir meta mensal (100%)", pts:"+8.0", pillar:"Crescimento", c:"#10B981" },
+    { action:"Atingir meta parcial (>=75%)", pts:"+5.0", pillar:"Crescimento", c:"#10B981" },
+    { action:"Login diário no Hub", pts:"+0.3", pillar:"Execução", c:"#10B981" },
+    { action:"Manter aprovações em dia (7 dias)", pts:"+3.0", pillar:"Execução", c:"#10B981" },
+    { action:"Revisar relatório semanal", pts:"+1.5", pillar:"Crescimento", c:"#10B981" },
+  ];
+  const PENALTIES = [
+    { pts:"-2.0", action:"Não aprovar conteúdo por 3+ dias" },
+    { pts:"-3.0", action:"Não responder briefing em 7 dias" },
+    { pts:"-4.0", action:"Faltar reunião mensal sem aviso" },
+    { pts:"-5.0", action:"Inatividade no Hub por 14+ dias" },
+    { pts:"-1.0", action:"Reprovar conteúdo sem justificativa" },
+  ];
+  const scoreColor = score >= 81 ? "#10B981" : score >= 61 ? "#BBF246" : score >= 41 ? "#F59E0B" : "#EF4444";
+  const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
+
+  return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      {ToastEl}
+      <Head title="Growth Score" onBack={onBack} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
+          {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
+        </div>
+
+        {tab === "score" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ background:B.dark||"#111", padding:"20px 20px 16px", color:"#fff" }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Growth Score</p>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
+                <div>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                    <span style={{ fontSize:48, fontWeight:900, color:scoreColor }}>{score}</span>
+                    <span style={{ fontSize:14, fontWeight:700, color:B.green }}>+{scoreDelta} este mês</span>
+                  </div>
+                  <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>#{rank} de {totalClients} · Zona {zone}</p>
+                </div>
+                <div style={{ width:64, height:64, borderRadius:"50%", border:`3px solid ${scoreColor}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ fontSize:22, fontWeight:900, color:scoreColor }}>{score}</span>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:4, marginTop:14 }}>
+                {PILLARS.map((p,i) => <div key={i} style={{ flex:1 }}>
+                  <div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.color, width:`${p.score}%` }} /></div>
+                  <p style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:4, textAlign:"center" }}>{p.name.substring(0,4)}</p>
+                </div>)}
+              </div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
+                <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{IC.gamify("rgba(255,255,255,0.4)")} {mPending} missões pendentes</span>
+                <span onClick={()=>setTab("missions")} style={{ fontSize:11, color:B.accent, fontWeight:600, cursor:"pointer" }}>Ver detalhes →</span>
+              </div>
+            </div>
+          </Card>
+          {PILLARS.map((p,i) => <Card key={i} style={{ marginTop:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <p style={{ fontSize:14, fontWeight:700 }}>{p.name}</p>
+              <span style={{ fontSize:18, fontWeight:900, color:p.color }}>{p.score}</span>
+            </div>
+            <div style={{ height:6, borderRadius:3, background:`${p.color}15`, marginTop:8 }}>
+              <div style={{ height:6, borderRadius:3, background:p.color, width:`${p.score}%`, transition:"width .5s" }} />
+            </div>
+          </Card>)}
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>O que impactou seu score</p>
+          {IMPACTS.map((imp,i) => <Card key={i} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}><span style={{ color:imp.color }}>{IC.check}</span><span style={{ fontSize:13 }}>{imp.text}</span></div>
+              <span style={{ fontSize:14, fontWeight:700, color:B.green }}>{imp.pts}</span>
+            </div>
+          </Card>)}
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Evolução (6 meses)</p>
+          <Card>
+            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-around", height:120, gap:6 }}>
+              {EVOLUTION.map((e,i) => { const isLast = i === EVOLUTION.length - 1; return <div key={i} style={{ flex:1, textAlign:"center" }}>
+                <span style={{ fontSize:11, fontWeight:isLast?800:500, color:isLast?scoreColor:B.muted }}>{e.v}</span>
+                <div style={{ height:`${(e.v/100)*80}px`, borderRadius:6, background:isLast?scoreColor:`${B.muted}20`, marginTop:4 }} />
+                <span style={{ fontSize:9, color:B.muted, marginTop:4, display:"block" }}>{e.m}</span>
+              </div>; })}
+            </div>
+          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Zonas de crescimento</p>
+          <Card>{ZONES.map((z,i) => <div key={i} style={{ padding:"12px 0", borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:5, background:z.color }} /><span style={{ fontSize:13, fontWeight:z.current?800:500 }}>{z.name} ({z.range})</span></div>
+              {z.current && <Tag color={scoreColor}>Você</Tag>}
+            </div>
+          </div>)}</Card>
+          {ZONES.filter(z=>z.reward).slice(-2).map((z,i) => <Card key={i} style={{ marginTop:6, background:`${z.color}06`, border:`1px solid ${z.color}15` }}>
+            <p style={{ fontSize:12, fontWeight:700, color:z.color }}>Recompensa: Zona {z.name}</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{z.reward}</p>
+          </Card>)}
+        </>}
+
+        {tab === "ranking" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ background:"#1A2332", padding:"24px 16px 0", color:"#fff", textAlign:"center" }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", marginBottom:24 }}>Top 3 do mês</p>
+              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative", minHeight:230, padding:"0 8px" }}>
+                {/* Dotted line */}
+                <div style={{ position:"absolute", left:16, right:16, top:"42%", borderTop:"2px dashed rgba(255,255,255,0.06)" }} />
+
+                {/* 2nd */}
+                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#C0C0C0"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">2</text><path d="M7 18l5 4 5-4" fill="none" stroke="#8B9099" strokeWidth="2"/></svg>
+                  <div style={{ width:48, height:48, borderRadius:14, background:"#2A3444", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"rgba(255,255,255,0.7)" }}>{(RANKING[1]?.name||"?")[0]}</div>
+                  <p style={{ fontSize:10, fontWeight:600, marginTop:8, color:"rgba(255,255,255,0.6)" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:18, fontWeight:900, marginTop:2 }}>{RANKING[1]?.score}</p>
+                  <div style={{ width:52, height:46, background:"#2A3444", borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
+                </div>
+
+                {/* 1st */}
+                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:2 }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#FFD700"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">1</text><path d="M7 18l5 4 5-4" fill="none" stroke="#DAA520" strokeWidth="2"/></svg>
+                  <div style={{ width:60, height:60, borderRadius:"50%", border:`3px solid ${B.accent}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:24, fontWeight:900, color:B.accent, background:"#2A3444" }}>{(RANKING[0]?.name||"?")[0]}</div>
+                  <p style={{ fontSize:11, fontWeight:700, marginTop:8 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:22, fontWeight:900, color:B.accent, marginTop:2 }}>{RANKING[0]?.score}</p>
+                  <div style={{ width:52, height:64, background:B.accent, borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
+                </div>
+
+                {/* 3rd */}
+                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#CD7F32"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">3</text><path d="M7 18l5 4 5-4" fill="none" stroke="#A0522D" strokeWidth="2"/></svg>
+                  <div style={{ width:48, height:48, borderRadius:14, background:"#2A3444", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"rgba(255,255,255,0.7)" }}>{(RANKING[2]?.name||"?")[0]}</div>
+                  <p style={{ fontSize:10, fontWeight:600, marginTop:8, color:"rgba(255,255,255,0.6)" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:18, fontWeight:900, marginTop:2 }}>{RANKING[2]?.score}</p>
+                  <div style={{ width:52, height:34, background:"#2A3444", borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
+                </div>
+              </div>
+            </div>
+          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Ranking completo</p>
+          {RANKING.map((r,i) => <Card key={i} delay={i*0.03} style={{ marginBottom:6, background:r.isMe?`${B.accent}06`:B.bgCard, border:r.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:i<3?["#FFD70020","#C0C0C020","#CD7F3220"][i]:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <span style={{ fontSize:11, fontWeight:900, color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:B.muted }}>{i+1}</span>
+              </div>
+              <Av name={r.name} sz={36} fs={13} />
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:r.isMe?800:600 }}>{r.name}{r.isMe?" (Você)":""}</p><p style={{ fontSize:10, color:B.muted }}>Zona {r.zone}</p></div>
+              <div style={{ textAlign:"right" }}><p style={{ fontSize:18, fontWeight:900 }}>{r.score}</p><p style={{ fontSize:10, color:B.green, fontWeight:600 }}>+{r.delta}</p></div>
+            </div>
+          </Card>)}
+          <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}20`, textAlign:"center" }}>
+            <p style={{ fontSize:14, fontWeight:700 }}>Você subiu <span style={{ color:B.accent }}>3 posições</span> este mês!</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Continue completando missões para subir no ranking.</p>
+          </Card>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Bonificações do pódio</p>
+          {[{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}].map((p,i) => (
+            <Card key={i} style={{ marginBottom:6, borderLeft:`3px solid ${p.c}` }}>
+              <p style={{ fontSize:13, fontWeight:700 }}>{p.pos}</p>
+              <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{p.reward}</p>
+            </Card>
+          ))}
+        </>}
+
+        {tab === "missions" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}>
+            <div style={{ background:B.dark||"#111", padding:"16px 20px", color:"#fff" }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Missões do mês</p>
+              <div style={{ display:"flex", justifyContent:"space-around", marginTop:12 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.green }}>{mDone}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>concluídas</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900 }}>{mPending}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pendentes</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.accent }}>+{mPts}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pts disponíveis</p></div>
+              </div>
+            </div>
+          </Card>
+          {MISSIONS.map((m,i) => <Card key={i} style={{ marginTop:8, opacity:m.done?0.6:1, borderLeft:m.done?`3px solid ${B.green}`:`3px solid ${B.accent}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              {m.done ? <div style={{ width:36, height:36, borderRadius:"50%", background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.green }}>{IC.check}</span></div>
+                : <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:12, fontWeight:800, color:B.accent }}>+{m.pts}</span></div>}
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:700, textDecoration:m.done?"line-through":"none" }}>{m.title}</p>
+                <p style={{ fontSize:11, color:m.done?B.green:B.muted, marginTop:2 }}>{m.done?"Concluída! Pontos adicionados.":"Complete para ganhar pontos"}</p>
+              </div>
+              {!m.done && <span style={{ fontSize:13, fontWeight:700, color:B.accent }}>+{m.pts}</span>}
+            </div>
+          </Card>)}
+          <Card style={{ marginTop:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+            <span style={{ display:"flex", justifyContent:"center", marginBottom:6, color:B.accent }}>{IC.gamify(B.accent)}</span>
+            <p style={{ fontSize:14, fontWeight:700 }}>Complete todas as missões</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Ganhe <span style={{ color:B.accent, fontWeight:700 }}>+{mPts} pontos</span> e suba para a <b>Zona Crescimento</b></p>
+          </Card>
+        </>}
+
+        {tab === "info" && <>
+          <Card style={{ padding:0, overflow:"hidden" }}><div style={{ background:B.dark||"#111", padding:"24px 20px", color:"#fff", textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, marginTop:8 }}>Growth Score</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Seu índice de crescimento de marketing</p></div></Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>O que é o Growth Score?</p>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.7 }}>O Growth Score é um sistema de pontuação de <b style={{ color:B.text }}>0 a 100</b> que mede o nível de maturidade e engajamento do seu marketing digital. Quanto maior seu score, mais otimizado está seu marketing.</p>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.7, marginTop:8 }}>Ele é calculado com base em <b style={{ color:B.text }}>5 pilares</b> e atualizado em tempo real conforme você cumpre tarefas, interage com a equipe e atinge metas.</p>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:12 }}>Os 5 Pilares</p>
+            {PILLARS.map((p,i) => <div key={i} style={{ padding:"10px 0", borderBottom:i<PILLARS.length-1?`1px solid ${B.border}`:"none" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}><p style={{ fontSize:13, fontWeight:700 }}>{p.name}</p><span style={{ fontSize:12, fontWeight:700, color:p.color }}>{p.weight}</span></div>
+              <p style={{ fontSize:11, color:B.muted, marginTop:2, lineHeight:1.5 }}>{p.desc}</p>
+            </div>)}
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:12 }}>Zonas de Crescimento</p>
+            {ZONES.map((z,i) => <div key={i} style={{ padding:"12px 0", borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:5, background:z.color }} /><span style={{ fontSize:13, fontWeight:700 }}>{z.name}</span></div><Tag color={z.color}>{z.range} pts</Tag></div>
+              <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{z.desc}</p>
+              <p style={{ fontSize:11, color:z.color, fontWeight:600, marginTop:4 }}>{z.reward}</p>
+            </div>)}
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>Tabela de Pontuação</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Veja quantos pontos cada ação vale:</p>
+            <div style={{ borderRadius:10, overflow:"hidden", border:`1px solid ${B.border}` }}>
+              <div style={{ display:"flex", padding:"8px 12px", background:B.dark||"#111", color:"#fff" }}><span style={{ flex:1, fontSize:11, fontWeight:700 }}>Ação</span><span style={{ width:50, fontSize:11, fontWeight:700, textAlign:"center" }}>Pontos</span><span style={{ width:70, fontSize:11, fontWeight:700, textAlign:"right" }}>Pilar</span></div>
+              {SCORING.map((s,i) => <div key={i} style={{ display:"flex", padding:"10px 12px", borderBottom:i<SCORING.length-1?`1px solid ${B.border}`:"none", alignItems:"center" }}><span style={{ flex:1, fontSize:11 }}>{s.action}</span><span style={{ width:50, fontSize:12, fontWeight:700, color:s.c, textAlign:"center" }}>{s.pts}</span><span style={{ width:70, textAlign:"right" }}><Tag color={s.c}>{s.pillar}</Tag></span></div>)}
+            </div>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>Penalidades</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Ações que reduzem seu score:</p>
+            {PENALTIES.map((p,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:i<PENALTIES.length-1?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:14, fontWeight:900, color:B.red||"#FF6B6B", width:40 }}>{p.pts}</span><span style={{ fontSize:12 }}>{p.action}</span></div>)}
+          </Card>
+          <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:6 }}>Dica Pro</p>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.6 }}>A forma mais rápida de subir seu score é manter as <b style={{ color:B.text }}>aprovações em dia</b> e <b style={{ color:B.text }}>completar as missões mensais</b>. Cada missão concluída gera pontos imediatos e impacta múltiplos pilares!</p>
+          </Card>
+          <Card style={{ marginTop:8 }}>
+            <p style={{ fontSize:15, fontWeight:800, marginBottom:12 }}>Perguntas Frequentes</p>
+            {[{q:"Quando o score é atualizado?",a:"Em tempo real. Cada ação que você faz impacta seu score imediatamente."},{q:"Posso perder pontos?",a:"Sim. Inatividade, atrasos nas aprovações e faltas em reuniões reduzem seu score."},{q:"Como chego na Zona Escala?",a:"Mantenha todas as missões em dia, participe ativamente e atinja suas metas mensais consistentemente."},{q:"O ranking é justo?",a:"Sim! Todos começam do zero e ganham pontos pelas mesmas ações. O diferencial é a consistência."}].map((faq,i) => (
+              <div key={i} style={{ padding:"10px 0", borderBottom:i<3?`1px solid ${B.border}`:"none" }}><p style={{ fontSize:13, fontWeight:700 }}>{faq.q}</p><p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>{faq.a}</p></div>
+            ))}
+          </Card>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+function ClientOnboarding({ onComplete, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState({ name:"", company:"", email:"", phone:"", password:"" });
+  const [typing, setTyping] = useState(false);
+  const [done, setDone] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const scrollBottom = () => setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50);
+
+  const addBot = (text, delay = 600) => {
+    setTyping(true);
+    scrollBottom();
+    return new Promise(resolve => {
+      setTimeout(() => {
+        setMessages(prev => [...prev, { from:"bot", text }]);
+        setTyping(false);
+        scrollBottom();
+        setTimeout(() => inputRef.current?.focus(), 100);
+        resolve();
+      }, delay);
+    });
+  };
+
+  const addUser = (text) => {
+    setMessages(prev => [...prev, { from:"user", text }]);
+    scrollBottom();
+  };
+
+  /* Start conversation */
+  useEffect(() => {
+    (async () => {
+      await addBot("Olá! Eu sou a Luna, assistente virtual da Unique Marketing 360. 👋", 800);
+      await addBot("Vou te ajudar a criar sua conta em poucos passos. Vai ser rápido e fácil!", 1000);
+      await addBot("Para começar, qual é o seu nome?", 700);
+      setStep(1);
+    })();
+  }, []);
+
+  const STEPS = {
+    1: { field:"name", next: async (val) => {
+      await addBot(`Prazer, ${val}! Que bom ter você aqui.`, 600);
+      await addBot("Qual o nome da sua empresa ou negócio?", 700);
+    }},
+    2: { field:"company", next: async (val) => {
+      await addBot(`${val}, ótimo! Vamos cuidar bem do marketing de vocês.`, 600);
+      await addBot("Agora preciso do seu melhor e-mail para criar sua conta:", 700);
+    }},
+    3: { field:"email", validate: (v) => v.includes("@") && v.includes(".") ? null : "Hmm, isso não parece um e-mail válido. Tenta de novo?", next: async (val) => {
+      await addBot("Perfeito! E um telefone para contato? (com DDD)", 600);
+    }},
+    4: { field:"phone", next: async (val) => {
+      await addBot("Quase lá! Agora crie uma senha para sua conta. Mínimo 6 caracteres:", 700);
+    }},
+    5: { field:"password", validate: (v) => v.length >= 6 ? null : "A senha precisa ter pelo menos 6 caracteres. Tenta uma mais forte!", next: async (val) => {
+      setDone(true);
+    }},
+  };
+
+  const handleSend = async () => {
+    const val = input.trim();
+    if (!val || typing || done || creating) return;
+    const s = STEPS[step];
+    if (!s) return;
+
+    addUser(step === 5 ? "••••••" : val);
+    setInput("");
+
+    /* Validate */
+    if (s.validate) {
+      const err = s.validate(val);
+      if (err) { await addBot(err, 500); return; }
+    }
+
+    /* Save data */
+    setData(prev => ({ ...prev, [s.field]: val }));
+
+    /* Next step */
+    await s.next(val);
+    setStep(prev => prev + 1);
+  };
+
+  const handleCreate = async () => {
+    if (creating) return;
+    setCreating(true); setError("");
+    try {
+      if (!supabase) throw new Error("Servidor indisponível");
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: data.email, password: data.password,
+        options: { data: { name: data.name, company: data.company, phone: data.phone, role: "cliente" } }
+      });
+      if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
+      /* Save client profile extras */
+      if (authData?.user?.id) {
+        await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
+      }
+      await addBot(`Conta criada com sucesso, ${data.name}! 🎉`, 600);
+      await addBot("Verifique seu e-mail para confirmar a conta e depois faça login.", 800);
+      setTimeout(() => onBack(), 3000);
+    } catch(e) {
+      setError(e.message);
+      setCreating(false);
+      await addBot("Ops, tivemos um problema: " + e.message, 500);
+      await addBot("Tente novamente ou volte mais tarde.", 500);
+    }
+  };
+
+  return (
+    <div className="app" style={{ background:"#0D0D0D", color:"#fff" }}>
+      {/* Header */}
+      <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:"#fff" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><circle cx="12" cy="21" r="1"/></svg>
+        </div>
+        <div>
+          <p style={{ fontSize:14, fontWeight:700 }}>Luna</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Assistente Unique Marketing</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch" }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ display:"flex", justifyContent:m.from==="user"?"flex-end":"flex-start", maxWidth:"85%" , alignSelf:m.from==="user"?"flex-end":"flex-start" }}>
+            <div style={{
+              padding:"10px 14px", borderRadius:m.from==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
+              background:m.from==="user"?B.accent:"rgba(255,255,255,0.08)",
+              color:m.from==="user"?"#0D0D0D":"#fff",
+              fontSize:14, lineHeight:1.5, fontWeight:m.from==="user"?500:400,
+              boxShadow:m.from==="user"?`0 2px 8px ${B.accent}30`:"none",
+              animation:"fadeIn .3s ease",
+            }}>{m.text}</div>
+          </div>
+        ))}
+        {typing && <div style={{ display:"flex", alignSelf:"flex-start" }}>
+          <div style={{ padding:"10px 18px", borderRadius:"16px 16px 16px 4px", background:"rgba(255,255,255,0.08)" }}>
+            <div style={{ display:"flex", gap:4 }}>
+              {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:3, background:"rgba(255,255,255,0.4)", animation:`skPulse 1.2s ease ${i*0.2}s infinite` }} />)}
+            </div>
+          </div>
+        </div>}
+        {/* Confirmation card */}
+        {done && !creating && !error && <div style={{ alignSelf:"flex-start", maxWidth:"90%", animation:"fadeIn .5s ease" }}>
+          <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:16, border:"1px solid rgba(255,255,255,0.1)", marginTop:8 }}>
+            <p style={{ fontSize:13, fontWeight:700, color:B.accent, marginBottom:10 }}>Confirme seus dados:</p>
+            {[{l:"Nome",v:data.name},{l:"Empresa",v:data.company},{l:"E-mail",v:data.email},{l:"Telefone",v:data.phone}].map((r,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:i<3?"1px solid rgba(255,255,255,0.06)":"none" }}>
+                <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{r.l}</span>
+                <span style={{ fontSize:12, fontWeight:600 }}>{r.v}</span>
+              </div>
+            ))}
+            <button onClick={handleCreate} style={{ width:"100%", marginTop:14, padding:"13px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>
+              Criar minha conta
+            </button>
+          </div>
+        </div>}
+      </div>
+
+      {/* Input */}
+      {!done && <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(255,255,255,0.06)", display:"flex", gap:8, alignItems:"center" }}>
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()}
+          placeholder={step===1?"Seu nome...":step===2?"Nome da empresa...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
+          type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
+          style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none" }}
+        />
+        <button onClick={handleSend} disabled={typing||!input.trim()} style={{ width:44, height:44, borderRadius:22, background:input.trim()?B.accent:"rgba(255,255,255,0.08)", border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"rgba(255,255,255,0.3)"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>}
+    </div>
+  );
+}
+
+function MainClientApp({ user, onLogout, dark }) {
+  const [tab, setTab] = useState("home");
+  const [sub, setSub] = useState(null);
+  const { showToast, ToastEl } = useToast();
+  const [demands, setDemands] = useState([]);
+  const [demandsLoaded, setDemandsLoaded] = useState(false);
+  const [articles, setArticles] = useState([]);
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [team, setTeam] = useState([]);
+  const [chatTermsOk, setChatTermsOk] = useState(true);
+  const [headerC, setHeaderC] = useState(false);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (!supabase || demandsLoaded || !user?.id) return;
+    (async () => {
+      try {
+        const { data: clients } = await supabase.from("clients").select("id, name");
+        const { data: allDemands } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
+        const clientNames = (clients||[]).map(c => c.name);
+        setDemands((allDemands||[]).filter(d => clientNames.some(cn => cn.toLowerCase() === (d.client_name||d.client||"").toLowerCase())).map(d => ({
+          id: d.id, title: d.title, type: d.type, client: d.client_name || d.client,
+          stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}),
+          files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]),
+          network: d.network, format: d.format, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "",
+        })));
+      } catch(e) { console.error("Client demands:", e); }
+      setDemandsLoaded(true);
+    })();
+  }, [user?.id, demandsLoaded]);
+
+  /* Load articles */
+  useEffect(() => {
+    if (!supabase || articlesLoaded) return;
+    supaLoadNews().then(rows => {
+      if (rows) setArticles(rows.map(r => ({ id:r.id, title:r.title, summary:r.summary, cat:r.category, date:r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "", photo: r.photo || (r.body?.startsWith("__PHOTO__:") ? r.body.split("\n")[0].replace("__PHOTO__:","") : null) })));
+      setArticlesLoaded(true);
+    }).catch(() => setArticlesLoaded(true));
+  }, [articlesLoaded]);
+
+  /* Load clients + team for sub-pages */
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly: c.monthly, status: c.status || "ativo", logo: c.logo }))); });
+    supaLoadTeam().then(rows => { if (rows) setTeam(rows); });
+  }, []);
+
+  const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
+  const approved = demands.filter(d => d.steps?.client?.status === "approved");
+
+  const respondDemand = async (demand, status, feedback) => {
+    try {
+      const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
+      await supabase.from("demands").update({ steps: JSON.stringify(steps) }).eq("id", demand.id);
+      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps } : d));
+      showToast(status === "approved" ? "Conteúdo aprovado!" : status === "revision" ? "Edição solicitada!" : "Conteúdo reprovado");
+      supaCreateNotificationForAll("post_approved", "Cliente respondeu", demand.title, null, null);
+      setSub(null);
+    } catch(e) { showToast("Erro ao responder"); }
+  };
+
+  const goTab = (k) => { setTab(k); setSub(null); setHeaderC(false); };
+
+  const TABS = [
+    { k:"home", l:"Início", i: IC.home },
+    { k:"content", l:"Conteúdo", i: IC.content, badge: pendingApproval.length },
+    { k:"calendar", l:"Agenda", i: IC.calendar },
+    { k:"chat", l:"Chat", i: IC.chat },
+    { k:"more", l:"Mais", i: IC.more || IC.settings },
+  ];
+
+  const accentColor = B.accent;
+  const navBg = dark ? "rgba(10,15,18,0.85)" : "rgba(25,33,38,0.90)";
+  const navBorder = dark ? "1px solid #2A2A2A" : "1px solid rgba(255,255,255,0.08)";
+  const inactiveColor = dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)";
+  const circleIcon = dark ? "#0D0D0D" : "#fff";
+
+  /* ═══ CLIENT SUB-PAGES — reuse agency pages where possible ═══ */
+  if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} />;
+  if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
+  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
+  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} />;
+  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
+  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
+  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} />;
+  if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
+  if (sub === "reports") return <ReportsPage onBack={() => setSub(null)} clients={clients} team={team} />;
+  if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={()=>{}} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
+  if (sub === "financial") return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      <Head title="Financeiro" onBack={() => setSub(null)} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        {/* Plano atual */}
+        <Card style={{ padding:0, overflow:"hidden" }}>
+          <div style={{ background:B.dark||"#111", padding:"20px", color:"#fff" }}>
+            <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
+            <p style={{ fontSize:22, fontWeight:900, marginTop:6 }}>Premium</p>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Gestão completa de redes sociais</p>
+          </div>
+          <div style={{ padding:"14px 20px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Valor mensal</span><span style={{ fontSize:14, fontWeight:700, color:B.accent }}>R$ 3.500</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Próximo vencimento</span><span style={{ fontSize:12, fontWeight:600 }}>15/04/2026</span></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Status</span><Tag color={B.green}>Ativo</Tag></div>
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0" }}><span style={{ fontSize:12, color:B.muted }}>Contrato até</span><span style={{ fontSize:12, fontWeight:600 }}>Março/2027</span></div>
+          </div>
+        </Card>
+        {/* O que inclui */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>O que inclui</p>
+          {["Gestão de Instagram e Facebook","Até 20 posts por mês","3 Reels/mês","Stories diários","Relatório mensal de performance","Reunião mensal de alinhamento","Suporte via chat no Hub","Acesso ao Match4Biz","Academy completa"].map((item,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0" }}>
+              <span style={{ color:B.green }}>{IC.check}</span>
+              <span style={{ fontSize:12 }}>{item}</span>
+            </div>
+          ))}
+        </Card>
+        {/* Faturas */}
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Faturas recentes</p>
+        {[{m:"Mar/2026",v:"R$ 3.500",s:"pending"},{m:"Fev/2026",v:"R$ 3.500",s:"paid"},{m:"Jan/2026",v:"R$ 3.500",s:"paid"},{m:"Dez/2025",v:"R$ 3.500",s:"paid"}].map((f,i) => (
+          <Card key={i} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div><p style={{ fontSize:13, fontWeight:600 }}>{f.m}</p><p style={{ fontSize:11, color:B.muted }}>{f.v}</p></div>
+              <Tag color={f.s==="paid"?B.green:(B.orange||"#F59E0B")}>{f.s==="paid"?"Pago":"Pendente"}</Tag>
+            </div>
+          </Card>
+        ))}
+        {/* Upgrade */}
+        <Card style={{ marginTop:8, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+          <p style={{ fontSize:14, fontWeight:700 }}>Quer mais resultados?</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Faça upgrade e tenha acesso a tráfego pago, produção audiovisual e muito mais.</p>
+          <button style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
+        </Card>
+        {/* Serviços extras */}
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
+        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Desenvolvimento de App",d:"Aplicativo iOS e Android",v:"Sob consulta"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}].map((s,i) => (
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
+              <span style={{ fontSize:11, fontWeight:600, color:B.accent }}>{s.v}</span>
+            </div>
+          </Card>
+        ))}
+        {/* Contrato */}
+        <Card style={{ marginTop:8 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:12, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.library(B.muted)}</div>
+            <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>Contrato</p><p style={{ fontSize:10, color:B.muted }}>Visualizar termos e condições</p></div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+
+  /* DEMAND DETAIL */
+  if (sub && sub.startsWith("demand_")) {
+    const demandId = sub.replace("demand_","");
+    const d = demands.find(x => x.id === demandId);
+    if (!d) { setSub(null); return null; }
+    const files = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])];
+    const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+    const caption = d.steps?.caption?.text || "";
+    const hashtags = d.steps?.caption?.hashtags || "";
+    const isPending = d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status;
+    const isApproved = d.steps?.client?.status === "approved";
+    const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
+    return (
+      <div className="app" style={{ background:B.bg, color:B.text }}>
+        {ToastEl}
+        <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
+          <Head title={d.title} onBack={() => setSub(null)} />
+          <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"14px 16px calc(90px + env(safe-area-inset-bottom,0px))" }}>
+            <Card><div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              <Tag color={B.accent}>{d.network || "Social"}</Tag>
+              <Tag color={B.accent}>{d.format || d.type}</Tag>
+              <span style={{ fontSize:10, color:B.muted }}>{d.createdAt}</span>
+            </div></Card>
+            {imgFiles.length > 0 && <Card style={{ marginTop:8, padding:8 }}>
+              <div style={{ display:"grid", gridTemplateColumns:imgFiles.length===1?"1fr":"1fr 1fr", gap:6 }}>
+                {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", borderRadius:12, objectFit:"cover", aspectRatio:imgFiles.length===1?"auto":"1" }} />)}
+              </div>
+            </Card>}
+            {caption && <Card style={{ marginTop:8 }}>
+              <p className="sl" style={{ marginBottom:6 }}>Legenda</p>
+              <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{caption}</p>
+              {hashtags && <p style={{ fontSize:11, color:B.accent, marginTop:8 }}>{hashtags}</p>}
+            </Card>}
+            {isApproved && <Card style={{ marginTop:8, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
+              <span style={{ display:"flex", justifyContent:"center", marginBottom:6, color:B.green }}>{IC.check}</span>
+              <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Aprovado</p>
+            </Card>}
+            {isRejected && <Card style={{ marginTop:8, background:`${(B.orange||"#F59E0B")}08`, border:`1px solid ${(B.orange||"#F59E0B")}20`, textAlign:"center" }}>
+              <p style={{ fontSize:14, fontWeight:700, color:B.orange||"#F59E0B" }}>Edição solicitada</p>
+              {d.steps?.client?.feedback && <p style={{ fontSize:12, color:B.muted, marginTop:6, fontStyle:"italic" }}>{d.steps.client.feedback}</p>}
+            </Card>}
+            {isPending && <div style={{ marginTop:14 }}>
+              <p className="sl" style={{ marginBottom:10, textAlign:"center" }}>O que achou?</p>
+              <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                <button onClick={()=>respondDemand(d,"approved","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.check} Aprovar</button>
+                <button onClick={()=>respondDemand(d,"rejected","")} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.red||"#FF6B6B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Reprovar</button>
+              </div>
+              <button onClick={()=>{ const fb=prompt("Descreva o que gostaria de alterar:"); if(fb&&fb.trim()) respondDemand(d,"revision",fb.trim()); }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.bgCard, border:`1.5px solid ${B.orange||"#F59E0B"}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.orange||"#F59E0B" }}>Pedir edição</button>
+            </div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
+  const isDark = B.bg === "#0D0D0D" || dark;
+  const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888" };
+  const LIME = B.accent;
+  const inProduction = demands.filter(d => !["published","completed"].includes(d.stage) && d.steps?.client?.status !== "approved");
+  const nav = (k) => goTab(k);
+
   const growthScore = 78;
   const growthDelta = 6;
   const growthZone = "Estratégica";
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
-  const metricsData = [
-    { network:"Instagram", ic:IC.content, metrics:[{l:"Alcance",v:"847K",d:"+18%"},{l:"Engajamento",v:"12.4%",d:"+3.2%"},{l:"Seguidores",v:"15.2K",d:"+420"},{l:"Salvamentos",v:"1.8K",d:"+32%"}] },
-    { network:"Facebook", ic:IC.chat, metrics:[{l:"Alcance",v:"324K",d:"+12%"},{l:"Curtidas",v:"8.4K",d:"+1.1K"},{l:"Compartilhamentos",v:"2.1K",d:"+15%"},{l:"Cliques",v:"3.2K",d:"+24%"}] },
-    { network:"Google Ads", ic:IC.financial, metrics:[{l:"Impressões",v:"1.2M",d:"+22%"},{l:"Cliques",v:"18K",d:"+31%"},{l:"ROAS",v:"4.8x",d:"+0.6"},{l:"Conversões",v:"342",d:"+28%"}] },
-  ];
+  const metrics = { reach:"847K", reachD:"+18%", engagement:"12.4%", engD:"+3.2%", clicks:"3.2K", clicksD:"+24%", roas:"4.8x", roasD:"+0.6" };
 
   const renderHome = () => <>
-    {/* HEADER — sem duplicação, só saudação + ícones */}
+    {/* HEADER */}
     <div style={{ background:isDark?"#0D0D0D":"#fff", margin:"-14px -16px 0", padding:"20px 20px 20px", borderRadius:"0 0 28px 28px", boxShadow:isDark?"none":"0 4px 20px rgba(0,0,0,0.05)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <Av name={user.name||"C"} src={user.photo} sz={48} fs={18} />
+          <Av name={user.name||"C"} sz={48} fs={18} />
           <div>
             <p style={{ fontSize:18, fontWeight:900, color:C.txt }}>{greeting}, {(user.name||"Cliente").split(" ")[0]}</p>
-            <p style={{ fontSize:11, color:C.mut }}>UniqueHub · Seu marketing em dia</p>
+            <p style={{ fontSize:11, color:C.mut }}>Unique Hub · Seu marketing em dia</p>
           </div>
         </div>
         <div style={{ display:"flex", gap:8 }}>
-          <div onClick={()=>goTab("chat")} style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.chat(C.mut)}</div>
-          <div onClick={()=>setSub("settings")} style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{IC.settings(C.mut)}</div>
+          <div style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.chat(C.mut)}</div>
+          <div style={{ width:36, height:36, borderRadius:12, background:C.card, border:`1px solid ${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.calendar(C.mut)}</div>
         </div>
       </div>
     </div>
 
-    {/* META DO MÊS — clicável com info */}
-    <Card style={{ marginTop:12, padding:0, overflow:"hidden", cursor:"pointer" }} onClick={()=>setMetaInfoOpen(!metaInfoOpen)}>
+    {/* META DO MES */}
+    <Card style={{ marginTop:12, padding:0, overflow:"hidden" }}>
       <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
-          <div style={{ width:20, height:20, borderRadius:6, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="3" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          </div>
-        </div>
+        <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
         <div style={{ display:"flex", alignItems:"baseline", gap:10, marginTop:8 }}>
           <span style={{ fontSize:40, fontWeight:900, color:LIME }}>{monthGoal.pct}%</span>
           <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</span>
@@ -2412,53 +14471,36 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <div style={{ height:6, borderRadius:3, background:LIME, width:`${monthGoal.pct}%`, boxShadow:`0 0 8px ${LIME}40` }} />
         </div>
       </div>
-      {metaInfoOpen && <div style={{ padding:"14px 20px", borderTop:`1px solid ${C.brd}` }}>
-        <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>O que é a Meta Mensal?</p>
-        <p style={{ fontSize:11, color:C.mut, lineHeight:1.6 }}>A meta mensal é definida em conjunto com a agência e representa o objetivo de crescimento do seu negócio. Pode ser em leads, vendas, seguidores ou outra métrica relevante.</p>
-        <button onClick={(e)=>{e.stopPropagation();setSub("reports");}} style={{ marginTop:10, padding:"8px 16px", borderRadius:10, background:`${LIME}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:LIME }}>Ver relatório completo →</button>
-      </div>}
     </Card>
 
-    {/* GROWTH SCORE — com explicações claras */}
+    {/* GROWTH SCORE */}
     <Card onClick={()=>setSub("gamify")} style={{ marginTop:8, cursor:"pointer" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-            <p style={{ fontSize:12, fontWeight:700 }}>Growth Score</p>
-            <span style={{ fontSize:9, color:C.mut, background:`${C.mut}10`, padding:"2px 6px", borderRadius:4 }}>Índice de Crescimento</span>
-          </div>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:8 }}>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Growth Score</p>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:6 }}>
             <span style={{ fontSize:32, fontWeight:900, color:LIME }}>{growthScore}</span>
-            <span style={{ fontSize:11, color:C.mut }}>/100 pontos</span>
-            <span style={{ fontSize:11, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>+{growthDelta} este mês</span>
+            <span style={{ fontSize:12, fontWeight:700, color:B.green }}>+{growthDelta} este mês</span>
           </div>
-          <p style={{ fontSize:10, color:C.mut, marginTop:4 }}>Posição #4 entre 23 clientes da agência</p>
-          <div style={{ display:"inline-flex", alignItems:"center", gap:4, marginTop:4, background:`${LIME}10`, padding:"3px 8px", borderRadius:6 }}>
-            <div style={{ width:6, height:6, borderRadius:3, background:LIME }} />
-            <span style={{ fontSize:10, fontWeight:600, color:LIME }}>Zona {growthZone} (61-80 pts)</span>
-          </div>
+          <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>#4 de 23 · Zona {growthZone}</p>
         </div>
-        <div style={{ width:52, height:52, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          <span style={{ fontSize:16, fontWeight:900, color:LIME }}>{growthScore}</span>
+        <div style={{ width:56, height:56, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <span style={{ fontSize:18, fontWeight:900, color:LIME }}>{growthScore}</span>
         </div>
       </div>
-      {/* Pilares com nome completo + porcentagem */}
-      <div style={{ display:"flex", gap:6, marginTop:14 }}>
-        {[{n:"Execução",v:82,c:"#10B981"},{n:"Estratégia",v:74,c:"#BBF246"},{n:"Educação",v:65,c:"#F59E0B"},{n:"Ecossistema",v:58,c:"#EF4444"},{n:"Crescimento",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-            <span style={{ fontSize:7, color:C.mut }}>{p.n}</span>
-            <span style={{ fontSize:7, fontWeight:700, color:p.c }}>{p.v}%</span>
-          </div>
+      <div style={{ display:"flex", gap:4, marginTop:12 }}>
+        {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}>
           <div style={{ height:4, borderRadius:2, background:`${p.c}15` }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div>
+          <p style={{ fontSize:8, color:C.mut, marginTop:3, textAlign:"center" }}>{p.n}</p>
         </div>)}
       </div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, paddingTop:8, borderTop:`1px solid ${C.brd}` }}>
-        <span style={{ fontSize:10, color:C.mut }}>4 missões pendentes</span>
-        <span style={{ fontSize:10, color:LIME, fontWeight:600 }}>Ver detalhes →</span>
+        <span style={{ fontSize:11, color:C.mut }}>{IC.gamify(C.mut)} 4 missões pendentes</span>
+        <span style={{ fontSize:11, color:LIME, fontWeight:600 }}>Ver detalhes →</span>
       </div>
     </Card>
 
-    {/* APROVAÇÃO PENDENTE */}
+    {/* PENDING ALERT */}
     {pendingApproval.length > 0 && <Card onClick={()=>nav("content")} style={{ marginTop:8, cursor:"pointer", borderLeft:`3px solid ${LIME}` }}>
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
         <span style={{ color:LIME }}>{IC.check}</span>
@@ -2469,9 +14511,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
 
     {/* POSTS RECENTES */}
     {demands.length > 0 && <>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 0 8px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"18px 0 10px" }}>
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Posts recentes</p>
-        <span onClick={()=>nav("content")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todos →</span>
+        <span onClick={()=>nav("content")} style={{ fontSize:11, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todos →</span>
       </div>
       <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", marginRight:-16, paddingRight:16 }}>
         {demands.slice(0,6).map((d,i) => {
@@ -2479,93 +14521,74 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?B.orange||"#F59E0B":C.mut;
           const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Em edição":d.steps?.client?.mode==="sent_to_client"?"Em Análise":"Em produção";
           const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:170, borderRadius:16, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
-            <div style={{ height:110, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}20, ${stColor}08)`, position:"relative" }}>
+          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:180, borderRadius:16, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
+            <div style={{ height:120, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}20, ${stColor}08)`, position:"relative" }}>
               {!imgs[0] && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.content(stColor)}</div>}
               <div style={{ position:"absolute", bottom:8, left:8, right:8 }}><p style={{ fontSize:11, fontWeight:700, color:"#fff", textShadow:"0 1px 4px rgba(0,0,0,0.6)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div>
             </div>
             <div style={{ padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontSize:9, color:C.mut }}>{d.createdAt}</span>
-              <div style={{ display:"flex", alignItems:"center", gap:3 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:8, fontWeight:600, color:stColor }}>{stLabel}</span></div>
+              <span style={{ fontSize:10, color:C.mut }}>{d.createdAt}</span>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:9, fontWeight:600, color:stColor }}>{stLabel}</span></div>
             </div>
           </div>;
         })}
       </div>
     </>}
 
-    {/* MATCH4BIZ — mais chamativo */}
-    <Card onClick={()=>setSub("match4biz")} style={{ marginTop:12, cursor:"pointer", padding:0, overflow:"hidden" }}>
-      <div style={{ background:`linear-gradient(135deg, #8B5CF615, ${LIME}08)`, padding:"18px 20px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #8B5CF630, #BBF24630)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          </div>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:16, fontWeight:800 }}>Match4Biz</p>
-            <p style={{ fontSize:11, color:C.mut, lineHeight:1.4, marginTop:2 }}>Encontre parceiros de negócios ideais entre os clientes da agência. Conecte-se e cresça junto!</p>
-            <div style={{ display:"flex", gap:6, marginTop:6 }}>
-              <Tag color={LIME}>3 matches</Tag>
-              <Tag color="#8B5CF6">6 empresas</Tag>
-            </div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    {/* MATCH4BIZ */}
+    <Card onClick={()=>setSub("match4biz")} style={{ marginTop:14, cursor:"pointer" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, #8B5CF630, #BBF24620)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </div>
+        <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Match4Biz</p><p style={{ fontSize:11, color:C.mut }}>3 matches</p></div>
+        <Tag color={LIME}>Novo</Tag>
       </div>
     </Card>
 
-    {/* MÉTRICAS — swipe por rede social */}
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 0 8px" }}>
-      <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Métricas das redes</p>
-    </div>
-    {/* Tabs de rede social */}
-    <div style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", scrollbarWidth:"none" }}>
-      {metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"6px 14px", borderRadius:10, border:metricsSlide===i?"none":`1px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:11, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{md.network}</button>)}
-    </div>
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-      {metricsData[metricsSlide]?.metrics.map((m,i) => (
-        <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer" }}>
-          <span style={{ fontSize:9, fontWeight:600, letterSpacing:1, color:C.mut, textTransform:"uppercase" }}>{m.l}</span>
-          <div style={{ display:"flex", alignItems:"baseline", gap:6, marginTop:6 }}>
-            <span style={{ fontSize:20, fontWeight:900, color:C.txt }}>{m.v}</span>
-            <span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>{m.d}</span>
+    {/* METRICAS */}
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:14 }}>
+      {[{label:"Alcance",value:metrics.reach,delta:metrics.reachD,ic:IC.reports},{label:"Engajamento",value:metrics.engagement,delta:metrics.engD,ic:IC.chat},{label:"Cliques",value:metrics.clicks,delta:metrics.clicksD,ic:IC.content},{label:"ROAS",value:metrics.roas,delta:metrics.roasD,ic:IC.financial}].map((m,i) => (
+        <Card key={i} style={{ padding:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+            <span style={{ color:C.mut }}>{typeof m.ic==="function"?m.ic(C.mut):m.ic}</span>
+            <span style={{ fontSize:9, fontWeight:600, letterSpacing:1, color:C.mut, textTransform:"uppercase" }}>{m.label}</span>
+          </div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+            <span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.value}</span>
+            <span style={{ fontSize:11, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 6px", borderRadius:6 }}>{m.delta}</span>
           </div>
         </Card>
       ))}
     </div>
 
-    {/* RELATÓRIO — simples e clicável */}
-    <Card onClick={()=>setSub("reports")} style={{ marginTop:8, cursor:"pointer", background:`linear-gradient(135deg, ${LIME}06, ${C.card})`, border:`1px solid ${LIME}15` }}>
+    {/* RELATORIO */}
+    <Card style={{ marginTop:8, cursor:"pointer" }}>
       <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ width:44, height:44, borderRadius:14, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div>
-        <div style={{ flex:1 }}>
-          <p style={{ fontSize:14, fontWeight:700 }}>Relatório de Fevereiro</p>
-          <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>Confira a performance completa do mês</p>
-        </div>
+        <div style={{ width:44, height:44, borderRadius:14, background:`${C.brd}`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(C.mut) : IC.content(C.mut)}</div>
+        <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:11, color:C.mut }}>ROAS 4.2x · 280 leads</p></div>
         <Tag color={LIME}>Novo</Tag>
       </div>
     </Card>
 
-    {/* NEWS — clicável */}
+    {/* NEWS */}
     {(() => {
       const catPhoto = (cat) => ({ trends:"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80", updates:"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80", tips:"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80", cases:"https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80" }[cat] || "https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80");
       const catColor = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",novidade:"#EC4899",branding:"#8B5CF6",ia:"#6366F1"};
       const catLabel = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",novidade:"Novidade",branding:"Branding",ia:"IA"};
-      const fallback = [{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA transformando campanhas.",cat:"trends"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates"},{id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias para aumentar alcance.",cat:"tips"}];
+      const fallback = [{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA transformando campanhas digitais.",cat:"trends"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates"},{id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias para aumentar alcance.",cat:"tips"}];
       const items = (articles.length > 0 ? articles : (articlesLoaded ? fallback : [])).slice(0,3);
       if (items.length === 0) return null;
       return <>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 0 8px" }}>
-          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>News</p>
-          <span onClick={()=>setSub("news")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todas →</span>
-        </div>
-        {items[0] && <div onClick={()=>setSub("news")} style={{borderRadius:18,overflow:"hidden",marginBottom:10,position:"relative",height:160,cursor:"pointer"}}>
+        <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>News</p>
+        {items[0] && <div style={{borderRadius:18,overflow:"hidden",marginBottom:10,position:"relative",height:170}}>
           <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
           <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
-          <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:8,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[items[0].cat]||"Geral"}</span>
+          <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[items[0].cat]||"Geral"}</span>
           <div style={{position:"absolute",bottom:14,left:14,right:14}}><p style={{fontSize:14,fontWeight:800,color:"#fff",lineHeight:1.3}}>{items[0].title}</p></div>
         </div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          {items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{borderRadius:14,overflow:"hidden",position:"relative",height:95,cursor:"pointer"}}>
+          {items.slice(1,3).map((a,i) => <div key={a.id||i} style={{borderRadius:14,overflow:"hidden",position:"relative",height:100}}>
             <img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default");}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
             <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
             <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
@@ -2577,7 +14600,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     <div style={{ height:20 }} />
   </>;
 
-      const renderContent = () => <>
+    const renderContent = () => <>
     {pendingApproval.length > 0 && <><p className="sl" style={{ marginBottom:8, color:B.orange||"#F59E0B" }}>Aguardando aprovação ({pendingApproval.length})</p>
       {pendingApproval.map(d => { const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")); return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:8, cursor:"pointer", border:`1.5px solid ${(B.orange||"#F59E0B")}30` }}>
         <div style={{ display:"flex", gap:10 }}>
@@ -2600,7 +14623,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
       <div className="content" ref={scrollRef} onScroll={e=>setHeaderC(e.currentTarget.scrollTop>60)}>
-        {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />}
+        <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
