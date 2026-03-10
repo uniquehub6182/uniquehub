@@ -1507,7 +1507,7 @@ function OnboardingSlides({ onDone }) {
 }
 
 function LoginPage({ onAuth, onClientAuth }) {
-  const [portal, setPortal] = useState(null); /* null = choose, "team", "client" */
+  const [portal, setPortal] = useState("team"); /* "team" | "client" */
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState(1);
   /* Login fields */
@@ -1752,49 +1752,9 @@ function LoginPage({ onAuth, onClientAuth }) {
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
   };
 
-  /* ── PORTAL SELECTOR ── */
-  if (!portal) return (
-    <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
-      <div style={{ position:"absolute", inset:0, opacity:0.03, pointerEvents:"none", backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize:"128px" }} />
-      <div style={{ marginBottom:40, textAlign:"center", position:"relative" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center", marginBottom:8 }}>
-          <svg width="40" height="28" viewBox="0 0 40 28" fill="none"><path d="M4 20L12 8L20 20" stroke="#BBF246" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M20 20L28 8L36 20" stroke="#BBF246" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 20H28" stroke="#BBF246" strokeWidth="3.5" strokeLinecap="round"/></svg>
-        </div>
-        <p style={{ fontSize:20, fontWeight:300, color:"#fff" }}>unique<span style={{ fontWeight:800 }}> hub</span></p>
-        <p style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:6, letterSpacing:1 }}>AGÊNCIA | CLIENTE</p>
-      </div>
-      <p style={{ fontSize:16, fontWeight:700, color:"#fff", marginBottom:24 }}>Como deseja acessar?</p>
-      <div style={{ display:"flex", flexDirection:"column", gap:14, width:"100%", maxWidth:320 }}>
-        <button onClick={()=>setPortal("team")} style={{ padding:"22px 24px", borderRadius:18, background:"rgba(187,242,70,0.08)", border:"1.5px solid rgba(187,242,70,0.3)", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", alignItems:"center", gap:14 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:"rgba(187,242,70,0.15)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          </div>
-          <div>
-            <p style={{ fontSize:15, fontWeight:700, color:"#fff" }}>Colaborador</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>Acesso ao painel da agência</p>
-          </div>
-        </button>
-        <button onClick={()=>setPortal("client")} style={{ padding:"22px 24px", borderRadius:18, background:"rgba(255,255,255,0.04)", border:"1.5px solid rgba(255,255,255,0.1)", cursor:"pointer", fontFamily:"inherit", textAlign:"left", display:"flex", alignItems:"center", gap:14 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-          </div>
-          <div>
-            <p style={{ fontSize:15, fontWeight:700, color:"#fff" }}>Sou Cliente</p>
-            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2 }}>Acompanhe seu marketing</p>
-          </div>
-        </button>
-      </div>
-    </div>
-  );
-
   /* ── CLIENT LOGIN ── */
   if (portal === "client") return (
     <div style={{ minHeight:"100vh", background:"#0D0D0D", display:"flex", flexDirection:"column", padding:0 }}>
-      <div style={{ padding:"16px 20px", display:"flex", alignItems:"center" }}>
-        <button onClick={()=>setPortal(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"#fff", display:"flex", alignItems:"center", gap:6, fontFamily:"inherit", fontSize:13 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
-        </button>
-      </div>
       <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32 }}>
         <div style={{ width:56, height:56, borderRadius:16, background:"rgba(187,242,70,0.12)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
@@ -1812,13 +1772,16 @@ function LoginPage({ onAuth, onClientAuth }) {
           <button onClick={()=>{if(onClientAuth) onClientAuth({mode:"register"})}} style={{ width:"100%", marginTop:8, padding:"13px 0", borderRadius:14, background:"transparent", border:"1.5px solid rgba(187,242,70,0.3)", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:"#BBF246" }}>
             Criar minha conta
           </button>
+          <button onClick={()=>{setPortal("team");setError("");}} style={{ width:"100%", marginTop:16, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, color:"rgba(255,255,255,0.4)" }}>
+            ← Sou colaborador da agência
+          </button>
         </div>
       </div>
     </div>
   );
 
   /* ── TEAM: show back button to portal selector ── */
-  const portalBackBtn = <button onClick={()=>{setPortal(null);setMode("login");setError("");}} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.5)", fontFamily:"inherit", fontSize:12, display:"flex", alignItems:"center", gap:4, marginBottom:10 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>Voltar</button>;
+  const portalBackBtn = null;
 
   /* ── PENDING SCREEN ── */
   if (mode === "pending") return (
@@ -2164,8 +2127,8 @@ function LoginPage({ onAuth, onClientAuth }) {
       {/* ── WHITE CARD ── */}
       <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:"32px 32px 0 0", overflowY:"auto", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
 
-        {/* Back to portal selector */}
-        {portal === "team" && portalBackBtn}
+        {/* Spacer */}
+        <div style={{ height:6 }} />
 
         {/* Title */}
         <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>
@@ -2267,7 +2230,11 @@ function LoginPage({ onAuth, onClientAuth }) {
         </div>
 
         {/* Version */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginTop:16 }}>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12, marginTop:16 }}>
+          <button onClick={()=>{setPortal("client");setError("");}} style={{ display:"flex", alignItems:"center", gap:6, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", padding:0 }}>
+            <span style={{ fontSize:12, color:"#9CA3AF" }}>Sou cliente?</span>
+            <span style={{ fontSize:12, fontWeight:600, color:"#BBF246" }}>Acessar portal →</span>
+          </button>
           <span style={{ fontSize:11, color:"#D1D5DB", fontWeight:500 }}>UniqueHub v1.0</span>
         </div>
       </div>
