@@ -14356,12 +14356,16 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
           const hashtags = demand.steps?.caption?.hashtags || "";
           const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption;
           const scheduling = demand.scheduling || {};
-          const schedTs = getScheduledTimestamp(scheduling);
+          const schedDate = scheduling.date || demand.schedule_date;
+          const schedTime = scheduling.time || demand.schedule_time;
+          const schedTs = getScheduledTimestamp({ date: schedDate, time: schedTime });
+          const schedLabel = schedDate ? `${schedDate} às ${schedTime||""}` : "";
+          const isScheduledFuture = !!schedTs; /* true = will be scheduled via API */
           const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
 
-          showToast("Publicando conteúdo...");
+          showToast(isScheduledFuture ? `Agendando para ${schedLabel}...` : "Publicando conteúdo...");
           let published = false;
 
           /* Try Instagram */
@@ -14374,9 +14378,9 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
               if (r?.error) {
                 showToast(`Aprovado, mas erro ao publicar IG: ${r.error}`);
               } else {
-                const pubSteps = { ...steps, igPublished: { platform:"instagram", type, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs } };
+                const pubSteps = { ...steps, igPublished: { platform:"instagram", type, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:isScheduledFuture, scheduledFor: schedLabel } };
                 await supabase.from("demands").update({ steps: JSON.stringify(pubSteps) }).eq("id", demand.id);
-                showToast(schedTs ? "✓ Aprovado e agendado no Instagram!" : "✓ Aprovado e publicado no Instagram!");
+                showToast(isScheduledFuture ? `✓ Agendado no Instagram para ${schedLabel}` : "✓ Aprovado e publicado no Instagram!");
                 published = true;
               }
             } catch(e) { console.error("[Publish] IG error:", e); showToast("Aprovado, mas falha na publicação IG"); }
@@ -14525,8 +14529,8 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
             {/* Approved banner */}
             {isApproved && <Card style={{ background:`${B.green}08`, border:`1.5px solid ${B.green}25`, textAlign:"center", padding:20, marginBottom:10 }}>
               <div style={{ width:48, height:48, borderRadius:24, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>{IC.check}</div>
-              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovado</p>
-              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{(d.scheduling?.date || d.schedule_date) ? `Será publicado em ${(() => { const sd = d.scheduling?.date || d.schedule_date; const st = d.scheduling?.time || d.schedule_time; try { return new Date(sd+"T"+(st||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"long"}) + (st ? ` às ${st}` : ""); } catch { return sd; } })()}` : "Encaminhado para publicação pela agência."}</p>
+              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>{d.steps?.igPublished?.scheduled ? "Aprovado e agendado" : "Aprovado e publicado"}</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{d.steps?.igPublished?.scheduledFor ? `Agendado para ${d.steps.igPublished.scheduledFor}` : (d.scheduling?.date || d.schedule_date) ? "Publicado imediatamente (horário agendado já passou)" : "Publicado pela agência."}</p>
             </Card>}
             {/* Revision banner */}
             {isRejected && <Card style={{ background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25`, padding:16, marginBottom:10 }}>
