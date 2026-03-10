@@ -14184,7 +14184,7 @@ function MainClientApp({ user, onLogout, dark }) {
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
   const scrollRef = useRef(null);
-  const CLIENT_DASH_DEFAULT_INIT = ["meta","growth","aprovacao","posts","metricas","match","relatorio","news"];
+  const CLIENT_DASH_DEFAULT_INIT = ["news","posts","metricas","growth","match","relatorio"];
   const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); return s ? JSON.parse(s) : CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
@@ -14403,8 +14403,8 @@ function MainClientApp({ user, onLogout, dark }) {
   const nav = (k) => goTab(k);
 
   /* ═══ DASHBOARD CONFIG ═══ */
-  const CLIENT_SECTIONS = { meta:"Meta do Mês", growth:"Growth Score", aprovacao:"Aprovações", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz", relatorio:"Relatório", news:"Notícias" };
-  const CLIENT_DASH_DEFAULT = ["meta","growth","aprovacao","posts","metricas","match","relatorio","news"];
+  const CLIENT_SECTIONS = { growth:"Growth Score", posts:"Posts Recentes", metricas:"Métricas", news:"Comunicados", match:"Match4Biz", relatorio:"Relatório" };
+  const CLIENT_DASH_DEFAULT = ["news","posts","metricas","growth","match","relatorio"];
 
   const growthScore = 78, growthDelta = 6, growthZone = "Estratégica";
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
@@ -14415,91 +14415,78 @@ function MainClientApp({ user, onLogout, dark }) {
   ];
 
   const renderDashSection = (key) => {
-    if (key === "meta") return <Card key="meta" style={{ padding:0, overflow:"hidden", cursor:"pointer" }} onClick={()=>setMetaInfoOpen(!metaInfoOpen)}>
-      <div style={{ background:isDark?"#111":"#0D0D0D", padding:"16px 18px", color:"#fff" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <p style={{ fontSize:9, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>{monthGoal.label}</p>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        </div>
-        <div style={{ display:"flex", alignItems:"baseline", gap:8, marginTop:6 }}>
-          <span style={{ fontSize:36, fontWeight:900, color:LIME }}>{monthGoal.pct}%</span>
-          <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>{monthGoal.current}/{monthGoal.total} {monthGoal.unit}</span>
-        </div>
-        <div style={{ height:5, borderRadius:3, background:"rgba(255,255,255,0.08)", marginTop:8 }}>
-          <div style={{ height:5, borderRadius:3, background:LIME, width:`${monthGoal.pct}%` }} />
-        </div>
-      </div>
-      {metaInfoOpen && <div style={{ padding:"12px 18px", borderTop:`1px solid ${C.brd}` }}>
-        <p style={{ fontSize:12, fontWeight:600, marginBottom:4 }}>O que é a Meta Mensal?</p>
-        <p style={{ fontSize:11, color:C.mut, lineHeight:1.5 }}>Objetivo definido com a agência para medir o crescimento do seu negócio — pode ser leads, vendas, seguidores ou outra métrica.</p>
-        <button onClick={(e)=>{e.stopPropagation();setSub("reports");}} style={{ marginTop:8, padding:"7px 14px", borderRadius:8, background:`${LIME}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:LIME }}>Ver relatório completo →</button>
-      </div>}
-    </Card>;
-
-    if (key === "growth") return <Card key="growth" onClick={()=>setSub("gamify")} style={{ cursor:"pointer" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <div style={{ flex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}><span style={{ fontSize:12, fontWeight:700 }}>Growth Score</span><span style={{ fontSize:9, color:C.mut, background:`${C.mut}10`, padding:"2px 6px", borderRadius:4 }}>Índice de Crescimento</span></div>
-          <div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:6 }}><span style={{ fontSize:28, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:10, color:C.mut }}>/100 pts</span><span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"1px 5px", borderRadius:4 }}>+{growthDelta}</span></div>
-          <p style={{ fontSize:9, color:C.mut, marginTop:3 }}>Posição #4 entre 23 clientes · <span style={{ color:LIME, fontWeight:600 }}>Zona {growthZone}</span></p>
-        </div>
-        <div style={{ width:46, height:46, borderRadius:"50%", border:`2.5px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:15, fontWeight:900, color:LIME }}>{growthScore}</span></div>
-      </div>
-      <div style={{ display:"flex", gap:4, marginTop:10 }}>
-        {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:3, borderRadius:2, background:`${p.c}15` }}><div style={{ height:3, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div><div style={{ display:"flex", justifyContent:"space-between", marginTop:2 }}><span style={{ fontSize:7, color:C.mut }}>{p.n}</span><span style={{ fontSize:7, fontWeight:600, color:p.c }}>{p.v}%</span></div></div>)}
-      </div>
-      <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, paddingTop:6, borderTop:`1px solid ${C.brd}` }}><span style={{ fontSize:9, color:C.mut }}>4 missões pendentes</span><span style={{ fontSize:9, color:LIME, fontWeight:600 }}>Ver detalhes →</span></div>
-    </Card>;
-
-    if (key === "aprovacao" && pendingApproval.length > 0) return <Card key="aprovacao" onClick={()=>nav("content")} style={{ cursor:"pointer", borderLeft:`3px solid ${LIME}` }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}><div style={{ width:32, height:32, borderRadius:10, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.check}</div><div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>{pendingApproval.length} post{pendingApproval.length>1?"s":""} para aprovar</p><p style={{ fontSize:10, color:C.mut }}>Toque para revisar</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-    </Card>;
-
-    if (key === "posts" && demands.length > 0) return <div key="posts">
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 8px" }}><p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Posts recentes</p><span onClick={()=>nav("content")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todos →</span></div>
-      <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none", marginRight:-16, paddingRight:16 }}>
-        {demands.slice(0,5).map((d) => {
-          const st = d.steps?.client?.status; const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
-          const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
-          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:150, borderRadius:14, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
-            <div style={{ height:100, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}15, ${C.card})`, position:"relative" }}>{!imgs[0]&&<div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}>{IC.content(stColor)}</div>}<div style={{ position:"absolute", bottom:6, left:6, right:6 }}><p style={{ fontSize:10, fontWeight:600, color:"#fff", textShadow:"0 1px 3px rgba(0,0,0,0.5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div></div>
-            <div style={{ padding:"6px 8px", display:"flex", justifyContent:"space-between", alignItems:"center" }}><span style={{ fontSize:8, color:C.mut }}>{d.createdAt}</span><div style={{ display:"flex", alignItems:"center", gap:2 }}><div style={{ width:4, height:4, borderRadius:2, background:stColor }} /><span style={{ fontSize:7, fontWeight:600, color:stColor }}>{stLabel}</span></div></div>
-          </div>;
-        })}
-      </div>
-    </div>;
-
-    if (key === "metricas") return <div key="metricas">
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 8px" }}><p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>Métricas</p><span onClick={()=>setSub("reports")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver tudo →</span></div>
-      <div style={{ display:"flex", gap:6, marginBottom:8 }}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"5px 12px", borderRadius:8, border:metricsSlide===i?"none":`1px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:10, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>{md.network}</button>)}</div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>{metricsData[metricsSlide]?.metrics.map((m,i) => <Card key={i} onClick={()=>setSub("reports")} style={{ padding:12, cursor:"pointer" }}><span style={{ fontSize:8, fontWeight:600, letterSpacing:0.8, color:C.mut, textTransform:"uppercase" }}>{m.l}</span><div style={{ display:"flex", alignItems:"baseline", gap:4, marginTop:4 }}><span style={{ fontSize:18, fontWeight:900, color:C.txt }}>{m.v}</span><span style={{ fontSize:9, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"1px 5px", borderRadius:4 }}>{m.d}</span></div></Card>)}</div>
-    </div>;
-
-    if (key === "match") return <Card key="match" onClick={()=>setSub("match4biz")} style={{ cursor:"pointer", padding:0, overflow:"hidden" }}>
-      <div style={{ background:`linear-gradient(135deg, #8B5CF610, ${LIME}06)`, padding:"14px 16px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{ width:44, height:44, borderRadius:14, background:"linear-gradient(135deg, #8B5CF625, #BBF24625)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Match4Biz</p><p style={{ fontSize:10, color:C.mut, marginTop:2 }}>Encontre parceiros entre clientes da agência</p></div>
-          <div style={{ display:"flex", gap:4 }}><Tag color={LIME}>3</Tag><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-        </div>
-      </div>
-    </Card>;
-
-    if (key === "relatorio") return <Card key="relatorio" onClick={()=>setSub("reports")} style={{ cursor:"pointer" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12 }}><div style={{ width:38, height:38, borderRadius:12, background:`${LIME}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div><div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>Relatório de Fevereiro</p><p style={{ fontSize:10, color:C.mut }}>Performance completa do mês</p></div><Tag color={LIME}>Novo</Tag></div>
-    </Card>;
+    const SH = ({title, action, onClick}) => <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt,margin:0}}>{title}</h3>{action&&<span onClick={onClick} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>{action}</span>}</div>;
 
     if (key === "news") { const catPhoto=(c)=>({"trends":"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80","updates":"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","tips":"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80"}[c]||"https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80"); const catColor={"trends":"#7C3AED","updates":"#2563EB","tips":"#D97706","cases":"#059669","novidade":"#EC4899","branding":"#8B5CF6","ia":"#6366F1"}; const catLabel={"trends":"Tendência","updates":"Atualização","tips":"Dica","cases":"Case","novidade":"Novidade","branding":"Branding","ia":"IA"};
       const fb=[{id:"f1",title:"IA no Marketing: como usar em 2025",cat:"trends"},{id:"f2",title:"Instagram muda algoritmo do Reels",cat:"updates"},{id:"f3",title:"5 técnicas para dobrar o engajamento",cat:"tips"}];
       const items = (articles.length>0?articles:(articlesLoaded?fb:[])).slice(0,3);
       if (!items.length) return null;
       return <div key="news">
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0 8px" }}><p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:C.mut, textTransform:"uppercase" }}>News</p><span onClick={()=>setSub("news")} style={{ fontSize:10, color:LIME, fontWeight:600, cursor:"pointer" }}>Ver todas →</span></div>
-        {items[0] && <div onClick={()=>setSub("news")} style={{ borderRadius:14, overflow:"hidden", marginBottom:8, position:"relative", height:140, cursor:"pointer" }}><img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)" }} /><span style={{ position:"absolute", top:10, left:10, background:catColor[items[0].cat]||"#6366F1", color:"#fff", fontSize:7, fontWeight:800, padding:"2px 8px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[items[0].cat]||"Geral"}</span><p style={{ position:"absolute", bottom:10, left:10, right:10, fontSize:12, fontWeight:700, color:"#fff", lineHeight:1.3 }}>{items[0].title}</p></div>}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>{items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{ borderRadius:12, overflow:"hidden", position:"relative", height:80, cursor:"pointer" }}><img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)" }} /><span style={{ position:"absolute", top:6, left:6, background:catColor[a.cat]||"#6366F1", color:"#fff", fontSize:6, fontWeight:800, padding:"1px 6px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[a.cat]||"Geral"}</span><p style={{ position:"absolute", bottom:6, left:6, right:6, fontSize:9, fontWeight:600, color:"#fff", lineHeight:1.2, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{a.title}</p></div>)}</div>
+        <SH title="Comunicados" action="Ver todos" onClick={()=>setSub("news")} />
+        {items[0] && <div onClick={()=>setSub("news")} style={{ borderRadius:20, overflow:"hidden", marginBottom:10, position:"relative", height:190, cursor:"pointer" }}><img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)" }} /><span style={{ position:"absolute", top:14, left:14, background:catColor[items[0].cat]||"#6366F1", color:"#fff", fontSize:9, fontWeight:800, padding:"4px 12px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[items[0].cat]||"Geral"}</span><div style={{ position:"absolute", bottom:14, left:14, right:14 }}><p style={{ fontSize:15, fontWeight:800, color:"#fff", lineHeight:1.3 }}>{items[0].title}</p>{items[0].summary&&<p style={{ fontSize:11, color:"rgba(255,255,255,0.7)", marginTop:4, lineHeight:1.4 }}>{items[0].summary}</p>}</div></div>}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{ borderRadius:16, overflow:"hidden", position:"relative", height:100, cursor:"pointer" }}><img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)" }} /><span style={{ position:"absolute", top:8, left:8, background:catColor[a.cat]||"#6366F1", color:"#fff", fontSize:7, fontWeight:800, padding:"2px 8px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[a.cat]||"Geral"}</span><p style={{ position:"absolute", bottom:8, left:8, right:8, fontSize:11, fontWeight:700, color:"#fff", lineHeight:1.2, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{a.title}</p></div>)}</div>
       </div>;
     }
+
+    if (key === "posts" && demands.length > 0) return <div key="posts">
+      <SH title="Posts Recentes" action="Ver todos" onClick={()=>nav("content")} />
+      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", marginRight:-16, paddingRight:16 }}>
+        {demands.slice(0,5).map((d) => {
+          const st = d.steps?.client?.status; const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
+          const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
+          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+          return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:160, borderRadius:18, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
+            <div style={{ height:110, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}15, ${C.card})`, position:"relative" }}>{!imgs[0]&&<div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}>{IC.content(stColor)}</div>}<div style={{ position:"absolute", bottom:8, left:8, right:8 }}><p style={{ fontSize:11, fontWeight:700, color:"#fff", textShadow:"0 1px 3px rgba(0,0,0,0.5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div></div>
+            <div style={{ padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}><span style={{ fontSize:9, color:C.mut }}>{d.createdAt}</span><div style={{ display:"flex", alignItems:"center", gap:3 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:8, fontWeight:600, color:stColor }}>{stLabel}</span></div></div>
+          </div>;
+        })}
+      </div>
+    </div>;
+
+    if (key === "metricas") return <div key="metricas">
+      <SH title="Métricas" action="Ver tudo" onClick={()=>setSub("reports")} />
+      <div style={{ display:"flex", gap:8, marginBottom:10 }}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"8px 16px", borderRadius:100, border:metricsSlide===i?"none":`1.5px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:12, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>{md.network}</button>)}</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{metricsData[metricsSlide]?.metrics.map((m,i) => <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer", borderRadius:18 }}><span style={{ fontSize:10, fontWeight:600, letterSpacing:0.5, color:C.mut, textTransform:"uppercase" }}>{m.l}</span><div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:6 }}><span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.v}</span><span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 7px", borderRadius:6 }}>{m.d}</span></div></Card>)}</div>
+    </div>;
+
+    if (key === "growth") return <div key="growth">
+      <SH title="Growth Score" action="Ver detalhes" onClick={()=>setSub("gamify")} />
+      <Card onClick={()=>setSub("gamify")} style={{ cursor:"pointer", borderRadius:20, padding:0, overflow:"hidden" }}>
+        <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8 }}><span style={{ fontSize:36, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>/100 pts</span><span style={{ fontSize:11, fontWeight:700, color:B.green }}>+{growthDelta}</span></div>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Posição #4 · Zona {growthZone}</p>
+            </div>
+            <div style={{ width:52, height:52, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:18, fontWeight:900, color:LIME }}>{growthScore}</span></div>
+          </div>
+          <div style={{ display:"flex", gap:5, marginTop:14 }}>
+            {[{n:"Exec",v:82,c:"#10B981"},{n:"Estr",v:74,c:"#BBF246"},{n:"Educ",v:65,c:"#F59E0B"},{n:"Ecos",v:58,c:"#EF4444"},{n:"Cres",v:80,c:"#10B981"}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${p.v}%` }} /></div><span style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:3, display:"block", textAlign:"center" }}>{p.n}</span></div>)}
+          </div>
+        </div>
+      </Card>
+    </div>;
+
+    if (key === "match") return <div key="match">
+      <SH title="Match4Biz" action="Explorar" onClick={()=>setSub("match4biz")} />
+      <Card onClick={()=>setSub("match4biz")} style={{ cursor:"pointer", padding:0, overflow:"hidden", borderRadius:20 }}>
+        <div style={{ background:`linear-gradient(135deg, #8B5CF610, ${LIME}08)`, padding:"18px 20px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div style={{ width:50, height:50, borderRadius:16, background:"linear-gradient(135deg, #8B5CF625, #BBF24625)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+            <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Encontre parceiros</p><p style={{ fontSize:12, color:C.mut, marginTop:3 }}>Conecte-se com outros clientes da agência</p></div>
+            <Tag color={LIME}>3</Tag>
+          </div>
+        </div>
+      </Card>
+    </div>;
+
+    if (key === "relatorio") return <div key="relatorio">
+      <SH title="Relatório" action="Ver completo" onClick={()=>setSub("reports")} />
+      <Card onClick={()=>setSub("reports")} style={{ cursor:"pointer", borderRadius:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}><div style={{ width:48, height:48, borderRadius:16, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div><div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:12, color:C.mut, marginTop:2 }}>Performance completa do mês</p></div><Tag color={LIME}>Novo</Tag></div>
+      </Card>
+    </div>;
+
     return null;
   };
 
