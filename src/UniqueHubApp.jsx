@@ -13800,7 +13800,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
 
   /* ── Build ranking from real clients + real scores ── */
   const realClients = (clients || []).filter(c => c.name && c.status !== "inativo");
-  const myClientId = realClients.find(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase()))?.id;
+  const myClientId = (realClients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || realClients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || realClients.find(c => (c.name||"").toLowerCase() === (user?.name||"").toLowerCase()))?.id;
   
   const RANKING = realClients.map(c => {
     const s = Math.min(100, Math.round(allScores[c.id]?.total || 0));
