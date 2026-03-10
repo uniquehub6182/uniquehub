@@ -1045,6 +1045,52 @@ function getB(isDark, accent, prefs) {
 let B = getB(false, "#BBF246");
 
 /* ═══════════════════════ SVG ICONS ═══════════════════════ */
+/* ── Desktop detection hook ── */
+const useIsDesktop = () => {
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 900);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 900px)");
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+};
+
+/* ── Desktop Sidebar ── */
+const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accentColor, onLogout }) => {
+  const accent = accentColor || B.accent;
+  return (
+    <div className="d-sidebar">
+      <div style={{ padding:"20px 16px 16px", borderBottom:`1px solid ${B.border}`, marginBottom:8 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {logo ? <img src={logo} alt="" style={{ width:32, height:32, borderRadius:10, objectFit:"cover" }} /> : <div style={{ width:32, height:32, borderRadius:10, background:`${accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:900, color:accent }}>{(title||"U")[0]}</div>}
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:13, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{title || "UniqueHub"}</p>
+            <p style={{ fontSize:10, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email || ""}</p>
+          </div>
+        </div>
+      </div>
+      <div style={{ flex:1, overflowY:"auto", padding:"0 8px" }}>
+        {tabs.map(t => {
+          const isActive = activeTab === t.k;
+          return <button key={t.k} onClick={() => onTabChange(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", borderRadius:12, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isActive?700:500, color:isActive?accent:B.muted, background:isActive?`${accent}12`:"transparent", marginBottom:2, transition:"all .15s" }}>
+            <span style={{ width:20, display:"flex", justifyContent:"center", flexShrink:0 }}>{typeof t.i === "function" ? t.i(isActive?accent:B.muted) : t.i}</span>
+            {t.l}
+            {t.badge > 0 && <span style={{ marginLeft:"auto", background:accent, color:"#0D0D0D", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:10 }}>{t.badge}</span>}
+          </button>;
+        })}
+      </div>
+      {onLogout && <div style={{ padding:"12px 16px", borderTop:`1px solid ${B.border}` }}>
+        <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"10px 12px", borderRadius:12, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, background:"transparent" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sair
+        </button>
+      </div>}
+    </div>
+  );
+};
+
 const IC = {
   home: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   content: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
@@ -15164,8 +15210,28 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
   const HEADERS = { home:{icon:IC.home,label:"Portal",title:"Meu Marketing"}, content:{icon:IC.content,label:"Aprovação",title:"Conteúdo"}, calendar:{icon:IC.calendar,label:"Eventos",title:"Agenda"}, chat:{icon:IC.chat,label:"Mensagens",title:"Chat"}, more:{icon:IC.settings,label:"Opções",title:"Mais"} };
   const hdr = HEADERS[tab] || HEADERS.home;
+  const isDesktop = useIsDesktop();
+  const CLIENT_SIDEBAR_TABS = [
+    { k:"home", l:"Início", i:IC.home },
+    { k:"content", l:"Conteúdo", i:IC.content, badge:pendingApproval.length },
+    { k:"calendar", l:"Agenda", i:IC.calendar },
+    { k:"chat", l:"Chat", i:IC.chat },
+    { k:"gamify", l:"Growth Score", i:IC.gamify, isSub:true },
+    { k:"match4biz", l:"Match4Biz", i:IC.match4biz, isSub:true },
+    { k:"financial", l:"Financeiro", i:IC.financial, isSub:true },
+    { k:"reports", l:"Relatórios", i:IC.reports, isSub:true },
+    { k:"library", l:"Biblioteca", i:IC.library, isSub:true },
+    { k:"academy", l:"Academy", i:IC.academy, isSub:true },
+    { k:"news", l:"Notícias", i:IC.news, isSub:true },
+    { k:"ideas", l:"Ideias", i:IC.ideas, isSub:true },
+    { k:"ai", l:"Assistente IA", i:IC.ai, isSub:true },
+    { k:"settings", l:"Configurações", i:IC.settings, isSub:true },
+  ];
 
   return (
+    <div style={{ display:"flex" }}>
+      {isDesktop && <DesktopSidebar tabs={CLIENT_SIDEBAR_TABS} activeTab={sub || tab} onTabChange={(k) => { const t = CLIENT_SIDEBAR_TABS.find(x=>x.k===k); if (t?.isSub) { setSub(k); } else { setSub(null); setTab(k); } }} user={user} title={user?.company || user?.name || "Cliente"} accentColor={B.accent} onLogout={onLogout} />}
+      <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
@@ -15225,6 +15291,8 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         })}
       </nav>
       <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />
+    </div>
+    </div>
     </div>
   );
 }
@@ -15512,8 +15580,12 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); try { sessionStorage.setItem("uh_tab", k); sessionStorage.removeItem("uh_sub"); } catch {} if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
   const [pendingSubId, setPendingSubId] = useState(null);
   const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); try { sessionStorage.setItem("uh_sub", k); } catch {} if (initialId) setPendingSubId(initialId); };
+  const isDesktop = useIsDesktop();
 
   return (
+    <div style={{ display:"flex" }}>
+      {isDesktop && <DesktopSidebar tabs={TABS} activeTab={tab} onTabChange={(k) => { setSub(null); setTab(k); setMore(false); }} user={user} title="Unique Marketing" accentColor={B.accent} onLogout={onLogout} />}
+      <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background: B.bg, color: B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
@@ -15651,6 +15723,9 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 
       {more && <MoreSheet onClose={() => setMore(false)} goSub={goSub} />}
       {showNavEdit && <NavEditSheet picks={navPicks} setPicks={(p) => setNavPicksAndSave(p, user?.id)} onClose={() => setShowNavEdit(false)} />}
+    </div>
+    </div>
+    </div>
     </div>
   );
 }
@@ -16053,6 +16128,19 @@ input,textarea,select{font-size:16px !important}
 .ib{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;border:1.5px solid ${dark?"rgba(255,255,255,0.08)":"rgba(11,35,66,0.1)"};background:${dark?"#1C2228":"#fff"};cursor:pointer;color:${dark?"#E8EAED":"#192126"};box-shadow:0 2px 6px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.08)"}}
 .tag{display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:8px;font-size:10px;font-weight:600;background:${dark?"rgba(255,255,255,0.06)":"rgba(11,35,66,0.04)"};color:${dark?"#9CA3AF":"#5E6468"}}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
+/* ── Desktop Layout ── */
+.d-sidebar{display:none}
+@media(min-width:900px){
+.d-sidebar{display:flex;flex-direction:column;width:240px;min-width:240px;height:100vh;background:${dark?"#151A1E":"#fff"};border-right:1px solid ${B.border};position:fixed;left:0;top:0;z-index:60}
+.d-main{margin-left:240px;width:calc(100% - 240px);max-width:none!important}
+.d-main .app{max-width:none!important}
+.d-main .content{max-width:900px;margin:0 auto}
+.d-main .pg{max-width:900px;margin:0 auto}
+.bnav{display:none!important}
+.app{position:relative!important}
+#root{overflow:auto!important}
+html,body{overflow:auto!important}
+}
 .sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"};max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid-btn{padding:14px 6px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.06)"};display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:all .15s ease;color:${dark?"#E8EAED":"inherit"}}.grid-btn:active{transform:scale(0.95)}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
