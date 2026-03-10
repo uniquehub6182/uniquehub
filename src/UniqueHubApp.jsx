@@ -14096,37 +14096,37 @@ function ClientOnboarding({ onComplete, onBack }) {
   };
 
   return (
-    <div className="app" style={{ background:"#0D0D0D", color:"#fff" }}>
+    <div className="app" style={{ background:"#F5F5F5", color:"#1A1D23" }}>
       {/* Header */}
-      <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:"#fff" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:"#1A1D23" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><circle cx="12" cy="21" r="1"/></svg>
         </div>
         <div>
-          <p style={{ fontSize:14, fontWeight:700 }}>Luna</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Assistente Unique Marketing</p>
+          <p style={{ fontSize:14, fontWeight:700, color:"#1A1D23" }}>Luna</p>
+          <p style={{ fontSize:10, color:"#9CA3AF" }}>Assistente Unique Marketing</p>
         </div>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch" }}>
+      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"16px 14px", display:"flex", flexDirection:"column", gap:8, WebkitOverflowScrolling:"touch", background:"#F5F5F5" }}>
         {messages.map((m, i) => (
           <div key={i} style={{ display:"flex", justifyContent:m.from==="user"?"flex-end":"flex-start", maxWidth:"85%" , alignSelf:m.from==="user"?"flex-end":"flex-start" }}>
             <div style={{
               padding:"10px 14px", borderRadius:m.from==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
-              background:m.from==="user"?B.accent:"rgba(255,255,255,0.08)",
-              color:m.from==="user"?"#0D0D0D":"#fff",
+              background:m.from==="user"?B.accent:"#fff",
+              color:m.from==="user"?"#0D0D0D":"#1A1D23",
               fontSize:14, lineHeight:1.5, fontWeight:m.from==="user"?500:400,
-              boxShadow:m.from==="user"?`0 2px 8px ${B.accent}30`:"none",
+              boxShadow:m.from==="user"?`0 2px 8px ${B.accent}30`:"0 1px 3px rgba(0,0,0,0.08)",
               animation:"fadeIn .3s ease",
             }}>{m.text}</div>
           </div>
         ))}
         {typing && <div style={{ display:"flex", alignSelf:"flex-start" }}>
-          <div style={{ padding:"10px 18px", borderRadius:"16px 16px 16px 4px", background:"rgba(255,255,255,0.08)" }}>
+          <div style={{ padding:"10px 18px", borderRadius:"16px 16px 16px 4px", background:"#fff", boxShadow:"0 1px 3px rgba(0,0,0,0.08)" }}>
             <div style={{ display:"flex", gap:4 }}>
               {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:3, background:"rgba(255,255,255,0.4)", animation:`skPulse 1.2s ease ${i*0.2}s infinite` }} />)}
             </div>
@@ -14134,11 +14134,11 @@ function ClientOnboarding({ onComplete, onBack }) {
         </div>}
         {/* Confirmation card */}
         {done && !creating && !error && <div style={{ alignSelf:"flex-start", maxWidth:"90%", animation:"fadeIn .5s ease" }}>
-          <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:16, padding:16, border:"1px solid rgba(255,255,255,0.1)", marginTop:8 }}>
+          <div style={{ background:"#fff", borderRadius:16, padding:16, border:"1px solid rgba(0,0,0,0.08)", marginTop:8, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <p style={{ fontSize:13, fontWeight:700, color:B.accent, marginBottom:10 }}>Confirme seus dados:</p>
             {[{l:"Nome",v:data.name},{l:"Empresa",v:data.company},{l:"E-mail",v:data.email},{l:"Telefone",v:data.phone}].map((r,i) => (
               <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:i<3?"1px solid rgba(255,255,255,0.06)":"none" }}>
-                <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{r.l}</span>
+                <span style={{ fontSize:11, color:"#9CA3AF" }}>{r.l}</span>
                 <span style={{ fontSize:12, fontWeight:600 }}>{r.v}</span>
               </div>
             ))}
@@ -14150,14 +14150,14 @@ function ClientOnboarding({ onComplete, onBack }) {
       </div>
 
       {/* Input */}
-      {!done && <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(255,255,255,0.06)", display:"flex", gap:8, alignItems:"center" }}>
+      {!done && <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8, alignItems:"center" }}>
         <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()}
           placeholder={step===1?"Seu nome...":step===2?"Nome da empresa...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
           type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
-          style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.05)", color:"#fff", fontFamily:"inherit", fontSize:15, outline:"none" }}
+          style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(0,0,0,0.1)", background:"#fff", color:"#1A1D23", fontFamily:"inherit", fontSize:15, outline:"none" }}
         />
-        <button onClick={handleSend} disabled={typing||!input.trim()} style={{ width:44, height:44, borderRadius:22, background:input.trim()?B.accent:"rgba(255,255,255,0.08)", border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"rgba(255,255,255,0.3)"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <button onClick={handleSend} disabled={typing||!input.trim()} style={{ width:44, height:44, borderRadius:22, background:input.trim()?B.accent:"rgba(0,0,0,0.05)", border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"#9CA3AF"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
       </div>}
     </div>
