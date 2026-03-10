@@ -336,6 +336,7 @@ const supaCreateEvent = async (e) => {
       date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
       time: e.time || null, description: e.notes || null, color: e.color || null,
       client_name: e.client || null, completed: false,
+      created_by: e.createdById || null, created_by_name: e.createdBy || null,
     };
     const { data, error } = await supabase.from("events").insert(payload).select().single();
     if (error) { console.error("Supa event error:", error); return null; }
@@ -9326,9 +9327,11 @@ function TeamPage({ onBack, user, onTeamChange }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
+function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter }) {
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
+  const userName = propUser?.name || propUser?.email || "Equipe";
+  const isClientView = !!clientFilter;
   const today = new Date();
   const [curMonth, setCurMonth] = useState(today.getMonth());
   const [curYear, setCurYear] = useState(today.getFullYear());
@@ -9390,8 +9393,9 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
   const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
   const firstDow = new Date(curYear, curMonth, 1).getDay();
 
-  const dayEvents = events.filter(e => e.day === selDay && e.month === curMonth && e.year === curYear);
-  const hasEvents = (d) => events.some(e => e.day === d && e.month === curMonth && e.year === curYear);
+  const allEvents = clientFilter ? events.filter(e => (e.client||"").toLowerCase() === clientFilter.toLowerCase() || (e.createdBy||"").toLowerCase() === clientFilter.toLowerCase()) : events;
+  const dayEvents = allEvents.filter(e => e.day === selDay && e.month === curMonth && e.year === curYear);
+  const hasEvents = (d) => allEvents.some(e => e.day === d && e.month === curMonth && e.year === curYear);
   const isToday = (d) => d === today.getDate() && curMonth === today.getMonth() && curYear === today.getFullYear();
   const prevMonth = () => { if (curMonth===0){setCurMonth(11);setCurYear(y=>y-1);}else setCurMonth(m=>m-1); setSelDay(1); };
   const nextMonth = () => { if (curMonth===11){setCurMonth(0);setCurYear(y=>y+1);}else setCurMonth(m=>m+1); setSelDay(1); };
@@ -9404,7 +9408,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
     const ne = {
       id: Date.now(), type: eventType, title: form.title.trim(), time: form.time || "09:00",
       color: et?.c || B.blue, day: selDay, month: curMonth, year: curYear,
-      createdBy: "Matheus", notes: form.notes || "",
+      createdBy: userName, createdById: propUser?.id || null, notes: form.notes || "",
       ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: form.meetingScope || "internal", participants: form.participants || [], client: form.client || "", location: form.location || "" }),
       ...(eventType === "recording" && { client: form.client || "", participants: form.participants || [], location: form.location || "", equipment: form.equipment || [] }),
       ...(eventType === "event" && { participants: form.participants || [], location: form.location || "" }),
@@ -9646,7 +9650,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam }) {
         <Card style={{ marginBottom:8, background:`${B.muted}04` }}>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <Av name="Matheus" sz={28} fs={10} />
-            <div><p style={{ fontSize:11, color:B.muted }}>Criado por</p><p style={{ fontSize:12, fontWeight:600 }}>Matheus</p></div>
+            <div><p style={{ fontSize:11, color:B.muted }}>Criado por</p><p style={{ fontSize:12, fontWeight:600 }}>{sel?.createdBy || userName}</p></div>
           </div>
         </Card>
 
@@ -14448,7 +14452,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
   if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} />;
-  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} />;
+  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} />;
   if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} />;
   if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} />;
   if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
@@ -14918,7 +14922,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} /></div>}
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
@@ -15342,7 +15346,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); /* Refresh count */ if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
-        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
+        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} />}
