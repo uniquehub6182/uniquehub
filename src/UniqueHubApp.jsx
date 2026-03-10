@@ -16183,20 +16183,17 @@ input,textarea,select{font-size:16px !important}
 .d-sidebar{display:none!important}
 @media(min-width:900px){
 .d-main{width:100%;max-width:none!important;min-height:100vh}
-.d-main .app{max-width:none!important;position:relative!important;min-height:100vh}
-.d-main .content{max-width:1400px;margin:0 auto;padding:20px 40px 120px!important}
+.d-main .app{max-width:none!important;position:relative!important;min-height:100vh;overflow:visible!important}
+.d-main .content{max-width:1400px;margin:0 auto;padding:20px 40px 120px!important;overflow:visible!important;height:auto!important}
 .d-main .pg{max-width:1400px;margin:0 auto;padding:20px 40px!important}
 .d-main .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
 .d-main .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
-.app{position:relative!important}
 .d-main input,.d-main textarea{font-size:14px!important}
 .d-main .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
-/* Desktop dashboard grid */
+html,body,#root{overflow:auto!important;height:auto!important;min-height:100vh!important}
+.bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
 .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:16px!important;align-items:start!important}
 .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:16px!important;align-items:start!important}
-}
-#root{overflow:auto!important}
-html,body{overflow:auto!important}
 }
 .sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"};max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid-btn{padding:14px 6px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.06)"};display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:all .15s ease;color:${dark?"#E8EAED":"inherit"}}.grid-btn:active{transform:scale(0.95)}
