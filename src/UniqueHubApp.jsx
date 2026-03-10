@@ -9249,7 +9249,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
     /* Auto-link if profile with this email already exists */
     if (supabase) {
       const { data: existingProfile } = await supabase.from("profiles").select("id").eq("email", form.email.trim()).limit(1);
-      if (existingProfile?.[0]?.id) { m.user_id = existingProfile[0].id; m.status = "offline"; }
+      if (existingProfile?.[0]?.id) { m.user_id = existingProfile[0].id; /* Keep status pendente — admin must approve */ }
     }
     const row = await supaCreateMember(m);
     if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",user_id:row.user_id||null,supaId:row.id}]); setAdding(false); setForm({}); showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); if(onTeamChange) onTeamChange(); }
