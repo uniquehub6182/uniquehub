@@ -148,6 +148,7 @@ const supaDeleteClient = async (id) => {
 /* Helper: merge Supabase client row into app format */
 const mergeSupaClient = (row, existing) => ({
   id: row.id, supaId: row.id, name: row.name,
+  logo: row.logo_url || "",
   plan: PLAN_MAP_FROM_DB[row.plan] || "Traction",
   status: row.status || "ativo",
   monthly: row.monthly_value ? `R$ ${Number(row.monthly_value).toLocaleString("pt-BR")}` : "R$ 0",
@@ -14252,7 +14253,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   /* Load clients + team for sub-pages */
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly: c.monthly, status: c.status || "ativo", logo: c.logo }))); });
+    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly: c.monthly, status: c.status || "ativo", logo: c.logo_url || c.logo }))); });
     supaLoadTeam().then(rows => { if (rows) setTeam(rows); });
   }, []);
 
