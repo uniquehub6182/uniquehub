@@ -14485,11 +14485,23 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
               <Tag color={B.accent}>{d.format || d.type}</Tag>
               <span style={{ fontSize:10, color:B.muted }}>{d.createdAt}</span>
             </div></Card>}
-            {imgFiles.length > 0 && <Card style={{ marginTop:8, padding:8 }}>
-              <div style={{ display:"grid", gridTemplateColumns:imgFiles.length===1?"1fr":"1fr 1fr", gap:6 }}>
-                {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", borderRadius:12, objectFit:"cover", aspectRatio:imgFiles.length===1?"auto":"1" }} />)}
-              </div>
-            </Card>}
+            {imgFiles.length > 0 && (() => {
+              const CarouselView = () => {
+                const [slide, setSlide] = React.useState(0);
+                const ref = React.useRef(null);
+                const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; const s=Math.round(ref.current.scrollLeft/w); setSlide(s); };
+                return <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20 }}>
+                  <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
+                    {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", objectFit:"contain", background:"#000", maxHeight:"70vh" }} />)}
+                  </div>
+                  {imgFiles.length > 1 && <div style={{ display:"flex", justifyContent:"center", gap:6, padding:"10px 0" }}>
+                    {imgFiles.map((_,i) => <div key={i} style={{ width:slide===i?20:8, height:8, borderRadius:4, background:slide===i?B.accent:`${B.muted}30`, transition:"all .3s" }} />)}
+                  </div>}
+                  {imgFiles.length > 1 && <p style={{ textAlign:"center", fontSize:11, color:B.muted, paddingBottom:10 }}>{slide+1} de {imgFiles.length} · Arraste para ver mais</p>}
+                </Card>;
+              };
+              return <CarouselView />;
+            })()}
             {caption && <Card style={{ marginTop:8 }}>
               <p className="sl" style={{ marginBottom:6 }}>Legenda</p>
               <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{caption}</p>
