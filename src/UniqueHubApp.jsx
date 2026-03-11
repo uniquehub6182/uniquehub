@@ -2420,7 +2420,7 @@ function PWAInstallPopup({ onDismiss }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop, setClients, setDemands, setArticles }) {
   const canAccessFn = ca || (() => true);
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
@@ -2781,6 +2781,57 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       ideas:{l:"Ideias",icon:"ideas"},
       social:{l:"Redes Sociais",icon:"social"},
     };
+
+    /* Panel frame — each panel is a "phone screen" with header + scrollable page */
+    const PANEL_H = 580;
+    const panelFrame = (title, iconKey, openFn, content) => (
+      <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:PANEL_H,display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco(iconKey,16,"#1A1D23")}<span style={{fontSize:14,fontWeight:700,color:"#1A1D23"}}>{title}</span></div>
+          <span onClick={openFn} style={{fontSize:12,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+        </div>
+        <div className="panel-phone" style={{flex:1,overflowY:"auto",overflowX:"hidden",position:"relative"}}>{content}</div>
+      </div>
+    );
+
+    const noop = () => {};
+
+    /* Render a dashboard panel by key — embeds real mobile pages */
+    const renderDPanel = (pk) => {
+      if (pk === "news") return panelFrame("Comunicados","news",()=>goSub("news"),
+        <NewsPage onBack={noop} onArticlesLoad={setArticles||noop} user={user} />
+      );
+      if (pk === "ai") return panelFrame("Assistente IA","ai",()=>goSub("ai"),
+        <AIPage onBack={noop} user={user} agencyIdentity={agencyIdentity} />
+      );
+      if (pk === "content") return panelFrame("Conteúdo","content",()=>goTab("content"),
+        <ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca} />
+      );
+      if (pk === "chat") return panelFrame("Chat","chat",()=>goTab("chat"),
+        <ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop} />
+      );
+      if (pk === "clients") return panelFrame("Clientes","clients",()=>goTab("clients"),
+        <ClientsPage onBack={noop} onNavigate={(to)=>{if(to==="content")goTab("content");else if(to==="chat")goTab("chat");}} clients={clients} setClients={setClients||noop} user={user} canAccess={ca} />
+      );
+      if (pk === "calendar") return panelFrame("Calendário","calendar",()=>goSub("calendar"),
+        <CalendarPage onBack={noop} clients={clients} team={team} user={user} />
+      );
+      if (pk === "ideas") return panelFrame("Ideias","ideas",()=>goSub("ideas"),
+        <IdeasPage onBack={noop} user={user} clients={clients} />
+      );
+      if (pk === "social") return panelFrame("Redes Sociais","social",()=>goTab("clients"),
+        <ReportsPage onBack={noop} clients={clients} team={team} />
+      );
+      /* Generic fallback */
+      const opt = DPANEL_OPTS[pk] || {l:pk,icon:"content"};
+      return panelFrame(opt.l,opt.icon||"content",noop,
+        <div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}>
+          <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}>{dpIco(pk,32,"#D1D5DB")}</div>
+          <p style={{fontSize:13,fontWeight:600}}>{opt.l}</p>
+          <p style={{fontSize:12,marginTop:4}}>Em breve</p>
+        </div>
+      );
+    };
     const dpIco = (k,sz=16,clr="#1A1D23") => {
       const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
         calendar:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
@@ -2792,254 +2843,6 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         content:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
       };
       return p[k]||p.content;
-    };
-
-    /* ── Render a dashboard panel by key ── */
-    const renderDPanel = (pk) => {
-      if (pk === "news") return (
-        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-          <div style={{padding:"18px 20px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23"}}>Comunicados</h3>
-            <span onClick={()=>goSub("news")} style={{fontSize:12,color:"#6B7280",fontWeight:600,cursor:"pointer"}}>Ver todos</span>
-          </div>
-          {newsItems[0]&&<div onClick={()=>goSub("news",newsItems[0].id)} style={{margin:"0 16px 12px",borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:200}}>
-            <img src={newsItems[0].photo||catPhoto(newsItems[0].cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",0);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)"}}/>
-            <span style={{position:"absolute",top:12,left:12,background:catColor[newsItems[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:8,textTransform:"uppercase"}}>{catLabel[newsItems[0].cat]||"Novidade"}</span>
-            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
-              <p style={{fontSize:15,fontWeight:700,color:"#fff",lineHeight:1.3}}>{newsItems[0].title}</p>
-              <p style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4,lineHeight:1.3}}>{newsItems[0].summary||""}</p>
-            </div>
-          </div>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 16px 16px"}}>
-            {newsItems.slice(1,5).map((a,i)=>(
-              <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",position:"relative",height:100}}>
-                <img src={a.photo||catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i+1);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.7) 100%)"}}/>
-                <span style={{position:"absolute",top:6,left:6,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 6px",borderRadius:6,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
-                <p style={{position:"absolute",bottom:6,left:6,right:6,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.2,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-      if (pk === "ai") return (
-        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",padding:"22px 20px"}}>
-          <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23",textAlign:"center"}}>Olá, {user?.name||"Usuário"}!</h3>
-          <p style={{fontSize:13,color:"#6B7280",marginTop:4,lineHeight:1.4,textAlign:"center"}}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:18}}>
-            {[
-              {l:"Criar legenda",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>,bg:"#F0FDF4",bc:"#22C55E"},
-              {l:"Estratégia",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,bg:"#F5F3FF",bc:"#8B5CF6"},
-              {l:"Roteiro Reels",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,bg:"#FEF2F2",bc:"#EF4444"},
-              {l:"Ideias de conteúdo",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/></svg>,bg:"#FFF7ED",bc:"#F97316"},
-              {l:"E-mail marketing",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,bg:"#ECFDF5",bc:"#10B981"},
-              {l:"Copy persuasiva",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,bg:"#FFF1F2",bc:"#F43F5E"},
-              {l:"Hashtags",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>,bg:"#EFF6FF",bc:"#3B82F6"},
-              {l:"Calendário editorial",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,bg:"#FFFBEB",bc:"#D97706"},
-            ].map((p,i)=>(
-              <div key={i} onClick={()=>goSub("ai")} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:14,background:"#fff",cursor:"pointer",border:"1.5px solid rgba(0,0,0,0.08)",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=p.bc;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";e.currentTarget.style.transform="none";}}>
-                <div style={{width:30,height:30,borderRadius:10,background:p.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{p.icon}</div>
-                <span style={{fontSize:13,fontWeight:600,color:"#1A1D23"}}>{p.l}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-      if (pk === "content") return (
-        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-          <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Conteúdo</span>
-            </div>
-            <span onClick={()=>goTab("content")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-          </div>
-          <div style={{padding:"18px 20px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div><span style={{fontSize:11,fontWeight:800,color:LIME,textTransform:"uppercase",letterSpacing:1}}>PRODUÇÃO</span><h3 style={{fontSize:20,fontWeight:800,color:"#1A1D23",marginTop:4}}>Demandas</h3></div>
-              <button onClick={()=>goTab("content")} style={{width:36,height:36,borderRadius:12,background:`${LIME}`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-            </div>
-            <button onClick={()=>goTab("content")} style={{width:"100%",marginTop:16,padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#25D366 0%,#128C7E 50%,#8B5CF6 100%)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2z"/></svg>
-              Publicação Rápida (FB / IG)
-            </button>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:14,padding:"10px 14px",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer"}} onClick={()=>goTab("content")}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              <span style={{fontSize:13,color:"#6B7280",flex:1}}>Todos os clientes</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-            <div style={{display:"flex",gap:0,marginTop:14,alignItems:"center"}}>
-              {["Todos","Posts","Campanhas","Vídeo"].map((t,i)=><button key={i} onClick={()=>goTab("content")} style={{padding:"7px 14px",borderRadius:8,border:"none",background:i===0?LIME:"transparent",color:i===0?"#0D0D0D":"#6B7280",fontSize:12,fontWeight:i===0?700:500,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>)}
-              <div style={{marginLeft:"auto"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-            </div>
-          </div>
-          <div style={{borderTop:"1px solid rgba(0,0,0,0.06)",padding:"8px 20px 16px"}}>
-            {recentDemands.length>0?recentDemands.map((d,i)=>{const sc=stageColor[d.stage]||"#8B8F92";const sn=stageName[d.stage]||d.stage;return(
-              <div key={d.id||i} onClick={()=>goTab("content",d.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none",cursor:"pointer"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:sc,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Sem título"}</p><p style={{fontSize:11,color:"#6B7280"}}>{d.client}</p></div>
-                <span style={{fontSize:10,fontWeight:700,color:sc,background:`${sc}12`,padding:"3px 8px",borderRadius:6,flexShrink:0}}>{sn}</span>
-              </div>
-            );}):<div style={{padding:"30px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Nenhuma demanda em aberto</div>}
-          </div>
-        </div>
-      );
-      /* ── CHAT PANEL — real conversations ── */
-      if (pk === "chat") {
-        const convList = (team||[]).filter(t=>t.id!==user?.id).slice(0,6);
-        return (
-          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("chat",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Chat</span></div>
-              <span onClick={()=>goTab("chat")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div style={{padding:"8px 12px"}}>
-              {convList.length>0?convList.map((t,i)=>(
-                <div key={t.id||i} onClick={()=>goTab("chat")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 8px",borderRadius:12,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F9FA"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{width:38,height:38,borderRadius:"50%",background:`hsl(${(t.name||"").length*40},60%,88%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:`hsl(${(t.name||"").length*40},50%,35%)`,flexShrink:0,overflow:"hidden"}}>{t.photo?<img src={t.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:(t.name||"?")[0]}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:13,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.name||"Usuário"}</p>
-                    <p style={{fontSize:11,color:"#9CA3AF"}}>{t.role==="admin"?"Administrador":"Membro"}</p>
-                  </div>
-                  <div style={{width:8,height:8,borderRadius:"50%",background:t.online?"#22C55E":"#D1D5DB",flexShrink:0}}/>
-                </div>
-              )):<div style={{padding:"20px",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Nenhuma conversa</div>}
-            </div>
-          </div>
-        );
-      }
-
-      /* ── CLIENTS PANEL — real client list ── */
-      if (pk === "clients") {
-        const cl = (clients||[]).filter(c=>c.name).slice(0,8);
-        return (
-          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("clients",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Clientes</span><span style={{fontSize:11,fontWeight:600,color:"#9CA3AF",background:"#F3F4F6",padding:"2px 8px",borderRadius:8}}>{cl.length}</span></div>
-              <span onClick={()=>goTab("clients")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div style={{padding:"8px 12px"}}>
-              {cl.map((c,i)=>{const statusColor=c.status==="active"?"#22C55E":c.status==="paused"?"#F59E0B":"#D1D5DB";return(
-                <div key={c.id||i} onClick={()=>goTab("clients")} style={{display:"flex",alignItems:"center",gap:10,padding:"8px",borderRadius:12,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F9FA"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{width:34,height:34,borderRadius:10,background:c.logo?`url(${c.logo}) center/cover`:`hsl(${(c.name||"").charCodeAt(0)*3},55%,90%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:`hsl(${(c.name||"").charCodeAt(0)*3},40%,35%)`,flexShrink:0}}>{!c.logo&&(c.name||"?")[0]}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:12,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
-                    <p style={{fontSize:10,color:"#9CA3AF"}}>{c.segment||"Marketing"}</p>
-                  </div>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:statusColor,flexShrink:0}}/>
-                </div>
-              );})}
-            </div>
-          </div>
-        );
-      }
-
-      /* ── CALENDAR PANEL — mini calendar + upcoming ── */
-      if (pk === "calendar") {
-        const now=new Date();const y=now.getFullYear();const m=now.getMonth();const d=now.getDate();
-        const daysInMonth=new Date(y,m+1,0).getDate();const firstDay=new Date(y,m,1).getDay();
-        const upcomingDemands=(demands||[]).filter(dm=>dm.due).slice(0,4);
-        return (
-          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("calendar",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Calendário</span></div>
-              <span onClick={()=>goSub("calendar")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#1A1D23",marginBottom:8}}>{["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m]} {y}</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,textAlign:"center"}}>
-                {["D","S","T","Q","Q","S","S"].map((dn,i)=><div key={i} style={{fontSize:9,fontWeight:700,color:"#9CA3AF",padding:3}}>{dn}</div>)}
-                {Array.from({length:firstDay}).map((_,i)=><div key={`e${i}`}/>)}
-                {Array.from({length:daysInMonth}).map((_,i)=>{const day=i+1;const isToday=day===d;return(
-                  <div key={day} style={{fontSize:11,fontWeight:isToday?800:500,color:isToday?"#fff":"#374151",background:isToday?LIME:"transparent",borderRadius:8,padding:"4px 0",cursor:"pointer",lineHeight:"22px"}}>{day}</div>
-                );})}
-              </div>
-              {upcomingDemands.length>0&&<div style={{marginTop:12,borderTop:"1px solid rgba(0,0,0,0.06)",paddingTop:10}}>
-                <p style={{fontSize:10,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Próximas entregas</p>
-                {upcomingDemands.map((dm,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",fontSize:11}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:stageColor[dm.stage]||"#8B8F92",flexShrink:0}}/>
-                  <span style={{fontWeight:600,color:"#1A1D23",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{dm.title}</span>
-                  <span style={{color:"#9CA3AF",fontSize:10,flexShrink:0}}>{dm.due}</span>
-                </div>)}
-              </div>}
-            </div>
-          </div>
-        );
-      }
-
-      /* ── IDEAS PANEL — real ideas list ── */
-      if (pk === "ideas") {
-        const ideaList=(demands||[]).filter(dm=>dm.stage==="idea").slice(0,5);
-        const fallbackIdeas=[{title:"Campanha de Natal",client:"Todos",votes:5},{title:"Série de Reels educativos",client:"Cliente A",votes:3},{title:"Collab com influencer local",client:"Cliente B",votes:7}];
-        const items=ideaList.length>0?ideaList:fallbackIdeas;
-        return (
-          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("ideas",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Ideias</span></div>
-              <span onClick={()=>goSub("ideas")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div style={{padding:"8px 16px"}}>
-              {items.map((idea,i)=>(
-                <div key={i} onClick={()=>goSub("ideas")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 4px",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none",cursor:"pointer"}}>
-                  <div style={{width:32,height:32,borderRadius:10,background:"#FFFBEB",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{dpIco("ideas",16,"#D97706")}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:12,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{idea.title||"Sem título"}</p>
-                    <p style={{fontSize:10,color:"#9CA3AF"}}>{idea.client||"Geral"}</p>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-6 0v4"/><path d="M18 14v-3a1 1 0 00-1-1h-1"/><path d="M15 14v-1a1 1 0 00-1-1h-1"/><path d="M12 14v-1a1 1 0 00-1-1H5a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-2"/></svg>
-                    <span style={{fontSize:11,fontWeight:700,color:"#D97706"}}>{idea.votes||0}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      }
-
-      /* ── SOCIAL PANEL — connection status ── */
-      if (pk === "social") {
-        const socialClients=(clients||[]).filter(c=>c.socials).slice(0,5);
-        return (
-          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("social",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Redes Sociais</span></div>
-              <span onClick={()=>goSub("social")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              {socialClients.length>0?socialClients.map((c,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none"}}>
-                  <span style={{fontSize:12,fontWeight:600,color:"#1A1D23",flex:1}}>{c.name}</span>
-                  <div style={{display:"flex",gap:4}}>
-                    {c.socials?.fb&&<div style={{width:22,height:22,borderRadius:6,background:"#EFF6FF",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></div>}
-                    {c.socials?.ig&&<div style={{width:22,height:22,borderRadius:6,background:"#FFF1F2",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E4405F" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg></div>}
-                  </div>
-                </div>
-              )):<div style={{padding:"16px",textAlign:"center"}}>
-                <p style={{fontSize:12,color:"#9CA3AF"}}>Conecte as redes dos clientes</p>
-                <button onClick={()=>goTab("clients")} style={{marginTop:8,padding:"8px 16px",borderRadius:10,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Ir para Clientes</button>
-              </div>}
-            </div>
-          </div>
-        );
-      }
-
-      /* Generic fallback */
-      const opt = DPANEL_OPTS[pk] || {l:pk,icon:"content"};
-      return (
-        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-          <div style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco(pk,16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>{opt.l}</span></div>
-            <span onClick={()=>{ if(pk==="chat")goTab("chat"); else if(pk==="clients")goTab("clients"); else if(pk==="calendar")goSub("calendar"); else if(pk==="ideas")goSub("ideas"); else if(pk==="social")goSub("social"); }} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-          </div>
-          <div style={{padding:"30px 20px",textAlign:"center",color:"#9CA3AF"}}>
-            <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}>{dpIco(pk,32,"#D1D5DB")}</div>
-            <p style={{fontSize:13,fontWeight:600,color:"#9CA3AF"}}>{opt.l}</p>
-            <p style={{fontSize:12,marginTop:4}}>Em breve neste painel</p>
-          </div>
-        </div>
-      );
     };
     return (
       <div style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
@@ -16109,7 +15912,7 @@ ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} setClients={setSharedClients} setDemands={setSharedDemands} setArticles={setSharedArticles} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
@@ -16582,6 +16385,12 @@ html.uh-desktop .tinput{font-size:14px!important;padding:10px 14px;border-radius
 html.uh-desktop .bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:20px!important;align-items:start!important}
+.panel-phone{-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.panel-phone::-webkit-scrollbar{width:3px}
+.panel-phone::-webkit-scrollbar-track{background:transparent}
+.panel-phone::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.1);border-radius:3px}
+.panel-phone .pg{padding:0!important;max-width:none!important;margin:0!important}
+.panel-phone .back-btn,.panel-phone .sub-header-back{display:none!important}
 .sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"};max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid-btn{padding:14px 6px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.06)"};display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:all .15s ease;color:${dark?"#E8EAED":"inherit"}}.grid-btn:active{transform:scale(0.95)}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
