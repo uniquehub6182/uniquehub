@@ -2873,8 +2873,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div>
         {/* ── 3 BESPOKE PANELS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,alignItems:"start"}}>
-            {dPanels.map((pk,idx) => <div key={`panel-${idx}`}>{renderDPanel(pk)}</div>)}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"start"}}>
+            {dPanels.map((pk,idx) => <div key={`panel-${idx}`} style={{minWidth:0,overflow:"hidden"}}>{renderDPanel(pk)}</div>)}
           </div>
         </div>
         {/* Panel Editor Sidebar */}
@@ -16360,19 +16360,17 @@ html.uh-desktop .tinput{font-size:14px!important;padding:10px 14px;border-radius
 html.uh-desktop .bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:20px!important;align-items:start!important}
-.phone-block{overflow:hidden;isolation:isolate}
-.phone-viewport{transform:scale(1);-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.phone-block{overflow:hidden!important;isolation:isolate;max-width:100%!important;width:100%!important}
+.phone-viewport{transform:scale(1);-webkit-overflow-scrolling:touch;scrollbar-width:thin;max-width:100%!important;width:100%!important}
 .phone-viewport::-webkit-scrollbar{width:3px}
 .phone-viewport::-webkit-scrollbar-track{background:transparent}
 .phone-viewport::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.1);border-radius:3px}
 .phone-viewport *{max-width:100%!important;box-sizing:border-box!important}
 .phone-viewport [style*="fixed"]{position:absolute!important}
-.phone-viewport .pg{padding:0!important;max-width:none!important;margin:0!important;min-height:auto!important;position:relative!important}
-.phone-viewport .screen,.phone-viewport .content,.phone-viewport .app{position:relative!important;height:auto!important;min-height:auto!important;max-height:none!important;overflow:visible!important;padding:0!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important}
-.phone-viewport .bnav{display:none!important}
-.phone-viewport .back-btn,.phone-viewport [class*="SubWrap"]>div:first-child{display:none!important}
-.phone-viewport input,.phone-viewport textarea{font-size:13px!important}
-.phone-viewport .tinput{font-size:13px!important;padding:8px 12px!important}
+html.uh-desktop .phone-viewport .screen,html.uh-desktop .phone-viewport .content,html.uh-desktop .phone-viewport .app{position:relative!important;height:auto!important;min-height:auto!important;max-height:none!important;overflow:visible!important;padding:0!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important}
+html.uh-desktop .phone-viewport .pg{padding:8px 12px!important;max-width:none!important;margin:0!important;min-height:auto!important;position:relative!important}
+html.uh-desktop .phone-viewport .bnav{display:none!important}
+html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!important;height:auto!important;min-height:auto!important;overflow:visible!important;max-width:100%!important;width:100%!important}
 .sheet{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:${dark?"#1C2228":"#fff"};border-radius:24px 24px 0 0;z-index:101;padding:16px 20px 28px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);border:none;box-shadow:0 -4px 30px ${dark?"rgba(0,0,0,0.4)":"rgba(25,33,38,0.15)"};max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid-btn{padding:14px 6px;border-radius:16px;background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.2)":"rgba(25,33,38,0.06)"};display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:all .15s ease;color:${dark?"#E8EAED":"inherit"}}.grid-btn:active{transform:scale(0.95)}
 .send-btn{width:44px;height:44px;border-radius:14px;background:${THEME_MAP[themeColor]||"#BBF246"};border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#192126;flex-shrink:0;box-shadow:0 2px 8px ${THEME_MAP[themeColor]||"#BBF246"}30}
