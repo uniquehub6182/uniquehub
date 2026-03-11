@@ -15905,8 +15905,8 @@ ${(()=>{
 })()}
 ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
-${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px;box-sizing:border-box}
-html.uh-desktop .chat-desktop-wrap{max-width:860px;margin:0 auto;height:calc(100vh - 100px);position:relative;transform:scale(1);border-radius:16px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.08);padding:0}
+${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash):not(.chat-desktop-wrap){max-width:860px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px;box-sizing:border-box}
+html.uh-desktop .chat-desktop-wrap{max-width:860px;margin:0 auto;height:calc(100vh - 100px);position:relative;transform:scale(1);border-radius:16px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.08);padding:0;width:100%}
 html.uh-desktop .chat-desktop-wrap>div{position:absolute!important;inset:0!important;z-index:1!important}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
