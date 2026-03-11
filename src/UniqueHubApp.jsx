@@ -2772,8 +2772,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     return (
       <div style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
         {/* ── HEADER ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
-          <div style={{background:"#1A1D23",borderRadius:24,padding:"24px 28px 22px",position:"relative",overflow:"visible"}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
+          <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
             <div style={{display:"flex",gap:20}}>
               {/* Avatar — coluna esquerda, ocupa toda altura, vaza pra baixo */}
               <div style={{flexShrink:0,alignSelf:"stretch",display:"flex",alignItems:"center",position:"relative",zIndex:2}}>
