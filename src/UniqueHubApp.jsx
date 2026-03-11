@@ -7581,8 +7581,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   /* ── NEW CHAT MODAL ── */
   const NewChatModal = showNewChat ? (
     <>
-      <div className="overlay" onClick={() => setShowNewChat(false)} />
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
+      <div className="overlay" onClick={() => setShowNewChat(false)} style={chatIsDesktop?{zIndex:10000}:{}} />
+      <div style={{ position:"fixed", bottom:chatIsDesktop?"auto":0, top:chatIsDesktop?"50%":"auto", left:chatIsDesktop?"50%":0, right:chatIsDesktop?"auto":0, transform:chatIsDesktop?"translate(-50%,-50%)":"none", maxWidth:chatIsDesktop?480:430, width:chatIsDesktop?"90%":"auto", margin:chatIsDesktop?"0":"0 auto", zIndex:chatIsDesktop?10001:101, background:B.bgCard, borderRadius:chatIsDesktop?20:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:chatIsDesktop?"80vh":"85vh", overflowY:"auto", boxShadow:chatIsDesktop?"0 20px 60px rgba(0,0,0,0.2)":"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
         <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
         <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Nova conversa</h3>
         <button onClick={() => { setShowNewChat(false); setShowNewGroup(true); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit", borderBottom:`1px solid ${B.border}` }}>
@@ -7605,8 +7605,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   /* ── NEW GROUP MODAL ── */
   const NewGroupModal = showNewGroup ? (
     <>
-      <div className="overlay" onClick={() => setShowNewGroup(false)} />
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:430, margin:"0 auto", zIndex:101, background:B.bgCard, borderRadius:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
+      <div className="overlay" onClick={() => setShowNewGroup(false)} style={chatIsDesktop?{zIndex:10000}:{}} />
+      <div style={{ position:"fixed", bottom:chatIsDesktop?"auto":0, top:chatIsDesktop?"50%":"auto", left:chatIsDesktop?"50%":0, right:chatIsDesktop?"auto":0, transform:chatIsDesktop?"translate(-50%,-50%)":"none", maxWidth:chatIsDesktop?480:430, width:chatIsDesktop?"90%":"auto", margin:chatIsDesktop?"0":"0 auto", zIndex:chatIsDesktop?10001:101, background:B.bgCard, borderRadius:chatIsDesktop?20:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:chatIsDesktop?"80vh":"85vh", overflowY:"auto", boxShadow:chatIsDesktop?"0 20px 60px rgba(0,0,0,0.2)":"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
         <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
         <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Novo grupo</h3>
         <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nome do grupo" className="tinput" style={{ marginBottom:12 }} />
