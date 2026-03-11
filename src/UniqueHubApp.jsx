@@ -2943,8 +2943,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div>
         {/* ── 3 BESPOKE PANELS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,alignItems:"start"}}>
-            {dPanels.map(pk => <div key={pk}>{renderDPanel(pk)}</div>)}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,alignItems:"start"}}>
+            {dPanels.map((pk,idx) => <div key={`panel-${idx}`}>{renderDPanel(pk)}</div>)}
           </div>
         </div>
         {/* Panel Editor Sidebar */}
@@ -2960,14 +2960,18 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
               {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};savePrefsToCloud?.(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Painéis do Dashboard</p>
-            {[0,1,2].map(slot=>{const current=dPanels[slot];return(
-              <div key={slot} style={{marginBottom:14}}>
-                <p style={{fontSize:12,fontWeight:600,color:"#6B7280",marginBottom:6}}>Painel {slot+1} — {DPANEL_OPTS[current]?.l||current}</p>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{padding:"8px 10px",borderRadius:10,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:current===k?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:6}}><span>{v.icon}</span>{v.l}</button>)}
+            {dPanels.map((current,slot)=>(
+              <div key={`slot-${slot}`} style={{marginBottom:14,background:"#F8F9FA",borderRadius:12,padding:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <p style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Painel {slot+1} — {DPANEL_OPTS[current]?.icon} {DPANEL_OPTS[current]?.l||current}</p>
+                  {dPanels.length>1&&<button onClick={()=>{const np=dPanels.filter((_,i)=>i!==slot);setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{width:24,height:24,borderRadius:6,border:"none",background:"#FEE2E2",color:"#EF4444",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700}}>×</button>}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{padding:"6px 8px",borderRadius:8,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:current===k?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:13}}>{v.icon}</span>{v.l}</button>)}
                 </div>
               </div>
-            );})}
+            ))}
+            {dPanels.length<9&&<button onClick={()=>{const np=[...dPanels,"chat"];setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{width:"100%",padding:"12px",borderRadius:10,border:`2px dashed ${LIME}`,background:`${LIME}08`,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:4}}>+ Adicionar painel</button>}
           </div>
         </div>}
         {showPanelEditor&&<div onClick={()=>setShowPanelEditor(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:199}}/>}
