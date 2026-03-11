@@ -2801,44 +2801,56 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       }
     };
     return (
-      <div style={{minHeight:"100vh",background:"#F5F6F8",paddingBottom:100,margin:0}}>
-        {/* ── HEADER — same width as panels, rounded corners ── */}
+      <div style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
+        {/* ── HEADER — mockup replica ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
-          <div style={{background:"#1A1D23",borderRadius:24,padding:"16px 24px 20px"}}>
-            {/* Top row */}
-            <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                <div style={{width:42,height:42,borderRadius:14,overflow:"hidden",background:`${LIME}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:LIME,border:"2px solid rgba(187,242,70,0.25)"}}>{user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:initials}</div>
-                <div><div style={{fontSize:17,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}}>Olá, {user?.nick||user?.name?.split(" ")[0]||"Usuário"}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
+          <div style={{background:"#1A1D23",borderRadius:24,padding:"20px 28px 20px",position:"relative",overflow:"visible"}}>
+            {/* Main row */}
+            <div style={{display:"flex",alignItems:"center",gap:20}}>
+              {/* Large avatar — overflows */}
+              <div style={{width:90,height:90,borderRadius:"50%",overflow:"hidden",background:"#333",flexShrink:0,border:"4px solid #2A2D33",marginBottom:-20,zIndex:2}}>
+                {user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${LIME}40,${LIME}15)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:900,color:LIME}}>{initials}</div>}
               </div>
-              <div style={{background:LIME,borderRadius:8,padding:"6px 14px",fontSize:10,fontWeight:800,color:"#0D0D0D",letterSpacing:"0.3px",flexShrink:0}}>{dateStr}</div>
-              <div style={{flex:1}}/>
-              <div style={{position:"relative",flexShrink:0}}>
-                <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"9px 14px",border:"1px solid rgba(255,255,255,0.08)",width:240}}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
+              {/* Name block */}
+              <div style={{flexShrink:0}}>
+                <div style={{fontSize:22,fontWeight:800,color:"#fff",letterSpacing:"-0.4px"}}>Olá, {user?.name?.split(" ")[0]||"Matheus"}!</div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginTop:2}}>{agencyIdentity?.name||"Unique Marketing"}</div>
+              </div>
+              {/* Search bar */}
+              <div style={{position:"relative",flex:1,maxWidth:400}}>
+                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:12,display:"flex",alignItems:"center",gap:8,padding:"11px 16px",border:"1px solid rgba(255,255,255,0.08)"}}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Busca" style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:14,color:"#fff",outline:"none",flex:1}}/>
                 </div>
                 {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.3)",overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
               </div>
-              <div style={{display:"flex",gap:6}}>
-                {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>setShowPanelEditor(!showPanelEditor)}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
+              {/* Date badge */}
+              <div style={{flexShrink:0,textAlign:"right",lineHeight:1.3}}>
+                <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.7)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div>
+                <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.7)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div>
+              </div>
+              {/* Icons */}
+              <div style={{display:"flex",gap:8,flexShrink:0}}>
+                <button onClick={()=>goTab("chat")} style={{width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+                <button onClick={()=>goSub("notifs")} style={{width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{notifCount>0&&<span style={{position:"absolute",top:6,right:6,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
               </div>
             </div>
             {/* Metric cards INSIDE header */}
-            <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12}}>
-              {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:14,padding:"14px 18px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-                <div style={{position:"absolute",top:-12,right:-12,width:50,height:50,borderRadius:"50%",background:"rgba(0,0,0,0.04)"}}/>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginTop:16}}>
+              {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:14,padding:"16px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                <div style={{position:"absolute",top:-15,right:-15,width:55,height:55,borderRadius:"50%",background:"rgba(0,0,0,0.04)"}}/>
                 <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
-                <div style={{fontSize:26,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:2}}>{w.val}</div>
-                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1,fontWeight:500}}>{w.sub}</div>
+                <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:3}}>{w.val}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:2,fontWeight:500}}>{w.sub}</div>
               </div>)}
             </div>
           </div>
         </div>
         {/* ── PILLS + 3 EMBEDDED SCREENS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
-          {/* Pills */}
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+          {/* Pills with edit button */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14,alignItems:"center"}}>
+            <button onClick={()=>setShowPanelEditor(!showPanelEditor)} style={{width:36,height:36,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
               <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:6,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:"#1A1D23",transition:"all .12s",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.boxShadow=`0 2px 8px ${LIME}15`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.03)";}}>
                 <div style={{width:22,height:22,borderRadius:6,background:`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:100}}>{p.badge}</span>}
