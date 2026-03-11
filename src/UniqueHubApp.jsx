@@ -2493,7 +2493,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
   const cfg = dashCfg || cfgDefault;
   /* Desktop panel state — top level for React hooks rules */
-  const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","content","ai"]));
+  const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [showPanelEditor, setShowPanelEditor] = useState(false);
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const isDark = B.bg === "#0D0D0D";
@@ -2778,7 +2778,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       financial:{label:"Financeiro",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>},
       gamify:{label:"Ranking",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
     };
-    const defaultPanels = cfg.desktopPanels || ["news","content","ai"];
+    const defaultPanels = cfg.desktopPanels || ["news","ai","content"];
     const saveDPanels = (panels) => { setDPanels(panels); const newCfg = {...cfg, desktopPanels: panels}; savePrefsToCloud?.(newCfg); };
     const saveMetricCount = (n) => { setMetricCount(n); const newCfg = {...cfg, desktopMetricCount: n}; savePrefsToCloud?.(newCfg); };
     /* Render a real screen inside a panel */
