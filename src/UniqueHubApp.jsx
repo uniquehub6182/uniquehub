@@ -2773,6 +2773,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       gamify:{label:"Ranking",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
     };
     const defaultPanels = cfg.desktopPanels || ["news","content","ai"];
+    const [dPanels, setDPanels] = useState(defaultPanels);
+    const [showPanelEditor, setShowPanelEditor] = useState(false);
+    const saveDPanels = (panels) => { setDPanels(panels); const newCfg = {...cfg, desktopPanels: panels}; savePrefsToCloud?.(newCfg); };
     /* Render a real screen inside a panel */
     const renderPanel = (key) => {
       const props = { onBack:()=>{}, user, canAccess:ca };
@@ -2793,7 +2796,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       }
     };
     return (
-      <div style={{minHeight:"100vh",background:"#000000",paddingBottom:100,margin:0}}>
+      <div style={{minHeight:"100vh",background:"#F5F6F8",paddingBottom:100,margin:0}}>
         {/* ── HEADER — rounded, same width as panels ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
           <div style={{background:"#1A1D23",borderRadius:24,padding:"16px 24px 20px",marginBottom:16}}>
@@ -2813,7 +2816,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
                 {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.3)",overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
               </div>
               <div style={{display:"flex",gap:6}}>
-                {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>{setEc(JSON.parse(JSON.stringify(cfg)));setShowEditor(true);}}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
+                {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>setShowPanelEditor(!showPanelEditor)}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
               </div>
             </div>
             {/* Metric cards INSIDE header */}
@@ -2832,17 +2835,17 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           {/* Pills */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
-              <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:6,background:"#16181D",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:"#aaa",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.color=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.06)";e.currentTarget.style.color="#aaa";}}>
-                <div style={{width:22,height:22,borderRadius:6,background:`${LIME}10`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:100}}>{p.badge}</span>}
+              <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:6,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:"#1A1D23",transition:"all .12s",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.boxShadow=`0 2px 8px ${LIME}15`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.03)";}}>
+                <div style={{width:22,height:22,borderRadius:6,background:`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:100}}>{p.badge}</span>}
               </div>);})}
           </div>
           {/* Screens */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,alignItems:"start"}}>
-            {defaultPanels.map((panelKey,idx) => {
+            {dPanels.map((panelKey,idx) => {
               const def = PANEL_DEFS[panelKey];
               if(!def) return null;
               return (
-                <div key={panelKey} style={{background:"#FFFFFF",borderRadius:20,border:"1px solid rgba(255,255,255,0.06)",boxShadow:"0 4px 20px rgba(0,0,0,0.3)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <div key={panelKey} style={{background:"#FFFFFF",borderRadius:20,border:"1px solid rgba(0,0,0,0.07)",boxShadow:"0 2px 12px rgba(0,0,0,0.06)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
                   {/* Panel header bar */}
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#FAFBFC",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -2864,6 +2867,40 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             })}
           </div>
         </div>
+        {/* Panel Editor */}
+        {showPanelEditor&&<div style={{position:"fixed",top:0,right:0,bottom:0,width:340,background:"#fff",boxShadow:"-4px 0 30px rgba(0,0,0,0.12)",zIndex:200,display:"flex",flexDirection:"column",animation:"slideInRight .25s ease"}}>
+          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+          <div style={{padding:"20px 20px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <h3 style={{fontSize:16,fontWeight:800,color:"#1A1D23"}}>Personalizar Dashboard</h3>
+            <button onClick={()=>setShowPanelEditor(false)} style={{width:32,height:32,borderRadius:8,background:"#F5F5F5",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
+            <p style={{fontSize:12,color:"#6B7280",marginBottom:16}}>Escolha 3 telas para exibir no dashboard. Clique para adicionar ou remover.</p>
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Painéis ativos</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
+              {dPanels.map((pk,i)=>{const d=PANEL_DEFS[pk];return d?<div key={pk} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:`${LIME}08`,border:`1.5px solid ${LIME}30`,borderRadius:12}}>
+                <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                  <button onClick={()=>{if(i>0){const n=[...dPanels];[n[i-1],n[i]]=[n[i],n[i-1]];saveDPanels(n);setDPanels(n);}}} disabled={i===0} style={{background:"none",border:"none",cursor:i===0?"default":"pointer",opacity:i===0?0.2:1,padding:0,display:"flex"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+                  <button onClick={()=>{if(i<dPanels.length-1){const n=[...dPanels];[n[i],n[i+1]]=[n[i+1],n[i]];saveDPanels(n);setDPanels(n);}}} disabled={i===dPanels.length-1} style={{background:"none",border:"none",cursor:i===dPanels.length-1?"default":"pointer",opacity:i===dPanels.length-1?0.2:1,padding:0,display:"flex"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+                </div>
+                <div style={{width:28,height:28,borderRadius:8,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{d.icon}</div>
+                <span style={{flex:1,fontSize:13,fontWeight:700,color:"#1A1D23"}}>{d.label}</span>
+                <button onClick={()=>{const n=dPanels.filter(x=>x!==pk);saveDPanels(n);setDPanels(n);}} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",color:"#EF4444"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>:null;})}
+            </div>
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Disponíveis</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {Object.entries(PANEL_DEFS).filter(([k])=>!dPanels.includes(k)).map(([k,d])=>(
+                <div key={k} onClick={()=>{if(dPanels.length<3){const n=[...dPanels,k];saveDPanels(n);setDPanels(n);}}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#F8F9FA",border:"1.5px dashed rgba(0,0,0,0.1)",borderRadius:12,cursor:dPanels.length>=3?"not-allowed":"pointer",opacity:dPanels.length>=3?0.4:1}}>
+                  <div style={{width:28,height:28,borderRadius:8,background:"rgba(0,0,0,0.04)",display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280"}}>{d.icon}</div>
+                  <span style={{fontSize:13,fontWeight:600,color:"#6B7280"}}>{d.label}</span>
+                  <div style={{marginLeft:"auto"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>}
+        {showPanelEditor&&<div onClick={()=>setShowPanelEditor(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:199}}/>}
         {EditorSheetJSX}
       </div>
     );
