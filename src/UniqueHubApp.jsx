@@ -2870,9 +2870,17 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
                 ))}
               </div>
             </div>
-            {/* PANEL 3 — Demandas (Content production) */}
+            {/* PANEL 3 — Conteúdo / Demandas */}
             <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-              <div style={{padding:"22px 20px"}}>
+              {/* Panel header — Conteúdo + Abrir */}
+              <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Conteúdo</span>
+                </div>
+                <span onClick={()=>goTab("content")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+              </div>
+              <div style={{padding:"18px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div><span style={{fontSize:11,fontWeight:800,color:LIME,textTransform:"uppercase",letterSpacing:1}}>PRODUÇÃO</span><h3 style={{fontSize:20,fontWeight:800,color:"#1A1D23",marginTop:4}}>Demandas</h3></div>
                   <button onClick={()=>goTab("content")} style={{width:36,height:36,borderRadius:12,background:`${LIME}`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
