@@ -16378,6 +16378,8 @@ html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgb
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
 html.uh-desktop .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
 html.uh-desktop .bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
+html.uh-desktop .sheet{bottom:auto!important;top:50%!important;left:50%!important;right:auto!important;transform:translate(-50%,-50%)!important;max-width:480px!important;width:90%!important;border-radius:20px!important;max-height:80vh!important;z-index:10001!important;animation:fadeIn .2s ease!important}
+html.uh-desktop .overlay{z-index:10000!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:20px!important;align-items:start!important}
 .phone-block{overflow:hidden!important;isolation:isolate;max-width:100%!important;width:100%!important}
