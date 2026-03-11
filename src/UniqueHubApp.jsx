@@ -7625,7 +7625,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:chatIsDesktop?"transparent":B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto" }}>
+    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:chatIsDesktop?B.bgCard:B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto", borderRadius:chatIsDesktop?20:0, overflow:chatIsDesktop?"hidden":"visible" }}>
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto"}}>
         {ToastEl}
