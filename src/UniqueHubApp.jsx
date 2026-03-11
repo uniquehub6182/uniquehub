@@ -2751,164 +2751,175 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       </>
   );
 
-  /* ═══════ DESKTOP DASHBOARD — premium dark SaaS ═══════ */
+  /* ═══════ DESKTOP DASHBOARD V6 — light premium innovative ═══════ */
   if (isDesktop) {
-    const DK = { bg:"#0C0D0F", card:"#16181D", brd:"rgba(255,255,255,0.06)", txt:"#E8EAED", mut:"#6B7280", acc:LIME, shd:"0 1px 2px rgba(0,0,0,0.4)", hdr:"#111215" };
+    const L = { bg:"#F5F6F8", card:"#FFFFFF", brd:"rgba(0,0,0,0.06)", txt:"#1A1D23", mut:"#6B7280", acc:LIME, shd:"0 1px 3px rgba(0,0,0,0.05),0 1px 2px rgba(0,0,0,0.03)" };
     const today = new Date();
     const dateStr = today.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"}).replace(/^\w/,c=>c.toUpperCase());
-    const DCard = ({children,style:s}) => <div style={{background:DK.card,borderRadius:16,border:`1px solid ${DK.brd}`,padding:"20px 22px",boxShadow:DK.shd,...(s||{})}}>{children}</div>;
-    const DTitle = ({t,action,onClick}) => <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontSize:15,fontWeight:700,color:DK.txt,letterSpacing:"-0.2px"}}>{t}</h3>{action&&<span onClick={onClick} style={{fontSize:12,color:DK.acc,fontWeight:600,cursor:"pointer",opacity:0.8}}>{action}</span>}</div>;
     const metricCards = cfg.cards.slice(0,4).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
-    const newsItems=((articles||[]).length>0?articles:(articlesLoaded?[{id:"f1",title:"IA no Marketing: como usar em 2025",cat:"trends",date:"Hoje"},{id:"f2",title:"Instagram muda algoritmo do Reels",cat:"updates",date:"Ontem"},{id:"f3",title:"5 técnicas para dobrar engajamento",cat:"tips",date:"2 dias"},{id:"f4",title:"Case: triplicamos o ROI de um e-commerce",cat:"cases",date:"3 dias"}]:[])).slice(0,4);
-    const catColor={trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9"};
-    const catLabel={trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia"};
-    const catPhoto=(cat,seed)=>{const p={trends:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=120&q=80"],default:["https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=120&q=80"]};return(p[cat]||p.default)[seed%(p[cat]||p.default).length];};
+    const newsItems=((articles||[]).length>0?articles:(articlesLoaded?[{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA estão transformando campanhas.",cat:"trends",date:"Hoje"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates",date:"Ontem"},{id:"f3",title:"5 técnicas para dobrar o engajamento",summary:"Estratégias comprovadas para Stories e Feed.",cat:"tips",date:"2 dias"},{id:"f4",title:"Case: triplicamos o ROI de um e-commerce",summary:"Estudo de caso real com dados de campanha.",cat:"cases",date:"3 dias"}]:[])).slice(0,3);
+    const catColor={trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9"};
+    const catLabel={trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia"};
+    const catPhoto=(cat,seed)=>({trends:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=80"],updates:["https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&q=80"],tips:["https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=400&q=80"],cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&q=80"],default:["https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=400&q=80"]}[cat]||["https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=400&q=80"])[seed%1];
     const CDATA=(clients||[]).filter(c=>c.name).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt"));
     const recentDemands=(demands||[]).slice(0,5);
     const stageColor={idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
     const stageName={idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
+    const bgP=["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6"];
     return (
-      <div style={{minHeight:"100vh",background:DK.bg,color:DK.txt,paddingBottom:100}}>
-        {/* ── TOP BAR ── */}
-        <div style={{background:DK.hdr,borderBottom:`1px solid ${DK.brd}`}}>
-          <div style={{maxWidth:1440,margin:"0 auto",padding:"10px 28px",display:"flex",alignItems:"center",gap:16}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-              <div style={{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:`${LIME}25`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:LIME}}>{user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:initials}</div>
-              <div><div style={{fontSize:14,fontWeight:700,color:"#fff"}}>Olá, {user?.nick||user?.name?.split(" ")[0]||"Usuário"}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.35)"}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
-            </div>
-            <div style={{background:"rgba(187,242,70,0.08)",border:"1px solid rgba(187,242,70,0.15)",borderRadius:8,padding:"4px 12px",fontSize:11,fontWeight:600,color:LIME,flexShrink:0}}>{dateStr}</div>
-            <div style={{flex:1}}/>
-            <div style={{position:"relative",width:260,flexShrink:0}}>
-              <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"7px 12px",border:"1px solid rgba(255,255,255,0.06)"}}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
+      <div style={{minHeight:"100vh",background:L.bg,paddingBottom:100,margin:0}}>
+        {/* ── HEADER — flush to top, gradient banner ── */}
+        <div style={{background:"linear-gradient(135deg,#1A1D23 0%,#2D3139 50%,#1A1D23 100%)",margin:0,padding:0}}>
+          <div style={{maxWidth:1440,margin:"0 auto",padding:"14px 32px 0"}}>
+            {/* Top row */}
+            <div style={{display:"flex",alignItems:"center",gap:14,paddingBottom:14}}>
+              <div style={{width:40,height:40,borderRadius:12,overflow:"hidden",background:`${LIME}25`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:LIME,flexShrink:0,border:"2px solid rgba(187,242,70,0.3)"}}>{user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:initials}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.4px"}}>Olá, {user?.nick||user?.name?.split(" ")[0]||"Usuário"} 👋</div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginTop:1}}>{dateStr} · {agencyIdentity?.name||"Unique Marketing 360"}</div>
               </div>
-              {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#1E2028",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",border:`1px solid ${DK.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"8px 12px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${DK.brd}`:"none",fontSize:13,fontWeight:600,color:DK.txt}}>{r.l}</div>)}</div>}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"8px 14px",border:"1px solid rgba(255,255,255,0.08)",width:240}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
+                </div>
+                {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:56,right:100,width:260,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.15)",border:`1px solid ${L.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${L.brd}`:"none",fontSize:13,fontWeight:600,color:L.txt}}>{r.l}</div>)}</div>}
+                {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>{setEc(JSON.parse(JSON.stringify(cfg)));setShowEditor(true);}}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
+              </div>
             </div>
-            <div style={{display:"flex",gap:4}}>
-              {[{icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>{setEc(JSON.parse(JSON.stringify(cfg)));setShowEditor(true);}}].map((b,i)=><button key={i} onClick={b.act} style={{width:34,height:34,borderRadius:8,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:6,height:6,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
+          </div>
+          {/* Metrics inside header — overlap into body */}
+          <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0",transform:"translateY(20px)"}}>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12}}>
+              {metricCards.map((w,i)=>{
+                const colors=[{bg:"linear-gradient(135deg,#BBF246,#9AE010)",txt:"#0D0D0D",sub:"rgba(0,0,0,0.4)"},{bg:"linear-gradient(135deg,#3B82F6,#1D4ED8)",txt:"#fff",sub:"rgba(255,255,255,0.6)"},{bg:"linear-gradient(135deg,#8B5CF6,#6D28D9)",txt:"#fff",sub:"rgba(255,255,255,0.6)"},{bg:"linear-gradient(135deg,#EC4899,#BE185D)",txt:"#fff",sub:"rgba(255,255,255,0.6)"}][i]||{bg:L.card,txt:L.txt,sub:L.mut};
+                return(
+                  <div key={i} onClick={()=>nav(w.k)} style={{background:colors.bg,borderRadius:16,padding:"18px 20px",cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,0.1)",transition:"transform .15s,box-shadow .15s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 30px rgba(0,0,0,0.15)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.1)";}}>
+                    <div style={{position:"absolute",top:-20,right:-20,width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,0.08)"}}/>
+                    <div style={{position:"absolute",bottom:-30,right:20,width:60,height:60,borderRadius:"50%",background:"rgba(255,255,255,0.05)"}}/>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                      <span style={{fontSize:11,fontWeight:700,color:colors.sub,textTransform:"uppercase",letterSpacing:0.4}}>{w.l}</span>
+                      <div style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={colors.txt} strokeWidth="2.5" strokeLinecap="round" style={{opacity:0.6}}><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+                    </div>
+                    <div style={{fontSize:30,fontWeight:900,color:colors.txt,letterSpacing:"-1px",lineHeight:1}}>{w.val}</div>
+                    <div style={{fontSize:12,color:colors.sub,marginTop:4,fontWeight:500}}>{w.sub}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
-        {/* ── MAIN GRID ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 28px 0"}}>
-          {/* ROW 1: Metrics */}
-          <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginBottom:16}}>
-            {metricCards.map((w,i)=>(
-              <div key={i} onClick={()=>nav(w.k)} style={{background:i===0?LIME:DK.card,borderRadius:14,padding:"16px 18px",border:i===0?"none":`1px solid ${DK.brd}`,cursor:"pointer",position:"relative",boxShadow:DK.shd,transition:"transform .1s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-1px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <span style={{fontSize:10,fontWeight:700,color:i===0?"rgba(0,0,0,0.4)":DK.mut,textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</span>
-                  <div style={{width:28,height:28,borderRadius:8,background:i===0?"rgba(0,0,0,0.1)":"rgba(255,255,255,0.04)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={i===0?"rgba(0,0,0,0.3)":"rgba(255,255,255,0.2)"} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></div>
+        {/* ── BODY ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"36px 32px 0"}}>
+          {/* Shortcut pills */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
+            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
+              <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:7,background:L.card,border:`1px solid ${L.brd}`,borderRadius:10,padding:"7px 14px",cursor:"pointer",fontSize:12,fontWeight:600,color:L.txt,transition:"all .12s",boxShadow:"0 1px 2px rgba(0,0,0,0.04)"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.boxShadow=`0 2px 8px ${LIME}20`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=L.brd;e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.04)";}}>
+                <div style={{width:24,height:24,borderRadius:6,background:`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{pillIcon(pk)}</div>
+                {p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:100}}>{p.badge}</span>}
+              </div>);})}
+          </div>
+
+          {/* MAIN GRID — 3 columns */}
+          <div style={{display:"grid",gridTemplateColumns:"1.1fr 1fr 1fr",gap:16,alignItems:"start"}}>
+
+            {/* COL 1 — News as visual cards */}
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h3 style={{fontSize:15,fontWeight:700,color:L.txt}}>Comunicados</h3><span onClick={()=>goSub("news")} style={{fontSize:12,color:LIME,fontWeight:600,cursor:"pointer"}}>Ver todos →</span></div>
+              {newsItems.map((a,i)=>(
+                <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{background:L.card,borderRadius:16,overflow:"hidden",cursor:"pointer",border:`1px solid ${L.brd}`,boxShadow:L.shd,transition:"transform .12s,box-shadow .12s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow=L.shd;}}>
+                  <div style={{height:i===0?140:0,overflow:"hidden",position:"relative"}}>
+                    {i===0&&<><img src={a.photo||catPhoto(a.cat,i)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/><div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.5) 100%)"}}/><span style={{position:"absolute",top:10,left:10,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:6,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span></>}
+                  </div>
+                  <div style={{padding:"12px 16px"}}>
+                    {i>0&&<span style={{fontSize:9,fontWeight:700,color:catColor[a.cat]||"#6366F1",textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>}
+                    <p style={{fontSize:14,fontWeight:700,color:L.txt,lineHeight:1.3,marginTop:i>0?2:0}}>{a.title}</p>
+                    {a.summary&&i===0&&<p style={{fontSize:12,color:L.mut,marginTop:4,lineHeight:1.4}}>{a.summary}</p>}
+                  </div>
                 </div>
-                <div style={{fontSize:28,fontWeight:900,color:i===0?"#0D0D0D":DK.txt,letterSpacing:"-1px",lineHeight:1}}>{w.val}</div>
-                <div style={{fontSize:11,color:i===0?"rgba(0,0,0,0.4)":DK.mut,marginTop:4,fontWeight:500}}>{w.sub}</div>
-              </div>
-            ))}
-          </div>
-          {/* ROW 2: Main 3-col grid */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,alignItems:"start"}}>
-
-            {/* COL 1 — Comunicados */}
-            <DCard style={{gridRow:"span 2"}}>
-              <DTitle t="Comunicados" action="Ver todos" onClick={()=>goSub("news")}/>
-              <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                {newsItems.map((a,i)=>(
-                  <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{display:"flex",gap:12,padding:"10px 0",borderTop:i?`1px solid ${DK.brd}`:"none",cursor:"pointer",alignItems:"center",transition:"background .1s",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{width:48,height:48,borderRadius:10,overflow:"hidden",flexShrink:0,background:"#222"}}>
-                      <img src={a.photo||catPhoto(a.cat,i)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+              ))}
+            </div>
+            {/* COL 2 — Ações + Equipe */}
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              {/* Ações */}
+              <div style={{background:L.card,borderRadius:16,border:`1px solid ${L.brd}`,padding:"18px 20px",boxShadow:L.shd}}>
+                <h3 style={{fontSize:15,fontWeight:700,color:L.txt,marginBottom:14}}>Ações rápidas</h3>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[...cfg.actions].sort((a,b)=>(ACTIONS[a]?.l||"").localeCompare(ACTIONS[b]?.l||"","pt")).slice(0,6).map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return(
+                    <div key={i} onClick={()=>nav(a.k)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px",borderRadius:12,background:"#F8F9FA",cursor:"pointer",border:"1px solid transparent",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.background=`${LIME}08`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="#F8F9FA";}}>
+                      <div style={{width:32,height:32,borderRadius:10,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{actionIcon(ak)}</div>
+                      <span style={{fontSize:13,fontWeight:600,color:L.txt}}>{a.l}</span>
                     </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <span style={{fontSize:9,fontWeight:700,color:catColor[a.cat]||"#6366F1",textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
-                      <p style={{fontSize:13,fontWeight:600,color:DK.txt,lineHeight:1.3,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.title}</p>
+                  );})}
+                </div>
+              </div>
+              {/* Equipe */}
+              {team&&team.length>0&&<div style={{background:L.card,borderRadius:16,border:`1px solid ${L.brd}`,padding:"18px 20px",boxShadow:L.shd}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:15,fontWeight:700,color:L.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:12,color:LIME,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>
+                <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                  {(team||[]).slice(0,6).map((m,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,width:56}}>
+                    <Av src={m.photo_url} name={m.name} sz={44} fs={16}/>
+                    <p style={{fontSize:10,fontWeight:600,color:L.txt,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:56}}>{m.name?.split(" ")[0]}</p>
+                  </div>)}
+                </div>
+              </div>}
+            </div>
+            {/* COL 3 — Resumo + Clientes */}
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              {/* KPIs */}
+              {isAdmin&&<div style={{background:L.card,borderRadius:16,border:`1px solid ${L.brd}`,padding:"18px 20px",boxShadow:L.shd}}>
+                <h3 style={{fontSize:15,fontWeight:700,color:L.txt,marginBottom:14}}>Resumo</h3>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{l:"Clientes",v:totalClients,s:`${activeClients} ativos`,c:"#10B981",bg:"#ECFDF5",fin:false},{l:"Receita",v:totalRevenue,s:"+12% vs mês",c:"#3B82F6",bg:"#EFF6FF",fin:true},{l:"Score",v:avgScore,s:"satisfação",c:"#F59E0B",bg:"#FFFBEB",fin:false},{l:"Pendentes",v:pendingApprovals,s:"aguardando",c:"#EF4444",bg:"#FEF2F2",fin:false}].filter(s=>!s.fin||canFinancial).map((s,j)=>(
+                    <div key={j} style={{background:s.bg,borderRadius:12,padding:"14px",border:`1px solid ${s.c}15`}}>
+                      <p style={{fontSize:9,color:s.c,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8}}>{s.l}</p>
+                      <p style={{fontSize:24,fontWeight:900,color:s.c,marginTop:2,letterSpacing:"-0.5px"}}>{s.v}</p>
+                      <p style={{fontSize:10,color:L.mut,marginTop:1}}>{s.s}</p>
                     </div>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={DK.mut} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,opacity:0.4}}><polyline points="9 18 15 12 9 6"/></svg>
-                  </div>
-                ))}
-              </div>
-            </DCard>
-
-            {/* COL 2 — Ações rápidas */}
-            <DCard>
-              <DTitle t="Ações rápidas"/>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                {[...cfg.actions].sort((a,b)=>(ACTIONS[a]?.l||"").localeCompare(ACTIONS[b]?.l||"","pt")).slice(0,6).map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return(
-                  <div key={i} onClick={()=>nav(a.k)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px",borderRadius:10,background:"rgba(255,255,255,0.02)",cursor:"pointer",border:"1px solid transparent",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${LIME}40`;e.currentTarget.style.background="rgba(187,242,70,0.04)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="rgba(255,255,255,0.02)";}}>
-                    <div style={{width:28,height:28,borderRadius:8,background:`${LIME}10`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME,flexShrink:0}}>{actionIcon(ak)}</div>
-                    <span style={{fontSize:12,fontWeight:600,color:DK.txt}}>{a.l}</span>
-                  </div>
-                );})}
-              </div>
-            </DCard>
-            {/* COL 3 — Resumo KPIs */}
-            {isAdmin&&<DCard>
-              <DTitle t="Resumo"/>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {[{l:"Clientes",v:totalClients,s:`${activeClients} ativos`,c:LIME,fin:false},{l:"Receita",v:totalRevenue,s:"+12% vs mês ant.",c:"#3B82F6",fin:true},{l:"Score",v:avgScore,s:"satisfação média",c:"#F59E0B",fin:false},{l:"Pendentes",v:pendingApprovals,s:"aguardando ação",c:"#EC4899",fin:false}].filter(s=>!s.fin||canFinancial).map((s,j)=>(
-                  <div key={j} style={{background:"rgba(255,255,255,0.02)",borderRadius:10,padding:"12px 14px",border:`1px solid ${DK.brd}`}}>
-                    <p style={{fontSize:9,color:DK.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{s.l}</p>
-                    <p style={{fontSize:22,fontWeight:900,color:s.c,marginTop:2,letterSpacing:"-0.5px"}}>{s.v}</p>
-                    <p style={{fontSize:10,color:DK.mut,marginTop:1}}>{s.s}</p>
-                  </div>
-                ))}
-              </div>
-            </DCard>}
-            {/* COL 2 row2 — Equipe */}
-            {team&&team.length>0&&<DCard>
-              <DTitle t="Equipe" action="Ver todos" onClick={()=>goSub("team")}/>
-              <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-                {(team||[]).slice(0,8).map((m,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,width:48}}>
-                  <Av src={m.photo_url} name={m.name} sz={38} fs={14}/>
-                  <p style={{fontSize:9,fontWeight:600,color:DK.mut,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:48}}>{m.name?.split(" ")[0]}</p>
-                </div>)}
-              </div>
-            </DCard>}
-
-            {/* COL 3 row2 — Clientes */}
-            {CDATA.length>0&&<DCard>
-              <DTitle t="Clientes" action="Ver todos" onClick={()=>goSub("clients")}/>
-              <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  ))}
+                </div>
+              </div>}
+              {/* Clientes */}
+              {CDATA.length>0&&<div style={{background:L.card,borderRadius:16,border:`1px solid ${L.brd}`,padding:"18px 20px",boxShadow:L.shd}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:15,fontWeight:700,color:L.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:12,color:LIME,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>
                 {CDATA.slice(0,5).map((c,i)=>(
-                  <div key={c.id||i} onClick={()=>goSub("clients")} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderTop:i?`1px solid ${DK.brd}`:"none",cursor:"pointer"}}>
-                    <Av src={c.logo} name={c.name} sz={30} fs={11}/>
+                  <div key={c.id||i} onClick={()=>goSub("clients")} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i?`1px solid ${L.brd}`:"none",cursor:"pointer",transition:"background .1s",borderRadius:6}} onMouseEnter={e=>e.currentTarget.style.background="#F8F9FA"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <Av src={c.logo} name={c.name} sz={34} fs={12}/>
                     <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontSize:12,fontWeight:600,color:DK.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
-                      <p style={{fontSize:10,color:DK.mut}}>{c.plan||"—"}{canFinancial&&c.monthly?` · ${c.monthly}/mês`:""}</p>
+                      <p style={{fontSize:13,fontWeight:600,color:L.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
+                      <p style={{fontSize:11,color:L.mut}}>{c.plan||"—"}{canFinancial&&c.monthly?` · ${c.monthly}/mês`:""}</p>
                     </div>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={DK.mut} strokeWidth="2.5" strokeLinecap="round" style={{opacity:0.4}}><polyline points="9 18 15 12 9 6"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={L.mut} strokeWidth="2.5" strokeLinecap="round" style={{opacity:0.3}}><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
                 ))}
-              </div>
-            </DCard>}
+              </div>}
+            </div>
           </div>
-          {/* ROW 3: Conteúdos em produção (full width) */}
-          {recentDemands.length>0&&<div style={{marginTop:12}}>
-            <DCard>
-              <DTitle t="Conteúdos em Produção" action="Ver todos" onClick={()=>goTab("content")}/>
-              <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(recentDemands.length,5)},1fr)`,gap:10}}>
-                {recentDemands.map((d,i)=>{
-                  const sc=stageColor[d.stage]||"#8B8F92";const sn=stageName[d.stage]||d.stage;
-                  const allFiles=[...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])];
-                  const imgFile=allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-                  const initials2=(d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-                  const bgP=["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6"][i%5];
-                  return(
-                    <div key={d.id||i} onClick={()=>goTab("content",d.id)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",border:`1px solid ${DK.brd}`,transition:"transform .1s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.02)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-                      <div style={{height:100,position:"relative"}}>
-                        {imgFile?<img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bgP}cc,${bgP}55)`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:24,fontWeight:900,color:"rgba(255,255,255,0.15)"}}>{initials2}</span></div>}
-                        <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.7) 100%)"}}/>
-                        <span style={{position:"absolute",top:6,left:6,background:LIME,color:"#0D0D0D",fontSize:8,fontWeight:800,padding:"2px 6px",borderRadius:4,textTransform:"uppercase"}}>{d.format||d.network||"Post"}</span>
-                        <p style={{position:"absolute",bottom:6,left:6,right:6,fontSize:11,fontWeight:700,color:"#fff",lineHeight:1.2,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</p>
-                      </div>
-                      <div style={{padding:"8px 10px",display:"flex",alignItems:"center",gap:4,background:DK.card}}>
-                        <div style={{width:6,height:6,borderRadius:"50%",background:sc,flexShrink:0}}/>
-                        <span style={{fontSize:10,color:DK.mut,fontWeight:600,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>
-                        <span style={{fontSize:9,color:sc,fontWeight:700,flexShrink:0,background:`${sc}15`,padding:"2px 6px",borderRadius:4}}>{sn}</span>
-                      </div>
+          {/* Conteúdos em Produção — full width visual row */}
+          {recentDemands.length>0&&<div style={{marginTop:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{fontSize:15,fontWeight:700,color:L.txt}}>Conteúdos em Produção</h3><span onClick={()=>goTab("content")} style={{fontSize:12,color:LIME,fontWeight:600,cursor:"pointer"}}>Ver todos →</span></div>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(recentDemands.length,5)},1fr)`,gap:12}}>
+              {recentDemands.map((d,i)=>{
+                const sc=stageColor[d.stage]||"#8B8F92";const sn=stageName[d.stage]||d.stage;
+                const allFiles=[...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])];
+                const imgFile=allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const init2=(d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+                return(
+                  <div key={d.id||i} onClick={()=>goTab("content",d.id)} style={{background:L.card,borderRadius:14,overflow:"hidden",cursor:"pointer",border:`1px solid ${L.brd}`,boxShadow:L.shd,transition:"transform .12s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                    <div style={{height:110,position:"relative"}}>
+                      {imgFile?<img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bgP[i%5]}dd,${bgP[i%5]}77)`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28,fontWeight:900,color:"rgba(255,255,255,0.15)"}}>{init2}</span></div>}
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.6) 100%)"}}/>
+                      <span style={{position:"absolute",top:8,left:8,background:LIME,color:"#0D0D0D",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:6,textTransform:"uppercase"}}>{d.format||d.network||"Post"}</span>
+                      <p style={{position:"absolute",bottom:8,left:8,right:8,fontSize:12,fontWeight:700,color:"#fff",lineHeight:1.2,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{d.title}</p>
                     </div>
-                  );
-                })}
-              </div>
-            </DCard>
+                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:11,color:L.mut,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{d.client}</span>
+                      <span style={{fontSize:10,fontWeight:700,color:sc,background:`${sc}12`,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{sn}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>}
         </div>
         {EditorSheetJSX}
