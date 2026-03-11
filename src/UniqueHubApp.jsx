@@ -180,17 +180,26 @@ const supaCreateDemand = async (d, clientId) => {
     const isUUID = (v) => typeof v === "string" && /^[0-9a-f]{8}-/.test(v);
     if (!isUUID(clientId)) {
       /* Try to find client UUID by name */
-      const { data: cl } = await supabase.from("clients").select("id").eq("name", d.client).limit(1).single();
+      const { data: cl } = await supabase.from("clients").select("id").eq("name", d.client).limit(1).maybeSingle();
       if (cl) clientId = cl.id;
-      else return { data: null, err: "Cliente não encontrado no banco" };
+      else {
+        /* Try ilike for partial match */
+        const { data: cl2 } = await supabase.from("clients").select("id").ilike("name", `%${d.client}%`).limit(1).maybeSingle();
+        if (cl2) clientId = cl2.id;
+        else {
+          console.warn("supaCreateDemand: client not found:", d.client, "clientId:", clientId);
+          /* Create demand without client_id */
+          clientId = null;
+        }
+      }
     }
     const payload = {
-      client_id: clientId,
       title: d.title || "Nova demanda",
       type: d.type || "social",
       stage: d.stage || "idea",
       priority: d.priority || "média",
     };
+    if (clientId) payload.client_id = clientId;
     /* Save steps with creator info */
     if (d.steps) payload.steps = d.steps;
     const { data, error } = await supabase.from("demands").insert(payload).select().single();
@@ -832,14 +841,14 @@ const supaLoadConversations = async (userId) => {
     const { data: memberships } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
     if (!memberships?.length) return [];
     const convIds = memberships.map(m => m.conversation_id);
-    /* Batch: all conversations + all members in 2 queries */
-    const [convRes, memRes] = await Promise.all([
+    /* All 3 queries in parallel */
+    const [convRes, memRes, msgsRes] = await Promise.all([
       supabase.from("conversations").select("*").in("id", convIds),
       supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds),
+      supabase.from("messages").select("*").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(convIds.length * 2),
     ]);
     const convs = convRes.data || [];
     const allMembers = memRes.data || [];
-    /* Get only the profiles we need */
     const uniqueUserIds = [...new Set(allMembers.map(m => m.user_id))];
     const profileRes = uniqueUserIds.length > 0
       ? await supabase.from("profiles").select("id, name, email, photo_url").in("id", uniqueUserIds)
@@ -847,10 +856,8 @@ const supaLoadConversations = async (userId) => {
     const allProfiles = profileRes.data || [];
     const profileMap = {};
     allProfiles.forEach(p => { profileMap[p.id] = p; });
-    /* Get last message per conversation in one query using distinct */
-    const { data: recentMsgs } = await supabase.from("messages").select("*").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(convIds.length * 2);
     const lastMsgMap = {};
-    (recentMsgs || []).forEach(m => { if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
+    (msgsRes.data || []).forEach(m => { if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
     const result = [];
     for (const c of convs) {
       const members = allMembers.filter(m => m.conversation_id === c.id);
@@ -7060,17 +7067,22 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     setCallModal(type);
   };
 
-  /* Load conversations + profiles on mount */
+  /* Load conversations + profiles on mount — with cache for instant revisit */
   useEffect(() => {
     if (!user?.id || !supabase) return;
     const load = async () => {
-      setLoading(true);
-      /* Parallel: conversations + team members at once */
+      /* Show cached data instantly */
+      try {
+        const cached = sessionStorage.getItem("uh_chat_convs_" + user.id);
+        if (cached) { const parsed = JSON.parse(cached); if (parsed?.length) { setConvs(parsed); setLoading(false); } }
+      } catch {}
+      /* Then refresh from DB in background */
       const [c, membersRes] = await Promise.all([
         supaLoadConversations(user.id),
         supabase.from("agency_members").select("user_id").not("user_id", "is", null),
       ]);
       setConvs(c);
+      try { sessionStorage.setItem("uh_chat_convs_" + user.id, JSON.stringify(c)); } catch {}
       const memberIds = (membersRes.data || []).map(m => m.user_id).filter(id => id !== user.id);
       if (memberIds.length > 0) {
         const { data: profs } = await supabase.from("profiles").select("id, name, email, role, photo_url").in("id", memberIds);
@@ -7242,9 +7254,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   React.useEffect(() => {
     if (!user?.id || !supabase) return;
     const poll = setInterval(async () => {
-      if (view === "list") { /* Only poll when viewing the list */
+      if (view === "list") {
         const fresh = await supaLoadConversations(user.id);
-        if (fresh && fresh.length > 0) setConvs(fresh);
+        if (fresh && fresh.length > 0) { setConvs(fresh); try { sessionStorage.setItem("uh_chat_convs_" + user.id, JSON.stringify(fresh)); } catch {} }
       }
     }, 2500);
     return () => clearInterval(poll);
