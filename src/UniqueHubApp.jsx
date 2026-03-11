@@ -2774,35 +2774,40 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         {/* ── HEADER ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
           <div style={{background:"#1A1D23",borderRadius:24,padding:"24px 28px 22px",position:"relative",overflow:"visible"}}>
-            <div style={{display:"flex",alignItems:"center",gap:20}}>
-              {/* Large circular avatar */}
-              <div style={{width:100,height:100,borderRadius:"50%",overflow:"hidden",background:"#333",flexShrink:0,border:"4px solid #2A2D33",marginBottom:-28,zIndex:2}}>
-                {user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,fontWeight:900,color:LIME}}>{initials}</div>}
-              </div>
-              <div style={{flexShrink:0}}><div style={{fontSize:24,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>Olá, {user?.name?.split(" ")[0]||"Matheus"}!</div><div style={{fontSize:13,color:"rgba(255,255,255,0.4)",marginTop:2}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
-              {/* Search */}
-              <div style={{position:"relative",flex:1,maxWidth:420}}>
-                <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,display:"flex",alignItems:"center",gap:10,padding:"13px 18px",border:"1px solid rgba(255,255,255,0.08)"}}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Busca" style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:15,color:"#fff",outline:"none",flex:1}}/>
+            <div style={{display:"flex",gap:20}}>
+              {/* Avatar — coluna esquerda, ocupa toda altura, vaza pra baixo */}
+              <div style={{flexShrink:0,alignSelf:"stretch",display:"flex",alignItems:"center",position:"relative",zIndex:2}}>
+                <div style={{width:130,height:130,borderRadius:"50%",overflow:"hidden",background:"#333",border:"4px solid #2A2D33",marginBottom:-44}}>
+                  {user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42,fontWeight:900,color:LIME}}>{initials}</div>}
                 </div>
-                {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",overflow:"hidden",zIndex:30}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
               </div>
-              {/* Date */}
-              <div style={{flexShrink:0,textAlign:"right"}}><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div></div>
-              {/* Buttons */}
-              <div style={{display:"flex",gap:8,flexShrink:0}}>
-                <button onClick={()=>goTab("chat")} style={{width:42,height:42,borderRadius:12,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
-                <button onClick={()=>goSub("notifs")} style={{width:42,height:42,borderRadius:12,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{notifCount>0&&<span style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
+              {/* Lado direito — 2 linhas */}
+              <div style={{flex:1,display:"flex",flexDirection:"column",gap:16,minWidth:0}}>
+                {/* Linha 1: Saudação + Busca + Data + Botões */}
+                <div style={{display:"flex",alignItems:"center",gap:20}}>
+                  <div style={{flexShrink:0}}><div style={{fontSize:24,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>Olá, {user?.name?.split(" ")[0]||"Matheus"}!</div><div style={{fontSize:13,color:"rgba(255,255,255,0.4)",marginTop:2}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
+                  <div style={{position:"relative",flex:1,maxWidth:420}}>
+                    <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,display:"flex",alignItems:"center",gap:10,padding:"13px 18px",border:"1px solid rgba(255,255,255,0.08)"}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Busca" style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:15,color:"#fff",outline:"none",flex:1}}/>
+                    </div>
+                    {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",overflow:"hidden",zIndex:30}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
+                  </div>
+                  <div style={{flexShrink:0,textAlign:"right"}}><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div></div>
+                  <div style={{display:"flex",gap:8,flexShrink:0}}>
+                    <button onClick={()=>goTab("chat")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+                    <button onClick={()=>goSub("notifs")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{notifCount>0&&<span style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
+                  </div>
+                </div>
+                {/* Linha 2: 3 Cards LIME (lateralizados, ao lado do avatar) */}
+                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12}}>
+                  {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                    <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
+                    <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
+                    <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:3,fontWeight:500}}>{w.sub}</div>
+                  </div>)}
+                </div>
               </div>
-            </div>
-            {/* Metric cards */}
-            <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginTop:18}}>
-              {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
-                <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
-                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:3,fontWeight:500}}>{w.sub}</div>
-              </div>)}
             </div>
           </div>
         </div>
@@ -2850,7 +2855,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             </div>
             {/* PANEL 2 — AI Assistant with presets */}
             <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",padding:"22px 20px"}}>
-              <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23"}}>Olá, {user?.name||"Usuário"}!</h3>
+              <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23",textAlign:"center"}}>Olá, {user?.name||"Usuário"}!</h3>
               <p style={{fontSize:13,color:"#6B7280",marginTop:4,lineHeight:1.4}}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:18}}>
                 {[
