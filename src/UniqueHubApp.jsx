@@ -2798,9 +2798,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     /* ── Phone frame: wraps a real mobile page inside a contained block ── */
     const phoneFrame = (title, iconKey, openFn, children) => (
       <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
-        <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco(iconKey,15,"#1A1D23")}<span style={{fontSize:13,fontWeight:700,color:"#1A1D23"}}>{title}</span></div>
-          <span onClick={openFn} style={{fontSize:11,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+        <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA",minHeight:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>{title}</span></div>
+          <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
         </div>
         <div className="phone-viewport" style={{flex:1,overflow:"auto",position:"relative",transform:"scale(1)"}}>{children}</div>
       </div>
