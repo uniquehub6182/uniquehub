@@ -7536,7 +7536,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* INPUT BAR */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:`0 0 0 100px ${B.bgCard}` }}>
+        <div style={{ padding:`10px 14px calc(${chatIsDesktop?"90px":"14px"} + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:`0 0 0 100px ${B.bgCard}` }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
