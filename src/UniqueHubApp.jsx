@@ -1472,7 +1472,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
         </button>}
       </div>
     ) : (
-      <div style={{ padding: _dsk ? "28px 28px 24px" : `calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
+      <div style={{ padding: _dsk ? (onBack ? "28px 28px 24px" : "70px 28px 24px") : `calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
         {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}`, marginBottom:8 }}>{IC.back()}</button>}
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:stats.length?16:0 }}>
           <div>
