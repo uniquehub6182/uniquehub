@@ -2823,7 +2823,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       return phoneFrame(opt.l,opt.icon||"content",noop,<div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}><p style={{fontSize:13}}>{opt.l} — Em breve</p></div>);
     };
     return (
-      <div style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
+      <div className="desktop-dash" style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
         {/* ── HEADER ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
@@ -16370,9 +16370,10 @@ input,textarea,select{font-size:16px !important}
 .d-sidebar{display:none!important}
 html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:#ECEEF2!important}
 html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important;max-width:100%!important}
-html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0!important;padding:0 0 120px!important;background:#ECEEF2!important;width:100%!important}
+html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:#ECEEF2!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important}
-html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important}
+html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content>div:not(.desktop-dash){max-width:860px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;box-sizing:border-box!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
@@ -16389,7 +16390,7 @@ html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 
 .phone-viewport::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.1);border-radius:3px}
 .phone-viewport *{max-width:100%!important;box-sizing:border-box!important}
 .phone-viewport [style*="fixed"]{position:absolute!important}
-html.uh-desktop .phone-viewport .screen,html.uh-desktop .phone-viewport .content,html.uh-desktop .phone-viewport .app{position:relative!important;height:auto!important;min-height:auto!important;max-height:none!important;overflow:visible!important;padding:0!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important}
+html.uh-desktop .phone-viewport .screen,html.uh-desktop .phone-viewport .content,html.uh-desktop .phone-viewport .app{position:relative!important;height:auto!important;min-height:auto!important;max-height:none!important;overflow:visible!important;padding:0!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100%!important;margin:0!important}
 html.uh-desktop .phone-viewport .pg{padding:8px 12px!important;max-width:none!important;margin:0!important;min-height:auto!important;position:relative!important}
 html.uh-desktop .phone-viewport .bnav{display:none!important}
 html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!important;height:auto!important;min-height:auto!important;overflow:visible!important;max-width:100%!important;width:100%!important}
