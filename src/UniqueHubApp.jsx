@@ -15905,9 +15905,8 @@ ${(()=>{
 })()}
 ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
-${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash):not(.chat-dsk){max-width:860px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}
-html.uh-desktop .chat-dsk{max-width:860px;margin:0 auto;height:calc(100vh - 120px);position:relative;overflow:hidden;padding:0}
-html.uh-desktop .chat-dsk>div{position:absolute!important;inset:0!important}`:""}
+${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}
+html.uh-desktop .content>div[style*="z-index: 50"]{height:calc(100vh - 120px);border-radius:16px;overflow:hidden;padding:0!important}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
@@ -15933,7 +15932,7 @@ html.uh-desktop .chat-dsk>div{position:absolute!important;inset:0!important}`:""
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
       </div>
 
-      {!sub && tab === "chat" && <div className="chat-dsk"><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
+      {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
           const a = (tab === t.k && !sub) || (sub === t.k);
