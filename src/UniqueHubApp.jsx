@@ -2492,6 +2492,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     ? { cards:canFinancial ? ["investimento","aprovacoes"] : ["aprovacoes","clientes"], pills:["suporte","aprovacoes","conteudo","relatorios"].filter(k => PILLS[k]?.k !== "financial" || canFinancial), actions:["aprovar","trafego","relatorio","chat"].filter(k => ACTIONS[k]?.k !== "financial" || canFinancial), sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
     : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
   const cfg = dashCfg || cfgDefault;
+  /* Desktop panel state — top level for React hooks rules */
+  const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","content","ai"]));
+  const [showPanelEditor, setShowPanelEditor] = useState(false);
+  const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const isDark = B.bg === "#0D0D0D";
   const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
   const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
@@ -2773,9 +2777,6 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       gamify:{label:"Ranking",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
     };
     const defaultPanels = cfg.desktopPanels || ["news","content","ai"];
-    const [dPanels, setDPanels] = useState(defaultPanels);
-    const [showPanelEditor, setShowPanelEditor] = useState(false);
-    const [metricCount, setMetricCount] = useState(cfg.desktopMetricCount || 3);
     const saveDPanels = (panels) => { setDPanels(panels); const newCfg = {...cfg, desktopPanels: panels}; savePrefsToCloud?.(newCfg); };
     const saveMetricCount = (n) => { setMetricCount(n); const newCfg = {...cfg, desktopMetricCount: n}; savePrefsToCloud?.(newCfg); };
     /* Render a real screen inside a panel */
