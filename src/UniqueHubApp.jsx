@@ -2769,6 +2769,126 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     const recentDemands=(demands||[]).slice(0,4);
     const stageColor={idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
     const stageName={idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
+
+    /* ── Panel options for editor ── */
+    const DPANEL_OPTS = {
+      news:{l:"Comunicados",icon:"📰"},
+      ai:{l:"Assistente IA",icon:"✨"},
+      content:{l:"Conteúdo",icon:"📋"},
+      chat:{l:"Chat",icon:"💬"},
+      clients:{l:"Clientes",icon:"👥"},
+      calendar:{l:"Calendário",icon:"📅"},
+      ideas:{l:"Ideias",icon:"💡"},
+      social:{l:"Redes Sociais",icon:"📱"},
+    };
+
+    /* ── Render a dashboard panel by key ── */
+    const renderDPanel = (pk) => {
+      if (pk === "news") return (
+        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+          <div style={{padding:"18px 20px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23"}}>Comunicados</h3>
+            <span onClick={()=>goSub("news")} style={{fontSize:12,color:"#6B7280",fontWeight:600,cursor:"pointer"}}>Ver todos</span>
+          </div>
+          {newsItems[0]&&<div onClick={()=>goSub("news",newsItems[0].id)} style={{margin:"0 16px 12px",borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:200}}>
+            <img src={newsItems[0].photo||catPhoto(newsItems[0].cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",0);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)"}}/>
+            <span style={{position:"absolute",top:12,left:12,background:catColor[newsItems[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:8,textTransform:"uppercase"}}>{catLabel[newsItems[0].cat]||"Novidade"}</span>
+            <div style={{position:"absolute",bottom:14,left:14,right:14}}>
+              <p style={{fontSize:15,fontWeight:700,color:"#fff",lineHeight:1.3}}>{newsItems[0].title}</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4,lineHeight:1.3}}>{newsItems[0].summary||""}</p>
+            </div>
+          </div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 16px 16px"}}>
+            {newsItems.slice(1,5).map((a,i)=>(
+              <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",position:"relative",height:100}}>
+                <img src={a.photo||catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i+1);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.7) 100%)"}}/>
+                <span style={{position:"absolute",top:6,left:6,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 6px",borderRadius:6,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
+                <p style={{position:"absolute",bottom:6,left:6,right:6,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.2,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+      if (pk === "ai") return (
+        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",padding:"22px 20px"}}>
+          <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23",textAlign:"center"}}>Olá, {user?.name||"Usuário"}!</h3>
+          <p style={{fontSize:13,color:"#6B7280",marginTop:4,lineHeight:1.4,textAlign:"center"}}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:18}}>
+            {[
+              {l:"Criar legenda",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>,bg:"#F0FDF4",bc:"#22C55E"},
+              {l:"Estratégia",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,bg:"#F5F3FF",bc:"#8B5CF6"},
+              {l:"Roteiro Reels",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,bg:"#FEF2F2",bc:"#EF4444"},
+              {l:"Ideias de conteúdo",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/></svg>,bg:"#FFF7ED",bc:"#F97316"},
+              {l:"E-mail marketing",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,bg:"#ECFDF5",bc:"#10B981"},
+              {l:"Copy persuasiva",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,bg:"#FFF1F2",bc:"#F43F5E"},
+              {l:"Hashtags",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>,bg:"#EFF6FF",bc:"#3B82F6"},
+              {l:"Calendário editorial",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,bg:"#FFFBEB",bc:"#D97706"},
+            ].map((p,i)=>(
+              <div key={i} onClick={()=>goSub("ai")} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:14,background:"#fff",cursor:"pointer",border:"1.5px solid rgba(0,0,0,0.08)",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=p.bc;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";e.currentTarget.style.transform="none";}}>
+                <div style={{width:30,height:30,borderRadius:10,background:p.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{p.icon}</div>
+                <span style={{fontSize:13,fontWeight:600,color:"#1A1D23"}}>{p.l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+      if (pk === "content") return (
+        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+          <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Conteúdo</span>
+            </div>
+            <span onClick={()=>goTab("content")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+          </div>
+          <div style={{padding:"18px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div><span style={{fontSize:11,fontWeight:800,color:LIME,textTransform:"uppercase",letterSpacing:1}}>PRODUÇÃO</span><h3 style={{fontSize:20,fontWeight:800,color:"#1A1D23",marginTop:4}}>Demandas</h3></div>
+              <button onClick={()=>goTab("content")} style={{width:36,height:36,borderRadius:12,background:`${LIME}`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+            </div>
+            <button onClick={()=>goTab("content")} style={{width:"100%",marginTop:16,padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#25D366 0%,#128C7E 50%,#8B5CF6 100%)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2z"/></svg>
+              Publicação Rápida (FB / IG)
+            </button>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:14,padding:"10px 14px",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer"}} onClick={()=>goTab("content")}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <span style={{fontSize:13,color:"#6B7280",flex:1}}>Todos os clientes</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div style={{display:"flex",gap:0,marginTop:14,alignItems:"center"}}>
+              {["Todos","Posts","Campanhas","Vídeo"].map((t,i)=><button key={i} onClick={()=>goTab("content")} style={{padding:"7px 14px",borderRadius:8,border:"none",background:i===0?LIME:"transparent",color:i===0?"#0D0D0D":"#6B7280",fontSize:12,fontWeight:i===0?700:500,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>)}
+              <div style={{marginLeft:"auto"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            </div>
+          </div>
+          <div style={{borderTop:"1px solid rgba(0,0,0,0.06)",padding:"8px 20px 16px"}}>
+            {recentDemands.length>0?recentDemands.map((d,i)=>{const sc=stageColor[d.stage]||"#8B8F92";const sn=stageName[d.stage]||d.stage;return(
+              <div key={d.id||i} onClick={()=>goTab("content",d.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none",cursor:"pointer"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:sc,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Sem título"}</p><p style={{fontSize:11,color:"#6B7280"}}>{d.client}</p></div>
+                <span style={{fontSize:10,fontWeight:700,color:sc,background:`${sc}12`,padding:"3px 8px",borderRadius:6,flexShrink:0}}>{sn}</span>
+              </div>
+            );}):<div style={{padding:"30px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Nenhuma demanda em aberto</div>}
+          </div>
+        </div>
+      );
+      /* Generic panels — placeholder */
+      const opt = DPANEL_OPTS[pk] || {l:pk,icon:"📦"};
+      return (
+        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",minHeight:300}}>
+          <div style={{padding:"18px 20px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+            <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23"}}>{opt.icon} {opt.l}</h3>
+            <span onClick={()=>{ if(pk==="chat")goTab("chat"); else if(pk==="clients")goTab("clients"); else if(pk==="calendar")goSub("calendar"); else if(pk==="ideas")goSub("ideas"); else if(pk==="social")goSub("social"); }} style={{fontSize:12,color:"#6B7280",fontWeight:600,cursor:"pointer"}}>Abrir →</span>
+          </div>
+          <div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}>
+            <div style={{fontSize:36,marginBottom:8}}>{opt.icon}</div>
+            <p style={{fontSize:14,fontWeight:600}}>{opt.l}</p>
+            <p style={{fontSize:12,marginTop:4}}>Em breve neste painel</p>
+          </div>
+        </div>
+      );
+    };
     return (
       <div style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
         {/* ── HEADER ── */}
@@ -2777,7 +2897,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             <div style={{display:"flex",gap:20}}>
               {/* Avatar — coluna esquerda, ocupa toda altura, vaza pra baixo */}
               <div style={{flexShrink:0,alignSelf:"flex-end",position:"relative",zIndex:4}}>
-                <div style={{width:140,height:140,borderRadius:"50%",overflow:"hidden",background:"#333",border:"5px solid rgba(255,255,255,0.2)",boxShadow:"0 0 0 3px rgba(0,0,0,0.3)",marginBottom:-80}}>
+                <div style={{width:140,height:140,borderRadius:"50%",overflow:"hidden",background:"#333",border:"5px solid #fff",marginBottom:-80}}>
                   {user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42,fontWeight:900,color:LIME}}>{initials}</div>}
                 </div>
               </div>
@@ -2824,101 +2944,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         {/* ── 3 BESPOKE PANELS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,alignItems:"start"}}>
-
-            {/* PANEL 1 — Comunicados */}
-            <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-              <div style={{padding:"18px 20px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23"}}>Comunicados</h3>
-                <span onClick={()=>goSub("news")} style={{fontSize:12,color:"#6B7280",fontWeight:600,cursor:"pointer"}}>Ver todos</span>
-              </div>
-              {/* Featured card with image */}
-              {newsItems[0]&&<div onClick={()=>goSub("news",newsItems[0].id)} style={{margin:"0 16px 12px",borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:200}}>
-                <img src={newsItems[0].photo||catPhoto(newsItems[0].cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",0);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)"}}/>
-                <span style={{position:"absolute",top:12,left:12,background:catColor[newsItems[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:8,textTransform:"uppercase"}}>{catLabel[newsItems[0].cat]||"Novidade"}</span>
-                <div style={{position:"absolute",bottom:14,left:14,right:14}}>
-                  <p style={{fontSize:15,fontWeight:700,color:"#fff",lineHeight:1.3}}>{newsItems[0].title}</p>
-                  <p style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4,lineHeight:1.3}}>{newsItems[0].summary||""}</p>
-                </div>
-              </div>}
-              {/* Grid of smaller cards */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 16px 16px"}}>
-                {newsItems.slice(1,5).map((a,i)=>(
-                  <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{borderRadius:12,overflow:"hidden",cursor:"pointer",position:"relative",height:100}}>
-                    <img src={a.photo||catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i+1);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                    <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.7) 100%)"}}/>
-                    <span style={{position:"absolute",top:6,left:6,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 6px",borderRadius:6,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
-                    <p style={{position:"absolute",bottom:6,left:6,right:6,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.2,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* PANEL 2 — AI Assistant with presets */}
-            <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",padding:"22px 20px"}}>
-              <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23",textAlign:"center"}}>Olá, {user?.name||"Usuário"}!</h3>
-              <p style={{fontSize:13,color:"#6B7280",marginTop:4,lineHeight:1.4}}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:18}}>
-                {[
-                  {l:"Criar legenda",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>,bg:"#F0FDF4",bc:"#22C55E"},
-                  {l:"Estratégia",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,bg:"#F5F3FF",bc:"#8B5CF6"},
-                  {l:"Roteiro Reels",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,bg:"#FEF2F2",bc:"#EF4444"},
-                  {l:"Ideias de conteúdo",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/></svg>,bg:"#FFF7ED",bc:"#F97316"},
-                  {l:"E-mail marketing",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,bg:"#ECFDF5",bc:"#10B981"},
-                  {l:"Copy persuasiva",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,bg:"#FFF1F2",bc:"#F43F5E"},
-                  {l:"Hashtags",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>,bg:"#EFF6FF",bc:"#3B82F6"},
-                  {l:"Calendário editorial",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,bg:"#FFFBEB",bc:"#D97706"},
-                ].map((p,i)=>(
-                  <div key={i} onClick={()=>goSub("ai")} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:14,background:"#fff",cursor:"pointer",border:"1.5px solid rgba(0,0,0,0.08)",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=p.bc;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";e.currentTarget.style.transform="none";}}>
-                    <div style={{width:30,height:30,borderRadius:10,background:p.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{p.icon}</div>
-                    <span style={{fontSize:13,fontWeight:600,color:"#1A1D23"}}>{p.l}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* PANEL 3 — Conteúdo / Demandas */}
-            <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
-              {/* Panel header — Conteúdo + Abrir */}
-              <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                  <span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Conteúdo</span>
-                </div>
-                <span onClick={()=>goTab("content")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-              </div>
-              <div style={{padding:"18px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div><span style={{fontSize:11,fontWeight:800,color:LIME,textTransform:"uppercase",letterSpacing:1}}>PRODUÇÃO</span><h3 style={{fontSize:20,fontWeight:800,color:"#1A1D23",marginTop:4}}>Demandas</h3></div>
-                  <button onClick={()=>goTab("content")} style={{width:36,height:36,borderRadius:12,background:`${LIME}`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-                </div>
-                {/* Quick publish button */}
-                <button onClick={()=>goTab("content")} style={{width:"100%",marginTop:16,padding:"14px",borderRadius:14,background:"linear-gradient(135deg,#25D366 0%,#128C7E 50%,#8B5CF6 100%)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2z"/></svg>
-                  Publicação Rápida (FB / IG)
-                </button>
-                {/* Client selector */}
-                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:14,padding:"10px 14px",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer"}} onClick={()=>goTab("content")}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                  <span style={{fontSize:13,color:"#6B7280",flex:1}}>Todos os clientes</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-                {/* Filter tabs */}
-                <div style={{display:"flex",gap:0,marginTop:14,alignItems:"center"}}>
-                  {["Todos","Posts","Campanhas","Vídeo"].map((t,i)=><button key={i} onClick={()=>goTab("content")} style={{padding:"7px 14px",borderRadius:8,border:"none",background:i===0?LIME:"transparent",color:i===0?"#0D0D0D":"#6B7280",fontSize:12,fontWeight:i===0?700:500,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>)}
-                  <div style={{marginLeft:"auto"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-                </div>
-              </div>
-              {/* Demands list */}
-              <div style={{borderTop:"1px solid rgba(0,0,0,0.06)",padding:"8px 20px 16px"}}>
-                {recentDemands.length>0?recentDemands.map((d,i)=>{const sc=stageColor[d.stage]||"#8B8F92";const sn=stageName[d.stage]||d.stage;return(
-                  <div key={d.id||i} onClick={()=>goTab("content",d.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none",cursor:"pointer"}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:sc,flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Sem título"}</p><p style={{fontSize:11,color:"#6B7280"}}>{d.client}</p></div>
-                    <span style={{fontSize:10,fontWeight:700,color:sc,background:`${sc}12`,padding:"3px 8px",borderRadius:6,flexShrink:0}}>{sn}</span>
-                  </div>
-                );}):<div style={{padding:"30px 0",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Nenhuma demanda em aberto</div>}
-              </div>
-            </div>
-
+            {dPanels.map(pk => <div key={pk}>{renderDPanel(pk)}</div>)}
           </div>
         </div>
         {/* Panel Editor Sidebar */}
@@ -2933,6 +2959,15 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             <div style={{display:"flex",gap:6,marginBottom:20}}>
               {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};savePrefsToCloud?.(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
             </div>
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Painéis do Dashboard</p>
+            {[0,1,2].map(slot=>{const current=dPanels[slot];return(
+              <div key={slot} style={{marginBottom:14}}>
+                <p style={{fontSize:12,fontWeight:600,color:"#6B7280",marginBottom:6}}>Painel {slot+1} — {DPANEL_OPTS[current]?.l||current}</p>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{padding:"8px 10px",borderRadius:10,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:current===k?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:6}}><span>{v.icon}</span>{v.l}</button>)}
+                </div>
+              </div>
+            );})}
           </div>
         </div>}
         {showPanelEditor&&<div onClick={()=>setShowPanelEditor(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:199}}/>}
