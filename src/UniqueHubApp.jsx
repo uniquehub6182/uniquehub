@@ -876,9 +876,12 @@ const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fil
   try {
     const payload = { conversation_id: convId, sender_id: senderId, content: content || "" };
     if (fileUrl) { payload.file_url = fileUrl; payload.file_name = fileName; payload.file_type = fileType; }
-    const { data } = await supabase.from("messages").insert(payload).select("*, profiles:sender_id(name, email)");
+    const { data, error } = await supabase.from("messages").insert(payload).select("*, profiles:sender_id(name, email)");
+    if (error) { console.error("supaSendMessage error:", error); return null; }
+    /* Update conversation last_message timestamp */
+    supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId).then(() => {});
     return data?.[0] || null;
-  } catch(e) { return null; }
+  } catch(e) { console.error("supaSendMessage exception:", e); return null; }
 };
 const supaFindOrCreateDM = async (userId, otherId) => {
   if (!supabase) return null;
@@ -910,9 +913,13 @@ const supaCreateGroup = async (name, creatorId, memberIds) => {
     return conv[0].id;
   } catch(e) { return null; }
 };
-const supaMarkRead = async (convId, userId) => {
+const supaMarkRead = async (convId, userId, typingChan) => {
   if (!supabase) return;
-  try { await supabase.from("conversation_members").update({ last_read_at: new Date().toISOString() }).eq("conversation_id", convId).eq("user_id", userId); } catch(e) {}
+  const readAt = new Date().toISOString();
+  try {
+    await supabase.from("conversation_members").update({ last_read_at: readAt }).eq("conversation_id", convId).eq("user_id", userId);
+    if (typingChan) typingChan.send({ type: "broadcast", event: "msg_read", payload: { user_id: userId, read_at: readAt } });
+  } catch(e) {}
 };
 const supaTogglePin = async (msgId, pinned) => {
   if (!supabase) return;
@@ -7084,14 +7091,14 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const load = async () => {
       const m = await supaLoadMessages(selConv.id, 100);
       setMsgs(m);
-      supaMarkRead(selConv.id, user.id);
+      supaMarkRead(selConv.id, user.id, typingChanRef.current);
       channel = supabase.channel(`msgs-${selConv.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
         const newMsg = payload.new;
         setMsgs(prev => {
           if (prev.find(m => m.id === newMsg.id)) return prev;
-          /* Replace optimistic message from same sender with real one */
+          /* Replace oldest optimistic message from same sender (FIFO order) */
           if (newMsg.sender_id === user.id) {
-            const optIdx = prev.findIndex(m => m._optimistic && m.sender_id === user.id && m.content === (newMsg.content || ""));
+            const optIdx = prev.findIndex(m => m._optimistic && !m._failed && m.sender_id === user.id);
             if (optIdx !== -1) {
               const updated = [...prev];
               updated[optIdx] = { ...newMsg, profiles: prev[optIdx].profiles };
@@ -7109,7 +7116,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         });
         /* Debounce markRead — wait 500ms of no new messages before writing */
         clearTimeout(markReadTimer.current);
-        markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 500);
+        markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id, typingChanRef.current), 500);
         if (!newMsg.profiles) {
           supabase.from("profiles").select("name, email").eq("id", newMsg.sender_id).single().then(({ data }) => {
             if (data) setMsgs(prev => prev.map(m => m.id === newMsg.id ? { ...m, profiles: data } : m));
@@ -7135,7 +7142,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         return [...prev, { ...p, _fromBroadcast: true }];
       });
       clearTimeout(markReadTimer.current);
-      markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 500);
+      markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id, typingChanRef.current), 500);
+    }).on("broadcast", { event: "msg_read" }, ({ payload: p }) => {
+      if (!p || p.user_id === user.id) return;
+      setConvs(prev => prev.map(c => c.id === selConv.id ? { ...c, _otherLastRead: p.read_at } : c));
+      if (selConv) selConv._otherLastRead = p.read_at;
     }).subscribe();
     typingChanRef.current = typingChan;
     return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); clearTimeout(markReadTimer.current); };
@@ -7152,9 +7163,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           const prevIds = new Set(prev.filter(m => !m._optimistic).map(m => m.id));
           const hasNew = freshMsgs.some(m => !prevIds.has(m.id));
           if (!hasNew && freshMsgs.length <= prev.filter(m => !m._optimistic).length) return prev;
-          /* Merge: keep optimistic msgs that aren't in the fresh set */
+          /* Merge: keep only recent optimistic msgs (< 8s old) that aren't confirmed */
           const freshIds = new Set(freshMsgs.map(m => m.id));
-          const stillOptimistic = prev.filter(m => m._optimistic && !freshIds.has(m.id));
+          const now = Date.now();
+          const stillOptimistic = prev.filter(m => m._optimistic && !freshIds.has(m.id) && (now - (m._optSeq || 0)) < 8000);
           return [...freshMsgs, ...stillOptimistic];
         });
       }
@@ -7265,7 +7277,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const text = input.trim();
     setInput("");
     /* Optimistic: show immediately */
-    const optimistic = { id: `opt-${Date.now()}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true };
+    const optimistic = { id: `opt-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true, _optSeq: Date.now() };
     setMsgs(prev => [...prev, optimistic]);
     /* Send to DB + broadcast for instant delivery */
     const _bcastId = `bc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
@@ -7557,7 +7569,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:3 }}>
                       <span style={{ fontSize:10, color:m._failed?B.red:B.muted }}>{m._failed ? "❌ Falha ao enviar" : m._optimistic ? "⏳ Enviando..." : fmtTime(m.created_at)}</span>
-                      {isMe && !m._optimistic && !m._failed && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {isMe && !m._optimistic && !m._failed && (isRead(m) ?
+                        <svg width="16" height="12" viewBox="0 0 28 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="16 6 8 17 4 12"/><polyline points="24 6 14 17 11 13"/></svg> :
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
                       {m._failed && <button onClick={()=>{ setMsgs(prev=>prev.filter(x=>x.id!==m.id)); setInput(m.content); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:10, color:B.accent, fontWeight:600, padding:0 }}>Tentar novamente</button>}
                     </div>
                     {reactMsgId===m.id && (
