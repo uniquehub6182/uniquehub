@@ -15905,6 +15905,7 @@ ${(()=>{
 })()}
 ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
+${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;margin-left:auto;margin-right:auto;padding-left:32px;padding-right:32px;box-sizing:border-box}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
@@ -16373,7 +16374,6 @@ html.uh-desktop .app{overflow:visible!important;position:relative!important;heig
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:#ECEEF2!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important}
 html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .content>div:not(.desktop-dash){max-width:860px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;box-sizing:border-box!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
