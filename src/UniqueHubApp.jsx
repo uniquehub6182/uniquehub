@@ -2755,7 +2755,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   if (isDesktop) {
     const today = new Date();
     const dateStr = `HOJE É ${["DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"][today.getDay()]}, ${today.getDate()} DE ${["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"][today.getMonth()]} DE ${today.getFullYear()} | @UNIQUEMKTDIGITAL`;
-    const metricCards = cfg.cards.slice(0,3).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
+    const metricCards = cfg.cards.slice(0,4).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
 
     /* Panel definitions — these render REAL app screens */
     const PANEL_DEFS = {
@@ -2793,31 +2793,32 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       }
     };
     return (
-      <div style={{minHeight:"100vh",background:"#F0F1F4",paddingBottom:100,margin:0}}>
-        {/* ── HEADER ── */}
-        <div style={{background:"#1A1D23",margin:0,padding:0}}>
-          <div style={{maxWidth:1440,margin:"0 auto",padding:"14px 32px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:16}}>
+      <div style={{minHeight:"100vh",background:"#000000",paddingBottom:100,margin:0}}>
+        {/* ── HEADER — rounded, same width as panels ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
+          <div style={{background:"#1A1D23",borderRadius:24,padding:"16px 24px 20px",marginBottom:16}}>
+            {/* Top row */}
+            <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
                 <div style={{width:42,height:42,borderRadius:14,overflow:"hidden",background:`${LIME}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:LIME,border:"2px solid rgba(187,242,70,0.25)"}}>{user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:initials}</div>
                 <div><div style={{fontSize:17,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}}>Olá, {user?.nick||user?.name?.split(" ")[0]||"Usuário"}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
               </div>
               <div style={{background:LIME,borderRadius:8,padding:"6px 14px",fontSize:10,fontWeight:800,color:"#0D0D0D",letterSpacing:"0.3px",flexShrink:0}}>{dateStr}</div>
               <div style={{flex:1}}/>
-              <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"9px 14px",border:"1px solid rgba(255,255,255,0.08)",width:240}}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
+              <div style={{position:"relative",flexShrink:0}}>
+                <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"9px 14px",border:"1px solid rgba(255,255,255,0.08)",width:240}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
+                </div>
+                {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.3)",overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
               </div>
-              {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:56,right:130,width:260,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.15)",overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
               <div style={{display:"flex",gap:6}}>
                 {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>{setEc(JSON.parse(JSON.stringify(cfg)));setShowEditor(true);}}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
               </div>
             </div>
-          </div>
-          {/* Metrics overlap */}
-          <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px",transform:"translateY(20px)"}}>
+            {/* Metric cards INSIDE header */}
             <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12}}>
-              {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:14,padding:"14px 18px",cursor:"pointer",boxShadow:"0 4px 16px rgba(187,242,70,0.15)",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+              {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:14,padding:"14px 18px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
                 <div style={{position:"absolute",top:-12,right:-12,width:50,height:50,borderRadius:"50%",background:"rgba(0,0,0,0.04)"}}/>
                 <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
                 <div style={{fontSize:26,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:2}}>{w.val}</div>
@@ -2826,14 +2827,22 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             </div>
           </div>
         </div>
-        {/* ── 3 EMBEDDED SCREENS ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"36px 32px 0"}}>
+        {/* ── PILLS + 3 EMBEDDED SCREENS ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
+          {/* Pills */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
+            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
+              <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:6,background:"#16181D",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:"#aaa",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.color=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.06)";e.currentTarget.style.color="#aaa";}}>
+                <div style={{width:22,height:22,borderRadius:6,background:`${LIME}10`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:100}}>{p.badge}</span>}
+              </div>);})}
+          </div>
+          {/* Screens */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,alignItems:"start"}}>
             {defaultPanels.map((panelKey,idx) => {
               const def = PANEL_DEFS[panelKey];
               if(!def) return null;
               return (
-                <div key={panelKey} style={{background:"#FFFFFF",borderRadius:20,border:"1px solid rgba(0,0,0,0.07)",boxShadow:"0 2px 12px rgba(0,0,0,0.04),0 0 1px rgba(0,0,0,0.06)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <div key={panelKey} style={{background:"#FFFFFF",borderRadius:20,border:"1px solid rgba(255,255,255,0.06)",boxShadow:"0 4px 20px rgba(0,0,0,0.3)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
                   {/* Panel header bar */}
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#FAFBFC",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
