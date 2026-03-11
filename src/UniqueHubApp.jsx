@@ -2776,8 +2776,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
             <div style={{display:"flex",gap:20}}>
               {/* Avatar — coluna esquerda, ocupa toda altura, vaza pra baixo */}
-              <div style={{flexShrink:0,alignSelf:"stretch",display:"flex",alignItems:"center",position:"relative",zIndex:2}}>
-                <div style={{width:130,height:130,borderRadius:"50%",overflow:"hidden",background:"#333",border:"4px solid #2A2D33",marginBottom:-65}}>
+              <div style={{flexShrink:0,alignSelf:"flex-end",position:"relative",zIndex:4}}>
+                <div style={{width:140,height:140,borderRadius:"50%",overflow:"hidden",background:"#333",border:"5px solid rgba(255,255,255,0.2)",boxShadow:"0 0 0 3px rgba(0,0,0,0.3)",marginBottom:-80}}>
                   {user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42,fontWeight:900,color:LIME}}>{initials}</div>}
                 </div>
               </div>
@@ -2793,14 +2793,14 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
                     </div>
                     {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",overflow:"hidden",zIndex:30}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
                   </div>
-                  <div style={{flexShrink:0,textAlign:"right"}}><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div></div>
+                  <div style={{flexShrink:0,textAlign:"right",marginLeft:"auto"}}><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div></div>
                   <div style={{display:"flex",gap:8,flexShrink:0}}>
                     <button onClick={()=>goTab("chat")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
                     <button onClick={()=>goSub("notifs")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{notifCount>0&&<span style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
                   </div>
                 </div>
                 {/* Linha 2: 3 Cards LIME — metade dentro, metade fora do header */}
-                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginBottom:-40,position:"relative",zIndex:3}}>
+                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginBottom:-55,position:"relative",zIndex:3}}>
                   {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
                     <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
                     <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
@@ -2812,7 +2812,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           </div>
         </div>
         {/* ── PILLS ROW ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"60px 32px 0"}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"75px 32px 0"}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <button onClick={()=>setShowPanelEditor(!showPanelEditor)} style={{width:38,height:38,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
