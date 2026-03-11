@@ -2885,7 +2885,147 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           </div>
         </div>
       );
-      /* Generic panels — placeholder */
+      /* ── CHAT PANEL — real conversations ── */
+      if (pk === "chat") {
+        const convList = (team||[]).filter(t=>t.id!==user?.id).slice(0,6);
+        return (
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("chat",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Chat</span></div>
+              <span onClick={()=>goTab("chat")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{padding:"8px 12px"}}>
+              {convList.length>0?convList.map((t,i)=>(
+                <div key={t.id||i} onClick={()=>goTab("chat")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 8px",borderRadius:12,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F9FA"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:38,height:38,borderRadius:"50%",background:`hsl(${(t.name||"").length*40},60%,88%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:`hsl(${(t.name||"").length*40},50%,35%)`,flexShrink:0,overflow:"hidden"}}>{t.photo?<img src={t.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:(t.name||"?")[0]}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:13,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.name||"Usuário"}</p>
+                    <p style={{fontSize:11,color:"#9CA3AF"}}>{t.role==="admin"?"Administrador":"Membro"}</p>
+                  </div>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:t.online?"#22C55E":"#D1D5DB",flexShrink:0}}/>
+                </div>
+              )):<div style={{padding:"20px",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Nenhuma conversa</div>}
+            </div>
+          </div>
+        );
+      }
+
+      /* ── CLIENTS PANEL — real client list ── */
+      if (pk === "clients") {
+        const cl = (clients||[]).filter(c=>c.name).slice(0,8);
+        return (
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("clients",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Clientes</span><span style={{fontSize:11,fontWeight:600,color:"#9CA3AF",background:"#F3F4F6",padding:"2px 8px",borderRadius:8}}>{cl.length}</span></div>
+              <span onClick={()=>goTab("clients")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{padding:"8px 12px"}}>
+              {cl.map((c,i)=>{const statusColor=c.status==="active"?"#22C55E":c.status==="paused"?"#F59E0B":"#D1D5DB";return(
+                <div key={c.id||i} onClick={()=>goTab("clients")} style={{display:"flex",alignItems:"center",gap:10,padding:"8px",borderRadius:12,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F9FA"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{width:34,height:34,borderRadius:10,background:c.logo?`url(${c.logo}) center/cover`:`hsl(${(c.name||"").charCodeAt(0)*3},55%,90%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:`hsl(${(c.name||"").charCodeAt(0)*3},40%,35%)`,flexShrink:0}}>{!c.logo&&(c.name||"?")[0]}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:12,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
+                    <p style={{fontSize:10,color:"#9CA3AF"}}>{c.segment||"Marketing"}</p>
+                  </div>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:statusColor,flexShrink:0}}/>
+                </div>
+              );})}
+            </div>
+          </div>
+        );
+      }
+
+      /* ── CALENDAR PANEL — mini calendar + upcoming ── */
+      if (pk === "calendar") {
+        const now=new Date();const y=now.getFullYear();const m=now.getMonth();const d=now.getDate();
+        const daysInMonth=new Date(y,m+1,0).getDate();const firstDay=new Date(y,m,1).getDay();
+        const upcomingDemands=(demands||[]).filter(dm=>dm.due).slice(0,4);
+        return (
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("calendar",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Calendário</span></div>
+              <span onClick={()=>goSub("calendar")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{padding:"12px 16px"}}>
+              <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#1A1D23",marginBottom:8}}>{["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][m]} {y}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,textAlign:"center"}}>
+                {["D","S","T","Q","Q","S","S"].map((dn,i)=><div key={i} style={{fontSize:9,fontWeight:700,color:"#9CA3AF",padding:3}}>{dn}</div>)}
+                {Array.from({length:firstDay}).map((_,i)=><div key={`e${i}`}/>)}
+                {Array.from({length:daysInMonth}).map((_,i)=>{const day=i+1;const isToday=day===d;return(
+                  <div key={day} style={{fontSize:11,fontWeight:isToday?800:500,color:isToday?"#fff":"#374151",background:isToday?LIME:"transparent",borderRadius:8,padding:"4px 0",cursor:"pointer",lineHeight:"22px"}}>{day}</div>
+                );})}
+              </div>
+              {upcomingDemands.length>0&&<div style={{marginTop:12,borderTop:"1px solid rgba(0,0,0,0.06)",paddingTop:10}}>
+                <p style={{fontSize:10,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Próximas entregas</p>
+                {upcomingDemands.map((dm,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",fontSize:11}}>
+                  <div style={{width:6,height:6,borderRadius:"50%",background:stageColor[dm.stage]||"#8B8F92",flexShrink:0}}/>
+                  <span style={{fontWeight:600,color:"#1A1D23",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{dm.title}</span>
+                  <span style={{color:"#9CA3AF",fontSize:10,flexShrink:0}}>{dm.due}</span>
+                </div>)}
+              </div>}
+            </div>
+          </div>
+        );
+      }
+
+      /* ── IDEAS PANEL — real ideas list ── */
+      if (pk === "ideas") {
+        const ideaList=(demands||[]).filter(dm=>dm.stage==="idea").slice(0,5);
+        const fallbackIdeas=[{title:"Campanha de Natal",client:"Todos",votes:5},{title:"Série de Reels educativos",client:"Cliente A",votes:3},{title:"Collab com influencer local",client:"Cliente B",votes:7}];
+        const items=ideaList.length>0?ideaList:fallbackIdeas;
+        return (
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("ideas",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Ideias</span></div>
+              <span onClick={()=>goSub("ideas")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{padding:"8px 16px"}}>
+              {items.map((idea,i)=>(
+                <div key={i} onClick={()=>goSub("ideas")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 4px",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none",cursor:"pointer"}}>
+                  <div style={{width:32,height:32,borderRadius:10,background:"#FFFBEB",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{dpIco("ideas",16,"#D97706")}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:12,fontWeight:600,color:"#1A1D23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{idea.title||"Sem título"}</p>
+                    <p style={{fontSize:10,color:"#9CA3AF"}}>{idea.client||"Geral"}</p>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-6 0v4"/><path d="M18 14v-3a1 1 0 00-1-1h-1"/><path d="M15 14v-1a1 1 0 00-1-1h-1"/><path d="M12 14v-1a1 1 0 00-1-1H5a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-2"/></svg>
+                    <span style={{fontSize:11,fontWeight:700,color:"#D97706"}}>{idea.votes||0}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      /* ── SOCIAL PANEL — connection status ── */
+      if (pk === "social") {
+        const socialClients=(clients||[]).filter(c=>c.socials).slice(0,5);
+        return (
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+            <div style={{padding:"14px 20px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco("social",16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>Redes Sociais</span></div>
+              <span onClick={()=>goSub("social")} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{padding:"12px 16px"}}>
+              {socialClients.length>0?socialClients.map((c,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 4px",borderTop:i?"1px solid rgba(0,0,0,0.04)":"none"}}>
+                  <span style={{fontSize:12,fontWeight:600,color:"#1A1D23",flex:1}}>{c.name}</span>
+                  <div style={{display:"flex",gap:4}}>
+                    {c.socials?.fb&&<div style={{width:22,height:22,borderRadius:6,background:"#EFF6FF",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></div>}
+                    {c.socials?.ig&&<div style={{width:22,height:22,borderRadius:6,background:"#FFF1F2",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E4405F" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg></div>}
+                  </div>
+                </div>
+              )):<div style={{padding:"16px",textAlign:"center"}}>
+                <p style={{fontSize:12,color:"#9CA3AF"}}>Conecte as redes dos clientes</p>
+                <button onClick={()=>goTab("clients")} style={{marginTop:8,padding:"8px 16px",borderRadius:10,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Ir para Clientes</button>
+              </div>}
+            </div>
+          </div>
+        );
+      }
+
+      /* Generic fallback */
       const opt = DPANEL_OPTS[pk] || {l:pk,icon:"content"};
       return (
         <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
