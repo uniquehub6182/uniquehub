@@ -2437,9 +2437,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const searchRef = useRef(null);
   const [showEditor, setShowEditor] = useState(false);
   const [dashCfg, setDashCfg] = useState(() => { if (cloudDash) return cloudDash; try { const s = localStorage.getItem("uh_dash_cfg"); return s ? JSON.parse(s) : null; } catch { return null; } });
-  useEffect(() => { if (cloudDash) setDashCfg(cloudDash); }, [cloudDash]);
+  const dashCfgSkipCloud = useRef(false);
+  useEffect(() => { if (cloudDash && !dashCfgSkipCloud.current) setDashCfg(cloudDash); dashCfgSkipCloud.current = false; }, [cloudDash]);
   const [ec, setEc] = useState(null); // editor copy — initialized when sheet opens
   const saveCfg = (c) => {
+    dashCfgSkipCloud.current=true;
     setDashCfg(c);
     try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {}
     savePrefsToCloud(undefined, undefined, undefined, user?.id, c, undefined);
@@ -2492,7 +2494,6 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     ? { cards:canFinancial ? ["investimento","aprovacoes"] : ["aprovacoes","clientes"], pills:["suporte","aprovacoes","conteudo","relatorios"].filter(k => PILLS[k]?.k !== "financial" || canFinancial), actions:["aprovar","trafego","relatorio","chat"].filter(k => ACTIONS[k]?.k !== "financial" || canFinancial), sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
     : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
   const cfg = dashCfg || cfgDefault;
-  const saveCfg = (nc) => { setDashCfg(nc); try{localStorage.setItem("uh_dash_cfg",JSON.stringify(nc));}catch{} savePrefsToCloud?.(nc); };
   /* Desktop panel state — top level for React hooks rules */
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [showPanelEditor, setShowPanelEditor] = useState(false);
@@ -2863,20 +2864,20 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             </div>
           </div>
         </div>
-        {/* ── BANNER PUBLICITÁRIO ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
-          <div onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:80,borderRadius:16,overflow:"hidden",cursor:"pointer",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
-            {!bannerImg&&<><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:13,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
-          </div>
-        </div>
         {/* ── PILLS ROW ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <button onClick={()=>setShowPanelEditor(!showPanelEditor)} style={{width:38,height:38,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
               <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:7,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:"#1A1D23",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";}}>
                 <div style={{width:24,height:24,borderRadius:7,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{pillIcon(pk)}</div>{p.l}
               </div>);})}
+          </div>
+        </div>
+        {/* ── BANNER PUBLICITÁRIO ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
+          <div onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:64,borderRadius:14,overflow:"hidden",cursor:"pointer",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
+            {!bannerImg&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
           </div>
         </div>
         {/* ── 3 BESPOKE PANELS ── */}
