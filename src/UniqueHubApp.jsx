@@ -2751,73 +2751,139 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       </>
   );
 
-  /* ═══════ DESKTOP DASHBOARD — completely different layout ═══════ */
+  /* ═══════ DESKTOP DASHBOARD — premium SaaS layout ═══════ */
   if (isDesktop) {
-    const D = { bg:isDark?"#0F1419":"#F5F5F7", card:isDark?"#1A1F26":"#FFFFFF", brd:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)", txt:isDark?"#E8EAED":"#192126", mut:isDark?"#8B8F92":"#8B8F92", hdr:isDark?"#0D1117":"#192126", hdrTxt:"#fff", hdrSub:"rgba(255,255,255,0.6)" };
+    const D = { bg:isDark?"#0F1419":"#F0F1F3", card:isDark?"#181D24":"#FFFFFF", brd:isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.05)", txt:isDark?"#E8EAED":"#1A1D23", mut:isDark?"#6B7280":"#6B7280", hdr:isDark?"#0D1117":"#1A1D23", sub:isDark?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.55)", shd:isDark?"0 1px 3px rgba(0,0,0,0.3)":"0 1px 3px rgba(0,0,0,0.04)" };
     const today = new Date();
-    const dayNames = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
-    const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-    const dateStr = `${dayNames[today.getDay()]}, ${today.getDate()} de ${monthNames[today.getMonth()]} de ${today.getFullYear()}`;
+    const dateStr = today.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+    const DCard = ({children, span, style:s}) => <div style={{background:D.card,borderRadius:14,border:`1px solid ${D.brd}`,boxShadow:D.shd,padding:20,gridColumn:span||"auto",...(s||{})}}>{children}</div>;
+    const DSH = ({title,action,onClick}) => <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:14,fontWeight:700,color:D.txt,letterSpacing:"-0.2px"}}>{title}</h3>{action&&<span onClick={onClick} style={{fontSize:12,color:LIME,fontWeight:600,cursor:"pointer"}}>{action}</span>}</div>;
+    /* Metric mini-cards */
+    const metricCards = cfg.cards.slice(0,4).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
+    /* News */
+    const catColor={trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
+    const catLabel={trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Marketing Digital",ia:"Inteligência Artificial"};
+    const catPhoto=(cat,seed)=>{const photos={trends:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=80"],default:["https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=400&q=80"]};const pool=photos[cat]||photos.default;return pool[seed%pool.length];};
+    const fallbackNews=[{id:"f1",title:"IA no Marketing: como usar em 2025",cat:"trends",date:"Hoje"},{id:"f2",title:"Instagram muda algoritmo do Reels",cat:"updates",date:"Ontem"},{id:"f3",title:"5 técnicas para dobrar o engajamento",cat:"tips",date:"2 dias"},{id:"f4",title:"Case: como triplicamos o ROI",cat:"cases",date:"3 dias"}];
+    const newsItems=((articles||[]).length>0?articles:(articlesLoaded?fallbackNews:[])).slice(0,4);
+    const recentDemands=(demands||[]).slice(0,6);
+    const CDATA=(clients||[]).filter(c=>c.name).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt"));
     return (
-      <div style={{ minHeight:"100vh", background:D.bg, paddingBottom:100 }}>
+      <div style={{minHeight:"100vh",background:D.bg,paddingBottom:100}}>
         {/* ── TOP BAR ── */}
-        <div style={{ background:D.hdr, borderBottom:`1px solid ${isDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.08)"}` }}>
-          <div style={{ maxWidth:1400, margin:"0 auto", padding:"14px 40px", display:"flex", alignItems:"center", gap:20 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-              <div style={{ width:42, height:42, borderRadius:"50%", overflow:"hidden", background:`${LIME}30`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#0D0D0D" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
-              <div>
-                <div style={{ fontSize:16, fontWeight:800, color:D.hdrTxt, letterSpacing:"-0.3px" }}>Olá, {user?.nick || user?.name?.split(" ")[0] || "Usuário"}</div>
-                <div style={{ fontSize:11, color:D.hdrSub, fontWeight:500 }}>{agencyIdentity?.name || "Unique Marketing"}</div>
-              </div>
+        <div style={{background:D.hdr,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{maxWidth:1400,margin:"0 auto",padding:"12px 32px",display:"flex",alignItems:"center",gap:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+              <div style={{width:38,height:38,borderRadius:"50%",overflow:"hidden",background:`${LIME}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:"#0D0D0D"}}>{user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:initials}</div>
+              <div><div style={{fontSize:15,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>Olá, {user?.nick||user?.name?.split(" ")[0]||"Usuário"}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontWeight:500}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
             </div>
-            <div style={{ background:LIME, borderRadius:100, padding:"6px 16px", fontSize:11, fontWeight:700, color:"#0D0D0D", letterSpacing:"-0.2px", flexShrink:0, textTransform:"uppercase" }}>{dateStr}</div>
-            <div style={{ flex:1 }}/>
-            <div style={{ position:"relative", width:320, flexShrink:0 }}>
-              <div style={{ background:isDark?"rgba(255,255,255,0.06)":"rgba(255,255,255,0.12)", borderRadius:12, display:"flex", alignItems:"center", gap:8, padding:"9px 14px", border:`1px solid ${isDark?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.15)"}` }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <div style={{background:"rgba(187,242,70,0.12)",border:"1px solid rgba(187,242,70,0.2)",borderRadius:8,padding:"5px 14px",fontSize:11,fontWeight:600,color:LIME,flexShrink:0}}>{dateStr}</div>
+            <div style={{flex:1}}/>
+            <div style={{position:"relative",width:280,flexShrink:0}}>
+              <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"8px 12px",border:"1px solid rgba(255,255,255,0.08)"}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
               </div>
-              {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:6,background:isDark?"#1A1A1A":"#fff",borderRadius:12,boxShadow:"0 8px 32px rgba(0,0,0,0.25)",border:`1px solid ${D.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${D.brd}`:"none",display:"flex",alignItems:"center",gap:8}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span style={{fontSize:13,fontWeight:600,color:D.txt}}>{r.l}</span></div>)}</div>}
+              {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:D.card,borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",border:`1px solid ${D.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"8px 12px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${D.brd}`:"none",display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,color:D.txt}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>{r.l}</div>)}</div>}
             </div>
-            <div style={{ display:"flex", gap:8, flexShrink:0 }}>
-              <button onClick={()=>goTab("chat")} style={{width:38,height:38,borderRadius:10,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
-              <button onClick={()=>goSub("notifs")} style={{width:38,height:38,borderRadius:10,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{(notifCount>0)&&<span style={{position:"absolute",top:6,right:6,width:8,height:8,borderRadius:"50%",background:"#FF3B30",border:"2px solid "+D.hdr}}/>}</button>
-              <button onClick={()=>{ setEc(JSON.parse(JSON.stringify(cfg))); setShowEditor(true); }} style={{width:38,height:38,borderRadius:10,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+            <div style={{display:"flex",gap:6,flexShrink:0}}>
+              {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>{setEc(JSON.parse(JSON.stringify(cfg)));setShowEditor(true);}}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:8,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#FF3B30",border:"2px solid "+D.hdr}}/>}</button>)}
             </div>
           </div>
         </div>
-        {/* ── METRIC CARDS ── */}
-        <div style={{ maxWidth:1400, margin:"0 auto", padding:"20px 40px 0" }}>
-          <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(cfg.cards.filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).length,4)},1fr)`, gap:14 }}>
-            {cfg.cards.slice(0,4).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return(
-              <div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",position:"relative",overflow:"hidden",cursor:"pointer",transition:"transform .12s,box-shadow .2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(187,242,70,0.3)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.6}}>{w.l}</div>
-                <div style={{fontSize:26,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",lineHeight:1.1,marginTop:4}}>{w.val}</div>
-                <div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.4)",marginTop:4}}>{w.sub}</div>
-                <div style={{position:"absolute",bottom:14,right:14,width:30,height:30,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-              </div>);})}
+        {/* ── METRICS ROW ── */}
+        <div style={{maxWidth:1400,margin:"0 auto",padding:"20px 32px 0"}}>
+          <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12}}>
+            {metricCards.map((w,i)=>(
+              <div key={i} onClick={()=>nav(w.k)} style={{background:i===0?LIME:D.card,borderRadius:12,padding:"16px 18px",position:"relative",cursor:"pointer",border:i===0?"none":`1px solid ${D.brd}`,boxShadow:i===0?"none":D.shd,transition:"transform .12s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-1px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                <div style={{fontSize:10,fontWeight:700,color:i===0?"rgba(0,0,0,0.4)":D.mut,textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
+                <div style={{fontSize:24,fontWeight:900,color:i===0?"#0D0D0D":LIME,letterSpacing:"-0.8px",marginTop:2}}>{w.val}</div>
+                <div style={{fontSize:11,color:i===0?"rgba(0,0,0,0.4)":D.mut,marginTop:2,fontWeight:500}}>{w.sub}</div>
+              </div>
+            ))}
           </div>
         </div>
-        {/* ── PILLS ── */}
-        <div style={{ maxWidth:1400, margin:"0 auto", padding:"16px 40px 0" }}>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
-              <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:8,background:D.card,border:`1px solid ${D.brd}`,borderRadius:100,padding:"8px 16px",cursor:"pointer",color:D.txt,fontSize:12,fontWeight:600,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.background=isDark?"rgba(187,242,70,0.06)":"rgba(187,242,70,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=D.brd;e.currentTarget.style.background=D.card;}}>
-                <div style={{width:26,height:26,borderRadius:"50%",background:isDark?"rgba(187,242,70,0.1)":"rgba(187,242,70,0.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>
-                {p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}
-              </div>);})}
-          </div>
-        </div>
-        {/* ── SECTIONS GRID ── */}
-        <div style={{ maxWidth:1400, margin:"0 auto", padding:"20px 40px 0" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24, alignItems:"start" }}>
-            {cfg.sections.map(sk => <div key={sk}>{renderSection(sk)}</div>)}
+        {/* ── MAIN GRID — 3 columns ── */}
+        <div style={{maxWidth:1400,margin:"0 auto",padding:"16px 32px 0"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr 1fr",gap:16,alignItems:"start"}}>
+
+            {/* COL 1 — Comunicados */}
+            <DCard>
+              <DSH title="Comunicados" action="Ver todos" onClick={()=>goSub("news")}/>
+              {newsItems.map((a,i)=>(
+                <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{display:"flex",gap:12,padding:"8px 0",borderTop:i?`1px solid ${D.brd}`:"none",cursor:"pointer",alignItems:"center"}}>
+                  <div style={{width:56,height:56,borderRadius:10,overflow:"hidden",flexShrink:0,background:"#222"}}>
+                    <img src={a.photo||catPhoto(a.cat,i)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <span style={{fontSize:9,fontWeight:700,color:catColor[a.cat]||"#6366F1",textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
+                    <p style={{fontSize:13,fontWeight:600,color:D.txt,lineHeight:1.3,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.title}</p>
+                    <p style={{fontSize:11,color:D.mut,marginTop:1}}>{a.date||""}</p>
+                  </div>
+                </div>
+              ))}
+            </DCard>
+
+            {/* COL 2 — Ações + Equipe */}
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              <DCard>
+                <DSH title="Ações rápidas"/>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[...cfg.actions].sort((a,b)=>(ACTIONS[a]?.l||"").localeCompare(ACTIONS[b]?.l||"","pt")).slice(0,6).map((ak,i)=>{const a=ACTIONS[ak];if(!a)return null;return(
+                    <div key={i} onClick={()=>nav(a.k)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,background:isDark?"rgba(255,255,255,0.03)":"#F8F9FA",cursor:"pointer",border:`1px solid transparent`,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";}}>
+                      <div style={{width:30,height:30,borderRadius:8,background:isDark?"rgba(187,242,70,0.08)":`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME,flexShrink:0}}>{actionIcon(ak)}</div>
+                      <span style={{fontSize:12,fontWeight:600,color:D.txt}}>{a.l}</span>
+                    </div>
+                  );})}
+                </div>
+              </DCard>
+              {team&&team.length>0&&<DCard>
+                <DSH title="Equipe" action="Ver todos" onClick={()=>goSub("team")}/>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                  {(team||[]).slice(0,8).map((m,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,width:52}}>
+                    <Av src={m.photo_url} name={m.name} sz={40} fs={15}/>
+                    <p style={{fontSize:10,fontWeight:600,color:D.txt,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:52}}>{m.name?.split(" ")[0]}</p>
+                  </div>)}
+                </div>
+              </DCard>}
+            </div>
+
+            {/* COL 3 — Clientes + Resumo */}
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              {isAdmin&&<DCard>
+                <DSH title="Resumo"/>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,fin:false},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",fin:true},{label:"Score",value:avgScore,sub:"satisfação média",fin:false},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",fin:false}].filter(s=>!s.fin||canFinancial).map((s,j)=>(
+                    <div key={j} style={{background:isDark?"rgba(255,255,255,0.03)":"#F8F9FA",borderRadius:10,padding:"12px"}}>
+                      <p style={{fontSize:9,color:D.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:0.8}}>{s.label}</p>
+                      <p style={{fontSize:20,fontWeight:900,color:LIME,marginTop:2}}>{s.value}</p>
+                      <p style={{fontSize:10,color:D.mut,marginTop:1}}>{s.sub}</p>
+                    </div>
+                  ))}
+                </div>
+              </DCard>}
+              {CDATA.length>0&&<DCard>
+                <DSH title="Clientes" action="Ver todos" onClick={()=>goSub("clients")}/>
+                {CDATA.slice(0,5).map((c,i)=>(
+                  <div key={c.id||i} onClick={()=>goSub("clients")} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderTop:i?`1px solid ${D.brd}`:"none",cursor:"pointer"}}>
+                    <Av src={c.logo} name={c.name} sz={32} fs={12}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontSize:12,fontWeight:600,color:D.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
+                      <p style={{fontSize:10,color:D.mut}}>{c.plan||"—"}{canFinancial&&c.monthly?` · ${c.monthly}/mês`:""}</p>
+                    </div>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={D.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                ))}
+              </DCard>}
+            </div>
+
           </div>
         </div>
         {EditorSheetJSX}
       </div>
     );
   }
+
 
   return (
     <div className="pg" style={{ padding:0, minHeight:"100%" }}>
