@@ -7536,7 +7536,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* INPUT BAR */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:`0 0 0 100px ${B.bgCard}` }}>
+        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:chatIsDesktop?100:0 }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -7641,7 +7641,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto", marginBottom:chatIsDesktop?120:0 }}>
+    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto" }}>
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto"}}>
         {ToastEl}
