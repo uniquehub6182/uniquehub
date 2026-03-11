@@ -2889,6 +2889,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             <div style={{display:"flex",gap:6,marginBottom:20}}>
               {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};savePrefsToCloud?.(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
             </div>
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Atalhos rápidos</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:20}}>
+              {Object.entries(PILLS).filter(([k,v])=>v.k!=="financial"||canFinancial).map(([k,v])=>{const active=cfg.pills.includes(k);return(
+                <button key={k} onClick={()=>{const np=active?cfg.pills.filter(p=>p!==k):[...cfg.pills,k];const nc={...cfg,pills:np};savePrefsToCloud?.(nc);}} style={{padding:"5px 10px",borderRadius:8,border:active?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:active?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:active?700:500,color:active?"#1A1D23":"#9CA3AF"}}>{v.l}</button>
+              );})}
+            </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Painéis do Dashboard</p>
             {dPanels.map((current,slot)=>(
               <div key={`slot-${slot}`} style={{marginBottom:14,background:"#F8F9FA",borderRadius:12,padding:12}}>
