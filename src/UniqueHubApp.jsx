@@ -16372,7 +16372,7 @@ html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!importa
 html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important;max-width:100%!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0!important;padding:0 0 120px!important;background:#ECEEF2!important;width:100%!important}
 html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important}
-html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:16px 32px!important;width:100%!important}
+html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
