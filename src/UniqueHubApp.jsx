@@ -2772,14 +2772,26 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
 
     /* ── Panel options for editor ── */
     const DPANEL_OPTS = {
-      news:{l:"Comunicados",icon:"📰"},
-      ai:{l:"Assistente IA",icon:"✨"},
-      content:{l:"Conteúdo",icon:"📋"},
-      chat:{l:"Chat",icon:"💬"},
-      clients:{l:"Clientes",icon:"👥"},
-      calendar:{l:"Calendário",icon:"📅"},
-      ideas:{l:"Ideias",icon:"💡"},
-      social:{l:"Redes Sociais",icon:"📱"},
+      news:{l:"Comunicados",icon:"news"},
+      ai:{l:"Assistente IA",icon:"ai"},
+      content:{l:"Conteúdo",icon:"content"},
+      chat:{l:"Chat",icon:"chat"},
+      clients:{l:"Clientes",icon:"clients"},
+      calendar:{l:"Calendário",icon:"calendar"},
+      ideas:{l:"Ideias",icon:"ideas"},
+      social:{l:"Redes Sociais",icon:"social"},
+    };
+    const dpIco = (k,sz=16,clr="#1A1D23") => {
+      const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+        calendar:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+        ideas:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 019 14"/></svg>,
+        social:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><rect x="4" y="16" width="16" height="4" rx="1"/></svg>,
+        clients:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
+        news:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/></svg>,
+        ai:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+        content:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+      };
+      return p[k]||p.content;
     };
 
     /* ── Render a dashboard panel by key ── */
@@ -2874,16 +2886,16 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
         </div>
       );
       /* Generic panels — placeholder */
-      const opt = DPANEL_OPTS[pk] || {l:pk,icon:"📦"};
+      const opt = DPANEL_OPTS[pk] || {l:pk,icon:"content"};
       return (
-        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",minHeight:300}}>
-          <div style={{padding:"18px 20px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
-            <h3 style={{fontSize:17,fontWeight:800,color:"#1A1D23"}}>{opt.icon} {opt.l}</h3>
-            <span onClick={()=>{ if(pk==="chat")goTab("chat"); else if(pk==="clients")goTab("clients"); else if(pk==="calendar")goSub("calendar"); else if(pk==="ideas")goSub("ideas"); else if(pk==="social")goSub("social"); }} style={{fontSize:12,color:"#6B7280",fontWeight:600,cursor:"pointer"}}>Abrir →</span>
+        <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden"}}>
+          <div style={{padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>{dpIco(pk,16,"#1A1D23")}<span style={{fontSize:15,fontWeight:700,color:"#1A1D23"}}>{opt.l}</span></div>
+            <span onClick={()=>{ if(pk==="chat")goTab("chat"); else if(pk==="clients")goTab("clients"); else if(pk==="calendar")goSub("calendar"); else if(pk==="ideas")goSub("ideas"); else if(pk==="social")goSub("social"); }} style={{fontSize:13,fontWeight:600,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
           </div>
-          <div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}>
-            <div style={{fontSize:36,marginBottom:8}}>{opt.icon}</div>
-            <p style={{fontSize:14,fontWeight:600}}>{opt.l}</p>
+          <div style={{padding:"30px 20px",textAlign:"center",color:"#9CA3AF"}}>
+            <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}>{dpIco(pk,32,"#D1D5DB")}</div>
+            <p style={{fontSize:13,fontWeight:600,color:"#9CA3AF"}}>{opt.l}</p>
             <p style={{fontSize:12,marginTop:4}}>Em breve neste painel</p>
           </div>
         </div>
@@ -2963,11 +2975,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             {dPanels.map((current,slot)=>(
               <div key={`slot-${slot}`} style={{marginBottom:14,background:"#F8F9FA",borderRadius:12,padding:12}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <p style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Painel {slot+1} — {DPANEL_OPTS[current]?.icon} {DPANEL_OPTS[current]?.l||current}</p>
+                  <p style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Painel {slot+1} — {dpIco(current,14,"#1A1D23")} {DPANEL_OPTS[current]?.l||current}</p>
                   {dPanels.length>1&&<button onClick={()=>{const np=dPanels.filter((_,i)=>i!==slot);setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{width:24,height:24,borderRadius:6,border:"none",background:"#FEE2E2",color:"#EF4444",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700}}>×</button>}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
-                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{padding:"6px 8px",borderRadius:8,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:current===k?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:13}}>{v.icon}</span>{v.l}</button>)}
+                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{padding:"6px 8px",borderRadius:8,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:current===k?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:4}}>{dpIco(k,13,current===k?"#1A1D23":"#6B7280")}{v.l}</button>)}
                 </div>
               </div>
             ))}
