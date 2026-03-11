@@ -7006,6 +7006,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const [otherTyping, setOtherTyping] = useState(false);
   const typingTimeout = useRef(null);
   const typingChanRef = useRef(null);
+  const chatListChanRef = useRef(null);
   const msgEndRef = useRef(null);
   const msgsContainerRef = useRef(null);
   /* Audio recording */
@@ -7097,6 +7098,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               return updated;
             }
           }
+          /* Replace broadcast message with DB-confirmed one */
+          const bcIdx = prev.findIndex(m => m._fromBroadcast && m.id === newMsg.id);
+          if (bcIdx !== -1) {
+            const updated = [...prev];
+            updated[bcIdx] = { ...newMsg, profiles: prev[bcIdx].profiles || newMsg.profiles };
+            return updated;
+          }
           return [...prev, newMsg];
         });
         /* Debounce markRead — wait 500ms of no new messages before writing */
@@ -7112,7 +7120,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       }).subscribe();
     };
     load();
-    /* Typing presence channel */
+    /* Typing + instant message broadcast channel */
     const typingChan = supabase.channel(`typing-${selConv.id}`);
     typingChan.on("broadcast", { event: "typing" }, ({ payload: p }) => {
       if (p?.user_id !== user.id) {
@@ -7120,6 +7128,14 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         clearTimeout(typingTimeout.current);
         typingTimeout.current = setTimeout(() => setOtherTyping(false), 3000);
       }
+    }).on("broadcast", { event: "new_msg" }, ({ payload: p }) => {
+      if (!p || p.sender_id === user.id) return;
+      setMsgs(prev => {
+        if (prev.find(m => m.id === p.id || (m._broadcastId && m._broadcastId === p._broadcastId))) return prev;
+        return [...prev, { ...p, _fromBroadcast: true }];
+      });
+      clearTimeout(markReadTimer.current);
+      markReadTimer.current = setTimeout(() => supaMarkRead(selConv.id, user.id), 500);
     }).subscribe();
     typingChanRef.current = typingChan;
     return () => { if (channel) supabase.removeChannel(channel); supabase.removeChannel(typingChan); setOtherTyping(false); clearTimeout(markReadTimer.current); };
@@ -7155,7 +7171,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           }
         }
       } catch(e) {}
-    }, 4000);
+    }, 1500);
     return () => clearInterval(poll);
   }, [selConv?.id]);
 
@@ -7189,16 +7205,25 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     if (!supabase || !user?.id) return;
     const channel = supabase.channel("chat-list").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
       const nm = payload.new;
-      /* Update the affected conversation's lastMsg in place — no DB queries */
       setConvs(prev => {
         const idx = prev.findIndex(c => c.id === nm.conversation_id);
-        if (idx === -1) return prev; /* unknown conv, ignore for now */
+        if (idx === -1) return prev;
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id ? 1 : updated[idx].unread };
+        updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id ? (updated[idx].unread||0) + 1 : updated[idx].unread };
+        return updated;
+      });
+    }).on("broadcast", { event: "chat_update" }, ({ payload: p }) => {
+      if (!p || p.sender_id === user.id) return;
+      setConvs(prev => {
+        const idx = prev.findIndex(c => c.id === p.conversation_id);
+        if (idx === -1) return prev;
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], lastMsg: p, unread: (updated[idx].unread||0) + 1 };
         return updated;
       });
     }).subscribe();
-    return () => supabase.removeChannel(channel);
+    chatListChanRef.current = channel;
+    return () => { supabase.removeChannel(channel); chatListChanRef.current = null; };
   }, [user?.id]);
 
   /* Polling fallback: refresh conversation list every 6s */
@@ -7209,7 +7234,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         const fresh = await supaLoadConversations(user.id);
         if (fresh && fresh.length > 0) setConvs(fresh);
       }
-    }, 6000);
+    }, 2500);
     return () => clearInterval(poll);
   }, [user?.id, view]);
 
@@ -7242,14 +7267,23 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     /* Optimistic: show immediately */
     const optimistic = { id: `opt-${Date.now()}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true };
     setMsgs(prev => [...prev, optimistic]);
-    /* Send to DB */
+    /* Send to DB + broadcast for instant delivery */
+    const _bcastId = `bc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     try {
       const result = await supaSendMessage(selConv.id, user.id, text);
       if (!result) {
         console.error("Chat: sendMsg returned null — check RLS policies or Realtime config");
         showToast("Erro ao enviar — verifique conexão");
-        /* Mark optimistic as failed */
         setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+      } else {
+        /* Broadcast to other participants for instant delivery */
+        if (typingChanRef.current) {
+          typingChanRef.current.send({ type: "broadcast", event: "new_msg", payload: { ...result, _broadcastId: _bcastId } });
+        }
+        /* Broadcast to update conversation list for other users */
+        if (chatListChanRef.current) {
+          chatListChanRef.current.send({ type: "broadcast", event: "chat_update", payload: { ...result } });
+        }
       }
     } catch(err) {
       console.error("Chat: sendMsg error:", err);
@@ -7354,7 +7388,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     showToast("Enviando arquivo...");
     const result = await supaUploadChatFile(file);
     if (result) {
-      await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+      const msg = await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+      if (msg && typingChanRef.current) {
+        typingChanRef.current.send({ type: "broadcast", event: "new_msg", payload: msg });
+      }
+      if (msg && chatListChanRef.current) {
+        chatListChanRef.current.send({ type: "broadcast", event: "chat_update", payload: msg });
+      }
       showToast("Arquivo enviado ✓");
     } else { showToast("Erro ao enviar arquivo"); }
     setShowAttach(false);
