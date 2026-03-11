@@ -2751,147 +2751,108 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
       </>
   );
 
-  /* ═══════ DESKTOP DASHBOARD V7 — embedded mini-panels ═══════ */
+  /* ═══════ DESKTOP DASHBOARD V7 — embedded real screens ═══════ */
   if (isDesktop) {
-    const L = { bg:"#F0F1F4", card:"#FFFFFF", brd:"rgba(0,0,0,0.07)", txt:"#1A1D23", mut:"#6B7280", acc:LIME, shd:"0 2px 8px rgba(0,0,0,0.04),0 0 1px rgba(0,0,0,0.06)" };
     const today = new Date();
     const dateStr = `HOJE É ${["DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"][today.getDay()]}, ${today.getDate()} DE ${["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"][today.getMonth()]} DE ${today.getFullYear()} | @UNIQUEMKTDIGITAL`;
     const metricCards = cfg.cards.slice(0,3).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
-    const newsItems=((articles||[]).length>0?articles:(articlesLoaded?[{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA transformando campanhas.",cat:"trends",date:"Hoje"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates",date:"Ontem"},{id:"f3",title:"5 técnicas para dobrar engajamento",summary:"Estratégias comprovadas para Stories.",cat:"tips",date:"2 dias"},{id:"f4",title:"Case: triplicamos o ROI",summary:"Estudo de caso real.",cat:"cases",date:"3 dias"}]:[])).slice(0,4);
-    const catColor={trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9"};
-    const catLabel={trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia"};
-    const catPhoto=(cat,seed)=>({trends:["https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&q=80"],updates:["https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&q=80"],tips:["https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=400&q=80"],cases:["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&q=80"],default:["https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=400&q=80"]}[cat]||["https://images.unsplash.com/photo-1432888498266-38ffec3eaf0a?w=400&q=80"])[0];
-    const CDATA=(clients||[]).filter(c=>c.name).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt"));
-    const recentDemands=(demands||[]).slice(0,4);
-    const stageColor={idea:"#8B5CF6",briefing:"#3B82F6",design:"#F59E0B",caption:"#EC4899",review:"#F97316",client:"#10B981",done:"#6B7280"};
-    const stageName={idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Cliente",done:"Publicado"};
+
+    /* Panel definitions — these render REAL app screens */
+    const PANEL_DEFS = {
+      content:{label:"Conteúdo",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>},
+      clients:{label:"Clientes",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>},
+      news:{label:"Comunicados",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/></svg>},
+      ai:{label:"Assistente IA",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/></svg>},
+      ideas:{label:"Ideias",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>},
+      calendar:{label:"Agenda",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+      library:{label:"Biblioteca",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>},
+      academy:{label:"Academy",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>},
+      reports:{label:"Relatórios",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>},
+      checkin:{label:"Check-in",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
+      financial:{label:"Financeiro",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>},
+      gamify:{label:"Ranking",icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
+    };
+    const defaultPanels = cfg.desktopPanels || ["news","content","ai"];
+    /* Render a real screen inside a panel */
+    const renderPanel = (key) => {
+      const props = { onBack:()=>{}, user, canAccess:ca };
+      switch(key) {
+        case "content": return <ContentPage user={user} clients={clients} demands={demands} setDemands={()=>{}} team={team} canAccess={ca} />;
+        case "clients": return <ClientsPage onBack={()=>{}} onNavigate={(to)=>{if(to==="content")goTab("content");else if(to==="chat")goTab("chat");}} clients={clients} setClients={()=>{}} user={user} canAccess={ca} />;
+        case "news": return <NewsPage onBack={()=>{}} user={user} />;
+        case "ai": return <AIPage onBack={()=>{}} user={user} agencyIdentity={agencyIdentity} />;
+        case "ideas": return <IdeasPage onBack={()=>{}} user={user} clients={clients} />;
+        case "calendar": return <CalendarPage onBack={()=>{}} clients={clients} team={team} user={user} />;
+        case "library": return <LibraryPage onBack={()=>{}} clients={clients} onUpdateClients={()=>{}} />;
+        case "academy": return <AcademyPage onBack={()=>{}} />;
+        case "reports": return <ReportsPage onBack={()=>{}} clients={clients} team={team} />;
+        case "checkin": return <CheckinPage onBack={()=>{}} user={user} />;
+        case "financial": return <FinancialPage onBack={()=>{}} clients={clients} canAccess={ca} />;
+        case "gamify": return <GamifyPage onBack={()=>{}} user={user} team={team} />;
+        default: return <div style={{padding:40,textAlign:"center",color:"#6B7280"}}>Selecione um painel</div>;
+      }
+    };
     return (
-      <div style={{minHeight:"100vh",background:L.bg,paddingBottom:100,margin:0}}>
-        {/* ── HEADER flush to top ── */}
-        <div style={{background:"#1A1D23",margin:0,padding:0,position:"relative"}}>
-          <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px"}}>
+      <div style={{minHeight:"100vh",background:"#F0F1F4",paddingBottom:100,margin:0}}>
+        {/* ── HEADER ── */}
+        <div style={{background:"#1A1D23",margin:0,padding:0}}>
+          <div style={{maxWidth:1440,margin:"0 auto",padding:"14px 32px"}}>
             <div style={{display:"flex",alignItems:"center",gap:16}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
                 <div style={{width:42,height:42,borderRadius:14,overflow:"hidden",background:`${LIME}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:LIME,border:"2px solid rgba(187,242,70,0.25)"}}>{user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:initials}</div>
                 <div><div style={{fontSize:17,fontWeight:800,color:"#fff",letterSpacing:"-0.3px"}}>Olá, {user?.nick||user?.name?.split(" ")[0]||"Usuário"}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{agencyIdentity?.name||"Unique Marketing"}</div></div>
               </div>
-              <div style={{background:`${LIME}`,borderRadius:8,padding:"6px 16px",fontSize:11,fontWeight:800,color:"#0D0D0D",letterSpacing:"0.3px",flexShrink:0}}>{dateStr}</div>
+              <div style={{background:LIME,borderRadius:8,padding:"6px 14px",fontSize:10,fontWeight:800,color:"#0D0D0D",letterSpacing:"0.3px",flexShrink:0}}>{dateStr}</div>
               <div style={{flex:1}}/>
-              <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"9px 14px",border:"1px solid rgba(255,255,255,0.08)",width:260}}>
+              <div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,display:"flex",alignItems:"center",gap:8,padding:"9px 14px",border:"1px solid rgba(255,255,255,0.08)",width:240}}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:13,color:"#fff",outline:"none",flex:1}}/>
               </div>
-              {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:60,right:140,width:260,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.15)",border:`1px solid ${L.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${L.brd}`:"none",fontSize:13,fontWeight:600,color:L.txt}}>{r.l}</div>)}</div>}
+              {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:56,right:130,width:260,background:"#fff",borderRadius:12,boxShadow:"0 12px 40px rgba(0,0,0,0.15)",overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"10px 14px",cursor:"pointer",borderBottom:i<searchResults.length-1?"1px solid rgba(0,0,0,0.06)":"none",fontSize:13,fontWeight:600,color:"#1A1D23"}}>{r.l}</div>)}</div>}
               <div style={{display:"flex",gap:6}}>
                 {[{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,act:()=>goTab("chat")},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,act:()=>goSub("notifs"),badge:notifCount>0},{icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,act:()=>{setEc(JSON.parse(JSON.stringify(cfg)));setShowEditor(true);}}].map((b,i)=><button key={i} onClick={b.act} style={{width:36,height:36,borderRadius:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{b.icon}{b.badge&&<span style={{position:"absolute",top:5,right:5,width:7,height:7,borderRadius:"50%",background:"#FF3B30"}}/>}</button>)}
               </div>
             </div>
           </div>
-          {/* Metric cards overlapping into body */}
-          <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px",transform:"translateY(24px)"}}>
+          {/* Metrics overlap */}
+          <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px",transform:"translateY(20px)"}}>
             <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12}}>
-              {metricCards.map((w,i)=>{
-                const colors=[{bg:LIME,txt:"#0D0D0D",sub:"rgba(0,0,0,0.4)"},{bg:LIME,txt:"#0D0D0D",sub:"rgba(0,0,0,0.4)"},{bg:LIME,txt:"#0D0D0D",sub:"rgba(0,0,0,0.4)"}][i];
-                return <div key={i} onClick={()=>nav(w.k)} style={{background:colors.bg,borderRadius:14,padding:"16px 20px",cursor:"pointer",boxShadow:"0 4px 16px rgba(187,242,70,0.2)",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-                  <div style={{position:"absolute",top:-15,right:-15,width:60,height:60,borderRadius:"50%",background:"rgba(0,0,0,0.04)"}}/>
-                  <div style={{fontSize:10,fontWeight:700,color:colors.sub,textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
-                  <div style={{fontSize:28,fontWeight:900,color:colors.txt,letterSpacing:"-1px",marginTop:2}}>{w.val}</div>
-                  <div style={{fontSize:11,color:colors.sub,marginTop:2,fontWeight:500}}>{w.sub}</div>
-                </div>;
-              })}
+              {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:14,padding:"14px 18px",cursor:"pointer",boxShadow:"0 4px 16px rgba(187,242,70,0.15)",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                <div style={{position:"absolute",top:-12,right:-12,width:50,height:50,borderRadius:"50%",background:"rgba(0,0,0,0.04)"}}/>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
+                <div style={{fontSize:26,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:2}}>{w.val}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1,fontWeight:500}}>{w.sub}</div>
+              </div>)}
             </div>
           </div>
         </div>
-        {/* ── BODY ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"40px 32px 0"}}>
-          {/* Pills */}
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
-            {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
-              <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:7,background:L.card,border:`1px solid ${L.brd}`,borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:12,fontWeight:600,color:L.txt,boxShadow:"0 1px 2px rgba(0,0,0,0.03)",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.boxShadow=`0 2px 8px ${LIME}15`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=L.brd;e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.03)";}}>
-                <div style={{width:24,height:24,borderRadius:7,background:`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:8,fontWeight:800,padding:"1px 5px",borderRadius:100}}>{p.badge}</span>}
-              </div>);})}
-          </div>
-          {/* ── 3-COLUMN EMBEDDED PANELS ── */}
+        {/* ── 3 EMBEDDED SCREENS ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"36px 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,alignItems:"start"}}>
-
-            {/* PANEL 1 — Comunicados (news feed mini) */}
-            <div style={{background:L.card,borderRadius:18,border:`1px solid ${L.brd}`,boxShadow:L.shd,overflow:"hidden"}}>
-              <div style={{padding:"16px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${L.brd}`}}>
-                <h3 style={{fontSize:15,fontWeight:700,color:L.txt}}>Comunicados</h3>
-                <span onClick={()=>goSub("news")} style={{fontSize:12,color:L.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span>
-              </div>
-              {newsItems.map((a,i)=>(
-                <div key={a.id||i} onClick={()=>goSub("news",a.id)} style={{cursor:"pointer",borderBottom:i<newsItems.length-1?`1px solid ${L.brd}`:"none",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="#F8F9FB"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  {i===0&&<div style={{height:160,overflow:"hidden",position:"relative"}}>
-                    <img src={a.photo||catPhoto(a.cat,i)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                    <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.7) 100%)"}}/>
-                    <span style={{position:"absolute",top:10,left:10,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:6,textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span>
-                    <div style={{position:"absolute",bottom:10,left:12,right:12}}>
-                      <p style={{fontSize:14,fontWeight:700,color:"#fff",lineHeight:1.3}}>{a.title}</p>
-                      <p style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2,lineHeight:1.3}}>{a.summary||""}</p>
+            {defaultPanels.map((panelKey,idx) => {
+              const def = PANEL_DEFS[panelKey];
+              if(!def) return null;
+              return (
+                <div key={panelKey} style={{background:"#FFFFFF",borderRadius:20,border:"1px solid rgba(0,0,0,0.07)",boxShadow:"0 2px 12px rgba(0,0,0,0.04),0 0 1px rgba(0,0,0,0.06)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                  {/* Panel header bar */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#FAFBFC",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{width:28,height:28,borderRadius:8,background:`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{def.icon}</div>
+                      <span style={{fontSize:13,fontWeight:700,color:"#1A1D23"}}>{def.label}</span>
                     </div>
-                  </div>}
-                  {i>0&&<div style={{padding:"10px 20px",display:"flex",gap:12,alignItems:"center"}}>
-                    <div style={{width:44,height:44,borderRadius:10,overflow:"hidden",flexShrink:0,background:"#eee"}}><img src={a.photo||catPhoto(a.cat,i)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto("default",i);}} style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>
-                    <div style={{flex:1,minWidth:0}}><span style={{fontSize:9,fontWeight:700,color:catColor[a.cat]||"#6366F1",textTransform:"uppercase"}}>{catLabel[a.cat]||"Geral"}</span><p style={{fontSize:13,fontWeight:600,color:L.txt,lineHeight:1.3,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.title}</p></div>
-                  </div>}
-                </div>
-              ))}
-            </div>
-            {/* PANEL 2 — Demandas (production mini-panel) */}
-            <div style={{background:L.card,borderRadius:18,border:`1px solid ${L.brd}`,boxShadow:L.shd,overflow:"hidden"}}>
-              <div style={{padding:"16px 20px 12px",borderBottom:`1px solid ${L.brd}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><span style={{fontSize:10,fontWeight:700,color:LIME,textTransform:"uppercase",letterSpacing:0.8}}>PRODUÇÃO</span><h3 style={{fontSize:15,fontWeight:700,color:L.txt,marginTop:2}}>Demandas</h3></div>
-                  <button onClick={()=>goTab("content")} style={{width:32,height:32,borderRadius:10,background:`${LIME}15`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-                </div>
-                <button onClick={()=>goTab("content")} style={{width:"100%",marginTop:12,padding:"10px",borderRadius:10,background:"#25D366",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2z"/></svg>
-                  Publicação Rápida (FB)
-                </button>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginTop:10,fontSize:12,color:L.mut}}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.mut} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                  Todos os clientes
-                </div>
-              </div>
-              <div style={{padding:"8px 20px 12px"}}>
-                <div style={{display:"flex",gap:6,marginBottom:10}}>
-                  {["Todos","Posts","Campanhas","Vídeo"].map((t,i)=><button key={i} style={{padding:"5px 12px",borderRadius:8,border:i===0?"none":`1px solid ${L.brd}`,background:i===0?`${LIME}`:"transparent",color:i===0?"#0D0D0D":L.mut,fontSize:11,fontWeight:i===0?700:500,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>)}
-                </div>
-                {recentDemands.length>0?recentDemands.map((d,i)=>{
-                  const sc=stageColor[d.stage]||"#8B8F92";const sn=stageName[d.stage]||d.stage;
-                  return <div key={d.id||i} onClick={()=>goTab("content",d.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i?`1px solid ${L.brd}`:"none",cursor:"pointer"}}>
-                    <div style={{width:6,height:6,borderRadius:"50%",background:sc,flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:600,color:L.txt,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Sem título"}</p><p style={{fontSize:10,color:L.mut}}>{d.client}</p></div>
-                    <span style={{fontSize:9,fontWeight:700,color:sc,background:`${sc}12`,padding:"2px 8px",borderRadius:6,flexShrink:0}}>{sn}</span>
-                  </div>;
-                }):<div style={{padding:"20px 0",textAlign:"center",color:L.mut,fontSize:12}}>Nenhuma demanda em aberto</div>}
-              </div>
-            </div>
-            {/* PANEL 3 — AI Assistant (mini chat with presets) */}
-            <div style={{background:L.card,borderRadius:18,border:`1px solid ${L.brd}`,boxShadow:L.shd,overflow:"hidden"}}>
-              <div style={{padding:"16px 20px 12px",borderBottom:`1px solid ${L.brd}`}}>
-                <h3 style={{fontSize:15,fontWeight:700,color:L.txt}}>Olá, {user?.name||"Usuário"}!</h3>
-                <p style={{fontSize:12,color:L.mut,marginTop:2}}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
-              </div>
-              <div style={{padding:"14px 20px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {[
-                  {l:"Criar legenda",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>,c:"#EFF6FF",bc:"#3B82F6"},
-                  {l:"Estratégia",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,c:"#F5F3FF",bc:"#8B5CF6"},
-                  {l:"Roteiro Reels",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,c:"#FEF2F2",bc:"#EF4444"},
-                  {l:"Ideias de conteúdo",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/></svg>,c:"#FFFBEB",bc:"#F59E0B"},
-                  {l:"E-mail marketing",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,c:"#ECFDF5",bc:"#10B981"},
-                  {l:"Copy persuasiva",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,c:"#FFF1F2",bc:"#F43F5E"},
-                  {l:"Hashtags",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>,c:"#F0F9FF",bc:"#0EA5E9"},
-                  {l:"Calendário editorial",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={L.txt} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,c:"#FEF3C7",bc:"#D97706"},
-                ].map((p,i)=>(
-                  <div key={i} onClick={()=>goSub("ai")} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:12,background:p.c,cursor:"pointer",border:`1px solid ${p.bc}20`,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=p.bc;e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=`${p.bc}20`;e.currentTarget.style.transform="none";}}>
-                    <div style={{width:28,height:28,borderRadius:8,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 2px rgba(0,0,0,0.06)"}}>{p.icon}</div>
-                    <span style={{fontSize:12,fontWeight:600,color:L.txt}}>{p.l}</span>
+                    <button onClick={()=>goSub(panelKey)} style={{fontSize:11,fontWeight:600,color:"#6B7280",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:3}}>
+                      Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
+                  {/* Scrollable screen content */}
+                  <div style={{height:520,overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch",position:"relative"}}>
+                    <div style={{pointerEvents:"auto",minHeight:"100%"}}>
+                      {renderPanel(panelKey)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
         {EditorSheetJSX}
