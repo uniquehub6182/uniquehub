@@ -2446,7 +2446,23 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     try { localStorage.setItem("uh_dash_cfg", JSON.stringify(c)); } catch {}
     savePrefsToCloud(undefined, undefined, undefined, user?.id, c, undefined);
   };
-  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:"registro diário",val:"—",k:"checkin"} };
+  /* ── Checkin live timer ── */
+  const [activeCheckin, setActiveCheckin] = useState(null);
+  const [checkinElapsed, setCheckinElapsed] = useState(0);
+  useEffect(() => {
+    if (!user?.id) return;
+    supaGetActiveCheckin(user.id).then(c => { if (c) setActiveCheckin(c); });
+  }, [user?.id]);
+  useEffect(() => {
+    if (!activeCheckin?.check_in_at) { setCheckinElapsed(0); return; }
+    const calc = () => Math.floor((Date.now() - new Date(activeCheckin.check_in_at).getTime()) / 1000);
+    setCheckinElapsed(calc());
+    const iv = setInterval(() => setCheckinElapsed(calc()), 1000);
+    return () => clearInterval(iv);
+  }, [activeCheckin]);
+  const fmtTimer = (s) => { const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sec=s%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; };
+
+  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:activeCheckin?"rodando agora":"registro diário",val:activeCheckin?fmtTimer(checkinElapsed):"—",k:"checkin"} };
   const PILLS = {
     home:      {l:"Home",        k:"home",      tab:true},
     conteudo:  {l:"Conteúdo",    k:"content",   tab:true,  badge:pendingApprovals},
