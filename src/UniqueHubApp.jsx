@@ -2496,6 +2496,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [showPanelEditor, setShowPanelEditor] = useState(false);
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
+  const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
   const isDark = B.bg === "#0D0D0D";
   const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
   const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
@@ -2861,8 +2862,14 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             </div>
           </div>
         </div>
+        {/* ── BANNER PUBLICITÁRIO ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
+          <div onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:80,borderRadius:16,overflow:"hidden",cursor:"pointer",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
+            {!bannerImg&&<><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:13,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
+          </div>
+        </div>
         {/* ── PILLS ROW ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"75px 32px 0"}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <button onClick={()=>setShowPanelEditor(!showPanelEditor)} style={{width:38,height:38,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
@@ -2885,6 +2892,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             <button onClick={()=>setShowPanelEditor(false)} style={{width:32,height:32,borderRadius:8,background:"#F5F5F5",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Banner publicitário</p>
+            <div style={{display:"flex",gap:6,marginBottom:20}}>
+              <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid rgba(0,0,0,0.08)`,background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23"}}>Trocar imagem</button>
+              {bannerImg&&<button onClick={()=>{setBannerImg("");localStorage.removeItem("uh_desktop_banner");}} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#FEE2E2",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#EF4444"}}>Remover</button>}
+            </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
               {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};savePrefsToCloud?.(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
