@@ -2492,6 +2492,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     ? { cards:canFinancial ? ["investimento","aprovacoes"] : ["aprovacoes","clientes"], pills:["suporte","aprovacoes","conteudo","relatorios"].filter(k => PILLS[k]?.k !== "financial" || canFinancial), actions:["aprovar","trafego","relatorio","chat"].filter(k => ACTIONS[k]?.k !== "financial" || canFinancial), sections:["comunicados","acoes","resumo","posts","equipe","clientes"] }
     : { cards:["checkin","score"], pills:["conteudo","chat","suporte","academy"], actions:["novoConteudo","checkin","chat","noticias"], sections:["comunicados","acoes","posts","equipe"] };
   const cfg = dashCfg || cfgDefault;
+  const saveCfg = (nc) => { setDashCfg(nc); try{localStorage.setItem("uh_dash_cfg",JSON.stringify(nc));}catch{} savePrefsToCloud?.(nc); };
   /* Desktop panel state — top level for React hooks rules */
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [showPanelEditor, setShowPanelEditor] = useState(false);
@@ -2899,12 +2900,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
-              {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};savePrefsToCloud?.(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
+              {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};saveCfg(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Atalhos rápidos</p>
             <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:20}}>
               {Object.entries(PILLS).filter(([k,v])=>v.k!=="financial"||canFinancial).map(([k,v])=>{const active=cfg.pills.includes(k);return(
-                <button key={k} onClick={()=>{const np=active?cfg.pills.filter(p=>p!==k):[...cfg.pills,k];const nc={...cfg,pills:np};savePrefsToCloud?.(nc);}} style={{padding:"5px 10px",borderRadius:8,border:active?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:active?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:active?700:500,color:active?"#1A1D23":"#9CA3AF"}}>{v.l}</button>
+                <button key={k} onClick={()=>{const np=active?cfg.pills.filter(p=>p!==k):[...cfg.pills,k];const nc={...cfg,pills:np};saveCfg(nc);}} style={{padding:"5px 10px",borderRadius:8,border:active?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:active?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:active?700:500,color:active?"#1A1D23":"#9CA3AF"}}>{v.l}</button>
               );})}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Painéis do Dashboard</p>
@@ -2912,14 +2913,14 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
               <div key={`slot-${slot}`} style={{marginBottom:14,background:"#F8F9FA",borderRadius:12,padding:12}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                   <p style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Painel {slot+1} — {dpIco(current,14,"#1A1D23")} {DPANEL_OPTS[current]?.l||current}</p>
-                  {dPanels.length>1&&<button onClick={()=>{const np=dPanels.filter((_,i)=>i!==slot);setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{width:24,height:24,borderRadius:6,border:"none",background:"#FEE2E2",color:"#EF4444",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700}}>×</button>}
+                  {dPanels.length>1&&<button onClick={()=>{const np=dPanels.filter((_,i)=>i!==slot);setDPanels(np);const nc={...cfg,desktopPanels:np};saveCfg(nc);}} style={{width:24,height:24,borderRadius:6,border:"none",background:"#FEE2E2",color:"#EF4444",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700}}>×</button>}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
-                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{padding:"6px 8px",borderRadius:8,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:current===k?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:4}}>{dpIco(k,13,current===k?"#1A1D23":"#6B7280")}{v.l}</button>)}
+                  {Object.entries(DPANEL_OPTS).map(([k,v])=><button key={k} onClick={()=>{const np=[...dPanels];np[slot]=k;setDPanels(np);const nc={...cfg,desktopPanels:np};saveCfg(nc);}} style={{padding:"6px 8px",borderRadius:8,border:current===k?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:current===k?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:current===k?700:500,color:current===k?"#1A1D23":"#6B7280",display:"flex",alignItems:"center",gap:4}}>{dpIco(k,13,current===k?"#1A1D23":"#6B7280")}{v.l}</button>)}
                 </div>
               </div>
             ))}
-            {dPanels.length<9&&<button onClick={()=>{const np=[...dPanels,"chat"];setDPanels(np);const nc={...cfg,desktopPanels:np};savePrefsToCloud?.(nc);}} style={{width:"100%",padding:"12px",borderRadius:10,border:`2px dashed ${LIME}`,background:`${LIME}08`,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:4}}>+ Adicionar painel</button>}
+            {dPanels.length<9&&<button onClick={()=>{const np=[...dPanels,"chat"];setDPanels(np);const nc={...cfg,desktopPanels:np};saveCfg(nc);}} style={{width:"100%",padding:"12px",borderRadius:10,border:`2px dashed ${LIME}`,background:`${LIME}08`,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:4}}>+ Adicionar painel</button>}
           </div>
         </div>}
         {showPanelEditor&&<div onClick={()=>setShowPanelEditor(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:199}}/>}
