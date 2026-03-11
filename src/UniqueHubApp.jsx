@@ -1449,7 +1449,7 @@ const Av = ({ src, name, sz = 40, fs = 16 }) => (
   </div>
 );
 /* ── CollapseHeader: reusable collapsible page header ── */
-const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => (
+const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed }) => { const _dsk = typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop"); return (
   <div style={{
     position:"sticky", top:0, zIndex:20, background:B.bgCard,
     borderBottom: collapsed ? `1px solid ${B.border}` : "none",
@@ -1472,12 +1472,12 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
         </button>}
       </div>
     ) : (
-      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
+      <div style={{ padding: _dsk ? "28px 28px 24px" : `calc(env(safe-area-inset-top,0px) + 20px) 20px 22px` }}>
         {onBack && <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}`, marginBottom:8 }}>{IC.back()}</button>}
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:stats.length?16:0 }}>
           <div>
-            <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>{label}</p>
-            <h2 style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", lineHeight:1 }}>{title}</h2>
+            <p style={{ fontSize: _dsk ? 12 : 11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.2, marginBottom:4 }}>{label}</p>
+            <h2 style={{ fontSize: _dsk ? 28 : 24, fontWeight:900, color:B.text, letterSpacing:"-0.5px", lineHeight:1 }}>{title}</h2>
           </div>
           {onAdd && <button onClick={onAdd} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1496,7 +1496,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
       </div>
     )}
   </div>
-);
+  ); };
 
 
 function useToast() {
