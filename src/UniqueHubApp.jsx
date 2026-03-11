@@ -16368,10 +16368,10 @@ input,textarea,select{font-size:16px !important}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
 /* ── Desktop Layout (class-based for maximum specificity) ── */
 .d-sidebar{display:none!important}
-html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important}
-html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important}
-html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:1440px!important;margin:0 auto!important;padding:0 32px 120px!important}
-html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important}
+html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:#ECEEF2!important}
+html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:#ECEEF2!important}
+html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:1440px!important;margin:0 auto!important;padding:0 32px 120px!important;background:#ECEEF2!important}
+html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:#ECEEF2!important}
 html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:16px 32px!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:16px!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
