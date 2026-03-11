@@ -2755,7 +2755,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   if (isDesktop) {
     const today = new Date();
     const dateStr = `HOJE É ${["DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"][today.getDay()]}, ${today.getDate()} DE ${["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"][today.getMonth()]} DE ${today.getFullYear()} | @UNIQUEMKTDIGITAL`;
-    const metricCards = cfg.cards.slice(0,4).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
+    const metricCards = cfg.cards.slice(0,metricCount).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
 
     /* Panel definitions — these render REAL app screens */
     const PANEL_DEFS = {
@@ -2775,7 +2775,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     const defaultPanels = cfg.desktopPanels || ["news","content","ai"];
     const [dPanels, setDPanels] = useState(defaultPanels);
     const [showPanelEditor, setShowPanelEditor] = useState(false);
+    const [metricCount, setMetricCount] = useState(cfg.desktopMetricCount || 3);
     const saveDPanels = (panels) => { setDPanels(panels); const newCfg = {...cfg, desktopPanels: panels}; savePrefsToCloud?.(newCfg); };
+    const saveMetricCount = (n) => { setMetricCount(n); const newCfg = {...cfg, desktopMetricCount: n}; savePrefsToCloud?.(newCfg); };
     /* Render a real screen inside a panel */
     const renderPanel = (key) => {
       const props = { onBack:()=>{}, user, canAccess:ca };
@@ -2797,9 +2799,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     };
     return (
       <div style={{minHeight:"100vh",background:"#F5F6F8",paddingBottom:100,margin:0}}>
-        {/* ── HEADER — rounded, same width as panels ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
-          <div style={{background:"#1A1D23",borderRadius:24,padding:"16px 24px 20px",marginBottom:16}}>
+        {/* ── HEADER — edge to edge at top, rounded bottom corners ── */}
+        <div style={{background:"#1A1D23",margin:0,padding:0,borderRadius:"0 0 24px 24px"}}>
+          <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 20px"}}>
             {/* Top row */}
             <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
@@ -2831,7 +2833,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
           </div>
         </div>
         {/* ── PILLS + 3 EMBEDDED SCREENS ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
           {/* Pills */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
@@ -2875,7 +2877,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
             <button onClick={()=>setShowPanelEditor(false)} style={{width:32,height:32,borderRadius:8,background:"#F5F5F5",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
-            <p style={{fontSize:12,color:"#6B7280",marginBottom:16}}>Escolha 3 telas para exibir no dashboard. Clique para adicionar ou remover.</p>
+            <p style={{fontSize:12,color:"#6B7280",marginBottom:16}}>Personalize o dashboard desktop.</p>
+            {/* Metric count selector */}
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
+            <div style={{display:"flex",gap:6,marginBottom:20}}>
+              {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);saveMetricCount(n);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
+            </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:10}}>Painéis ativos</p>
             <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
               {dPanels.map((pk,i)=>{const d=PANEL_DEFS[pk];return d?<div key={pk} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:`${LIME}08`,border:`1.5px solid ${LIME}30`,borderRadius:12}}>
