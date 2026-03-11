@@ -2759,7 +2759,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
   if (isDesktop) {
     const today = new Date();
     const dateStr = `HOJE É ${["DOMINGO","SEGUNDA-FEIRA","TERÇA-FEIRA","QUARTA-FEIRA","QUINTA-FEIRA","SEXTA-FEIRA","SÁBADO"][today.getDay()]}, ${today.getDate()} DE ${["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"][today.getMonth()]} DE ${today.getFullYear()} | @UNIQUEMKTDIGITAL`;
-    const metricCards = cfg.cards.slice(0,metricCount).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).map(ck=>WIDGETS[ck]).filter(Boolean);
+    const allWidgetKeys = ["receita","clientes","aprovacoes","score","investimento","pendentes","checkin","match4biz"];
+    const desktopCardKeys = [...new Set([...cfg.cards, ...allWidgetKeys])].filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).slice(0,metricCount);
+    const metricCards = desktopCardKeys.map(ck=>WIDGETS[ck]).filter(Boolean);
 
     /* Panel definitions — these render REAL app screens */
     const PANEL_DEFS = {
@@ -2800,9 +2802,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     };
     return (
       <div style={{minHeight:"100vh",background:"#F5F6F8",paddingBottom:100,margin:0}}>
-        {/* ── HEADER — edge to edge at top, rounded bottom corners ── */}
-        <div style={{background:"#1A1D23",margin:0,padding:0,borderRadius:"0 0 24px 24px"}}>
-          <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 20px"}}>
+        {/* ── HEADER — same width as panels, rounded corners ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
+          <div style={{background:"#1A1D23",borderRadius:24,padding:"16px 24px 20px"}}>
             {/* Top row */}
             <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
