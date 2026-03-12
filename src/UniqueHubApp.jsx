@@ -15778,13 +15778,13 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     if (!user || user.supaRole === "admin") return true;
     if (areaKey === "home") return true; /* home is always accessible */
     if (areaKey === "settings") return true; /* own settings always accessible */
-    if (!permsLoaded || !jobTitleLoaded) return false; /* BLOCK while loading permissions */
+    if (!permsLoaded || !jobTitleLoaded) return true; /* Allow while loading — don't block the UI */
     /* Basic areas always allowed regardless of config */
     const ALWAYS_ALLOWED = ["home.view","settings.own","checkin.own"];
     if (ALWAYS_ALLOWED.includes(areaKey)) return true;
-    if (!userJobTitle) { console.warn("[Perms] BLOCKED", areaKey, "— no job title found for user"); return false; }
+    if (!userJobTitle) { console.warn("[Perms] No job title for user — defaulting to ALLOW ALL"); return true; }
     const perms = rolePermsMap[userJobTitle];
-    if (!perms) { console.warn("[Perms] BLOCKED", areaKey, "— no permissions configured for role:", userJobTitle); return false; }
+    if (!perms) { console.warn("[Perms] No permissions configured for role:", userJobTitle, "— defaulting to ALLOW ALL"); return true; }
     const allowed = perms[areaKey] !== false;
     if (!allowed) console.log("[Perms] BLOCKED", areaKey, "for role", userJobTitle);
     return allowed;
