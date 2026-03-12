@@ -16559,11 +16559,11 @@ html.uh-desktop .phone-viewport [style*="sticky"] h2{font-size:18px!important}
 html.uh-desktop .phone-viewport [style*="sticky"] p[style*="uppercase"]{font-size:9px!important}
 html.uh-desktop .phone-viewport [style*="sticky"]>div{padding:12px 14px 10px!important}
 html.uh-desktop .pg .card:has(.sl){max-width:100%}
-html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-items:start}
 .demands-grid .card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
 .card.demand-card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
-html.uh-desktop .phone-viewport .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+html.uh-desktop .phone-viewport .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-items:start}
 html.uh-desktop .phone-viewport .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .phone-viewport .demands-grid .card h2,html.uh-desktop .phone-viewport .demands-grid .card p[style*="font-size: 15"]{font-size:12px!important}
 html.uh-desktop div[style*="aspect-ratio"]{max-width:480px;margin-left:auto;margin-right:auto}
