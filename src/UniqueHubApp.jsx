@@ -2437,7 +2437,7 @@ function PWAInstallPopup({ onDismiss }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
-function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
+function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setDemands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
   const canAccessFn = ca || (() => true);
   const CDATA = (clients && clients.length > 0) ? clients : [];
   const isAdmin = user?.supaRole === "admin";
@@ -2846,7 +2846,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     const renderDPanel = (pk) => {
       if(pk==="news") return phoneFrame("Comunicados","news",()=>goSub("news"),<NewsPage onBack={null} onArticlesLoad={noop} user={user}/>);
       if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={null} user={user} agencyIdentity={agencyIdentity}/>);
-      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={noop} team={team} canAccess={ca}/>);
+      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca}/>);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop}/>);
       if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={noop} user={user} canAccess={ca}/>);
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user}/>);
@@ -16082,7 +16082,7 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 ${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
+        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
