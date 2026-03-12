@@ -2841,14 +2841,14 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
 
     /* ── Render a dashboard panel by key — real pages inside phone frames ── */
     const renderDPanel = (pk) => {
-      if(pk==="news") return phoneFrame("Comunicados","news",()=>goSub("news"),<NewsPage onBack={noop} onArticlesLoad={noop} user={user}/>);
-      if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={noop} user={user} agencyIdentity={agencyIdentity}/>);
+      if(pk==="news") return phoneFrame("Comunicados","news",()=>goSub("news"),<NewsPage onBack={null} onArticlesLoad={noop} user={user}/>);
+      if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={null} user={user} agencyIdentity={agencyIdentity}/>);
       if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={noop} team={team} canAccess={ca}/>);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop}/>);
-      if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={noop} onNavigate={noop} clients={clients} setClients={noop} user={user} canAccess={ca}/>);
-      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={noop} clients={clients} team={team} user={user}/>);
-      if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={noop} user={user} clients={clients}/>);
-      if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={noop} clients={clients} team={team}/>);
+      if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={noop} user={user} canAccess={ca}/>);
+      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user}/>);
+      if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients}/>);
+      if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
       const opt=DPANEL_OPTS[pk]||{l:pk,icon:"content"};
       return phoneFrame(opt.l,opt.icon||"content",noop,<div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}><p style={{fontSize:13}}>{opt.l} — Em breve</p></div>);
     };
@@ -5849,8 +5849,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
             if (!confirm(`Excluir "${sel.title}"?`)) return;
-            if (sel.supaId) await supaDeleteDemand(sel.supaId);
-            setDemands(p=>p.filter(d=>d.id!==sel.id));
+            const delId = sel.supaId || sel.id;
+            if (delId) { try { await supaDeleteDemand(delId); } catch(e) { console.error("delete demand err:", e); } }
+            setDemands(p=>p.filter(d=>d.id!==sel.id && d.supaId!==sel.supaId));
             setSel(null); setEditMode(false); showToast("Demanda excluída ✓");
           }} className="ib" style={{padding:8,border:`1.5px solid ${B.border}`}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
@@ -16475,6 +16476,12 @@ html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 
 .phone-viewport *{max-width:100%!important;box-sizing:border-box!important}
 .phone-viewport [style*="fixed"]{position:absolute!important}
 html.uh-desktop .phone-viewport .screen,html.uh-desktop .phone-viewport .content,html.uh-desktop .phone-viewport .app{position:relative!important;height:auto!important;min-height:auto!important;max-height:none!important;overflow:visible!important;padding:0!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100%!important;margin:0!important}
+html.uh-desktop .phone-viewport [style*="sticky"]{position:relative!important}
+html.uh-desktop .phone-viewport [style*="sticky"] h2{font-size:18px!important}
+html.uh-desktop .phone-viewport [style*="sticky"] p[style*="uppercase"]{font-size:9px!important}
+html.uh-desktop .phone-viewport [style*="sticky"]>div{padding:12px 14px 10px!important}
+html.uh-desktop .pg .card:has(.sl){max-width:100%}
+html.uh-desktop div[style*="aspect-ratio"]{max-width:480px;margin-left:auto;margin-right:auto}
 html.uh-desktop .phone-viewport .pg{padding:8px 12px!important;max-width:none!important;margin:0!important;min-height:auto!important;position:relative!important}
 html.uh-desktop .phone-viewport .bnav{display:none!important}
 html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!important;height:auto!important;min-height:auto!important;overflow:visible!important;max-width:100%!important;width:100%!important}
