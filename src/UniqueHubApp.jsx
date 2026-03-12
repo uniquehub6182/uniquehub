@@ -5447,7 +5447,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   };
 
   return (
-    <div style={{ position:"relative", borderRadius:12, overflow:"hidden" }}>
+    <div style={{ position:"relative", borderRadius:16, overflow:"hidden" }}>
       {hasReal ? (
         <div style={{ position:"relative", aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
           {imgFiles.length > 0 ? (
@@ -16484,9 +16484,10 @@ html.uh-desktop .phone-viewport [style*="sticky"] p[style*="uppercase"]{font-siz
 html.uh-desktop .phone-viewport [style*="sticky"]>div{padding:12px 14px 10px!important}
 html.uh-desktop .pg .card:has(.sl){max-width:100%}
 html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-html.uh-desktop .demands-grid .card{margin-top:0!important}
+.demands-grid .card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
+html.uh-desktop .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .phone-viewport .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-html.uh-desktop .phone-viewport .demands-grid .card{margin-top:0!important;padding:8px!important}
+html.uh-desktop .phone-viewport .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .phone-viewport .demands-grid .card h2,html.uh-desktop .phone-viewport .demands-grid .card p[style*="font-size: 15"]{font-size:12px!important}
 html.uh-desktop div[style*="aspect-ratio"]{max-width:480px;margin-left:auto;margin-right:auto}
 html.uh-desktop .phone-viewport div[style*="aspect-ratio"]{max-width:100%;max-height:200px;overflow:hidden}
