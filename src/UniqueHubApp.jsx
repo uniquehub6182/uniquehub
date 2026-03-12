@@ -2530,6 +2530,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   /* Desktop panel state — top level for React hooks rules */
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [driveUrl, setDriveUrl] = useState(() => { try { return localStorage.getItem("uh_drive_url")||""; } catch { return ""; } });
+  const [driveType, setDriveType] = useState(() => { try { return localStorage.getItem("uh_drive_type")||""; } catch { return ""; } });
   const [driveEditing, setDriveEditing] = useState(false);
   const [driveTmp, setDriveTmp] = useState("");
   const [showPanelEditor, setShowPanelEditor] = useState(false);
@@ -2819,7 +2820,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       calendar:{l:"Calendário",icon:"calendar"},
       ideas:{l:"Ideias",icon:"ideas"},
       social:{l:"Redes Sociais",icon:"social"},
-      drive:{l:"Google Drive",icon:"drive"},
+      drive:{l:"Drive / Nuvem",icon:"drive"},
     };
     const dpIco = (k,sz=16,clr="#1A1D23") => {
       const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
@@ -2858,44 +2859,54 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients}/>);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
       if(pk==="drive") {
-        /* Extract folder ID from various Google Drive URL formats */
-        const extractFolderId = (url) => {
-          if(!url) return null;
-          const m1 = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-          if(m1) return m1[1];
-          const m2 = url.match(/id=([a-zA-Z0-9_-]+)/);
-          if(m2) return m2[1];
-          if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim();
-          return null;
-        };
-        const folderId = extractFolderId(driveUrl);
+        const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
+        const extractOneDriveEmbed = (url) => { if(!url) return null; if(url.includes("onedrive.live.com/embed")) return url; const m=url.match(/onedrive\.live\.com\/\?.*id=([^&]+)/)||url.match(/1drv\.ms\/[a-z]\/([^?]+)/); if(m) return `https://onedrive.live.com/embed?id=${m[1]}&view=list`; if(url.includes("sharepoint.com")) return url.replace("/AllItems.aspx","/AllItems.aspx").replace("?","?view=list&"); return url.includes("onedrive")||url.includes("sharepoint")?url:null; };
+        const isConnected = driveUrl && (driveType==="gdrive"||driveType==="onedrive");
+        const gId = driveType==="gdrive"?extractGDriveId(driveUrl):null;
+        const odUrl = driveType==="onedrive"?extractOneDriveEmbed(driveUrl):null;
+        const embedSrc = gId?`https://drive.google.com/embeddedfolderview?id=${gId}#list`:odUrl;
+        const svcLabel = driveType==="gdrive"?"Google Drive":driveType==="onedrive"?"OneDrive":"Drive / Nuvem";
+        const svcColor = driveType==="gdrive"?"#4285F4":"#0078D4";
         return (
           <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
             <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Google Drive</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,svcColor)}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>{svcLabel}</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                {folderId && <button onClick={()=>{setDriveUrl("");localStorage.removeItem("uh_drive_url");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#EF4444"}}>Desconectar</button>}
-                <button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(!driveEditing);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:driveEditing?"#EF4444":"#9CA3AF"}}>{driveEditing?"Cancelar":"⚙️"}</button>
-                {folderId && <a href={`https://drive.google.com/drive/folders/${folderId}`} target="_blank" rel="noopener" style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2,textDecoration:"none"}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>}
+                {isConnected&&<button onClick={()=>{setDriveUrl("");setDriveType("");localStorage.removeItem("uh_drive_url");localStorage.removeItem("uh_drive_type");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#EF4444"}}>Desconectar</button>}
+                {isConnected&&<button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#9CA3AF"}}>⚙️</button>}
+                {embedSrc&&<a href={driveUrl} target="_blank" rel="noopener" style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2,textDecoration:"none"}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>}
               </div>
             </div>
             <div style={{flex:1,overflow:"hidden",position:"relative"}}>
               {driveEditing ? (
                 <div style={{padding:20,textAlign:"center"}}>
-                  <div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,#4285F4 25%,#34A853 25%,#34A853 50%,#FBBC05 50%,#FBBC05 75%,#EA4335 75%)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",opacity:0.8}} />
-                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>Conectar Google Drive</p>
-                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:16}}>Cole o link da pasta compartilhada do Google Drive</p>
-                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder="https://drive.google.com/drive/folders/..." style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:13,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:12}} />
-                  <button onClick={()=>{setDriveUrl(driveTmp);localStorage.setItem("uh_drive_url",driveTmp);setDriveEditing(false);}} style={{width:"100%",padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
+                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>Trocar link</p>
+                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o novo link da pasta</p>
+                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder="Cole o link da pasta..." style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:13,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:8}} />
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
+                    <button onClick={()=>setDriveEditing(false)} style={{padding:"10px 16px",borderRadius:12,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666"}}>Cancelar</button>
+                  </div>
                 </div>
-              ) : folderId ? (
-                <iframe src={`https://drive.google.com/embeddedfolderview?id=${folderId}#list`} style={{width:"100%",height:"100%",border:"none"}} title="Google Drive" />
+              ) : embedSrc ? (
+                <iframe src={embedSrc} style={{width:"100%",height:"100%",border:"none"}} title={svcLabel} allow="fullscreen" />
               ) : (
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
                   <div style={{width:56,height:56,borderRadius:16,background:"#ECEEF2",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,"#9CA3AF")}</div>
-                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>Google Drive</p>
-                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:16}}>Conecte uma pasta para acessar os arquivos da agência em tempo real</p>
-                  <button onClick={()=>{setDriveTmp("");setDriveEditing(true);}} style={{padding:"10px 20px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Conectar pasta</button>
+                  <p style={{fontSize:15,fontWeight:800,color:"#1A1D23",marginBottom:6}}>Conectar Drive</p>
+                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:20,lineHeight:1.5}}>Acesse os arquivos da agência em tempo real</p>
+                  <div style={{display:"flex",flexDirection:"column",gap:10,width:"100%",maxWidth:280}}>
+                    <button onClick={()=>{setDriveType("gdrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:"#fff",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#4285F4 25%,#34A853 25%,#34A853 50%,#FBBC05 50%,#FBBC05 75%,#EA4335 75%)",flexShrink:0}} />
+                      Google Drive
+                    </button>
+                    <button onClick={()=>{setDriveType("onedrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:"#fff",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:32,height:32,borderRadius:8,background:"#0078D4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2l-3.5 6h9L16 2h-2zM3 14l3.5-6h7L10 2H7L3 14zm5.5 0L5 14l3.5 6h9l3.5-6H8.5z" fill="#fff" opacity="0.9"/></svg>
+                      </div>
+                      OneDrive
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
