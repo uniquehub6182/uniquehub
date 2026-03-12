@@ -1433,9 +1433,12 @@ const Logo = ({ size = 32 }) => (
   </div>
 );
 
-const Card = ({ children, style, delay, onClick, className }) => (
-  <div className={`card ani${className ? ` ${className}` : ""}`} onClick={onClick} style={{ ...style, animationDelay: delay ? `${delay}s` : "0s" }}>{children}</div>
-);
+const Card = ({ children, style, delay, onClick, className }) => {
+  const isDemand = className === "demand-card";
+  return (
+    <div className={`card ani${className ? ` ${className}` : ""}`} onClick={onClick} style={{ ...style, animationDelay: delay ? `${delay}s` : "0s", ...(isDemand ? { borderRadius:16, overflow:"hidden", padding:0 } : {}) }} ref={isDemand ? (el) => { if(el){ el.style.setProperty("border-radius","16px","important"); el.style.setProperty("padding","0","important"); el.style.setProperty("overflow","hidden","important"); }} : undefined}>{children}</div>
+  );
+};
 
 const Tag = ({ children, color }) => (
   <span className="tag" style={{ color, background: `${color}12` }}>{children}</span>
@@ -2843,7 +2846,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, arti
     const renderDPanel = (pk) => {
       if(pk==="news") return phoneFrame("Comunicados","news",()=>goSub("news"),<NewsPage onBack={null} onArticlesLoad={noop} user={user}/>);
       if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={null} user={user} agencyIdentity={agencyIdentity}/>);
-      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={noop} team={team} canAccess={ca} inDashboard/>);
+      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={noop} team={team} canAccess={ca}/>);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop}/>);
       if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={noop} user={user} canAccess={ca}/>);
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user}/>);
@@ -5490,7 +5493,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca, inDashboard }) {
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca }) {
   const canAccessFn = ca || (() => true);
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
@@ -5785,7 +5788,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   );
 
   /* ── DETAIL VIEW ── */
-  if (sel && !inDashboard) {
+  if (sel) {
     /* Safety: ensure sel has required properties */
     if (!sel.type) sel.type = "social";
     if (!sel.stage) sel.stage = "idea";
@@ -6934,48 +6937,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         );
       })}
       </div>{/* end demands-grid */}
-
-      {/* ── INLINE DETAIL (dashboard mode) ── */}
-      {inDashboard && sel && (() => {
-        const stages = sel.type === "video" ? ["idea","script","production","editing","client","done"] : ["idea","design","copy","client","production","done"];
-        const stageLabels = {idea:"Ideia",script:"Roteiro",design:"Design",copy:"Copy",client:"Cliente",production:"Produção",editing:"Edição",done:"Concluído"};
-        const stageIdx = Math.max(0, stages.indexOf(sel.stage || "idea"));
-        const allFiles = [...(sel.steps?.design?.files||[]),...(sel.steps?.production?.files||[]),...(sel.steps?.editing?.files||[])];
-        const firstImg = allFiles.find(f=>f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-        const networks = (sel.network||"Instagram").split(",").map(s=>s.trim());
-        return (
-          <div style={{marginTop:12,background:"#fff",borderRadius:16,border:`2px solid ${B.accent}`,overflow:"hidden",animation:"fadeUp .25s ease"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
-              <span style={{fontSize:14,fontWeight:800,color:B.dark}}>{sel.title||"Sem título"}</span>
-              <button onClick={(e)=>{e.stopPropagation();setSel(null);}} style={{width:28,height:28,borderRadius:8,background:"#f1f1f1",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-            {firstImg && <img src={firstImg.url} alt="" style={{width:"100%",maxHeight:200,objectFit:"cover"}}/>}
-            <div style={{padding:"12px 14px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                {networks.map((n,i)=><span key={i} style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:"#f0f0f0",color:"#666"}}>{n}</span>)}
-                <span style={{fontSize:11,color:"#999"}}>{sel.client} · {sel.format}</span>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:10}}>
-                {stages.map((s,i)=>(
-                  <div key={s} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                    <div style={{width:"100%",height:4,borderRadius:2,background:i<=stageIdx?B.accent:"#E8E9ED"}}/>
-                    <span style={{fontSize:8,fontWeight:i===stageIdx?800:500,color:i===stageIdx?B.dark:"#aaa"}}>{stageLabels[s]}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{display:"flex",alignItems:"center",gap:4}}>
-                  {(sel.assignees||["Equipe"]).slice(0,3).map((a,j)=><span key={j} style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:8,background:`${B.accent}15`,color:B.dark}}>{a}</span>)}
-                </div>
-                <span style={{fontSize:10,fontWeight:700,color:B.accent,padding:"4px 10px",borderRadius:8,background:`${B.accent}10`}}>{stageLabels[sel.stage||"idea"]} ({stageIdx+1}/{stages.length})</span>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       </div>{/* end scrollable content */}
     </div>
   );
