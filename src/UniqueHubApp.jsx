@@ -2860,7 +2860,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
       if(pk==="drive") {
         const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
-        const getOneDriveEmbed = (url) => { if(!url) return null; if(url.includes("onedrive.live.com/embed")) return url; if(url.includes("<iframe")) { const m=url.match(/src="([^"]+)"/); return m?m[1]:null; } if(url.includes("sharepoint.com")&&url.includes("/_layouts/")) return url; const m2=url.match(/resid=([^&]+)/); if(m2) return url; return null; };
+        const getOneDriveEmbed = (url) => { if(!url) return null; if(url.includes("<iframe")) { const m=url.match(/src="([^"]+)"/); return m?m[1]:null; } return url.trim(); };
         const isConnected = driveUrl && (driveType==="gdrive"||driveType==="onedrive");
         const gId = driveType==="gdrive"?extractGDriveId(driveUrl):null;
         const odEmbed = driveType==="onedrive"?getOneDriveEmbed(driveUrl):null;
@@ -2882,12 +2882,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 <div style={{padding:20,textAlign:"center"}}>
                   <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>{driveType==="onedrive"?"Conectar OneDrive":"Conectar Google Drive"}</p>
                   {driveType==="onedrive" ? <>
-                    <p style={{fontSize:11,color:"#8B8F92",marginBottom:6,lineHeight:1.5}}>Para incorporar uma pasta do OneDrive:</p>
+                    <p style={{fontSize:11,color:"#8B8F92",marginBottom:6,lineHeight:1.5}}>Cole o link de compartilhamento da pasta:</p>
                     <div style={{textAlign:"left",fontSize:10,color:"#8B8F92",lineHeight:1.7,marginBottom:12,padding:"10px 14px",background:"#F7F8FA",borderRadius:10}}>
-                      <p><strong style={{color:"#1A1D23"}}>1.</strong> Abra o OneDrive no navegador</p>
-                      <p><strong style={{color:"#1A1D23"}}>2.</strong> Clique com botão direito na pasta</p>
-                      <p><strong style={{color:"#1A1D23"}}>3.</strong> Selecione <strong style={{color:"#0078D4"}}>"Incorporar"</strong></p>
-                      <p><strong style={{color:"#1A1D23"}}>4.</strong> Copie o link do <strong style={{color:"#0078D4"}}>src=""</strong> do iframe</p>
+                      <p><strong style={{color:"#1A1D23"}}>Opção 1:</strong> Link de compartilhamento (botão "Compartilhar")</p>
+                      <p><strong style={{color:"#1A1D23"}}>Opção 2:</strong> Link de incorporar (botão direito → "Incorporar")</p>
+                      <p style={{marginTop:4,color:"#0078D4"}}>💡 Se não funcionar, tente o link de Incorporar</p>
                     </div>
                   </> : <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o link da pasta compartilhada do Google Drive</p>}
                   <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder={driveType==="onedrive"?"https://onedrive.live.com/embed?...":"https://drive.google.com/drive/folders/..."} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:12,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:8}} />
