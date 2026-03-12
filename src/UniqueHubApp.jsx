@@ -2874,6 +2874,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Google Drive</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {folderId && <button onClick={()=>{setDriveUrl("");localStorage.removeItem("uh_drive_url");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#EF4444"}}>Desconectar</button>}
                 <button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(!driveEditing);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:driveEditing?"#EF4444":"#9CA3AF"}}>{driveEditing?"Cancelar":"⚙️"}</button>
                 {folderId && <a href={`https://drive.google.com/drive/folders/${folderId}`} target="_blank" rel="noopener" style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2,textDecoration:"none"}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>}
               </div>
