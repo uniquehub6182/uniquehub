@@ -6963,9 +6963,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                     {imgF.length>0 && <div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>
                       {imgF.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
                     </div>}
-                    <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(d.id);}} style={{width:"100%",padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
-                      Abrir completo →
-                    </button>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(d.id);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                        Abrir completo →
+                      </button>
+                      <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Excluir "${d.title}"?`))return;const delId=d.supaId||d.id;if(delId){try{await supaDeleteDemand(delId);}catch(err){console.error(err);}}setDemands(p=>p.filter(x=>x.id!==d.id&&x.supaId!==d.supaId));setExpandedId(null);showToast("Demanda excluída ✓");}} style={{padding:"8px 12px",borderRadius:10,background:`${(B.red||"#FF6B6B")}10`,border:`1px solid ${(B.red||"#FF6B6B")}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div style={{padding:"8px 12px 12px"}}>
@@ -6997,10 +7002,16 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                         </div>
                       );
                     })}
-                    {/* Collapse button */}
-                    <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(null);}} style={{width:"100%",padding:"8px 0",borderRadius:10,background:`${B.muted}08`,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted,marginTop:4}}>
-                      ← Recolher
-                    </button>
+                    {/* Action buttons */}
+                    <div style={{display:"flex",gap:8,marginTop:4}}>
+                      <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(null);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:`${B.muted}08`,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>
+                        ← Recolher
+                      </button>
+                      <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Excluir "${d.title}"?`))return;const delId=d.supaId||d.id;if(delId){try{await supaDeleteDemand(delId);}catch(err){console.error(err);}}setDemands(p=>p.filter(x=>x.id!==d.id&&x.supaId!==d.supaId));setExpandedId(null);setFullExpandedId(null);showToast("Demanda excluída ✓");}} style={{padding:"8px 16px",borderRadius:10,background:`${(B.red||"#FF6B6B")}10`,border:`1px solid ${(B.red||"#FF6B6B")}30`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.red||"#FF6B6B",display:"flex",alignItems:"center",gap:4}}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        Excluir
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -16562,6 +16573,9 @@ html.uh-desktop .pg .card:has(.sl){max-width:100%}
 html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-items:start}
 .demands-grid .card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
 .demands-grid>div{border-radius:16px!important;overflow:hidden!important}
+html.uh-desktop .demands-grid>div{border-radius:16px!important;overflow:hidden!important}
+html.uh-desktop .content .demands-grid>div{border-radius:16px!important;overflow:hidden!important}
+html.uh-desktop .phone-viewport .demands-grid>div{border-radius:16px!important;overflow:hidden!important}
 .card.demand-card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .phone-viewport .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-items:start}
