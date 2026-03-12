@@ -6832,9 +6832,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             </div>
           </div>}
 
-          {/* ── Post Preview Image / Carousel ── */}
+          {/* ── Post Preview Image / Carousel ── (all corners rounded) */}
           {d.type === "social" && (
-            <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden" }}>
+            <div style={{ position:"relative", borderRadius:16, overflow:"hidden" }}>
               <PostPreview format={d.format} client={d.client} slides={slides} compact uploadedFiles={[...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])]}>
                 {/* Format badge overlay */}
                 <div style={{ position:"absolute", top:10, left:10, display:"flex", gap:4 }}>
@@ -6866,7 +6866,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
             if (!firstImg && !firstVid) return null;
             return (
-              <div style={{ position:"relative", borderRadius:"16px 16px 0 0", overflow:"hidden", aspectRatio:"9/16", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
+              <div style={{ position:"relative", borderRadius:16, overflow:"hidden", aspectRatio:"9/16", background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
                 {firstImg ? <img src={firstImg.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> :
                  firstVid ? <video src={firstVid.url+"#t=0.1"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} preload="metadata" muted playsInline /> : null}
                 <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.2)" }}>
