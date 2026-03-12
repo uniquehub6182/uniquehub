@@ -5514,6 +5514,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [qpLoading, setQpLoading] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [fullExpandedId, setFullExpandedId] = useState(null);
   const contentScrollRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   useEffect(() => {
@@ -6942,27 +6943,66 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             const allFiles = [...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[]),...(d.steps?.copy?.files||[])];
             const imgF = allFiles.filter(f=>f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
             const caption = d.steps?.copy?.text || d.steps?.caption?.text || d.caption || "";
+            const isFull = fullExpandedId === d.id;
+            const stageLabels = {idea:"Ideia",briefing:"Briefing",design:"Design",copy:"Legenda",caption:"Legenda",review:"Revisão",client:"Cliente",production:"Produção",editing:"Edição",published:"Publicado",done:"Concluído",script:"Roteiro"};
             return (
-              <div style={{padding:"10px 12px 12px",borderTop:`1px solid ${B.border}`}} onClick={e=>e.stopPropagation()}>
-                {/* Stages mini */}
-                <div style={{display:"flex",gap:3,marginBottom:8}}>
+              <div style={{borderTop:`1px solid ${B.border}`,maxHeight:isFull?600:320,overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+                {/* Stages mini bar */}
+                <div style={{display:"flex",gap:3,padding:"10px 12px 0"}}>
                   {stages.map((s,si)=>{const cfg=STAGE_CFG[s]||{l:s,c:"#888"};const done=si<stIdx;const active=si===stIdx;return(
                     <div key={s} style={{flex:1,textAlign:"center"}}>
                       <div style={{height:4,borderRadius:2,background:done||active?cfg.c:`${B.muted}15`,opacity:done?0.5:1,marginBottom:3}}/>
-                      <span style={{fontSize:7,fontWeight:active?800:500,color:active?cfg.c:"#aaa"}}>{cfg.l}</span>
+                      <span style={{fontSize:7,fontWeight:active?800:500,color:active?cfg.c:"#aaa"}}>{stageLabels[s]||s}</span>
                     </div>
                   );})}
                 </div>
-                {/* Caption */}
-                {caption && <p style={{fontSize:11,color:B.text,lineHeight:1.4,marginBottom:6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>}
-                {/* Thumbs */}
-                {imgF.length>0 && <div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>
-                  {imgF.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
-                </div>}
-                {/* Open full */}
-                <button onClick={(e)=>{e.stopPropagation();setSel(d);setEditMode(false);setExpandedId(null);}} style={{width:"100%",padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
-                  Abrir completo →
-                </button>
+
+                {!isFull ? (
+                  <div style={{padding:"8px 12px 12px"}}>
+                    {caption && <p style={{fontSize:11,color:B.text,lineHeight:1.4,marginBottom:6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>}
+                    {imgF.length>0 && <div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>
+                      {imgF.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
+                    </div>}
+                    <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(d.id);}} style={{width:"100%",padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                      Abrir completo →
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{padding:"8px 12px 12px"}}>
+                    {/* Full stage-by-stage detail */}
+                    {stages.map((stageKey,si)=>{
+                      const cfg=STAGE_CFG[stageKey]||{l:stageKey,c:"#888"};
+                      const done=si<stIdx;const active=si===stIdx;const future=si>stIdx;
+                      const stepData=d.steps?.[stageKey]||{};
+                      const stepFiles=(stepData.files||[]).filter(f=>f.url);
+                      const stepImgs=stepFiles.filter(f=>/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                      const stepText=stepData.text||stepData.feedback||"";
+                      return(
+                        <div key={stageKey} style={{marginBottom:6,borderRadius:12,border:`1px solid ${active?cfg.c:done?`${cfg.c}30`:B.border}`,background:active?`${cfg.c}06`:"transparent",padding:"8px 10px",opacity:future?0.4:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <div style={{width:20,height:20,borderRadius:10,background:done?cfg.c:active?`${cfg.c}25`:`${B.muted}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              {done?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{fontSize:8,fontWeight:800,color:active?cfg.c:B.muted}}>{si+1}</span>}
+                            </div>
+                            <span style={{fontSize:11,fontWeight:700,color:active?cfg.c:done?B.dark:B.muted}}>{stageLabels[stageKey]||stageKey}</span>
+                            {active&&<span style={{fontSize:8,fontWeight:700,padding:"1px 6px",borderRadius:4,background:cfg.c,color:"#fff",marginLeft:"auto"}}>Atual</span>}
+                          </div>
+                          {(done||active)&&stepText&&<p style={{fontSize:10,color:B.text,lineHeight:1.4,marginTop:6,paddingLeft:26}}>{stepText.substring(0,120)}{stepText.length>120?"...":""}</p>}
+                          {(done||active)&&stepImgs.length>0&&<div style={{display:"flex",gap:4,marginTop:6,paddingLeft:26}}>
+                            {stepImgs.slice(0,3).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:36,height:36,borderRadius:6,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
+                            {stepImgs.length>3&&<span style={{fontSize:9,color:B.muted,alignSelf:"center"}}>+{stepImgs.length-3}</span>}
+                          </div>}
+                          {(done||active)&&stepData.status&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:4,paddingLeft:26}}>
+                            <span style={{fontSize:9,fontWeight:600,padding:"1px 6px",borderRadius:4,background:stepData.status==="approved"?`${B.green}15`:stepData.status==="revision"?`${B.orange}15`:`${B.muted}10`,color:stepData.status==="approved"?B.green:stepData.status==="revision"?B.orange:B.muted}}>{stepData.status==="approved"?"Aprovado":stepData.status==="revision"?"Revisão":stepData.status}</span>
+                          </div>}
+                        </div>
+                      );
+                    })}
+                    {/* Collapse button */}
+                    <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(null);}} style={{width:"100%",padding:"8px 0",borderRadius:10,background:`${B.muted}08`,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted,marginTop:4}}>
+                      ← Recolher
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}
