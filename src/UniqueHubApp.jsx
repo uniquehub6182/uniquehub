@@ -2529,6 +2529,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const cfg = dashCfg || cfgDefault;
   /* Desktop panel state — top level for React hooks rules */
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
+  const [driveUrl, setDriveUrl] = useState(() => { try { return localStorage.getItem("uh_drive_url")||""; } catch { return ""; } });
+  const [driveEditing, setDriveEditing] = useState(false);
+  const [driveTmp, setDriveTmp] = useState("");
   const [showPanelEditor, setShowPanelEditor] = useState(false);
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
@@ -2816,6 +2819,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       calendar:{l:"Calendário",icon:"calendar"},
       ideas:{l:"Ideias",icon:"ideas"},
       social:{l:"Redes Sociais",icon:"social"},
+      drive:{l:"Google Drive",icon:"drive"},
     };
     const dpIco = (k,sz=16,clr="#1A1D23") => {
       const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
@@ -2826,6 +2830,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         news:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/></svg>,
         ai:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
         content:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+        drive:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M22 12h-6l-2 3H8l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>,
       };
       return p[k]||p.content;
     };
@@ -2852,6 +2857,50 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user}/>);
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients}/>);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
+      if(pk==="drive") {
+        /* Extract folder ID from various Google Drive URL formats */
+        const extractFolderId = (url) => {
+          if(!url) return null;
+          const m1 = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+          if(m1) return m1[1];
+          const m2 = url.match(/id=([a-zA-Z0-9_-]+)/);
+          if(m2) return m2[1];
+          if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim();
+          return null;
+        };
+        const folderId = extractFolderId(driveUrl);
+        return (
+          <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Google Drive</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(!driveEditing);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:driveEditing?"#EF4444":"#9CA3AF"}}>{driveEditing?"Cancelar":"⚙️"}</button>
+                {folderId && <a href={`https://drive.google.com/drive/folders/${folderId}`} target="_blank" rel="noopener" style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2,textDecoration:"none"}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></a>}
+              </div>
+            </div>
+            <div style={{flex:1,overflow:"hidden",position:"relative"}}>
+              {driveEditing ? (
+                <div style={{padding:20,textAlign:"center"}}>
+                  <div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,#4285F4 25%,#34A853 25%,#34A853 50%,#FBBC05 50%,#FBBC05 75%,#EA4335 75%)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",opacity:0.8}} />
+                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>Conectar Google Drive</p>
+                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:16}}>Cole o link da pasta compartilhada do Google Drive</p>
+                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder="https://drive.google.com/drive/folders/..." style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:13,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:12}} />
+                  <button onClick={()=>{setDriveUrl(driveTmp);localStorage.setItem("uh_drive_url",driveTmp);setDriveEditing(false);}} style={{width:"100%",padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
+                </div>
+              ) : folderId ? (
+                <iframe src={`https://drive.google.com/embeddedfolderview?id=${folderId}#list`} style={{width:"100%",height:"100%",border:"none"}} title="Google Drive" />
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
+                  <div style={{width:56,height:56,borderRadius:16,background:"#ECEEF2",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,"#9CA3AF")}</div>
+                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>Google Drive</p>
+                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:16}}>Conecte uma pasta para acessar os arquivos da agência em tempo real</p>
+                  <button onClick={()=>{setDriveTmp("");setDriveEditing(true);}} style={{padding:"10px 20px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Conectar pasta</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
       const opt=DPANEL_OPTS[pk]||{l:pk,icon:"content"};
       return phoneFrame(opt.l,opt.icon||"content",noop,<div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}><p style={{fontSize:13}}>{opt.l} — Em breve</p></div>);
     };
@@ -7800,10 +7849,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   return (
     <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:chatIsDesktop?"transparent":B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto" }}>
       {NewChatModal}{NewGroupModal}
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{maxWidth:860,margin:"0 auto",width:"100%",boxSizing:"border-box",padding:"20px 32px"}:{})}}>
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} className={chatIsDesktop?"pg":""} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{}:{})}}>
         {ToastEl}
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />
-        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
+        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:8}:{}}>
         <div style={{ padding:chatIsDesktop?"0":"14px 16px 0" }}>
         <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
           <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
