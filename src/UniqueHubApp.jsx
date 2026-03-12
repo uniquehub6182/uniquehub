@@ -7798,10 +7798,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto" }}>
+    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:chatIsDesktop?"transparent":B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto" }}>
       {NewChatModal}{NewGroupModal}
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto"}}>
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{maxWidth:860,margin:"0 auto",width:"100%",boxSizing:"border-box",padding:"20px 32px"}:{})}}>
         {ToastEl}
+        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"0 0 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />
         <div style={{ padding:"14px 16px 0" }}>
         <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
@@ -7873,7 +7874,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           );
         })}
         </div>
-        </div>
+        </div>{/* close card wrapper */}
+      </div>
       </div>
     </div>
   );
