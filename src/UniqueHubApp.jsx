@@ -16561,6 +16561,7 @@ html.uh-desktop .phone-viewport [style*="sticky"]>div{padding:12px 14px 10px!imp
 html.uh-desktop .pg .card:has(.sl){max-width:100%}
 html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-items:start}
 .demands-grid .card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
+.demands-grid>div{border-radius:16px!important;overflow:hidden!important}
 .card.demand-card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .phone-viewport .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;align-items:start}
