@@ -6806,6 +6806,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhuma demanda encontrada</p>
         <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou criar uma nova demanda.</p>
       </Card>}
+      <div className="demands-grid">
       {filtered.map((d,i) => {
         const isDone = ["published","completed"].includes(d.stage);
         const pColor = priorityColor(d.priority);
@@ -6932,6 +6933,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         </Card>
         );
       })}
+      </div>{/* end demands-grid */}
       </div>{/* end scrollable content */}
     </div>
   );
@@ -16481,6 +16483,8 @@ html.uh-desktop .phone-viewport [style*="sticky"] h2{font-size:18px!important}
 html.uh-desktop .phone-viewport [style*="sticky"] p[style*="uppercase"]{font-size:9px!important}
 html.uh-desktop .phone-viewport [style*="sticky"]>div{padding:12px 14px 10px!important}
 html.uh-desktop .pg .card:has(.sl){max-width:100%}
+html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+html.uh-desktop .demands-grid .card{margin-top:0!important}
 html.uh-desktop div[style*="aspect-ratio"]{max-width:480px;margin-left:auto;margin-right:auto}
 html.uh-desktop .phone-viewport .pg{padding:8px 12px!important;max-width:none!important;margin:0!important;min-height:auto!important;position:relative!important}
 html.uh-desktop .phone-viewport .bnav{display:none!important}
