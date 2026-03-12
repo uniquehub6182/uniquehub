@@ -5447,7 +5447,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   };
 
   return (
-    <div style={{ position:"relative", borderRadius:compact?0:12, overflow:"hidden" }}>
+    <div style={{ position:"relative", borderRadius:12, overflow:"hidden" }}>
       {hasReal ? (
         <div style={{ position:"relative", aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
           {imgFiles.length > 0 ? (
