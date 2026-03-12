@@ -2860,11 +2860,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
       if(pk==="drive") {
         const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
-        const extractOneDriveEmbed = (url) => { if(!url) return null; if(url.includes("onedrive.live.com/embed")) return url; const m=url.match(/onedrive\.live\.com\/\?.*id=([^&]+)/)||url.match(/1drv\.ms\/[a-z]\/([^?]+)/); if(m) return `https://onedrive.live.com/embed?id=${m[1]}&view=list`; if(url.includes("sharepoint.com")) return url.replace("/AllItems.aspx","/AllItems.aspx").replace("?","?view=list&"); return url.includes("onedrive")||url.includes("sharepoint")?url:null; };
+        const getOneDriveEmbed = (url) => { if(!url) return null; if(url.includes("onedrive.live.com/embed")) return url; if(url.includes("<iframe")) { const m=url.match(/src="([^"]+)"/); return m?m[1]:null; } if(url.includes("sharepoint.com")&&url.includes("/_layouts/")) return url; const m2=url.match(/resid=([^&]+)/); if(m2) return url; return null; };
         const isConnected = driveUrl && (driveType==="gdrive"||driveType==="onedrive");
         const gId = driveType==="gdrive"?extractGDriveId(driveUrl):null;
-        const odUrl = driveType==="onedrive"?extractOneDriveEmbed(driveUrl):null;
-        const embedSrc = gId?`https://drive.google.com/embeddedfolderview?id=${gId}#list`:odUrl;
+        const odEmbed = driveType==="onedrive"?getOneDriveEmbed(driveUrl):null;
+        const embedSrc = gId?`https://drive.google.com/embeddedfolderview?id=${gId}#list`:odEmbed;
         const svcLabel = driveType==="gdrive"?"Google Drive":driveType==="onedrive"?"OneDrive":"Drive / Nuvem";
         const svcColor = driveType==="gdrive"?"#4285F4":"#0078D4";
         return (
@@ -2880,16 +2880,34 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <div style={{flex:1,overflow:"hidden",position:"relative"}}>
               {driveEditing ? (
                 <div style={{padding:20,textAlign:"center"}}>
-                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>Trocar link</p>
-                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o novo link da pasta</p>
-                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder="Cole o link da pasta..." style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:13,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:8}} />
+                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>{driveType==="onedrive"?"Conectar OneDrive":"Conectar Google Drive"}</p>
+                  {driveType==="onedrive" ? <>
+                    <p style={{fontSize:11,color:"#8B8F92",marginBottom:6,lineHeight:1.5}}>Para incorporar uma pasta do OneDrive:</p>
+                    <div style={{textAlign:"left",fontSize:10,color:"#8B8F92",lineHeight:1.7,marginBottom:12,padding:"10px 14px",background:"#F7F8FA",borderRadius:10}}>
+                      <p><strong style={{color:"#1A1D23"}}>1.</strong> Abra o OneDrive no navegador</p>
+                      <p><strong style={{color:"#1A1D23"}}>2.</strong> Clique com botão direito na pasta</p>
+                      <p><strong style={{color:"#1A1D23"}}>3.</strong> Selecione <strong style={{color:"#0078D4"}}>"Incorporar"</strong></p>
+                      <p><strong style={{color:"#1A1D23"}}>4.</strong> Copie o link do <strong style={{color:"#0078D4"}}>src=""</strong> do iframe</p>
+                    </div>
+                  </> : <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o link da pasta compartilhada do Google Drive</p>}
+                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder={driveType==="onedrive"?"https://onedrive.live.com/embed?...":"https://drive.google.com/drive/folders/..."} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:12,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:8}} />
                   <div style={{display:"flex",gap:8}}>
                     <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
                     <button onClick={()=>setDriveEditing(false)} style={{padding:"10px 16px",borderRadius:12,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666"}}>Cancelar</button>
                   </div>
                 </div>
               ) : embedSrc ? (
-                <iframe src={embedSrc} style={{width:"100%",height:"100%",border:"none"}} title={svcLabel} allow="fullscreen" />
+                <iframe src={embedSrc} style={{width:"100%",height:"100%",border:"none"}} title={svcLabel} allow="fullscreen" onError={()=>{}} />
+              ) : isConnected && !embedSrc ? (
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20,textAlign:"center"}}>
+                  <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
+                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:6}}>Link não compatível com embed</p>
+                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:4,lineHeight:1.5}}>{driveType==="onedrive"?"Para OneDrive, use o link de Incorporar (Embed), não o link de compartilhamento.":"Verifique se o link é de uma pasta pública do Google Drive."}</p>
+                  <div style={{display:"flex",gap:8,marginTop:12}}>
+                    <button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(true);}} style={{padding:"8px 16px",borderRadius:10,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Trocar link</button>
+                    <a href={driveUrl} target="_blank" rel="noopener" style={{padding:"8px 16px",borderRadius:10,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666",textDecoration:"none",display:"flex",alignItems:"center"}}>Abrir no navegador</a>
+                  </div>
+                </div>
               ) : (
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
                   <div style={{width:56,height:56,borderRadius:16,background:"#ECEEF2",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,"#9CA3AF")}</div>
