@@ -1433,8 +1433,8 @@ const Logo = ({ size = 32 }) => (
   </div>
 );
 
-const Card = ({ children, style, delay, onClick }) => (
-  <div className="card ani" onClick={onClick} style={{ ...style, animationDelay: delay ? `${delay}s` : "0s" }}>{children}</div>
+const Card = ({ children, style, delay, onClick, className }) => (
+  <div className={`card ani${className ? ` ${className}` : ""}`} onClick={onClick} style={{ ...style, animationDelay: delay ? `${delay}s` : "0s" }}>{children}</div>
 );
 
 const Tag = ({ children, color }) => (
@@ -6825,7 +6825,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
 
         return (
-        <Card key={d.id} delay={i*0.03} onClick={() => {setSel(d);setEditMode(false);}} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0 }}>
+        <Card key={d.id} delay={i*0.03} onClick={() => {setSel(d);setEditMode(false);}} className="demand-card" style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0 }}>
           {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
@@ -16485,6 +16485,7 @@ html.uh-desktop .phone-viewport [style*="sticky"]>div{padding:12px 14px 10px!imp
 html.uh-desktop .pg .card:has(.sl){max-width:100%}
 html.uh-desktop .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .demands-grid .card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
+.card.demand-card{padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
 html.uh-desktop .phone-viewport .demands-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 html.uh-desktop .phone-viewport .demands-grid .card{margin-top:0!important;padding:0!important;overflow:hidden!important;border-radius:16px!important}
