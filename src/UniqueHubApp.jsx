@@ -7802,9 +7802,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{maxWidth:860,margin:"0 auto",width:"100%",boxSizing:"border-box",padding:"20px 32px"}:{})}}>
         {ToastEl}
-        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"0 0 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />
-        <div style={{ padding:"14px 16px 0" }}>
+        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
+        <div style={{ padding:chatIsDesktop?"0":"14px 16px 0" }}>
         <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
           <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
