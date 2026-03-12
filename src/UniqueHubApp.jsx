@@ -6830,7 +6830,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
 
         return (
-        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
+        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
           {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
