@@ -6829,7 +6829,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
 
         return (
-        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", gridColumn:expandedId===d.id?"1 / -1":"auto", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
+        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ marginTop:i?10:0, cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
           {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
@@ -6943,34 +6943,26 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             const imgF = allFiles.filter(f=>f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
             const caption = d.steps?.copy?.text || d.steps?.caption?.text || d.caption || "";
             return (
-              <div style={{padding:"0 14px 14px",borderTop:`1px solid ${B.border}`}} onClick={e=>e.stopPropagation()}>
-                {/* Stage timeline */}
-                <div style={{display:"flex",alignItems:"center",gap:3,margin:"12px 0 10px"}}>
+              <div style={{padding:"10px 12px 12px",borderTop:`1px solid ${B.border}`}} onClick={e=>e.stopPropagation()}>
+                {/* Stages mini */}
+                <div style={{display:"flex",gap:3,marginBottom:8}}>
                   {stages.map((s,si)=>{const cfg=STAGE_CFG[s]||{l:s,c:"#888"};const done=si<stIdx;const active=si===stIdx;return(
-                    <div key={s} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                      <div style={{width:"100%",height:5,borderRadius:3,background:done?cfg.c:active?cfg.c:`${B.muted}15`,opacity:done?0.6:1,transition:"all .3s"}}/>
-                      <span style={{fontSize:9,fontWeight:active?800:500,color:active?cfg.c:done?B.dark:"#aaa"}}>{cfg.l}</span>
+                    <div key={s} style={{flex:1,textAlign:"center"}}>
+                      <div style={{height:4,borderRadius:2,background:done||active?cfg.c:`${B.muted}15`,opacity:done?0.5:1,marginBottom:3}}/>
+                      <span style={{fontSize:7,fontWeight:active?800:500,color:active?cfg.c:"#aaa"}}>{cfg.l}</span>
                     </div>
                   );})}
                 </div>
-                {/* Caption preview */}
-                {caption && <div style={{padding:"10px 12px",borderRadius:12,background:`${B.muted}06`,marginBottom:10}}>
-                  <p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:4}}>COPY</p>
-                  <p style={{fontSize:12,color:B.text,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:4,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>
+                {/* Caption */}
+                {caption && <p style={{fontSize:11,color:B.text,lineHeight:1.4,marginBottom:6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>}
+                {/* Thumbs */}
+                {imgF.length>0 && <div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>
+                  {imgF.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
                 </div>}
-                {/* File thumbnails */}
-                {imgF.length>0 && <div style={{display:"flex",gap:6,marginBottom:10,overflowX:"auto"}}>
-                  {imgF.slice(0,6).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:56,height:56,borderRadius:10,objectFit:"cover",border:`1px solid ${B.border}`,flexShrink:0}}/>)}
-                </div>}
-                {/* Action buttons */}
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={(e)=>{e.stopPropagation();setSel(d);setEditMode(false);}} style={{flex:1,padding:"10px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.dark,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-                    Abrir completo
-                  </button>
-                  <button onClick={(e)=>{e.stopPropagation();setExpandedId(null);}} style={{padding:"10px 16px",borderRadius:12,background:`${B.muted}08`,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.muted}}>
-                    Fechar
-                  </button>
-                </div>
+                {/* Open full */}
+                <button onClick={(e)=>{e.stopPropagation();setSel(d);setEditMode(false);setExpandedId(null);}} style={{width:"100%",padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                  Abrir completo →
+                </button>
               </div>
             );
           })()}
