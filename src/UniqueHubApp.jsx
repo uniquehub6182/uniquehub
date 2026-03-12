@@ -16422,29 +16422,32 @@ export default function App() {
   };
 
   if (metaOAuthPending || metaOAuthResult || metaPagePicker) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8"}}>
-      <div style={{textAlign:"center",padding:24,maxWidth:480,width:"100%"}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#ECEEF2",padding:20}}>
+      <div style={{textAlign:"center",padding:32,maxWidth:480,width:"100%",background:"#fff",borderRadius:24,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.04)"}}>
 
         {/* Loading */}
         {metaOAuthPending && !metaPagePicker ? <>
-          <div style={{fontSize:48,marginBottom:16}}>🔗</div>
-          <div style={{width:44,height:44,border:"3px solid #E5E2DD",borderTopColor:"#1877F2",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
-          <p style={{color:"#192126",fontSize:15,fontWeight:700}}>Conectando com Meta...</p>
-          <p style={{color:"#8B8F92",fontSize:12,marginTop:4}}>Buscando suas páginas e perfis</p>
+          <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(135deg,#C6F135 0%,#A8D810 100%)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <div style={{width:36,height:36,border:"3px solid #ECEEF2",borderTopColor:"#C6F135",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 16px"}}/>
+          <p style={{color:"#192126",fontSize:17,fontWeight:800}}>Conectando com Meta...</p>
+          <p style={{color:"#8B8F92",fontSize:13,marginTop:6}}>Buscando suas páginas e perfis</p>
         </> : null}
 
         {/* Page Picker */}
         {metaPagePicker && !metaOAuthResult ? <>
-          <div style={{fontSize:48,marginBottom:12}}>📋</div>
+          <div style={{width:64,height:64,borderRadius:20,background:"#ECEEF2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
           <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:4}}>Selecione a página do cliente</p>
           <p style={{color:"#8B8F92",fontSize:12,marginBottom:20}}>{metaPagePicker.pages.length} página{metaPagePicker.pages.length > 1 ? "s" : ""} encontrada{metaPagePicker.pages.length > 1 ? "s" : ""}</p>
-          <div style={{maxHeight:"50vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:8,padding:"0 4px"}}>
+          <div style={{maxHeight:"50vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
             {metaPagePicker.pages.map(pg => (
               <button key={pg.page_id} disabled={metaSavingPage} onClick={async () => {
                 setMetaSavingPage(true);
                 const res = await saveMetaSelectedPage(metaPagePicker.clientId, pg);
                 if (res && !res.error) {
-                  /* Write to sessionStorage so ClientsPage can update the client */
                   try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId: metaPagePicker.clientId, page_name: pg.page_name, page_id: pg.page_id, ig_username: pg.ig_username, ig_user_id: pg.ig_user_id })); } catch {}
                   setMetaOAuthResult({ success: true, pageName: pg.page_name, igUsername: pg.ig_username });
                 } else {
@@ -16452,43 +16455,49 @@ export default function App() {
                 }
                 setMetaSavingPage(false);
               }} style={{
-                display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:14,
-                background:"#fff",border:"1.5px solid #E5E2DD",cursor:metaSavingPage?"wait":"pointer",
+                display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:16,
+                background:"#F7F8FA",border:"1.5px solid #ECEEF2",cursor:metaSavingPage?"wait":"pointer",
                 fontFamily:"inherit",textAlign:"left",transition:"all 0.2s",opacity:metaSavingPage?0.6:1
               }}>
-                {pg.page_picture ? <img src={pg.page_picture} style={{width:44,height:44,borderRadius:10,objectFit:"cover"}} alt=""/> : <div style={{width:44,height:44,borderRadius:10,background:"#1877F2",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:18}}>{pg.page_name?.[0] || "?"}</div>}
+                {pg.page_picture ? <img src={pg.page_picture} style={{width:44,height:44,borderRadius:12,objectFit:"cover",border:"2px solid #ECEEF2"}} alt=""/> : <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#C6F135,#A8D810)",display:"flex",alignItems:"center",justifyContent:"center",color:"#192126",fontWeight:800,fontSize:18}}>{pg.page_name?.[0] || "?"}</div>}
                 <div style={{flex:1,minWidth:0}}>
                   <p style={{color:"#192126",fontSize:14,fontWeight:700,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pg.page_name}</p>
-                  {pg.page_category && <p style={{color:"#8B8F92",fontSize:11,margin:"2px 0 0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pg.page_category}</p>}
+                  {pg.page_category && <p style={{color:"#8B8F92",fontSize:11,margin:"2px 0 0"}}>{pg.page_category}</p>}
                   <div style={{display:"flex",gap:8,marginTop:4}}>
-                    <span style={{fontSize:11,color:"#1877F2",fontWeight:600}}>📘 Facebook</span>
-                    {pg.has_instagram ? <span style={{fontSize:11,color:"#E1306C",fontWeight:600}}>📸 @{pg.ig_username}</span> : <span style={{fontSize:11,color:"#ccc"}}>📸 Sem Instagram</span>}
+                    <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,background:"#1877F220",color:"#1877F2"}}>Facebook</span>
+                    {pg.has_instagram ? <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,background:"#E1306C20",color:"#E1306C"}}>@{pg.ig_username}</span> : <span style={{fontSize:10,padding:"2px 8px",borderRadius:6,background:"#8B8F9210",color:"#aaa"}}>Sem Instagram</span>}
                   </div>
                 </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5C7CC" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             ))}
           </div>
-          <button onClick={() => { setMetaPagePicker(null); setMetaOAuthResult(null); setMetaOAuthPending(false); }} style={{marginTop:16,padding:"10px 24px",borderRadius:10,background:"transparent",border:"1px solid #E5E2DD",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:"#8B8F92"}}>Cancelar</button>
+          <button onClick={() => { setMetaPagePicker(null); setMetaOAuthResult(null); setMetaOAuthPending(false); }} style={{marginTop:20,padding:"12px 28px",borderRadius:12,background:"transparent",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:"#8B8F92"}}>Cancelar</button>
         </> : null}
 
         {/* Success */}
         {metaOAuthResult?.success ? <>
-          <div style={{fontSize:56,marginBottom:16}}>✅</div>
-          <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Conectado com sucesso!</p>
-          {metaOAuthResult.igUsername && <p style={{color:"#E1306C",fontSize:14,fontWeight:600}}>📸 @{metaOAuthResult.igUsername}</p>}
-          {metaOAuthResult.pageName && <p style={{color:"#1877F2",fontSize:14,fontWeight:600,marginTop:4}}>📘 {metaOAuthResult.pageName}</p>}
-          {!metaOAuthResult.igUsername && metaOAuthResult.pageName && <p style={{color:"#F59E0B",fontSize:11,marginTop:8}}>⚠️ Instagram não vinculado a esta página. Vincule pelo Facebook para publicar no Instagram.</p>}
-          <p style={{color:"#8B8F92",fontSize:12,marginTop:12}}>Token salvo. Abra o cliente para ver as redes conectadas.</p>
-          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#BBF246",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#192126"}}>Continuar</button>
+          <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#C6F135 0%,#A8D810 100%)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <p style={{color:"#192126",fontSize:20,fontWeight:800,marginBottom:10}}>Conectado com sucesso!</p>
+          <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+            {metaOAuthResult.pageName && <span style={{fontSize:13,fontWeight:700,padding:"6px 16px",borderRadius:10,background:"#1877F210",color:"#1877F2"}}>📘 {metaOAuthResult.pageName}</span>}
+            {metaOAuthResult.igUsername && <span style={{fontSize:13,fontWeight:700,padding:"6px 16px",borderRadius:10,background:"#E1306C10",color:"#E1306C"}}>📸 @{metaOAuthResult.igUsername}</span>}
+          </div>
+          {!metaOAuthResult.igUsername && metaOAuthResult.pageName && <p style={{color:"#F59E0B",fontSize:11,marginTop:12,padding:"8px 14px",borderRadius:10,background:"#F59E0B08",border:"1px solid #F59E0B20"}}>⚠️ Instagram não vinculado a esta página. Vincule pelo Facebook para publicar no Instagram.</p>}
+          <p style={{color:"#8B8F92",fontSize:12,marginTop:14}}>Token salvo. Abra o cliente para ver as redes conectadas.</p>
+          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 36px",borderRadius:14,background:"linear-gradient(135deg,#C6F135 0%,#A8D810 100%)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:800,color:"#192126",boxShadow:"0 4px 16px rgba(198,241,53,0.3)"}}>Continuar</button>
         </> : null}
 
         {/* Error */}
         {metaOAuthResult && !metaOAuthResult.success ? <>
-          <div style={{fontSize:56,marginBottom:16}}>⚠️</div>
+          <div style={{width:64,height:64,borderRadius:20,background:"#FEE2E2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
           <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Erro na conexão</p>
-          <p style={{color:"#EF4444",fontSize:12,marginTop:8,lineHeight:1.5,wordBreak:"break-word"}}>{metaOAuthResult?.msg}</p>
-          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#F7F7F8",border:"1.5px solid #E5E2DD",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#192126"}}>Fechar</button>
+          <p style={{color:"#EF4444",fontSize:12,marginTop:8,lineHeight:1.6,wordBreak:"break-word",padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA"}}>{metaOAuthResult?.msg}</p>
+          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#F7F8FA",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#192126"}}>Fechar</button>
         </> : null}
 
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
