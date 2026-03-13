@@ -3165,6 +3165,13 @@ function CheckinPage({ onBack, user }) {
     return () => clearInterval(iv);
   }, [activeCheckin]);
 
+  /* Auto-checkout when tab closes (#18) */
+  useEffect(() => {
+    const handleUnload = () => { if (activeCheckin?.id) supaCheckout(activeCheckin.id); };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, [activeCheckin]);
+
   const formatTime = (s) => { const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; };
   const fmtMin = (min) => { if (!min && min !== 0) return "—"; const h=Math.floor(min/60), m=min%60; return `${h}h ${m}m`; };
   const fmtDate = (iso) => { const d = new Date(iso); return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}); };
@@ -9988,16 +9995,16 @@ function TeamPage({ onBack, user, onTeamChange }) {
           memberExtras && (memberExtras.social || memberExtras.birth || memberExtras.blood || memberExtras.cpf || memberExtras.pix) ? <Card>
             {[
               {l:"Rede social",v:memberExtras.social},
-              {l:"Data nascimento",v:memberExtras.birth ? (()=>{ const d=memberExtras.birth.replace(/\D/g,""); return d.length===8?d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4):memberExtras.birth; })() : null},
+              {l:"Data nascimento",v:memberExtras.birth && user?.supaRole==="admin" ? (()=>{ const d=memberExtras.birth.replace(/\D/g,""); return d.length===8?d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4):memberExtras.birth; })() : null},
               {l:"Tipo sanguíneo",v:memberExtras.blood},
-              {l:"CPF",v:memberExtras.cpf ? (()=>{ const d=memberExtras.cpf.replace(/\D/g,""); return d.length===11?d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9):memberExtras.cpf; })() : null},
+              {l:"CPF",v:memberExtras.cpf && user?.supaRole==="admin" ? (()=>{ const d=memberExtras.cpf.replace(/\D/g,""); return d.length===11?d.slice(0,3)+"."+d.slice(3,6)+"."+d.slice(6,9)+"-"+d.slice(9):memberExtras.cpf; })() : null},
             ].filter(x=>x.v).map((item,i)=>(
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
                 <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
                 <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
               </div>
             ))}
-            {memberExtras.pix && <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
+            {memberExtras.pix && user?.supaRole==="admin" && <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
               <div>
                 <span style={{ fontSize:11, color:B.muted }}>Chave PIX</span>
                 <p style={{ fontSize:13, fontWeight:600 }}>{memberExtras.pix}</p>
@@ -12440,7 +12447,7 @@ function GamifyPage({ onBack, user, team }) {
       const checkins = monthXp.filter(e => e.action === "checkin").length;
       const tasks = monthXp.filter(e => e.action === "task_done").length;
       const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
-      return { id: m.id, user_id: m.user_id, name: m.name, role: m.role || m.job_title || "—", photo: null, xp: totalXp, events: userXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: userXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 };
+      return { id: m.id, user_id: m.user_id, name: m.name, role: m.role || m.job_title || "—", photo: m.photo || m.avatar || null, xp: totalXp, events: userXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: userXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 };
     });
     /* Include current user if not already in team list */
     if (user?.id && !members.find(m => m.user_id === user.id)) {
@@ -12450,7 +12457,7 @@ function GamifyPage({ onBack, user, team }) {
       const checkins = monthXp.filter(e => e.action === "checkin").length;
       const tasks = monthXp.filter(e => e.action === "task_done").length;
       const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
-      members.unshift({ id: "me", user_id: user.id, name: user.name || user.nick || "Eu", role: "Admin", photo: null, xp: totalXp, events: myXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: myXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 });
+      members.unshift({ id: "me", user_id: user.id, name: user.name || user.nick || "Eu", role: "Admin", photo: user.photo || user.avatar || null, xp: totalXp, events: myXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: myXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 });
     }
     return members;
   }, [team, xpEvents, user]);
@@ -14308,7 +14315,7 @@ function Match4BizPage({ onBack, clients, user }) {
             {wonDeals.map((d,i) => (
               <div key={d.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderTop:i?`1px solid ${B.border}05`:"none" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:14 }}>{d.a.logo}</span>
+                  <span style={{ fontSize:14 }}>{d.client_a_name?.[0]||"🤝"}</span>
                   <span style={{ fontSize:11, fontWeight:600 }}>{d.client_a_name.split(" ").slice(0,2).join(" ")} × {d.client_b_name.split(" ").slice(0,2).join(" ")}</span>
                 </div>
                 <span style={{ fontSize:12, fontWeight:700, color:B.green }}>R$ {(d.value||0).toLocaleString("pt-BR")}</span>
@@ -16425,10 +16432,10 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
 :root{
---uh-fs:${({small:"13px",normal:"14px",large:"16px",xlarge:"18px"})[uiPrefs.fontSize||"normal"]||"14px"};
---uh-fs-sm:${({small:"10px",normal:"11px",large:"13px",xlarge:"14px"})[uiPrefs.fontSize||"normal"]||"11px"};
---uh-fs-lg:${({small:"15px",normal:"16px",large:"19px",xlarge:"22px"})[uiPrefs.fontSize||"normal"]||"16px"};
---uh-fs-title:${({small:"18px",normal:"20px",large:"24px",xlarge:"28px"})[uiPrefs.fontSize||"normal"]||"20px"};
+--uh-fs:${({small:"14px",normal:"15px",large:"17px",xlarge:"19px"})[uiPrefs.fontSize||"normal"]||"15px"};
+--uh-fs-sm:${({small:"11px",normal:"12px",large:"14px",xlarge:"15px"})[uiPrefs.fontSize||"normal"]||"12px"};
+--uh-fs-lg:${({small:"16px",normal:"18px",large:"20px",xlarge:"24px"})[uiPrefs.fontSize||"normal"]||"18px"};
+--uh-fs-title:${({small:"20px",normal:"22px",large:"26px",xlarge:"30px"})[uiPrefs.fontSize||"normal"]||"22px"};
 --uh-radius:${({sharp:"4px",round:"14px",pill:"24px"})[uiPrefs.cardRadius||"round"]||"14px"};
 --uh-radius-sm:${({sharp:"2px",round:"8px",pill:"16px"})[uiPrefs.cardRadius||"round"]||"8px"};
 --uh-pad:${({compact:"10px",normal:"14px",spacious:"20px"})[uiPrefs.density||"normal"]||"14px"};
