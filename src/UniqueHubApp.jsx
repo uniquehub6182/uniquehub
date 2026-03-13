@@ -606,9 +606,9 @@ const supaDeleteExpense = async (id) => { if (!supabase) return; await supabase.
 const asaasCall = async (action, data = {}) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/asaas-proxy`, {
+    const res = await fetch(`${SUPA_URL}/functions/v1/asaas-billing`, {
       method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ action, data })
+      body: JSON.stringify({ action, ...data })
     });
     return await res.json();
   } catch(e) { return { error: e.message }; }
@@ -5294,12 +5294,15 @@ function FinancialPage({ onBack, clients: propClients }) {
                 /* Sync with Asaas if configured */
                 if (fc.asaasApiKey) {
                   const client = CDATA.find(c => (c.supaId||c.id) === invForm.client_id);
-                  const asaasR = await asaasCall("create_payment", {
-                    customer: client?.asaasId || undefined,
-                    billingType: invForm.payment_method === "PIX" ? "PIX" : invForm.payment_method === "Boleto" ? "BOLETO" : invForm.payment_method === "Cartão" ? "CREDIT_CARD" : "UNDEFINED",
-                    value: parseFloat(invForm.amount), dueDate: invForm.due_date,
+                  /* First ensure customer exists in Asaas */
+                  await asaasCall("create_customer", { client_id: invForm.client_id, name: client?.name, email: client?.email, cpf_cnpj: client?.cpf || client?.cnpj });
+                  /* Then create the charge */
+                  const billingMap = { "PIX":"PIX", "Boleto":"BOLETO", "Cartão":"CREDIT_CARD", "Transferência":"UNDEFINED" };
+                  const asaasR = await asaasCall("create_charge", {
+                    client_id: invForm.client_id,
+                    billing_type: billingMap[invForm.payment_method] || "UNDEFINED",
+                    value: parseFloat(invForm.amount), due_date: invForm.due_date,
                     description: invForm.description || `${num} — ${client?.name || ""}`,
-                    externalReference: created.id
                   });
                   if (asaasR?.id) { showToast("Cobrança criada no UniqueHub + Asaas ✓"); await supaUpdateInvoice(created.id, { notes: `Asaas ID: ${asaasR.id}` }); }
                   else showToast("Cobrança criada ✓ (Asaas: " + (asaasR?.error || asaasR?.errors?.[0]?.description || "erro") + ")");
@@ -15064,7 +15067,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
       const cl = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase());
       if (!cl?.asaas_customer_id) return;
       setAsaasLoading(true);
-      const result = await asaasCall("list_payments", { customer: cl.asaas_customer_id, limit: "20" });
+      const result = await asaasCall("list_charges", { client_id: cl.supaId || cl.id });
       if (result?.data) setAsaasPayments(result.data);
       setAsaasLoading(false);
     })();
@@ -15293,24 +15296,24 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
     /* Load Asaas payments */
     const loadAsaasPayments = async () => {
-      if (!myClient.asaas_customer_id) return;
       setAsaasLoading(true);
-      const result = await asaasCall("list_payments", { customer: myClient.asaas_customer_id, limit: "20" });
+      const result = await asaasCall("list_charges", { client_id: myClient.supaId || myClient.id });
       if (result?.data) setAsaasPayments(result.data);
       setAsaasLoading(false);
     };
 
     const getPixQR = async (paymentId) => {
       setAsaasPixData(null);
-      const result = await asaasCall("pix_qrcode", { paymentId });
+      const result = await asaasCall("get_pix", { asaas_id: paymentId });
       if (result?.encodedImage) setAsaasPixData({ ...result, paymentId });
       else showToast("Pix não disponível para esta cobrança");
     };
 
     const getBoleto = async (paymentId) => {
       setAsaasBoletoData(null);
-      const result = await asaasCall("boleto_barcode", { paymentId });
-      if (result?.identificationField) setAsaasBoletoData({ ...result, paymentId });
+      /* Boleto URL comes from list_charges — use invoiceUrl */
+      const inv = asaasPayments.find(p => p.id === paymentId);
+      if (inv?.bankSlipUrl) { window.open(inv.bankSlipUrl, "_blank"); }
       else showToast("Boleto não disponível para esta cobrança");
     };
 
