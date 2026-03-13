@@ -7110,26 +7110,26 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                       const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);uploaded.push({name:f.name,url:u.publicUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
                       return(
                         <div key={stageKey} style={{marginBottom:6,borderRadius:12,border:`1px solid ${active?cfg.c:done?`${cfg.c}30`:B.border}`,background:active?`${cfg.c}06`:"transparent",padding:"8px 10px",opacity:future?0.4:1}}>
-                          <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <div style={{width:20,height:20,borderRadius:10,background:done?cfg.c:active?`${cfg.c}25`:`${B.muted}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                              {done?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{fontSize:8,fontWeight:800,color:active?cfg.c:B.muted}}>{si+1}</span>}
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{width:24,height:24,borderRadius:12,background:done?cfg.c:active?`${cfg.c}25`:`${B.muted}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              {done?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{fontSize:10,fontWeight:800,color:active?cfg.c:B.muted}}>{si+1}</span>}
                             </div>
-                            <span style={{fontSize:11,fontWeight:700,color:active?cfg.c:done?B.dark:B.muted}}>{stageLabels[stageKey]||stageKey}</span>
-                            {active&&<span style={{fontSize:8,fontWeight:700,padding:"1px 6px",borderRadius:4,background:cfg.c,color:"#fff",marginLeft:"auto"}}>Atual</span>}
+                            <span style={{fontSize:13,fontWeight:700,color:active?cfg.c:done?B.dark:B.muted}}>{stageLabels[stageKey]||stageKey}</span>
+                            {active&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:6,background:cfg.c,color:"#fff",marginLeft:"auto"}}>Atual</span>}
                           </div>
                           {/* Done stage: show saved content */}
-                          {done&&stepText&&<p style={{fontSize:10,color:B.text,lineHeight:1.4,marginTop:6,paddingLeft:26}}>{stepText.substring(0,120)}{stepText.length>120?"...":""}</p>}
-                          {done&&stepImgs.length>0&&<div style={{display:"flex",gap:4,marginTop:6,paddingLeft:26}}>
-                            {stepImgs.slice(0,3).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:36,height:36,borderRadius:6,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
+                          {done&&stepText&&<p style={{fontSize:12,color:B.text,lineHeight:1.5,marginTop:6,paddingLeft:26}}>{stepText.substring(0,200)}{stepText.length>200?"...":""}</p>}
+                          {done&&stepImgs.length>0&&<div style={{display:"flex",gap:6,marginTop:6,paddingLeft:26}}>
+                            {stepImgs.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
                           </div>}
                           {/* Active stage: FUNCTIONAL controls */}
                           {active&&<div style={{marginTop:8,paddingLeft:26}}>
-                            {textFields.includes(stageKey)&&d.format!=="Stories"&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:60,padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:12,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {textFields.includes(stageKey)&&d.format!=="Stories"&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:14,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
                             {textFields.includes(stageKey)&&d.format==="Stories"&&(stageKey==="caption"||stageKey==="copy")?<div style={{padding:"8px 10px",borderRadius:10,background:`${B.muted}06`,border:`1px solid ${B.border}`}}><p style={{fontSize:10,color:B.muted,textAlign:"center"}}>📲 Stories não suporta legenda</p></div>:null}
                             {stageKey==="caption"&&d.format!=="Stories"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
-                            {fileFields.includes(stageKey)&&<div style={{marginTop:6}}>
-                              {stepImgs.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{stepImgs.map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:6,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
-                              <label style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:8,background:`${B.accent}10`,border:`1px solid ${B.accent}30`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.accent}}>
+                            {fileFields.includes(stageKey)&&<div style={{marginTop:8}}>
+                              {stepImgs.length>0&&<div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>{stepImgs.map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:56,height:56,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
+                              <label style={{display:"flex",alignItems:"center",gap:6,padding:"10px 16px",borderRadius:10,background:`${B.accent}10`,border:`1.5px solid ${B.accent}30`,cursor:"pointer",fontSize:12,fontWeight:700,color:B.accent,justifyContent:"center"}}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 Upload
                                 <input type="file" multiple accept="image/*,video/*,.pdf,.psd" style={{display:"none"}} onChange={handleFiles} onClick={e=>e.stopPropagation()}/>
@@ -8164,7 +8164,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
 
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
-function NotifsPage({ onBack, user }) {
+function NotifsPage({ onBack, user, navigate }) {
   const [notifs, setNotifs] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const { showToast, ToastEl } = useToast();
@@ -8184,7 +8184,7 @@ function NotifsPage({ onBack, user }) {
       {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:40 }}>Carregando...</p>}
       {loaded && notifs.length === 0 && <Card style={{ textAlign:"center", padding:30 }}><p style={{ fontSize:28, marginBottom:8 }}>🔔</p><p style={{ fontSize:14, fontWeight:600 }}>Sem notificações</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Quando houver atividades na agência, elas aparecerão aqui.</p></Card>}
       {notifs.map((n, i) => (
-        <Card key={n.id} delay={i * 0.02} onClick={() => !n.read && markRead(n.id)} style={{ marginTop: i ? 6 : 0, opacity: n.read ? 0.5 : 1, cursor: n.read ? "default" : "pointer", borderLeft: `3px solid ${n.read ? B.border : B.accent}` }}>
+        <Card key={n.id} delay={i * 0.02} onClick={() => { if(!n.read) markRead(n.id); if(navigate) { const t=n.type||""; if(t.includes("demand")||t.includes("post")||t.includes("content")) navigate("content"); else if(t.includes("chat")||t.includes("message")) navigate("chat"); else if(t.includes("client")) navigate("clients"); else if(t.includes("financial")||t.includes("invoice")||t.includes("payment")) navigate("financial"); else if(t.includes("checkin")||t.includes("check")) navigate("checkin"); else if(t.includes("team")||t.includes("member")) navigate("team"); else if(t.includes("calendar")||t.includes("event")) navigate("calendar"); } }} style={{ marginTop: i ? 6 : 0, opacity: n.read ? 0.5 : 1, cursor:"pointer", borderLeft: `3px solid ${n.read ? B.border : B.accent}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>{typeIcon[n.type] || n.icon || "🔔"}</div>
             <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: n.read ? 400 : 600 }}>{n.title}</p>{n.body && <p style={{ fontSize: 11, color: B.muted, marginTop:2 }}>{n.body}</p>}<p style={{ fontSize: 10, color: B.muted, marginTop:2 }}>{timeAgo(n.created_at)}{n.read ? " · Lida" : ""}</p></div>
@@ -10920,7 +10920,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
 function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientView }) {
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState("client");
   const [selClient, setSelClient] = useState(null);
   const [insights, setInsights] = useState({});
   const [loading, setLoading] = useState(false);
@@ -16522,7 +16522,7 @@ ${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;mar
         {sub === "clients" && <ClientsPage onBack={() => setSub(null)} onNavigate={(to) => { setSub(null); if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
-        {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); /* Refresh count */ if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} />}
+        {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} navigate={(k)=>{setSub(null);setTimeout(()=>setTab(k),50);}} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccessFn} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
