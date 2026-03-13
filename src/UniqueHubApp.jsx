@@ -6911,7 +6911,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
 
         return (
-        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
+        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", gridColumn:expandedId===d.id?"1 / -1":"auto", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
           {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16, flexDirection:"column", gap:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
@@ -7038,7 +7038,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             const isFull = fullExpandedId === d.id;
             const stageLabels = {idea:"Ideia",briefing:"Briefing",design:"Design",copy:"Legenda",caption:"Legenda",review:"Revisão",client:"Cliente",production:"Produção",editing:"Edição",published:"Publicado",done:"Concluído",script:"Roteiro"};
             return (
-              <div style={{borderTop:`1px solid ${B.border}`,maxHeight:isFull?600:320,overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+              <div style={{borderTop:`1px solid ${B.border}`,maxHeight:isFull?700:320,overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
                 {/* Stages mini bar */}
                 <div style={{display:"flex",gap:3,padding:"10px 12px 0"}}>
                   {stages.map((s,si)=>{const cfg=STAGE_CFG[s]||{l:s,c:"#888"};const done=si<stIdx;const active=si===stIdx;return(
@@ -7066,7 +7066,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   </div>
                 ) : (
                   <div style={{padding:"8px 12px 12px"}}>
-                    {/* Full stage-by-stage detail — FUNCTIONAL */}
+                    {/* Full stage-by-stage detail — FUNCTIONAL — 2-col when expanded full */}
+                    <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                    <div style={{flex:"1 1 280px",minWidth:0}}>
                     {stages.map((stageKey,si)=>{
                       const cfg=STAGE_CFG[stageKey]||{l:stageKey,c:"#888"};
                       const done=si<stIdx;const active=si===stIdx;const future=si>stIdx;
@@ -7234,6 +7236,24 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                         </div>
                       );
                     })}
+                    </div>{/* end left col */}
+                    {/* Right col — preview + info */}
+                    <div style={{flex:"1 1 200px",minWidth:0,display:"flex",flexDirection:"column",gap:8}}>
+                      {allFiles.length>0&&<div style={{borderRadius:14,overflow:"hidden",background:`linear-gradient(135deg,${B.muted}08,${B.muted}04)`}}>
+                        <img src={allFiles.find(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""))?.url} alt="" style={{width:"100%",maxHeight:220,objectFit:"cover",display:"block"}} onError={e=>{e.target.style.display="none"}}/>
+                      </div>}
+                      <div style={{padding:"10px 12px",borderRadius:12,background:`${B.muted}04`,border:`1px solid ${B.border}`}}>
+                        <p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:6}}>DETALHES</p>
+                        <p style={{fontSize:12,fontWeight:700,color:B.dark}}>{d.title}</p>
+                        <p style={{fontSize:10,color:B.muted,marginTop:2}}>{d.client} · {d.format} · {d.network||"Instagram"}</p>
+                        {d.steps?.caption?.text&&d.format!=="Stories"&&<div style={{marginTop:8}}><p style={{fontSize:9,fontWeight:600,color:B.muted}}>LEGENDA</p><p style={{fontSize:11,color:B.text,lineHeight:1.4,marginTop:2}}>{d.steps.caption.text.substring(0,200)}{d.steps.caption.text.length>200?"...":""}</p></div>}
+                        {d.steps?.caption?.hashtags&&<p style={{fontSize:10,color:B.accent,marginTop:4}}>{d.steps.caption.hashtags}</p>}
+                      </div>
+                      {allFiles.length>1&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                        {allFiles.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).slice(1,5).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
+                      </div>}
+                    </div>{/* end right col */}
+                    </div>{/* end 2-col flex */}
                     {/* Action buttons */}
                     <div style={{display:"flex",gap:8,marginTop:4}}>
                       <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(null);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:`${B.muted}08`,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>
