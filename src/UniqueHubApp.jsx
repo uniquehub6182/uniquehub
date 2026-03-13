@@ -7125,13 +7125,79 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                                 <p style={{fontSize:10,fontWeight:600,color:B.orange}}>⏳ Aguardando aprovação do cliente</p>
                               </div>
                             :stageKey==="client"&&stepData.mode==="sent_to_client"&&stepData.status==="approved"?
-                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast("Cliente aprovou! Avançando...");}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
-                                ✅ Cliente aprovou — Avançar para publicação
-                              </button>
+                              (() => {
+                                const allF3=[...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
+                                const imgF3=allF3.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                                const clientObj3=CDATA.find(c=>c.name===d.client);
+                                const igOk3=clientObj3?.socials?.instagram?.connected&&clientObj3?.socials?.instagram?.oauth&&(d.network||"").toLowerCase().includes("instagram");
+                                const fbOk3=clientObj3?.socials?.facebook?.connected&&clientObj3?.socials?.facebook?.oauth&&(d.network||"").toLowerCase().includes("facebook");
+                                const cap3=d.steps?.caption?.text||d.steps?.copy?.text||d.title||"";
+                                const hash3=d.steps?.caption?.hashtags||"";
+                                const fullCap3=hash3?`${cap3}\n\n${hash3}`:cap3;
+                                const isStories3=d.format==="Stories";
+                                const doInlinePub3=async(platform,type)=>{
+                                  if(imgF3.length===0){showToast("Nenhuma imagem");return;}
+                                  const cId3=clientObj3?.supaId||clientObj3?.id;
+                                  showToast(`Publicando ${type}...`);
+                                  let r3;
+                                  if(platform==="instagram"){r3=await publishToInstagram(cId3,imgF3.map(f=>f.url),fullCap3,type,null);}
+                                  else{r3=await publishToMeta(cId3,imgF3[0].url,fullCap3,["facebook"]);}
+                                  if(r3?.error){showToast(`Erro: ${r3.error}`);return;}
+                                  const ns3={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),publishedAt:new Date().toISOString()}};
+                                  const next3=stages[si+1];
+                                  if(next3){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next3,steps:ns3},next3):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next3,steps:ns3});}
+                                  showToast("Publicado com sucesso! ✓");
+                                };
+                                return(
+                                  <div style={{marginTop:8}}>
+                                    <p style={{fontSize:10,fontWeight:700,color:B.green,marginBottom:6,textAlign:"center"}}>✅ Cliente aprovou — Publicar</p>
+                                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                      {igOk3&&!isStories3&&<button onClick={(e)=>{e.stopPropagation();doInlinePub3("instagram","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#E1306C",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Feed</button>}
+                                      {igOk3&&isStories3&&<button onClick={(e)=>{e.stopPropagation();doInlinePub3("instagram","STORIES");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"linear-gradient(45deg,#f09433,#dc2743)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Story</button>}
+                                      {fbOk3&&<button onClick={(e)=>{e.stopPropagation();doInlinePub3("facebook","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📘 Facebook</button>}
+                                    </div>
+                                    {!igOk3&&!fbOk3&&<p style={{fontSize:9,color:B.muted,textAlign:"center",marginTop:4}}>Conecte as redes sociais do cliente</p>}
+                                  </div>
+                                );
+                              })()
                             :stageKey==="client"&&stepData.mode==="publish_direct"?
-                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast("Avançando para publicação...");}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
-                                📤 Avançar para publicação
-                              </button>
+                              (() => {
+                                const allF2=[...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
+                                const imgF2=allF2.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                                const clientObj2=CDATA.find(c=>c.name===d.client);
+                                const igOk=clientObj2?.socials?.instagram?.connected&&clientObj2?.socials?.instagram?.oauth&&(d.network||"").toLowerCase().includes("instagram");
+                                const fbOk=clientObj2?.socials?.facebook?.connected&&clientObj2?.socials?.facebook?.oauth&&(d.network||"").toLowerCase().includes("facebook");
+                                const cap2=d.steps?.caption?.text||d.steps?.copy?.text||d.title||"";
+                                const hash2=d.steps?.caption?.hashtags||"";
+                                const fullCap2=hash2?`${cap2}\n\n${hash2}`:cap2;
+                                const isStories2=d.format==="Stories";
+                                const doInlinePublish=async(platform,type)=>{
+                                  if(imgF2.length===0){showToast("Nenhuma imagem disponível");return;}
+                                  const cId=clientObj2?.supaId||clientObj2?.id;
+                                  showToast(`Publicando ${type}...`);
+                                  let r;
+                                  if(platform==="instagram"){r=await publishToInstagram(cId,imgF2.map(f=>f.url),fullCap2,type,null);}
+                                  else{r=await publishToMeta(cId,imgF2[0].url,fullCap2,["facebook"]);}
+                                  if(r?.error){showToast(`Erro: ${r.error}`);return;}
+                                  inlineUpdate({status:"approved",mode:"publish_direct",publishedAt:new Date().toISOString()});
+                                  const ns2={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),status:"approved",publishedAt:new Date().toISOString()}};
+                                  const next2=stages[si+1];
+                                  if(next2){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next2,steps:ns2},next2):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next2,steps:ns2});}
+                                  showToast("Publicado com sucesso! ✓");
+                                };
+                                return(
+                                  <div style={{marginTop:8}}>
+                                    <p style={{fontSize:10,fontWeight:700,color:B.text,marginBottom:6,textAlign:"center"}}>📤 Publicar nas redes</p>
+                                    {imgF2.length===0&&<p style={{fontSize:9,color:B.orange,textAlign:"center",marginBottom:6}}>⚠️ Nenhuma imagem — faça upload na etapa de Design</p>}
+                                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                      {igOk&&!isStories2&&<button onClick={(e)=>{e.stopPropagation();doInlinePublish("instagram","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#E1306C",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Feed</button>}
+                                      {igOk&&isStories2&&<button onClick={(e)=>{e.stopPropagation();doInlinePublish("instagram","STORIES");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"linear-gradient(45deg,#f09433,#dc2743)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Story</button>}
+                                      {fbOk&&<button onClick={(e)=>{e.stopPropagation();doInlinePublish("facebook","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📘 Facebook</button>}
+                                    </div>
+                                    {!igOk&&!fbOk&&<p style={{fontSize:9,color:B.muted,textAlign:"center",marginTop:4}}>Conecte as redes sociais do cliente primeiro</p>}
+                                  </div>
+                                );
+                              })()
                             :si<stages.length-1?
                               <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
                                 Avançar para {stageLabels[stages[si+1]]||"próxima"} →
