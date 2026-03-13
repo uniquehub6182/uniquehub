@@ -2453,6 +2453,15 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const avgScore = Math.round(CDATA.reduce((a, c) => a + (c.score||0), 0) / (totalClients||1));
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
   const [searchQ, setSearchQ] = useState("");
+  const [weekEvents, setWeekEvents] = useState(0);
+  useEffect(() => {
+    supaLoadEvents().then(evts => {
+      if (!evts?.length) return;
+      const now = new Date(); const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + (7 - now.getDay()));
+      const thisWeek = evts.filter(e => { const d = new Date(e.date || `${e.year}-${String((e.month||0)+1).padStart(2,"0")}-${String(e.day||1).padStart(2,"0")}`); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && d <= weekEnd; });
+      setWeekEvents(thisWeek.length);
+    });
+  }, []);
   const [searchFocus, setSearchFocus] = useState(false);
   const searchRef = useRef(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -2858,7 +2867,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca}/>);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop}/>);
       if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={noop} user={user} canAccess={ca}/>);
-      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user}/>);
+      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn}/>);
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients}/>);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
       if(pk==="drive") {
@@ -3060,11 +3069,17 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <button onClick={()=>goSub("notifs")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:H.btnC,position:"relative"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{(notifCount>0)&&<span style={{position:"absolute",top:10,right:10,width:9,height:9,borderRadius:"50%",background:"#FF3B30",border:`2px solid ${H.bg}`}}/>}</button>
           </div>
         </div>
-        <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", position:"relative", maxWidth:isDesktop?1400:"none", marginLeft:isDesktop?"auto":"24px", marginRight:isDesktop?"auto":"24px" }}>
+        <div style={{ margin:"16px 24px 0", display:"flex", gap:10, alignItems:"center", maxWidth:isDesktop?1400:"none", marginLeft:isDesktop?"auto":"24px", marginRight:isDesktop?"auto":"24px" }}>
+          <div style={{ flex:1, background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", position:"relative" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input ref={searchRef} value={searchQ} onChange={e=>setSearchQ(e.target.value)} onFocus={()=>setSearchFocus(true)} onBlur={()=>setTimeout(()=>setSearchFocus(false),200)} placeholder="Buscar..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:16,color:H.txt,outline:"none",flex:1,width:"100%"}}/>
           {searchQ&&<button onClick={()=>{setSearchQ("");searchRef.current?.focus();}} style={{background:"none",border:"none",cursor:"pointer",color:H.srchT,display:"flex",padding:2}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
           {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:8,background:isDark?"#1A1A1A":"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",border:`1px solid ${C.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"12px 18px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${C.brd}`:"none",display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div><p style={{fontSize:14,fontWeight:600,color:C.txt}}>{r.l}</p>{r.sub&&<p style={{fontSize:11,color:C.mut}}>{r.sub}</p>}</div></div>)}</div>}
+          </div>
+          {weekEvents > 0 && <div onClick={()=>goTab("calendar")} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:16,background:LIME,cursor:"pointer",whiteSpace:"nowrap"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <div><p style={{fontSize:12,fontWeight:800,color:"#0D0D0D",lineHeight:1}}>{weekEvents}</p><p style={{fontSize:8,fontWeight:600,color:"rgba(0,0,0,0.5)",marginTop:1}}>esta semana</p></div>
+          </div>}
         </div>
         <div style={{ display:"grid", gridTemplateColumns:isDesktop?"1fr 1fr 1fr":"1fr 1fr", gap:12, padding:"16px 24px 0", maxWidth:isDesktop?1400:"none", margin:isDesktop?"0 auto":"0" }}>
           {cfg.cards.slice(0,isDesktop?3:2).filter(ck => { const w=WIDGETS[ck]; return w && (w.k !== "financial" || canFinancial); }).map((ck,i)=>{const w=WIDGETS[ck];if(!w)return null;return<div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}><div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{w.l}</div><div style={{fontSize:22,fontWeight:900,color:"#0D0D0D",letterSpacing:"-0.8px",lineHeight:1.1}}>{w.val}</div><div style={{fontSize:11,fontWeight:600,color:"rgba(0,0,0,0.45)",marginTop:3}}>{w.sub}</div><div style={{position:"absolute",bottom:12,right:12,width:32,height:32,borderRadius:"50%",background:"#0D0D0D",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div></div>;})}
@@ -9340,6 +9355,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"calendar", l:"Calendário", ic:IC.calendar, subs:[
       { k:"calendar.view", l:"Visualizar eventos" },
       { k:"calendar.create", l:"Criar/editar eventos" },
+      { k:"calendar.equipment", l:"Editar checklist de equipamentos" },
     ]},
     { k:"reports", l:"Relatórios", ic:IC.reports, subs:[
       { k:"reports.view", l:"Visualizar relatórios" },
@@ -10050,7 +10066,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter }) {
+function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca }) {
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const userName = propUser?.name || propUser?.email || "Equipe";
@@ -10073,7 +10089,12 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
     { k:"deadline", l:"Deadline", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, c:B.red, desc:"Data limite de entrega" },
   ];
 
-  const EQUIPMENTS = ["Câmera DSLR","Câmera Mirrorless","Tripé","Gimbal","Drone","Ring Light","Softbox","Microfone Lapela","Microfone Boom","Luz LED Portátil","Rebatedor","Fundo Chroma","Cartão de Memória Extra","Bateria Extra","Notebook p/ Review","HD Externo"];
+  const DEFAULT_EQUIPMENTS = ["Câmera DSLR","Câmera Mirrorless","Tripé","Gimbal","Drone","Ring Light","Softbox","Microfone Lapela","Microfone Boom","Luz LED Portátil","Rebatedor","Fundo Chroma","Cartão de Memória Extra","Bateria Extra","Notebook p/ Review","HD Externo"];
+  const [EQUIPMENTS, setEquipments] = useState(() => { try { const s = localStorage.getItem("uh_equipments"); return s ? JSON.parse(s) : DEFAULT_EQUIPMENTS; } catch { return DEFAULT_EQUIPMENTS; } });
+  const [editingEquip, setEditingEquip] = useState(false);
+  const [newEquip, setNewEquip] = useState("");
+  const canAccessFn = ca || (() => true);
+  const canEditEquip = canAccessFn("calendar.equipment") || propUser?.supaRole === "admin";
 
   const EVENTS_MOCK = [
     { id:1, type:"meeting", title:"Reunião semanal — TechSmart", time:"09:00", color:B.blue, day:3, month:2, year:2026, createdBy:"Matheus", meetingMode:"online", meetingScope:"client", client:"TechSmart", participants:["Matheus","Alice"], location:"Google Meet", notes:"Alinhamento de pauta mensal" },
@@ -10234,6 +10255,51 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           <p className="sl" style={{ marginTop:14, marginBottom:6 }}>Observações</p>
           <Card><p style={{ fontSize:13, lineHeight:1.6 }}>{ev.notes}</p></Card>
         </>}
+
+        {/* Export to calendar + reminder */}
+        <Card style={{ marginTop:12 }}>
+          <p className="sl" style={{ marginBottom:8 }}>🔔 Lembrete e calendário</p>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={() => {
+              const evDate = new Date(ev.date || `${ev.year}-${String((ev.month||0)+1).padStart(2,"0")}-${String(ev.day||1).padStart(2,"0")}T${ev.time||"09:00"}:00`);
+              const endDate = new Date(evDate.getTime() + 60*60*1000);
+              const fmt = d => d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+              const ics = [
+                "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//UniqueHub//PT","BEGIN:VEVENT",
+                `DTSTART:${fmt(evDate)}`,`DTEND:${fmt(endDate)}`,
+                `SUMMARY:${ev.title}`,
+                ev.location?`LOCATION:${ev.location}`:"",
+                ev.notes?`DESCRIPTION:${ev.notes.replace(/\n/g,"\\n").substring(0,200)}`:"",
+                "BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY",`DESCRIPTION:${ev.title} em 30 min`,"END:VALARM",
+                "END:VEVENT","END:VCALENDAR"
+              ].filter(Boolean).join("\r\n");
+              const blob = new Blob([ics], { type:"text/calendar;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a"); a.href = url; a.download = `${ev.title.replace(/[^a-zA-Z0-9]/g,"_")}.ics`; a.click();
+              URL.revokeObjectURL(url);
+              showToast("Arquivo .ics baixado — abra para adicionar ao calendário nativo");
+            }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Adicionar ao calendário
+            </button>
+            <button onClick={() => {
+              if (!("Notification" in window)) { showToast("Navegador não suporta notificações"); return; }
+              Notification.requestPermission().then(perm => {
+                if (perm === "granted") {
+                  const evDate = new Date(ev.date || `${ev.year}-${String((ev.month||0)+1).padStart(2,"0")}-${String(ev.day||1).padStart(2,"0")}T${ev.time||"09:00"}:00`);
+                  const delay = evDate.getTime() - Date.now() - 30*60*1000;
+                  if (delay > 0 && delay < 7*24*60*60*1000) {
+                    setTimeout(() => { new Notification(`UniqueHub — ${ev.title}`, { body:`Em 30 minutos${ev.location?` · ${ev.location}`:""}`, icon:"/favicon.ico" }); }, delay);
+                    showToast("🔔 Lembrete ativado — 30 min antes");
+                  } else if (delay <= 0) { showToast("Evento já passou ou é agora"); }
+                  else showToast("Evento muito distante — use o calendário nativo");
+                } else showToast("Permissão de notificação negada");
+              });
+            }} style={{ padding:"12px 16px", borderRadius:12, background:`${B.orange}10`, border:`1.5px solid ${B.orange}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.orange, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              🔔
+            </button>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -10360,6 +10426,25 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               })}
             </div>
             {(form.equipment||[]).length > 0 && <p style={{ fontSize:10, color:B.orange, fontWeight:600, marginTop:6 }}>{(form.equipment||[]).length} equipamento{(form.equipment||[]).length>1?"s":""} selecionado{(form.equipment||[]).length>1?"s":""}</p>}
+            {canEditEquip && <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${B.border}`}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                <span style={{fontSize:10,fontWeight:700,color:B.muted}}>✏️ Editar lista de equipamentos</span>
+                <button onClick={()=>setEditingEquip(!editingEquip)} style={{fontSize:9,fontWeight:600,color:editingEquip?B.red:B.accent,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>{editingEquip?"Fechar":"Editar"}</button>
+              </div>
+              {editingEquip && <>
+                <div style={{display:"flex",gap:6,marginBottom:8}}>
+                  <input value={newEquip} onChange={e=>setNewEquip(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newEquip.trim()){const updated=[...EQUIPMENTS,newEquip.trim()];setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));setNewEquip("");}}} placeholder="Nome do equipamento..." className="tinput" style={{flex:1,fontSize:11}} />
+                  <button onClick={()=>{if(!newEquip.trim())return;const updated=[...EQUIPMENTS,newEquip.trim()];setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));setNewEquip("");}} style={{padding:"6px 12px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.dark}}>+ Adicionar</button>
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                  {EQUIPMENTS.map((eq,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:6,background:`${B.muted}06`,border:`1px solid ${B.border}`,fontSize:10,color:B.text}}>
+                    {eq}
+                    <button onClick={()=>{const updated=EQUIPMENTS.filter((_,j)=>j!==i);setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));}} style={{background:"none",border:"none",cursor:"pointer",color:B.red,display:"flex",padding:0,fontSize:10}}>×</button>
+                  </div>)}
+                </div>
+                <button onClick={()=>{setEquipments(DEFAULT_EQUIPMENTS);localStorage.setItem("uh_equipments",JSON.stringify(DEFAULT_EQUIPMENTS));}} style={{marginTop:6,fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
+              </>}
+            </div>}
           </Card>
         )}
 
@@ -15365,7 +15450,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />;
   if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
   if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} isClientView />;
-  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} />;
+  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} />;
   if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />;
   if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} isClientView />;
   if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
@@ -15993,7 +16078,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} /></div>}
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
@@ -16432,7 +16517,7 @@ ${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;mar
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); /* Refresh count */ if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
-        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} />}
+        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccessFn} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} />}
