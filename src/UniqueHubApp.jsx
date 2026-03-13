@@ -2229,10 +2229,7 @@ function LoginPage({ onAuth, onClientAuth }) {
               <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#8B8F92", display:"flex", padding:4 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">{showPw?<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><line x1="1" y1="1" x2="23" y2="23"/></>:<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}</svg></button>
             </div>
           </div>
-          {portal==="client" && <div style={{ marginBottom:16 }}>
-            <label style={{ fontSize:12, fontWeight:600, color:"#555", display:"block", marginBottom:6 }}>Código de acesso</label>
-            <input value={clientAccessCode} onChange={e=>{setClientAccessCode(e.target.value);setError("");}} placeholder="Código fornecido pela agência" style={{ width:"100%", padding:"14px 18px", borderRadius:14, border:"1.5px solid #E8EAF0", fontSize:16, fontFamily:"inherit", background:"#F8F9FC", color:"#1A1D23", outline:"none", boxSizing:"border-box" }} />
-          </div>}
+          {portal==="client" && <p style={{ fontSize:12, color:"#BBF246", background:"#BBF24612", padding:"10px 14px", borderRadius:12, marginBottom:16, textAlign:"center" }}>💡 Use o email e senha criados no Portal do Cliente</p>}
           <button onClick={portal==="client"?handleClientLogin:handleLogin} disabled={loginLoading} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:"#BBF246", border:"none", cursor:loginLoading?"wait":"pointer", fontFamily:"inherit", fontSize:16, fontWeight:800, color:"#1A1D23", opacity:loginLoading?0.5:1 }}>
             {loginLoading?"Entrando...":"Entrar"}
           </button>
