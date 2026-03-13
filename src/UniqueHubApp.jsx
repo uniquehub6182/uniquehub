@@ -2454,12 +2454,27 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
   const [searchQ, setSearchQ] = useState("");
   const [weekEvents, setWeekEvents] = useState(0);
+  const [weekEventTypes, setWeekEventTypes] = useState("");
   useEffect(() => {
     supaLoadEvents().then(evts => {
       if (!evts?.length) return;
-      const now = new Date(); const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + (7 - now.getDay()));
-      const thisWeek = evts.filter(e => { const d = new Date(e.date || `${e.year}-${String((e.month||0)+1).padStart(2,"0")}-${String(e.day||1).padStart(2,"0")}`); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && d <= weekEnd; });
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+      const thisWeek = evts.filter(e => {
+        let d;
+        if (e.date) { d = new Date(e.date); }
+        else if (e.year && e.day) { d = new Date(e.year, (e.month||0), e.day); }
+        else return false;
+        return d >= today && d < weekEnd;
+      });
       setWeekEvents(thisWeek.length);
+      /* Build type summary */
+      const types = {};
+      thisWeek.forEach(e => { const t = e.type || "event"; types[t] = (types[t]||0) + 1; });
+      const typeLabels = { meeting:"reunião", recording:"gravação", event:"evento", reminder:"lembrete", deadline:"deadline" };
+      const parts = Object.entries(types).map(([k,v]) => `${v} ${typeLabels[k]||k}${v>1?"s":""}`);
+      setWeekEventTypes(parts.join(", "));
     });
   }, []);
   const [searchFocus, setSearchFocus] = useState(false);
@@ -3076,9 +3091,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           {searchQ&&<button onClick={()=>{setSearchQ("");searchRef.current?.focus();}} style={{background:"none",border:"none",cursor:"pointer",color:H.srchT,display:"flex",padding:2}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
           {searchFocus&&searchResults.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:8,background:isDark?"#1A1A1A":"#fff",borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",border:`1px solid ${C.brd}`,overflow:"hidden",zIndex:20}}>{searchResults.map((r,i)=><div key={i} onMouseDown={()=>{nav(r.k);setSearchQ("");}} style={{padding:"12px 18px",cursor:"pointer",borderBottom:i<searchResults.length-1?`1px solid ${C.brd}`:"none",display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><div><p style={{fontSize:14,fontWeight:600,color:C.txt}}>{r.l}</p>{r.sub&&<p style={{fontSize:11,color:C.mut}}>{r.sub}</p>}</div></div>)}</div>}
           </div>
-          {weekEvents > 0 && <div onClick={()=>goTab("calendar")} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:16,background:LIME,cursor:"pointer",whiteSpace:"nowrap"}}>
+          {weekEvents > 0 && <div onClick={()=>goTab("calendar")} title={weekEventTypes} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:16,background:LIME,cursor:"pointer",whiteSpace:"nowrap"}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <div><p style={{fontSize:12,fontWeight:800,color:"#0D0D0D",lineHeight:1}}>{weekEvents}</p><p style={{fontSize:8,fontWeight:600,color:"rgba(0,0,0,0.5)",marginTop:1}}>esta semana</p></div>
+            <div><p style={{fontSize:13,fontWeight:800,color:"#0D0D0D",lineHeight:1}}>{weekEvents} compromisso{weekEvents>1?"s":""}</p><p style={{fontSize:9,fontWeight:600,color:"rgba(0,0,0,0.5)",marginTop:1}}>esta semana</p></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </div>}
         </div>
         <div style={{ display:"grid", gridTemplateColumns:isDesktop?"1fr 1fr 1fr":"1fr 1fr", gap:12, padding:"16px 24px 0", maxWidth:isDesktop?1400:"none", margin:isDesktop?"0 auto":"0" }}>
