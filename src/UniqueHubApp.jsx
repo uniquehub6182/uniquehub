@@ -706,7 +706,7 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
 };
 
 /* ── Instagram Platform API (Direct Login via Instagram) ── */
-const IG_APP_ID = "1380216083791935";
+const IG_APP_ID = "1253351873442734";
 const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments";
 
 /* Helper: compute scheduled unix timestamp from scheduling object {date:"2026-03-10", time:"18:00"} */
