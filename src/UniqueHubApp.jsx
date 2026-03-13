@@ -7092,7 +7092,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                                 <input type="file" multiple accept="image/*,video/*,.pdf,.psd" style={{display:"none"}} onChange={handleFiles} onClick={e=>e.stopPropagation()}/>
                               </label>
                             </div>}
-                            <button onClick={(e)=>{e.stopPropagation();advanceStage(d);setExpandedId(null);setFullExpandedId(null);}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                            <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
                               Avançar para {stageLabels[stages[si+1]]||"próxima"} →
                             </button>
                           </div>}
