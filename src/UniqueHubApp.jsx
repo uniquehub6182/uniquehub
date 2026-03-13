@@ -3539,6 +3539,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const saveClient = async () => {
     if (!form.name?.trim()) return showToast("Informe o nome da empresa");
+    if (!form.phone?.trim() || form.phone.replace(/\D/g,"").length < 10) return showToast("Informe o telefone do contato");
+    if (!form.cnpj?.trim()) return showToast("Informe o CPF ou CNPJ");
     const nc = {
       id: Date.now(), name: form.name.trim(), plan: form.plan || "Traction", status: form.status || "trial",
       monthly: form.monthly || "R$ 0", pending: 0, score: 0,
@@ -3784,16 +3786,18 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       <Card>
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do contato</label>
         <input value={form.contact||""} onChange={e=>f("contact",e.target.value)} placeholder="Ex: Roberto Silva" className="tinput" style={{ marginBottom:10 }} />
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
           <div>
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone</label>
-            <input value={form.phone||""} onChange={e=>f("phone",e.target.value)} placeholder="(24) 99999-9999" className="tinput" />
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone *</label>
+            <input value={form.phone||""} onChange={e=>f("phone",maskPhone(e.target.value))} placeholder="(24) 99999-9999" className="tinput" inputMode="tel" />
           </div>
           <div>
             <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label>
             <input value={form.email||""} onChange={e=>f("email",e.target.value)} placeholder="email@empresa.com" className="tinput" />
           </div>
         </div>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>CPF / CNPJ *</label>
+        <input value={form.cnpj||""} onChange={e=>f("cnpj",e.target.value)} placeholder="000.000.000-00 ou 00.000.000/0000-00" className="tinput" inputMode="numeric" />
       </Card>
 
       <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Plano e valor</p>
@@ -4345,6 +4349,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:20 }}>{LIB_CATS.find(c=>c.key===libCat)?.icon}</p><p style={{ fontSize:13, fontWeight:600, marginTop:6 }}>Nenhum arquivo nesta categoria</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{LIB_CATS.find(c=>c.key===libCat)?.desc}</p></Card>
         ) : filteredFiles.map(f => { const fi=fileIcon(f.name); return (
           <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
+            {f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"") && <img src={f.url} alt="" style={{ width:"100%", height:120, objectFit:"cover", borderRadius:8, marginBottom:8 }} onError={e=>{e.target.style.display="none"}}/>}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
               <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
@@ -10059,6 +10064,10 @@ function TeamPage({ onBack, user, onTeamChange }) {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar membro
         </button>}
+        <button onClick={()=>{onBack(); setTimeout(()=>{const evt = new CustomEvent("uh_open_chat_with",{detail:{userId:m.user_id,name:m.name}});window.dispatchEvent(evt);},200);}} style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.blue||"#3B82F6"}10`, border:`1.5px solid ${B.blue||"#3B82F6"}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.blue||"#3B82F6" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Enviar mensagem
+        </button>
       </div>
     );
   }
