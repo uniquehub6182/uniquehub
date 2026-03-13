@@ -7092,9 +7092,44 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                                 <input type="file" multiple accept="image/*,video/*,.pdf,.psd" style={{display:"none"}} onChange={handleFiles} onClick={e=>e.stopPropagation()}/>
                               </label>
                             </div>}
-                            <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
-                              Avançar para {stageLabels[stages[si+1]]||"próxima"} →
-                            </button>
+                            {/* Stage-specific actions */}
+                            {stageKey==="review"?
+                              <button onClick={(e)=>{e.stopPropagation();inlineUpdate({status:"approved",by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});setTimeout(()=>{const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);}},100);}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                                ✓ Aprovar e avançar
+                              </button>
+                            :stageKey==="client"&&!stepData.mode?
+                              <div style={{marginTop:8}}>
+                                <p style={{fontSize:10,fontWeight:700,color:B.text,marginBottom:6,textAlign:"center"}}>Enviar para o cliente?</p>
+                                <div style={{display:"flex",gap:6}}>
+                                  <button onClick={(e)=>{e.stopPropagation();inlineUpdate({mode:"sent_to_client",sentAt:new Date().toISOString()});showToast("Enviado para aprovação do cliente");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.dark}}>
+                                    📩 Enviar ao cliente
+                                  </button>
+                                  <button onClick={(e)=>{e.stopPropagation();inlineUpdate({mode:"publish_direct"});showToast("Modo: publicar direto");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>
+                                    📤 Publicar direto
+                                  </button>
+                                </div>
+                              </div>
+                            :stageKey==="client"&&stepData.mode==="sent_to_client"&&!stepData.status?
+                              <div style={{marginTop:8,padding:"8px 10px",borderRadius:10,background:`${B.orange}08`,border:`1px solid ${B.orange}20`,textAlign:"center"}}>
+                                <p style={{fontSize:10,fontWeight:600,color:B.orange}}>⏳ Aguardando aprovação do cliente</p>
+                              </div>
+                            :stageKey==="client"&&stepData.mode==="sent_to_client"&&stepData.status==="approved"?
+                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast("Cliente aprovou! Avançando...");}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                                ✅ Cliente aprovou — Avançar para publicação
+                              </button>
+                            :stageKey==="client"&&stepData.mode==="publish_direct"?
+                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast("Avançando para publicação...");}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                                📤 Avançar para publicação
+                              </button>
+                            :si<stages.length-1?
+                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                                Avançar para {stageLabels[stages[si+1]]||"próxima"} →
+                              </button>
+                            :
+                              <div style={{marginTop:8,padding:"8px 10px",borderRadius:10,background:`${B.green}10`,border:`1px solid ${B.green}25`,textAlign:"center"}}>
+                                <p style={{fontSize:10,fontWeight:700,color:B.green}}>✅ Demanda concluída</p>
+                              </div>
+                            }
                           </div>}
                         </div>
                       );
