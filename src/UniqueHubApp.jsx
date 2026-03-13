@@ -7885,7 +7885,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       window.open(`https://meet.jit.si/${roomId}${params}`, '_blank', 'noopener');
     };
     return (
-      <div style={{ position:"fixed", top:vpTop, left:0, right:0, height:vpHeight, zIndex:100, display:"flex", flexDirection:"column", background:B.bg, overflow:"hidden" }}>
+      <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":vpTop, left:chatIsDesktop?"auto":0, right:chatIsDesktop?"auto":0, height:chatIsDesktop?"calc(100vh - 120px)":vpHeight, zIndex:chatIsDesktop?1:100, display:"flex", flexDirection:"column", background:chatIsDesktop?(B.bgCard||"#fff"):B.bg, overflow:"hidden", ...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",borderRadius:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}) }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
@@ -7992,7 +7992,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* INPUT BAR */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:chatIsDesktop?100:0 }}>
+        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:chatIsDesktop?100:80 }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
