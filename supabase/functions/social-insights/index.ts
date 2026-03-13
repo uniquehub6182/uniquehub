@@ -45,9 +45,9 @@ serve(async (req) => {
       if (page) result.fbPage = page;
       if (posts?.data) {
         result.fbPosts = posts.data.map(p => ({ ...p, likes_count: 0, comments_count: 0, shares_count: 0 }));
-        if ((page?.fan_count || 0) > 100) result.needsPermission.push("pages_read_engagement");
       }
       if (d1?.data) result.fb = d1.data;
+      else if (page) result.needsPermission.push("pages_read_engagement");
       if (d2?.data) result.fbPrev = d2.data;
 
       /* Instagram via FB Business Account */
