@@ -597,6 +597,12 @@ const supaCreateInvoice = async (inv) => { if (!supabase) return null; try { con
 const supaUpdateInvoice = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("invoices").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
 const supaDeleteInvoice = async (id) => { if (!supabase) return; await supabase.from("invoices").delete().eq("id", id); };
 
+/* ── Match4Biz Supabase ── */
+const supaLoadMatches = async () => { if (!supabase) return []; try { const { data } = await supabase.from("match4biz").select("*").order("created_at", { ascending: false }); return data || []; } catch { return []; } };
+const supaCreateMatch = async (m) => { if (!supabase) return null; try { const { data, error } = await supabase.from("match4biz").insert(m).select().single(); if (error) console.error("[Match]", error.message); return data; } catch { return null; } };
+const supaUpdateMatch = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("match4biz").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
+const supaDeleteMatch = async (id) => { if (!supabase) return; await supabase.from("match4biz").delete().eq("id", id); };
+
 /* ── Expenses (despesas) ── */
 const supaLoadExpenses = async () => { if (!supabase) return []; try { const { data } = await supabase.from("expenses").select("*").order("date", { ascending: false }); return data || []; } catch { return []; } };
 const supaCreateExpense = async (exp) => { if (!supabase) return null; try { const { data, error } = await supabase.from("expenses").insert(exp).select().single(); if (error) console.error("[Expense]", error.message); return data; } catch { return null; } };
@@ -13900,35 +13906,18 @@ function Match4BizPage({ onBack, clients, user }) {
   const [selMatch, setSelMatch] = useState(null);
   const [filter, setFilter] = useState("all");
   const [msgInput, setMsgInput] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({ a:"", b:"" });
   const { showToast, ToastEl } = useToast();
+  const isAdmin = user?.supaRole === "admin";
+  const CDATA = clients || [];
 
-  /* Mock match data — replace with Supabase later */
-  const [matches, setMatches] = useState([
-    { id:1, a:{ name:"Café Aroma Petrópolis", seg:"Alimentação", logo:"☕" }, b:{ name:"Distribuidora Serra Fluminense", seg:"Distribuição", logo:"📦" }, status:"negotiating", date:"2025-03-01", value:null, msgs:[
-      { from:"a", text:"Olá! Temos interesse em distribuir nosso café para sua rede.", ts:"2025-03-01T10:00" },
-      { from:"b", text:"Ótimo! Qual o volume mínimo por pedido?", ts:"2025-03-01T14:30" },
-      { from:"a", text:"A partir de 50kg por entrega, com frete incluso para Petrópolis.", ts:"2025-03-02T09:00" },
-    ]},
-    { id:2, a:{ name:"Studio Bella Estética", seg:"Beleza", logo:"💆" }, b:{ name:"Natura Cosméticos RJ", seg:"Cosméticos", logo:"🌿" }, status:"closed_won", date:"2025-02-15", value:12500, msgs:[
-      { from:"a", text:"Gostaríamos de revender produtos Natura no studio.", ts:"2025-02-15T11:00" },
-      { from:"b", text:"Temos um programa de parceria. Envio a proposta.", ts:"2025-02-15T16:00" },
-      { from:"agency", text:"Intermediei a negociação. Contrato assinado!", ts:"2025-02-20T10:00" },
-    ]},
-    { id:3, a:{ name:"Pet Shop Amigo Fiel", seg:"Pet", logo:"🐕" }, b:{ name:"Ração Premium Sul", seg:"Alimentação Animal", logo:"🦴" }, status:"closed_lost", date:"2025-02-10", value:null, msgs:[
-      { from:"a", text:"Precisamos de fornecedor de ração premium.", ts:"2025-02-10T09:00" },
-      { from:"b", text:"Infelizmente não atendemos a região de Petrópolis.", ts:"2025-02-11T08:00" },
-    ]},
-    { id:4, a:{ name:"Padaria Central", seg:"Alimentação", logo:"🥖" }, b:{ name:"Laticínios Vale do Imperador", seg:"Laticínios", logo:"🧀" }, status:"new", date:"2025-03-03", value:null, msgs:[] },
-    { id:5, a:{ name:"Fit Arena Gym", seg:"Fitness", logo:"💪" }, b:{ name:"Suplementos MaxPower", seg:"Suplementos", logo:"🏋️" }, status:"talking", date:"2025-02-28", value:null, msgs:[
-      { from:"a", text:"Queremos oferecer suplementos para nossos alunos.", ts:"2025-02-28T10:00" },
-      { from:"b", text:"Ótima ideia! Temos condições especiais para academias.", ts:"2025-02-28T15:00" },
-    ]},
-    { id:6, a:{ name:"Clínica Saúde Total", seg:"Saúde", logo:"🏥" }, b:{ name:"Farmácia Popular Plus", seg:"Farmácia", logo:"💊" }, status:"closed_won", date:"2025-01-20", value:8000, msgs:[
-      { from:"b", text:"Podemos fazer parceria de indicação?", ts:"2025-01-20T11:00" },
-      { from:"a", text:"Sim! Encaminhamos pacientes e vocês dão desconto.", ts:"2025-01-21T09:00" },
-      { from:"agency", text:"Acordo formalizado. Comissão de 5% para a Unique.", ts:"2025-01-25T14:00" },
-    ]},
-  ]);
+  /* Real matches from Supabase */
+  const [matches, setMatches] = useState([]);
+  const [matchesLoaded, setMatchesLoaded] = useState(false);
+  useEffect(() => {
+    if (!matchesLoaded) { supaLoadMatches().then(d => { setMatches(d || []); setMatchesLoaded(true); }); }
+  }, [matchesLoaded]);
 
   const statusMap = {
     new:{ l:"Novo", c:B.blue, bg:`${B.blue}15` },
@@ -13948,6 +13937,7 @@ function Match4BizPage({ onBack, clients, user }) {
   const updateStatus = (id, newStatus) => {
     setMatches(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
     if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, status: newStatus }));
+    supaUpdateMatch(id, { status: newStatus });
     showToast("Status atualizado ✓");
   };
 
@@ -13955,14 +13945,41 @@ function Match4BizPage({ onBack, clients, user }) {
     const numVal = parseFloat(val) || 0;
     setMatches(prev => prev.map(m => m.id === id ? { ...m, value: numVal } : m));
     if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, value: numVal }));
+    supaUpdateMatch(id, { value: numVal });
   };
 
   const sendMsg = (id) => {
     if (!msgInput.trim()) return;
-    const msg = { from:"agency", text:msgInput.trim(), ts:new Date().toISOString() };
-    setMatches(prev => prev.map(m => m.id === id ? { ...m, msgs:[...m.msgs, msg] } : m));
-    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, msgs:[...prev.msgs, msg] }));
+    const msg = { from:"agency", text:msgInput.trim(), ts:new Date().toISOString(), by:user?.name||"Admin" };
+    const m = matches.find(x => x.id === id);
+    const newMsgs = [...(m?.messages||m?.msgs||[]), msg];
+    setMatches(prev => prev.map(x => x.id === id ? { ...x, messages: newMsgs } : x));
+    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, messages: newMsgs }));
+    supaUpdateMatch(id, { messages: newMsgs });
     setMsgInput("");
+  };
+
+  const handleCreateMatch = async () => {
+    if (!createForm.a || !createForm.b || createForm.a === createForm.b) { showToast("Selecione dois clientes diferentes"); return; }
+    const cA = CDATA.find(c => (c.supaId||c.id) === createForm.a);
+    const cB = CDATA.find(c => (c.supaId||c.id) === createForm.b);
+    if (!cA || !cB) { showToast("Clientes não encontrados"); return; }
+    const newMatch = {
+      client_a_id: createForm.a, client_a_name: cA.name,
+      client_b_id: createForm.b, client_b_name: cB.name,
+      status: "new", messages: [], created_by: user?.name || "Admin",
+    };
+    const created = await supaCreateMatch(newMatch);
+    if (created) { setMatches(prev => [created, ...prev]); setCreating(false); setCreateForm({ a:"", b:"" }); showToast("Match criado ✓"); }
+    else showToast("Erro ao criar match");
+  };
+
+  const deleteMatch = async (id) => {
+    if (!confirm("Excluir este match?")) return;
+    await supaDeleteMatch(id);
+    setMatches(prev => prev.filter(m => m.id !== id));
+    if (selMatch?.id === id) { setSelMatch(null); setView("list"); }
+    showToast("Match excluído ✓");
   };
 
   /* ── MATCH DETAIL ── */
@@ -13977,10 +13994,10 @@ function Match4BizPage({ onBack, clients, user }) {
         {/* Companies */}
         <Card>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.a.logo}</div>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.client_a_name?.[0]||"A"}</div>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:700 }}>{m.a.name}</p>
-              <p style={{ fontSize:10, color:B.muted }}>{m.a.seg}</p>
+              <p style={{ fontSize:13, fontWeight:700 }}>{m.client_a_name}</p>
+              <p style={{ fontSize:10, color:B.muted }}>{""}</p>
             </div>
           </div>
           <div style={{ textAlign:"center", margin:"10px 0", color:B.accent }}>
@@ -13988,10 +14005,10 @@ function Match4BizPage({ onBack, clients, user }) {
             <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginTop:2 }}>MATCH</p>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${B.purple}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.b.logo}</div>
+            <div style={{ width:44, height:44, borderRadius:12, background:`${B.purple}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.client_b_name?.[0]||"B"}</div>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:700 }}>{m.b.name}</p>
-              <p style={{ fontSize:10, color:B.muted }}>{m.b.seg}</p>
+              <p style={{ fontSize:13, fontWeight:700 }}>{m.client_b_name}</p>
+              <p style={{ fontSize:10, color:B.muted }}>{""}</p>
             </div>
           </div>
         </Card>
@@ -14012,19 +14029,19 @@ function Match4BizPage({ onBack, clients, user }) {
           )}
           <div style={{ display:"flex", justifyContent:"space-between", marginTop:10, padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
             <span style={{ fontSize:11, color:B.muted }}>Data do match</span>
-            <span style={{ fontSize:11, fontWeight:600 }}>{new Date(m.date).toLocaleDateString("pt-BR")}</span>
+            <span style={{ fontSize:11, fontWeight:600 }}>{new Date(m.created_at).toLocaleDateString("pt-BR")}</span>
           </div>
         </Card>
 
         {/* Chat History */}
         <Card style={{ marginTop:8 }}>
           <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>HISTÓRICO DE CONVERSA</p>
-          {m.msgs.length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma mensagem ainda</p>}
+          {(m.messages||[]).length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma mensagem ainda</p>}
           <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:300, overflowY:"auto" }}>
-            {m.msgs.map((msg, i) => {
+            {(m.messages||[]).map((msg, i) => {
               const isAgency = msg.from === "agency";
-              const sender = msg.from === "a" ? m.a.name : msg.from === "b" ? m.b.name : "Unique Marketing";
-              const senderIcon = msg.from === "a" ? m.a.logo : msg.from === "b" ? m.b.logo : "🏢";
+              const sender = msg.from === "a" ? m.client_a_name : msg.from === "b" ? m.client_b_name : "Unique Marketing";
+              const senderIcon = msg.from === "a" ? m.client_a_name?.[0]||"A" : msg.from === "b" ? m.client_b_name?.[0]||"B" : "🏢";
               return (
                 <div key={i} style={{ padding:"8px 10px", borderRadius:12, background:isAgency?`${B.accent}08`:`${B.muted}08`, border:isAgency?`1px solid ${B.accent}15`:"none" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
@@ -14069,13 +14086,13 @@ function Match4BizPage({ onBack, clients, user }) {
             <Card key={m.id} delay={i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?8:0 }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <span style={{ fontSize:20 }}>{m.a.logo}</span>
+                  <span style={{ fontSize:20 }}>{m.client_a_name?.[0]||"A"}</span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                  <span style={{ fontSize:20 }}>{m.b.logo}</span>
+                  <span style={{ fontSize:20 }}>{m.client_b_name?.[0]||"B"}</span>
                 </div>
                 <div style={{ flex:1 }}>
-                  <p style={{ fontSize:12, fontWeight:700 }}>{m.a.name.split(" ").slice(0,2).join(" ")} × {m.b.name.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:10, color:B.muted }}>{m.a.seg} + {m.b.seg}</p>
+                  <p style={{ fontSize:12, fontWeight:700 }}>{m.client_a_name.split(" ").slice(0,2).join(" ")} × {m.client_b_name.split(" ").slice(0,2).join(" ")}</p>
+                  <p style={{ fontSize:10, color:B.muted }}>{""} + {""}</p>
                 </div>
                 <div style={{ textAlign:"right" }}>
                   <span style={{ fontSize:10, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6, display:"inline-block" }}>{st.l}</span>
@@ -14083,8 +14100,8 @@ function Match4BizPage({ onBack, clients, user }) {
                 </div>
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, paddingTop:6, borderTop:`1px solid ${B.border}` }}>
-                <span style={{ fontSize:10, color:B.muted }}>{new Date(m.date).toLocaleDateString("pt-BR")}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{m.msgs.length} msg{m.msgs.length!==1?"s":""}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{new Date(m.created_at).toLocaleDateString("pt-BR")}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{(m.messages||[]).length} msg{(m.messages||[]).length!==1?"s":""}</span>
               </div>
             </Card>
           );
@@ -14099,6 +14116,28 @@ function Match4BizPage({ onBack, clients, user }) {
       <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={pgC} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
+
+      {/* Create Match Button + Form */}
+      {isAdmin && !creating && <button onClick={()=>setCreating(true)} style={{width:"100%",padding:"12px",borderRadius:14,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.dark,marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>+ Criar novo Match</button>}
+      {creating && <Card style={{marginBottom:12,border:`2px solid ${B.accent}`}}>
+        <p style={{fontSize:14,fontWeight:700,marginBottom:10}}>Novo Match</p>
+        <p className="sl" style={{marginBottom:4}}>Empresa A</p>
+        <select value={createForm.a} onChange={e=>setCreateForm(p=>({...p,a:e.target.value}))} className="tinput" style={{marginBottom:8}}>
+          <option value="">Selecione...</option>
+          {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+        </select>
+        <p className="sl" style={{marginBottom:4}}>Empresa B</p>
+        <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} className="tinput" style={{marginBottom:10}}>
+          <option value="">Selecione...</option>
+          {CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+        </select>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={handleCreateMatch} className="pill accent" style={{flex:1,padding:"12px 0"}}>🤝 Criar Match</button>
+          <button onClick={()=>setCreating(false)} className="pill" style={{padding:"12px 16px",background:B.bgCard,border:`1px solid ${B.border}`,color:B.muted}}>Cancelar</button>
+        </div>
+      </Card>}
+
+      {!matchesLoaded && <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando matches...</p></Card>}
 
       {/* Metrics */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
@@ -14132,7 +14171,7 @@ function Match4BizPage({ onBack, clients, user }) {
               <div key={d.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderTop:i?`1px solid ${B.border}05`:"none" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <span style={{ fontSize:14 }}>{d.a.logo}</span>
-                  <span style={{ fontSize:11, fontWeight:600 }}>{d.a.name.split(" ").slice(0,2).join(" ")} × {d.b.name.split(" ").slice(0,2).join(" ")}</span>
+                  <span style={{ fontSize:11, fontWeight:600 }}>{d.client_a_name.split(" ").slice(0,2).join(" ")} × {d.client_b_name.split(" ").slice(0,2).join(" ")}</span>
                 </div>
                 <span style={{ fontSize:12, fontWeight:700, color:B.green }}>R$ {(d.value||0).toLocaleString("pt-BR")}</span>
               </div>
@@ -14152,13 +14191,13 @@ function Match4BizPage({ onBack, clients, user }) {
           <Card key={m.id} delay={0.2+i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?6:0 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ display:"flex", alignItems:"center" }}>
-                <span style={{ fontSize:18 }}>{m.a.logo}</span>
+                <span style={{ fontSize:18 }}>{m.client_a_name?.[0]||"A"}</span>
                 <span style={{ fontSize:10, margin:"0 4px", color:B.accent }}>♥</span>
-                <span style={{ fontSize:18 }}>{m.b.logo}</span>
+                <span style={{ fontSize:18 }}>{m.client_b_name?.[0]||"B"}</span>
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:12, fontWeight:600 }}>{m.a.name.split(" ").slice(0,2).join(" ")} × {m.b.name.split(" ").slice(0,2).join(" ")}</p>
-                <p style={{ fontSize:10, color:B.muted }}>{new Date(m.date).toLocaleDateString("pt-BR")} · {m.msgs.length} msgs</p>
+                <p style={{ fontSize:12, fontWeight:600 }}>{m.client_a_name.split(" ").slice(0,2).join(" ")} × {m.client_b_name.split(" ").slice(0,2).join(" ")}</p>
+                <p style={{ fontSize:10, color:B.muted }}>{new Date(m.created_at).toLocaleDateString("pt-BR")} · {(m.messages||[]).length} msgs</p>
               </div>
               <span style={{ fontSize:9, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6 }}>{st.l}</span>
             </div>
