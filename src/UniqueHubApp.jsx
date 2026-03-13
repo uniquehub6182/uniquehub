@@ -2895,17 +2895,19 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                     <button onClick={()=>setDriveEditing(false)} style={{padding:"10px 16px",borderRadius:12,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666"}}>Cancelar</button>
                   </div>
                 </div>
-              ) : embedSrc ? (
+              ) : embedSrc && driveType==="gdrive" ? (
                 <iframe src={embedSrc} style={{width:"100%",height:"100%",border:"none"}} title={svcLabel} allow="fullscreen" onError={()=>{}} />
-              ) : isConnected && !embedSrc ? (
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20,textAlign:"center"}}>
-                  <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
-                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:6}}>Link não compatível com embed</p>
-                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:4,lineHeight:1.5}}>{driveType==="onedrive"?"Para OneDrive, use o link de Incorporar (Embed), não o link de compartilhamento.":"Verifique se o link é de uma pasta pública do Google Drive."}</p>
-                  <div style={{display:"flex",gap:8,marginTop:12}}>
-                    <button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(true);}} style={{padding:"8px 16px",borderRadius:10,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Trocar link</button>
-                    <a href={driveUrl} target="_blank" rel="noopener" style={{padding:"8px 16px",borderRadius:10,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666",textDecoration:"none",display:"flex",alignItems:"center"}}>Abrir no navegador</a>
+              ) : isConnected && driveType==="onedrive" ? (
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:24,textAlign:"center"}}>
+                  <div style={{width:64,height:64,borderRadius:16,background:"#0078D4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M14 2l-3.5 6h9L16 2h-2zM3 14l3.5-6h7L10 2H7L3 14zm5.5 0L5 14l3.5 6h9l3.5-6H8.5z" fill="#fff" opacity="0.9"/></svg>
                   </div>
+                  <p style={{fontSize:15,fontWeight:800,color:"#1A1D23",marginBottom:4}}>OneDrive conectado</p>
+                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:20,lineHeight:1.5}}>O OneDrive não permite visualização incorporada.<br/>Acesse seus arquivos diretamente pelo botão abaixo.</p>
+                  <a href={driveUrl} target="_blank" rel="noopener" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"12px 24px",borderRadius:14,background:"#0078D4",color:"#fff",fontFamily:"inherit",fontSize:13,fontWeight:700,textDecoration:"none",boxShadow:"0 4px 16px rgba(0,120,212,0.3)"}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                    Abrir OneDrive
+                  </a>
                 </div>
               ) : (
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
