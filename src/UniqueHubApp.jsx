@@ -616,7 +616,7 @@ const asaasCall = async (action, data = {}) => {
 
 const META_APP_ID = "1557196698688426";
 const META_CONFIG_ID = "1251666086415367";
-const META_REDIRECT_URI = `${window.location.origin}/`;
+const META_REDIRECT_URI = "https://uniquehub-beta.vercel.app/";
 const META_SCOPES = "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights";
 
 const startMetaOAuth = (clientId) => {
@@ -761,7 +761,7 @@ const dailyInsight = (data, name) => { if (!data) return []; const m = data.find
 
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
-  const redirectUri = encodeURIComponent(window.location.origin + "/");
+  const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
   const url = `https://www.instagram.com/oauth/authorize?client_id=${IG_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
   console.log("[Instagram OAuth] redirect_uri:", window.location.origin + "/", "client_id:", IG_APP_ID);
   window.location.href = url;

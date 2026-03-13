@@ -27,7 +27,7 @@ serve(async (req) => {
     tokenForm.append("client_id", IG_APP_ID);
     tokenForm.append("client_secret", IG_APP_SECRET);
     tokenForm.append("grant_type", "authorization_code");
-    tokenForm.append("redirect_uri", redirect_uri || "https://uniquehub.com.br/");
+    tokenForm.append("redirect_uri", redirect_uri || "https://uniquehub-beta.vercel.app/");
     tokenForm.append("code", code);
 
     console.log("[IG OAuth] Exchanging code for token, redirect_uri:", redirect_uri);
