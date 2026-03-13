@@ -5595,6 +5595,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [fullExpandedId, setFullExpandedId] = useState(null);
+  const [inlinePublishing, setInlinePublishing] = useState(false);
   const contentScrollRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   useEffect(() => {
@@ -7093,8 +7094,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           </div>}
                           {/* Active stage: FUNCTIONAL controls */}
                           {active&&<div style={{marginTop:8,paddingLeft:26}}>
-                            {textFields.includes(stageKey)&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:60,padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:12,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
-                            {stageKey==="caption"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {textFields.includes(stageKey)&&d.format!=="Stories"&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:60,padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:12,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {textFields.includes(stageKey)&&d.format==="Stories"&&(stageKey==="caption"||stageKey==="copy")?<div style={{padding:"8px 10px",borderRadius:10,background:`${B.muted}06`,border:`1px solid ${B.border}`}}><p style={{fontSize:10,color:B.muted,textAlign:"center"}}>📲 Stories não suporta legenda</p></div>:null}
+                            {stageKey==="caption"&&d.format!=="Stories"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
                             {fileFields.includes(stageKey)&&<div style={{marginTop:6}}>
                               {stepImgs.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{stepImgs.map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:6,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
                               <label style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:8,background:`${B.accent}10`,border:`1px solid ${B.accent}30`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.accent}}>
@@ -7131,32 +7133,43 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                                 const clientObj3=CDATA.find(c=>c.name===d.client);
                                 const igOk3=clientObj3?.socials?.instagram?.connected&&clientObj3?.socials?.instagram?.oauth&&(d.network||"").toLowerCase().includes("instagram");
                                 const fbOk3=clientObj3?.socials?.facebook?.connected&&clientObj3?.socials?.facebook?.oauth&&(d.network||"").toLowerCase().includes("facebook");
-                                const cap3=d.steps?.caption?.text||d.steps?.copy?.text||d.title||"";
-                                const hash3=d.steps?.caption?.hashtags||"";
+                                const cap3=d.format==="Stories"?"":(d.steps?.caption?.text||d.steps?.copy?.text||d.title||"");
+                                const hash3=d.format==="Stories"?"":(d.steps?.caption?.hashtags||"");
                                 const fullCap3=hash3?`${cap3}\n\n${hash3}`:cap3;
                                 const isStories3=d.format==="Stories";
+                                const isReels3=d.format==="Reels";
+                                const isCarousel3=d.format==="Carrossel"||imgF3.length>1;
                                 const doInlinePub3=async(platform,type)=>{
                                   if(imgF3.length===0){showToast("Nenhuma imagem");return;}
+                                  if(inlinePublishing)return;
+                                  setInlinePublishing(true);
                                   const cId3=clientObj3?.supaId||clientObj3?.id;
-                                  showToast(`Publicando ${type}...`);
-                                  let r3;
-                                  if(platform==="instagram"){r3=await publishToInstagram(cId3,imgF3.map(f=>f.url),fullCap3,type,null);}
-                                  else{r3=await publishToMeta(cId3,imgF3[0].url,fullCap3,["facebook"]);}
-                                  if(r3?.error){showToast(`Erro: ${r3.error}`);return;}
-                                  const ns3={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),publishedAt:new Date().toISOString()}};
-                                  const next3=stages[si+1];
-                                  if(next3){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next3,steps:ns3},next3):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next3,steps:ns3});}
-                                  showToast("Publicado com sucesso! ✓");
+                                  showToast("Publicando...");
+                                  try{
+                                    let r3;
+                                    if(platform==="instagram"){r3=await publishToInstagram(cId3,imgF3.map(f=>f.url),fullCap3,type,null);}
+                                    else{r3=await publishToMeta(cId3,imgF3[0].url,fullCap3,["facebook"]);}
+                                    if(r3?.error){showToast(`Erro: ${r3.error}`);setInlinePublishing(false);return;}
+                                    const ns3={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),publishedAt:new Date().toISOString(),platform,type}};
+                                    const next3=stages[si+1];
+                                    if(next3){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next3,steps:ns3},next3):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next3,steps:ns3});}
+                                    showToast("✅ Publicado com sucesso!");
+                                  }catch(err){showToast(`Erro: ${err.message}`);}
+                                  setInlinePublishing(false);
                                 };
                                 return(
-                                  <div style={{marginTop:8}}>
-                                    <p style={{fontSize:10,fontWeight:700,color:B.green,marginBottom:6,textAlign:"center"}}>✅ Cliente aprovou — Publicar</p>
-                                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                                      {igOk3&&!isStories3&&<button onClick={(e)=>{e.stopPropagation();doInlinePub3("instagram","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#E1306C",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Feed</button>}
-                                      {igOk3&&isStories3&&<button onClick={(e)=>{e.stopPropagation();doInlinePub3("instagram","STORIES");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"linear-gradient(45deg,#f09433,#dc2743)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Story</button>}
-                                      {fbOk3&&<button onClick={(e)=>{e.stopPropagation();doInlinePub3("facebook","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📘 Facebook</button>}
+                                  <div style={{marginTop:10,padding:"12px",borderRadius:14,background:"linear-gradient(135deg,rgba(16,185,129,0.08),rgba(198,241,53,0.06))",border:`1px solid ${B.green}25`}}>
+                                    <p style={{fontSize:12,fontWeight:800,color:B.green,marginBottom:8,textAlign:"center"}}>✅ Cliente aprovou — Publicar</p>
+                                    {imgF3.length>0&&<div style={{display:"flex",gap:4,justifyContent:"center",marginBottom:10}}>{imgF3.slice(0,3).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:10,objectFit:"cover",border:`2px solid ${B.green}30`}}/>)}</div>}
+                                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                                      {igOk3&&<button disabled={inlinePublishing||imgF3.length===0} onClick={(e)=>{e.stopPropagation();doInlinePub3("instagram",isStories3?"STORIES":isReels3?"REELS":"FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":isStories3?"linear-gradient(45deg,#f09433,#dc2743)":"#E1306C",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF3.length===0?0.4:1}}>
+                                        {inlinePublishing?"Publicando...":isStories3?"📲 Publicar Story":isReels3?"🎬 Publicar Reels":isCarousel3?`📸 Carrossel (${imgF3.length} imgs)`:"📸 Publicar no Feed"}
+                                      </button>}
+                                      {fbOk3&&<button disabled={inlinePublishing||imgF3.length===0} onClick={(e)=>{e.stopPropagation();doInlinePub3("facebook","FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":"#1877F2",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF3.length===0?0.4:1}}>
+                                        {inlinePublishing?"Publicando...":"📘 Publicar no Facebook"}
+                                      </button>}
                                     </div>
-                                    {!igOk3&&!fbOk3&&<p style={{fontSize:9,color:B.muted,textAlign:"center",marginTop:4}}>Conecte as redes sociais do cliente</p>}
+                                    {!igOk3&&!fbOk3&&<p style={{fontSize:10,color:B.muted,textAlign:"center",marginTop:6}}>Conecte as redes sociais do cliente</p>}
                                   </div>
                                 );
                               })()
@@ -7167,34 +7180,44 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                                 const clientObj2=CDATA.find(c=>c.name===d.client);
                                 const igOk=clientObj2?.socials?.instagram?.connected&&clientObj2?.socials?.instagram?.oauth&&(d.network||"").toLowerCase().includes("instagram");
                                 const fbOk=clientObj2?.socials?.facebook?.connected&&clientObj2?.socials?.facebook?.oauth&&(d.network||"").toLowerCase().includes("facebook");
-                                const cap2=d.steps?.caption?.text||d.steps?.copy?.text||d.title||"";
-                                const hash2=d.steps?.caption?.hashtags||"";
+                                const cap2=d.format==="Stories"?"":(d.steps?.caption?.text||d.steps?.copy?.text||d.title||"");
+                                const hash2=d.format==="Stories"?"":(d.steps?.caption?.hashtags||"");
                                 const fullCap2=hash2?`${cap2}\n\n${hash2}`:cap2;
                                 const isStories2=d.format==="Stories";
+                                const isReels2=d.format==="Reels";
+                                const isCarousel2=d.format==="Carrossel"||imgF2.length>1;
                                 const doInlinePublish=async(platform,type)=>{
                                   if(imgF2.length===0){showToast("Nenhuma imagem disponível");return;}
+                                  if(inlinePublishing)return;
+                                  setInlinePublishing(true);
                                   const cId=clientObj2?.supaId||clientObj2?.id;
-                                  showToast(`Publicando ${type}...`);
-                                  let r;
-                                  if(platform==="instagram"){r=await publishToInstagram(cId,imgF2.map(f=>f.url),fullCap2,type,null);}
-                                  else{r=await publishToMeta(cId,imgF2[0].url,fullCap2,["facebook"]);}
-                                  if(r?.error){showToast(`Erro: ${r.error}`);return;}
-                                  inlineUpdate({status:"approved",mode:"publish_direct",publishedAt:new Date().toISOString()});
-                                  const ns2={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),status:"approved",publishedAt:new Date().toISOString()}};
-                                  const next2=stages[si+1];
-                                  if(next2){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next2,steps:ns2},next2):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next2,steps:ns2});}
-                                  showToast("Publicado com sucesso! ✓");
+                                  showToast(`Publicando...`);
+                                  try{
+                                    let r;
+                                    if(platform==="instagram"){r=await publishToInstagram(cId,imgF2.map(f=>f.url),fullCap2,type,null);}
+                                    else{r=await publishToMeta(cId,imgF2[0].url,fullCap2,["facebook"]);}
+                                    if(r?.error){showToast(`Erro: ${r.error}`);setInlinePublishing(false);return;}
+                                    const ns2={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),status:"approved",publishedAt:new Date().toISOString(),platform,type}};
+                                    const next2=stages[si+1];
+                                    if(next2){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next2,steps:ns2},next2):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next2,steps:ns2});}
+                                    showToast("✅ Publicado com sucesso!");
+                                  }catch(err){showToast(`Erro: ${err.message}`);}
+                                  setInlinePublishing(false);
                                 };
                                 return(
-                                  <div style={{marginTop:8}}>
-                                    <p style={{fontSize:10,fontWeight:700,color:B.text,marginBottom:6,textAlign:"center"}}>📤 Publicar nas redes</p>
-                                    {imgF2.length===0&&<p style={{fontSize:9,color:B.orange,textAlign:"center",marginBottom:6}}>⚠️ Nenhuma imagem — faça upload na etapa de Design</p>}
-                                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                                      {igOk&&!isStories2&&<button onClick={(e)=>{e.stopPropagation();doInlinePublish("instagram","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#E1306C",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Feed</button>}
-                                      {igOk&&isStories2&&<button onClick={(e)=>{e.stopPropagation();doInlinePublish("instagram","STORIES");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"linear-gradient(45deg,#f09433,#dc2743)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📸 IG Story</button>}
-                                      {fbOk&&<button onClick={(e)=>{e.stopPropagation();doInlinePublish("facebook","FEED");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>📘 Facebook</button>}
+                                  <div style={{marginTop:10,padding:"12px",borderRadius:14,background:"linear-gradient(135deg,rgba(198,241,53,0.08),rgba(24,119,242,0.06))",border:`1px solid ${B.border}`}}>
+                                    <p style={{fontSize:12,fontWeight:800,color:B.dark,marginBottom:8,textAlign:"center"}}>📤 Publicar nas redes</p>
+                                    {imgF2.length===0&&<p style={{fontSize:10,color:B.orange,textAlign:"center",marginBottom:8,padding:"6px 10px",borderRadius:8,background:`${B.orange}08`}}>⚠️ Faça upload da imagem na etapa de Design</p>}
+                                    {imgF2.length>0&&<div style={{display:"flex",gap:4,justifyContent:"center",marginBottom:10}}>{imgF2.slice(0,3).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:10,objectFit:"cover",border:`2px solid ${B.border}`}}/>)}{imgF2.length>3&&<span style={{fontSize:9,color:B.muted,alignSelf:"center"}}>+{imgF2.length-3}</span>}</div>}
+                                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                                      {igOk&&<button disabled={inlinePublishing||imgF2.length===0} onClick={(e)=>{e.stopPropagation();doInlinePublish("instagram",isStories2?"STORIES":isReels2?"REELS":"FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":isStories2?"linear-gradient(45deg,#f09433,#dc2743)":"#E1306C",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF2.length===0?0.4:1}}>
+                                        {inlinePublishing?"Publicando...":isStories2?"📲 Publicar Story":isReels2?"🎬 Publicar Reels":isCarousel2?`📸 Publicar Carrossel (${imgF2.length} imgs)`:"📸 Publicar no Feed"}
+                                      </button>}
+                                      {fbOk&&<button disabled={inlinePublishing||imgF2.length===0} onClick={(e)=>{e.stopPropagation();doInlinePublish("facebook","FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":"#1877F2",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF2.length===0?0.4:1}}>
+                                        {inlinePublishing?"Publicando...":"📘 Publicar no Facebook"}
+                                      </button>}
                                     </div>
-                                    {!igOk&&!fbOk&&<p style={{fontSize:9,color:B.muted,textAlign:"center",marginTop:4}}>Conecte as redes sociais do cliente primeiro</p>}
+                                    {!igOk&&!fbOk&&<p style={{fontSize:10,color:B.muted,textAlign:"center",marginTop:6}}>Conecte as redes sociais do cliente primeiro</p>}
                                   </div>
                                 );
                               })()
