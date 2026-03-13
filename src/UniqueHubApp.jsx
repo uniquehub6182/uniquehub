@@ -4522,7 +4522,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       {profileTab === "actions" && <>
         {[
           { l:"Ver conteúdos", ic:IC.content, c:B.accent, desc:"Demandas e posts do cliente", act:()=>onNavigate?.("content") },
-          { l:"Abrir chat", ic:IC.chat, c:B.blue, desc:"Conversar com o cliente", act:()=>onNavigate?.("chat") },
+          { l:"Abrir chat", ic:IC.chat, c:B.blue, desc:"Conversar com o cliente", act:()=>{sessionStorage.setItem("uh_chat_open_with",sel.name);onNavigate?.("chat");} },
           { l:"Biblioteca", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>, c:B.purple, desc:`${files.length} arquivos do cliente`, act:()=>setProfileTab("library") },
           { l:"Redes Sociais", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>, c:B.pink, desc:`${connectedCount} redes conectadas`, act:()=>setProfileTab("socials") },
           ...(isAdmin ? [
@@ -7516,6 +7516,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         setAllProfiles([]);
       }
       setLoading(false);
+      /* Auto-open conversation if redirected from client page (#10) */
+      const chatWith = sessionStorage.getItem("uh_chat_open_with");
+      if (chatWith && c?.length) {
+        sessionStorage.removeItem("uh_chat_open_with");
+        const found = c.find(cv => { const n = cv.members?.find(m => m.id !== user.id)?.name || cv.name || ""; return n.toLowerCase().includes(chatWith.toLowerCase()); });
+        if (found) { setSelConv(found); setView("chat"); }
+      }
     };
     load();
   }, [user?.id]);
