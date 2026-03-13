@@ -486,7 +486,17 @@ const parseNewsRow = (r) => {
 /* ── Supabase: Team CRUD ── */
 const supaLoadTeam = async () => {
   if (!supabase) return [];
-  try { const { data } = await supabase.from("agency_members").select("*").neq("role", "cliente").order("created_at"); return data || []; } catch(e) { return []; }
+  try {
+    const { data: members } = await supabase.from("agency_members").select("*").neq("role", "cliente").order("created_at");
+    if (!members?.length) return [];
+    const userIds = members.filter(m => m.user_id).map(m => m.user_id);
+    let profileMap = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, photo_url").in("id", userIds);
+      (profiles || []).forEach(p => { profileMap[p.id] = p.photo_url; });
+    }
+    return members.map(m => ({ ...m, photo: profileMap[m.user_id] || null }));
+  } catch(e) { return []; }
 };
 const supaCreateMember = async (m) => {
   if (!supabase) return null;
@@ -7138,8 +7148,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           </div>
                           {/* Done stage: show saved content */}
                           {done&&stepText&&<p style={{fontSize:12,color:B.text,lineHeight:1.5,marginTop:6,paddingLeft:26}}>{stepText.substring(0,200)}{stepText.length>200?"...":""}</p>}
-                          {done&&stepImgs.length>0&&<div style={{display:"flex",gap:6,marginTop:6,paddingLeft:26}}>
-                            {stepImgs.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
+                          {done&&stepImgs.length>0&&<div style={{marginTop:6,paddingLeft:26}}>
+                            <img src={stepImgs[0].url} alt="" style={{width:"100%",maxHeight:200,borderRadius:10,objectFit:"cover",border:`1px solid ${B.border}`}}/>
+                            {stepImgs.length>1&&<div style={{display:"flex",gap:4,marginTop:4}}>{stepImgs.slice(1,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
                           </div>}
                           {/* Active stage: FUNCTIONAL controls */}
                           {active&&<div style={{marginTop:8,paddingLeft:26}}>
@@ -7147,7 +7158,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                             {textFields.includes(stageKey)&&d.format==="Stories"&&(stageKey==="caption"||stageKey==="copy")?<div style={{padding:"8px 10px",borderRadius:10,background:`${B.muted}06`,border:`1px solid ${B.border}`}}><p style={{fontSize:10,color:B.muted,textAlign:"center"}}>📲 Stories não suporta legenda</p></div>:null}
                             {stageKey==="caption"&&d.format!=="Stories"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
                             {fileFields.includes(stageKey)&&<div style={{marginTop:8}}>
-                              {stepImgs.length>0&&<div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>{stepImgs.map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:56,height:56,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
+                              {stepImgs.length>0&&<div style={{marginBottom:8}}>
+                                <img src={stepImgs[0].url} alt="" style={{width:"100%",maxHeight:280,borderRadius:10,objectFit:"cover",border:`1px solid ${B.border}`,marginBottom:stepImgs.length>1?6:0}}/>
+                                {stepImgs.length>1&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{stepImgs.slice(1).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:56,height:56,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
+                              </div>}
                               <label style={{display:"flex",alignItems:"center",gap:6,padding:"10px 16px",borderRadius:10,background:`${B.accent}10`,border:`1.5px solid ${B.accent}30`,cursor:"pointer",fontSize:12,fontWeight:700,color:B.accent,justifyContent:"center"}}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 Upload
