@@ -2198,10 +2198,10 @@ function LoginPage({ onAuth, onClientAuth }) {
   if (isDesktopLogin) return (
     <div style={{ position:"fixed", inset:0, display:"flex", background:"#000" }}>
       {/* Left — 3 images */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", gap:12, padding:24, justifyContent:"center", alignItems:"center", background:"#0A0A0A" }}>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", gap:0, justifyContent:"stretch", alignItems:"stretch", background:"#0A0A0A", overflow:"hidden" }}>
         {ONBOARD_SLIDES.map((s,i) => (
-          <div key={i} style={{ width:"100%", maxWidth:360, aspectRatio:"1/1", borderRadius:24, overflow:"hidden", border:"2px solid rgba(255,255,255,0.06)" }}>
-            <img src={s.img} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+          <div key={i} style={{ flex:1, overflow:"hidden" }}>
+            <img src={s.img} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
           </div>
         ))}
       </div>
