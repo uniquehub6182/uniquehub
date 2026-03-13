@@ -6911,10 +6911,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
         return (
         <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
-          {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}>
+          {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16, flexDirection:"column", gap:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
             </div>
+            <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Excluir "${d.title}"?`))return;const delId=d.supaId||d.id;if(delId){try{await supaDeleteDemand(delId);}catch(err){console.error(err);}}setDemands(p=>p.filter(x=>x.id!==d.id&&x.supaId!==d.supaId));setExpandedId(null);setFullExpandedId(null);showToast("Demanda excluída ✓");}} style={{padding:"6px 16px",borderRadius:10,background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#fff",display:"flex",alignItems:"center",gap:5,backdropFilter:"blur(4px)"}}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Excluir
+            </button>
           </div>}
 
           {/* ── Post Preview Image / Carousel ── (all corners rounded) */}
