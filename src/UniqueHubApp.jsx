@@ -7044,7 +7044,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                       {imgF.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
                     </div>}
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(d.id);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                      <button onClick={(e)=>{e.stopPropagation();setSel(d);setEditMode(false);setExpandedId(null);setFullExpandedId(null);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
                         Abrir completo →
                       </button>
                       <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Excluir "${d.title}"?`))return;const delId=d.supaId||d.id;if(delId){try{await supaDeleteDemand(delId);}catch(err){console.error(err);}}setDemands(p=>p.filter(x=>x.id!==d.id&&x.supaId!==d.supaId));setExpandedId(null);showToast("Demanda excluída ✓");}} style={{padding:"8px 12px",borderRadius:10,background:`${(B.red||"#FF6B6B")}10`,border:`1px solid ${(B.red||"#FF6B6B")}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
