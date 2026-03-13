@@ -623,7 +623,7 @@ const startMetaOAuth = (clientId) => {
   /* Store which client we're connecting, to use after redirect */
   try { sessionStorage.setItem("uh_meta_oauth_client", clientId); } catch {}
   /* Use explicit scope — config_id wasn't granting pages_read_engagement */
-  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&scope=${encodeURIComponent(META_SCOPES)}&response_type=code&state=meta_connect_${clientId}&auth_type=rerequest`;
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&config_id=${META_CONFIG_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&response_type=code&state=meta_connect_${clientId}&override_default_response_type=true`;
   console.log("[Meta OAuth] Starting, redirect_uri:", META_REDIRECT_URI);
   window.location.href = url;
 };
@@ -762,7 +762,7 @@ const dailyInsight = (data, name) => { if (!data) return []; const m = data.find
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
   const redirectUri = encodeURIComponent(window.location.origin + "/");
-  const url = `https://api.instagram.com/oauth/authorize?client_id=${IG_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
+  const url = `https://www.instagram.com/oauth/authorize?client_id=${IG_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
   console.log("[Instagram OAuth] Starting with IG Business Login API, redirect_uri:", window.location.origin + "/");
   window.location.href = url;
 };
