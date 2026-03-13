@@ -761,13 +761,9 @@ const dailyInsight = (data, name) => { if (!data) return []; const m = data.find
 
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
-  const rawUri = window.location.origin + "/";
-  const redirectUri = encodeURIComponent(rawUri);
+  const redirectUri = encodeURIComponent(window.location.origin + "/");
   const url = `https://www.instagram.com/oauth/authorize?client_id=${IG_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
-  console.log("[Instagram OAuth] Full URL:", url);
-  console.log("[Instagram OAuth] redirect_uri (raw):", rawUri);
-  console.log("[Instagram OAuth] client_id:", IG_APP_ID);
-  alert("DEBUG - redirect_uri: " + rawUri + "\nclient_id: " + IG_APP_ID);
+  console.log("[Instagram OAuth] redirect_uri:", window.location.origin + "/", "client_id:", IG_APP_ID);
   window.location.href = url;
 };
 
