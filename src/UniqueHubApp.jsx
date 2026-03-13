@@ -16342,10 +16342,20 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     badgeTimer = setTimeout(() => {
       loadChatUnread();
     }, 1500); /* defer 1.5s to not block initial render */
-    /* Realtime: new messages → recalculate */
+    /* Realtime: new messages → recalculate + browser notification */
     const chan = supabase.channel("nav-chat-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-      if (payload.new.sender_id !== user.id) setChatUnread(c => c + 1);
+      if (payload.new.sender_id !== user.id) {
+        setChatUnread(c => c + 1);
+        /* Browser push notification (#8) */
+        if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+          const senderName = payload.new.sender_name || "Alguém";
+          const content = payload.new.content?.substring(0, 80) || "Nova mensagem";
+          new Notification(`UniqueHub — ${senderName}`, { body: content, icon: "/favicon.ico", tag: "uh-chat-" + payload.new.conversation_id });
+        }
+      }
     }).subscribe();
+    /* Request notification permission on first load */
+    if ("Notification" in window && Notification.permission === "default") { Notification.requestPermission(); }
     return () => { clearTimeout(badgeTimer); supabase.removeChannel(chan); };
   }, [user?.id]);
 
