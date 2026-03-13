@@ -7044,7 +7044,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                       {imgF.slice(0,4).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
                     </div>}
                     <div style={{display:"flex",gap:8}}>
-                      <button onClick={(e)=>{e.stopPropagation();setSel(d);setEditMode(false);setExpandedId(null);setFullExpandedId(null);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                      <button onClick={(e)=>{e.stopPropagation();setFullExpandedId(d.id);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
                         Abrir completo →
                       </button>
                       <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Excluir "${d.title}"?`))return;const delId=d.supaId||d.id;if(delId){try{await supaDeleteDemand(delId);}catch(err){console.error(err);}}setDemands(p=>p.filter(x=>x.id!==d.id&&x.supaId!==d.supaId));setExpandedId(null);showToast("Demanda excluída ✓");}} style={{padding:"8px 12px",borderRadius:10,background:`${(B.red||"#FF6B6B")}10`,border:`1px solid ${(B.red||"#FF6B6B")}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -7054,7 +7054,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   </div>
                 ) : (
                   <div style={{padding:"8px 12px 12px"}}>
-                    {/* Full stage-by-stage detail */}
+                    {/* Full stage-by-stage detail — FUNCTIONAL */}
                     {stages.map((stageKey,si)=>{
                       const cfg=STAGE_CFG[stageKey]||{l:stageKey,c:"#888"};
                       const done=si<stIdx;const active=si===stIdx;const future=si>stIdx;
@@ -7062,6 +7062,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                       const stepFiles=(stepData.files||[]).filter(f=>f.url);
                       const stepImgs=stepFiles.filter(f=>/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
                       const stepText=stepData.text||stepData.feedback||"";
+                      const textFields=["idea","briefing","copy","caption","editing","script","review"];
+                      const fileFields=["design","production","editing"];
+                      const inlineUpdate=(data)=>{const ns={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
+                      const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);uploaded.push({name:f.name,url:u.publicUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
                       return(
                         <div key={stageKey} style={{marginBottom:6,borderRadius:12,border:`1px solid ${active?cfg.c:done?`${cfg.c}30`:B.border}`,background:active?`${cfg.c}06`:"transparent",padding:"8px 10px",opacity:future?0.4:1}}>
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -7071,13 +7075,26 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                             <span style={{fontSize:11,fontWeight:700,color:active?cfg.c:done?B.dark:B.muted}}>{stageLabels[stageKey]||stageKey}</span>
                             {active&&<span style={{fontSize:8,fontWeight:700,padding:"1px 6px",borderRadius:4,background:cfg.c,color:"#fff",marginLeft:"auto"}}>Atual</span>}
                           </div>
-                          {(done||active)&&stepText&&<p style={{fontSize:10,color:B.text,lineHeight:1.4,marginTop:6,paddingLeft:26}}>{stepText.substring(0,120)}{stepText.length>120?"...":""}</p>}
-                          {(done||active)&&stepImgs.length>0&&<div style={{display:"flex",gap:4,marginTop:6,paddingLeft:26}}>
+                          {/* Done stage: show saved content */}
+                          {done&&stepText&&<p style={{fontSize:10,color:B.text,lineHeight:1.4,marginTop:6,paddingLeft:26}}>{stepText.substring(0,120)}{stepText.length>120?"...":""}</p>}
+                          {done&&stepImgs.length>0&&<div style={{display:"flex",gap:4,marginTop:6,paddingLeft:26}}>
                             {stepImgs.slice(0,3).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:36,height:36,borderRadius:6,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
-                            {stepImgs.length>3&&<span style={{fontSize:9,color:B.muted,alignSelf:"center"}}>+{stepImgs.length-3}</span>}
                           </div>}
-                          {(done||active)&&stepData.status&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:4,paddingLeft:26}}>
-                            <span style={{fontSize:9,fontWeight:600,padding:"1px 6px",borderRadius:4,background:stepData.status==="approved"?`${B.green}15`:stepData.status==="revision"?`${B.orange}15`:`${B.muted}10`,color:stepData.status==="approved"?B.green:stepData.status==="revision"?B.orange:B.muted}}>{stepData.status==="approved"?"Aprovado":stepData.status==="revision"?"Revisão":stepData.status}</span>
+                          {/* Active stage: FUNCTIONAL controls */}
+                          {active&&<div style={{marginTop:8,paddingLeft:26}}>
+                            {textFields.includes(stageKey)&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:60,padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:12,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {stageKey==="caption"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {fileFields.includes(stageKey)&&<div style={{marginTop:6}}>
+                              {stepImgs.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>{stepImgs.map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:40,height:40,borderRadius:6,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}</div>}
+                              <label style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:8,background:`${B.accent}10`,border:`1px solid ${B.accent}30`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.accent}}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                Upload
+                                <input type="file" multiple accept="image/*,video/*,.pdf,.psd" style={{display:"none"}} onChange={handleFiles} onClick={e=>e.stopPropagation()}/>
+                              </label>
+                            </div>}
+                            <button onClick={(e)=>{e.stopPropagation();advanceStage(d);setExpandedId(null);setFullExpandedId(null);}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                              Avançar para {stageLabels[stages[si+1]]||"próxima"} →
+                            </button>
                           </div>}
                         </div>
                       );
