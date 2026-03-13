@@ -6978,9 +6978,16 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               </div>
             )}
 
-            {/* Title + client */}
-            <p style={{ fontSize:15, fontWeight:800, color:B.text, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client} · {d.createdAt}</p>
+            {/* Title + client + delete */}
+            <div style={{ display:"flex", alignItems:"flex-start", gap:6 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:15, fontWeight:800, color:B.text, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+                <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client} · {d.createdAt}</p>
+              </div>
+              <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Excluir "${d.title}"?`))return;const delId=d.supaId||d.id;if(delId){try{await supaDeleteDemand(delId);}catch(err){console.error(err);}}setDemands(p=>p.filter(x=>x.id!==d.id&&x.supaId!==d.supaId));setExpandedId(null);setFullExpandedId(null);showToast("Demanda excluída ✓");}} style={{width:28,height:28,borderRadius:8,background:`${(B.red||"#FF6B6B")}08`,border:`1px solid ${(B.red||"#FF6B6B")}20`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              </button>
+            </div>
 
             {/* Caption preview */}
             {caption && <p style={{ fontSize:12, color:B.text, marginTop:8, lineHeight:1.5, opacity:0.75, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
