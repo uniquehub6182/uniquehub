@@ -10924,9 +10924,6 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
             <MetricCard label="Views página FB" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions,c.fbPrevImp)} sub="Visualizações" />
             <MetricCard label="Engajamento FB" value={formatNum(c.fbEngagedUsers)} color="#42B72A" change={pctChange(c.fbEngagedUsers,c.fbPrevEng)} sub="Interações" />
           </div>}
-          {c.needsPermission?.includes("pages_read_engagement") && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:8, padding:10 }}>
-            <p style={{ fontSize:10, color:B.orange }}>⚠️ Métricas avançadas requerem <strong>pages_read_engagement</strong> no Meta App.</p>
-          </Card>}
           {/* DISTRIBUICAO DE CONTEUDO IG */}
           {igPosts.length > 0 && <>
             <p className="sl" style={{ marginBottom:6 }}>Distribuição de conteúdo — Instagram</p>
@@ -11098,12 +11095,6 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 
         {/* ── OVERVIEW TAB ── */}
         {tab === "overview" && <>
-          {totals.anyNeedsPermission && <Card style={{ background:`${B.orange}06`, border:`1px solid ${B.orange}20`, marginBottom:10 }}>
-            <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
-              <span style={{ color:B.orange, fontSize:16 }}>⚠️</span>
-              <div><p style={{ fontSize:11, fontWeight:600, color:B.orange }}>Permissões limitadas no Meta App</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Habilite <strong>pages_read_engagement</strong> no Facebook Login Configuration para métricas avançadas.</p></div>
-            </div>
-          </Card>}
 
           {/* Audiência consolidada */}
           <p className="sl" style={{ marginBottom:6 }}>Audiência total</p>
