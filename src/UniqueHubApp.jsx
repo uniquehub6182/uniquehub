@@ -13907,7 +13907,7 @@ function Match4BizPage({ onBack, clients, user }) {
   const [filter, setFilter] = useState("all");
   const [msgInput, setMsgInput] = useState("");
   const [creating, setCreating] = useState(false);
-  const [createForm, setCreateForm] = useState({ a:"", b:"" });
+  const [createForm, setCreateForm] = useState({ a:"", b:"", fee:"150" });
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
   const CDATA = clients || [];
@@ -13931,6 +13931,8 @@ function Match4BizPage({ onBack, clients, user }) {
   const totalMatches = matches.length;
   const wonDeals = matches.filter(m => m.status === "closed_won");
   const totalRevenue = wonDeals.reduce((s,m) => s + (m.value||0), 0);
+  const totalFees = matches.reduce((s,m) => s + (parseFloat(m.match_fee)||0) * 2, 0);
+  const confirmedMatches = matches.filter(m => m.admin_confirmed || m.client_a_confirmed || m.client_b_confirmed).length;
   const conversionRate = totalMatches > 0 ? Math.round((wonDeals.length / totalMatches) * 100) : 0;
   const activeDeals = matches.filter(m => ["new","talking","negotiating"].includes(m.status)).length;
 
@@ -13968,9 +13970,11 @@ function Match4BizPage({ onBack, clients, user }) {
       client_a_id: createForm.a, client_a_name: cA.name,
       client_b_id: createForm.b, client_b_name: cB.name,
       status: "new", messages: [], created_by: user?.name || "Admin",
+      match_fee: parseFloat(createForm.fee) || 0,
+      client_a_confirmed: false, client_b_confirmed: false, admin_confirmed: false,
     };
     const created = await supaCreateMatch(newMatch);
-    if (created) { setMatches(prev => [created, ...prev]); setCreating(false); setCreateForm({ a:"", b:"" }); showToast("Match criado ✓"); }
+    if (created) { setMatches(prev => [created, ...prev]); setCreating(false); setCreateForm({ a:"", b:"", fee:"150" }); showToast("Match criado ✓"); }
     else showToast("Erro ao criar match");
   };
 
@@ -14031,6 +14035,52 @@ function Match4BizPage({ onBack, clients, user }) {
             <span style={{ fontSize:11, color:B.muted }}>Data do match</span>
             <span style={{ fontSize:11, fontWeight:600 }}>{new Date(m.created_at).toLocaleDateString("pt-BR")}</span>
           </div>
+        </Card>
+
+        {/* Fee + Confirmation */}
+        <Card style={{ marginTop:8 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>💰 TAXA E CONFIRMAÇÃO</p>
+          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+            <div style={{ flex:1, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
+              <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Taxa por empresa</p>
+              <p style={{ fontSize:18, fontWeight:800, color:B.green }}>R$ {(parseFloat(m.match_fee)||0).toLocaleString("pt-BR")}</p>
+            </div>
+            <div style={{ flex:1, padding:"10px 12px", borderRadius:12, background:`${B.accent}08`, border:`1px solid ${B.accent}20`, textAlign:"center" }}>
+              <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Receita total</p>
+              <p style={{ fontSize:18, fontWeight:800, color:B.accent }}>R$ {((parseFloat(m.match_fee)||0)*2).toLocaleString("pt-BR")}</p>
+            </div>
+          </div>
+          <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginBottom:6 }}>Confirmações</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:m.admin_confirmed?`${B.green}08`:`${B.muted}04`, border:`1px solid ${m.admin_confirmed?B.green+"25":B.border}` }}>
+              <div style={{ width:20, height:20, borderRadius:6, background:m.admin_confirmed?B.green:`${B.muted}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {m.admin_confirmed?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{ fontSize:8, color:B.muted }}>—</span>}
+              </div>
+              <span style={{ fontSize:11, fontWeight:600, flex:1, color:m.admin_confirmed?B.green:B.text }}>Admin (Agência)</span>
+              {isAdmin && !m.admin_confirmed && <button onClick={()=>{const upd={admin_confirmed:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast("Confirmado pelo admin ✓");}} style={{ padding:"4px 10px", borderRadius:6, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.dark }}>Confirmar</button>}
+              {m.admin_confirmed && <span style={{ fontSize:9, color:B.green }}>✓ Confirmado</span>}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:m.client_a_confirmed?`${B.green}08`:`${B.muted}04`, border:`1px solid ${m.client_a_confirmed?B.green+"25":B.border}` }}>
+              <div style={{ width:20, height:20, borderRadius:6, background:m.client_a_confirmed?B.green:`${B.muted}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {m.client_a_confirmed?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{ fontSize:8, color:B.muted }}>—</span>}
+              </div>
+              <span style={{ fontSize:11, fontWeight:600, flex:1, color:m.client_a_confirmed?B.green:B.text }}>{m.client_a_name}</span>
+              {isAdmin && !m.client_a_confirmed && <button onClick={()=>{const upd={client_a_confirmed:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast(`${m.client_a_name} confirmou ✓`);}} style={{ padding:"4px 10px", borderRadius:6, background:`${B.blue}15`, border:`1px solid ${B.blue}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:B.blue }}>Marcar confirmado</button>}
+              {m.client_a_confirmed && <span style={{ fontSize:9, color:B.green }}>✓</span>}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:m.client_b_confirmed?`${B.green}08`:`${B.muted}04`, border:`1px solid ${m.client_b_confirmed?B.green+"25":B.border}` }}>
+              <div style={{ width:20, height:20, borderRadius:6, background:m.client_b_confirmed?B.green:`${B.muted}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {m.client_b_confirmed?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{ fontSize:8, color:B.muted }}>—</span>}
+              </div>
+              <span style={{ fontSize:11, fontWeight:600, flex:1, color:m.client_b_confirmed?B.green:B.text }}>{m.client_b_name}</span>
+              {isAdmin && !m.client_b_confirmed && <button onClick={()=>{const upd={client_b_confirmed:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast(`${m.client_b_name} confirmou ✓`);}} style={{ padding:"4px 10px", borderRadius:6, background:`${B.purple}15`, border:`1px solid ${B.purple}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:B.purple }}>Marcar confirmado</button>}
+              {m.client_b_confirmed && <span style={{ fontSize:9, color:B.green }}>✓</span>}
+            </div>
+          </div>
+          {m.admin_confirmed && (m.client_a_confirmed || m.client_b_confirmed) && <div style={{ marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.green }}>✅ Match confirmado por admin + cliente</p>
+          </div>}
+          {isAdmin && <button onClick={()=>deleteMatch(m.id)} style={{ marginTop:10, width:"100%", padding:"8px 0", borderRadius:10, background:`${B.red}08`, border:`1px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red }}>🗑️ Excluir match</button>}
         </Card>
 
         {/* Chat History */}
@@ -14127,10 +14177,13 @@ function Match4BizPage({ onBack, clients, user }) {
           {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
         </select>
         <p className="sl" style={{marginBottom:4}}>Empresa B</p>
-        <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} className="tinput" style={{marginBottom:10}}>
+        <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} className="tinput" style={{marginBottom:8}}>
           <option value="">Selecione...</option>
           {CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
         </select>
+        <p className="sl" style={{marginBottom:4}}>Taxa do Match (R$)</p>
+        <input type="number" value={createForm.fee} onChange={e=>setCreateForm(p=>({...p,fee:e.target.value}))} className="tinput" placeholder="150" style={{marginBottom:10}} />
+        <p style={{fontSize:9,color:B.muted,marginBottom:10,lineHeight:1.5}}>💡 Cada empresa paga esta taxa pela conexão. Ex: R$ 150 = R$ 300 total para a agência.</p>
         <div style={{display:"flex",gap:8}}>
           <button onClick={handleCreateMatch} className="pill accent" style={{flex:1,padding:"12px 0"}}>🤝 Criar Match</button>
           <button onClick={()=>setCreating(false)} className="pill" style={{padding:"12px 16px",background:B.bgCard,border:`1px solid ${B.border}`,color:B.muted}}>Cancelar</button>
@@ -14143,8 +14196,8 @@ function Match4BizPage({ onBack, clients, user }) {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
         {[
           { label:"Total Matches", value:totalMatches, icon:"🤝", color:B.accent },
+          { label:"Receita Taxas", value:`R$ ${totalFees.toLocaleString("pt-BR")}`, icon:"💰", color:B.green },
           { label:"Em andamento", value:activeDeals, icon:"⏳", color:B.orange },
-          { label:"Fechados", value:wonDeals.length, icon:"✅", color:B.green },
           { label:"Conversão", value:`${conversionRate}%`, icon:"📈", color:B.purple },
         ].map((m,i) => (
           <Card key={i} delay={i*0.04} style={{ padding:14, textAlign:"center" }}>
