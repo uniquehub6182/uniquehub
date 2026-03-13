@@ -4708,9 +4708,26 @@ function AcademyPage({ onBack, isClientView }) {
         <textarea value={lessonForm.desc||""} onChange={e=>setLessonForm(p=>({...p,desc:e.target.value}))} placeholder="O que será abordado nesta aula..." className="tinput" style={{ minHeight:70, resize:"vertical", marginBottom:0 }} />
       </Card>
       <Card style={{ marginBottom:8 }}>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Link do vídeo</label>
-        <input value={lessonForm.videoUrl||""} onChange={e=>setLessonForm(p=>({...p,videoUrl:e.target.value}))} placeholder="YouTube, Vimeo, Google Drive..." className="tinput" style={{ marginBottom:8 }} />
-        <p style={{ fontSize:10, color:B.muted }}>Cole o link do YouTube, Vimeo ou qualquer URL de vídeo</p>
+        <label className="sl" style={{ display:"block", marginBottom:4 }}>Conteúdo da aula</label>
+        <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+          <button onClick={()=>setLessonForm(p=>({...p,_mode:"link"}))} style={{flex:1,padding:"8px 0",borderRadius:10,border:`1.5px solid ${(!lessonForm._mode||lessonForm._mode==="link")?B.accent:B.border}`,background:(!lessonForm._mode||lessonForm._mode==="link")?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:(!lessonForm._mode||lessonForm._mode==="link")?B.accent:B.muted}}>🔗 Link externo</button>
+          <button onClick={()=>setLessonForm(p=>({...p,_mode:"upload"}))} style={{flex:1,padding:"8px 0",borderRadius:10,border:`1.5px solid ${lessonForm._mode==="upload"?B.accent:B.border}`,background:lessonForm._mode==="upload"?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:lessonForm._mode==="upload"?B.accent:B.muted}}>📤 Upload de arquivo</button>
+        </div>
+        {(!lessonForm._mode||lessonForm._mode==="link") && <>
+          <input value={lessonForm.videoUrl||""} onChange={e=>setLessonForm(p=>({...p,videoUrl:e.target.value}))} placeholder="YouTube, Vimeo, Google Drive..." className="tinput" style={{ marginBottom:4 }} />
+          <p style={{ fontSize:10, color:B.muted }}>Cole o link do YouTube, Vimeo ou qualquer URL</p>
+        </>}
+        {lessonForm._mode==="upload" && <>
+          {lessonForm.uploadedUrl ? <div style={{padding:"10px 12px",borderRadius:10,background:`${B.green}08`,border:`1px solid ${B.green}20`,marginBottom:6}}>
+            <p style={{fontSize:11,fontWeight:600,color:B.green}}>✓ Arquivo enviado</p>
+            <p style={{fontSize:10,color:B.muted,marginTop:2}}>{lessonForm.uploadedName||"arquivo"}</p>
+          </div> : <label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"20px 16px",borderRadius:12,border:`2px dashed ${B.accent}30`,background:`${B.accent}04`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.accent}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Clique para enviar vídeo, PDF ou documento
+            <input type="file" accept="video/*,.pdf,.doc,.docx,.ppt,.pptx" style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Enviando...");const path=`academy/${Date.now()}_${file.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,file,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);setLessonForm(p=>({...p,videoUrl:u.publicUrl,uploadedUrl:u.publicUrl,uploadedName:file.name}));showToast("Arquivo enviado ✓");}else showToast("Erro no upload");}}/>
+          </label>}
+          <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Suporta: vídeo, PDF, Word, PowerPoint</p>
+        </>}
         {lessonForm.videoUrl && getYTEmbed(lessonForm.videoUrl) && (
           <div style={{ marginTop:10, borderRadius:10, overflow:"hidden", background:B.dark }}>
             <div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}>
@@ -11212,6 +11229,11 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
               <p style={{ fontSize:22, fontWeight:900, color:"#E1306C" }}>{formatNum(c.igFollowers)}</p>
               <p style={{ fontSize:9, color:B.muted }}>seguidores</p>
               {c.igProfile?.media_count > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{c.igProfile.media_count} publicações</p>}
+              {c.igImpressions > 0 && <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${B.border}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}><span style={{ fontSize:9, color:B.muted }}>Impressões</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igImpressions)}</span></div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}><span style={{ fontSize:9, color:B.muted }}>Alcance</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igReach)}</span></div>
+                {c.igProfileViews > 0 && <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:9, color:B.muted }}>Visitas perfil</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igProfileViews)}</span></div>}
+              </div>}
             </Card>
             <Card style={{ padding:12, borderLeft:"3px solid #1877F2" }}>
               <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Facebook</p>
