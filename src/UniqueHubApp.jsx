@@ -2457,19 +2457,18 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [weekEventTypes, setWeekEventTypes] = useState("");
   useEffect(() => {
     supaLoadEvents().then(evts => {
-      if (!evts?.length) return;
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+      if (!evts || !evts.length) { console.log("[WeekEvents] no events from supabase"); return; }
+      console.log("[WeekEvents] loaded", evts.length, "events total");
+      const todayStr = new Date().toISOString().split("T")[0];
+      const weekEndDate = new Date(); weekEndDate.setDate(weekEndDate.getDate() + 7);
+      const weekEndStr = weekEndDate.toISOString().split("T")[0];
       const thisWeek = evts.filter(e => {
-        let d;
-        if (e.date) { d = new Date(e.date); }
-        else if (e.year && e.day) { d = new Date(e.year, (e.month||0), e.day); }
-        else return false;
-        return d >= today && d < weekEnd;
+        const ds = e.date || (e.year ? `${e.year}-${String((e.month||0)+1).padStart(2,"0")}-${String(e.day||1).padStart(2,"0")}` : null);
+        if (!ds) return false;
+        return ds >= todayStr && ds <= weekEndStr;
       });
+      console.log("[WeekEvents]", thisWeek.length, "events this week, today=", todayStr, "weekEnd=", weekEndStr);
       setWeekEvents(thisWeek.length);
-      /* Build type summary */
       const types = {};
       thisWeek.forEach(e => { const t = e.type || "event"; types[t] = (types[t]||0) + 1; });
       const typeLabels = { meeting:"reunião", recording:"gravação", event:"evento", reminder:"lembrete", deadline:"deadline" };
