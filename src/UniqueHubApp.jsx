@@ -2616,6 +2616,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const cfg = dashCfg || cfgDefault;
   /* Desktop panel state — top level for React hooks rules */
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
+  const [dpNews, setDpNews] = useState([]);
+  const [dpNewsExpanded, setDpNewsExpanded] = useState(null);
+  useEffect(() => { supaLoadNews().then(rows => { if(rows?.length) setDpNews(rows); }); }, []);
   const [driveUrl, setDriveUrl] = useState(() => { try { return localStorage.getItem("uh_drive_url")||""; } catch { return ""; } });
   const [driveType, setDriveType] = useState(() => { try { return localStorage.getItem("uh_drive_type")||""; } catch { return ""; } });
   const [driveEditing, setDriveEditing] = useState(false);
@@ -2937,7 +2940,48 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
 
     /* ── Render a dashboard panel by key — real pages inside phone frames ── */
     const renderDPanel = (pk) => {
-      if(pk==="news") return phoneFrame("Comunicados","news",()=>goSub("news"),<NewsPage onBack={null} onArticlesLoad={noop} user={user}/>);
+      if(pk==="news") {
+        const catColor2 = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
+        const catLabel2 = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Marketing Digital",ia:"Inteligência Artificial"};
+        const catPhoto2 = (cat) => `https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=250&fit=crop`;
+        const expanded = dpNewsExpanded;
+        const expandedArt = expanded ? dpNews.find(a=>a.id===expanded) : null;
+        return (
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",overflow:"hidden",height:"100%",display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px 12px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("news",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Comunicados</span></div>
+              <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:"0 16px 16px"}}>
+              {expandedArt ? <div>
+                <button onClick={()=>setDpNewsExpanded(null)} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#9CA3AF",marginBottom:10,padding:0}}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+                </button>
+                {expandedArt.photo && <img src={expandedArt.photo} alt="" style={{width:"100%",height:160,objectFit:"cover",borderRadius:14,marginBottom:12}} onError={e=>{e.target.style.display="none"}}/>}
+                <span style={{fontSize:9,fontWeight:800,color:catColor2[expandedArt.cat]||"#6366F1",textTransform:"uppercase",letterSpacing:0.8}}>{catLabel2[expandedArt.cat]||"Geral"}</span>
+                <h3 style={{fontSize:16,fontWeight:800,color:"#1A1D23",marginTop:4,lineHeight:1.3}}>{expandedArt.title}</h3>
+                {expandedArt.summary && <p style={{fontSize:12,color:"#6B7280",marginTop:6,lineHeight:1.5}}>{expandedArt.summary}</p>}
+                <div style={{fontSize:12,color:"#374151",marginTop:10,lineHeight:1.7,whiteSpace:"pre-line"}}>{expandedArt.body}</div>
+                {expandedArt.source && <p style={{fontSize:10,color:"#9CA3AF",marginTop:12}}>Fonte: {expandedArt.source}</p>}
+              </div> : <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {dpNews.slice(0,8).map((a,i)=>(
+                  <div key={a.id||i} onClick={()=>setDpNewsExpanded(a.id)} style={{borderRadius:14,overflow:"hidden",cursor:"pointer",border:"1px solid rgba(0,0,0,0.06)",background:"#FAFAFA",transition:"box-shadow .15s"}}>
+                    <div style={{height:80,overflow:"hidden",position:"relative"}}>
+                      <img src={a.photo||catPhoto2(a.cat)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>{e.target.onerror=null;e.target.src=catPhoto2();}}/>
+                      <span style={{position:"absolute",top:6,left:6,background:catColor2[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase"}}>{catLabel2[a.cat]||"Geral"}</span>
+                    </div>
+                    <div style={{padding:"8px 10px"}}>
+                      <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
+                      <p style={{fontSize:9,color:"#9CA3AF",marginTop:4}}>{a.readTime||"3 min"}</p>
+                    </div>
+                  </div>
+                ))}
+                {dpNews.length===0 && <div style={{gridColumn:"1/-1",textAlign:"center",padding:30}}><p style={{fontSize:12,color:"#9CA3AF"}}>Nenhuma notícia publicada</p></div>}
+              </div>}
+            </div>
+          </div>
+        );
+      }
       if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={null} user={user} agencyIdentity={agencyIdentity}/>);
       if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca}/>);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop}/>);
