@@ -2241,9 +2241,9 @@ function LoginPage({ onAuth, onClientAuth }) {
       `}</style>
 
       {/* ── DARK HEADER ── */}
-      <div className="llogo" style={{ padding:isDesktopLogin?"32px 28px 20px":"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
-        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
+      <div className="llogo" style={{ padding:isDesktopLogin?"60px 28px 40px":"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:isDesktopLogin?48:36, objectFit:"contain", marginBottom:isDesktopLogin?14:10 }} />
+        <p style={{ fontSize:isDesktopLogin?13:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
 
         {/* Tab top-right: Não tem conta? — hidden now, moved below */}
         <div style={{ display:"none" }}>
