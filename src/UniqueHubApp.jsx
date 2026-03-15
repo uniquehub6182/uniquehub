@@ -2198,7 +2198,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   return (
     <div style={{ position:"fixed", inset:0, display:"flex", background:"#000" }}>
       {/* Left — images (desktop only) */}
-      {isDesktopLogin && <div style={{ flex:"0 0 45%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#0A0A0A" }}>
+      {isDesktopLogin && <div style={{ flex:"0 0 50%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#0A0A0A" }}>
         {ONBOARD_SLIDES.map((s,i) => (
           <div key={i} style={{ flex:"1 1 0", minHeight:0, overflow:"hidden", position:"relative" }}>
             <img src={s.imgDesktop||s.img} alt="" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
@@ -2241,7 +2241,7 @@ function LoginPage({ onAuth, onClientAuth }) {
       `}</style>
 
       {/* ── DARK HEADER ── */}
-      <div className="llogo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
+      <div className="llogo" style={{ padding:isDesktopLogin?"32px 28px 20px":"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
         <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
 
@@ -2257,7 +2257,8 @@ function LoginPage({ onAuth, onClientAuth }) {
       </div>
 
       {/* ── WHITE CARD ── */}
-      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:"32px 32px 0 0", overflowY:"auto", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"24px 24px 0 0":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"36px 48px 32px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+        <div style={isDesktopLogin?{maxWidth:420,margin:"0 auto"}:{}}>
 
         {/* Portal toggle — Colaborador | Cliente */}
         <div style={{ display:"flex", background:"#F0F1F3", borderRadius:14, padding:3, marginBottom:20 }}>
@@ -2378,7 +2379,8 @@ function LoginPage({ onAuth, onClientAuth }) {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginTop:16 }}>
           <span style={{ fontSize:11, color:"#D1D5DB", fontWeight:500 }}>UniqueHub v1.0</span>
         </div>
-      </div>
+      </div>{/* close maxWidth wrapper */}
+      </div>{/* close lcard */}
     </div>
     </div>
   );
