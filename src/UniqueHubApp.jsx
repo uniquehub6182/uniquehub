@@ -2195,55 +2195,18 @@ function LoginPage({ onAuth, onClientAuth }) {
   const passFloating  = passFocused  || pw.length > 0;
   const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
 
-  if (isDesktopLogin) return (
+  return (
     <div style={{ position:"fixed", inset:0, display:"flex", background:"#000" }}>
-      {/* Left — 3 images stacked, edge-to-edge */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", background:"#0A0A0A" }}>
+      {/* Left — images (desktop only) */}
+      {isDesktopLogin && <div style={{ flex:"0 0 45%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#0A0A0A" }}>
         {ONBOARD_SLIDES.map((s,i) => (
           <div key={i} style={{ flex:"1 1 0", minHeight:0, overflow:"hidden", position:"relative" }}>
             <img src={s.imgDesktop||s.img} alt="" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
           </div>
         ))}
-      </div>
-      {/* Right — Login form */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"#fff", borderRadius:"40px 0 0 40px", padding:"40px 60px", overflowY:"auto" }}>
-        <div style={{ width:"100%", maxWidth:400 }}>
-          {logoJSX(28)}
-          <div style={{ marginTop:24, marginBottom:8 }}>
-            <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-              <button onClick={()=>{setPortal("team");setError("");}} style={{flex:1,padding:"12px 0",borderRadius:14,border:portal==="team"?"2px solid #BBF246":"2px solid #E8EAF0",background:portal==="team"?"#BBF24612":"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:portal==="team"?"#1A1D23":"#888"}}>Colaborador</button>
-              <button onClick={()=>{setPortal("client");setError("");}} style={{flex:1,padding:"12px 0",borderRadius:14,border:portal==="client"?"2px solid #BBF246":"2px solid #E8EAF0",background:portal==="client"?"#BBF24612":"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:portal==="client"?"#1A1D23":"#888"}}>Cliente</button>
-            </div>
-            <h2 style={{ fontSize:26, fontWeight:900, color:"#1A1D23", marginBottom:6 }}>{portal==="client"?"Portal do Cliente":"Acesse sua conta"}</h2>
-            <p style={{ fontSize:14, color:"#8B8F92", marginBottom:24 }}>{portal==="client"?"Acompanhe seu marketing digital":"Entre com seu e-mail e senha"}</p>
-          </div>
-          {error && <div style={{ background:"#FEF2F2", border:"1.5px solid #FCA5A5", borderRadius:14, padding:"12px 16px", marginBottom:16, fontSize:13, color:"#DC2626", fontWeight:500 }}>{error}</div>}
-          <div style={{ marginBottom:16 }}>
-            <label style={{ fontSize:12, fontWeight:600, color:"#555", display:"block", marginBottom:6 }}>E-mail</label>
-            <input value={email} onChange={e=>{setEmail(e.target.value);setError("");}} placeholder="seu@email.com" style={{ width:"100%", padding:"14px 18px", borderRadius:14, border:"1.5px solid #E8EAF0", fontSize:16, fontFamily:"inherit", background:"#F8F9FC", color:"#1A1D23", outline:"none", boxSizing:"border-box" }} />
-          </div>
-          <div style={{ marginBottom:20 }}>
-            <label style={{ fontSize:12, fontWeight:600, color:"#555", display:"block", marginBottom:6 }}>Senha</label>
-            <div style={{ position:"relative" }}>
-              <input type={showPw?"text":"password"} value={pw} onChange={e=>{setPw(e.target.value);setError("");}} placeholder="••••••••" style={{ width:"100%", padding:"14px 18px", paddingRight:50, borderRadius:14, border:"1.5px solid #E8EAF0", fontSize:16, fontFamily:"inherit", background:"#F8F9FC", color:"#1A1D23", outline:"none", boxSizing:"border-box" }} />
-              <button onClick={()=>setShowPw(!showPw)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#8B8F92", display:"flex", padding:4 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">{showPw?<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><line x1="1" y1="1" x2="23" y2="23"/></>:<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}</svg></button>
-            </div>
-          </div>
-          {portal==="client" && <p style={{ fontSize:12, color:"#BBF246", background:"#BBF24612", padding:"10px 14px", borderRadius:12, marginBottom:16, textAlign:"center" }}>💡 Use o email e senha criados no Portal do Cliente</p>}
-          <button onClick={portal==="client"?handleClientLogin:handleLogin} disabled={loginLoading} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:"#BBF246", border:"none", cursor:loginLoading?"wait":"pointer", fontFamily:"inherit", fontSize:16, fontWeight:800, color:"#1A1D23", opacity:loginLoading?0.5:1 }}>
-            {loginLoading?"Entrando...":"Entrar"}
-          </button>
-          {portal==="team" && <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:20 }}>
-            <span style={{ fontSize:13, color:"#8B8F92" }}>Sem conta?</span>
-            <button onClick={()=>{setMode("register");setError("");}} style={{ background:"#BBF24615", border:"1.5px solid #BBF24640", borderRadius:20, padding:"6px 14px", color:"#6B8A00", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Solicitar</button>
-          </div>}
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
+      </div>}
+      {/* Right — original login */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
@@ -2416,6 +2379,7 @@ function LoginPage({ onAuth, onClientAuth }) {
           <span style={{ fontSize:11, color:"#D1D5DB", fontWeight:500 }}>UniqueHub v1.0</span>
         </div>
       </div>
+    </div>
     </div>
   );
 }
