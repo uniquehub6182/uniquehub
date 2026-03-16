@@ -6349,8 +6349,26 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
               </label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {/* Image gallery (desktop: larger previews) */}
+                {isContentDesktop && (sel.steps?.design?.files||[]).some(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||"")) && (
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))", gap:8, marginBottom:8 }}>
+                    {(sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||"")).map((f,i) => (
+                      <div key={`img${i}`} style={{ position:"relative", borderRadius:10, overflow:"hidden", border:`1px solid ${B.pink}20`, aspectRatio:"1" }}>
+                        <img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                        <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"4px 8px", background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                          <span style={{ fontSize:9, color:"#fff", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{f.name}</span>
+                          <div style={{ display:"flex", gap:4 }}>
+                            {f.url && <a href={f.url} target="_blank" rel="noopener" style={{ color:"#fff", display:"flex" }} onClick={e=>e.stopPropagation()}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>}
+                            <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.design?.files||[])]; const idx = nf.findIndex(x=>x.url===f.url); if(idx>=0)nf.splice(idx,1); updateStep("design",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:"#FF6B6B", display:"flex", padding:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {(sel.steps?.design?.files||[]).map((f,i) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  if (isContentDesktop && isImg && f.url) return null; /* already shown in gallery above */
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || ''));
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
@@ -6395,7 +6413,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               </div>
               {/* Thumbnail grid for images */}
               {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
+                <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(140px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
                       <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
