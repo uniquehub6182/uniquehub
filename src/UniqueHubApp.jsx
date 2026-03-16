@@ -17148,8 +17148,9 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud, cloudDash, cloudNav }) {
   const mainContentRef = useRef(null);
+  const VALID_TABS = ["home","content","chat","clients"];
   const [tab, setTab] = useState(() => {
-    try { return sessionStorage.getItem("uh_tab") || "home"; } catch { return "home"; }
+    try { const t = sessionStorage.getItem("uh_tab") || "home"; return VALID_TABS.includes(t) ? t : "home"; } catch { return "home"; }
   });
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
