@@ -15,7 +15,7 @@ async function waitReady(id: string, token: string) {
     const d = await r.json();
     if (d.status_code === "FINISHED") return;
     if (d.status_code === "ERROR") throw new Error("Instagram processing error");
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, i < 3 ? 300 : 500));
   }
 }
 
