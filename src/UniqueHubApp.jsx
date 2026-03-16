@@ -8404,23 +8404,35 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       const nm = payload.new;
       setConvs(prev => {
         const idx = prev.findIndex(c => c.id === nm.conversation_id);
-        if (idx === -1) return prev;
+        if (idx === -1) {
+          /* New conversation we don't know about yet — reload */
+          supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
+          return prev;
+        }
         const updated = [...prev];
         updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id ? (updated[idx].unread||0) + 1 : updated[idx].unread };
         return updated;
       });
+    }).on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_members", filter: `user_id=eq.${user.id}` }, () => {
+      /* Someone added me to a new conversation/group — reload list */
+      supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
     }).on("broadcast", { event: "chat_update" }, ({ payload: p }) => {
       if (!p || p.sender_id === user.id) return;
       setConvs(prev => {
         const idx = prev.findIndex(c => c.id === p.conversation_id);
-        if (idx === -1) return prev;
+        if (idx === -1) {
+          supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
+          return prev;
+        }
         const updated = [...prev];
         updated[idx] = { ...updated[idx], lastMsg: p, unread: (updated[idx].unread||0) + 1 };
         return updated;
       });
     }).subscribe();
     chatListChanRef.current = channel;
-    return () => { supabase.removeChannel(channel); chatListChanRef.current = null; };
+    /* Periodic poll every 30s to catch anything missed */
+    const pollTimer = setInterval(() => { supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(prev => { if(fresh.length !== prev.length) return fresh; return prev; }); }); }, 30000);
+    return () => { supabase.removeChannel(channel); chatListChanRef.current = null; clearInterval(pollTimer); };
   }, [user?.id]);
 
   /* Polling fallback: refresh conversation list every 6s */
