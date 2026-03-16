@@ -2198,7 +2198,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   return (
     <div style={{ position:"fixed", inset:0, display:"flex", alignItems: isDesktopLogin ? "flex-end" : "stretch", justifyContent: isDesktopLogin ? "center" : "stretch", background:"#000" }}>
       {/* Desktop: centered login container */}
-      <div style={isDesktopLogin ? { width:520, maxWidth:"90vw", display:"flex", flexDirection:"column", flex:1, maxHeight:"none" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={isDesktopLogin ? { width:420, maxWidth:"90vw", display:"flex", flexDirection:"column", flex:1, maxHeight:"none" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
