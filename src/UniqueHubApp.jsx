@@ -5932,7 +5932,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Que tipo de demanda você quer criar?</p>
           {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels, carrossel",ic:IC.img,c:B.blue},
             {k:"campaign",l:"Campanha Publicitária",d:"Evento, ação presencial ou online",ic:IC.target,c:B.purple},
-            {k:"video",l:"Produção de Vídeo",d:"Institucional, depoimento, produto",ic:IC.vid,c:B.orange},
           ].map((t,i) => (
             <Card key={t.k} delay={i*0.04} onClick={() => setCreateType(t.k)} style={{ marginTop: i?8:0, cursor:"pointer" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -6936,7 +6935,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         </button>
         {/* Type tabs */}
         <div style={{ flex:1, display:"flex", gap:6 }}>
-          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"},{k:"video",l:"Vídeo"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
@@ -6980,7 +6979,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {/* Type tabs + Date filter row (mobile only) */}
       {!isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
         <div style={{ flex:1, display:"flex", gap:6, overflowX:"auto" }}>
-          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"},{k:"video",l:"Vídeo"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
@@ -7571,7 +7570,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               <div>
                 <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:16 }}>Que tipo de demanda?</p>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                  {[{k:"social",l:"Post",d:"Feed, stories, reels",c:"#3B82F6"},{k:"campaign",l:"Campanha",d:"Evento, ação",c:"#8B5CF6"},{k:"video",l:"Vídeo",d:"Institucional, produto",c:"#F59E0B"}].map(t => (
+                  {[{k:"social",l:"Post",d:"Feed, stories, reels",c:"#3B82F6"},{k:"campaign",l:"Campanha",d:"Evento, ação",c:"#8B5CF6"}].map(t => (
                     <div key={t.k} onClick={() => setCreateType(t.k)} style={{ padding:"16px", borderRadius:14, border:"1.5px solid rgba(0,0,0,0.06)", cursor:"pointer", transition:"all .15s", background:`${t.c}06` }} onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"}>
                       <div style={{ width:36, height:36, borderRadius:10, background:`${t.c}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10, color:t.c }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
                       <p style={{ fontSize:13, fontWeight:700, color:"#1A1D23" }}>{t.l}</p>
