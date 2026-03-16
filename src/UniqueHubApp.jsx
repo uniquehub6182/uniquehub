@@ -3492,6 +3492,7 @@ const SOCIAL_PLATFORMS = [
 ];
 
 function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user, canAccess: ca }) {
+  const isClientsDesktop = useIsDesktop();
   const canAccessFn = ca || (() => true);
   const [localClients, localSetClients] = useState([]);
   const clients = propClients || localClients;
@@ -3916,8 +3917,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     </div>
   );
 
-  /* ── CLIENT DETAIL / PROFILE ── */
-  if (sel) {
+  /* ── CLIENT DETAIL / PROFILE (mobile only) ── */
+  if (sel && !isClientsDesktop) {
     const connectedCount = Object.values(sel.socials||{}).filter(s=>s.connected).length;
     const files = sel.files || [];
     const invoices = sel.invoices || [
@@ -4641,6 +4642,192 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         ))}
       </>}
     </div>
+    );
+  }
+
+  /* ── DESKTOP TWO-PANEL CLIENTS ── */
+  if (isClientsDesktop && !editingSocial && !creating) {
+    const dFiles = sel ? (sel.files || []) : [];
+    const dConnected = sel ? Object.values(sel.socials||{}).filter(s=>s.connected).length : 0;
+    const dInvoices = sel ? (sel.invoices || [{ id:1, month:"Mar/2026", value:sel.monthly, status:"pendente" }]) : [];
+    const socialPlatforms = [
+      { key:"facebook", name:"Facebook", c:"#1877F2" },
+      { key:"instagram", name:"Instagram", c:"#E1306C" },
+      { key:"tiktok", name:"TikTok", c:"#000" },
+      { key:"linkedin", name:"LinkedIn", c:"#0A66C2" },
+      { key:"youtube", name:"YouTube", c:"#FF0000" },
+      { key:"google", name:"Google Business", c:"#4285F4" },
+    ];
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={false} />
+        <div style={{ display:"flex", height:"calc(100vh - 230px)", gap:16, marginTop:12 }}>
+          {/* ── LEFT: Client List ── */}
+          <div style={{ width:380, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:14, flexShrink:0 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ color:B.accent, display:"flex" }}>{IC.users}</span>
+                  <span style={{ fontSize:18, fontWeight:900, color:B.text }}>{clients.length}</span>
+                  <span style={{ fontSize:11, color:B.muted }}>clientes</span>
+                </div>
+                {canAccessFn("clients.edit") && <button onClick={() => setCreating(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D" }}>{IC.plus} Novo</button>}
+              </div>
+              <div style={{ position:"relative", marginBottom:8 }}>
+                <svg style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ width:"100%", background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:10, padding:"8px 12px 8px 32px", fontFamily:"inherit", fontSize:13, color:B.text, outline:"none", boxSizing:"border-box" }}/>
+              </div>
+              <div style={{ display:"flex", gap:4 }}>
+                {[{k:"all",l:"Todos"},{k:"ativo",l:"Ativos"},{k:"trial",l:"Trial"},{k:"pausado",l:"Pausados"}].map(ft=>{
+                  const count = clients.filter(c=>ft.k==="all"||c.status===ft.k).length;
+                  if(count===0&&ft.k!=="all"&&ft.k!=="ativo")return null;
+                  return <button key={ft.k} onClick={()=>setFilter(ft.k)} style={{ padding:"4px 10px", borderRadius:100, border:filter===ft.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, background:filter===ft.k?B.accent:"transparent", color:filter===ft.k?"#0D0D0D":B.muted }}>{ft.l} ({count})</button>;
+                })}
+              </div>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"0 10px 10px" }}>
+              {filtered.map((c,i) => {
+                const socialCount = Object.values(c.socials||{}).filter(s=>s.connected).length;
+                const isActive = sel?.id === c.id;
+                return (
+                  <div key={c.id} onClick={()=>{setSel(c);setProfileTab("info");}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:14, cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", border:isActive?`1.5px solid ${B.accent}30`:"1.5px solid transparent", marginBottom:4, transition:"all .1s" }}>
+                    <Av src={c.logo} name={c.name} sz={38} fs={14} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:isActive?700:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
+                      <div style={{ display:"flex", gap:4, marginTop:2, alignItems:"center" }}>
+                        <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${B.accent}15`, color:B.text, fontWeight:600 }}>{c.plan}</span>
+                        <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:c.status==="ativo"?`${B.green}15`:`${B.orange}15`, color:c.status==="ativo"?B.green:B.orange, fontWeight:600 }}>{c.status}</span>
+                        {socialCount>0&&<span style={{ fontSize:9, color:B.muted }}>{socialCount} rede{socialCount>1?"s":""}</span>}
+                      </div>
+                    </div>
+                    {isAdmin && canFinancial && <span style={{ fontSize:12, fontWeight:700, color:B.text, flexShrink:0 }}>{c.monthly}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* ── RIGHT: Detail or Placeholder ── */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexDirection:"column" }}>
+            {sel ? <>
+              {/* Profile Header */}
+              <div style={{ padding:"20px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                  <div style={{ position:"relative", cursor:"pointer" }} onClick={()=>{if(logoInputRef.current)logoInputRef.current.click();}}>
+                    <Av src={sel.logo} name={sel.name} sz={56} fs={20} />
+                    <input ref={logoInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleLogoUpload} />
+                    <div style={{ position:"absolute", bottom:-2, right:-2, width:20, height:20, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <h2 style={{ fontSize:20, fontWeight:800, color:B.text }}>{sel.name}</h2>
+                    <div style={{ display:"flex", gap:6, marginTop:4, alignItems:"center" }}>
+                      <span style={{ fontSize:10, padding:"2px 8px", borderRadius:6, background:`${B.accent}15`, fontWeight:700 }}>{sel.plan}</span>
+                      <span style={{ fontSize:10, padding:"2px 8px", borderRadius:6, background:sel.status==="ativo"?`${B.green}15`:`${B.orange}15`, color:sel.status==="ativo"?B.green:B.orange, fontWeight:700 }}>{sel.status}</span>
+                      {sel.access_code && <span style={{ fontSize:10, padding:"2px 8px", borderRadius:6, background:"rgba(0,0,0,0.05)", fontWeight:600, color:B.muted }}>Código: {sel.access_code}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button onClick={()=>setEditClient(true)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Editar</button>
+                    {canAccessFn("clients.delete") && <button onClick={()=>setConfirmAction({type:"delete",title:"Excluir cliente?",msg:`Deseja excluir ${sel.name}? Essa ação não pode ser desfeita.`,action:async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").delete().eq("id",cid);}catch(e){}}setClients(p=>p.filter(c=>c.id!==sel.id&&c.supaId!==sel.supaId));setSel(null);showToast("Cliente excluído");}})} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#EF4444" }}>Excluir</button>}
+                  </div>
+                </div>
+              </div>
+              {/* Tabs */}
+              <div style={{ display:"flex", gap:4, padding:"12px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).map(t=>(
+                  <button key={t.k} onClick={()=>setProfileTab(t.k)} style={{ padding:"6px 14px", borderRadius:100, border:profileTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, background:profileTab===t.k?B.accent:"transparent", color:profileTab===t.k?"#0D0D0D":B.muted }}>{t.l}</button>
+                ))}
+              </div>
+              {/* Tab Content */}
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 24px" }}>
+                {profileTab==="info" && <div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                    {[{l:"Contato",v:sel.contact||"—"},{l:"E-mail",v:sel.email||"—"},{l:"Telefone",v:sel.phone||"—"},{l:"CNPJ/CPF",v:sel.cnpj||"—"},{l:"Segmento",v:sel.segment||"—"},{l:"Desde",v:sel.since||"—"},{l:"Site",v:sel.website||"—"},{l:"Endereço",v:sel.address||"—"}].map((f,fi)=>(
+                      <div key={fi} style={{ padding:12, borderRadius:12, background:B.bg, border:`1px solid ${B.border}` }}>
+                        <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{f.l}</p>
+                        <p style={{ fontSize:13, fontWeight:600, color:B.text, wordBreak:"break-all" }}>{f.v}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>}
+                {profileTab==="socials" && <div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                    {socialPlatforms.map(sp=>{
+                      const s = (sel.socials||{})[sp.key]||{};
+                      return <div key={sp.key} onClick={()=>{ setEditingSocial(sp.key); setSocialForm({username:s.username||"",followers:s.followers||"",link:s.link||""}); }} style={{ padding:14, borderRadius:14, border:`1.5px solid ${s.connected?sp.c+"30":B.border}`, background:s.connected?sp.c+"08":"transparent", cursor:"pointer", textAlign:"center", transition:"all .15s" }}>
+                        <div style={{ width:36, height:36, borderRadius:10, background:sp.c+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
+                          <NetworkIcon name={sp.key} sz={18} active={s.connected} />
+                        </div>
+                        <p style={{ fontSize:11, fontWeight:700, color:B.text }}>{sp.name}</p>
+                        <p style={{ fontSize:10, color:s.connected?sp.c:B.muted, fontWeight:600, marginTop:2 }}>{s.connected?"Conectado":"Desconectado"}</p>
+                        {s.username && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>@{s.username}</p>}
+                      </div>;
+                    })}
+                  </div>
+                </div>}
+                {profileTab==="files" && <div>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <p style={{ fontSize:13, fontWeight:700 }}>{dFiles.length} arquivo{dFiles.length!==1?"s":""}</p>
+                    <button onClick={()=>setAddingFile(true)} style={{ padding:"6px 12px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D" }}>+ Adicionar</button>
+                  </div>
+                  {dFiles.length===0 && <div style={{ textAlign:"center", padding:"40px 0", color:B.muted }}><p style={{ fontSize:13 }}>Nenhum arquivo</p></div>}
+                  {dFiles.map((f,fi)=>(
+                    <div key={fi} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:`1px solid ${B.border}`, marginBottom:6 }}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, fontWeight:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{f.category||"Geral"}</p>
+                      </div>
+                      {f.url && <a href={f.url} target="_blank" rel="noopener" style={{ fontSize:10, fontWeight:600, color:B.accent }}>Abrir</a>}
+                    </div>
+                  ))}
+                </div>}
+                {profileTab==="financial" && canFinancial && <div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
+                    <div style={{ padding:14, borderRadius:14, background:`${B.accent}10`, border:`1px solid ${B.accent}20` }}>
+                      <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Plano</p>
+                      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:4 }}>{sel.plan}</p>
+                    </div>
+                    <div style={{ padding:14, borderRadius:14, background:`${B.green}10`, border:`1px solid ${B.green}20` }}>
+                      <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Mensalidade</p>
+                      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:4 }}>{sel.monthly}</p>
+                    </div>
+                    <div style={{ padding:14, borderRadius:14, background:`${B.orange}10`, border:`1px solid ${B.orange}20` }}>
+                      <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Pendentes</p>
+                      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:4 }}>{dInvoices.filter(i=>i.status==="pendente").length}</p>
+                    </div>
+                  </div>
+                  <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Faturas</p>
+                  {dInvoices.map((inv,ii)=>(
+                    <div key={ii} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:`1px solid ${B.border}`, marginBottom:6 }}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:inv.status==="pago"?`${B.green}10`:`${B.orange}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <span style={{ fontSize:14 }}>{inv.status==="pago"?"✅":"⏳"}</span>
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{inv.month}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{inv.value}</p>
+                      </div>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"3px 8px", borderRadius:6, background:inv.status==="pago"?`${B.green}15`:`${B.orange}15`, color:inv.status==="pago"?B.green:B.orange }}>{inv.status}</span>
+                    </div>
+                  ))}
+                </div>}
+              </div>
+            </> : (
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                    <span style={{ color:B.accent, display:"flex" }}>{IC.clients}</span>
+                  </div>
+                  <p style={{ fontSize:16, fontWeight:700, color:B.text }}>Selecione um cliente</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha um cliente na lista ao lado</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     );
   }
 
