@@ -6077,6 +6077,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
     detailInner = (<>
         {ToastEl}
+        {/* Desktop compact header */}
+        {isContentDesktop ? (
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+            <button onClick={() => { setSel(null); setEditMode(false); }} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:15, fontWeight:800, color:"#1A1D23", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sel.title}</p>
+              <p style={{ fontSize:11, color:"#9CA3AF" }}>{sel.client} · {typeLabel(sel.type)} · {curStageCfg.l} · {sel.createdAt}</p>
+            </div>
+            <button onClick={async () => { if (!confirm(`Excluir "${sel.title}"?`)) return; const delId = sel.supaId || sel.id; if (delId) try { await supaDeleteDemand(delId); } catch {} setDemands(p => p.filter(d => d.id !== sel.id)); setSel(null); showToast("Excluída ✓"); }} style={{ width:32, height:32, borderRadius:10, border:"1px solid #FEE2E2", background:"#FEF2F2", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+          </div>
+        ) : (
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
             if (!confirm(`Excluir "${sel.title}"?`)) return;
@@ -6088,9 +6099,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
         </div>} />
+        )}
 
-        {/* ═══ EDIT MODE ═══ */}
-        {editMode ? (
+        {/* ═══ EDIT MODE (mobile only) ═══ */}
+        {!isContentDesktop && editMode ? (
           <Card style={{ marginBottom:14 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <p style={{ fontSize:14, fontWeight:700 }}>Editando demanda</p>
@@ -6159,7 +6171,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               <input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" />
             </div>}
           </Card>
-        ) : (
+        ) : !isContentDesktop ? (
         <div style={{ textAlign:"center", marginBottom:14 }}>
           <Av src={(propClients||[]).find(c=>c.name===sel.client)?.logo} name={sel.client} sz={48} fs={18} />
           <h2 style={{ fontSize:17, fontWeight:800, marginTop:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>{sel.title}</h2>
@@ -6179,9 +6191,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             Editar demanda
           </button>
         </div>
-        )}
-        {/* ═══ POST PREVIEW ═══ */}
-        {sel.type === "social" && (() => {
+        ) : null}
+        {/* ═══ POST PREVIEW (mobile only) ═══ */}
+        {!isContentDesktop && sel.type === "social" && (() => {
           const selNetworks = sel.network ? sel.network.split(", ") : [];
           const isSelCarousel = sel.format === "Carrossel";
           const selSlides = isSelCarousel ? parseInt(sel.steps?.briefing?.text?.match(/(\d+)\s*slide/i)?.[1]) || 5 : 0;
@@ -6216,10 +6228,23 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         })()}
 
         {/* Stage Bar */}
-        <Card style={{ marginBottom:10 }}><StageBar type={sel.type} current={sel.stage} /></Card>
+        {isContentDesktop ? (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", gap:3, marginBottom:8 }}>
+              {stages.map((s, i) => (<div key={s} style={{ flex:1, height:5, borderRadius:3, background: i <= stageIdx ? (STAGE_CFG[s]?.c || "#BBF246") : "rgba(0,0,0,0.06)" }} />))}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11 }}>
+              <span style={{ fontWeight:700, color: curStageCfg.c }}>{curStageCfg.l}</span>
+              <span style={{ color:"#9CA3AF" }}>({stageIdx+1}/{stages.length})</span>
+              {sel.network && <span style={{ marginLeft:"auto", color:"#9CA3AF" }}>{sel.network} · {sel.format||""}</span>}
+            </div>
+          </div>
+        ) : (
+          <Card style={{ marginBottom:10 }}><StageBar type={sel.type} current={sel.stage} /></Card>
+        )}
 
         {/* Assignees */}
-        <Card style={{ marginBottom:10 }}>
+        {!isContentDesktop && <Card style={{ marginBottom:10 }}>
           <p className="sl" style={{ marginBottom:8 }}>Equipe responsável</p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             {(sel.assignees||[]).map(a=>{
@@ -6230,10 +6255,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               </div>);
             })}
           </div>
-        </Card>
+        </Card>}
 
-        {/* ═══ CAMPAIGN DETAIL ═══ */}
-        {isCampaign && sel.campaign && <>
+        {/* ═══ CAMPAIGN DETAIL (mobile only) ═══ */}
+        {!isContentDesktop && isCampaign && sel.campaign && <>
           <Card style={{ marginBottom:8 }}>
             <p className="sl" style={{ marginBottom:6 }}>Sobre a campanha</p>
             <p style={{ fontSize:13, lineHeight:1.6 }}>{sel.campaign.desc}</p>
