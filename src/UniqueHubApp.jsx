@@ -11902,6 +11902,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
 function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca }) {
+  const isCalDesktop = useIsDesktop();
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const userName = propUser?.name || propUser?.email || "Equipe";
@@ -12300,6 +12301,87 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         <button onClick={saveEvent} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, marginTop:4 }}>
           {et.icon} Salvar {et.l}
         </button>
+      </div>
+    );
+  }
+
+  /* ── DESKTOP TWO-PANEL CALENDAR ── */
+  if (isCalDesktop && !adding && !viewEvent) {
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.calendar} label="Agenda" title="Calendário" onBack={onBack} collapsed={false} stats={[]} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* ── LEFT: Calendar Grid ── */}
+          <div style={{ width:380, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, padding:"18px 16px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                <button onClick={prevMonth} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
+                <p style={{ fontSize:16, fontWeight:800 }}>{MONTHS[curMonth]} {curYear}</p>
+                <button onClick={nextMonth} className="ib" style={{ width:32, height:32 }}>{IC.chev()}</button>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, textAlign:"center", marginBottom:6 }}>
+                {DAYS_W.map(d=><span key={d} style={{ fontSize:10, fontWeight:600, color:B.muted }}>{d}</span>)}
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3 }}>
+                {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`}/>)}
+                {Array.from({length:daysInMonth}).map((_,i) => {
+                  const d=i+1; const selected=d===selDay; const tdy=isToday(d); const has=hasEvents(d);
+                  return (
+                    <button key={d} onClick={()=>setSelDay(d)} style={{ width:"100%", aspectRatio:"1", borderRadius:10, border:tdy&&!selected?`2px solid ${B.accent}`:"2px solid transparent", background:selected?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:selected||tdy?800:400, color:selected?B.dark:tdy?B.accent:B.dark, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, position:"relative" }}>
+                      {d}
+                      {has && <div style={{ position:"absolute", bottom:2, width:5, height:5, borderRadius:3, background:selected?B.dark:B.accent }}/>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Month summary */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px" }}>
+              <div style={{ display:"flex", gap:16 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{allEvents.filter(e=>e.month===curMonth&&e.year===curYear).length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Eventos no mês</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.orange }}>{allEvents.filter(e=>e.month===curMonth&&e.year===curYear&&e.type==="deadline").length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Deadlines</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.blue }}>{allEvents.filter(e=>e.month===curMonth&&e.year===curYear&&e.type==="meeting").length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Reuniões</p></div>
+              </div>
+            </div>
+          </div>
+          {/* ── RIGHT: Day Events ── */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div>
+                <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{selDay} de {MONTHS[curMonth]}</p>
+                <p style={{ fontSize:11, color:B.muted }}>{dayEvents.length} evento{dayEvents.length!==1?"s":""}</p>
+              </div>
+              <button onClick={()=>setAdding(true)} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo</button>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
+              {dayEvents.length===0 && <div style={{ textAlign:"center", padding:"40px 0" }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 10px", display:"block", opacity:0.4 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Nenhum evento</p>
+                <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em "+ Novo" para adicionar</p>
+              </div>}
+              {dayEvents.sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
+                const et = etCfg(ev.type);
+                return (
+                  <div key={ev.id} onClick={()=>setViewEvent(ev)} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", borderLeft:`4px solid ${et.c}`, marginBottom:6, background:"transparent", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:et.c, transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${et.c}05`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c, flexShrink:0 }}>{et.icon}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:14, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3 }}>
+                        <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>{ev.time}</span>
+                        <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:`${et.c}12`, color:et.c, fontWeight:600 }}>{et.l}</span>
+                        {ev.client && <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>{ev.client}</span>}
+                      </div>
+                    </div>
+                    {ev.participants?.length>0 && <div style={{ display:"flex" }}>
+                      {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-6:0, zIndex:3-j }}><Av name={name} sz={26} fs={9} /></div>)}
+                    </div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
