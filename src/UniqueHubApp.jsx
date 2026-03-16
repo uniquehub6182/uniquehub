@@ -8225,10 +8225,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     if (!groups.length) return;
     const keys = groups.map(g => `group_photo_${g.id}`);
     supaGetSettingsBulk(keys).then(results => {
-      if (!results) return;
+      if (!results || typeof results !== "object") return;
       const photos = {};
-      results.forEach(r => { if (r.value) { const gid = r.key.replace("group_photo_", ""); photos[gid] = r.value; } });
-      setGroupPhotos(prev => ({ ...prev, ...photos }));
+      Object.entries(results).forEach(([k, v]) => { if (v) { const gid = k.replace("group_photo_", ""); photos[gid] = v; } });
+      if (Object.keys(photos).length) setGroupPhotos(prev => ({ ...prev, ...photos }));
     });
   }, [convs.length]);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
