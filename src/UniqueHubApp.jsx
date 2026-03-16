@@ -2198,12 +2198,8 @@ function LoginPage({ onAuth, onClientAuth }) {
   return (
     <div style={{ position:"fixed", inset:0, display:"flex", background:"#000" }}>
       {/* Left — images (desktop only) */}
-      {isDesktopLogin && <div style={{ flex:"0 0 50%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#0A0A0A" }}>
-        {ONBOARD_SLIDES.map((s,i) => (
-          <div key={i} style={{ flex:"1 1 0", minHeight:0, overflow:"hidden", position:"relative" }}>
-            <img src={s.imgDesktop||s.img} alt="" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-          </div>
-        ))}
+      {isDesktopLogin && <div style={{ flex:"0 0 50%", overflow:"hidden", background:"#0A0A0A", position:"relative" }}>
+        <img src="/login-bg.jpg" alt="" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       </div>}
       {/* Right — original login */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
