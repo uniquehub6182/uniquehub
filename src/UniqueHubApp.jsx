@@ -2847,7 +2847,15 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   if (isDesktop) {
     const today = new Date();
     const allWidgetKeys = ["receita","clientes","aprovacoes","score","investimento","pendentes","checkin","match4biz"];
-    const desktopCardKeys = [...new Set([...cfg.cards, ...allWidgetKeys])].filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).slice(0,metricCount);
+    /* Use ONLY cfg.cards — no fallback to allWidgetKeys, so user selection is respected */
+    const desktopCardKeys = (cfg.cards||[]).filter(ck=>{const w=WIDGETS[ck];return w&&(w.k!=="financial"||canFinancial);}).slice(0,metricCount);
+    /* If user has fewer cards selected than metricCount, fill from allWidgetKeys */
+    if (desktopCardKeys.length < metricCount) {
+      for (const k of allWidgetKeys) {
+        if (desktopCardKeys.length >= metricCount) break;
+        if (!desktopCardKeys.includes(k)) { const w = WIDGETS[k]; if (w && (w.k !== "financial" || canFinancial)) desktopCardKeys.push(k); }
+      }
+    }
     const metricCards = desktopCardKeys.map(ck=>WIDGETS[ck]).filter(Boolean);
     const newsItems=((articles||[]).length>0?articles:(articlesLoaded?[{id:"f1",title:"IA no Marketing: como usar em 2025",summary:"Ferramentas de IA transformando campanhas.",cat:"trends",date:"Hoje"},{id:"f2",title:"Instagram muda algoritmo do Reels",summary:"Nova atualização prioriza conteúdo original.",cat:"updates",date:"Ontem"},{id:"f3",title:"5 técnicas para dobrar engajamento",summary:"Estratégias comprovadas para Stories.",cat:"tips",date:"2 dias"},{id:"f4",title:"Case: triplicamos o ROI",summary:"Estudo de caso real.",cat:"cases",date:"3 dias"}]:[])).slice(0,5);
     const catColor={trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9"};
@@ -3066,13 +3074,15 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                     <button onClick={()=>goSub("notifs")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{notifCount>0&&<span style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
                   </div>
                 </div>
-                {/* Linha 2: 3 Cards LIME — metade dentro, metade fora do header */}
-                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginBottom:-55,position:"relative",zIndex:3}}>
+                {/* Linha 2: Cards LIME — metade dentro, metade fora do header */}
+                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr) 38px`,gap:12,marginBottom:-55,position:"relative",zIndex:3,alignItems:"start"}}>
                   {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
                     <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
                     <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
                     <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:3,fontWeight:500}}>{w.sub}</div>
                   </div>)}
+                  {/* Pencil to edit metric cards */}
+                  <button onClick={()=>setShowPanelEditor(true)} style={{width:38,height:38,borderRadius:10,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",alignSelf:"center",transition:"all .15s",backdropFilter:"blur(4px)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.25)";e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";}} title="Editar cards"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
                 </div>
               </div>
             </div>
@@ -3116,6 +3126,32 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
               {[2,3,4].map(n=><button key={n} onClick={()=>{setMetricCount(n);const nc={...cfg,desktopMetricCount:n};saveCfg(nc);}} style={{flex:1,padding:"10px",borderRadius:10,border:metricCount===n?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:metricCount===n?`${LIME}10`:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:metricCount===n?800:600,color:metricCount===n?"#1A1D23":"#6B7280"}}>{n} blocos</button>)}
+            </div>
+            <p style={{fontSize:10,fontWeight:600,color:"#9CA3AF",marginBottom:6}}>Escolha {metricCount} cards para exibir no header:</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:20}}>
+              {Object.entries(WIDGETS).filter(([k,v])=>v.k!=="financial"||canFinancial).map(([k,v])=>{
+                const active=cfg.cards.includes(k);
+                const idx=cfg.cards.indexOf(k);
+                return(
+                  <button key={k} onClick={()=>{
+                    let nc;
+                    if(active){
+                      nc={...cfg,cards:cfg.cards.filter(c=>c!==k)};
+                    } else {
+                      /* If at limit, replace the last card */
+                      const currentCards = [...cfg.cards];
+                      if(currentCards.length >= metricCount){
+                        currentCards.pop();
+                      }
+                      nc={...cfg,cards:[...currentCards,k]};
+                    }
+                    saveCfg(nc);
+                  }} style={{padding:"5px 10px",borderRadius:8,border:active?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.06)",background:active?`${LIME}15`:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:active?700:500,color:active?"#1A1D23":"#9CA3AF"}}>
+                    {active && <span style={{fontSize:9,fontWeight:800,color:LIME,marginRight:4}}>{idx+1}</span>}
+                    {v.l}
+                  </button>
+                );
+              })}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Atalhos rápidos</p>
             <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:20}}>
