@@ -7019,7 +7019,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
         return (
           <div style={isContentDesktop ? { position:"relative", zIndex:50, height:0 } : {}}>
-          <Card style={isContentDesktop ? { position:"absolute", top:0, left:0, width:300, padding:12, boxShadow:"0 8px 30px rgba(0,0,0,0.15)", border:"1px solid rgba(0,0,0,0.06)", zIndex:50 } : { marginBottom:10, padding:12 }}>
+          <Card style={isContentDesktop ? { position:"fixed", top:140, left:200, width:300, padding:12, boxShadow:"0 8px 30px rgba(0,0,0,0.15)", border:"1px solid rgba(0,0,0,0.06)", zIndex:999 } : { marginBottom:10, padding:12 }}>
             {/* Month nav */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
               <button onClick={() => { if (cm === 0) { setCalMonth(11); setCalYear(cy - 1); } else { setCalMonth(cm - 1); setCalYear(cy); } }} style={{ width:32, height:32, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -7102,7 +7102,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {/* ── KANBAN DESKTOP VIEW ── */}
       {isContentDesktop && (() => {
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
-        const KANBAN_STAGES = ["idea","briefing","design","caption","review","client","published"];
+        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","published","completed"];
+        /* Only show columns that have demands or are from the social workflow */
+        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","published"];
+        const usedStages = new Set(filtered.map(d => d.stage));
+        const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
         const moveStage = (d, newStage) => {
           setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x));
           if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage });
@@ -7110,8 +7114,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         };
         return (
           <div style={{ padding:"12px 0", overflowX:"auto" }}>
-            <div style={{ display:"flex", gap:12, minWidth: KANBAN_STAGES.length * 220 }}>
-              {KANBAN_STAGES.map(stg => {
+            <div style={{ display:"flex", gap:12, minWidth: visibleStages.length * 200 }}>
+              {visibleStages.map(stg => {
                 const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
                 const items = filtered.filter(d => d.stage === stg);
                 return (
