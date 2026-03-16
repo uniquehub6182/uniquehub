@@ -7223,7 +7223,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                               <div style={{ display:"flex" }}>
                                 {(d.assignees || []).slice(0,3).map((a, j) => {
                                   const m = TEAM.find(t => t.name === a);
-                                  return <div key={j} style={{ width:20, height:20, borderRadius:10, background: m?.photo ? "transparent" : `${cfg.c}25`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft: j ? -5 : 0, border:"2px solid #fff", overflow:"hidden", zIndex:3-j, fontSize:7, fontWeight:800, color:cfg.c }}>{m?.photo ? <img src={m.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : a[0]}</div>;
+                                  const mp = m?.photo || m?.photo_url || null;
+                                  return <div key={j} style={{ width:20, height:20, borderRadius:10, background: mp ? "transparent" : `${cfg.c}25`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft: j ? -5 : 0, border:"2px solid #fff", overflow:"hidden", zIndex:3-j, fontSize:7, fontWeight:800, color:cfg.c }}>{mp ? <img src={mp} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : a[0]}</div>;
                                 })}
                               </div>
                               {d.network && <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.network.split(", ")[0]}</span>}
