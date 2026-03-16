@@ -7590,15 +7590,28 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </>}
 
       {/* ── DESKTOP DETAIL DRAWER (overlay on Kanban) ── */}
-      {sel && isContentDesktop && detailInner && <>
+      {sel && isContentDesktop && detailInner && (() => {
+        const _stages = getStages(sel.type);
+        const _stIdx = _stages.indexOf(sel.stage);
+        const _canNext = _stIdx < _stages.length - 1;
+        const _canPrev = _stIdx > 0;
+        return <>
         <div onClick={() => { setSel(null); setEditMode(false); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
-        <div style={{ position:"fixed", top:0, right:0, bottom:0, width:600, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", overflowY:"auto", animation:"slideInRight .25s ease both" }}>
+        <div style={{ position:"fixed", top:0, right:0, bottom:0, width:600, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", display:"flex", flexDirection:"column", animation:"slideInRight .25s ease both" }}>
           <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-          <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-            <div style={{ padding:"20px" }}>{detailInner}</div>
-          </DemandDetailBoundary>
+          <div style={{ flex:1, overflowY:"auto" }}>
+            <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
+              <div style={{ padding:"20px" }}>{detailInner}</div>
+            </DemandDetailBoundary>
+          </div>
+          {/* Fixed footer — advance buttons always visible */}
+          {(_canPrev || _canNext) && <div style={{ flexShrink:0, padding:"12px 20px", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8 }}>
+            {_canPrev && <button onClick={() => { const prev = _stages[_stIdx-1]; setDemands(p=>p.map(x=>x.id===sel.id?{...x,stage:prev}:x)); setSel(s=>({...s,stage:prev})); if(sel.supaId) supaUpdateDemand(sel.supaId,{stage:prev}); showToast(`← ${STAGE_CFG[prev]?.l}`); }} style={{ flex:_canNext?0:1, padding:"12px 20px", borderRadius:12, border:"1.5px solid rgba(0,0,0,0.08)", background:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:"#9CA3AF" }}>← {STAGE_CFG[_stages[_stIdx-1]]?.l}</button>}
+            {_canNext && <button onClick={() => advanceStage(sel)} style={{ flex:1, padding:"12px 20px", borderRadius:12, border:"none", background:STAGE_CFG[_stages[_stIdx+1]]?.c || "#BBF246", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Avançar → {STAGE_CFG[_stages[_stIdx+1]]?.l}</button>}
+          </div>}
         </div>
-      </>}
+      </>;
+      })()}
     </div>
   );
 }
