@@ -6242,6 +6242,35 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
         {/* Assignees */}
         {!isContentDesktop && <Card style={{ marginBottom:10 }}>
+
+        {/* ── Global image carousel (desktop — all stages) ── */}
+        {isContentDesktop && (() => {
+          const allImgs = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])].filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+          if (!allImgs.length) return null;
+          const ci = sel._carouselIdx || 0;
+          const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, allImgs.length - 1)) }));
+          const cur = allImgs[ci] || allImgs[0];
+          return (
+            <div style={{ marginBottom:14 }}>
+              <div style={{ position:"relative", borderRadius:14, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
+                <img src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:14 }} />
+                {allImgs.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:34, height:34, borderRadius:17, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
+                {allImgs.length > 1 && ci < allImgs.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:34, height:34, borderRadius:17, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
+                {allImgs.length > 1 && <div style={{ position:"absolute", bottom:10, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:10, padding:"3px 10px", fontSize:11, fontWeight:600, color:"#fff" }}>{ci+1} / {allImgs.length}</div>}
+                <div style={{ position:"absolute", top:8, right:8, display:"flex", gap:4 }}>
+                  <a href={cur?.url} target="_blank" rel="noopener" style={{ width:30, height:30, borderRadius:8, background:"rgba(255,255,255,0.85)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(0,0,0,0.1)" }} onClick={e=>e.stopPropagation()}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+                </div>
+              </div>
+              {allImgs.length > 1 && <div style={{ display:"flex", gap:6, marginTop:8, overflowX:"auto", justifyContent:"center" }}>
+                {allImgs.map((f, ti) => (
+                  <div key={ti} onClick={() => sc(ti)} style={{ width:48, height:48, borderRadius:8, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5, transition:"all .15s" }}>
+                    <img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  </div>
+                ))}
+              </div>}
+            </div>
+          );
+        })()}
           <p className="sl" style={{ marginBottom:8 }}>Equipe responsável</p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             {(sel.assignees||[]).map(a=>{
@@ -6349,45 +6378,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
               </label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {/* Image carousel (desktop) */}
-                {isContentDesktop && (() => {
-                  const imgFiles = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
-                  if (!imgFiles.length) return null;
-                  const curIdx = sel._carouselIdx || 0;
-                  const setCIdx = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, imgFiles.length - 1)) }));
-                  return (
-                    <div style={{ marginBottom:10 }}>
-                      {/* Main image */}
-                      <div style={{ position:"relative", borderRadius:14, overflow:"hidden", background:"#000", aspectRatio:"4/3" }}>
-                        <img src={imgFiles[curIdx]?.url} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }} />
-                        {/* Arrows */}
-                        {imgFiles.length > 1 && curIdx > 0 && <button onClick={() => setCIdx(curIdx - 1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(0,0,0,0.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
-                        {imgFiles.length > 1 && curIdx < imgFiles.length - 1 && <button onClick={() => setCIdx(curIdx + 1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(0,0,0,0.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
-                        {/* Counter */}
-                        {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", display:"flex", gap:4, zIndex:2 }}>
-                          {imgFiles.map((_, di) => <div key={di} onClick={() => setCIdx(di)} style={{ width: di === curIdx ? 16 : 6, height:6, borderRadius:3, background: di === curIdx ? "#BBF246" : "rgba(255,255,255,0.5)", cursor:"pointer", transition:"all .2s" }} />)}
-                        </div>}
-                        {/* File info overlay */}
-                        <div style={{ position:"absolute", top:8, right:8, display:"flex", gap:6, zIndex:2 }}>
-                          {imgFiles[curIdx]?.url && <a href={imgFiles[curIdx].url} target="_blank" rel="noopener" style={{ width:28, height:28, borderRadius:8, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }} onClick={e=>e.stopPropagation()}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>}
-                          <button onClick={async () => { const f = imgFiles[curIdx]; if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.design?.files||[])]; const idx = nf.findIndex(x=>x.url===f.url); if(idx>=0) nf.splice(idx,1); updateStep("design",{files:nf}); if (curIdx > 0) setCIdx(curIdx-1); }} style={{ width:28, height:28, borderRadius:8, background:"rgba(0,0,0,0.5)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
-                        </div>
-                      </div>
-                      {/* Thumbnail strip */}
-                      {imgFiles.length > 1 && <div style={{ display:"flex", gap:6, marginTop:8, overflowX:"auto" }}>
-                        {imgFiles.map((f, ti) => (
-                          <div key={ti} onClick={() => setCIdx(ti)} style={{ width:52, height:52, borderRadius:8, overflow:"hidden", border: ti === curIdx ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === curIdx ? 1 : 0.6, transition:"all .15s" }}>
-                            <img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                          </div>
-                        ))}
-                      </div>}
-                      <p style={{ fontSize:10, color:"#9CA3AF", marginTop:4, textAlign:"center" }}>{imgFiles[curIdx]?.name} · {curIdx+1}/{imgFiles.length}</p>
-                    </div>
-                  );
-                })()}
                 {(sel.steps?.design?.files||[]).map((f,i) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || ''));
-                  if (isContentDesktop && isImg && f.url) return null; /* already shown in gallery above */
+                  if (isContentDesktop && isImg && f.url) return null; /* shown in global carousel */
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || ''));
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
