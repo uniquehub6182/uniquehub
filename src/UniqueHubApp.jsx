@@ -6240,9 +6240,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           <Card style={{ marginBottom:10 }}><StageBar type={sel.type} current={sel.stage} /></Card>
         )}
 
-        {/* Assignees */}
-        {!isContentDesktop && <Card style={{ marginBottom:10 }}>
-
         {/* ── Global image carousel (desktop — all stages) ── */}
         {isContentDesktop && (() => {
           const allImgs = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])].filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
@@ -6271,6 +6268,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             </div>
           );
         })()}
+
+        {/* Assignees (mobile only) */}
+        {!isContentDesktop && <Card style={{ marginBottom:10 }}>
           <p className="sl" style={{ marginBottom:8 }}>Equipe responsável</p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             {(sel.assignees||[]).map(a=>{
@@ -6423,8 +6423,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.design?.by||"Designer"}</span>
                 <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.design?.date}</span>
               </div>
-              {/* Thumbnail grid for images */}
-              {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+              {/* Thumbnail grid for images (mobile only — desktop uses global carousel) */}
+              {!isContentDesktop && sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(140px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
@@ -6581,8 +6581,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
                 <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.caption.reviewFeedback}</p>
               </div>}
-              {/* Show design files for reference */}
-              {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
+              {/* Show design files for reference (mobile — desktop has carousel) */}
+              {!isContentDesktop && sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
                 {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
               </div>}
@@ -6616,7 +6616,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps?.caption?.text}</p>
                 {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.blue, marginTop:6 }}>{sel.steps?.caption?.hashtags}</p>}
               </div>
-              {sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
+              {!isContentDesktop && sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
                 <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>📎 Material do designer:</p>
                 {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {typeof f === "string" ? f : f.name || "arquivo"}</span>))}
               </div>}
