@@ -6551,10 +6551,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
     /* helper: update a step field in sel and demands */
     const updateStep = (stepKey, data) => {
-      const newSteps = { ...(sel.steps||{}), [stepKey]: { ...(sel.steps?.[stepKey]||{}), ...data } };
-      setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: newSteps } : x));
-      setSel(prev => ({ ...prev, steps: newSteps }));
-      if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: newSteps });
+      setSel(prev => {
+        const newSteps = { ...(prev.steps||{}), [stepKey]: { ...(prev.steps?.[stepKey]||{}), ...data } };
+        setDemands(dp => dp.map(x => x.id === prev.id ? { ...x, steps: newSteps } : x));
+        if (prev.supaId) supaUpdateDemand(prev.supaId, { steps: newSteps });
+        return { ...prev, steps: newSteps };
+      });
     };
     const updateField = (field, val) => {
       setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, [field]: val } : x));
