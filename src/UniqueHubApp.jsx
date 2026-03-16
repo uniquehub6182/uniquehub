@@ -13941,6 +13941,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 
 
 function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView }) {
+  const isNewsDesktop = useIsDesktop();
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
@@ -14253,7 +14254,7 @@ REGRAS:
   );
 
   /* ── CHOOSE CREATE MODE ── */
-  if (showCreateChoice) return (
+  if (showCreateChoice && !isNewsDesktop) return (
     <div className="pg">{ToastEl}
       <Head title="Nova notícia" onBack={()=>setShowCreateChoice(false)} />
       <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
@@ -14279,7 +14280,7 @@ REGRAS:
   );
 
   /* ── AI CREATION FLOW ── */
-  if (aiMode) return (
+  if (aiMode && !isNewsDesktop) return (
     <div className="pg">{ToastEl}
       <Head title="Criar com IA" onBack={()=>{setAiMode(false);setAiStep("url");setAiLoading(false);}} />
       <Card style={{ textAlign:"center", padding:20, marginBottom:12 }}>
@@ -14375,7 +14376,7 @@ REGRAS:
   );
 
   /* ── CREATE VIEW ── */
-  if (creating) return (
+  if (creating && !isNewsDesktop) return (
     <div className="pg">{ToastEl}
       <Head title="Novo artigo" onBack={()=>{setCreating(false);setForm({});}} />
       {newsFormJSX(false)}
@@ -14383,7 +14384,7 @@ REGRAS:
   );
 
   /* ── ARTICLE DETAIL ── */
-  if (selArticle) {
+  if (selArticle && !isNewsDesktop) {
     const a = selArticle;
     if (editingArticle) return (
       <div className="pg">{ToastEl}
@@ -14442,6 +14443,123 @@ REGRAS:
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Editar artigo
         </button>}
+      </div>
+    );
+  }
+
+  /* ── DESKTOP NEWS TWO-PANEL ── */
+  if (isNewsDesktop) {
+    const a = selArticle;
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* LEFT: Article list */}
+          <div style={{ width:400, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Stats + New */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", gap:14 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{articles.length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Artigos</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:"#fff" }}>{articles.filter(x=>x.pinned).length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Destaques</p></div>
+              </div>
+              {isAdmin && !isClientView && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo</button>}
+            </div>
+            {/* Category filter */}
+            <div style={{ display:"flex", gap:4, flexWrap:"wrap", padding:"0 2px" }}>
+              {[{k:"all",l:"Todos"},...CATS].map(c=>(
+                <button key={c.k} onClick={()=>setTab(c.k)} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${tab===c.k?B.accent:B.border}`, background:tab===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:tab===c.k?700:500, color:tab===c.k?B.accent:B.muted }}>{c.l}</button>
+              ))}
+            </div>
+            {/* Article list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+                {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:12 }}>Carregando...</p>}
+                {loaded && filtered.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:12 }}>Nenhum artigo nesta categoria</p>}
+                {filtered.map((art,i) => {
+                  const isSel = selArticle?.id === art.id;
+                  return (
+                    <div key={art.id} onClick={()=>{setSelArticle(art);setShowCreateChoice(false);setCreating(false);setAiMode(false);}} style={{ display:"flex", gap:10, padding:"8px 10px", borderRadius:12, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                      {art.photo ? <div style={{ width:56, height:56, borderRadius:10, background:`url(${art.photo}) center/cover`, flexShrink:0 }}/> : <div style={{ width:56, height:56, borderRadius:10, background:`${catColor(art.cat)}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><div style={{ width:6, height:24, borderRadius:3, background:catColor(art.cat) }}/></div>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{art.pinned?"⭐ ":""}{art.title}</p>
+                        <p style={{ fontSize:10, color:B.muted, marginTop:2, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", lineHeight:1.3 }}>{art.summary}</p>
+                        <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:4 }}>
+                          <span style={{ fontSize:8, fontWeight:600, padding:"1px 5px", borderRadius:4, background:`${catColor(art.cat)}12`, color:catColor(art.cat) }}>{catLabel(art.cat)}</span>
+                          <span style={{ fontSize:8, color:B.muted }}>{art.readTime}</span>
+                          {art.source && <span style={{ fontSize:8, color:B.muted }}>{art.source}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* RIGHT: Detail / Create */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {showCreateChoice ? <>
+              {/* Choose creation mode */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}` }}>
+                <button onClick={()=>setShowCreateChoice(false)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, maxWidth:400 }}>
+                  <div onClick={()=>startCreation("manual")} style={{ padding:"30px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 10px" }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <p style={{ fontSize:14, fontWeight:800 }}>Escrever</p>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Criar manualmente</p>
+                  </div>
+                  <div onClick={()=>startCreation("ai")} style={{ padding:"30px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#6366F1";e.currentTarget.style.background="#6366F106";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 10px" }}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    <p style={{ fontSize:14, fontWeight:800 }}>IA Reescrever</p>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>A partir de um link</p>
+                  </div>
+                </div>
+              </div>
+            </> : a ? <>
+              {/* Article detail */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>setSelArticle(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div style={{ flex:1 }}>
+                  <span style={{ fontSize:9, fontWeight:600, padding:"2px 6px", borderRadius:4, background:`${catColor(a.cat)}12`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
+                  <span style={{ fontSize:9, color:B.muted, marginLeft:8 }}>{a.readTime} · {a.date}</span>
+                </div>
+                {isAdmin && <div style={{ display:"flex", gap:4 }}>
+                  <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime});setPhotoPreview(a.photo);}} style={{ width:28, height:28, borderRadius:6, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button onClick={()=>{togglePin(a);}} style={{ width:28, height:28, borderRadius:6, border:`1px solid ${a.pinned?B.accent:B.border}`, background:a.pinned?`${B.accent}12`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill={a.pinned?B.accent:"none"} stroke={a.pinned?B.accent:B.muted} strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+                </div>}
+              </div>
+              <div style={{ flex:1, overflowY:"auto" }}>
+                {a.photo && <img src={a.photo} alt="" style={{ width:"100%", maxHeight:280, objectFit:"cover" }} onError={e=>{e.target.style.display="none";}}/>}
+                <div style={{ padding:"20px 24px" }}>
+                  <h2 style={{ fontSize:22, fontWeight:900, lineHeight:1.3, marginBottom:8, color:B.text }}>{a.title}</h2>
+                  <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:16, fontStyle:"italic" }}>{a.summary}</p>
+                  {a.source && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:16 }}>
+                    <span style={{ fontSize:10, color:B.muted }}>Fonte:</span>
+                    {a.sourceUrl ? <a href={a.sourceUrl.startsWith("http")?a.sourceUrl:`https://${a.sourceUrl}`} target="_blank" rel="noopener" style={{ fontSize:11, color:B.accent, fontWeight:600 }}>{a.source} ↗</a> : <span style={{ fontSize:11, fontWeight:600 }}>{a.source}</span>}
+                  </div>}
+                  <div style={{ fontSize:14, lineHeight:1.8, color:B.text }}>
+                    {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{ marginBottom:12 }}>{p}</p>)}
+                  </div>
+                  {a.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:16 }}>
+                    {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:10, fontWeight:600, padding:"3px 8px", borderRadius:6, background:`${B.accent}10`, color:B.accent }}>#{t}</span>)}
+                  </div>}
+                </div>
+              </div>
+            </> : (
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                    <span style={{ color:B.accent, display:"flex" }}>{IC.news}</span>
+                  </div>
+                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Selecione um artigo</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha um artigo na lista ou crie um novo</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
