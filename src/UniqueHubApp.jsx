@@ -8684,25 +8684,33 @@ const TypingDots = () => (
 );
 const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
 
-/* Chat notification sound — short WhatsApp-like tone */
-const _notifAudioCtx = { ctx: null };
+/* Chat notification sound — real audio + Browser Notification API */
+const _notifAudio = (() => {
+  try { const a = new Audio("/notif.wav"); a.volume = 0.5; return a; } catch { return null; }
+})();
 const playChatNotifSound = () => {
   try {
-    if (!_notifAudioCtx.ctx) _notifAudioCtx.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = _notifAudioCtx.ctx;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = "sine"; osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+    if (_notifAudio) {
+      _notifAudio.currentTime = 0;
+      _notifAudio.play().catch(() => {});
+    }
+  } catch {}
+};
+const requestNotifPermission = () => {
+  try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch {}
+};
+const showBrowserNotif = (title, body) => {
+  try {
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+      new Notification(title, { body, icon: "/icon-192.png", tag: "uh-chat-" + Date.now() });
+    }
   } catch {}
 };
 
 function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const chatIsDesktop = useIsDesktop();
+  /* Request browser notification permission on mount */
+  useEffect(() => { requestNotifPermission(); }, []);
   const [view, setView] = useState("list");
   const [convs, setConvs] = useState([]);
   const [selConv, setSelConv] = useState(null);
@@ -8849,7 +8857,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           }
           /* New message from other user via postgres_changes (broadcast may have missed) */
           if (newMsg.sender_id !== user.id) {
-            try { if (localStorage.getItem("uh_notif_sound") !== "off") playChatNotifSound(); } catch {}
+            try { if (localStorage.getItem("uh_notif_sound") !== "off") { playChatNotifSound(); showBrowserNotif("Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
           }
           return [...prev, newMsg];
         });
@@ -8881,7 +8889,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         if (prev.some(m => m.id === p.id)) return prev;
         if (p._broadcastId && prev.some(m => m._broadcastId === p._broadcastId)) return prev;
         /* Play notification sound */
-        try { if (localStorage.getItem("uh_notif_sound") !== "off") playChatNotifSound(); } catch {}
+        try { if (localStorage.getItem("uh_notif_sound") !== "off") { playChatNotifSound(); showBrowserNotif("Nova mensagem", p.content || "Arquivo recebido"); } } catch {}
         return [...prev, { ...p, _fromBroadcast: true }];
       });
       clearTimeout(markReadTimer.current);
@@ -18023,10 +18031,12 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       loadChatUnread();
     }, 1500); /* defer 1.5s to not block initial render */
     /* Realtime: new messages → recalculate + browser notification */
+    requestNotifPermission();
     const chan = supabase.channel("nav-chat-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
       if (payload.new.sender_id !== user.id) {
         setChatUnread(c => c + 1);
-        /* Browser push notification (#8) */
+        /* Sound + Browser notification */
+        try { if (localStorage.getItem("uh_notif_sound") !== "off") playChatNotifSound(); } catch {}
         if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
           const senderName = payload.new.sender_name || "Alguém";
           const content = payload.new.content?.substring(0, 80) || "Nova mensagem";
