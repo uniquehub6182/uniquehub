@@ -12738,104 +12738,177 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     );
   }
 
-  /* ── DESKTOP TWO-PANEL LIBRARY ── */
+  /* ── DESKTOP LIBRARY — FULL REDESIGN ── */
+  const [libView, setLibView] = useState("grid"); /* grid | list */
+  const [dragOver, setDragOver] = useState(false);
+  const handleDrop = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) { setAddingFile(true); setFileForm({ file, name: file.name }); setViewFile(null); }
+  };
+
   if (isLibDesktop) {
     const f = viewFile;
     const fi = f ? fileIcon(f.name) : null;
     const ext = f ? f.name.split(".").pop()?.toLowerCase() : "";
     const isImage = f && ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
     const isVideo = f && ["mp4","mov","avi","mkv","webm"].includes(ext);
+    const clientNames = [...new Set(allFiles.map(ff=>ff.clientName))].sort();
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" onBack={onBack} collapsed={false} stats={[]} />
         <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
-          {/* LEFT: Files list */}
-          <div style={{ width:400, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ display:"flex", gap:16 }}>
-                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{totalFiles}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Arquivos</p></div>
-                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:"#fff" }}>{clientsWithFiles}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Clientes</p></div>
-              </div>
-              {!isClientView && <button onClick={()=>{setAddingFile(true);setFileForm({});setViewFile(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Enviar</button>}
-            </div>
-            {/* Search + filters */}
-            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"10px 12px" }}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo..." className="tinput" style={{ marginBottom:8, fontSize:12 }} />
-              <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-                <button onClick={()=>setFilterCat("all")} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${filterCat==="all"?B.accent:B.border}`, background:filterCat==="all"?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:filterCat==="all"?B.accent:B.muted }}>Todos</button>
-                {LIB_CATS.filter(c=>catCounts[c.key]).map(c=>(
-                  <button key={c.key} onClick={()=>setFilterCat(filterCat===c.key?"all":c.key)} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${filterCat===c.key?c.c:B.border}`, background:filterCat===c.key?`${c.c}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:filterCat===c.key?c.c:B.muted }}>{c.icon} {catCounts[c.key]}</button>
-                ))}
+          {/* ── LEFT SIDEBAR: Filters ── */}
+          <div style={{ width:240, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Stats card */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"16px 18px" }}>
+              <p style={{ fontSize:28, fontWeight:900, color:B.accent }}>{totalFiles}</p>
+              <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginBottom:10 }}>arquivos na biblioteca</p>
+              <div style={{ display:"flex", gap:12 }}>
+                <div><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>{clientsWithFiles}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Clientes</p></div>
+                {topCat && <div><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>{topCat[1]}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>{LIB_CATS.find(c=>c.key===topCat[0])?.label||"Top"}</p></div>}
               </div>
             </div>
-            {/* File list */}
+            {/* Client filter */}
+            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Cliente</p>
+              </div>
+              <div style={{ maxHeight:160, overflowY:"auto", padding:"4px 6px" }}>
+                <button onClick={()=>setFilterClient("all")} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterClient==="all"?700:500, background:filterClient==="all"?`${B.accent}10`:"transparent", color:filterClient==="all"?B.accent:B.text, marginBottom:1 }}>Todos ({totalFiles})</button>
+                {clientNames.map(cn => {
+                  const cnt = allFiles.filter(ff=>ff.clientName===cn).length;
+                  return <button key={cn} onClick={()=>setFilterClient(filterClient===cn?"all":cn)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterClient===cn?700:500, background:filterClient===cn?`${B.accent}10`:"transparent", color:filterClient===cn?B.accent:B.text, marginBottom:1, textAlign:"left" }}><span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cn}</span><span style={{ fontSize:9, color:B.muted, flexShrink:0 }}>{cnt}</span></button>;
+                })}
+              </div>
+            </div>
+            {/* Category filter */}
             <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-              <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
-                {filtered.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:12 }}>Nenhum arquivo encontrado</p>}
-                {filtered.map((ff,i) => {
-                  const ffi = fileIcon(ff.name);
-                  const isSel = viewFile?.id === ff.id;
-                  return (
-                    <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${ffi.c}08`:"transparent", border:isSel?`1.5px solid ${ffi.c}20`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
-                      <div style={{ width:36, height:36, borderRadius:8, background:`${ffi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:ffi.c, flexShrink:0 }}>{ffi.ic}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{ff.name}</p>
-                        <p style={{ fontSize:10, color:B.muted }}>{ff.clientName} · {ff.size||""}</p>
-                      </div>
-                    </div>
-                  );
+              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Categoria</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"4px 6px" }}>
+                <button onClick={()=>setFilterCat("all")} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterCat==="all"?700:500, background:filterCat==="all"?`${B.accent}10`:"transparent", color:filterCat==="all"?B.accent:B.text, marginBottom:1 }}>📂 Todas</button>
+                {LIB_CATS.map(cat => {
+                  const cnt = catCounts[cat.key]||0;
+                  if (!cnt) return null;
+                  return <button key={cat.key} onClick={()=>setFilterCat(filterCat===cat.key?"all":cat.key)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterCat===cat.key?700:500, background:filterCat===cat.key?`${cat.c}10`:"transparent", color:filterCat===cat.key?cat.c:B.text, marginBottom:1 }}><span>{cat.icon}</span><span style={{ flex:1, textAlign:"left" }}>{cat.label}</span><span style={{ fontSize:9, color:B.muted }}>{cnt}</span></button>;
                 })}
               </div>
             </div>
           </div>
-          {/* RIGHT: Detail / Add / Placeholder */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-            {addingFile ? <>
-              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
-                <button onClick={()=>{setAddingFile(false);setFileForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Enviar Arquivo</p>
+          {/* ── CENTER + RIGHT: Content ── */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
+            {/* Toolbar: search + view toggle + upload btn */}
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ flex:1, position:"relative" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cliente..." style={{ width:"100%", padding:"10px 12px 10px 38px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", fontFamily:"inherit", fontSize:13, outline:"none" }} />
               </div>
-              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-                {!isClientView && <div style={{ marginBottom:14 }}><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput">{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Nome *</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" /></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{LIB_CATS.map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${(fileForm.category||"")=== c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>{c.icon} {c.label}</button>)}</div></div>
-                <div style={{ marginBottom:14 }}><label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"24px 16px", borderRadius:14, border:`2px dashed ${fileForm.file?B.green:B.accent}30`, background:`${fileForm.file?B.green:B.accent}04`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:fileForm.file?B.green:B.accent }}>{fileForm.file?`✓ ${fileForm.file.name}`:"Clique para selecionar arquivo"}<input type="file" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(file){setFileForm(p=>({...p,file,name:p.name||file.name}));}}}/></label></div>
-                <button onClick={uploadLibFile} disabled={uploading} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:uploading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark, opacity:uploading?0.6:1 }}>{uploading?"Enviando...":"Enviar Arquivo"}</button>
+              <div style={{ display:"flex", borderRadius:10, border:`1.5px solid ${B.border}`, overflow:"hidden" }}>
+                <button onClick={()=>setLibView("grid")} style={{ padding:"8px 10px", border:"none", cursor:"pointer", background:libView==="grid"?`${B.accent}12`:"transparent", color:libView==="grid"?B.accent:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+                <button onClick={()=>setLibView("list")} style={{ padding:"8px 10px", border:"none", cursor:"pointer", background:libView==="list"?`${B.accent}12`:"transparent", color:libView==="list"?B.accent:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
               </div>
-            </> : f ? <>
-              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
-                <button onClick={()=>setViewFile(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <div style={{ width:32, height:32, borderRadius:8, background:`${fi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c }}>{fi.ic}</div>
-                <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700, color:B.text, wordBreak:"break-all" }}>{f.name}</p><p style={{ fontSize:11, color:B.muted }}>{f.clientName} · {ext?.toUpperCase()}</p></div>
-              </div>
-              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-                {f.url && isImage && <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16, background:B.dark }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain" }}/></div>}
-                {f.url && isVideo && <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16, background:B.dark }}><video src={f.url} controls style={{ width:"100%", maxHeight:300 }}/></div>}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-                  {[{l:"Cliente",v:f.clientName},{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date}].map((item,ii)=>(
-                    <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
-                      <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
-                      <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v||"—"}</p>
-                    </div>
-                  ))}
+              {!isClientView && <button onClick={()=>{setAddingFile(true);setFileForm({});setViewFile(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"9px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Enviar</button>}
+            </div>
+            {/* Content split: files + detail */}
+            <div style={{ flex:1, display:"flex", gap:12, minHeight:0 }}>
+              {/* Files area with drag & drop */}
+              <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop} style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:dragOver?`2px dashed ${B.accent}`:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", transition:"border .2s", position:"relative", minWidth:0 }}>
+                {dragOver && <div style={{ position:"absolute", inset:0, background:`${B.accent}08`, zIndex:10, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}><div style={{ textAlign:"center" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:14, fontWeight:700, color:B.accent }}>Solte o arquivo aqui</p></div></div>}
+                <div style={{ flex:1, overflowY:"auto", padding:libView==="grid"?"12px":"6px 8px" }}>
+                  {filtered.length===0 && <div style={{ textAlign:"center", padding:"50px 20px" }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.2" strokeLinecap="round" style={{ margin:"0 auto 12px", display:"block", opacity:0.3 }}><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    <p style={{ fontSize:14, fontWeight:700, color:B.muted }}>Nenhum arquivo</p>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Arraste um arquivo ou clique "Enviar"</p>
+                  </div>}
+                  {/* GRID VIEW */}
+                  {libView==="grid" && filtered.length>0 && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))", gap:10 }}>
+                    {filtered.map((ff,i) => {
+                      const ffi = fileIcon(ff.name); const isSel = viewFile?.id===ff.id;
+                      const ffExt = ff.name.split(".").pop()?.toLowerCase()||"";
+                      const isImg = ["jpg","jpeg","png","gif","webp","svg"].includes(ffExt);
+                      const isVid = ["mp4","mov","avi","mkv","webm"].includes(ffExt);
+                      return (
+                        <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:B.bgCard||"#fff", transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+                          <div style={{ width:"100%", height:110, background:isImg&&ff.url?`url(${ff.url}) center/cover`:`${ffi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
+                            {!(isImg&&ff.url) && <div style={{ color:ffi.c, opacity:0.6, transform:"scale(1.5)" }}>{ffi.ic}</div>}
+                            {isVid && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.3)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21"/></svg></div>}
+                            <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:"rgba(0,0,0,0.5)", color:"#fff", textTransform:"uppercase" }}>{ffExt}</span>
+                          </div>
+                          <div style={{ padding:"8px 10px" }}>
+                            <p style={{ fontSize:11, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.name}</p>
+                            <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.clientName} · {ff.size||""}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>}
+                  {/* LIST VIEW */}
+                  {libView==="list" && filtered.length>0 && filtered.map((ff,i) => {
+                    const ffi = fileIcon(ff.name); const isSel = viewFile?.id===ff.id;
+                    const ffExt = ff.name.split(".").pop()?.toLowerCase()||"";
+                    const isImg = ["jpg","jpeg","png","gif","webp","svg"].includes(ffExt);
+                    return (
+                      <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}06`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                        {isImg&&ff.url ? <div style={{ width:40, height:40, borderRadius:8, background:`url(${ff.url}) center/cover`, flexShrink:0 }}/> : <div style={{ width:40, height:40, borderRadius:8, background:`${ffi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:ffi.c, flexShrink:0 }}>{ffi.ic}</div>}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.name}</p>
+                          <p style={{ fontSize:10, color:B.muted }}>{ff.clientName}</p>
+                        </div>
+                        <span style={{ fontSize:8, fontWeight:700, padding:"2px 6px", borderRadius:4, background:`${ffi.c}10`, color:ffi.c, textTransform:"uppercase" }}>{ffExt}</span>
+                        <span style={{ fontSize:10, color:B.muted }}>{ff.size}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                  {f.url && <button onClick={()=>{const a=document.createElement("a");a.href=f.url;a.download=f.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Baixar</button>}
-                  {f.url && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent }}>Abrir</button>}
-                </div>
               </div>
-            </> : (
-              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
-                    <span style={{ color:B.accent, display:"flex" }}>{IC.library}</span>
+              {/* ── Right detail panel ── */}
+              {(f || addingFile) && <div style={{ width:320, flexShrink:0, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+                {addingFile ? <>
+                  <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+                    <button onClick={()=>{setAddingFile(false);setFileForm({});}} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    <p style={{ fontSize:13, fontWeight:700 }}>Enviar Arquivo</p>
                   </div>
-                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Selecione um arquivo</p>
-                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha um arquivo na lista ao lado</p>
-                </div>
-              </div>
-            )}
+                  <div style={{ flex:1, overflowY:"auto", padding:"14px" }}>
+                    {/* Drop zone */}
+                    <label onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=B.accent;}} onDragLeave={e=>{e.currentTarget.style.borderColor=`${B.accent}30`;}} onDrop={e=>{e.preventDefault();const file=e.dataTransfer?.files?.[0];if(file)setFileForm(p=>({...p,file,name:p.name||file.name}));}} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:"28px 16px", borderRadius:14, border:`2px dashed ${fileForm.file?B.green:`${B.accent}30`}`, background:fileForm.file?`${B.green}04`:`${B.accent}02`, cursor:"pointer", marginBottom:14, transition:"all .2s" }}>
+                      {fileForm.file ? <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Arquivo selecionado</p><p style={{ fontSize:10, color:B.muted, wordBreak:"break-all", textAlign:"center" }}>{fileForm.file.name}</p><p style={{ fontSize:9, color:B.muted }}>{(fileForm.file.size/1024/1024).toFixed(1)} MB</p></> : <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Arraste ou clique</p><p style={{ fontSize:9, color:B.muted }}>Imagens, vídeos, PDF, PSD...</p></>}
+                      <input type="file" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(file)setFileForm(p=>({...p,file,name:p.name||file.name}));}} />
+                    </label>
+                    {!isClientView && <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput" style={{ fontSize:12 }}>{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
+                    <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Nome</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" style={{ fontSize:12 }} /></div>
+                    <div style={{ marginBottom:14 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{LIB_CATS.slice(0,8).map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${fileForm.category===c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600 }}>{c.icon} {c.label}</button>)}</div></div>
+                    <button onClick={uploadLibFile} disabled={uploading} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:uploading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, opacity:uploading?0.6:1 }}>{uploading?"Enviando...":"Enviar Arquivo"}</button>
+                  </div>
+                </> : f ? <>
+                  <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+                    <button onClick={()=>setViewFile(null)} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    <p style={{ fontSize:13, fontWeight:700, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p>
+                  </div>
+                  <div style={{ flex:1, overflowY:"auto" }}>
+                    {/* Preview */}
+                    {f.url && isImage && <div style={{ background:B.dark, padding:8 }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:200, objectFit:"contain", display:"block", margin:"0 auto", borderRadius:8 }}/></div>}
+                    {f.url && isVideo && <div style={{ background:B.dark }}><video src={f.url} controls style={{ width:"100%", maxHeight:200, display:"block" }}/></div>}
+                    {!(f.url && (isImage||isVideo)) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()}</p></div>}
+                    <div style={{ padding:"12px 14px" }}>
+                      {[{l:"Cliente",v:f.clientName},{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date}].map((item,ii)=>(
+                        <div key={ii} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderTop:ii?`1px solid ${B.border}`:"none" }}>
+                          <span style={{ fontSize:10, color:B.muted }}>{item.l}</span>
+                          <span style={{ fontSize:12, fontWeight:600 }}>{item.v||"—"}</span>
+                        </div>
+                      ))}
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginTop:12 }}>
+                        {f.url && <button onClick={()=>{const a=document.createElement("a");a.href=f.url;a.download=f.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download ✓");}} style={{ padding:"8px 0", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>Baixar</button>}
+                        {f.url && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ padding:"8px 0", borderRadius:8, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Abrir</button>}
+                      </div>
+                      {f.url && <button onClick={()=>{navigator.clipboard.writeText(f.url);showToast("Link copiado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.blue, marginTop:6 }}>Copiar link</button>}
+                    </div>
+                  </div>
+                </> : null}
+              </div>}
+            </div>
           </div>
         </div>
       </div>
