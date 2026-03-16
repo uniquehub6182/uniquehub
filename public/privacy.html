@@ -1,20 +1,90 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Política de Privacidade — UniqueHub</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;color:#333;line-height:1.7}h1{color:#192126}h2{color:#444;margin-top:32px}a{color:#C8FF00}</style>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:780px;margin:40px auto;padding:0 20px;color:#333;line-height:1.8}h1{color:#192126;border-bottom:3px solid #C8FF00;padding-bottom:10px}h2{color:#444;margin-top:32px}h3{color:#555;margin-top:20px}a{color:#0066cc}ul{padding-left:20px}li{margin-bottom:6px}.updated{background:#f5f5f5;padding:12px 16px;border-radius:8px;margin:20px 0;font-size:14px}</style>
 </head><body>
 <h1>Política de Privacidade — UniqueHub</h1>
-<p><strong>Última atualização:</strong> 16 de março de 2026</p>
-<h2>1. Dados Coletados</h2>
-<p>O UniqueHub coleta dados necessários para o funcionamento da plataforma de gestão de marketing, incluindo: nome, e-mail, telefone, dados de redes sociais conectadas (tokens de acesso, IDs de páginas) e conteúdo criado na plataforma.</p>
-<h2>2. Uso dos Dados</h2>
-<p>Os dados são utilizados exclusivamente para: gerenciamento de clientes, publicação em redes sociais autorizadas, geração de relatórios e métricas, e comunicação interna da equipe.</p>
-<h2>3. Compartilhamento</h2>
-<p>Não compartilhamos dados pessoais com terceiros, exceto com as APIs oficiais das plataformas conectadas (Meta, Google) conforme autorizado pelo usuário.</p>
-<h2>4. Armazenamento</h2>
-<p>Os dados são armazenados de forma segura via Supabase com criptografia em trânsito e em repouso, em conformidade com a LGPD.</p>
-<h2>5. Exclusão de Dados</h2>
-<p>O usuário pode solicitar a exclusão de seus dados a qualquer momento entrando em contato pelo e-mail: contato@uniquemkt.com.br</p>
-<h2>6. Contato</h2>
-<p>Unique Marketing 360 — contato@uniquemkt.com.br</p>
+<div class="updated"><strong>Última atualização:</strong> 16 de março de 2026 | <strong>Empresa:</strong> Unique Marketing 360 LTDA</div>
+
+<h2>1. Introdução</h2>
+<p>O UniqueHub é uma plataforma de gestão de marketing digital desenvolvida pela Unique Marketing 360, destinada a agências e seus clientes. Esta política descreve como coletamos, usamos, armazenamos e protegemos os dados dos usuários, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018) e as políticas da Meta Platforms.</p>
+
+<h2>2. Dados Coletados</h2>
+<h3>2.1 Dados de Cadastro</h3>
+<p>Nome completo, endereço de e-mail, telefone, cargo, foto de perfil.</p>
+<h3>2.2 Dados de Redes Sociais (via Meta API)</h3>
+<p>Quando o usuário autoriza a conexão com o Facebook e/ou Instagram via OAuth, coletamos:</p>
+<ul>
+<li><strong>Dados do perfil:</strong> nome da página, nome de usuário do Instagram, foto de perfil, contagem de seguidores</li>
+<li><strong>Métricas e insights:</strong> alcance, impressões, engajamento, visualizações de perfil, curtidas, comentários, salvamentos, compartilhamentos (via instagram_business_manage_insights e pages_read_engagement)</li>
+<li><strong>Conteúdo publicado:</strong> posts, stories, reels publicados com suas métricas (via instagram_business_basic)</li>
+<li><strong>Tokens de acesso:</strong> tokens OAuth para comunicação com as APIs da Meta, armazenados de forma criptografada</li>
+</ul>
+<h3>2.3 Dados de Uso da Plataforma</h3>
+<p>Registros de check-in, demandas de conteúdo, mensagens internas, arquivos enviados, eventos do calendário.</p>
+
+<h2>3. Finalidade do Uso dos Dados</h2>
+<ul>
+<li><strong>Gestão de clientes:</strong> organizar e gerenciar a carteira de clientes da agência</li>
+<li><strong>Publicação de conteúdo:</strong> agendar e publicar posts no Instagram e Facebook em nome dos clientes autorizados (via instagram_business_content_publish)</li>
+<li><strong>Relatórios e métricas:</strong> gerar relatórios de desempenho das redes sociais dos clientes para análise interna da agência</li>
+<li><strong>Comunicação interna:</strong> facilitar a comunicação entre membros da equipe da agência</li>
+<li><strong>Gestão financeira:</strong> controle de cobranças e despesas da agência</li>
+</ul>
+<p><strong>Os dados NÃO são utilizados para:</strong> venda a terceiros, publicidade direcionada, mineração de dados, ou qualquer finalidade não descrita nesta política.</p>
+
+<h2>4. Compartilhamento de Dados</h2>
+<p>Compartilhamos dados exclusivamente com:</p>
+<ul>
+<li><strong>Meta Platforms (Facebook/Instagram):</strong> para publicação de conteúdo e obtenção de métricas, conforme autorizado pelo usuário via OAuth</li>
+<li><strong>Supabase (infraestrutura):</strong> armazenamento seguro de dados com criptografia AES-256</li>
+<li><strong>Vercel (hospedagem):</strong> hospedagem da aplicação web</li>
+</ul>
+<p>Não compartilhamos, vendemos ou alugamos dados pessoais com terceiros para fins de marketing ou publicidade.</p>
+
+<h2>5. Armazenamento e Segurança</h2>
+<ul>
+<li>Dados armazenados no Supabase (PostgreSQL) com criptografia em trânsito (TLS 1.3) e em repouso (AES-256)</li>
+<li>Tokens de acesso da Meta armazenados de forma segura no banco de dados com acesso restrito via Row Level Security (RLS)</li>
+<li>Comunicação via HTTPS em todas as conexões</li>
+<li>Acesso restrito por autenticação e autorização baseada em papéis (admin/colaborador/cliente)</li>
+</ul>
+
+<h2>6. Direitos do Titular (LGPD)</h2>
+<p>De acordo com a LGPD, o usuário tem direito a:</p>
+<ul>
+<li>Acessar seus dados pessoais armazenados</li>
+<li>Corrigir dados incompletos ou desatualizados</li>
+<li>Solicitar a exclusão de seus dados</li>
+<li>Revogar o consentimento a qualquer momento</li>
+<li>Solicitar portabilidade dos dados</li>
+</ul>
+
+<h2>7. Exclusão de Dados</h2>
+<p>O usuário pode solicitar a exclusão total de seus dados a qualquer momento:</p>
+<ul>
+<li><strong>Via e-mail:</strong> contato@uniquemkt.com.br</li>
+<li><strong>Via plataforma:</strong> seção Configurações → Excluir minha conta</li>
+</ul>
+<p>Ao solicitar exclusão, todos os dados pessoais, tokens de acesso e conteúdo relacionado serão removidos permanentemente em até 30 dias.</p>
+
+<h2>8. Uso das APIs da Meta</h2>
+<p>O UniqueHub utiliza as seguintes APIs e permissões da Meta:</p>
+<ul>
+<li><strong>instagram_business_basic:</strong> Ler dados básicos de contas profissionais do Instagram (nome, seguidores, posts)</li>
+<li><strong>instagram_business_manage_insights:</strong> Ler métricas de desempenho (alcance, impressões, engajamento) para geração de relatórios</li>
+<li><strong>instagram_business_content_publish:</strong> Publicar conteúdo (fotos, vídeos, reels) no Instagram em nome do cliente autorizado</li>
+<li><strong>pages_read_engagement:</strong> Ler métricas de engajamento das Páginas do Facebook conectadas</li>
+</ul>
+<p>Todas as permissões são solicitadas via fluxo OAuth padrão da Meta, com consentimento explícito do usuário.</p>
+
+<h2>9. Cookies e Armazenamento Local</h2>
+<p>O UniqueHub utiliza localStorage e sessionStorage para preferências do usuário (tema, configurações de som, cache de dados). Não utilizamos cookies de rastreamento ou publicidade.</p>
+
+<h2>10. Contato</h2>
+<p><strong>Unique Marketing 360 LTDA</strong><br>
+E-mail: contato@uniquemkt.com.br<br>
+Petrópolis, RJ — Brasil</p>
+
+<p style="margin-top:40px;font-size:12px;color:#999">Esta política pode ser atualizada periodicamente. Recomendamos revisá-la regularmente.</p>
 </body></html>
