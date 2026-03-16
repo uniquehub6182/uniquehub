@@ -2993,7 +2993,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                   </> : <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o link da pasta compartilhada do Google Drive</p>}
                   <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder={driveType==="onedrive"?"https://onedrive.live.com/embed?...":"https://drive.google.com/drive/folders/..."} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:12,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:8}} />
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
+                    <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);supaSetSetting("drive_config",JSON.stringify({url:driveTmp,type:t}));setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
                     <button onClick={()=>setDriveEditing(false)} style={{padding:"10px 16px",borderRadius:12,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666"}}>Cancelar</button>
                   </div>
                 </div>
@@ -3096,7 +3096,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         </div>
         {/* ── BANNER PUBLICITÁRIO ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
-          <div onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:64,borderRadius:14,overflow:"hidden",cursor:"pointer",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
+          <div onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:64,borderRadius:14,overflow:"hidden",cursor:"pointer",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
             {!bannerImg&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
           </div>
         </div>
@@ -3116,8 +3116,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Banner publicitário</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
-              <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid rgba(0,0,0,0.08)`,background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23"}}>Trocar imagem</button>
-              {bannerImg&&<button onClick={()=>{setBannerImg("");localStorage.removeItem("uh_desktop_banner");}} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#FEE2E2",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#EF4444"}}>Remover</button>}
+              <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid rgba(0,0,0,0.08)`,background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23"}}>Trocar imagem</button>
+              {bannerImg&&<button onClick={()=>{setBannerImg("");localStorage.removeItem("uh_desktop_banner");supaSetSetting("desktop_banner","");}} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#FEE2E2",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#EF4444"}}>Remover</button>}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
@@ -10572,16 +10572,16 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>
               {editingEquip && <>
                 <div style={{display:"flex",gap:6,marginBottom:8}}>
-                  <input value={newEquip} onChange={e=>setNewEquip(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newEquip.trim()){const updated=[...EQUIPMENTS,newEquip.trim()];setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));setNewEquip("");}}} placeholder="Nome do equipamento..." className="tinput" style={{flex:1,fontSize:11}} />
-                  <button onClick={()=>{if(!newEquip.trim())return;const updated=[...EQUIPMENTS,newEquip.trim()];setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));setNewEquip("");}} style={{padding:"6px 12px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.dark}}>+ Adicionar</button>
+                  <input value={newEquip} onChange={e=>setNewEquip(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&newEquip.trim()){const updated=[...EQUIPMENTS,newEquip.trim()];setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));supaSetSetting("equipments_config",JSON.stringify(updated));setNewEquip("");}}} placeholder="Nome do equipamento..." className="tinput" style={{flex:1,fontSize:11}} />
+                  <button onClick={()=>{if(!newEquip.trim())return;const updated=[...EQUIPMENTS,newEquip.trim()];setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));supaSetSetting("equipments_config",JSON.stringify(updated));setNewEquip("");}} style={{padding:"6px 12px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.dark}}>+ Adicionar</button>
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                   {EQUIPMENTS.map((eq,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:6,background:`${B.muted}06`,border:`1px solid ${B.border}`,fontSize:10,color:B.text}}>
                     {eq}
-                    <button onClick={()=>{const updated=EQUIPMENTS.filter((_,j)=>j!==i);setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));}} style={{background:"none",border:"none",cursor:"pointer",color:B.red,display:"flex",padding:0,fontSize:10}}>×</button>
+                    <button onClick={()=>{const updated=EQUIPMENTS.filter((_,j)=>j!==i);setEquipments(updated);localStorage.setItem("uh_equipments",JSON.stringify(updated));supaSetSetting("equipments_config",JSON.stringify(updated));}} style={{background:"none",border:"none",cursor:"pointer",color:B.red,display:"flex",padding:0,fontSize:10}}>×</button>
                   </div>)}
                 </div>
-                <button onClick={()=>{setEquipments(DEFAULT_EQUIPMENTS);localStorage.setItem("uh_equipments",JSON.stringify(DEFAULT_EQUIPMENTS));}} style={{marginTop:6,fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
+                <button onClick={()=>{setEquipments(DEFAULT_EQUIPMENTS);localStorage.setItem("uh_equipments",JSON.stringify(DEFAULT_EQUIPMENTS));supaSetSetting("equipments_config",JSON.stringify(DEFAULT_EQUIPMENTS));}} style={{marginTop:6,fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Restaurar padrão</button>
               </>}
             </div>}
           </Card>
@@ -16079,7 +16079,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
       const Chip = ({on,label,onTap,disabled}) => <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:disabled?"default":"pointer",fontFamily:"inherit",opacity:disabled?0.4:1}}>{label}</button>;
       const saveCfg = () => {
         setClientCards(ec.cards); setClientPills(ec.pills); setClientDashSections(ec.sections);
-        try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); localStorage.setItem("uh_client_dash",JSON.stringify(ec.sections)); } catch {}
+        try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); localStorage.setItem("uh_client_dash",JSON.stringify(ec.sections)); supaSetSetting("client_portal_config",JSON.stringify({cards:ec.cards,pills:ec.pills,sections:ec.sections})); } catch {}
         setEditCfg(null); setEditSections([]); setShowDashEdit(false);
       };
       return <><div onClick={()=>{setEditCfg(null);setShowDashEdit(false);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999,touchAction:"none"}} />
@@ -16953,7 +16953,7 @@ export default function App() {
             } catch(memberErr) { console.warn("[Auth] agency_members check failed, blocking:", memberErr); await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return; }
           }
           /* Load extras, photo, and visual prefs in ONE bulk query */
-          const settingsMap = await supaGetSettingsBulk([`profile_extras_${session.user.id}`, `profile_photo_${session.user.id}`, `visual_prefs_${session.user.id}`]);
+          const settingsMap = await supaGetSettingsBulk([`profile_extras_${session.user.id}`, `profile_photo_${session.user.id}`, `visual_prefs_${session.user.id}`, "desktop_banner", "drive_config", "client_portal_config", "equipments_config"]);
           const extrasRaw = settingsMap[`profile_extras_${session.user.id}`] || null;
           const photoSetting = settingsMap[`profile_photo_${session.user.id}`] || null;
           const cloudPrefs = settingsMap[`visual_prefs_${session.user.id}`] || null;
@@ -16989,6 +16989,17 @@ export default function App() {
               if (vp.nav)  { try { localStorage.setItem("uh_nav_picks", JSON.stringify(vp.nav)); } catch {} setCloudNav(vp.nav); }
             }
           } catch(e) { console.warn("Visual prefs load failed:", e); }
+          /* Restore agency-wide visual configs from cloud */
+          try {
+            const _banner = settingsMap["desktop_banner"];
+            if (_banner) { try { localStorage.setItem("uh_desktop_banner", _banner); } catch {} }
+            const _driveRaw = settingsMap["drive_config"];
+            if (_driveRaw) { try { const dc = typeof _driveRaw === "string" ? JSON.parse(_driveRaw) : _driveRaw; localStorage.setItem("uh_drive_url", dc.url || ""); localStorage.setItem("uh_drive_type", dc.type || ""); } catch {} }
+            const _cpRaw = settingsMap["client_portal_config"];
+            if (_cpRaw) { try { const cp = typeof _cpRaw === "string" ? JSON.parse(_cpRaw) : _cpRaw; if(cp.cards) localStorage.setItem("uh_client_cards", JSON.stringify(cp.cards)); if(cp.pills) localStorage.setItem("uh_client_pills", JSON.stringify(cp.pills)); if(cp.sections) localStorage.setItem("uh_client_dash", JSON.stringify(cp.sections)); } catch {} }
+            const _eqRaw = settingsMap["equipments_config"];
+            if (_eqRaw) { try { localStorage.setItem("uh_equipments", typeof _eqRaw === "string" ? _eqRaw : JSON.stringify(_eqRaw)); } catch {} }
+          } catch(e) { console.warn("Agency visual configs load failed:", e); }
           } /* end else (agency user) */
         } catch(e) { console.error("Profile load failed, blocking:", e); await supabase.auth.signOut(); }
       }
