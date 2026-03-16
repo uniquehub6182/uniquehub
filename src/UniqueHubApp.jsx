@@ -12011,7 +12011,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const etCfg = (type) => EVENT_TYPES.find(t=>t.k===type) || EVENT_TYPES[0];
 
   /* ── VIEW EVENT DETAIL ── */
-  if (viewEvent) {
+  if (viewEvent && !isCalDesktop) {
     const ev = viewEvent;
     const et = etCfg(ev.type);
     return (
@@ -12141,7 +12141,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   }
 
   /* ── ADD EVENT: PICK TYPE ── */
-  if (adding && !eventType) return (
+  if (adding && !eventType && !isCalDesktop) return (
     <div className="pg">
       {ToastEl}
       <Head title="Novo no Calendário" onBack={() => { setAdding(false); setForm({}); }} />
@@ -12162,7 +12162,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   );
 
   /* ── ADD EVENT: FORM ── */
-  if (adding && eventType) {
+  if (adding && eventType && !isCalDesktop) {
     const et = etCfg(eventType);
     return (
       <div className="pg">
