@@ -117,6 +117,12 @@ serve(async (req) => {
           published_at: new Date().toISOString(),
         }).eq("id", post.id);
 
+        // Move demand from "scheduled" to "published" if demand_id exists
+        if (post.demand_id) {
+          await sb.from("demands").update({ stage: "published" }).eq("id", post.demand_id);
+          console.log(`[Scheduler] Moved demand ${post.demand_id} to published`);
+        }
+
         console.log(`[Scheduler] Published post ${post.id} on ${post.platform}`);
         results.push({ id: post.id, status: "published" });
       } catch (e: any) {

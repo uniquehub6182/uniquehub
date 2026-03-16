@@ -1358,13 +1358,13 @@ const CLIENTS_DATA_INIT = [
 ];
 
 /* ═══════════════════════ DEMAND / CONTENT DATA ═══════════════════════ */
-const SOCIAL_STAGES = ["idea","briefing","design","caption","review","client","published"];
+const SOCIAL_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
 const CAMPAIGN_STAGES = ["planning","creation","review","execution","completed"];
-const VIDEO_STAGES = ["idea","briefing","production","editing","review","client","published"];
+const VIDEO_STAGES = ["idea","briefing","production","editing","review","client","scheduled","published"];
 const STAGE_CFG = {
   idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Design",c:"#EC4899"},
   caption:{l:"Legenda",c:"#F59E0B"},review:{l:"Revisão",c:"#06B6D4"},client:{l:"Cliente",c:"#10B981"},
-  published:{l:"Publicado",c:"#BBF246"},planning:{l:"Planejamento",c:"#8B5CF6"},creation:{l:"Criação",c:"#3B82F6"},
+  scheduled:{l:"Programado",c:"#F59E0B"},published:{l:"Publicado",c:"#BBF246"},planning:{l:"Planejamento",c:"#8B5CF6"},creation:{l:"Criação",c:"#3B82F6"},
   execution:{l:"Execução",c:"#EC4899"},completed:{l:"Concluído",c:"#10B981"},production:{l:"Produção",c:"#EC4899"},
   editing:{l:"Edição",c:"#F59E0B"},
 };
@@ -6306,6 +6306,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
     }
   };
+  const setDemandStage = (d, targetStage) => {
+    setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: targetStage }, targetStage) : x));
+    setSel(prev => syncMilestones({ ...prev, stage: targetStage }, targetStage));
+    if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage });
+    showToast(`Avançou para: ${STAGE_CFG[targetStage]?.l || targetStage}`);
+  };
 
   const rejectToStage = (d, targetStage, feedbackNote) => {
     const updated = { ...d, stage: targetStage };
@@ -7286,7 +7292,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                     if (r?.error) { showToast(`Erro: ${r.error}`); return; }
                     updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
                     updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
-                    setTimeout(() => advanceStage(sel), 200);
+                    setTimeout(() => setDemandStage(sel, "published"), 200);
                     showToast("✓ Publicado!");
                   }
                 };
@@ -7406,7 +7412,21 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             </>}
           </>)}
 
-          {/* ── 7. PUBLICADO ── */}
+          {/* ── 7. PROGRAMADO ── */}
+          {renderSection("scheduled", <>
+            {sel.stage === "scheduled" && <div style={{ textAlign:"center", padding:12 }}>
+              <div style={{ width:48, height:48, borderRadius:24, background:"#F59E0B15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+              <p style={{ fontSize:14, fontWeight:700, color:"#F59E0B" }}>Post programado</p>
+              {sel.steps?.igPublished?.scheduledAt && <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Publicação em {new Date(sel.steps.igPublished.scheduledAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}</p>}
+              <p style={{ fontSize:10, color:B.muted, marginTop:6 }}>O post será publicado automaticamente na data e hora programada.</p>
+              {sel.steps?.igPublished && <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:"#F59E0B10", border:"1px solid #F59E0B20", display:"inline-flex", alignItems:"center", gap:6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Agendado · {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}</span>
+              </div>}
+            </div>}
+          </>)}
+
+          {/* ── 8. PUBLICADO ── */}
           {renderSection("published", <>
             {sel.stage === "published" && <div style={{ textAlign:"center", padding:12 }}>
               {sel.steps?.igPublished?.scheduled ? <>
@@ -7475,6 +7495,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   }
                   if (r?.error) { showToast(`Erro: ${r.error}`); return; }
                   updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
+                  setTimeout(() => setDemandStage(sel, "published"), 200);
                   showToast("✓ Publicado!");
                 }
               };
@@ -7728,7 +7749,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {/* ── KANBAN DESKTOP VIEW ── */}
       {isContentDesktop && (() => {
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
-        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","published","completed"];
+        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","scheduled","published","completed"];
         /* Only show columns that have demands or are from the social workflow */
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
