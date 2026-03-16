@@ -2196,15 +2196,9 @@ function LoginPage({ onAuth, onClientAuth }) {
   const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
 
   return (
-    <div style={{ position:"fixed", inset:0, display:"flex", background:"#000" }}>
-      {/* Left — images (desktop only) */}
-      {isDesktopLogin && <div style={{ flex:"0 0 50%", overflow:"hidden", background:"#0A0A0A", position:"relative", display:"flex" }}>
-        {ONBOARD_SLIDES.map((s, i) => (
-          <img key={i} src={s.img} alt="" style={{ flex:1, minWidth:0, height:"100%", objectFit:"cover", display:"block" }} />
-        ))}
-      </div>}
-      {/* Right — original login */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", background:"#000", overflow:"hidden" }}>
+    <div style={{ position:"fixed", inset:0, display: isDesktopLogin ? "flex" : "flex", alignItems: isDesktopLogin ? "center" : "stretch", justifyContent: isDesktopLogin ? "center" : "stretch", background:"#000" }}>
+      {/* Desktop: centered login container */}
+      <div style={isDesktopLogin ? { width:480, maxWidth:"90vw", display:"flex", flexDirection:"column", maxHeight:"90vh" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
@@ -2239,7 +2233,7 @@ function LoginPage({ onAuth, onClientAuth }) {
       `}</style>
 
       {/* ── DARK HEADER ── */}
-      <div className="llogo" style={{ padding:isDesktopLogin?"60px 28px 40px":"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
+      <div className="llogo" style={{ padding:isDesktopLogin?"32px 28px 24px":"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
         <img src={LOGO_B64} alt="UniqueHub" style={{ height:isDesktopLogin?48:36, objectFit:"contain", marginBottom:isDesktopLogin?14:10 }} />
         <p style={{ fontSize:isDesktopLogin?13:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
 
@@ -2255,8 +2249,8 @@ function LoginPage({ onAuth, onClientAuth }) {
       </div>
 
       {/* ── WHITE CARD ── */}
-      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"24px 24px 0 0":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"36px 48px 32px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
-        <div style={isDesktopLogin?{maxWidth:420,margin:"0 auto"}:{}}>
+      <div className="lcard" style={{ flex:isDesktopLogin?"none":1, height:isDesktopLogin?"auto":0, background:"#fff", borderRadius:isDesktopLogin?"0 0 24px 24px":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"32px 40px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+        <div style={isDesktopLogin?{maxWidth:400,margin:"0 auto"}:{}}>
 
         {/* Portal toggle — Colaborador | Cliente */}
         <div style={{ display:"flex", background:"#F0F1F3", borderRadius:14, padding:3, marginBottom:20 }}>
