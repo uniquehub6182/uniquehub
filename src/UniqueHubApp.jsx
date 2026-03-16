@@ -13088,6 +13088,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
 }
 
 function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientView }) {
+  const isRepDesktop = useIsDesktop();
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [tab, setTab] = useState("client");
@@ -13272,7 +13273,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
   };
 
   /* ── CLIENT DETAIL ── */
-  if (selClient) {
+  if (selClient && !isRepDesktop) {
     const c = clientMetrics.find(x => x.name === selClient) || clientMetrics[0];
     if (!c) { setSelClient(null); return null; }
     const allPosts = [
@@ -13478,6 +13479,187 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 
 
   /* ── MAIN REPORTS ── */
+  /* ── DESKTOP REPORTS LAYOUT ── */
+  if (isRepDesktop) {
+    const sc = selClient ? (clientMetrics.find(x=>x.name===selClient)||null) : null;
+    /* All posts for selected client */
+    const allPosts = sc ? [
+      ...(sc.fbPosts||[]).map(p=>({...p,_p:"fb",_date:p.created_time,_img:p.full_picture,_text:p.message,_likes:p.likes_count||0,_comments:p.comments_count||0,_shares:p.shares_count||0,_type:"post"})),
+      ...(sc.mediaPosts||[]).map(p=>({...p,_p:"ig",_date:p.timestamp,_img:p.thumbnail_url||p.media_url,_text:p.caption,_likes:p.like_count||0,_comments:p.comments_count||0,_shares:0,_type:p.media_type==="VIDEO"?"reels":"imagem"}))
+    ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0)) : [];
+    const ranked = [...clientMetrics].filter(c=>c.hasData).sort((a,b)=>b.totalReach-a.totalReach);
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" onBack={onBack} collapsed={false} stats={[]} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* LEFT SIDEBAR: Date + Clients */}
+          <div style={{ width:260, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Date picker compact */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px" }}>
+              <p style={{ fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", marginBottom:8 }}>Período</p>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                {[{k:"7d",l:"7d"},{k:"14d",l:"14d"},{k:"30d",l:"30d"},{k:"month",l:"Mês"},{k:"lastmonth",l:"Ant."},{k:"90d",l:"90d"}].map(p=>(
+                  <button key={p.k} onClick={()=>applyDatePreset(p.k)} style={{ padding:"4px 8px", borderRadius:6, fontSize:9, fontWeight:600, cursor:"pointer", fontFamily:"inherit", border:datePreset===p.k?`1.5px solid ${B.accent}`:"1px solid rgba(255,255,255,0.15)", background:datePreset===p.k?`${B.accent}20`:"transparent", color:datePreset===p.k?B.accent:"rgba(255,255,255,0.7)" }}>{p.l}</button>
+                ))}
+              </div>
+              <p style={{ fontSize:8, color:"rgba(255,255,255,0.3)", marginTop:6 }}>{dateSince} → {dateUntil}</p>
+            </div>
+            {/* Client list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Clientes ({clientMetrics.length})</p>
+                <span style={{ fontSize:9, color:B.green, fontWeight:600 }}>{totals.connectedCount} conectados</span>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"4px 6px" }}>
+                <button onClick={()=>setSelClient(null)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 10px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:!selClient?700:500, background:!selClient?`${B.accent}10`:"transparent", color:!selClient?B.accent:B.text, marginBottom:2 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                  <span>Visão Geral</span>
+                </button>
+                {clientMetrics.map(c => {
+                  const isSel = selClient===c.name;
+                  return (
+                    <button key={c.name} onClick={()=>setSelClient(isSel?null:c.name)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"7px 10px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, background:isSel?`${B.accent}10`:"transparent", color:isSel?B.accent:B.text, marginBottom:1, textAlign:"left" }}>
+                      <div style={{ width:8, height:8, borderRadius:4, background:c.hasData?B.green:B.muted, flexShrink:0 }}/>
+                      <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:isSel?700:500 }}>{c.name}</span>
+                      {c.hasData && <span style={{ fontSize:8, color:B.muted }}>{formatNum(c.totalReach)}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* MAIN CONTENT */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {loading ? <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ width:40, height:40, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 12px" }}/>
+                <p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p>
+              </div>
+            </div> : !selClient ? <>
+              {/* ═══ OVERVIEW ═══ */}
+              <div style={{ padding:"14px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div><p style={{ fontSize:18, fontWeight:800, color:B.text }}>Visão Geral</p><p style={{ fontSize:11, color:B.muted }}>{dateLabel} · {totals.connectedCount} clientes</p></div>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 18px" }}>
+                {/* KPI Grid */}
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10, marginBottom:20 }}>
+                  {[
+                    {l:"Alcance Total",v:formatNum(totals.reach),c:B.accent,sub:"Facebook + Instagram"},
+                    {l:"Engajamento",v:formatNum(totals.engaged),c:B.blue,sub:"Interações totais"},
+                    {l:"Curtidas",v:formatNum(totals.likes),c:"#E91E63",sub:"Posts do Instagram"},
+                    {l:"Comentários",v:formatNum(totals.comments),c:B.orange,sub:"Posts do Instagram"},
+                    {l:"Seguidores FB",v:formatNum(totals.fbFollowers),c:"#4267B2",sub:"Total acumulado"},
+                    {l:"Seguidores IG",v:formatNum(totals.igFollowers),c:"#E4405F",sub:"Total acumulado"},
+                    {l:"Impressões IG",v:formatNum(totals.igImp),c:B.purple,sub:"Período selecionado"},
+                    {l:"Salvamentos",v:formatNum(totals.saved),c:B.cyan,sub:"Posts do Instagram"},
+                  ].map((m,i) => (
+                    <div key={i} style={{ padding:"14px 16px", borderRadius:14, background:`${m.c}06`, border:`1px solid ${m.c}12` }}>
+                      <div style={{ width:8, height:8, borderRadius:4, background:m.c, marginBottom:8 }}/>
+                      <p style={{ fontSize:22, fontWeight:900, color:B.text }}>{m.v}</p>
+                      <p style={{ fontSize:11, fontWeight:700, color:m.c, marginTop:4 }}>{m.l}</p>
+                      <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{m.sub}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Ranking table */}
+                {ranked.length>0 && <div style={{ marginBottom:20 }}>
+                  <p style={{ fontSize:13, fontWeight:800, color:B.text, marginBottom:10 }}>Ranking por Alcance</p>
+                  <div style={{ borderRadius:12, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 100px 100px 80px", padding:"8px 14px", background:B.bg, fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>
+                      <span>#</span><span>Cliente</span><span style={{textAlign:"right"}}>Alcance</span><span style={{textAlign:"right"}}>Engajamento</span><span style={{textAlign:"right"}}>Seguidores</span><span style={{textAlign:"right"}}>Eng. Rate</span>
+                    </div>
+                    {ranked.map((c,i) => (
+                      <div key={c.name} onClick={()=>setSelClient(c.name)} style={{ display:"grid", gridTemplateColumns:"40px 1fr 100px 100px 100px 80px", padding:"10px 14px", borderTop:`1px solid ${B.border}`, cursor:"pointer", fontSize:12, alignItems:"center" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}04`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <span style={{ fontSize:14, fontWeight:800, color:i<3?B.accent:B.muted }}>{i+1}</span>
+                        <span style={{ fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</span>
+                        <span style={{ textAlign:"right", fontWeight:700 }}>{formatNum(c.totalReach)}</span>
+                        <span style={{ textAlign:"right", fontWeight:600, color:B.blue }}>{formatNum(c.totalEngaged)}</span>
+                        <span style={{ textAlign:"right", fontWeight:600 }}>{formatNum(c.igFollowers+c.fbFollowers)}</span>
+                        <span style={{ textAlign:"right", fontWeight:600, color:Number(c.engRate)>3?B.green:B.muted }}>{c.engRate}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>}
+              </div>
+            </> : sc ? <>
+              {/* ═══ CLIENT DETAIL ═══ */}
+              <div style={{ padding:"14px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
+                <button onClick={()=>setSelClient(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>{sc.name}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>IG: {formatNum(sc.igFollowers)} seg · FB: {formatNum(sc.fbFollowers)} seg · Eng: {sc.engRate}%</p>
+                </div>
+                {!sc.hasData && <span style={{ fontSize:10, padding:"4px 10px", borderRadius:6, background:`${B.orange}12`, color:B.orange, fontWeight:600 }}>API não conectada</span>}
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 18px" }}>
+                {!sc.hasData ? <div style={{ textAlign:"center", padding:"40px 0" }}>
+                  <p style={{ fontSize:14, fontWeight:600, color:B.muted }}>Sem dados — conecte as redes sociais na página do cliente</p>
+                </div> : <>
+                  {/* Client KPIs */}
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10, marginBottom:16 }}>
+                    {[
+                      {l:"Alcance IG",v:formatNum(sc.igReach),c:"#E4405F"},
+                      {l:"Impressões IG",v:formatNum(sc.igImpressions),c:B.purple},
+                      {l:"Engajamento IG",v:formatNum(sc.igAccountsEngaged),c:B.blue},
+                      {l:"Eng. Rate",v:sc.engRate+"%",c:Number(sc.engRate)>3?B.green:B.orange},
+                      {l:"Curtidas",v:formatNum(sc.totalLikes),c:"#E91E63"},
+                      {l:"Comentários",v:formatNum(sc.totalComments),c:B.orange},
+                      {l:"Salvamentos",v:formatNum(sc.totalSaved),c:B.cyan},
+                      {l:"Alcance FB",v:formatNum(sc.fbImpressions),c:"#4267B2"},
+                    ].map((m,i) => (
+                      <div key={i} style={{ padding:"12px 14px", borderRadius:12, background:`${m.c}06`, border:`1px solid ${m.c}12` }}>
+                        <p style={{ fontSize:20, fontWeight:900 }}>{m.v}</p>
+                        <p style={{ fontSize:10, fontWeight:600, color:m.c, marginTop:3 }}>{m.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Daily charts */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+                    {[{d:sc.igDaily,c:"#E4405F",l:"Alcance IG (diário)",m:"reach"},{d:sc.fbDaily,c:"#4267B2",l:"Impressões FB (diário)",m:"page_posts_impressions"}].map((ch,ci) => {
+                      const pts = ch.d?.filter(x=>x.name===ch.m).flatMap(x=>x.values||[]).map(v=>({date:v.end_time?.split("T")[0],value:v.value||0}))||[];
+                      const max = Math.max(...pts.map(p=>p.value),1);
+                      return (
+                        <div key={ci} style={{ padding:"12px 14px", borderRadius:12, border:`1px solid ${B.border}` }}>
+                          <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:8 }}>{ch.l}</p>
+                          {pts.length>0 ? <div style={{ display:"flex", alignItems:"flex-end", gap:1, height:50 }}>
+                            {pts.map((p,pi)=><div key={pi} style={{ flex:1, borderRadius:2, background:ch.c, height:`${Math.max((p.value/max)*45,2)}px`, opacity:pi===pts.length-1?1:0.5 }} title={`${p.date}: ${formatNum(p.value)}`}/>)}
+                          </div> : <p style={{ fontSize:10, color:B.muted, textAlign:"center", padding:10 }}>Sem dados</p>}
+                          {pts.length>0 && <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+                            <span style={{ fontSize:7, color:B.muted }}>{pts[0]?.date?.slice(5)}</span>
+                            <span style={{ fontSize:7, color:B.muted }}>{pts[pts.length-1]?.date?.slice(5)}</span>
+                          </div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Posts grid */}
+                  {allPosts.length>0 && <div>
+                    <p style={{ fontSize:13, fontWeight:800, marginBottom:10 }}>Posts ({allPosts.length})</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:8 }}>
+                      {allPosts.slice(0,20).map((p,pi) => (
+                        <div key={pi} style={{ borderRadius:10, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+                          {p._img && <div style={{ width:"100%", height:120, background:`url(${p._img}) center/cover`, position:"relative" }}>
+                            <span style={{ position:"absolute", top:4, left:4, fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:p._p==="ig"?"#E4405F":"#4267B2", color:"#fff" }}>{p._p==="ig"?"IG":"FB"}</span>
+                          </div>}
+                          <div style={{ padding:"6px 8px" }}>
+                            <div style={{ display:"flex", gap:8, fontSize:10, color:B.muted }}>
+                              <span>❤️ {p._likes}</span><span>💬 {p._comments}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>}
+                </>}
+              </div>
+            </> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const TABS = [
     { k:"overview", l:"Visão Geral", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> },
     ...(!isClientView ? [{ k:"clients", l:"Por Cliente", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> }] : []),
