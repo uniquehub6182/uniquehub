@@ -5774,6 +5774,7 @@ const FinField = ({ label, value, onChange, placeholder, type, mono, helpText })
 );
 
 function FinancialPage({ onBack, clients: propClients }) {
+  const isFinDesktop = useIsDesktop();
   const CDATA = propClients || [];
   const totalRevReal = CDATA.reduce((a, c) => a + parseBRL(c.monthly), 0);
   const payingClients = CDATA.filter(c => c.status === "ativo" && c.plan !== "Trial").length;
@@ -5844,19 +5845,46 @@ function FinancialPage({ onBack, clients: propClients }) {
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className={isFinDesktop?"content-wide":""} style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.financial} label="Receita" title="Financeiro" collapsed={pgC} stats={[]} />
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <CollapseHeader icon={IC.financial} label="Receita" title="Financeiro" onBack={onBack} collapsed={pgC} stats={[]} />
+      <div style={isFinDesktop?{display:"flex",gap:16,marginTop:12,height:"calc(100vh - 230px)"}:{}}>
+      {/* Desktop sidebar */}
+      {isFinDesktop && <div style={{ width:240, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+        <div style={{ background:B.dark, borderRadius:16, padding:"16px 18px" }}>
+          <div style={{ display:"flex", gap:16, marginBottom:10 }}>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>R$ {totalRevReal.toLocaleString("pt-BR")}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Receita mensal</p></div>
+          </div>
+          <div style={{ display:"flex", gap:12 }}>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{payingClients}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Pagantes</p></div>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{trialClients}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Trial</p></div>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>R$ {ticketMedio.toLocaleString("pt-BR")}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Ticket médio</p></div>
+          </div>
+        </div>
+        <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
+            <p style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Menu</p>
+          </div>
+          <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+            {TABS.map(t => (
+              <button key={t.k} onClick={()=>setFinTab(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:finTab===t.k?700:500, background:finTab===t.k?`${B.accent}10`:"transparent", color:finTab===t.k?B.accent:B.text, marginBottom:2, transition:"all .15s" }} onMouseEnter={e=>{if(finTab!==t.k)e.currentTarget.style.background=`${B.accent}05`;}} onMouseLeave={e=>{if(finTab!==t.k)e.currentTarget.style.background="transparent";}}>
+                <span style={{ display:"flex", color:finTab===t.k?B.accent:B.muted }}>{t.icon}</span>{t.l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>}
+      {/* Content area */}
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={isFinDesktop?{flex:1,overflowY:"auto",background:B.bgCard||"#fff",borderRadius:20,border:`1px solid ${B.border}`,padding:"16px 20px"}:{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
-      {/* Tabs */}
-      <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4 }}>
+      {/* Mobile tabs */}
+      {!isFinDesktop && <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4 }}>
         {TABS.map(t => (
           <button key={t.k} onClick={() => setFinTab(t.k)} className={`htab${finTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:4 }}>
             <span>{t.icon}</span>{t.l}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* ═══ TAB: DASHBOARD ═══ */}
       {finTab === "dashboard" && <>
@@ -6343,6 +6371,7 @@ function FinancialPage({ onBack, clients: propClients }) {
       </>}
 
       {["agency","bank","billing","goals","expenses","asaas"].includes(finTab) && <button onClick={saveFin} disabled={finCfgSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:finCfgSaving?0.5:1 }}>{finCfgSaving?"Salvando...":"Salvar Configurações"}</button>}
+      </div>
       </div>
     </div>
   );
