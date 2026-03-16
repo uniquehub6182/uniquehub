@@ -3113,8 +3113,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         </div>
         {/* ── BANNER PUBLICITÁRIO ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
-          <div onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:64,borderRadius:14,overflow:"hidden",cursor:"pointer",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
-            {!bannerImg&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
+          <div onClick={()=>{if(!isAdmin){return;}const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:64,borderRadius:14,overflow:"hidden",cursor:isAdmin?"pointer":"default",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg&&isAdmin)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
+            {!bannerImg&&isAdmin&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
           </div>
         </div>
         {/* ── 3 BESPOKE PANELS ── */}
@@ -3131,10 +3131,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <button onClick={()=>setShowPanelEditor(false)} style={{width:32,height:32,borderRadius:8,background:"#F5F5F5",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
-            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Banner publicitário</p>
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Banner publicitário {!isAdmin&&<span style={{fontSize:9,fontWeight:500,color:"#9CA3AF"}}>(somente admin)</span>}</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
-              <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid rgba(0,0,0,0.08)`,background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23"}}>Trocar imagem</button>
-              {bannerImg&&<button onClick={()=>{setBannerImg("");localStorage.removeItem("uh_desktop_banner");supaSetSetting("desktop_banner","");}} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#FEE2E2",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#EF4444"}}>Remover</button>}
+              {isAdmin ? <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid rgba(0,0,0,0.08)`,background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23"}}>Trocar imagem</button> : <p style={{fontSize:11,color:"#9CA3AF"}}>Apenas o administrador pode alterar o banner</p>}
+              {isAdmin&&bannerImg&&<button onClick={()=>{setBannerImg("");localStorage.removeItem("uh_desktop_banner");supaSetSetting("desktop_banner","");}} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#FEE2E2",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#EF4444"}}>Remover</button>}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
@@ -3531,6 +3531,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [addingFile, setAddingFile] = useState(false);
   const [fileForm, setFileForm] = useState({});
   const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [clientCreds, setClientCreds] = useState([]);
+  const [addingCred, setAddingCred] = useState(false);
+  const [credForm, setCredForm] = useState({ label:"", username:"", password:"", notes:"" });
+  const [showCredPw, setShowCredPw] = useState({});
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef(null);
   const handleLogoUpload = async (e) => {
@@ -3555,6 +3559,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       const filtered = (rows || []).filter(r => r.client_name === sel.name || r.client_name === "Todos");
       setClientIdeas(filtered.map(r => ({ id: r.id, title: r.title, desc: r.description || "", author: r.author || "—", date: new Date(r.created_at).toLocaleDateString("pt-BR"), votes: r.votes || 0, status: r.status || "pending", tags: r.tags || [], comments: r.comments || [] })));
       setClientIdeasLoaded(sel.name);
+    });
+  }, [profileTab, sel]);
+  /* Load credentials for selected client */
+  useEffect(() => {
+    if (profileTab !== "credentials" || !sel || !supabase) return;
+    const cid = sel.supaId || sel.id;
+    supaGetSetting(`client_creds_${cid}`).then(val => {
+      if (val) { try { setClientCreds(JSON.parse(val)); } catch { setClientCreds([]); } }
+      else setClientCreds([]);
     });
   }, [profileTab, sel]);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -4749,7 +4762,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
               {/* Tabs */}
               <div style={{ display:"flex", gap:4, padding:"12px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
-                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).map(t=>(
+                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).map(t=>(
                   <button key={t.k} onClick={()=>setProfileTab(t.k)} style={{ padding:"6px 14px", borderRadius:100, border:profileTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, background:profileTab===t.k?B.accent:"transparent", color:profileTab===t.k?"#0D0D0D":B.muted }}>{t.l}</button>
                 ))}
               </div>
@@ -4908,6 +4921,58 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                         <p style={{ fontSize:10, color:B.muted }}>{inv.value}</p>
                       </div>
                       <span style={{ fontSize:10, fontWeight:700, padding:"3px 8px", borderRadius:6, background:inv.status==="pago"?`${B.green}15`:`${B.orange}15`, color:inv.status==="pago"?B.green:B.orange }}>{inv.status}</span>
+                    </div>
+                  ))}
+                </div>}
+                {/* ── CREDENTIALS TAB ── */}
+                {!confirmAction && profileTab==="credentials" && isAdmin && <div>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                    <div>
+                      <p style={{ fontSize:14, fontWeight:700 }}>🔒 Credenciais</p>
+                      <p style={{ fontSize:11, color:B.muted }}>Área segura — apenas administradores</p>
+                    </div>
+                    <button onClick={()=>{setAddingCred(true);setCredForm({label:"",username:"",password:"",notes:""});}} style={{ padding:"6px 12px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D" }}>+ Adicionar</button>
+                  </div>
+                  {addingCred && <div style={{ padding:14, borderRadius:14, border:`1.5px solid ${B.accent}30`, background:`${B.accent}05`, marginBottom:14 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                      <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Plataforma</p><input value={credForm.label} onChange={e=>setCredForm(p=>({...p,label:e.target.value}))} className="tinput" placeholder="Instagram, Facebook, Google Ads..."/></div>
+                      <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Usuário / E-mail</p><input value={credForm.username} onChange={e=>setCredForm(p=>({...p,username:e.target.value}))} className="tinput" placeholder="usuario@email.com"/></div>
+                    </div>
+                    <div style={{ marginBottom:10 }}><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Senha / Código</p><input value={credForm.password} onChange={e=>setCredForm(p=>({...p,password:e.target.value}))} className="tinput" placeholder="••••••••" type="password"/></div>
+                    <div style={{ marginBottom:10 }}><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Notas</p><input value={credForm.notes} onChange={e=>setCredForm(p=>({...p,notes:e.target.value}))} className="tinput" placeholder="2FA ativado, código backup: 123456..."/></div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={async()=>{if(!credForm.label||!credForm.username)return showToast("Preencha plataforma e usuário");const cid=sel.supaId||sel.id;const newCreds=[...clientCreds,{...credForm,id:Date.now(),createdAt:new Date().toISOString()}];setClientCreds(newCreds);await supaSetSetting(`client_creds_${cid}`,JSON.stringify(newCreds));setAddingCred(false);showToast("Credencial salva ✓");}} style={{ flex:1, padding:"10px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Salvar</button>
+                      <button onClick={()=>setAddingCred(false)} style={{ padding:"10px 16px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>Cancelar</button>
+                    </div>
+                  </div>}
+                  {clientCreds.length===0 && !addingCred && <div style={{ textAlign:"center", padding:"40px 0" }}>
+                    <p style={{ fontSize:36, marginBottom:8 }}>🔐</p>
+                    <p style={{ fontSize:13, color:B.muted }}>Nenhuma credencial cadastrada</p>
+                  </div>}
+                  {clientCreds.map((cred,ci)=>(
+                    <div key={cred.id||ci} style={{ padding:14, borderRadius:14, border:`1px solid ${B.border}`, marginBottom:8, background:B.bgCard||"#fff" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                        <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{cred.label}</p>
+                        <button onClick={async()=>{if(!confirm(`Excluir credencial "${cred.label}"?`))return;const cid=sel.supaId||sel.id;const nc=clientCreds.filter((_,i)=>i!==ci);setClientCreds(nc);await supaSetSetting(`client_creds_${cid}`,JSON.stringify(nc));showToast("Excluído");}} style={{ width:24, height:24, borderRadius:6, border:"none", background:"#FEE2E2", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        <div style={{ padding:8, borderRadius:8, background:B.bg }}>
+                          <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Usuário</p>
+                          <p style={{ fontSize:12, fontWeight:600, color:B.text, wordBreak:"break-all" }}>{cred.username}</p>
+                        </div>
+                        <div style={{ padding:8, borderRadius:8, background:B.bg }}>
+                          <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Senha</p>
+                          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                            <p style={{ fontSize:12, fontWeight:600, color:B.text, fontFamily:"monospace", flex:1 }}>{showCredPw[ci]?cred.password:"••••••••"}</p>
+                            <button onClick={()=>setShowCredPw(p=>({...p,[ci]:!p[ci]}))} style={{ border:"none", background:"transparent", cursor:"pointer", padding:2, display:"flex" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round">{showCredPw[ci]?<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><line x1="1" y1="1" x2="23" y2="23"/></>:<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}</svg></button>
+                            <button onClick={()=>{navigator.clipboard.writeText(cred.password);showToast("Copiado!");}} style={{ border:"none", background:"transparent", cursor:"pointer", padding:2, display:"flex" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                          </div>
+                        </div>
+                      </div>
+                      {cred.notes && <div style={{ padding:8, borderRadius:8, background:B.bg, marginTop:6 }}>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Notas</p>
+                        <p style={{ fontSize:11, color:B.text }}>{cred.notes}</p>
+                      </div>}
                     </div>
                   ))}
                 </div>}
