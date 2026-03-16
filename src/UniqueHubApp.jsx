@@ -6935,7 +6935,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         </button>
         {/* Type tabs */}
         <div style={{ flex:1, display:"flex", gap:6 }}>
-          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
@@ -6979,7 +6979,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {/* Type tabs + Date filter row (mobile only) */}
       {!isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
         <div style={{ flex:1, display:"flex", gap:6, overflowX:"auto" }}>
-          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
