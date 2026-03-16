@@ -51,36 +51,57 @@ serve(async (req) => {
     }
 
     // Step 2: Exchange for long-lived token (60 days)
+    // Instagram Business Login uses graph.instagram.com/access_token
     let longLivedToken = shortLivedToken;
-    let expiresIn = 3600; // default 1 hour for short-lived
+    let expiresIn = 3600;
     try {
-      const longUrl = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${IG_APP_SECRET}&access_token=${shortLivedToken}`;
-      console.log("[IG OAuth] Long-lived token URL:", longUrl.replace(IG_APP_SECRET, "***").replace(shortLivedToken, "TOKEN***"));
-      const longRes = await fetch(longUrl);
-      const longText = await longRes.text();
-      console.log("[IG OAuth] Long-lived raw response:", longText.substring(0, 300));
-      const longData = JSON.parse(longText);
-      if (longData.access_token) {
-        longLivedToken = longData.access_token;
-        expiresIn = longData.expires_in || 5184000; // 60 days
-      } else {
-        console.warn("[IG OAuth] Long-lived token failed:", JSON.stringify(longData));
+      // Try multiple endpoints for long-lived token
+      const endpoints = [
+        `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${IG_APP_SECRET}&access_token=${shortLivedToken}`,
+        `https://graph.instagram.com/v21.0/access_token?grant_type=ig_exchange_token&client_secret=${IG_APP_SECRET}&access_token=${shortLivedToken}`,
+      ];
+      for (const url of endpoints) {
+        console.log("[IG OAuth] Trying long-lived URL:", url.replace(IG_APP_SECRET, "***").replace(shortLivedToken, "TKN***"));
+        const res = await fetch(url);
+        const txt = await res.text();
+        console.log("[IG OAuth] Long-lived response:", txt.substring(0, 200));
+        try {
+          const data = JSON.parse(txt);
+          if (data.access_token) {
+            longLivedToken = data.access_token;
+            expiresIn = data.expires_in || 5184000;
+            console.log("[IG OAuth] Got long-lived token, expires:", expiresIn);
+            break;
+          }
+        } catch {}
       }
     } catch (e) {
-      console.warn("[IG OAuth] Long-lived token exchange failed:", e.message);
+      console.warn("[IG OAuth] Long-lived exchange failed:", e.message);
     }
 
-    // Step 3: Get user profile info
-    const profileUrl = `https://graph.instagram.com/v21.0/me?fields=user_id,username,name,account_type,profile_picture_url,followers_count,media_count,biography&access_token=${longLivedToken}`;
-    console.log("[IG OAuth] Profile URL (token hidden):", profileUrl.replace(longLivedToken, "TOKEN***"));
-    const profileRes = await fetch(profileUrl);
-    const profileText = await profileRes.text();
-    console.log("[IG OAuth] Profile raw response:", profileText.substring(0, 500));
+    // Step 3: Get user profile — try /me first, then /{user_id}
     let profile: any = {};
-    try { profile = JSON.parse(profileText); } catch(e) { console.error("[IG OAuth] Profile parse error:", e.message); }
-
-    if (profile.error) {
-      console.warn("[IG OAuth] Profile fetch error:", JSON.stringify(profile.error));
+    const fields = "user_id,username,name,account_type,profile_picture_url,followers_count,media_count";
+    const profileEndpoints = [
+      `https://graph.instagram.com/me?fields=${fields}&access_token=${longLivedToken}`,
+      `https://graph.instagram.com/v21.0/me?fields=${fields}&access_token=${longLivedToken}`,
+      `https://graph.instagram.com/v21.0/${igUserId}?fields=${fields}&access_token=${longLivedToken}`,
+      `https://graph.instagram.com/${igUserId}?fields=${fields}&access_token=${longLivedToken}`,
+    ];
+    for (const url of profileEndpoints) {
+      console.log("[IG OAuth] Trying profile:", url.replace(longLivedToken, "TKN***"));
+      const res = await fetch(url);
+      const txt = await res.text();
+      console.log("[IG OAuth] Profile response:", txt.substring(0, 300));
+      try {
+        const data = JSON.parse(txt);
+        if (data.username || data.name) {
+          profile = data;
+          console.log("[IG OAuth] Profile found:", data.username);
+          break;
+        }
+        if (data.error) console.warn("[IG OAuth] Profile error:", data.error.message);
+      } catch {}
     }
 
     // Return profile + token data to frontend
