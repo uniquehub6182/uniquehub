@@ -12306,7 +12306,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   }
 
   /* ── DESKTOP TWO-PANEL CALENDAR ── */
-  if (isCalDesktop && !adding && !viewEvent) {
+  if (isCalDesktop) {
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
@@ -12345,9 +12345,89 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>
             </div>
           </div>
-          {/* ── RIGHT: Day Events ── */}
+          {/* ── RIGHT: Day Events / View Event / Add Event ── */}
           <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-            <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            {viewEvent ? (() => {
+              const ev = viewEvent; const et = etCfg(ev.type);
+              return <>
+                <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                  <button onClick={()=>setViewEvent(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                  <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800, color:B.text }}>{ev.title}</p><p style={{ fontSize:11, color:B.muted }}>{et.l} · {ev.time}</p></div>
+                  <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{ width:32, height:32, borderRadius:8, border:"1px solid #FEE2E2", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                </div>
+                <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
+                    <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${et.c}12`, color:et.c }}>{et.l}</span>
+                    <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${B.dark}12`, color:B.dark }}>{ev.time}</span>
+                    {ev.meetingMode && <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${ev.meetingMode==="online"?B.blue:B.green}12`, color:ev.meetingMode==="online"?B.blue:B.green }}>{ev.meetingMode==="online"?"Online":"Presencial"}</span>}
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+                    {[{l:"Criado por",v:ev.createdBy},{l:"Cliente",v:ev.client},{l:"Local",v:ev.location},{l:"Data",v:`${ev.day}/${(ev.month+1).toString().padStart(2,"0")}/${ev.year}`}].filter(x=>x.v).map((item,ii)=>(
+                      <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
+                        <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {ev.participants?.length>0 && <div style={{ marginBottom:16 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Participantes ({ev.participants.length})</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                      {ev.participants.map((name,pi) => <div key={pi} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", borderRadius:10, background:B.bg }}><Av name={name} sz={24} fs={9}/><span style={{ fontSize:12, fontWeight:600 }}>{name}</span></div>)}
+                    </div>
+                  </div>}
+                  {ev.equipment?.length>0 && <div style={{ marginBottom:16 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Equipamentos ({ev.equipment.length})</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {ev.equipment.map((eq,ei) => <span key={ei} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:8, background:`${B.orange}12`, color:B.orange }}>{eq}</span>)}
+                    </div>
+                  </div>}
+                  {ev.notes && <div style={{ padding:14, borderRadius:12, background:B.bg }}>
+                    <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Notas</p>
+                    <p style={{ fontSize:13, lineHeight:1.6, color:B.text, whiteSpace:"pre-wrap" }}>{ev.notes}</p>
+                  </div>}
+                </div>
+              </>;
+            })() : adding ? <>
+              {/* Add event form */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>{setAdding(false);setEventType(null);setForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>{eventType ? `Novo ${EVENT_TYPES.find(t=>t.k===eventType)?.l||"Evento"}` : "Novo Evento"}</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {!eventType ? <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  {EVENT_TYPES.map(t => (
+                    <div key={t.k} onClick={()=>setEventType(t.k)} style={{ padding:"16px 14px", borderRadius:14, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=t.c;e.currentTarget.style.background=`${t.c}06`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                      <div style={{ width:40, height:40, borderRadius:12, background:`${t.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:t.c, margin:"0 auto 8px" }}>{t.icon}</div>
+                      <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{t.l}</p>
+                      <p style={{ fontSize:10, color:B.muted, marginTop:3 }}>{t.desc}</p>
+                    </div>
+                  ))}
+                </div> : <>
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Título *</label>
+                    <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Nome do evento" className="tinput" />
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+                    <div><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Horário</label><input type="time" value={form.time||"09:00"} onChange={e=>setForm(p=>({...p,time:e.target.value}))} className="tinput" /></div>
+                    {(eventType==="meeting"||eventType==="recording"||eventType==="deadline") && <div><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Cliente</label><select value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput">{["",...CDATA.map(c=>c.name)].map(c=><option key={c} value={c}>{c||"Selecionar..."}</option>)}</select></div>}
+                  </div>
+                  {(eventType==="meeting"||eventType==="recording"||eventType==="event") && <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Local</label>
+                    <input value={form.location||""} onChange={e=>setForm(p=>({...p,location:e.target.value}))} placeholder="Endereço ou link" className="tinput" />
+                  </div>}
+                  {eventType==="meeting" && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+                    {["online","presencial"].map(m=><button key={m} onClick={()=>setForm(p=>({...p,meetingMode:m}))} style={{ padding:"10px", borderRadius:10, border:`1.5px solid ${form.meetingMode===m?B.accent:B.border}`, background:form.meetingMode===m?`${B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, textTransform:"capitalize" }}>{m}</button>)}
+                  </div>}
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Notas</label>
+                    <textarea value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Observações..." className="tinput" style={{ minHeight:70, resize:"vertical" }} />
+                  </div>
+                  <button onClick={saveEvent} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Salvar Evento</button>
+                </>}
+              </div>
+            </> : <>
+              {/* Day events list */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div>
                 <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{selDay} de {MONTHS[curMonth]}</p>
                 <p style={{ fontSize:11, color:B.muted }}>{dayEvents.length} evento{dayEvents.length!==1?"s":""}</p>
@@ -12380,6 +12460,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 );
               })}
             </div>
+            </>}
           </div>
         </div>
       </div>
