@@ -2196,9 +2196,9 @@ function LoginPage({ onAuth, onClientAuth }) {
   const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
 
   return (
-    <div style={{ position:"fixed", inset:0, display: isDesktopLogin ? "flex" : "flex", alignItems: isDesktopLogin ? "center" : "stretch", justifyContent: isDesktopLogin ? "center" : "stretch", background:"#000" }}>
+    <div style={{ position:"fixed", inset:0, display:"flex", alignItems: isDesktopLogin ? "flex-end" : "stretch", justifyContent: isDesktopLogin ? "center" : "stretch", background:"#000" }}>
       {/* Desktop: centered login container */}
-      <div style={isDesktopLogin ? { width:480, maxWidth:"90vw", display:"flex", flexDirection:"column", maxHeight:"90vh" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={isDesktopLogin ? { width:520, maxWidth:"90vw", display:"flex", flexDirection:"column", flex:1, maxHeight:"none" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
@@ -2249,7 +2249,7 @@ function LoginPage({ onAuth, onClientAuth }) {
       </div>
 
       {/* ── WHITE CARD ── */}
-      <div className="lcard" style={{ flex:isDesktopLogin?"none":1, height:isDesktopLogin?"auto":0, background:"#fff", borderRadius:isDesktopLogin?"0 0 24px 24px":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"32px 40px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"28px 28px 0 0":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"36px 44px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
         <div style={isDesktopLogin?{maxWidth:400,margin:"0 auto"}:{}}>
 
         {/* Portal toggle — Colaborador | Cliente */}
