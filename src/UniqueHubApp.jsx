@@ -8686,12 +8686,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   </div>
                 </div>
                 {/* ── GROUP INFO PANEL ── */}
-                {isGroup && showGroupInfo && <div style={{ borderBottom:`1px solid ${B.border}`, padding:"16px", background:B.bg, flexShrink:0 }}>
+                {isGroup && showGroupInfo && <div style={{ borderBottom:`1px solid ${B.border}`, padding:"16px", background:B.bg, flexShrink:0, maxHeight:320, overflowY:"auto" }}>
                   <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Membros ({(selConv.members||[]).length})</p>
                   <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14 }}>
                     {(selConv.members||[]).map(m => {
                       const isMe = m.id === user.id;
                       const isCreator = m.id === selConv.created_by;
+                      const iAmCreator = user.id === selConv.created_by;
                       const prof = allProfiles.find(p=>p.id===m.id);
                       const isOn = onlineUserIds.has(m.id);
                       return <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 8px", borderRadius:10, background:B.bgCard||"#fff" }}>
@@ -8703,21 +8704,27 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                           <p style={{ fontSize:12, fontWeight:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.name||m.email||"Membro"}{isMe?" (você)":""}</p>
                           <p style={{ fontSize:10, color:B.muted }}>{isCreator?"Admin":"Membro"}</p>
                         </div>
+                        {iAmCreator && !isMe && <button onClick={async(e)=>{e.stopPropagation();if(!confirm(`Remover ${m.name||"este membro"} do grupo?`))return;try{await supabase.from("conversation_members").delete().eq("conversation_id",selConv.id).eq("user_id",m.id);const fresh=await supaLoadConversations(user.id);setConvs(fresh);const upd=fresh.find(c=>c.id===selConv.id);if(upd)setSelConv(upd);showToast("Membro removido");}catch(err){showToast("Erro ao remover");}}} style={{ width:28, height:28, borderRadius:8, border:"none", background:"#FEE2E2", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }} title="Remover membro"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
                       </div>;
                     })}
                   </div>
-                  <button onClick={async()=>{
-                    if(!confirm(selConv.created_by===user.id?"Tem certeza que quer EXCLUIR este grupo? Todas as mensagens serão apagadas.":"Tem certeza que quer SAIR deste grupo?")) return;
-                    if(selConv.created_by===user.id){
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={async()=>{
+                      if(!confirm("Tem certeza que quer sair deste grupo?")) return;
+                      try{await supabase.from("conversation_members").delete().eq("conversation_id",selConv.id).eq("user_id",user.id);setConvs(p=>p.filter(c=>c.id!==selConv.id));setSelConv(null);setShowGroupInfo(false);showToast("Você saiu do grupo");}catch(e){showToast("Erro ao sair");}
+                    }} style={{ flex:1, padding:"10px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      Sair do grupo
+                    </button>
+                    {user.id===selConv.created_by && <button onClick={async()=>{
+                      if(!confirm("Tem certeza que quer EXCLUIR este grupo? Todas as mensagens serão apagadas permanentemente.")) return;
                       const ok = await supaDeleteConversation(selConv.id);
                       if(ok){setConvs(p=>p.filter(c=>c.id!==selConv.id));setSelConv(null);setShowGroupInfo(false);showToast("Grupo excluído");}
-                    } else {
-                      try{await supabase.from("conversation_members").delete().eq("conversation_id",selConv.id).eq("user_id",user.id);setConvs(p=>p.filter(c=>c.id!==selConv.id));setSelConv(null);setShowGroupInfo(false);showToast("Você saiu do grupo");}catch(e){showToast("Erro ao sair");}
-                    }
-                  }} style={{ width:"100%", padding:"10px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#EF4444", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    {selConv.created_by===user.id?"Excluir grupo":"Sair do grupo"}
-                  </button>
+                    }} style={{ flex:1, padding:"10px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#EF4444", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                      Excluir grupo
+                    </button>}
+                  </div>
                 </div>}
                 <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
                   {msgs.map((m,mi) => {
