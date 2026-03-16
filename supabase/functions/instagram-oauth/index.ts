@@ -68,7 +68,7 @@ serve(async (req) => {
 
     // Step 3: Get user profile info
     const profileRes = await fetch(
-      `https://graph.instagram.com/v21.0/me?fields=user_id,username,account_type,profile_picture_url,name,followers_count,media_count&access_token=${longLivedToken}`
+      `https://graph.instagram.com/v21.0/me?fields=id,username,name,account_type,profile_picture_url,followers_count,media_count&access_token=${longLivedToken}`
     );
     const profile = await profileRes.json();
     console.log("[IG OAuth] Profile:", JSON.stringify(profile).substring(0, 300));
@@ -79,7 +79,7 @@ serve(async (req) => {
 
     // Return profile + token data to frontend
     const result = {
-      ig_user_id: String(profile.user_id || igUserId),
+      ig_user_id: String(profile.id || igUserId),
       username: profile.username || "",
       account_type: profile.account_type || "",
       profile_picture_url: profile.profile_picture_url || "",
