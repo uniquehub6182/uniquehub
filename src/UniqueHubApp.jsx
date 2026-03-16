@@ -8641,7 +8641,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         showToast("Enviando áudio...");
         const result = await supaUploadChatFile(file);
         if (result && selConv) {
-          await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+          const msg = await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+          if (msg && typingChanRef.current) typingChanRef.current.send({ type: "broadcast", event: "new_msg", payload: msg });
+          if (msg && chatListChanRef.current) chatListChanRef.current.send({ type: "broadcast", event: "chat_update", payload: msg });
           showToast("Áudio enviado ✓");
         } else { showToast("Erro ao enviar áudio"); }
       };
@@ -9122,9 +9124,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       <div key={m.id||mi} style={{ display:"flex", justifyContent:isMine?"flex-end":"flex-start", marginBottom:2 }}>
                         <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard||"#fff"), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
                           {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}</p>}
-                          {m.type==="image" ? <img src={m.file_url} alt="" style={{ maxWidth:"100%", borderRadius:12 }} />
-                          : m.type==="audio" ? <audio controls src={m.file_url} style={{ maxWidth:"100%" }} />
-                          : m.type==="file" ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600 }}>📎 {m.file_name||"Arquivo"}</a>
+                          {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" style={{ maxWidth:"100%", borderRadius:12 }} />
+                          : m.file_url && (m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"")) ? <audio controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:8 }} />
+                          : m.file_url && (m.file_type?.startsWith("video") || /\.(mp4|mov|avi|mkv)$/i.test(m.file_name||"")) ? <video controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:12 }} />
+                          : m.file_url ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {m.file_name||"Arquivo"}</a>
                           : <span style={{ whiteSpace:"pre-wrap" }}>{m.content}</span>}
                           <div style={{ display:"flex", justifyContent:"flex-end", gap:4, marginTop:3 }}>
                             <span style={{ fontSize:10, color:isMine?"rgba(0,0,0,0.4)":"#9CA3AF" }}>{m.created_at?new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</span>
@@ -9139,9 +9142,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard||"#fff", flexShrink:0, position:"relative" }}>
                   <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${showAttach?B.accent:B.border}`, background:showAttach?`${B.accent}10`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                   {showAttach && <div style={{ position:"absolute", bottom:"100%", left:16, marginBottom:8, background:B.bgCard||"#fff", borderRadius:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:6, zIndex:10, minWidth:180 }}>
-                    {[{l:"Foto",ic:"🖼️",accept:"image/*"},{l:"Vídeo",ic:"🎬",accept:"video/*"},{l:"Documento",ic:"📄",accept:".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"},{l:"Arquivo",ic:"📎",accept:"*/*"}].map(opt=>(
+                    {[{l:"Foto",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,accept:"image/*"},{l:"Vídeo",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,accept:"video/*"},{l:"Documento",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,accept:".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"},{l:"Arquivo",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>,accept:"*/*"}].map(opt=>(
                       <button key={opt.l} onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept=opt.accept;inp.onchange=e=>{handleFileUpload(e);};inp.click();setShowAttach(false);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text, borderRadius:10 }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        <span style={{ fontSize:18 }}>{opt.ic}</span>{opt.l}
+                        <span style={{ display:"flex" }}>{opt.ic}</span>{opt.l}
                       </button>
                     ))}
                   </div>}
