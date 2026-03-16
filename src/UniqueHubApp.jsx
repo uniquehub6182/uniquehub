@@ -6016,8 +6016,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     </div>
   );
 
-  /* ── DETAIL VIEW (mobile only — desktop uses side panel) ── */
-  if (sel && !isContentDesktop) {
+  /* ── DETAIL VIEW ── */
+  if (sel) {
     /* Safety: ensure sel has required properties */
     if (!sel.type) sel.type = "social";
     if (!sel.stage) sel.stage = "idea";
@@ -6074,9 +6074,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       );
     };
 
-    return (
-      <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-      <div className="pg" style={{ paddingTop: TOP }}>
+    const detailInner = (<>
         {ToastEl}
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
@@ -6865,7 +6863,23 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </button>
         </div>}
         <div style={{ height:20 }} />
-      </div>
+    </>);
+
+    /* Wrap in drawer (desktop) or full page (mobile) */
+    if (isContentDesktop) {
+      return (<>
+        <div onClick={() => { setSel(null); setEditMode(false); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
+        <div style={{ position:"fixed", top:0, right:0, bottom:0, width:600, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", overflowY:"auto", animation:"slideInRight .25s ease both" }}>
+          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+          <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
+            <div style={{ padding:"20px" }}>{detailInner}</div>
+          </DemandDetailBoundary>
+        </div>
+      </>);
+    }
+    return (
+      <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
+        <div className="pg" style={{ paddingTop: TOP }}>{detailInner}</div>
       </DemandDetailBoundary>
     );
   }
@@ -7556,61 +7570,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </div>
         </div>
       </>}
-      {/* ── DESKTOP DETAIL DRAWER ── */}
-      {sel && isContentDesktop && (() => {
-        const stages = getStages(sel.type);
-        const stIdx = stages.indexOf(sel.stage);
-        const curCfg = STAGE_CFG[sel.stage] || { l: sel.stage, c: "#888" };
-        const canNext = stIdx < stages.length - 1;
-        const canPrev = stIdx > 0;
-        const doMove = (dir) => {
-          const ni = stIdx + dir;
-          if (ni < 0 || ni >= stages.length) return;
-          const ns = stages[ni];
-          setDemands(p => p.map(x => x.id === sel.id ? { ...x, stage: ns } : x));
-          setSel(prev => ({ ...prev, stage: ns }));
-          if (sel.supaId) supaUpdateDemand(sel.supaId, { stage: ns });
-          showToast(`${STAGE_CFG[ns]?.l || ns}`);
-        };
-        const briefing = sel.steps?.idea?.text || sel.steps?.briefing?.text || "";
-        return <>
-          <div onClick={() => setSel(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
-          <div style={{ position:"fixed", top:0, right:0, bottom:0, width:520, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", display:"flex", flexDirection:"column", animation:"slideInRight .25s ease both" }}>
-            <div style={{ padding:"16px 20px", borderBottom:"1px solid rgba(0,0,0,0.06)", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-              <button onClick={() => setSel(null)} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:15, fontWeight:800, color:"#1A1D23", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{sel.title}</p>
-                <p style={{ fontSize:11, color:"#9CA3AF" }}>{sel.client} · {sel.type === "campaign" ? "Campanha" : sel.type === "video" ? "Vídeo" : "Post"} · {sel.createdAt}</p>
-              </div>
-              <button onClick={async () => { if (!confirm(`Excluir "${sel.title}"?`)) return; if (sel.supaId) try { await supaDeleteDemand(sel.supaId); } catch {} setDemands(p => p.filter(d => d.id !== sel.id)); setSel(null); showToast("Excluída ✓"); }} style={{ width:32, height:32, borderRadius:10, border:"1px solid #FEE2E2", background:"#FEF2F2", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
-            </div>
-            <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderRadius:14, background:`${curCfg.c}10`, marginBottom:16 }}>
-                <div style={{ width:10, height:10, borderRadius:5, background:curCfg.c }} />
-                <span style={{ fontSize:13, fontWeight:700, color:curCfg.c, flex:1 }}>{curCfg.l}</span>
-                <span style={{ fontSize:10, color:"#9CA3AF" }}>{stIdx + 1}/{stages.length}</span>
-              </div>
-              <div style={{ display:"flex", gap:4, marginBottom:16 }}>
-                {stages.map((s, i) => (<div key={s} style={{ flex:1, height:6, borderRadius:3, background: i <= stIdx ? (STAGE_CFG[s]?.c || "#BBF246") : "rgba(0,0,0,0.06)" }} />))}
-              </div>
-              <div style={{ display:"flex", gap:8, marginBottom:20 }}>
-                {canPrev && <button onClick={() => doMove(-1)} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"1.5px solid rgba(0,0,0,0.08)", background:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:"#9CA3AF" }}>← {STAGE_CFG[stages[stIdx-1]]?.l}</button>}
-                {canNext && <button onClick={() => doMove(1)} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:STAGE_CFG[stages[stIdx+1]]?.c || "#BBF246", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>Avançar → {STAGE_CFG[stages[stIdx+1]]?.l}</button>}
-              </div>
-              <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Prioridade</label>
-              <div style={{ display:"flex", gap:6, marginBottom:16 }}>
-                {["baixa","média","alta"].map(p => { const pc = p === "alta" ? "#EF4444" : p === "média" ? "#F59E0B" : "#10B981"; return (<button key={p} onClick={() => { setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, priority: p } : x)); setSel(prev => ({ ...prev, priority: p })); if (sel.supaId) supaUpdateDemand(sel.supaId, { priority: p }); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${sel.priority === p ? pc : "rgba(0,0,0,0.06)"}`, background: sel.priority === p ? `${pc}12` : "#fff", color: sel.priority === p ? pc : "#9CA3AF", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", textTransform:"capitalize" }}>{p}</button>); })}
-              </div>
-              <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Responsáveis</label>
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
-                {(sel.assignees || []).map((a, j) => (<span key={j} style={{ padding:"6px 12px", borderRadius:10, background:"rgba(0,0,0,0.04)", fontSize:11, fontWeight:600, color:"#1A1D23" }}>{a}</span>))}
-              </div>
-              {sel.network && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Rede · Formato</label><p style={{ fontSize:13, color:"#1A1D23", marginBottom:16 }}>{sel.network} · {sel.format || "—"}</p></>}
-              {briefing && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Briefing</label><p style={{ fontSize:12, color:"#374151", lineHeight:1.6, marginBottom:16, whiteSpace:"pre-line" }}>{briefing}</p></>}
-            </div>
-          </div>
-        </>;
-      })()}
     </div>
   );
 }
