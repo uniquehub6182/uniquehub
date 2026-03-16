@@ -5279,7 +5279,7 @@ function AcademyPage({ onBack, isClientView }) {
   };
 
   /* ── DESKTOP TWO-PANEL ACADEMY ── */
-  if (isAcadDesktop && !creating && editing === null && !addingLesson && editLessonIdx === null) {
+  if (isAcadDesktop && !addingLesson && editLessonIdx === null) {
     const course = selCourse !== null ? courses[selCourse] : null;
     const lesson = course && selLesson !== null ? (course.lessons||[])[selLesson] : null;
     const c = course ? (CAT_COLORS[course.category] || B.accent) : B.accent;
@@ -5390,6 +5390,50 @@ function AcademyPage({ onBack, isClientView }) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
                 ))}
+              </div>
+            </> : (creating || editing !== null) ? <>
+              {/* Course form inside right panel */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>{setCreating(false);setEditing(null);setForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>{editing !== null ? "Editar Curso" : "Novo Curso"}</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Título *</label>
+                  <input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Google Ads — Avançado" className="tinput" style={{ fontSize:14, fontWeight:600 }} />
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:6, textTransform:"uppercase" }}>Categoria</label>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                    {CAT_OPTS.map(cc => <button key={cc} onClick={()=>setForm(p=>({...p,category:cc}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${form.category===cc ? CAT_COLORS[cc]||B.accent : B.border}`, background:form.category===cc?`${CAT_COLORS[cc]||B.accent}12`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>{cc}</button>)}
+                  </div>
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Descrição</label>
+                  <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva o conteúdo do curso..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:6, textTransform:"uppercase" }}>Capa do curso</label>
+                  <div style={{ border:`2px dashed ${form.thumb?B.green:B.accent}30`, borderRadius:12, overflow:"hidden", background:form.thumb?undefined:`${B.accent}04`, cursor:"pointer", minHeight:100, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>document.getElementById("acad-thumb-desk")?.click()}>
+                    <input id="acad-thumb-desk" type="file" accept="image/*" style={{ display:"none" }} onChange={handleThumb} />
+                    {form.thumb ? <img src={form.thumb} alt="capa" style={{ width:"100%", maxHeight:160, objectFit:"cover" }} /> : <p style={{ fontSize:12, color:B.accent, fontWeight:600 }}>+ Adicionar foto de capa</p>}
+                  </div>
+                  {form.thumb && <button onClick={()=>setForm(p=>({...p,thumb:null}))} style={{ marginTop:6, fontSize:11, color:B.red, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit" }}>Remover foto</button>}
+                </div>
+                {/* Lessons */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                  <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5 }}>Aulas ({lessons.length})</p>
+                  <button onClick={()=>{setAddingLesson(true);setLessonForm({});}} style={{ padding:"5px 10px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Aula</button>
+                </div>
+                {lessons.map((ll,li) => (
+                  <div key={ll.id||li} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, border:`1px solid ${B.border}`, marginBottom:4, borderLeft:`3px solid ${B.accent}` }}>
+                    <span style={{ fontSize:11, fontWeight:800, color:B.accent, width:20, textAlign:"center" }}>{li+1}</span>
+                    <p style={{ flex:1, fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ll.title}</p>
+                    <button onClick={()=>{setEditLessonIdx(li);setLessonForm({title:ll.title,videoUrl:ll.videoUrl||"",duration:ll.duration||"",desc:ll.desc||""});}} style={{ width:24, height:24, borderRadius:6, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button onClick={()=>removeLesson(li)} style={{ width:24, height:24, borderRadius:6, border:`1px solid #FEE2E2`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                  </div>
+                ))}
+                <button onClick={saveCourse} style={{ width:"100%", marginTop:16, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>{editing !== null ? "Salvar Alterações" : "Criar Curso"}</button>
               </div>
             </> : (
               <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
