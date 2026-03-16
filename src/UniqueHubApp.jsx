@@ -8347,8 +8347,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     </div>
   );
 
-  /* ── CHAT CONVERSATION ── */
-  if (view === "chat" && selConv) {
+  /* ── CHAT CONVERSATION (mobile full-screen only) ── */
+  if (view === "chat" && selConv && !chatIsDesktop) {
     const convName = getOtherName(selConv);
     const isGroup = selConv.type === "group";
     const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
@@ -8563,6 +8563,133 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       </div>
     </>
   ) : null;
+
+  /* ── DESKTOP TWO-PANEL CHAT ── */
+  if (chatIsDesktop) {
+    const sortedConvsD = [...convs].sort((a, b) => { const ta = a.lastMsg?.created_at || a.created_at; const tb = b.lastMsg?.created_at || b.created_at; return new Date(tb) - new Date(ta); });
+    const filteredConvsD = sortedConvsD.filter(c => getOtherName(c).toLowerCase().includes(search.toLowerCase()));
+    const showConvsD = chatTab==="all"?filteredConvsD:chatTab==="dm"?filteredConvsD.filter(c=>c.type==="dm"):filteredConvsD.filter(c=>c.type==="group");
+    return (
+      <div className="content-wide" style={{ minHeight:"calc(100vh - 120px)" }}>
+        {NewChatModal}{NewGroupModal}{ToastEl}
+        <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={false} />
+        <div style={{ display:"flex", height:"calc(100vh - 220px)", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", marginTop:8 }}>
+          {/* Left panel — conversation list */}
+          <div style={{ width:340, flexShrink:0, borderRight:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, background:B.bgCard||"#fff", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:14, flexShrink:0 }}>
+              <div style={{ display:"flex", gap:6, marginBottom:10, justifyContent:"flex-end" }}>
+                <button onClick={()=>setShowNewChat(true)} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg></button>
+                <button onClick={()=>setShowNewGroup(true)} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></button>
+              </div>
+              <div style={{ position:"relative", marginBottom:10 }}>
+                <svg style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ width:"100%", background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:10, padding:"8px 12px 8px 32px", fontFamily:"inherit", fontSize:13, color:B.text, outline:"none", boxSizing:"border-box" }}/>
+              </div>
+              <div style={{ display:"flex", gap:4, marginBottom:4 }}>
+                {[{k:"all",l:"Todos"},{k:"dm",l:"Direto"},{k:"group",l:"Grupos"}].map(t=>(
+                  <button key={t.k} onClick={()=>setChatTab(t.k)} style={{ padding:"5px 12px", borderRadius:100, border:chatTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, background:chatTab===t.k?B.accent:"transparent", color:chatTab===t.k?"#0D0D0D":B.muted }}>{t.l}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ flex:1, overflowY:"auto" }}>
+              {showConvsD.map(c => {
+                const isGrp = c.type==="group";
+                const other = !isGrp ? (c.members||[]).find(m=>m.id!==user.id) : null;
+                const nm = isGrp ? (c.name||"Grupo") : (other?.name||"Usuário");
+                const lastTxt = c.lastMsg?.content || "Sem mensagens";
+                const lastTime = c.lastMsg?.created_at ? new Date(c.lastMsg.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "";
+                const isActive = selConv?.id === c.id;
+                const otherUid = other?.id;
+                const isOn = otherUid ? onlineUserIds.has(otherUid) : false;
+                return (
+                  <div key={c.id} onClick={async()=>{setSelConv(c);setView("chat");const m=await supaLoadMessages(c.id);setMsgs(m||[]);if(c.unread)supaMarkRead(c.id,user.id);setConvs(p=>p.map(x=>x.id===c.id?{...x,unread:0}:x));setTimeout(()=>{if(msgEndRef.current)msgEndRef.current.scrollIntoView();},100);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", borderLeft:isActive?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .1s" }}>
+                    <div style={{ position:"relative", flexShrink:0 }}>
+                      {isGrp ? <div style={{ width:40, height:40, borderRadius:"50%", background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                      : <Av src={allProfiles.find(p=>p.id===other?.id)?.photo_url} name={nm} sz={40} fs={15} />}
+                      {!isGrp && <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:"50%", background:isOn?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <p style={{ fontSize:13, fontWeight:c.unread?800:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nm}</p>
+                        <span style={{ fontSize:10, color:B.muted, flexShrink:0 }}>{lastTime}</span>
+                      </div>
+                      <p style={{ fontSize:11, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:1 }}>{lastTxt}</p>
+                    </div>
+                    {c.unread>0 && <div style={{ width:20, height:20, borderRadius:10, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:9, fontWeight:800, color:"#0D0D0D" }}>{c.unread}</span></div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* Right panel — active conversation or placeholder */}
+          {selConv ? (() => {
+            const convName = getOtherName(selConv);
+            const isGroup = selConv.type === "group";
+            const otherMember = selConv?.members?.find(m => m.id !== user.id);
+            const otherIsOnline = otherMember?.id ? onlineUserIds.has(otherMember.id) : false;
+            const openCall = (type) => { const roomId = `uniquehub-${(selConv.id||"").replace(/-/g,"").slice(0,12)}`; window.open(`https://meet.jit.si/${roomId}${type==="voice"?"#config.startWithVideoMuted=true":""}`, "_blank", "noopener"); };
+            return (
+              <div style={{ flex:1, display:"flex", flexDirection:"column", background:B.bgCard||"#fff" }}>
+                <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx" />
+                <div style={{ borderBottom:`1px solid ${B.border}`, padding:"12px 16px", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+                  <div style={{ position:"relative", flexShrink:0 }}>
+                    {isGroup ? <div style={{ width:38, height:38, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                    : <Av src={allProfiles.find(p=>p.id===otherMember?.id)?.photo_url} name={convName} sz={38} fs={14} />}
+                    {!isGroup && <div style={{ position:"absolute", bottom:0, right:0, width:9, height:9, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:14, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
+                    <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros`:(otherIsOnline?"Online":"Offline")}</p>
+                  </div>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button onClick={()=>openCall("video")} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+                    <button onClick={()=>openCall("voice")} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+                  </div>
+                </div>
+                <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
+                  {msgs.map((m,mi) => {
+                    const isMine = m.sender_id === user.id;
+                    const senderName = m.sender_name || (isMine ? user.name : convName);
+                    return (
+                      <div key={m.id||mi} style={{ display:"flex", justifyContent:isMine?"flex-end":"flex-start", marginBottom:2 }}>
+                        <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard||"#fff"), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
+                          {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}</p>}
+                          {m.type==="image" ? <img src={m.file_url} alt="" style={{ maxWidth:"100%", borderRadius:12 }} />
+                          : m.type==="audio" ? <audio controls src={m.file_url} style={{ maxWidth:"100%" }} />
+                          : m.type==="file" ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600 }}>📎 {m.file_name||"Arquivo"}</a>
+                          : <span style={{ whiteSpace:"pre-wrap" }}>{m.content}</span>}
+                          <div style={{ display:"flex", justifyContent:"flex-end", gap:4, marginTop:3 }}>
+                            <span style={{ fontSize:10, color:isMine?"rgba(0,0,0,0.4)":"#9CA3AF" }}>{m.created_at?new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</span>
+                            {isMine && <span style={{ fontSize:10, color:m.read?"#22C55E":"rgba(0,0,0,0.3)" }}>{m.read?"✓✓":"✓"}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={msgEndRef} />
+                </div>
+                <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard||"#fff", flexShrink:0 }}>
+                  <button onClick={()=>fileRef.current?.click()} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
+                  <input value={input} onChange={e=>{setInput(e.target.value);broadcastTyping();}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
+                  <button onClick={sendMessage} disabled={!input.trim()} style={{ width:40, height:40, borderRadius:"50%", background:input.trim()?B.accent:`${B.muted}20`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"#9CA3AF"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                </div>
+              </div>
+            );
+          })() : (
+            <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:B.bgCard||"#fff" }}>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                </div>
+                <p style={{ fontSize:16, fontWeight:700, color:B.text }}>Selecione uma conversa</p>
+                <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha uma conversa ao lado</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   /* ── CONVERSATION LIST ── */
   const sortedConvs = [...convs].sort((a, b) => {
