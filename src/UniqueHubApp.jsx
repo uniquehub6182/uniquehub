@@ -8684,6 +8684,23 @@ const TypingDots = () => (
 );
 const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
 
+/* Chat notification sound — short WhatsApp-like tone */
+const _notifAudioCtx = { ctx: null };
+const playChatNotifSound = () => {
+  try {
+    if (!_notifAudioCtx.ctx) _notifAudioCtx.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _notifAudioCtx.ctx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = "sine"; osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(660, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+  } catch {}
+};
+
 function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const chatIsDesktop = useIsDesktop();
   const [view, setView] = useState("list");
@@ -8830,6 +8847,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             updated[bcIdx] = { ...newMsg, profiles: prev[bcIdx].profiles || newMsg.profiles };
             return updated;
           }
+          /* New message from other user via postgres_changes (broadcast may have missed) */
+          if (newMsg.sender_id !== user.id) {
+            try { if (localStorage.getItem("uh_notif_sound") !== "off") playChatNotifSound(); } catch {}
+          }
           return [...prev, newMsg];
         });
         /* Debounce markRead — wait 500ms of no new messages before writing */
@@ -8856,7 +8877,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     }).on("broadcast", { event: "new_msg" }, ({ payload: p }) => {
       if (!p || p.sender_id === user.id) return;
       setMsgs(prev => {
-        if (prev.find(m => m.id === p.id || (m._broadcastId && m._broadcastId === p._broadcastId))) return prev;
+        /* Robust dedup: check by id */
+        if (prev.some(m => m.id === p.id)) return prev;
+        if (p._broadcastId && prev.some(m => m._broadcastId === p._broadcastId)) return prev;
+        /* Play notification sound */
+        try { if (localStorage.getItem("uh_notif_sound") !== "off") playChatNotifSound(); } catch {}
         return [...prev, { ...p, _fromBroadcast: true }];
       });
       clearTimeout(markReadTimer.current);
@@ -10021,7 +10046,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [notifTeamRegister, setNotifTeamRegister] = useState(true);
   const [notifEmail, setNotifEmail] = useState(false);
   const [notifEmailDigest, setNotifEmailDigest] = useState("daily");
-  const [notifSound, setNotifSound] = useState(true);
+  const [notifSound, setNotifSound] = useState(() => localStorage.getItem("uh_notif_sound") !== "off");
   const [notifVibrate, setNotifVibrate] = useState(true);
   const [notifPreview, setNotifPreview] = useState(true);
   const [dndActive, setDndActive] = useState(false);
@@ -10579,7 +10604,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               <span style={{ color: B.accent, display: "flex" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg></span>
               <div><p style={{ fontSize: 14, fontWeight: 600 }}>Som</p><p style={{ fontSize: 11, color: B.muted }}>Alerta sonoro</p></div>
             </div>
-            <Toggle on={notifSound} onToggle={() => { setNotifSound(!notifSound); showToast(notifSound ? "Som desativado" : "Som ativado ✓"); }} />
+            <Toggle on={notifSound} onToggle={() => { const nv=!notifSound; setNotifSound(nv); localStorage.setItem("uh_notif_sound", nv?"on":"off"); showToast(nv ? "Som ativado ✓" : "Som desativado"); }} />
           </div>
         </Card>
         <Card style={{ marginBottom: 6 }}>
