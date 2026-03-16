@@ -7382,21 +7382,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   <div style={{ padding:12 }}>
                     <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:10, textAlign:"center" }}>Publicar sem aprovação do cliente</p>
                     {hasApi && imgFiles.length > 0 ? <>
-                      {/* Schedule inputs */}
-                      <div style={{ marginBottom:12, padding:12, borderRadius:12, background:`${B.accent}05`, border:`1px solid ${B.accent}15` }}>
-                        <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:8 }}>Quando publicar?</p>
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-                          <div><label style={{ fontSize:10, fontWeight:600, color:B.muted, display:"block", marginBottom:3 }}>Data</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }}/></div>
-                          <div><label style={{ fontSize:10, fontWeight:600, color:B.muted, display:"block", marginBottom:3 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }}/></div>
-                        </div>
-                        {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B20" }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                          <span style={{ fontSize:10, fontWeight:600, color:"#F59E0B" }}>Agendado: {schedLabel}</span>
-                        </div> : <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", borderRadius:8, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
-                          <span style={{ fontSize:10, fontWeight:600, color:B.green }}>Publicação imediata (sem data/hora)</span>
-                        </div>}
-                      </div>
+                      {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:12, padding:"8px 12px", borderRadius:10, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span style={{ fontSize:11, fontWeight:600, color:"#F59E0B" }}>Agendado: {schedLabel}</span>
+                      </div> : <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:12, padding:"8px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+                        <span style={{ fontSize:11, fontWeight:600, color:B.green }}>Publicação imediata (defina data/hora na etapa Legenda para agendar)</span>
+                      </div>}
                       {publishButtons()}
                     </> : <div style={{ textAlign:"center", padding:10 }}>
                       <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>{imgFiles.length === 0 ? "Nenhuma imagem disponível para publicar." : "Nenhuma rede social com API conectada."}</p>
@@ -7417,17 +7409,27 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           {/* ── 7. PUBLICADO ── */}
           {renderSection("published", <>
             {sel.stage === "published" && <div style={{ textAlign:"center", padding:12 }}>
-              <div style={{ width:48, height:48, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", color:B.accent }}>{IC.check}</div>
-              <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Post publicado!</p>
-              {sel.scheduling?.date && <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{sel.scheduling.date} às {sel.scheduling.time} · {sel.network}</p>}
-              {sel.steps?.igPublished && <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:sel.steps.igPublished.platform==="facebook"?"#1877F210":"#E1306C10", border:sel.steps.igPublished.platform==="facebook"?"1px solid #1877F220":"1px solid #E1306C20", display:"inline-flex", alignItems:"center", gap:6 }}>
-                {sel.steps.igPublished.platform === "facebook" 
-                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C" stroke="none"/></svg>}
-                <span style={{ fontSize:11, fontWeight:700, color:sel.steps.igPublished.platform==="facebook"?"#1877F2":"#E1306C" }}>
-                  Publicado no {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}{sel.steps.igPublished.type==="STORIES"?" (Story)":""}
-                </span>
-              </div>}
+              {sel.steps?.igPublished?.scheduled ? <>
+                <div style={{ width:48, height:48, borderRadius:24, background:"#F59E0B15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <p style={{ fontSize:14, fontWeight:700, color:"#F59E0B" }}>Post agendado!</p>
+                <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{sel.steps.igPublished.scheduledAt ? new Date(sel.steps.igPublished.scheduledAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : sel.scheduling?.date} · {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}</p>
+                <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:"#F59E0B10", border:"1px solid #F59E0B20", display:"inline-flex", alignItems:"center", gap:6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Agendado no {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}</span>
+                </div>
+              </> : <>
+                <div style={{ width:48, height:48, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", color:B.accent }}>{IC.check}</div>
+                <p style={{ fontSize:14, fontWeight:700, color:B.green }}>Post publicado!</p>
+                {sel.scheduling?.date && <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{sel.scheduling.date} às {sel.scheduling.time} · {sel.network}</p>}
+                {sel.steps?.igPublished && <div style={{ marginTop:8, padding:"6px 14px", borderRadius:20, background:sel.steps.igPublished.platform==="facebook"?"#1877F210":"#E1306C10", border:sel.steps.igPublished.platform==="facebook"?"1px solid #1877F220":"1px solid #E1306C20", display:"inline-flex", alignItems:"center", gap:6 }}>
+                  {sel.steps.igPublished.platform === "facebook" 
+                    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C" stroke="none"/></svg>}
+                  <span style={{ fontSize:11, fontWeight:700, color:sel.steps.igPublished.platform==="facebook"?"#1877F2":"#E1306C" }}>
+                    Publicado no {sel.steps.igPublished.platform==="facebook"?"Facebook":"Instagram"}{sel.steps.igPublished.type==="STORIES"?" (Story)":""}
+                  </span>
+                </div>}
+              </>}
             </div>}
             {/* Publish buttons — show when there are uploaded images and connected social */}
             {(() => {
