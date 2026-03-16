@@ -8608,11 +8608,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const filteredConvsD = sortedConvsD.filter(c => getOtherName(c).toLowerCase().includes(search.toLowerCase()));
     const showConvsD = chatTab==="all"?filteredConvsD:chatTab==="dm"?filteredConvsD.filter(c=>c.type==="dm"):filteredConvsD.filter(c=>c.type==="group");
     return (
-      <div className="content-wide" style={{ minHeight:"calc(100vh - 120px)" }}>
-        <div style={{ paddingTop:0 }}>
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"calc(100vh - 120px)" }}>
         {NewChatModal}{NewGroupModal}{ToastEl}
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={false} />
-        <div style={{ display:"flex", height:"calc(100vh - 220px)", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", marginTop:8 }}>
+        <div style={{ display:"flex", height:"calc(100vh - 220px)", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
           {/* Left panel — conversation list */}
           <div style={{ width:340, flexShrink:0, borderRight:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, background:B.bgCard||"#fff", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:14, flexShrink:0 }}>
@@ -8767,7 +8766,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </div>
           )}
         </div>
-      </div>{/* close paddingTop wrapper */}
       </div>
     );
   }
