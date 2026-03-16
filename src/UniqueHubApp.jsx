@@ -8685,15 +8685,30 @@ const TypingDots = () => (
 const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
 
 /* Chat notification sound — real audio + Browser Notification API */
-const _notifAudio = (() => {
-  try { const a = new Audio("/notif.wav"); a.volume = 0.5; return a; } catch { return null; }
-})();
+let _notifAudio = null;
+let _audioUnlocked = false;
+const _unlockAudio = () => {
+  if (_audioUnlocked) return;
+  try {
+    _notifAudio = new Audio("/notif.wav");
+    _notifAudio.volume = 0.5;
+    /* Play silent then pause to unlock audio context */
+    _notifAudio.muted = true;
+    _notifAudio.play().then(() => { _notifAudio.pause(); _notifAudio.muted = false; _notifAudio.currentTime = 0; _audioUnlocked = true; }).catch(() => {});
+  } catch {}
+};
+/* Unlock on first user interaction */
+if (typeof window !== "undefined") {
+  const _onInteract = () => { _unlockAudio(); window.removeEventListener("click", _onInteract); window.removeEventListener("keydown", _onInteract); window.removeEventListener("touchstart", _onInteract); };
+  window.addEventListener("click", _onInteract, { once: false });
+  window.addEventListener("keydown", _onInteract, { once: false });
+  window.addEventListener("touchstart", _onInteract, { once: false });
+}
 const playChatNotifSound = () => {
   try {
-    if (_notifAudio) {
-      _notifAudio.currentTime = 0;
-      _notifAudio.play().catch(() => {});
-    }
+    if (!_notifAudio) { _notifAudio = new Audio("/notif.wav"); _notifAudio.volume = 0.5; }
+    _notifAudio.currentTime = 0;
+    _notifAudio.play().catch(() => {});
   } catch {}
 };
 const requestNotifPermission = () => {
@@ -8710,7 +8725,12 @@ const showBrowserNotif = (title, body) => {
 function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const chatIsDesktop = useIsDesktop();
   /* Request browser notification permission on mount */
-  useEffect(() => { requestNotifPermission(); }, []);
+  const [notifDenied, setNotifDenied] = useState(false);
+  useEffect(() => {
+    requestNotifPermission();
+    if ("Notification" in window && Notification.permission === "denied") setNotifDenied(true);
+    else setNotifDenied(false);
+  }, []);
   const [view, setView] = useState("list");
   const [convs, setConvs] = useState([]);
   const [selConv, setSelConv] = useState(null);
@@ -9668,7 +9688,13 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         {ToastEl}
         {!chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
         <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
-        {chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}        <div style={{ padding:chatIsDesktop?"0":"14px 16px 0" }}>
+        {chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
+        {notifDenied && <div style={{ margin:chatIsDesktop?"0 0 10px":"14px 16px 0", padding:"10px 14px", borderRadius:12, background:"#FEF3C7", border:"1px solid #F59E0B30", display:"flex", alignItems:"center", gap:10 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <div style={{ flex:1 }}><p style={{ fontSize:11, fontWeight:700, color:"#92400E" }}>Notificações bloqueadas</p><p style={{ fontSize:10, color:"#92400E", opacity:0.7, marginTop:1 }}>Clique no 🔒 na barra de endereço → Notificações → Permitir</p></div>
+          <button onClick={()=>setNotifDenied(false)} style={{ border:"none", background:"none", cursor:"pointer", padding:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>}
+        <div style={{ padding:chatIsDesktop?"0":"14px 16px 0" }}>
         <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
           <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
