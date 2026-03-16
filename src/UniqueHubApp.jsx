@@ -7018,7 +7018,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         });
 
         return (
-          <Card style={{ marginBottom:10, padding:12 }}>
+          <div style={isContentDesktop ? { position:"relative", zIndex:50, height:0 } : {}}>
+          <Card style={isContentDesktop ? { position:"absolute", top:0, left:0, width:300, padding:12, boxShadow:"0 8px 30px rgba(0,0,0,0.15)", border:"1px solid rgba(0,0,0,0.06)", zIndex:50 } : { marginBottom:10, padding:12 }}>
             {/* Month nav */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
               <button onClick={() => { if (cm === 0) { setCalMonth(11); setCalYear(cy - 1); } else { setCalMonth(cm - 1); setCalYear(cy); } }} style={{ width:32, height:32, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -7062,6 +7063,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               <button onClick={() => { setDateFilter(""); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.muted }}>Limpar</button>
             </div>
           </Card>
+          </div>
         );
       })()}
 
