@@ -6911,19 +6911,46 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
       <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />
 
-      {/* Quick Publish button */}
-      <div style={{ padding:"8px 16px 0" }}>
+      {/* Quick Publish button (mobile only) */}
+      {!isContentDesktop && <div style={{ padding:"8px 16px 0" }}>
         <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Publicação Rápida (FB / IG)
         </button>
-      </div>
+      </div>}
 
       {/* ── SCROLLABLE CONTENT ── */}
       <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
 
-      {/* Client selector */}
-      <div style={{ marginBottom:10 }}>
+      {/* ── Desktop toolbar: Data | Clientes | Publicação Rápida ── */}
+      {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+        {/* Date filter */}
+        <button onClick={() => setShowCalendar(v => !v)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${dateFilter ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: dateFilter ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          {dateFilter || "Data"}
+          {dateFilter && <span onClick={e => { e.stopPropagation(); setDateFilter(""); setShowCalendar(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
+        </button>
+        {/* Client filter */}
+        <button onClick={() => setShowClientPicker(!showClientPicker)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: clientFilter !== "all" ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: clientFilter !== "all" ? "#1A1D23" : "#9CA3AF" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          {clientFilter !== "all" ? clientFilter : "Clientes"}
+          {clientFilter !== "all" && <span onClick={e => { e.stopPropagation(); setClientFilter("all"); setShowClientPicker(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
+        </button>
+        {/* Type tabs */}
+        <div style={{ flex:1, display:"flex", gap:6 }}>
+          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"},{k:"video",l:"Vídeo"}].map(f=>(
+            <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
+          ))}
+        </div>
+        {/* Quick Publish */}
+        <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", flexShrink:0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Publicação Rápida
+        </button>
+      </div>}
+
+      {/* Client selector (mobile only) */}
+      {!isContentDesktop && <div style={{ marginBottom:10 }}>
         <button onClick={() => setShowClientPicker(!showClientPicker)} style={{
           width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? B.accent : B.border}`,
           background: clientFilter !== "all" ? `${B.accent}06` : B.bgCard, cursor:"pointer", fontFamily:"inherit", transition:"all .2s",
@@ -6950,10 +6977,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             </div>
           ))}
         </Card>}
-      </div>
+      </div>}
 
-      {/* Type tabs + Date filter row */}
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+      {/* Type tabs + Date filter row (mobile only) */}
+      {!isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
         <div style={{ flex:1, display:"flex", gap:6, overflowX:"auto" }}>
           {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"},{k:"video",l:"Vídeo"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
@@ -6968,7 +6995,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </div>}
         </button>
-      </div>
+      </div>}
 
       {/* Calendar dropdown */}
       {showCalendar && (() => {
@@ -7050,8 +7077,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <span style={{ fontSize:10, color:B.muted }}>· {filtered.length} resultado{filtered.length!==1?"s":""}</span>
       </div>}
 
-      {/* Loading skeleton */}
-      {demands.length === 0 && filtered.length === 0 && <div>
+      {/* Loading skeleton (mobile only) */}
+      {!isContentDesktop && demands.length === 0 && filtered.length === 0 && <div>
         {[1,2,3].map(i => <Card key={i} style={{ marginBottom:8, opacity: 0.5 }}>
           <div style={{ display:"flex", gap:10, alignItems:"center" }}>
             <div className="skeleton" style={{ width:44, height:44, borderRadius:12, flexShrink:0 }} />
