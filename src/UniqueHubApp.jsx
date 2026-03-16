@@ -2909,9 +2909,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const expanded = dpNewsExpanded;
         const expandedArt = expanded ? dpNews.find(a=>a.id===expanded) : null;
         const newsContent = (
-          <div style={{padding:"12px 16px 16px"}}>
-              <p style={{fontSize:10,fontWeight:800,color:"#BBF246",textTransform:"uppercase",letterSpacing:1.5,marginBottom:2}}>Mercado</p>
-              <p style={{fontSize:20,fontWeight:900,color:"#1A1D23",marginBottom:14}}>News</p>
+          <div>
+              <CollapseHeader icon={IC.news} label="Mercado" title="News" collapsed={false} />
+              <div style={{padding:"12px 16px 16px"}}>
               {expandedArt ? <div>
                 <button onClick={()=>setDpNewsExpanded(null)} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#9CA3AF",marginBottom:10,padding:0}}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
@@ -2937,6 +2937,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 ))}
                 {dpNews.length===0 && <div style={{gridColumn:"1/-1",textAlign:"center",padding:30}}><p style={{fontSize:12,color:"#9CA3AF"}}>Nenhuma notícia publicada</p></div>}
               </div>}
+              </div>
           </div>
         );
         return phoneFrame("Comunicados","news",()=>goSub("news"), newsContent);
