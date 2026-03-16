@@ -5832,7 +5832,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   };
 
   /* ── QUICK PUBLISH ── */
-  if (quickPub) {
+  /* ── QUICK PUBLISH (mobile: full screen / desktop: drawer in main return) ── */
+  if (quickPub && !isContentDesktop) {
     const connectedClients = CDATA.filter(c => c.socials?.facebook?.oauth || c.socials?.instagram?.oauth);
     const selClient = connectedClients.find(c => c.name === qpForm.client) || connectedClients[0];
     const hasFB = selClient?.socials?.facebook?.oauth;
@@ -7621,6 +7622,58 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       })}
       </div>{/* end demands-grid */}
       </div>{/* end scrollable content */}
+
+      {/* ── DESKTOP QUICK PUBLISH DRAWER ── */}
+      {quickPub && isContentDesktop && (() => {
+        const connectedClients = CDATA.filter(c => c.socials?.facebook?.oauth || c.socials?.instagram?.oauth);
+        const selClient = connectedClients.find(c => c.name === qpForm.client) || connectedClients[0];
+        const hasFB = selClient?.socials?.facebook?.oauth;
+        const hasIG = selClient?.socials?.instagram?.oauth;
+        return <>
+          <div onClick={() => setQuickPub(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
+          <div style={{ position:"fixed", top:0, right:0, bottom:0, width:480, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", display:"flex", flexDirection:"column", animation:"slideInRight .25s ease both" }}>
+            <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+            <div style={{ padding:"16px 20px", borderBottom:"1px solid rgba(0,0,0,0.06)", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+              <button onClick={() => setQuickPub(false)} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              <h3 style={{ fontSize:16, fontWeight:800, color:"#1A1D23" }}>Publicação Rápida</h3>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
+              {connectedClients.length === 0 ? (
+                <div style={{ textAlign:"center", padding:30 }}>
+                  <p style={{ fontSize:28, marginBottom:8 }}>📡</p>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Nenhum cliente com rede conectada</p>
+                  <p style={{ fontSize:11, color:"#9CA3AF", marginTop:4 }}>Conecte Facebook ou Instagram na aba Clientes → Redes.</p>
+                </div>
+              ) : <>
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Cliente</label>
+                <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:16, paddingBottom:4 }}>
+                  {connectedClients.map(c => (
+                    <button key={c.name} onClick={() => setQpForm(p => ({...p, client:c.name}))} style={{ flexShrink:0, padding:"8px 14px", borderRadius:10, border: qpForm.client===c.name ? "2px solid #BBF246" : "1.5px solid rgba(0,0,0,0.06)", background: qpForm.client===c.name ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color: qpForm.client===c.name ? "#1A1D23" : "#9CA3AF" }}>
+                      {c.name}
+                      <div style={{ display:"flex", gap:3, marginTop:3, justifyContent:"center" }}>
+                        {c.socials?.facebook?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />}
+                        {c.socials?.instagram?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Imagem (URL pública)</label>
+                <input value={qpForm.imageUrl} onChange={e => setQpForm(p => ({...p, imageUrl:e.target.value}))} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ marginBottom:14, fontSize:12 }} />
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Legenda</label>
+                <textarea value={qpForm.caption} onChange={e => setQpForm(p => ({...p, caption:e.target.value}))} placeholder="Escreva a legenda do post..." className="tinput" style={{ marginBottom:14, minHeight:80, resize:"vertical" }} />
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Hashtags</label>
+                <input value={qpForm.hashtags} onChange={e => setQpForm(p => ({...p, hashtags:e.target.value}))} placeholder="#marketing #digital #agencia" className="tinput" style={{ marginBottom:16, fontSize:12 }} />
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:8 }}>Publicar em</label>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {hasFB && hasIG && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); Promise.all([publishToMeta(clientId,qpForm.imageUrl,caption), publishToInstagram(clientId,[qpForm.imageUrl],caption,"FEED")]).then(([rFb,rIg])=>{ setQpLoading(false); if(rFb?.error||rIg?.error){showToast("Erro: "+(rFb?.error||rIg?.error));return;} showToast("✓ Publicado no Facebook e Instagram!"); setQuickPub(false); setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both"}); }).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!qpForm.imageUrl} style={{ padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!qpForm.imageUrl)?0.4:1 }}>{qpLoading?"Publicando...":"Facebook + Instagram"}</button>}
+                  {hasFB && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); publishToMeta(clientId,qpForm.imageUrl,caption).then(r=>{setQpLoading(false);if(r?.error){showToast("Erro: "+r.error);return;}showToast("✓ Publicado no Facebook!");setQuickPub(false);setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both"});}).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!qpForm.imageUrl} style={{ padding:"14px", borderRadius:14, border:"none", background:"#1877F2", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!qpForm.imageUrl)?0.4:1 }}>{qpLoading?"Publicando...":"Facebook"}</button>}
+                  {hasIG && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); publishToInstagram(clientId,[qpForm.imageUrl],caption,"FEED").then(r=>{setQpLoading(false);if(r?.error){showToast("Erro: "+r.error);return;}showToast("✓ Publicado no Instagram!");setQuickPub(false);setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both"});}).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!qpForm.imageUrl} style={{ padding:"14px", borderRadius:14, border:"none", background:"#E1306C", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!qpForm.imageUrl)?0.4:1 }}>{qpLoading?"Publicando...":"Instagram"}</button>}
+                </div>
+              </>}
+            </div>
+          </div>
+        </>;
+      })()}
 
       {/* ── DESKTOP CREATE DRAWER ── */}
       {creating && isContentDesktop && <>
