@@ -2916,7 +2916,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
             </div>
             {/* CollapseHeader — fixed, compact */}
-            <div style={{flexShrink:0,flexGrow:0,background:"#fff",padding:"14px 18px 12px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+            <div style={{flexShrink:0,flexGrow:0,background:"#fff",padding:"14px 18px 16px",borderRadius:"0 0 26px 26px",boxShadow:"0 4px 20px rgba(0,0,0,0.08)"}}>
               <p style={{fontSize:10,fontWeight:700,color:"#BBF246",textTransform:"uppercase",letterSpacing:1.2,marginBottom:2}}>Mercado</p>
               <p style={{fontSize:18,fontWeight:900,color:"#1A1D23",lineHeight:1}}>News</p>
             </div>
