@@ -7751,7 +7751,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","scheduled","published","completed"];
         /* Only show columns that have demands or are from the social workflow */
-        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","published"];
+        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
         const moveStage = (d, newStage) => {
