@@ -17743,10 +17743,11 @@ export default function App() {
           /* Instagram Platform API flow */
           const result = await handleInstagramOAuthCallback(code, capturedRedirectUri);
           console.log("[Instagram OAuth] Result:", JSON.stringify(result).substring(0, 300));
-          if (result && !result.error && result.username) {
+          if (result && !result.error && result.access_token) {
             await saveInstagramToken(clientId, result);
+            const displayName = result.username ? `@${result.username}` : "Instagram";
             try { sessionStorage.setItem("uh_ig_connected", JSON.stringify({ clientId, ...result })); } catch {}
-            setMetaOAuthResult({ success: true, msg: `@${result.username} conectado!`, igUsername: result.username, isInstagram: true });
+            setMetaOAuthResult({ success: true, msg: `${displayName} conectado!`, igUsername: result.username || "", isInstagram: true });
           } else {
             const errMsg = typeof result?.error === "string" ? result.error : JSON.stringify(result?.error || result);
             setMetaOAuthResult({ success: false, msg: errMsg });
