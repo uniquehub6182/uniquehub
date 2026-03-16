@@ -894,11 +894,12 @@ const supaLoadMessages = async (convId, limit = 50) => {
     return data || [];
   } catch(e) { return []; }
 };
-const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fileType) => {
+const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fileType, replyToId) => {
   if (!supabase) return null;
   try {
     const payload = { conversation_id: convId, sender_id: senderId, content: content || "" };
     if (fileUrl) { payload.file_url = fileUrl; payload.file_name = fileName; payload.file_type = fileType; }
+    if (replyToId) payload.reply_to = replyToId;
     const { data, error } = await supabase.from("messages").insert(payload).select("*, profiles:sender_id(name, email)");
     if (error) { console.error("supaSendMessage error:", error); return null; }
     /* Update conversation last_message timestamp */
@@ -8754,6 +8755,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const recordTimer = useRef(null);
   /* Reactions */
   const [reactMsgId, setReactMsgId] = useState(null);
+  const [replyTo, setReplyTo] = useState(null);
+  const [hoverMsgId, setHoverMsgId] = useState(null);
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
@@ -9053,14 +9056,16 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const sendMsg = async () => {
     if (!input.trim() || !selConv) return;
     const text = input.trim();
+    const _replyToMsg = replyTo;
     setInput("");
+    setReplyTo(null);
     /* Optimistic: show immediately */
-    const optimistic = { id: `opt-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true, _optSeq: Date.now() };
+    const optimistic = { id: `opt-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, reply_to: _replyToMsg?.id || null, _replyToMsg, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true, _optSeq: Date.now() };
     setMsgs(prev => [...prev, optimistic]);
     /* Send to DB + broadcast for instant delivery */
     const _bcastId = `bc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     try {
-      const result = await supaSendMessage(selConv.id, user.id, text);
+      const result = await supaSendMessage(selConv.id, user.id, text, null, null, null, _replyToMsg?.id);
       if (!result) {
         console.error("Chat: sendMsg returned null — check RLS policies or Realtime config");
         showToast("Erro ao enviar — verifique conexão");
@@ -9322,6 +9327,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   <div style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start", minWidth:0 }}>
                     {senderName && <span style={{ fontSize:10, color:B.muted, marginBottom:2, fontWeight:600 }}>{senderName}</span>}
                     <div onClick={()=>setReactMsgId(reactMsgId===m.id?null:m.id)} style={{ background:isMe?B.accent:B.bgCard, color:isMe?"#0D0D0D":B.text, borderRadius:isMe?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:m.file_url?"6px":"10px 14px", fontSize:14, lineHeight:1.5, boxShadow:isMe?`0 2px 12px ${B.accent}40`:"0 1px 4px rgba(0,0,0,0.08)", cursor:"pointer", overflowWrap:"break-word", wordBreak:"break-word", maxWidth:"100%" }}>
+                      {/* Reply quote */}
+                      {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMe?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMe?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||"Membro"}</p><p style={{ fontSize:11, color:isMe?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
                       {m.file_url ? (
                         m.file_type?.startsWith("image") ? (
                           <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
@@ -9357,10 +9364,12 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       {m._failed && <button onClick={()=>{ setMsgs(prev=>prev.filter(x=>x.id!==m.id)); setInput(m.content); }} style={{ background:"none", border:"none", cursor:"pointer", fontSize:10, color:B.accent, fontWeight:600, padding:0 }}>Tentar novamente</button>}
                     </div>
                     {reactMsgId===m.id && (
-                      <div onClick={ev=>ev.stopPropagation()} style={{ display:"flex", gap:6, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 10px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)" }}>
+                      <div onClick={ev=>ev.stopPropagation()} style={{ display:"flex", gap:4, marginTop:4, background:B.bgCard, borderRadius:20, padding:"6px 8px", boxShadow:"0 2px 12px rgba(0,0,0,0.15)", alignItems:"center" }}>
                         {["👍","❤️","😂","😮","😢","🙏"].map(em=>(
-                          <button key={em} onClick={(ev)=>{ev.stopPropagation();addReaction(m.id,em);}} style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, padding:"2px 4px" }}>{em}</button>
+                          <button key={em} onClick={(ev)=>{ev.stopPropagation();addReaction(m.id,em);setReactMsgId(null);}} style={{ background:"none", border:"none", cursor:"pointer", fontSize:16, padding:"2px 3px" }}>{em}</button>
                         ))}
+                        <div style={{ width:1, height:20, background:B.border, margin:"0 2px" }}/>
+                        <button onClick={(ev)=>{ev.stopPropagation();setReplyTo(m);setReactMsgId(null);}} style={{ background:"none", border:"none", cursor:"pointer", padding:"2px 4px", display:"flex", alignItems:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg></button>
                       </div>
                     )}
                   </div>
@@ -9371,6 +9380,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           <div ref={msgEndRef}/>
         </div>
 
+        {/* Reply quote bar (mobile) */}
+        {replyTo && <div style={{ padding:"8px 14px", background:`${B.accent}06`, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10, marginBottom:0 }}>
+          <div style={{ width:3, height:32, borderRadius:2, background:B.accent, flexShrink:0 }}/>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:10, fontWeight:700, color:B.accent }}>{replyTo.profiles?.name||"Membro"}</p>
+            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{replyTo.content||"📎 Arquivo"}</p>
+          </div>
+          <button onClick={()=>setReplyTo(null)} style={{ width:24, height:24, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>}
         {/* INPUT BAR */}
         <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:chatIsDesktop?100:80 }}>
           {isRecording ? (
@@ -9607,14 +9625,24 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     const isMine = m.sender_id === user.id;
                     const senderName = isMine ? user.name : (allProfiles.find(p=>p.id===m.sender_id)?.name || m.sender_name || m.profiles?.name || "Membro");
                     return (
-                      <div key={m.id||mi} style={{ display:"flex", justifyContent:isMine?"flex-end":"flex-start", marginBottom:2 }}>
+                      <div key={m.id||mi} style={{ display:"flex", justifyContent:isMine?"flex-end":"flex-start", marginBottom:2, position:"relative" }} onMouseEnter={()=>setHoverMsgId(m.id)} onMouseLeave={()=>setHoverMsgId(null)}>
+                        {/* Hover actions */}
+                        {hoverMsgId===m.id && !m._optimistic && <div style={{ position:"absolute", top:-6, [isMine?"right":"left"]:"10%", display:"flex", gap:2, background:B.bgCard||"#fff", borderRadius:8, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", padding:"2px 4px", zIndex:5 }}>
+                          {["👍","❤️","😂"].map(em=><button key={em} onClick={()=>addReaction(m.id,em)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, padding:"2px 3px", borderRadius:4 }} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="none"}>{em}</button>)}
+                          <button onClick={()=>{setReplyTo(m);setTimeout(()=>document.querySelector("input[placeholder*='mensagem']")?.focus(),100);}} style={{ background:"none", border:"none", cursor:"pointer", padding:"2px 4px", borderRadius:4, display:"flex", alignItems:"center" }} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="none"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg></button>
+                        </div>}
                         <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard||"#fff"), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
+                          {/* Reply quote in bubble */}
+                          {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMine?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMine?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||rm.sender_name||"Membro"}</p><p style={{ fontSize:11, color:isMine?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
                           {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}</p>}
                           {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" style={{ maxWidth:"100%", borderRadius:12 }} />
                           : m.file_url && (m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"")) ? <div style={{ minWidth:180, maxWidth:240 }}><AudioPlayer src={m.file_url} isMe={isMine} accent={B.accent} muted={B.muted} /></div>
                           : m.file_url && (m.file_type?.startsWith("video") || /\.(mp4|mov|avi|mkv)$/i.test(m.file_name||"")) ? <video controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:12 }} />
                           : m.file_url ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {m.file_name||"Arquivo"}</a>
                           : <span style={{ whiteSpace:"pre-wrap" }}>{m.content}</span>}
+                          {m.reactions && Object.keys(m.reactions).length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
+                            {Object.entries(m.reactions).map(([em,us])=>us.length>0&&<button key={em} onClick={()=>addReaction(m.id,em)} style={{ background:us.includes(user.id)?`${B.accent}20`:"rgba(0,0,0,0.06)", borderRadius:10, padding:"1px 6px", fontSize:11, border:us.includes(user.id)?`1px solid ${B.accent}30`:"1px solid transparent", cursor:"pointer", fontFamily:"inherit" }}>{em} {us.length}</button>)}
+                          </div>}
                           <div style={{ display:"flex", justifyContent:"flex-end", gap:4, marginTop:3 }}>
                             <span style={{ fontSize:10, color:isMine?"rgba(0,0,0,0.4)":"#9CA3AF" }}>{m.created_at?new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</span>
                             {isMine && <span style={{ fontSize:10, color:m.read?"#22C55E":"rgba(0,0,0,0.3)" }}>{m.read?"✓✓":"✓"}</span>}
@@ -9625,6 +9653,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   })}
                   <div ref={msgEndRef} />
                 </div>
+                {/* Reply quote bar */}
+                {replyTo && <div style={{ borderTop:`1px solid ${B.border}`, padding:"8px 16px", background:`${B.accent}06`, display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:3, height:32, borderRadius:2, background:B.accent, flexShrink:0 }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:10, fontWeight:700, color:B.accent }}>{replyTo.profiles?.name||replyTo.sender_name||"Membro"}</p>
+                    <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{replyTo.content||"📎 Arquivo"}</p>
+                  </div>
+                  <button onClick={()=>setReplyTo(null)} style={{ width:24, height:24, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                </div>}
                 <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard||"#fff", flexShrink:0, position:"relative" }}>
                   <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${showAttach?B.accent:B.border}`, background:showAttach?`${B.accent}10`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                   {showAttach && <div style={{ position:"absolute", bottom:"100%", left:16, marginBottom:8, background:B.bgCard||"#fff", borderRadius:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:6, zIndex:10, minWidth:180 }}>
