@@ -4646,7 +4646,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   }
 
   /* ── DESKTOP TWO-PANEL CLIENTS ── */
-  if (isClientsDesktop && !editingSocial && !creating) {
+  if (isClientsDesktop && !creating) {
     const dFiles = sel ? (sel.files || []) : [];
     const dConnected = sel ? Object.values(sel.socials||{}).filter(s=>s.connected).length : 0;
     const dInvoices = sel ? (sel.invoices || [{ id:1, month:"Mar/2026", value:sel.monthly, status:"pendente" }]) : [];
