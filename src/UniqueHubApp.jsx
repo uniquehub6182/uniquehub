@@ -7277,8 +7277,15 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                         created_by: user?.id
                       });
                       if (insErr) { showToast(`Erro: ${insErr.message}`); return; }
-                      updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação agendada", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                      updateStep("igPublished", { platform, type, scheduled:true, scheduledAt:schedDate.toISOString(), date:new Date().toLocaleDateString("pt-BR") });
+                      /* Combined step update — single Supabase write to avoid race */
+                      const combinedSteps = {
+                        ...(sel.steps||{}),
+                        client: { ...(sel.steps?.client||{}), status:"approved", by:"Publicação agendada", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) },
+                        igPublished: { platform, type, scheduled:true, scheduledAt:schedDate.toISOString(), date:new Date().toLocaleDateString("pt-BR") }
+                      };
+                      setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: combinedSteps } : x));
+                      setSel(prev => ({ ...prev, steps: combinedSteps }));
+                      if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: combinedSteps });
                       setTimeout(() => advanceStage(sel), 200);
                       showToast(`✓ Agendado para ${schedLabel}`);
                     } catch(e) { showToast(`Erro ao agendar: ${e.message}`); }
@@ -7484,8 +7491,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                       demand_id: sel.supaId || sel.id, created_by: user?.id
                     });
                     if (insErr) { showToast(`Erro: ${insErr.message}`); return; }
-                    updateStep("igPublished", { platform, type, scheduled:true, scheduledAt:schedDate.toISOString(), date:new Date().toLocaleDateString("pt-BR") });
-                    showToast(`✓ Agendado para ${schedLabel}`);
+                    /* Combined step update — single write */
+                    const combinedSteps = {
+                      ...(sel.steps||{}),
+                      client: { ...(sel.steps?.client||{}), status:"approved", by:"Publicação agendada", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) },
+                      igPublished: { platform, type, scheduled:true, scheduledAt:schedDate.toISOString(), date:new Date().toLocaleDateString("pt-BR") }
+                    };
+                    setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: combinedSteps } : x));
+                    setSel(prev => ({ ...prev, steps: combinedSteps }));
+                    if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: combinedSteps });
+                    setTimeout(() => advanceStage(sel), 200);
+                    showToast(`✓ Agendado para ${sel.scheduling?.date} às ${sel.scheduling?.time}`);
                   } catch(e) { showToast(`Erro: ${e.message}`); }
                 } else {
                   showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
