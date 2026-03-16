@@ -3272,9 +3272,10 @@ function CheckinPage({ onBack, user }) {
     load();
   }, [user?.id]);
 
-  /* Load team data when admin switches to team view */
+  /* Load team data when admin switches to team view OR on desktop */
   useEffect(() => {
-    if (!isAdmin || !adminView || !user?.id) return;
+    if (!isAdmin || !user?.id) return;
+    if (!adminView && !isCheckinDesktop) return;
     const load = async () => {
       setLoading(true);
       setTeamError(null);
@@ -3293,7 +3294,7 @@ function CheckinPage({ onBack, user }) {
       setLoading(false);
     };
     load();
-  }, [adminView, isAdmin, user?.id]);
+  }, [adminView, isAdmin, user?.id, isCheckinDesktop]);
 
   /* Timer */
   useEffect(() => {
@@ -3418,15 +3419,14 @@ function CheckinPage({ onBack, user }) {
                 <p style={{ fontSize:20, fontWeight:800, marginTop:4, color:B.text }}>{fmtMin(monthMin)}</p>
               </div>
             </div>
-            {/* History */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {/* History (compact, admin only — non-admin sees full history in right panel) */}
+            {isAdmin && history.length>0 && <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}` }}>
-                <p style={{ fontSize:12, fontWeight:700, color:B.text, textTransform:"uppercase", letterSpacing:0.5 }}>Histórico</p>
+                <p style={{ fontSize:12, fontWeight:700, color:B.text, textTransform:"uppercase", letterSpacing:0.5 }}>Últimos registros</p>
               </div>
               <div style={{ flex:1, overflowY:"auto", padding:"8px 12px" }}>
-                {history.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhum registro</p>}
-                {history.map((h,i)=>(
-                  <div key={h.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 6px", borderBottom:i<history.length-1?`1px solid ${B.border}`:"none" }}>
+                {history.slice(0,5).map((h,i)=>(
+                  <div key={h.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 6px", borderBottom:i<Math.min(history.length,5)-1?`1px solid ${B.border}`:"none" }}>
                     <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, fontSize:10, fontWeight:800 }}>{fmtDate(h.check_in_at).split("/")[0]}</div>
                     <div style={{ flex:1 }}>
                       <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{fmtDate(h.check_in_at)}</p>
@@ -3436,7 +3436,7 @@ function CheckinPage({ onBack, user }) {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
           </div>
           {/* ── RIGHT: Equipe (admin) or Info ── */}
           <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
@@ -3477,15 +3477,36 @@ function CheckinPage({ onBack, user }) {
                 ))}
               </div>
             </> : (
-              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <div style={{ textAlign:"center" }}>
-                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              /* Non-admin: own detailed history */
+              <>
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Meu Histórico</p>
+                <span style={{ fontSize:11, color:B.muted }}>{history.length} registro{history.length!==1?"s":""}</span>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
+                {history.length===0 && <div style={{ textAlign:"center", padding:"40px 0" }}>
+                  <div style={{ width:60, height:60, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
                     <span style={{ color:B.accent, display:"flex" }}>{IC.checkin}</span>
                   </div>
-                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Ponto Digital</p>
-                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Registre sua entrada e saída diariamente</p>
-                </div>
+                  <p style={{ fontSize:13, fontWeight:700, color:B.text }}>Nenhum registro ainda</p>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Inicie sua jornada para começar a registrar</p>
+                </div>}
+                {history.map((h,i)=>(
+                  <div key={h.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 8px", borderBottom:i<history.length-1?`1px solid ${B.border}`:"none" }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, fontSize:11, fontWeight:800 }}>{fmtDate(h.check_in_at).split("/")[0]}</div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontSize:13, fontWeight:600, color:B.text }}>{fmtDate(h.check_in_at)}</p>
+                      <p style={{ fontSize:11, color:B.muted }}>{fmtHour(h.check_in_at)} — {fmtHour(h.check_out_at)}</p>
+                      <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                        {h.check_in_lat && <GeoPin lat={h.check_in_lat} lng={h.check_in_lng} label="Entrada" />}
+                        {h.check_out_lat && <GeoPin lat={h.check_out_lat} lng={h.check_out_lng} label="Saída" />}
+                      </div>
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:700, padding:"4px 10px", borderRadius:8, background:`${B.green}15`, color:B.green }}>{fmtMin(h.duration_minutes)}</span>
+                  </div>
+                ))}
               </div>
+              </>
             )}
           </div>
         </div>
