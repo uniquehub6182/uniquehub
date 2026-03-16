@@ -6017,6 +6017,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   );
 
   /* ── DETAIL VIEW ── */
+  let detailInner = null;
   if (sel) {
     /* Safety: ensure sel has required properties */
     if (!sel.type) sel.type = "social";
@@ -6074,7 +6075,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       );
     };
 
-    const detailInner = (<>
+    detailInner = (<>
         {ToastEl}
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
@@ -6866,22 +6867,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     </>);
 
     /* Wrap in drawer (desktop) or full page (mobile) */
-    if (isContentDesktop) {
-      return (<>
-        <div onClick={() => { setSel(null); setEditMode(false); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
-        <div style={{ position:"fixed", top:0, right:0, bottom:0, width:600, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", overflowY:"auto", animation:"slideInRight .25s ease both" }}>
-          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-          <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-            <div style={{ padding:"20px" }}>{detailInner}</div>
-          </DemandDetailBoundary>
-        </div>
-      </>);
+    if (!isContentDesktop) {
+      return (
+        <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
+          <div className="pg" style={{ paddingTop: TOP }}>{detailInner}</div>
+        </DemandDetailBoundary>
+      );
     }
-    return (
-      <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-        <div className="pg" style={{ paddingTop: TOP }}>{detailInner}</div>
-      </DemandDetailBoundary>
-    );
+    /* Desktop: DON'T return — let Kanban render, drawer added at end of main return */
   }
 
   /* ── MAIN LIST ── */
@@ -7568,6 +7561,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               </div>
             )}
           </div>
+        </div>
+      </>}
+
+      {/* ── DESKTOP DETAIL DRAWER (overlay on Kanban) ── */}
+      {sel && isContentDesktop && detailInner && <>
+        <div onClick={() => { setSel(null); setEditMode(false); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
+        <div style={{ position:"fixed", top:0, right:0, bottom:0, width:600, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", overflowY:"auto", animation:"slideInRight .25s ease both" }}>
+          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+          <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
+            <div style={{ padding:"20px" }}>{detailInner}</div>
+          </DemandDetailBoundary>
         </div>
       </>}
     </div>
