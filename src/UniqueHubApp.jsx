@@ -3711,7 +3711,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const PinterestIcon = ({sz=18}) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="#E60023"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.15 9.42 7.6 11.18-.1-.95-.2-2.42.04-3.46.22-.94 1.4-5.95 1.4-5.95s-.36-.72-.36-1.78c0-1.66.97-2.9 2.17-2.9 1.02 0 1.52.77 1.52 1.7 0 1.03-.66 2.58-1 4.01-.28 1.2.6 2.18 1.78 2.18 2.13 0 3.77-2.25 3.77-5.5 0-2.87-2.06-4.88-5.01-4.88-3.41 0-5.42 2.56-5.42 5.21 0 1.03.4 2.14.89 2.74.1.12.11.22.08.34-.09.37-.29 1.2-.33 1.36-.05.22-.18.26-.4.16-1.5-.7-2.43-2.88-2.43-4.64 0-3.78 2.75-7.25 7.92-7.25 4.16 0 7.4 2.97 7.4 6.93 0 4.14-2.61 7.46-6.23 7.46-1.22 0-2.36-.63-2.75-1.38l-.75 2.85c-.27 1.04-1 2.35-1.49 3.15C9.57 23.81 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>;
 
   /* ── SOCIAL CONNECTION MODAL ── */
-  if (editingSocial) {
+  if (editingSocial && !isClientsDesktop) {
     const plat = SOCIAL_PLATFORMS.find(p => p.key === editingSocial);
     const isGoogleType = plat.key === "google" || plat.key === "ga4";
     const isMetaType = plat.key === "instagram" || plat.key === "facebook";
@@ -4691,7 +4691,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 const socialCount = Object.values(c.socials||{}).filter(s=>s.connected).length;
                 const isActive = sel?.id === c.id;
                 return (
-                  <div key={c.id} onClick={()=>{setSel(c);setProfileTab("info");}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:14, cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", border:isActive?`1.5px solid ${B.accent}30`:"1.5px solid transparent", marginBottom:4, transition:"all .1s" }}>
+                  <div key={c.id} onClick={()=>{setSel(c);setProfileTab("info");setEditClient(false);setEditingSocial(null);setConfirmAction(null);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:14, cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", border:isActive?`1.5px solid ${B.accent}30`:"1.5px solid transparent", marginBottom:4, transition:"all .1s" }}>
                     <Av src={c.logo} name={c.name} sz={38} fs={14} />
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:13, fontWeight:isActive?700:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>
@@ -4740,32 +4740,74 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
               {/* Tab Content */}
               <div style={{ flex:1, overflowY:"auto", padding:"16px 24px" }}>
-                {profileTab==="info" && <div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                {/* Confirm action overlay */}
+                {confirmAction && <div style={{ padding:20, textAlign:"center" }}>
+                  <p style={{ fontSize:16, fontWeight:800, marginBottom:8 }}>{confirmAction.title}</p>
+                  <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>{confirmAction.msg}</p>
+                  <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
+                    <button onClick={()=>setConfirmAction(null)} style={{ padding:"10px 20px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>Cancelar</button>
+                    <button onClick={async()=>{await confirmAction.action();setConfirmAction(null);}} style={{ padding:"10px 20px", borderRadius:10, border:"none", background:"#EF4444", color:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700 }}>Confirmar</button>
+                  </div>
+                </div>}
+                {!confirmAction && profileTab==="info" && <div>
+                  {editClient ? <div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      {[{k:"name",l:"Nome"},{k:"contact",l:"Contato"},{k:"email",l:"E-mail"},{k:"phone",l:"Telefone"},{k:"cnpj",l:"CNPJ/CPF"},{k:"segment",l:"Segmento"},{k:"website",l:"Site"},{k:"address",l:"Endereço"}].map(f=>(
+                        <div key={f.k}>
+                          <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>{f.l}</p>
+                          <input value={sel[f.k]||""} onChange={e=>{const v=e.target.value;setSel(p=>({...p,[f.k]:v}));}} className="tinput" placeholder={f.l}/>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:"flex", gap:8, marginTop:14 }}>
+                      <button onClick={async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").update({name:sel.name,contact_name:sel.contact,email:sel.email,phone:sel.phone,cnpj:sel.cnpj,segment:sel.segment,website:sel.website,address:sel.address}).eq("id",cid);}catch(e){}}setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...sel,...c,name:sel.name,contact:sel.contact,email:sel.email,phone:sel.phone,cnpj:sel.cnpj,segment:sel.segment,website:sel.website,address:sel.address}:c));setEditClient(false);showToast("Cliente atualizado ✓");}} style={{ flex:1, padding:"10px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Salvar</button>
+                      <button onClick={()=>setEditClient(false)} style={{ padding:"10px 16px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>Cancelar</button>
+                    </div>
+                  </div> : <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                     {[{l:"Contato",v:sel.contact||"—"},{l:"E-mail",v:sel.email||"—"},{l:"Telefone",v:sel.phone||"—"},{l:"CNPJ/CPF",v:sel.cnpj||"—"},{l:"Segmento",v:sel.segment||"—"},{l:"Desde",v:sel.since||"—"},{l:"Site",v:sel.website||"—"},{l:"Endereço",v:sel.address||"—"}].map((f,fi)=>(
                       <div key={fi} style={{ padding:12, borderRadius:12, background:B.bg, border:`1px solid ${B.border}` }}>
                         <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{f.l}</p>
                         <p style={{ fontSize:13, fontWeight:600, color:B.text, wordBreak:"break-all" }}>{f.v}</p>
                       </div>
                     ))}
-                  </div>
+                  </div>}
                 </div>}
-                {profileTab==="socials" && <div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                {!confirmAction && profileTab==="socials" && <div>
+                  {editingSocial ? (() => {
+                    const sp = socialPlatforms.find(p=>p.key===editingSocial);
+                    const current = (sel.socials||{})[editingSocial]||{};
+                    return <div>
+                      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+                        <button onClick={()=>setEditingSocial(null)} style={{ width:32, height:32, borderRadius:8, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <p style={{ fontSize:14, fontWeight:700 }}>{sp?.name||editingSocial}</p>
+                        <span style={{ fontSize:10, padding:"2px 8px", borderRadius:6, background:current.connected?`${sp?.c||B.accent}15`:"#F3F4F6", color:current.connected?(sp?.c||B.accent):B.muted, fontWeight:600 }}>{current.connected?"Conectado":"Desconectado"}</span>
+                      </div>
+                      {editingSocial==="facebook" && !current.connected && supabase && <button onClick={()=>{const cid=sel.supaId||sel.id;window.location.href=`https://www.facebook.com/v21.0/dialog/oauth?client_id=1557196698688426&redirect_uri=${encodeURIComponent(window.location.origin+"/meta-callback")}&config_id=1251666086415367&state=${cid}`;}} style={{ width:"100%", padding:"12px", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", marginBottom:12 }}>Conectar via Meta OAuth</button>}
+                      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                        <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Username</p><input value={socialForm.username||""} onChange={e=>setSocialForm(p=>({...p,username:e.target.value}))} className="tinput" placeholder="@usuario"/></div>
+                        <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Seguidores</p><input value={socialForm.followers||""} onChange={e=>setSocialForm(p=>({...p,followers:e.target.value}))} className="tinput" placeholder="1.5k"/></div>
+                        <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Link</p><input value={socialForm.link||""} onChange={e=>setSocialForm(p=>({...p,link:e.target.value}))} className="tinput" placeholder="https://..."/></div>
+                        <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                          <button onClick={()=>{const ns={...sel.socials,[editingSocial]:{...current,...socialForm,connected:true}};setSel(p=>({...p,socials:ns}));setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,socials:ns}:c));if(supabase){const cid=sel.supaId||sel.id;supaSetSetting(`client_socials_${cid}`,JSON.stringify(ns));}showToast("Rede atualizada ✓");setEditingSocial(null);}} style={{ flex:1, padding:"10px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Salvar</button>
+                          {current.connected && <button onClick={()=>{const ns={...sel.socials,[editingSocial]:{connected:false}};setSel(p=>({...p,socials:ns}));setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,socials:ns}:c));if(supabase){const cid=sel.supaId||sel.id;supaSetSetting(`client_socials_${cid}`,JSON.stringify(ns));}showToast("Desconectado");setEditingSocial(null);}} style={{ padding:"10px 16px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:"#EF4444" }}>Desconectar</button>}
+                        </div>
+                      </div>
+                    </div>;
+                  })() : <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
                     {socialPlatforms.map(sp=>{
                       const s = (sel.socials||{})[sp.key]||{};
                       return <div key={sp.key} onClick={()=>{ setEditingSocial(sp.key); setSocialForm({username:s.username||"",followers:s.followers||"",link:s.link||""}); }} style={{ padding:14, borderRadius:14, border:`1.5px solid ${s.connected?sp.c+"30":B.border}`, background:s.connected?sp.c+"08":"transparent", cursor:"pointer", textAlign:"center", transition:"all .15s" }}>
                         <div style={{ width:36, height:36, borderRadius:10, background:sp.c+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}>
-                          <NetworkIcon name={sp.key} sz={18} active={s.connected} />
+                          <NetworkIcon name={sp.name} sz={18} active={s.connected} />
                         </div>
                         <p style={{ fontSize:11, fontWeight:700, color:B.text }}>{sp.name}</p>
                         <p style={{ fontSize:10, color:s.connected?sp.c:B.muted, fontWeight:600, marginTop:2 }}>{s.connected?"Conectado":"Desconectado"}</p>
                         {s.username && <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>@{s.username}</p>}
                       </div>;
                     })}
-                  </div>
+                  </div>}
                 </div>}
-                {profileTab==="files" && <div>
+                {!confirmAction && profileTab==="files" && <div>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                     <p style={{ fontSize:13, fontWeight:700 }}>{dFiles.length} arquivo{dFiles.length!==1?"s":""}</p>
                     <button onClick={()=>setAddingFile(true)} style={{ padding:"6px 12px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D" }}>+ Adicionar</button>
@@ -4784,7 +4826,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     </div>
                   ))}
                 </div>}
-                {profileTab==="financial" && canFinancial && <div>
+                {!confirmAction && profileTab==="financial" && canFinancial && <div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
                     <div style={{ padding:14, borderRadius:14, background:`${B.accent}10`, border:`1px solid ${B.accent}20` }}>
                       <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Plano</p>
