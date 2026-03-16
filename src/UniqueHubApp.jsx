@@ -7016,7 +7016,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
         return (
           <div style={isContentDesktop ? { position:"relative", zIndex:50, height:0 } : {}}>
+          {isContentDesktop && <div onClick={() => setShowCalendar(false)} style={{ position:"fixed", inset:0, zIndex:998 }} />}
           <Card style={isContentDesktop ? { position:"fixed", top:140, left:200, width:300, padding:12, boxShadow:"0 8px 30px rgba(0,0,0,0.15)", border:"1px solid rgba(0,0,0,0.06)", zIndex:999 } : { marginBottom:10, padding:12 }}>
+            {/* Close button (desktop) */}
+            {isContentDesktop && <button onClick={() => setShowCalendar(false)} style={{ position:"absolute", top:8, right:8, width:24, height:24, borderRadius:8, border:"none", background:"rgba(0,0,0,0.04)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
             {/* Month nav */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
               <button onClick={() => { if (cm === 0) { setCalMonth(11); setCalYear(cy - 1); } else { setCalMonth(cm - 1); setCalYear(cy); } }} style={{ width:32, height:32, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
