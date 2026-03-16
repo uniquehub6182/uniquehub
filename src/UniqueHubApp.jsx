@@ -2915,9 +2915,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("news",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Comunicados</span></div>
               <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
             </div>
-            {/* CollapseHeader — fixed */}
-            <div style={{flexShrink:0,flexGrow:0}}>
-              <CollapseHeader icon={IC.news} label="Mercado" title="News" collapsed={false} />
+            {/* CollapseHeader — fixed, compact */}
+            <div style={{flexShrink:0,flexGrow:0,background:"#fff",padding:"14px 18px 12px",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
+              <p style={{fontSize:10,fontWeight:700,color:"#BBF246",textTransform:"uppercase",letterSpacing:1.2,marginBottom:2}}>Mercado</p>
+              <p style={{fontSize:18,fontWeight:900,color:"#1A1D23",lineHeight:1}}>News</p>
             </div>
             {/* scrollable content */}
             <div style={{flex:1,overflowY:"auto",padding:"12px 16px 16px"}}>
