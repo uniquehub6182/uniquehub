@@ -8685,30 +8685,25 @@ const TypingDots = () => (
 const REACT_EMOJIS = ["👍","❤️","😂","😮","😢","🔥"];
 
 /* Chat notification sound — real audio + Browser Notification API */
-let _notifAudio = null;
-let _audioUnlocked = false;
-const _unlockAudio = () => {
-  if (_audioUnlocked) return;
-  try {
-    _notifAudio = new Audio("/notif.wav");
-    _notifAudio.volume = 0.5;
-    /* Play silent then pause to unlock audio context */
-    _notifAudio.muted = true;
-    _notifAudio.play().then(() => { _notifAudio.pause(); _notifAudio.muted = false; _notifAudio.currentTime = 0; _audioUnlocked = true; }).catch(() => {});
-  } catch {}
-};
-/* Unlock on first user interaction */
-if (typeof window !== "undefined") {
-  const _onInteract = () => { _unlockAudio(); window.removeEventListener("click", _onInteract); window.removeEventListener("keydown", _onInteract); window.removeEventListener("touchstart", _onInteract); };
-  window.addEventListener("click", _onInteract, { once: false });
-  window.addEventListener("keydown", _onInteract, { once: false });
-  window.addEventListener("touchstart", _onInteract, { once: false });
-}
 const playChatNotifSound = () => {
   try {
-    if (!_notifAudio) { _notifAudio = new Audio("/notif.wav"); _notifAudio.volume = 0.5; }
-    _notifAudio.currentTime = 0;
-    _notifAudio.play().catch(() => {});
+    const a = new Audio("/notif.wav");
+    a.volume = 0.5;
+    a.play().catch(() => {
+      /* Fallback: AudioContext (works after any user interaction) */
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === "suspended") ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = "sine"; osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(660, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+      } catch {}
+    });
   } catch {}
 };
 const requestNotifPermission = () => {
@@ -10638,7 +10633,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               <span style={{ color: B.accent, display: "flex" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg></span>
               <div><p style={{ fontSize: 14, fontWeight: 600 }}>Som</p><p style={{ fontSize: 11, color: B.muted }}>Alerta sonoro</p></div>
             </div>
-            <Toggle on={notifSound} onToggle={() => { const nv=!notifSound; setNotifSound(nv); localStorage.setItem("uh_notif_sound", nv?"on":"off"); showToast(nv ? "Som ativado ✓" : "Som desativado"); }} />
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <button onClick={()=>playChatNotifSound()} style={{ padding:"4px 8px", borderRadius:6, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.muted }}>🔊 Testar</button>
+              <Toggle on={notifSound} onToggle={() => { const nv=!notifSound; setNotifSound(nv); localStorage.setItem("uh_notif_sound", nv?"on":"off"); showToast(nv ? "Som ativado ✓" : "Som desativado"); }} />
+            </div>
           </div>
         </Card>
         <Card style={{ marginBottom: 6 }}>
