@@ -3075,14 +3075,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                   </div>
                 </div>
                 {/* Linha 2: Cards LIME — metade dentro, metade fora do header */}
-                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr) 38px`,gap:12,marginBottom:-55,position:"relative",zIndex:3,alignItems:"start"}}>
+                <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginBottom:-55,position:"relative",zIndex:3}}>
                   {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
                     <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
                     <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
                     <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:3,fontWeight:500}}>{w.sub}</div>
                   </div>)}
-                  {/* Pencil to edit metric cards */}
-                  <button onClick={()=>setShowPanelEditor(true)} style={{width:38,height:38,borderRadius:10,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",alignSelf:"center",transition:"all .15s",backdropFilter:"blur(4px)"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.25)";e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";}} title="Editar cards"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
                 </div>
               </div>
             </div>
@@ -8348,6 +8346,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
 
   const createGroup = async () => {
     if (!groupName.trim() || groupMembers.length < 1) return showToast("Nome e pelo menos 1 membro");
+    /* Prevent duplicate group names */
+    const existing = convs.find(c => c.type === "group" && c.name?.toLowerCase() === groupName.trim().toLowerCase());
+    if (existing) return showToast("Já existe um grupo com esse nome");
     const convId = await supaCreateGroup(groupName.trim(), user.id, groupMembers);
     if (convId) {
       const refreshed = await supaLoadConversations(user.id);
@@ -8745,9 +8746,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",boxSizing:"border-box",padding:"0 16px 20px"}:{})}}>
         {ToastEl}
-        <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />
-        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:8}:{}}>
-        <div style={{ padding:chatIsDesktop?"0":"14px 16px 0" }}>
+        {!chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
+        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
+        {chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}        <div style={{ padding:chatIsDesktop?"0":"14px 16px 0" }}>
         <div style={{ display:"flex", gap:8, marginBottom:14, justifyContent:"flex-end" }}>
           <button onClick={()=>setShowNewChat(true)} style={{ width:40, height:40, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg>
