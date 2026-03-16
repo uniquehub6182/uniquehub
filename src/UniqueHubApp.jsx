@@ -909,32 +909,47 @@ const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fil
 const supaFindOrCreateDM = async (userId, otherId) => {
   if (!supabase) return null;
   try {
-    const { data: myConvs } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
-    const { data: theirConvs } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", otherId);
-    const mySet = new Set((myConvs||[]).map(m=>m.conversation_id));
-    const shared = (theirConvs||[]).filter(m=>mySet.has(m.conversation_id)).map(m=>m.conversation_id);
-    for (const cid of shared) {
-      const { data: conv } = await supabase.from("conversations").select("*").eq("id", cid).eq("type", "dm").single();
-      if (conv) return conv.id;
+    /* Find existing DM: get MY dm conversations, then check if other user is in any of them */
+    const { data: myMemberships } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
+    if (myMemberships?.length) {
+      const myConvIds = myMemberships.map(m => m.conversation_id);
+      /* Get all DM conversations I'm in */
+      const { data: myDMs } = await supabase.from("conversations").select("id").in("id", myConvIds).eq("type", "dm");
+      if (myDMs?.length) {
+        const dmIds = myDMs.map(d => d.id);
+        /* Check which of my DMs also has the other user */
+        const { data: sharedMembers } = await supabase.from("conversation_members").select("conversation_id").in("conversation_id", dmIds).eq("user_id", otherId);
+        if (sharedMembers?.length) {
+          console.log("[DM] Found existing DM:", sharedMembers[0].conversation_id);
+          return sharedMembers[0].conversation_id;
+        }
+      }
     }
-    const { data: newConv } = await supabase.from("conversations").insert({ type: "dm", created_by: userId }).select();
+    /* No existing DM found — create new */
+    console.log("[DM] Creating new DM between", userId, "and", otherId);
+    const { data: newConv, error: convErr } = await supabase.from("conversations").insert({ type: "dm", created_by: userId }).select();
+    if (convErr) { console.error("[DM] Error creating conversation:", convErr); return null; }
     if (!newConv?.[0]) return null;
-    await supabase.from("conversation_members").insert([
+    const { error: memErr } = await supabase.from("conversation_members").insert([
       { conversation_id: newConv[0].id, user_id: userId },
       { conversation_id: newConv[0].id, user_id: otherId },
     ]);
+    if (memErr) console.error("[DM] Error adding members:", memErr);
     return newConv[0].id;
-  } catch(e) { console.error("findOrCreateDM:", e); return null; }
+  } catch(e) { console.error("[DM] findOrCreateDM error:", e); return null; }
 };
 const supaCreateGroup = async (name, creatorId, memberIds) => {
   if (!supabase) return null;
   try {
-    const { data: conv } = await supabase.from("conversations").insert({ type: "group", name, created_by: creatorId }).select();
-    if (!conv?.[0]) return null;
+    const { data: conv, error: convErr } = await supabase.from("conversations").insert({ type: "group", name, created_by: creatorId }).select();
+    if (convErr) { console.error("[Group] Error creating:", convErr); return null; }
+    if (!conv?.[0]) { console.error("[Group] No conv returned"); return null; }
     const allIds = [...new Set([creatorId, ...memberIds])];
-    await supabase.from("conversation_members").insert(allIds.map(uid => ({ conversation_id: conv[0].id, user_id: uid })));
+    console.log("[Group] Created", conv[0].id, "adding members:", allIds.length);
+    const { error: memErr } = await supabase.from("conversation_members").insert(allIds.map(uid => ({ conversation_id: conv[0].id, user_id: uid })));
+    if (memErr) console.error("[Group] Error adding members:", memErr);
     return conv[0].id;
-  } catch(e) { return null; }
+  } catch(e) { console.error("[Group] create error:", e); return null; }
 };
 const supaMarkRead = async (convId, userId, typingChan) => {
   if (!supabase) return;
@@ -8632,6 +8647,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     /* Prevent duplicate group names */
     const existing = convs.find(c => c.type === "group" && c.name?.toLowerCase() === groupName.trim().toLowerCase());
     if (existing) return showToast("Já existe um grupo com esse nome");
+    console.log("[Group] Creating:", groupName.trim(), "members:", groupMembers);
     const convId = await supaCreateGroup(groupName.trim(), user.id, groupMembers);
     if (convId) {
       const refreshed = await supaLoadConversations(user.id);
@@ -8639,6 +8655,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       const found = refreshed.find(c => c.id === convId);
       if (found) { setSelConv(found); setView("chat"); }
       showToast("Grupo criado ✓");
+    } else {
+      showToast("Erro ao criar grupo — verifique a conexão");
     }
     setShowNewGroup(false); setGroupName(""); setGroupMembers([]);
   };
@@ -8707,12 +8725,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </p>
           </div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>openCall('video')} title="Videochamada" style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-            </button>
-            <button onClick={()=>openCall('voice')} title="Chamada de voz" style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-            </button>
+
             {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.red}30`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
             </button>}
@@ -8962,8 +8975,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros · Clique para ver`:(otherIsOnline?"Online":"Offline")}</p>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
-                    <button onClick={()=>openCall("video")} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
-                    <button onClick={()=>openCall("voice")} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
+
                     {(user?.supaRole==="admin") && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid #EF444430`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }} title="Excluir conversa"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>}
                   </div>
                 </div>
