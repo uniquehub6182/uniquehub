@@ -5197,6 +5197,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
 /* ═══════════════════════ ACADEMY PAGE ═══════════════════════ */
 function AcademyPage({ onBack, isClientView }) {
+  const isAcadDesktop = useIsDesktop();
   const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
   const [selCourse, setSelCourse] = useState(null);
@@ -5276,6 +5277,136 @@ function AcademyPage({ onBack, isClientView }) {
     if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
     return null;
   };
+
+  /* ── DESKTOP TWO-PANEL ACADEMY ── */
+  if (isAcadDesktop && !creating && editing === null && !addingLesson && editLessonIdx === null) {
+    const course = selCourse !== null ? courses[selCourse] : null;
+    const lesson = course && selLesson !== null ? (course.lessons||[])[selLesson] : null;
+    const c = course ? (CAT_COLORS[course.category] || B.accent) : B.accent;
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.academy} label="Aprendizado" title="Academy" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* ── LEFT: Course List ── */}
+          <div style={{ width:380, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Stats */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"16px 18px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", gap:20 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, color:"#fff" }}>{courses.length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Cursos</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, color:B.accent }}>{courses.reduce((s,cc)=>s+(cc.lessons||[]).length,0)}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Aulas</p></div>
+              </div>
+              {!isClientView && <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo Curso</button>}
+            </div>
+            {/* Course list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.text }}>Cursos</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"8px 10px" }}>
+                {courses.length===0 && <div style={{ textAlign:"center", padding:"30px 0" }}>
+                  <p style={{ fontSize:32, marginBottom:6 }}>📚</p>
+                  <p style={{ fontSize:12, color:B.muted }}>Nenhum curso criado</p>
+                </div>}
+                {courses.map((cc,i) => {
+                  const isSel = selCourse === i;
+                  const catC = CAT_COLORS[cc.category] || B.accent;
+                  return (
+                    <div key={cc.id} onClick={()=>{setSelCourse(i);setSelLesson(null);}} style={{ display:"flex", gap:10, padding:"10px 10px", borderRadius:12, cursor:"pointer", background:isSel?`${catC}08`:"transparent", border:isSel?`1.5px solid ${catC}20`:"1.5px solid transparent", marginBottom:4, transition:"all .15s" }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}05`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                      {cc.thumb ? <div style={{ width:48, height:48, borderRadius:10, overflow:"hidden", flexShrink:0 }}><img src={cc.thumb} style={{ width:"100%", height:"100%", objectFit:"cover" }}/></div> : <div style={{ width:48, height:48, borderRadius:10, background:`${catC}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:catC }}>{IC.academy(catC)}</div>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{cc.title}</p>
+                        <div style={{ display:"flex", gap:6, marginTop:3, alignItems:"center" }}>
+                          <span style={{ fontSize:9, fontWeight:600, padding:"2px 6px", borderRadius:4, background:`${catC}12`, color:catC }}>{cc.category}</span>
+                          <span style={{ fontSize:10, color:B.muted }}>{(cc.lessons||[]).length} aula{(cc.lessons||[]).length!==1?"s":""}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* ── RIGHT: Course detail / Lesson ── */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {lesson ? <>
+              {/* Lesson view */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>setSelLesson(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:700, color:B.text }}>{lesson.title}</p>
+                  <p style={{ fontSize:11, color:B.muted }}>Aula {selLesson+1} de {(course.lessons||[]).length}{lesson.duration ? ` · ${lesson.duration}` : ""}</p>
+                </div>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {getYTEmbed(lesson.videoUrl) ? <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16 }}>
+                  <div style={{ position:"relative", paddingBottom:"56.25%", height:0, background:B.dark }}>
+                    <iframe src={getYTEmbed(lesson.videoUrl)} title={lesson.title} style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                  </div>
+                </div> : lesson.videoUrl ? <a href={lesson.videoUrl} target="_blank" rel="noopener" style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", borderRadius:12, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, marginBottom:16, textDecoration:"none", color:B.blue, fontSize:13, fontWeight:600 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg> Assistir / Abrir conteúdo
+                </a> : null}
+                {lesson.desc && <div style={{ padding:16, borderRadius:12, background:B.bg, marginBottom:16 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Descrição</p>
+                  <p style={{ fontSize:13, lineHeight:1.7, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
+                </div>}
+                <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                  {selLesson > 0 && <button onClick={()=>setSelLesson(selLesson-1)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text }}>← Aula anterior</button>}
+                  {selLesson < (course.lessons||[]).length-1 && <button onClick={()=>setSelLesson(selLesson+1)} style={{ flex:1, padding:"10px 0", borderRadius:10, background:c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>Próxima aula →</button>}
+                </div>
+              </div>
+            </> : course ? <>
+              {/* Course detail */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{course.title}</p>
+                  <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:4 }}>
+                    <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:6, background:`${c}12`, color:c }}>{course.category}</span>
+                    <span style={{ fontSize:11, color:B.muted }}>{(course.lessons||[]).length} aula{(course.lessons||[]).length!==1?"s":""}</span>
+                  </div>
+                </div>
+                {!isClientView && <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={()=>{setForm({title:course.title,category:course.category,desc:course.desc,thumb:course.thumb,lessons:course.lessons||[]});setEditing(selCourse);setSelCourse(null);}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button onClick={()=>deleteCourse(selCourse)} style={{ width:32, height:32, borderRadius:8, border:`1px solid #FEE2E2`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                </div>}
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {course.thumb && <div style={{ borderRadius:14, overflow:"hidden", marginBottom:16, maxHeight:200 }}><img src={course.thumb} alt="" style={{ width:"100%", objectFit:"cover", display:"block" }}/></div>}
+                {course.desc && <p style={{ fontSize:13, lineHeight:1.7, color:B.text, marginBottom:16 }}>{course.desc}</p>}
+                <p style={{ fontSize:12, fontWeight:700, color:B.text, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Aulas ({(course.lessons||[]).length})</p>
+                {(course.lessons||[]).length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhuma aula cadastrada</p>}
+                {(course.lessons||[]).map((ll,li) => (
+                  <div key={ll.id||li} onClick={()=>setSelLesson(li)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, cursor:"pointer", marginBottom:4, border:`1px solid ${B.border}`, transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${c}05`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{ width:32, height:32, borderRadius:10, background:`${c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <span style={{ fontSize:12, fontWeight:800, color:c }}>{li+1}</span>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:600, color:B.text }}>{ll.title}</p>
+                      <div style={{ display:"flex", gap:8, marginTop:2 }}>
+                        {ll.duration && <span style={{ fontSize:10, color:B.muted }}>{ll.duration}</span>}
+                        {ll.videoUrl && <span style={{ fontSize:10, color:B.blue }}>▶ Vídeo</span>}
+                      </div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                ))}
+              </div>
+            </> : (
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                    <span style={{ color:B.accent, display:"flex" }}>{IC.academy(B.accent)}</span>
+                  </div>
+                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Selecione um curso</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha um curso na lista ao lado</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── LESSON FORM ── */
   if (addingLesson || editLessonIdx !== null) return (
