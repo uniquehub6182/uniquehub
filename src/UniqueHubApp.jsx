@@ -7255,18 +7255,40 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                   const clientId = clientObj.supaId || clientObj.id;
                   const isCarousel = imgUrls.length > 1 && type === "FEED";
-                  showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
-                  let r;
-                  if (platform === "instagram") {
-                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
+
+                  if (schedTs) {
+                    /* ── SCHEDULED: save to scheduled_posts table ── */
+                    showToast(`Agendando ${type}...`);
+                    try {
+                      const schedDate = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
+                      const { error: insErr } = await supabase.from("scheduled_posts").insert({
+                        client_id: clientId, platform, media_type: type,
+                        image_urls: imgUrls, caption: fullCaption,
+                        scheduled_at: schedDate.toISOString(),
+                        demand_id: sel.supaId || sel.id,
+                        created_by: user?.id
+                      });
+                      if (insErr) { showToast(`Erro: ${insErr.message}`); return; }
+                      updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação agendada", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                      updateStep("igPublished", { platform, type, scheduled:true, scheduledAt:schedDate.toISOString(), date:new Date().toLocaleDateString("pt-BR") });
+                      setTimeout(() => advanceStage(sel), 200);
+                      showToast(`✓ Agendado para ${schedLabel}`);
+                    } catch(e) { showToast(`Erro ao agendar: ${e.message}`); }
                   } else {
-                    r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                    /* ── IMMEDIATE: publish now ── */
+                    showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
+                    let r;
+                    if (platform === "instagram") {
+                      r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null);
+                    } else {
+                      r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                    }
+                    if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                    updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
+                    setTimeout(() => advanceStage(sel), 200);
+                    showToast("✓ Publicado!");
                   }
-                  if (r?.error) { showToast(`Erro: ${r.error}`); return; }
-                  updateStep("client", { ...sel.steps?.client, status:"approved", by: schedTs ? "Publicação agendada" : "Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                  updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
-                  setTimeout(() => advanceStage(sel), 200);
-                  showToast(schedTs ? `✓ Agendado com sucesso! (${schedLabel})` : `✓ Publicado!`);
                 };
 
                 const publishButtons = () => (
@@ -7430,16 +7452,32 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                 const clientId = clientObj.supaId || clientObj.id;
                 const isCarousel = imgUrls.length > 1 && type === "FEED";
-                showToast(schedTs ? `Agendando ${type}...` : `Publicando ${isCarousel ? "carrossel" : type}...`);
-                let r;
-                if (platform === "instagram") {
-                  r = await publishToInstagram(clientId, imgUrls, fullCaption, type, schedTs);
+                if (schedTs) {
+                  showToast(`Agendando ${type}...`);
+                  try {
+                    const schedDate = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
+                    const { error: insErr } = await supabase.from("scheduled_posts").insert({
+                      client_id: clientId, platform, media_type: type,
+                      image_urls: imgUrls, caption: fullCaption,
+                      scheduled_at: schedDate.toISOString(),
+                      demand_id: sel.supaId || sel.id, created_by: user?.id
+                    });
+                    if (insErr) { showToast(`Erro: ${insErr.message}`); return; }
+                    updateStep("igPublished", { platform, type, scheduled:true, scheduledAt:schedDate.toISOString(), date:new Date().toLocaleDateString("pt-BR") });
+                    showToast(`✓ Agendado para ${schedLabel}`);
+                  } catch(e) { showToast(`Erro: ${e.message}`); }
                 } else {
-                  r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                  showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
+                  let r;
+                  if (platform === "instagram") {
+                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null);
+                  } else {
+                    r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                  }
+                  if (r?.error) { showToast(`Erro: ${r.error}`); return; }
+                  updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
+                  showToast("✓ Publicado!");
                 }
-                if (r?.error) { showToast(`Erro: ${r.error}`); return; }
-                updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:!!schedTs });
-                showToast(schedTs ? `✓ Agendado!` : `✓ Publicado!`);
               };
               return (
                 <Card style={{ marginTop:8, background:`${hasIG?"#E1306C":"#1877F2"}06`, border:`1.5px solid ${hasIG?"#E1306C":"#1877F2"}15` }}>
