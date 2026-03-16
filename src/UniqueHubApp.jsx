@@ -7930,6 +7930,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const fileRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   const [chatTab, setChatTab] = useState("all");
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
 
   /* ── Online Presence: track who's currently in the app ── */
@@ -8608,7 +8609,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const showConvsD = chatTab==="all"?filteredConvsD:chatTab==="dm"?filteredConvsD.filter(c=>c.type==="dm"):filteredConvsD.filter(c=>c.type==="group");
     return (
       <div className="content-wide" style={{ minHeight:"calc(100vh - 120px)" }}>
-        <div style={{ paddingTop:20 }}>
+        <div style={{ paddingTop:0 }}>
         {NewChatModal}{NewGroupModal}{ToastEl}
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={false} />
         <div style={{ display:"flex", height:"calc(100vh - 220px)", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", marginTop:8 }}>
@@ -8640,7 +8641,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 const otherUid = other?.id;
                 const isOn = otherUid ? onlineUserIds.has(otherUid) : false;
                 return (
-                  <div key={c.id} onClick={async()=>{setSelConv(c);setView("chat");const m=await supaLoadMessages(c.id);setMsgs(m||[]);if(c.unread)supaMarkRead(c.id,user.id);setConvs(p=>p.map(x=>x.id===c.id?{...x,unread:0}:x));setTimeout(()=>{if(msgEndRef.current)msgEndRef.current.scrollIntoView();},100);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", borderLeft:isActive?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .1s" }}>
+                  <div key={c.id} onClick={async()=>{setShowGroupInfo(false);setSelConv(c);setView("chat");const m=await supaLoadMessages(c.id);setMsgs(m||[]);if(c.unread)supaMarkRead(c.id,user.id);setConvs(p=>p.map(x=>x.id===c.id?{...x,unread:0}:x));setTimeout(()=>{if(msgEndRef.current)msgEndRef.current.scrollIntoView();},100);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", borderLeft:isActive?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .1s" }}>
                     <div style={{ position:"relative", flexShrink:0 }}>
                       {isGrp ? <div style={{ width:40, height:40, borderRadius:"50%", background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
                       : <Av src={allProfiles.find(p=>p.id===other?.id)?.photo_url} name={nm} sz={40} fs={15} />}
@@ -8670,20 +8671,54 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               <div style={{ flex:1, display:"flex", flexDirection:"column", background:B.bgCard||"#fff" }}>
                 <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx" />
                 <div style={{ borderBottom:`1px solid ${B.border}`, padding:"12px 16px", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
-                  <div style={{ position:"relative", flexShrink:0 }}>
+                  <div onClick={isGroup?()=>setShowGroupInfo(!showGroupInfo):undefined} style={{ position:"relative", flexShrink:0, cursor:isGroup?"pointer":"default" }}>
                     {isGroup ? <div style={{ width:38, height:38, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
                     : <Av src={allProfiles.find(p=>p.id===otherMember?.id)?.photo_url} name={convName} sz={38} fs={14} />}
                     {!isGroup && <div style={{ position:"absolute", bottom:0, right:0, width:9, height:9, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>}
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
+                  <div onClick={isGroup?()=>setShowGroupInfo(!showGroupInfo):undefined} style={{ flex:1, minWidth:0, cursor:isGroup?"pointer":"default" }}>
                     <p style={{ fontSize:14, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
-                    <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros`:(otherIsOnline?"Online":"Offline")}</p>
+                    <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros · Clique para ver`:(otherIsOnline?"Online":"Offline")}</p>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
                     <button onClick={()=>openCall("video")} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
                     <button onClick={()=>openCall("voice")} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></button>
                   </div>
                 </div>
+                {/* ── GROUP INFO PANEL ── */}
+                {isGroup && showGroupInfo && <div style={{ borderBottom:`1px solid ${B.border}`, padding:"16px", background:B.bg, flexShrink:0 }}>
+                  <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Membros ({(selConv.members||[]).length})</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14 }}>
+                    {(selConv.members||[]).map(m => {
+                      const isMe = m.id === user.id;
+                      const isCreator = m.id === selConv.created_by;
+                      const prof = allProfiles.find(p=>p.id===m.id);
+                      const isOn = onlineUserIds.has(m.id);
+                      return <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 8px", borderRadius:10, background:B.bgCard||"#fff" }}>
+                        <div style={{ position:"relative" }}>
+                          <Av src={prof?.photo_url} name={m.name||m.email||"?"} sz={32} fs={12} />
+                          <div style={{ position:"absolute", bottom:-1, right:-1, width:8, height:8, borderRadius:"50%", background:isOn?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ fontSize:12, fontWeight:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.name||m.email||"Membro"}{isMe?" (você)":""}</p>
+                          <p style={{ fontSize:10, color:B.muted }}>{isCreator?"Admin":"Membro"}</p>
+                        </div>
+                      </div>;
+                    })}
+                  </div>
+                  <button onClick={async()=>{
+                    if(!confirm(selConv.created_by===user.id?"Tem certeza que quer EXCLUIR este grupo? Todas as mensagens serão apagadas.":"Tem certeza que quer SAIR deste grupo?")) return;
+                    if(selConv.created_by===user.id){
+                      const ok = await supaDeleteConversation(selConv.id);
+                      if(ok){setConvs(p=>p.filter(c=>c.id!==selConv.id));setSelConv(null);setShowGroupInfo(false);showToast("Grupo excluído");}
+                    } else {
+                      try{await supabase.from("conversation_members").delete().eq("conversation_id",selConv.id).eq("user_id",user.id);setConvs(p=>p.filter(c=>c.id!==selConv.id));setSelConv(null);setShowGroupInfo(false);showToast("Você saiu do grupo");}catch(e){showToast("Erro ao sair");}
+                    }
+                  }} style={{ width:"100%", padding:"10px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#EF4444", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    {selConv.created_by===user.id?"Excluir grupo":"Sair do grupo"}
+                  </button>
+                </div>}
                 <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
                   {msgs.map((m,mi) => {
                     const isMine = m.sender_id === user.id;
