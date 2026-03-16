@@ -8571,6 +8571,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
     const showConvsD = chatTab==="all"?filteredConvsD:chatTab==="dm"?filteredConvsD.filter(c=>c.type==="dm"):filteredConvsD.filter(c=>c.type==="group");
     return (
       <div className="content-wide" style={{ minHeight:"calc(100vh - 120px)" }}>
+        <div style={{ paddingTop:20 }}>
         {NewChatModal}{NewGroupModal}{ToastEl}
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={false} />
         <div style={{ display:"flex", height:"calc(100vh - 220px)", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", marginTop:8 }}>
@@ -8670,8 +8671,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 </div>
                 <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard||"#fff", flexShrink:0 }}>
                   <button onClick={()=>fileRef.current?.click()} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
-                  <input value={input} onChange={e=>{setInput(e.target.value);broadcastTyping();}} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
-                  <button onClick={sendMessage} disabled={!input.trim()} style={{ width:40, height:40, borderRadius:"50%", background:input.trim()?B.accent:`${B.muted}20`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"#9CA3AF"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                  <input value={input} onChange={handleInputChange} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
+                  <button onClick={sendMsg} disabled={!input.trim()} style={{ width:40, height:40, borderRadius:"50%", background:input.trim()?B.accent:`${B.muted}20`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#0D0D0D":"#9CA3AF"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
                 </div>
               </div>
             );
@@ -8687,6 +8688,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             </div>
           )}
         </div>
+      </div>{/* close paddingTop wrapper */}
       </div>
     );
   }
