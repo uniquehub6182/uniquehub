@@ -12539,6 +12539,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
 }
 
 function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientView, clientFilter }) {
+  const isLibDesktop = useIsDesktop();
   const CDATA = propClients || [];
   const [filterClient, setFilterClient] = useState(isClientView ? (clientFilter||"all") : "all");
   const [filterCat, setFilterCat] = useState("all");
@@ -12605,7 +12606,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   });
 
   /* ── FILE DETAIL VIEW ── */
-  if (viewFile) {
+  if (viewFile && !isLibDesktop) {
     const f = viewFile;
     const fi = fileIcon(f.name);
     const cat = LIB_CATS.find(c => c.key === getFileCat(f));
@@ -12737,6 +12738,110 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     );
   }
 
+  /* ── DESKTOP TWO-PANEL LIBRARY ── */
+  if (isLibDesktop) {
+    const f = viewFile;
+    const fi = f ? fileIcon(f.name) : null;
+    const ext = f ? f.name.split(".").pop()?.toLowerCase() : "";
+    const isImage = f && ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
+    const isVideo = f && ["mp4","mov","avi","mkv","webm"].includes(ext);
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" onBack={onBack} collapsed={false} stats={[]} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* LEFT: Files list */}
+          <div style={{ width:400, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", gap:16 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{totalFiles}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Arquivos</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:"#fff" }}>{clientsWithFiles}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Clientes</p></div>
+              </div>
+              {!isClientView && <button onClick={()=>{setAddingFile(true);setFileForm({});setViewFile(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Enviar</button>}
+            </div>
+            {/* Search + filters */}
+            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"10px 12px" }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo..." className="tinput" style={{ marginBottom:8, fontSize:12 }} />
+              <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                <button onClick={()=>setFilterCat("all")} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${filterCat==="all"?B.accent:B.border}`, background:filterCat==="all"?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:filterCat==="all"?B.accent:B.muted }}>Todos</button>
+                {LIB_CATS.filter(c=>catCounts[c.key]).map(c=>(
+                  <button key={c.key} onClick={()=>setFilterCat(filterCat===c.key?"all":c.key)} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${filterCat===c.key?c.c:B.border}`, background:filterCat===c.key?`${c.c}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:filterCat===c.key?c.c:B.muted }}>{c.icon} {catCounts[c.key]}</button>
+                ))}
+              </div>
+            </div>
+            {/* File list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+                {filtered.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:12 }}>Nenhum arquivo encontrado</p>}
+                {filtered.map((ff,i) => {
+                  const ffi = fileIcon(ff.name);
+                  const isSel = viewFile?.id === ff.id;
+                  return (
+                    <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${ffi.c}08`:"transparent", border:isSel?`1.5px solid ${ffi.c}20`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                      <div style={{ width:36, height:36, borderRadius:8, background:`${ffi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:ffi.c, flexShrink:0 }}>{ffi.ic}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{ff.name}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{ff.clientName} · {ff.size||""}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* RIGHT: Detail / Add / Placeholder */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {addingFile ? <>
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>{setAddingFile(false);setFileForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Enviar Arquivo</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {!isClientView && <div style={{ marginBottom:14 }}><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput">{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Nome *</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" /></div>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{LIB_CATS.map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${(fileForm.category||"")=== c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600 }}>{c.icon} {c.label}</button>)}</div></div>
+                <div style={{ marginBottom:14 }}><label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"24px 16px", borderRadius:14, border:`2px dashed ${fileForm.file?B.green:B.accent}30`, background:`${fileForm.file?B.green:B.accent}04`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:fileForm.file?B.green:B.accent }}>{fileForm.file?`✓ ${fileForm.file.name}`:"Clique para selecionar arquivo"}<input type="file" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(file){setFileForm(p=>({...p,file,name:p.name||file.name}));}}}/></label></div>
+                <button onClick={uploadLibFile} disabled={uploading} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:uploading?"wait":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark, opacity:uploading?0.6:1 }}>{uploading?"Enviando...":"Enviar Arquivo"}</button>
+              </div>
+            </> : f ? <>
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>setViewFile(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div style={{ width:32, height:32, borderRadius:8, background:`${fi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c }}>{fi.ic}</div>
+                <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700, color:B.text, wordBreak:"break-all" }}>{f.name}</p><p style={{ fontSize:11, color:B.muted }}>{f.clientName} · {ext?.toUpperCase()}</p></div>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {f.url && isImage && <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16, background:B.dark }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain" }}/></div>}
+                {f.url && isVideo && <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16, background:B.dark }}><video src={f.url} controls style={{ width:"100%", maxHeight:300 }}/></div>}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+                  {[{l:"Cliente",v:f.clientName},{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date}].map((item,ii)=>(
+                    <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
+                      <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v||"—"}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                  {f.url && <button onClick={()=>{const a=document.createElement("a");a.href=f.url;a.download=f.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Baixar</button>}
+                  {f.url && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 0", borderRadius:10, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent }}>Abrir</button>}
+                </div>
+              </div>
+            </> : (
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                    <span style={{ color:B.accent, display:"flex" }}>{IC.library}</span>
+                  </div>
+                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Selecione um arquivo</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha um arquivo na lista ao lado</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   /* ── MAIN LIBRARY VIEW ── */
 
   /* ── ADD FILE FORM ── */
@@ -12778,7 +12883,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     { key:"docs", label:"Documentos", c:B.muted },
   ];
 
-  if (addingFile) return (
+  if (addingFile && !isLibDesktop) return (
     <div className="pg">{ToastEl}
       <Head title="Novo Arquivo" onBack={()=>{setAddingFile(false);setFileForm({});}} />
       {!isClientView && <Card style={{ marginBottom:8 }}>
