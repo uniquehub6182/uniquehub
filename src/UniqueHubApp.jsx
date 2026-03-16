@@ -5922,8 +5922,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     );
   }
 
-  /* ── CREATE SHEET ── */
-  if (creating) return (
+  /* ── CREATE SHEET (mobile only — desktop uses side panel) ── */
+  if (creating && !isContentDesktop) return (
     <div className="pg" style={{ paddingTop: TOP }}>
       {ToastEl}
       <Head title={createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"} onBack={() => { if (createType) setCreateType(null); else setCreating(false); }} />
@@ -7489,6 +7489,73 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       })}
       </div>{/* end demands-grid */}
       </div>{/* end scrollable content */}
+
+      {/* ── DESKTOP CREATE DRAWER ── */}
+      {creating && isContentDesktop && <>
+        <div onClick={() => { setCreating(false); setCreateType(null); setForm({}); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
+        <div style={{ position:"fixed", top:0, right:0, bottom:0, width:480, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", display:"flex", flexDirection:"column", animation:"slideInRight .25s ease both" }}>
+          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+          {/* Drawer header */}
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid rgba(0,0,0,0.06)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <button onClick={() => { if (createType) setCreateType(null); else { setCreating(false); setForm({}); } }} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{createType ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}</button>
+              <h3 style={{ fontSize:16, fontWeight:800, color:"#1A1D23" }}>{createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"}</h3>
+            </div>
+          </div>
+          {/* Drawer body */}
+          <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
+            {!createType ? (
+              <div>
+                <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:16 }}>Que tipo de demanda?</p>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  {[{k:"social",l:"Post",d:"Feed, stories, reels",c:"#3B82F6"},{k:"campaign",l:"Campanha",d:"Evento, ação",c:"#8B5CF6"},{k:"video",l:"Vídeo",d:"Institucional, produto",c:"#F59E0B"},{k:"email",l:"E-mail",d:"Newsletter, promoção",c:"#10B981"},{k:"blog",l:"Blog / SEO",d:"Artigo, LP",c:"#06B6D4"}].map(t => (
+                    <div key={t.k} onClick={() => setCreateType(t.k)} style={{ padding:"16px", borderRadius:14, border:"1.5px solid rgba(0,0,0,0.06)", cursor:"pointer", transition:"all .15s", background:`${t.c}06` }} onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:`${t.c}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10, color:t.c }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                      <p style={{ fontSize:13, fontWeight:700, color:"#1A1D23" }}>{t.l}</p>
+                      <p style={{ fontSize:11, color:"#9CA3AF", marginTop:2 }}>{t.d}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Cliente</label>
+                <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:14, width:"100%" }}>
+                  <option value="">Selecionar cliente...</option>
+                  {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Título</label>
+                <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:14, width:"100%" }} />
+                {createType === "social" && <>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Redes</label>
+                  <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
+                    {["Instagram","Facebook","TikTok","LinkedIn"].map(n=>{const nets=form.networks||[];const sel2=nets.includes(n);return(<button key={n} onClick={()=>setForm({...form,networks:sel2?nets.filter(x=>x!==n):[...nets,n]})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${sel2?(NETWORK_CFG[n]?.c||"#BBF246"):"rgba(0,0,0,0.08)"}`, background:sel2?`${NETWORK_CFG[n]?.c||"#BBF246"}10`:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:sel2?(NETWORK_CFG[n]?.c||"#1A1D23"):"#9CA3AF" }}>{n}</button>);})}
+                  </div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Formato</label>
+                  <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
+                    {["Feed","Stories","Reels","Carrossel"].map(f=>(<button key={f} onClick={()=>setForm({...form,format:f})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${form.format===f?"#BBF246":"rgba(0,0,0,0.08)"}`, background:form.format===f?"#BBF24610":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:form.format===f?"#1A1D23":"#9CA3AF" }}>{f}</button>))}
+                  </div>
+                </>}
+                {createType === "campaign" && <>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Descrição</label>
+                  <textarea value={form.desc||""} onChange={e=>setForm({...form,desc:e.target.value})} placeholder="Do que se trata..." className="tinput" style={{ marginBottom:14, minHeight:70, resize:"vertical", width:"100%" }} />
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+                    <div><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Início</label><input type="date" value={form.dateStart||""} onChange={e=>setForm({...form,dateStart:e.target.value})} className="tinput" style={{ width:"100%" }} /></div>
+                    <div><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Fim</label><input type="date" value={form.dateEnd||""} onChange={e=>setForm({...form,dateEnd:e.target.value})} className="tinput" style={{ width:"100%" }} /></div>
+                  </div>
+                </>}
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Briefing / Ideia</label>
+                <textarea value={form.idea||""} onChange={e=>setForm({...form,idea:e.target.value})} placeholder="Descreva a ideia..." className="tinput" style={{ marginBottom:14, minHeight:70, resize:"vertical", width:"100%" }} />
+                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Prioridade</label>
+                <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+                  {["baixa","média","alta"].map(p=>(<button key={p} onClick={()=>setForm({...form,priority:p})} style={{ flex:1, padding:"10px 0", borderRadius:12, border:`1.5px solid ${form.priority===p?priorityColor(p):"rgba(0,0,0,0.06)"}`, background:form.priority===p?`${priorityColor(p)}12`:"#fff", color:form.priority===p?priorityColor(p):"#9CA3AF", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", textTransform:"capitalize" }}>{p}</button>))}
+                </div>
+                <button onClick={handleCreate} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#BBF246", border:"none", cursor:(form.title&&form.client)?"pointer":"not-allowed", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", opacity:(form.title&&form.client)?1:0.4 }}>Criar Demanda</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </>}
     </div>
   );
 }
