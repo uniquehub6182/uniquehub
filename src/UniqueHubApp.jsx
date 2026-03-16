@@ -8216,6 +8216,21 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const { showToast, ToastEl } = useToast();
   const [chatTab, setChatTab] = useState("all");
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupPhotos, setGroupPhotos] = useState({});
+  const groupPhotoRef = useRef(null);
+  /* Load group photos from app_settings */
+  useEffect(() => {
+    if (!supabase || !convs.length) return;
+    const groups = convs.filter(c => c.type === "group");
+    if (!groups.length) return;
+    const keys = groups.map(g => `group_photo_${g.id}`);
+    supaGetSettingsBulk(keys).then(results => {
+      if (!results) return;
+      const photos = {};
+      results.forEach(r => { if (r.value) { const gid = r.key.replace("group_photo_", ""); photos[gid] = r.value; } });
+      setGroupPhotos(prev => ({ ...prev, ...photos }));
+    });
+  }, [convs.length]);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
 
   /* ── Online Presence: track who's currently in the app ── */
@@ -8937,7 +8952,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 return (
                   <div key={c.id} onClick={async()=>{setShowGroupInfo(false);setSelConv(c);setView("chat");const m=await supaLoadMessages(c.id);setMsgs(m||[]);if(c.unread)supaMarkRead(c.id,user.id);setConvs(p=>p.map(x=>x.id===c.id?{...x,unread:0}:x));setTimeout(()=>{if(msgEndRef.current)msgEndRef.current.scrollIntoView();},100);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", background:isActive?`${B.accent}08`:"transparent", borderLeft:isActive?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .1s" }}>
                     <div style={{ position:"relative", flexShrink:0 }}>
-                      {isGrp ? <div style={{ width:40, height:40, borderRadius:"50%", background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                      {isGrp ? (groupPhotos[c.id] ? <img src={groupPhotos[c.id]} style={{ width:40, height:40, borderRadius:"50%", objectFit:"cover" }}/> : <div style={{ width:40, height:40, borderRadius:"50%", background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>)
                       : <Av src={allProfiles.find(p=>p.id===other?.id)?.photo_url} name={nm} sz={40} fs={15} />}
                       {!isGrp && <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:"50%", background:isOn?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>}
                     </div>
@@ -8966,7 +8981,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx" />
                 <div style={{ borderBottom:`1px solid ${B.border}`, padding:"12px 16px", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
                   <div onClick={isGroup?()=>setShowGroupInfo(!showGroupInfo):undefined} style={{ position:"relative", flexShrink:0, cursor:isGroup?"pointer":"default" }}>
-                    {isGroup ? <div style={{ width:38, height:38, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                    {isGroup ? (groupPhotos[selConv.id] ? <img src={groupPhotos[selConv.id]} style={{ width:38, height:38, borderRadius:"50%", objectFit:"cover" }}/> : <div style={{ width:38, height:38, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>)
                     : <Av src={allProfiles.find(p=>p.id===otherMember?.id)?.photo_url} name={convName} sz={38} fs={14} />}
                     {!isGroup && <div style={{ position:"absolute", bottom:0, right:0, width:9, height:9, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>}
                   </div>
@@ -8982,7 +8997,19 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 {/* ── GROUP INFO PANEL ── */}
                 {isGroup && showGroupInfo && (() => {
                   const iAmAdmin = user.id === selConv.created_by || user.supaRole === "admin";
-                  return <div style={{ borderBottom:`1px solid ${B.border}`, padding:"16px", background:B.bg, flexShrink:0, maxHeight:320, overflowY:"auto" }}>
+                  return <div style={{ borderBottom:`1px solid ${B.border}`, padding:"16px", background:B.bg, flexShrink:0, maxHeight:400, overflowY:"auto" }}>
+                  {/* Group Photo */}
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
+                    <div style={{ position:"relative", cursor:iAmAdmin?"pointer":"default" }} onClick={()=>{if(iAmAdmin&&groupPhotoRef.current)groupPhotoRef.current.click();}}>
+                      {groupPhotos[selConv.id] ? <img src={groupPhotos[selConv.id]} style={{ width:56, height:56, borderRadius:"50%", objectFit:"cover" }}/> : <div style={{ width:56, height:56, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>}
+                      {iAmAdmin && <div style={{ position:"absolute", bottom:-2, right:-2, width:20, height:20, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>}
+                    </div>
+                    <input ref={groupPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!selConv)return;showToast("Enviando foto...");const path=`group-photos/${selConv.id}-${Date.now()}`;const{data,error}=await supabase.storage.from("chat-files").upload(path,file,{upsert:true});if(error){const reader=new FileReader();reader.onload=ev=>{const url=ev.target.result;supaSetSetting(`group_photo_${selConv.id}`,url);setGroupPhotos(p=>({...p,[selConv.id]:url}));showToast("Foto atualizada ✓");};reader.readAsDataURL(file);}else{const{data:{publicUrl}}=supabase.storage.from("chat-files").getPublicUrl(path);supaSetSetting(`group_photo_${selConv.id}`,publicUrl);setGroupPhotos(p=>({...p,[selConv.id]:publicUrl}));showToast("Foto atualizada ✓");}if(groupPhotoRef.current)groupPhotoRef.current.value="";}}/>
+                    <div>
+                      <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{selConv.name||"Grupo"}</p>
+                      <p style={{ fontSize:11, color:B.muted }}>{iAmAdmin?"Clique na foto para alterar":"Grupo"}</p>
+                    </div>
+                  </div>
                   <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Membros ({(selConv.members||[]).length})</p>
                   <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14 }}>
                     {(selConv.members||[]).map(m => {
@@ -9025,7 +9052,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                 <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
                   {msgs.map((m,mi) => {
                     const isMine = m.sender_id === user.id;
-                    const senderName = m.sender_name || (isMine ? user.name : convName);
+                    const senderName = isMine ? user.name : (allProfiles.find(p=>p.id===m.sender_id)?.name || m.sender_name || m.profiles?.name || "Membro");
                     return (
                       <div key={m.id||mi} style={{ display:"flex", justifyContent:isMine?"flex-end":"flex-start", marginBottom:2 }}>
                         <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard||"#fff"), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
@@ -9131,7 +9158,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             >
               <div style={{ position:"relative", flexShrink:0 }}>
                 <div style={{ width:54, height:54, borderRadius:"50%", background:isGroup?`${B.accent}20`:avBg, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
-                  {other?.photo_url ? <img src={other.photo_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+                  {isGroup && groupPhotos[c.id] ? <img src={groupPhotos[c.id]} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+                    : other?.photo_url ? <img src={other.photo_url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
                     : isGroup ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                     : <span style={{fontSize:18,fontWeight:800,color:"rgba(255,255,255,0.95)"}}>{initials}</span>}
                 </div>
