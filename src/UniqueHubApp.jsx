@@ -11402,6 +11402,7 @@ function NavEditSheet({ picks, setPicks, onClose }) {
 /* ═══════════════════════ PLACEHOLDER PAGES ═══════════════════════ */
 /* ═══════════════════════ TEAM PAGE ═══════════════════════ */
 function TeamPage({ onBack, user, onTeamChange }) {
+  const isTeamDesktop = useIsDesktop();
   const [sel, setSel] = useState(null);
   const [adding, setAdding] = useState(false);
   const [editMember, setEditMember] = useState(false);
@@ -11510,6 +11511,154 @@ function TeamPage({ onBack, user, onTeamChange }) {
       <input value={form.skills ?? (isEdit ? (sel?.skills||[]).join(", ") : "")} onChange={e=>setForm(p=>({...p,skills:e.target.value}))} placeholder="Design, Copywriting, Tráfego" className="tinput" />
     </Card>
   );
+
+  /* ── DESKTOP TWO-PANEL TEAM ── */
+  if (isTeamDesktop) {
+    const m = sel;
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.team} label="Pessoas" title="Equipe" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* ── LEFT: Member List ── */}
+          <div style={{ width:380, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Stats */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"16px 18px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", gap:20 }}>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, color:"#fff" }}>{members.length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Membros</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, color:B.green }}>{members.filter(x=>x.status!=="pendente").length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Ativos</p></div>
+                <div style={{ textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, color:B.orange }}>{members.filter(x=>x.status==="pendente").length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Pendentes</p></div>
+              </div>
+              {isAdmin && <button onClick={()=>{setForm({});setAdding(true);setSel(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo</button>}
+            </div>
+            {/* Member list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.text }}>Membros</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+                {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Carregando...</p>}
+                {loaded && members.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhum membro</p>}
+                {members.map((mm,i) => {
+                  const isSel = sel?.id === mm.id;
+                  return (
+                    <div key={mm.id} onClick={()=>{setSel(mm);setAdding(false);setEditMember(false);setForm({});}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 10px", borderRadius:12, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent", marginBottom:2, transition:"all .15s" }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}05`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                      <div style={{ position:"relative" }}>
+                        <Av src={mm.photo_url} name={mm.name} sz={40} fs={14} />
+                        <div style={{ position:"absolute", bottom:0, right:0, width:10, height:10, borderRadius:5, background:mm.status==="pendente"?B.orange:B.green, border:"2px solid #fff" }} />
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{mm.name}</p>
+                        <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:2 }}>
+                          <span style={{ fontSize:10, color:B.accent, fontWeight:500 }}>{mm.role}</span>
+                          {mm.status==="pendente" && <span style={{ fontSize:8, fontWeight:700, color:B.orange, background:`${B.orange}12`, padding:"1px 5px", borderRadius:4 }}>Pendente</span>}
+                        </div>
+                      </div>
+                      <span style={{ fontSize:10, color:B.muted }}>{mm.since||""}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* ── RIGHT: Detail / Add / Edit ── */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {adding ? <>
+              {/* Add member form */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>{setAdding(false);setForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Novo Membro</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {memberFormJSX(false)}
+                <button onClick={addMember} style={{ width:"100%", marginTop:14, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Adicionar Membro</button>
+              </div>
+            </> : editMember && m ? <>
+              {/* Edit member form */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>{setEditMember(false);setForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Editar Membro</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {memberFormJSX(true)}
+                <button onClick={saveMember} style={{ width:"100%", marginTop:14, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Salvar</button>
+              </div>
+            </> : m ? <>
+              {/* Member detail */}
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ position:"relative" }}>
+                  <Av src={m.photo_url} name={m.name} sz={48} fs={18} />
+                  <div style={{ position:"absolute", bottom:0, right:0, width:12, height:12, borderRadius:6, background:m.status==="pendente"?B.orange:B.green, border:"2px solid #fff" }} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{m.name}</p>
+                  <p style={{ fontSize:12, color:B.accent, fontWeight:600 }}>{m.role}</p>
+                </div>
+                {isAdmin && <div style={{ display:"flex", gap:6 }}>
+                  <button onClick={()=>{setEditMember(true);setForm({name:m.name,role:m.role,email:m.email,phone:m.phone,since:m.since,skills:(m.skills||[]).join(", ")});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button onClick={()=>deleteMember(m)} style={{ width:32, height:32, borderRadius:8, border:`1px solid #FEE2E2`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                </div>}
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {m.status==="pendente" && <div style={{ padding:"10px 14px", borderRadius:12, background:`${B.orange}08`, border:`1px solid ${B.orange}20`, marginBottom:14, display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ width:8, height:8, borderRadius:4, background:B.orange }} />
+                  <span style={{ fontSize:12, fontWeight:600, color:B.orange, flex:1 }}>Aguardando cadastro</span>
+                  <button onClick={()=>{const link=`${window.location.origin}?convite=${encodeURIComponent(m.email)}`;navigator.clipboard.writeText(link);showToast("Link copiado ✓");}} style={{ padding:"4px 10px", borderRadius:6, background:B.orange, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:"#fff" }}>Copiar convite</button>
+                </div>}
+                {/* Info grid */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
+                  {[{l:"E-mail",v:m.email},{l:"Telefone",v:m.phone},{l:"Na equipe desde",v:m.since},{l:"Cargo",v:m.role}].map((item,ii)=>(
+                    <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
+                      <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v||"—"}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Extras */}
+                {m.user_id && memberExtras && (memberExtras.social||memberExtras.birth||memberExtras.blood) && <div style={{ marginBottom:16 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Dados adicionais</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                    {[{l:"Rede social",v:memberExtras.social},{l:"Data nascimento",v:memberExtras.birth&&isAdmin?memberExtras.birth:null},{l:"Tipo sanguíneo",v:memberExtras.blood},{l:"CPF",v:memberExtras.cpf&&isAdmin?memberExtras.cpf:null}].filter(x=>x.v).map((item,ii)=>(
+                      <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
+                        <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {memberExtras.pix&&isAdmin&&<div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Chave PIX</p><p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{memberExtras.pix}</p></div>
+                    <button onClick={()=>{navigator.clipboard.writeText(memberExtras.pix);showToast("PIX copiado ✓");}} style={{ padding:"5px 10px", borderRadius:6, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent }}>Copiar</button>
+                  </div>}
+                </div>}
+                {/* Skills */}
+                {m.skills&&m.skills.length>0 && <div style={{ marginBottom:16 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Habilidades</p>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                    {m.skills.map((s,si) => <span key={si} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:8, background:`${B.accent}12`, color:B.accent }}>{s}</span>)}
+                  </div>
+                </div>}
+                {/* Send message */}
+                {m.user_id && <button onClick={()=>{onBack();setTimeout(()=>{window.dispatchEvent(new CustomEvent("uh_open_chat_with",{detail:{userId:m.user_id,name:m.name}}));},200);}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.blue||"#3B82F6"}08`, border:`1.5px solid ${B.blue||"#3B82F6"}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.blue||"#3B82F6" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  Enviar mensagem
+                </button>}
+              </div>
+            </> : (
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                    <span style={{ color:B.accent, display:"flex" }}>{IC.team}</span>
+                  </div>
+                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Selecione um membro</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha alguém na lista ao lado</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (adding) return (
     <div className="pg">{ToastEl}
