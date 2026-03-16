@@ -5279,7 +5279,7 @@ function AcademyPage({ onBack, isClientView }) {
   };
 
   /* ── DESKTOP TWO-PANEL ACADEMY ── */
-  if (isAcadDesktop && !addingLesson && editLessonIdx === null) {
+  if (isAcadDesktop) {
     const course = selCourse !== null ? courses[selCourse] : null;
     const lesson = course && selLesson !== null ? (course.lessons||[])[selLesson] : null;
     const c = course ? (CAT_COLORS[course.category] || B.accent) : B.accent;
@@ -5343,8 +5343,12 @@ function AcademyPage({ onBack, isClientView }) {
                   <div style={{ position:"relative", paddingBottom:"56.25%", height:0, background:B.dark }}>
                     <iframe src={getYTEmbed(lesson.videoUrl)} title={lesson.title} style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                   </div>
+                </div> : lesson.videoUrl && /\.(mp4|mov|webm|m4v|avi)$/i.test(lesson.videoUrl) ? <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16, background:B.dark }}>
+                  <video controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={e=>e.preventDefault()} src={lesson.videoUrl} style={{ width:"100%", maxHeight:400, display:"block" }} />
+                </div> : lesson.videoUrl && /\.(pdf|doc|docx|ppt|pptx)$/i.test(lesson.videoUrl) ? <div style={{ borderRadius:12, overflow:"hidden", marginBottom:16, border:`1px solid ${B.border}` }}>
+                  <iframe src={lesson.videoUrl} title={lesson.title} style={{ width:"100%", height:500, border:"none" }} />
                 </div> : lesson.videoUrl ? <a href={lesson.videoUrl} target="_blank" rel="noopener" style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", borderRadius:12, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, marginBottom:16, textDecoration:"none", color:B.blue, fontSize:13, fontWeight:600 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg> Assistir / Abrir conteúdo
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg> Abrir conteúdo
                 </a> : null}
                 {lesson.desc && <div style={{ padding:16, borderRadius:12, background:B.bg, marginBottom:16 }}>
                   <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Descrição</p>
@@ -5390,6 +5394,39 @@ function AcademyPage({ onBack, isClientView }) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
                 ))}
+              </div>
+            </> : (addingLesson || editLessonIdx !== null) ? <>
+              {/* Lesson form inside right panel */}
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>{setAddingLesson(false);setEditLessonIdx(null);setLessonForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>{editLessonIdx !== null ? "Editar Aula" : "Nova Aula"}</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Título da aula *</label>
+                  <input value={lessonForm.title||""} onChange={e=>setLessonForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Introdução ao Google Ads" className="tinput" />
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+                  <div><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Duração</label><input value={lessonForm.duration||""} onChange={e=>setLessonForm(p=>({...p,duration:e.target.value}))} placeholder="Ex: 12 min" className="tinput" /></div>
+                  <div><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Tipo de conteúdo</label>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <button onClick={()=>setLessonForm(p=>({...p,_mode:"link"}))} style={{ flex:1, padding:"7px 0", borderRadius:8, border:`1.5px solid ${(!lessonForm._mode||lessonForm._mode==="link")?B.accent:B.border}`, background:(!lessonForm._mode||lessonForm._mode==="link")?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:(!lessonForm._mode||lessonForm._mode==="link")?B.accent:B.muted }}>Link</button>
+                      <button onClick={()=>setLessonForm(p=>({...p,_mode:"upload"}))} style={{ flex:1, padding:"7px 0", borderRadius:8, border:`1.5px solid ${lessonForm._mode==="upload"?B.accent:B.border}`, background:lessonForm._mode==="upload"?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:lessonForm._mode==="upload"?B.accent:B.muted }}>Upload</button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  {(!lessonForm._mode||lessonForm._mode==="link") && <><label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Link do vídeo</label><input value={lessonForm.videoUrl||""} onChange={e=>setLessonForm(p=>({...p,videoUrl:e.target.value}))} placeholder="YouTube, Vimeo, Google Drive..." className="tinput" /></>}
+                  {lessonForm._mode==="upload" && <>
+                    {lessonForm.uploadedUrl ? <div style={{ padding:"10px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}><p style={{ fontSize:11, fontWeight:600, color:B.green }}>✓ Arquivo enviado</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{lessonForm.uploadedName||"arquivo"}</p></div> : <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"20px 16px", borderRadius:12, border:`2px dashed ${B.accent}30`, background:`${B.accent}04`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.accent }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Enviar vídeo, PDF ou documento<input type="file" accept="video/*,.pdf,.doc,.docx,.ppt,.pptx" style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Enviando...");const path=`academy/${Date.now()}_${file.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,file,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);setLessonForm(p=>({...p,videoUrl:u.publicUrl,uploadedUrl:u.publicUrl,uploadedName:file.name}));showToast("Arquivo enviado ✓");}else showToast("Erro no upload");}}/></label>}
+                  </>}
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Descrição / Ementa</label>
+                  <textarea value={lessonForm.desc||""} onChange={e=>setLessonForm(p=>({...p,desc:e.target.value}))} placeholder="O que será abordado nesta aula..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+                </div>
+                {lessonForm.videoUrl && getYTEmbed(lessonForm.videoUrl) && <div style={{ borderRadius:10, overflow:"hidden", marginBottom:14, background:B.dark }}><div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}><iframe src={getYTEmbed(lessonForm.videoUrl)} title="preview" style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media" allowFullScreen /></div></div>}
+                <button onClick={saveLesson} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>{editLessonIdx !== null ? "Salvar Aula" : "Adicionar Aula"}</button>
               </div>
             </> : (creating || editing !== null) ? <>
               {/* Course form inside right panel */}
@@ -5604,11 +5641,15 @@ function AcademyPage({ onBack, isClientView }) {
                 <iframe src={embed} title={lesson.title} style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
               </div>
             </Card>
+          ) : lesson.videoUrl && /\.(mp4|mov|webm|m4v|avi)$/i.test(lesson.videoUrl) ? (
+            <Card style={{ padding:0, overflow:"hidden", borderRadius:12, marginBottom:10, background:B.dark }}>
+              <video controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={e=>e.preventDefault()} src={lesson.videoUrl} style={{ width:"100%", maxHeight:300, display:"block" }} />
+            </Card>
           ) : lesson.videoUrl ? (
             <Card style={{ marginBottom:10 }}>
               <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, fontWeight:600, color:B.blue, textDecoration:"none" }}>
                 <div style={{ width:36, height:36, borderRadius:10, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-                Assistir vídeo
+                Abrir conteúdo
               </a>
             </Card>
           ) : (
