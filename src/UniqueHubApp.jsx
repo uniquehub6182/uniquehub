@@ -2908,10 +2908,19 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const catPhoto2 = (cat) => `https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=250&fit=crop`;
         const expanded = dpNewsExpanded;
         const expandedArt = expanded ? dpNews.find(a=>a.id===expanded) : null;
-        const newsContent = (
-          <div>
+        return (
+          <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            {/* top bar — fixed */}
+            <div data-pf-header="1" style={{height:40,minHeight:40,maxHeight:40,padding:"0 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,flexGrow:0,background:"#FAFAFA",boxSizing:"border-box"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("news",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Comunicados</span></div>
+              <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            {/* CollapseHeader — fixed */}
+            <div style={{flexShrink:0,flexGrow:0}}>
               <CollapseHeader icon={IC.news} label="Mercado" title="News" collapsed={false} />
-              <div style={{padding:"12px 16px 16px"}}>
+            </div>
+            {/* scrollable content */}
+            <div style={{flex:1,overflowY:"auto",padding:"12px 16px 16px"}}>
               {expandedArt ? <div>
                 <button onClick={()=>setDpNewsExpanded(null)} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#9CA3AF",marginBottom:10,padding:0}}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
@@ -2937,10 +2946,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 ))}
                 {dpNews.length===0 && <div style={{gridColumn:"1/-1",textAlign:"center",padding:30}}><p style={{fontSize:12,color:"#9CA3AF"}}>Nenhuma notícia publicada</p></div>}
               </div>}
-              </div>
+            </div>
           </div>
         );
-        return phoneFrame("Comunicados","news",()=>goSub("news"), newsContent);
       }
       if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={null} user={user} agencyIdentity={agencyIdentity}/>);
       if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca}/>);
