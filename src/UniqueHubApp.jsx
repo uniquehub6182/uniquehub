@@ -5720,6 +5720,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
 
 function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca }) {
   const canAccessFn = ca || (() => true);
+  const isContentDesktop = typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop");
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
@@ -6873,7 +6874,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
   const totalCount = demands.length;
   return (
-    <div style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
 
       <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />
@@ -7037,7 +7038,72 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhuma demanda encontrada</p>
         <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou criar uma nova demanda.</p>
       </Card>}
-      <div className="demands-grid">
+      {/* ── KANBAN DESKTOP VIEW ── */}
+      {isContentDesktop && (() => {
+        const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
+        const KANBAN_STAGES = ["idea","briefing","design","caption","review","client","published"];
+        const moveStage = (d, newStage) => {
+          setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x));
+          if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage });
+          showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`);
+        };
+        return (
+          <div style={{ padding:"12px 0", overflowX:"auto" }}>
+            <div style={{ display:"flex", gap:12, minWidth: KANBAN_STAGES.length * 220 }}>
+              {KANBAN_STAGES.map(stg => {
+                const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
+                const items = filtered.filter(d => d.stage === stg);
+                return (
+                  <div key={stg} style={{ flex:1, minWidth:190, maxWidth:260, display:"flex", flexDirection:"column" }}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.background=`${cfg.c}10`; }}
+                    onDragLeave={e => { e.currentTarget.style.background="transparent"; }}
+                    onDrop={e => { e.preventDefault(); e.currentTarget.style.background="transparent"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg) moveStage(dem, stg); } catch {} }}
+                  >
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", marginBottom:8, borderRadius:12, background:`${cfg.c}12` }}>
+                      <div style={{ width:10, height:10, borderRadius:5, background:cfg.c, flexShrink:0 }} />
+                      <span style={{ fontSize:12, fontWeight:700, color:"#1A1D23" }}>{cfg.l}</span>
+                      <span style={{ fontSize:10, fontWeight:600, color:"#9CA3AF", marginLeft:"auto" }}>{items.length}</span>
+                    </div>
+                    <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, minHeight:100 }}>
+                      {items.map(d => {
+                        const pColor = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
+                        return (
+                          <div key={d.id} draggable
+                            onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.5"; }}
+                            onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
+                            onClick={() => setSel(d)}
+                            style={{ background:"#fff", borderRadius:14, padding:"12px 14px", border:"1px solid rgba(0,0,0,0.06)", cursor:"grab", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", transition:"box-shadow .15s" }}
+                            onMouseEnter={e => e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)"}
+                            onMouseLeave={e => e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)"}
+                          >
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                              <span style={{ fontSize:8, fontWeight:700, color:pColor, textTransform:"uppercase", background:`${pColor}15`, padding:"2px 6px", borderRadius:6 }}>{d.priority || "média"}</span>
+                              <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
+                            </div>
+                            <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
+                            <p style={{ fontSize:10, color:"#9CA3AF", marginBottom:8 }}>{d.client}</p>
+                            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                              <div style={{ display:"flex" }}>
+                                {(d.assignees || []).slice(0,3).map((a, j) => {
+                                  const m = TEAM.find(t => t.name === a);
+                                  return <div key={j} style={{ width:20, height:20, borderRadius:10, background: m?.photo_url ? "transparent" : `${cfg.c}25`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft: j ? -5 : 0, border:"2px solid #fff", overflow:"hidden", zIndex:3-j, fontSize:7, fontWeight:800, color:cfg.c }}>{m?.photo_url ? <img src={m.photo_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : a[0]}</div>;
+                                })}
+                              </div>
+                              {d.network && <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.network.split(", ")[0]}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {items.length === 0 && <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", border:"2px dashed rgba(0,0,0,0.06)", borderRadius:12, minHeight:80 }}><span style={{ fontSize:10, color:"#C5C7CC" }}>Arraste aqui</span></div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+      <div className="demands-grid" style={isContentDesktop ? { display:"none" } : undefined}>
       {filtered.map((d,i) => {
         const isDone = ["published","completed"].includes(d.stage);
         const pColor = priorityColor(d.priority);
@@ -16666,7 +16732,8 @@ ${(()=>{
 })()}
 ${uiPrefs.headerStyle==="centered"?`.pg>div:first-child{text-align:center}`:""}
 ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;border-bottom:2px solid ${B.accent}30;margin:-14px -14px 14px;padding:14px;border-radius:var(--uh-radius) var(--uh-radius) 0 0}`:""}
-${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:860px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}`:""}
+${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash):not(.content-wide){max-width:860px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}
+html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;margin-right:auto;padding:0 24px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}`:""}
 ` }} />
       <div className="content" ref={mainContentRef}>
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
