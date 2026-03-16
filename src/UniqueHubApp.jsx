@@ -3243,6 +3243,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
 
 /* ═══════════════════════ CHECK-IN SYSTEM ═══════════════════════ */
 function CheckinPage({ onBack, user }) {
+  const isCheckinDesktop = useIsDesktop();
   const isAdmin = user?.supaRole === "admin";
   const [adminView, setAdminView] = useState(false); /* false = meu ponto, true = equipe */
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -3375,6 +3376,122 @@ function CheckinPage({ onBack, user }) {
   }, [teamData]);
 
   if (loading) return (<div className="pg"><Head title="Check-in" onBack={onBack} /><Card style={{textAlign:"center",padding:40}}><p style={{color:B.muted,fontSize:13}}>Carregando...</p></Card></div>);
+
+  /* ── DESKTOP TWO-PANEL CHECKIN ── */
+  if (isCheckinDesktop) {
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.checkin} label="Presença" title="Check-in" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+          {/* ── LEFT: Meu Ponto ── */}
+          <div style={{ width:420, flexShrink:0, display:"flex", flexDirection:"column", gap:12 }}>
+            {/* Timer Card */}
+            <div style={{ background:B.dark, borderRadius:20, padding:28, textAlign:"center", border:`1px solid rgba(255,255,255,0.06)` }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:10 }}>
+                <span style={{ color:B.accent, display:"flex" }}>{IC.clock}</span>
+                <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", letterSpacing:2, textTransform:"uppercase" }}>PONTO DIGITAL</p>
+              </div>
+              {activeCheckin ? (<>
+                <p style={{ fontSize:48, fontWeight:900, color:B.accent, fontVariantNumeric:"tabular-nums", letterSpacing:2 }}>{formatTime(elapsed)}</p>
+                <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Entrada às {fmtHour(activeCheckin.check_in_at)}</p>
+                {activeCheckin.check_in_lat && <div style={{marginTop:6}}><GeoPin lat={activeCheckin.check_in_lat} lng={activeCheckin.check_in_lng} label="Entrada" /></div>}
+                <div style={{ width:10, height:10, borderRadius:5, background:B.green, margin:"10px auto 0", animation:"skPulse 1.5s ease infinite" }} />
+              </>) : (<>
+                <p style={{ fontSize:48, fontWeight:900, color:"rgba(255,255,255,0.15)", fontVariantNumeric:"tabular-nums" }}>00:00:00</p>
+                <p style={{ fontSize:12, color:"rgba(255,255,255,0.3)", marginTop:4 }}>Aguardando check-in</p>
+              </>)}
+            </div>
+            {/* Action Button */}
+            <button disabled={actionLoading} onClick={activeCheckin ? handleCheckout : handleCheckin} style={{ width:"100%", padding:16, borderRadius:16, border:"none", background:activeCheckin?`${B.red}12`:B.accent, color:activeCheckin?B.red:B.dark, fontSize:16, fontWeight:800, cursor:actionLoading?"wait":"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:actionLoading?0.6:1 }}>
+              <span style={{ display:"flex" }}>{activeCheckin?IC.pause:IC.play}</span>
+              {actionLoading?"Processando...":activeCheckin?"Encerrar Jornada":"Iniciar Jornada"}
+            </button>
+            {/* Stats */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <div style={{ padding:16, borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize:10, color:B.muted, textTransform:"uppercase", letterSpacing:1 }}>Esta semana</p>
+                <p style={{ fontSize:20, fontWeight:800, marginTop:4, color:B.text }}>{fmtMin(weekMin)}</p>
+              </div>
+              <div style={{ padding:16, borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize:10, color:B.muted, textTransform:"uppercase", letterSpacing:1 }}>Este mês</p>
+                <p style={{ fontSize:20, fontWeight:800, marginTop:4, color:B.text }}>{fmtMin(monthMin)}</p>
+              </div>
+            </div>
+            {/* History */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:12, fontWeight:700, color:B.text, textTransform:"uppercase", letterSpacing:0.5 }}>Histórico</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"8px 12px" }}>
+                {history.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhum registro</p>}
+                {history.map((h,i)=>(
+                  <div key={h.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 6px", borderBottom:i<history.length-1?`1px solid ${B.border}`:"none" }}>
+                    <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, fontSize:10, fontWeight:800 }}>{fmtDate(h.check_in_at).split("/")[0]}</div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{fmtDate(h.check_in_at)}</p>
+                      <p style={{ fontSize:10, color:B.muted }}>{fmtHour(h.check_in_at)} — {fmtHour(h.check_out_at)}</p>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, color:B.green }}>{fmtMin(h.duration_minutes)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* ── RIGHT: Equipe (admin) or Info ── */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {isAdmin ? <>
+              <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Equipe</p>
+                <div style={{ display:"flex", gap:4 }}>
+                  {["today","week","month"].map(p=>(
+                    <button key={p} onClick={()=>loadAdminData(p)} style={{ padding:"5px 12px", borderRadius:100, border:adminTab===p?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, background:adminTab===p?B.accent:"transparent", color:adminTab===p?"#0D0D0D":B.muted }}>{p==="today"?"Hoje":p==="week"?"Semana":"Mês"}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
+                {teamError && <div style={{ padding:12, borderRadius:12, background:"#FEE2E2", marginBottom:10 }}><p style={{ color:"#EF4444", fontSize:12, fontWeight:600 }}>Erro: {teamError}</p></div>}
+                {/* Summary by user */}
+                {adminSummary.length===0 && !teamError && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:12 }}>Nenhum registro encontrado</p>}
+                {adminSummary.map((m,i)=>(
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 8px", borderRadius:12, borderBottom:`1px solid ${B.border}`, marginBottom:4 }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:800, color:B.accent }}>{m.name.charAt(0).toUpperCase()}</div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{m.name}</p>
+                      <p style={{ fontSize:10, color:B.muted }}>{m.count} registro{m.count!==1?"s":""}{m.active?" · Em jornada":""}</p>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:8, background:m.active?`${B.green}15`:`${B.accent}15`, color:m.active?B.green:B.accent }}>{fmtMin(m.totalMin)}</span>
+                  </div>
+                ))}
+                {/* Detailed records */}
+                {teamData.length>0 && <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Registros detalhados</p>}
+                {teamData.map((c,i)=>(
+                  <div key={c.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 6px", borderBottom:`1px solid ${B.border}` }}>
+                    <div style={{ width:28, height:28, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, color:B.accent }}>{fmtDate(c.check_in_at).split("/")[0]}</div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontSize:12, fontWeight:600, color:B.text }}>{c.profiles?.name||"—"}</p>
+                      <p style={{ fontSize:10, color:B.muted }}>{fmtHour(c.check_in_at)} — {c.check_out_at?fmtHour(c.check_out_at):"..."}</p>
+                    </div>
+                    <span style={{ fontSize:10, fontWeight:700, color:c.check_out_at?B.accent:B.green }}>{c.check_out_at?fmtMin(c.duration_minutes):"Ativo"}</span>
+                  </div>
+                ))}
+              </div>
+            </> : (
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                    <span style={{ color:B.accent, display:"flex" }}>{IC.checkin}</span>
+                  </div>
+                  <p style={{ fontSize:18, fontWeight:800, color:B.text }}>Ponto Digital</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Registre sua entrada e saída diariamente</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── Admin Toggle ── */
   const adminToggle = isAdmin ? (
