@@ -6875,15 +6875,15 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </>)}
         </>}
 
-        {/* Action buttons — only for non-review/client stages */}
-        {!isCampaign && sel.stage !== "published" && sel.stage !== "review" && sel.stage !== "client" && <div style={{ display:"flex", gap:8, marginTop:8 }}>
+        {/* Action buttons — only for non-review/client stages (mobile only — desktop has fixed footer) */}
+        {!isContentDesktop && !isCampaign && sel.stage !== "published" && sel.stage !== "review" && sel.stage !== "client" && <div style={{ display:"flex", gap:8, marginTop:8 }}>
           <button onClick={() => advanceStage(sel)} className="pill full accent">
             Avançar → {STAGE_CFG[stages[stageIdx+1]]?.l || ""}
           </button>
         </div>}
 
-        {/* Campaign action buttons */}
-        {isCampaign && sel.stage !== "completed" && <div style={{ display:"flex", gap:8, marginTop:12 }}>
+        {/* Campaign action buttons (mobile only) */}
+        {!isContentDesktop && isCampaign && sel.stage !== "completed" && <div style={{ display:"flex", gap:8, marginTop:12 }}>
           <button onClick={() => advanceStage(sel)} className="pill full accent">
             Avançar → {STAGE_CFG[stages[stageIdx+1]]?.l || ""}
           </button>
