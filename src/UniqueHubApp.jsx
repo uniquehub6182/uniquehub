@@ -6240,35 +6240,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           <Card style={{ marginBottom:10 }}><StageBar type={sel.type} current={sel.stage} /></Card>
         )}
 
-        {/* ── Global image carousel (desktop — all stages) ── */}
-        {isContentDesktop && (() => {
-          const allImgs = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])].filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
-          if (!allImgs.length) return null;
-          const ci = sel._carouselIdx || 0;
-          const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, allImgs.length - 1)) }));
-          const cur = allImgs[ci] || allImgs[0];
-          return (
-            <div style={{ marginBottom:14 }}>
-              <div style={{ position:"relative", borderRadius:14, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
-                <img src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:14 }} />
-                {allImgs.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:34, height:34, borderRadius:17, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
-                {allImgs.length > 1 && ci < allImgs.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:34, height:34, borderRadius:17, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
-                {allImgs.length > 1 && <div style={{ position:"absolute", bottom:10, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:10, padding:"3px 10px", fontSize:11, fontWeight:600, color:"#fff" }}>{ci+1} / {allImgs.length}</div>}
-                <div style={{ position:"absolute", top:8, right:8, display:"flex", gap:4 }}>
-                  <a href={cur?.url} target="_blank" rel="noopener" style={{ width:30, height:30, borderRadius:8, background:"rgba(255,255,255,0.85)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(0,0,0,0.1)" }} onClick={e=>e.stopPropagation()}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
-                </div>
-              </div>
-              {allImgs.length > 1 && <div style={{ display:"flex", gap:6, marginTop:8, overflowX:"auto", justifyContent:"center" }}>
-                {allImgs.map((f, ti) => (
-                  <div key={ti} onClick={() => sc(ti)} style={{ width:48, height:48, borderRadius:8, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5, transition:"all .15s" }}>
-                    <img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                  </div>
-                ))}
-              </div>}
-            </div>
-          );
-        })()}
-
         {/* Assignees (mobile only) */}
         {!isContentDesktop && <Card style={{ marginBottom:10 }}>
           <p className="sl" style={{ marginBottom:8 }}>Equipe responsável</p>
@@ -6378,9 +6349,35 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
               </label>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {/* Desktop carousel for design images */}
+                {isContentDesktop && (() => {
+                  const imgFiles = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  if (!imgFiles.length) return null;
+                  const ci = sel._carouselIdx || 0;
+                  const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, imgFiles.length - 1)) }));
+                  const cur = imgFiles[ci] || imgFiles[0];
+                  return (
+                    <div style={{ marginBottom:8 }}>
+                      <div style={{ position:"relative", borderRadius:12, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
+                        <img src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:12 }} />
+                        {imgFiles.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
+                        {imgFiles.length > 1 && ci < imgFiles.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
+                        {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:600, color:"#fff" }}>{ci+1} / {imgFiles.length}</div>}
+                        <a href={cur?.url} target="_blank" rel="noopener" style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:8, background:"rgba(255,255,255,0.85)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(0,0,0,0.1)" }} onClick={e=>e.stopPropagation()}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+                      </div>
+                      {imgFiles.length > 1 && <div style={{ display:"flex", gap:5, marginTop:6, overflowX:"auto" }}>
+                        {imgFiles.map((f, ti) => (
+                          <div key={ti} onClick={() => sc(ti)} style={{ width:44, height:44, borderRadius:6, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5, transition:"all .15s" }}>
+                            <img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          </div>
+                        ))}
+                      </div>}
+                    </div>
+                  );
+                })()}
                 {(sel.steps?.design?.files||[]).map((f,i) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || ''));
-                  if (isContentDesktop && isImg && f.url) return null; /* shown in global carousel */
+                  if (isContentDesktop && isImg && f.url) return null; /* shown in carousel above */
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || ''));
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
@@ -6423,8 +6420,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.design?.by||"Designer"}</span>
                 <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.design?.date}</span>
               </div>
-              {/* Thumbnail grid for images (mobile only — desktop uses global carousel) */}
-              {!isContentDesktop && sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+              {/* Thumbnail grid for images */}
+              {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(140px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
@@ -6581,8 +6578,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
                 <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.caption.reviewFeedback}</p>
               </div>}
-              {/* Show design files for reference (mobile — desktop has carousel) */}
-              {!isContentDesktop && sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
+              {/* Show design files for reference */}
+              {sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.pink, marginBottom:6 }}>🎨 Material do Designer:</p>
                 {sel.steps?.design?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><span style={{ color:B.pink, display:"flex", transform:"scale(0.8)" }}>{IC.img}</span><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span>{f.url && <a href={f.url} target="_blank" rel="noopener" style={{color:B.accent,display:"flex",transform:"scale(0.8)"}}>{IC.download}</a>}</div>))}
               </div>}
@@ -6616,7 +6613,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                 <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line" }}>{sel.steps?.caption?.text}</p>
                 {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:B.blue, marginTop:6 }}>{sel.steps?.caption?.hashtags}</p>}
               </div>
-              {!isContentDesktop && sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
+              {sel.steps?.design?.files?.length > 0 && <div style={{ marginTop:8 }}>
                 <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>📎 Material do designer:</p>
                 {sel.steps?.design?.files.map((f,i) => (<span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.pink}08`, fontSize:10, fontWeight:600, color:B.pink, marginRight:4 }}>{IC.img} {typeof f === "string" ? f : f.name || "arquivo"}</span>))}
               </div>}
