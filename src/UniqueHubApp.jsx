@@ -12738,6 +12738,34 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     );
   }
 
+  /* ── ADD FILE FORM ── */
+  const uploadLibFile = async () => {
+    const cid = isClientView ? (CDATA.find(c => (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase() || (c.name||"").toLowerCase() === (clientFilter||"").toLowerCase())?.id || fileForm.clientId) : fileForm.clientId;
+    if (!cid) return showToast("Selecione o cliente");
+    if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
+    if (!fileForm.file) return showToast("Selecione um arquivo");
+    setUploading(true);
+    showToast("Enviando arquivo...");
+    const result = await supaUploadClientFile(fileForm.file, cid);
+    setUploading(false);
+    if (result?.error) return showToast("Erro: " + result.error);
+    const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
+    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", uploadedBy: isClientView ? "cliente" : "agencia" };
+    const client = CDATA.find(c => c.id === cid);
+    if (client) {
+      const newFiles = [...(client.files||[]), nf];
+      const saveKey = `client_files_${client.supaId || client.id}`;
+      const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+      if (!saved) { showToast("Erro ao salvar metadados — tente novamente"); return; }
+      if (onUpdateClients) {
+        const updatedClient = { ...client, files: newFiles };
+        onUpdateClients(CDATA.map(c => c.id === cid ? updatedClient : c));
+      }
+    }
+    setAddingFile(false); setFileForm({});
+    showToast("Arquivo enviado ✓");
+  };
+
   /* ── DESKTOP LIBRARY — FULL REDESIGN ── */
   const [libView, setLibView] = useState("grid"); /* grid | list */
   const [dragOver, setDragOver] = useState(false);
@@ -12917,33 +12945,6 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
 
   /* ── MAIN LIBRARY VIEW ── */
 
-  /* ── ADD FILE FORM ── */
-  const uploadLibFile = async () => {
-    const cid = isClientView ? (CDATA.find(c => (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase() || (c.name||"").toLowerCase() === (clientFilter||"").toLowerCase())?.id || fileForm.clientId) : fileForm.clientId;
-    if (!cid) return showToast("Selecione o cliente");
-    if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
-    if (!fileForm.file) return showToast("Selecione um arquivo");
-    setUploading(true);
-    showToast("Enviando arquivo...");
-    const result = await supaUploadClientFile(fileForm.file, cid);
-    setUploading(false);
-    if (result?.error) return showToast("Erro: " + result.error);
-    const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
-    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", uploadedBy: isClientView ? "cliente" : "agencia" };
-    const client = CDATA.find(c => c.id === cid);
-    if (client) {
-      const newFiles = [...(client.files||[]), nf];
-      const saveKey = `client_files_${client.supaId || client.id}`;
-      const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
-      if (!saved) { showToast("Erro ao salvar metadados — tente novamente"); return; }
-      if (onUpdateClients) {
-        const updatedClient = { ...client, files: newFiles };
-        onUpdateClients(CDATA.map(c => c.id === cid ? updatedClient : c));
-      }
-    }
-    setAddingFile(false); setFileForm({});
-    showToast("Arquivo enviado ✓");
-  };
 
   const LIB_CATS_FORM = [
     { key:"brand", label:"Manual de Marca", c:B.red },
