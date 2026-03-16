@@ -4775,14 +4775,55 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 {!confirmAction && profileTab==="socials" && <div>
                   {editingSocial ? (() => {
                     const sp = socialPlatforms.find(p=>p.key===editingSocial);
+                    const plat = SOCIAL_PLATFORMS.find(p=>p.key===editingSocial);
                     const current = (sel.socials||{})[editingSocial]||{};
+                    const hasOAuth = current.oauth;
+                    const isMetaType = editingSocial==="instagram"||editingSocial==="facebook";
                     return <div>
+                      {/* Header */}
                       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
                         <button onClick={()=>setEditingSocial(null)} style={{ width:32, height:32, borderRadius:8, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <p style={{ fontSize:14, fontWeight:700 }}>{sp?.name||editingSocial}</p>
-                        <span style={{ fontSize:10, padding:"2px 8px", borderRadius:6, background:current.connected?`${sp?.c||B.accent}15`:"#F3F4F6", color:current.connected?(sp?.c||B.accent):B.muted, fontWeight:600 }}>{current.connected?"Conectado":"Desconectado"}</span>
+                        <div style={{ width:40, height:40, borderRadius:12, background:`${sp?.c||"#999"}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><NetworkIcon name={sp?.name||editingSocial} sz={20} active={current.connected} /></div>
+                        <div>
+                          <p style={{ fontSize:14, fontWeight:700 }}>{current.connected?sp?.name:`Conectar ${sp?.name}`}</p>
+                          <p style={{ fontSize:11, color:B.muted }}>Perfil de <strong>{sel?.name}</strong></p>
+                        </div>
+                        {current.connected && <span style={{ fontSize:10, padding:"3px 10px", borderRadius:6, background:`${B.green}12`, color:B.green, fontWeight:700, marginLeft:"auto" }}>{hasOAuth?"Conectado via Meta":"Conectado"}</span>}
                       </div>
-                      {editingSocial==="facebook" && !current.connected && supabase && <button onClick={()=>{const cid=sel.supaId||sel.id;window.location.href=`https://www.facebook.com/v21.0/dialog/oauth?client_id=1557196698688426&redirect_uri=${encodeURIComponent(window.location.origin+"/meta-callback")}&config_id=1251666086415367&state=${cid}`;}} style={{ width:"100%", padding:"12px", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", marginBottom:12 }}>Conectar via Meta OAuth</button>}
+
+                      {/* Facebook OAuth */}
+                      {editingSocial==="facebook" && !current.connected && supabase && <div style={{ padding:16, borderRadius:14, background:"#1877F210", border:"1.5px solid #1877F225", marginBottom:12, textAlign:"center" }}>
+                        <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Conexão automática via Meta</p>
+                        <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Facebook com OAuth oficial. Permite publicar e gerenciar a página.</p>
+                        <button onClick={()=>{startMetaOAuth(sel.supaId||sel.id);}} style={{ width:"100%", padding:"12px", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/></svg>
+                          Conectar Facebook
+                        </button>
+                      </div>}
+
+                      {/* Instagram OAuth */}
+                      {editingSocial==="instagram" && !current.connected && supabase && <div style={{ padding:16, borderRadius:14, background:"#E1306C10", border:"1.5px solid #E1306C25", marginBottom:12, textAlign:"center" }}>
+                        <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Conexão direta via Instagram</p>
+                        <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Instagram Business/Creator. Permite publicar, acessar métricas e gerenciar.</p>
+                        <button onClick={()=>{startInstagramOAuth(sel.supaId||sel.id);}} style={{ width:"100%", padding:"12px", borderRadius:14, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                          Conectar Instagram
+                        </button>
+                      </div>}
+
+                      {/* Reconnect Meta */}
+                      {isMetaType && current.connected && hasOAuth && supabase && <div style={{ padding:14, borderRadius:14, background:"#F59E0B10", border:"1.5px solid #F59E0B25", marginBottom:12, textAlign:"center" }}>
+                        <p style={{ fontSize:12, fontWeight:700, marginBottom:4 }}>Trocar página / Reconectar</p>
+                        <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.5 }}>Conectou a página errada? Refaça o OAuth para selecionar outra.</p>
+                        <button onClick={()=>{startMetaOAuth(sel.supaId||sel.id);}} style={{ width:"100%", padding:"10px", borderRadius:12, background:"#F59E0B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>🔄 Reconectar com Meta</button>
+                      </div>}
+
+                      {/* Divider if OAuth shown */}
+                      {(editingSocial==="facebook"||editingSocial==="instagram") && !current.connected && supabase && <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+                        <div style={{ flex:1, height:1, background:B.border }}/><span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span><div style={{ flex:1, height:1, background:B.border }}/>
+                      </div>}
+
+                      {/* Manual fields */}
                       <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                         <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Username</p><input value={socialForm.username||""} onChange={e=>setSocialForm(p=>({...p,username:e.target.value}))} className="tinput" placeholder="@usuario"/></div>
                         <div><p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:4, textTransform:"uppercase" }}>Seguidores</p><input value={socialForm.followers||""} onChange={e=>setSocialForm(p=>({...p,followers:e.target.value}))} className="tinput" placeholder="1.5k"/></div>
