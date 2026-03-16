@@ -6054,6 +6054,17 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       const idx = stages.indexOf(stageKey);
       const done = idx < stageIdx; const active = idx === stageIdx; const future = idx > stageIdx;
       const cfg = STAGE_CFG[stageKey] || { l: stageKey, c: "#888" };
+      /* Desktop: hide future stages, compact done stages */
+      if (isContentDesktop && future) return null;
+      if (isContentDesktop && done) return (
+        <div key={stageKey} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", marginBottom:4, borderRadius:10, background:`${cfg.c}06` }}>
+          <div style={{ width:22, height:22, borderRadius:11, background:cfg.c, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span style={{ fontSize:12, fontWeight:600, color:"#1A1D23" }}>{cfg.l}</span>
+          {sel.steps?.[stageKey]?.by && <span style={{ fontSize:10, color:"#9CA3AF", marginLeft:"auto" }}>{sel.steps[stageKey].by} · {sel.steps[stageKey].date||""}</span>}
+        </div>
+      );
       return (
         <div key={stageKey} style={{ marginBottom:8, borderRadius:16, border:`1.5px solid ${active ? cfg.c : done ? `${cfg.c}30` : B.border}`, background: active ? `${cfg.c}06` : B.bgCard, padding:14, opacity: future ? 0.45 : 1, position:"relative", transition:"all .3s" }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: (done||active) ? 10 : 0 }}>
@@ -6628,8 +6639,42 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           {/* ── 5. REVISÃO INTERNA (Gerente) ── */}
           {renderSection("review", <>
             {sel.stage === "review" ? <>
-              {/* Preview da Arte */}
-              {(() => {
+              {/* ── Desktop: Full post preview ── */}
+              {isContentDesktop && (() => {
+                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const ci = sel._carouselIdx || 0;
+                const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, imgFiles.length - 1)) }));
+                const cur = imgFiles[ci] || imgFiles[0];
+                return <>
+                  {/* Carousel */}
+                  {imgFiles.length > 0 && <div style={{ marginBottom:12 }}>
+                    <div style={{ position:"relative", borderRadius:12, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
+                      <img src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:12 }} />
+                      {imgFiles.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
+                      {imgFiles.length > 1 && ci < imgFiles.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
+                      {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:600, color:"#fff" }}>{ci+1} / {imgFiles.length}</div>}
+                    </div>
+                    {imgFiles.length > 1 && <div style={{ display:"flex", gap:5, marginTop:6, overflowX:"auto" }}>
+                      {imgFiles.map((f, ti) => (<div key={ti} onClick={() => sc(ti)} style={{ width:44, height:44, borderRadius:6, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5 }}><img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>))}
+                    </div>}
+                  </div>}
+                  {/* Caption + Hashtags */}
+                  {sel.steps?.caption?.text && <div style={{ padding:12, background:"#F8F9FC", borderRadius:12, marginBottom:10, border:"1px solid rgba(0,0,0,0.04)" }}>
+                    <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-line", color:"#1A1D23" }}>{sel.steps.caption.text}</p>
+                    {sel.steps?.caption?.hashtags && <p style={{ fontSize:11, color:"#3B82F6", marginTop:6 }}>{sel.steps.caption.hashtags}</p>}
+                  </div>}
+                  {/* Schedule + Network info */}
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+                    {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"rgba(0,0,0,0.03)", fontSize:11, fontWeight:600, color:"#1A1D23" }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
+                    {sel.network && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"rgba(0,0,0,0.03)", fontSize:11, fontWeight:600, color:"#1A1D23" }}>📱 {sel.network}</span>}
+                    {sel.format && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"rgba(0,0,0,0.03)", fontSize:11, fontWeight:600, color:"#1A1D23" }}>{sel.format}</span>}
+                    {sel.sponsored && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, background:"#F59E0B12", fontSize:11, fontWeight:600, color:"#F59E0B" }}>💰 Patrocinado</span>}
+                  </div>
+                </>;
+              })()}
+              {/* Mobile: original small thumbnails */}
+              {!isContentDesktop && (() => {
                 const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
                 const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
                 return imgFiles.length > 0 && <div style={{ marginBottom:10 }}>
@@ -6640,8 +6685,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   </div>
                 </div>;
               })()}
-              {/* Preview da Legenda */}
-              {sel.steps?.caption?.text && <div style={{ marginBottom:10, padding:10, background:B.bgCard, borderRadius:10, border:`1px solid ${B.border}` }}>
+              {/* Preview da Legenda (mobile only — desktop shows in post preview above) */}
+              {!isContentDesktop && sel.steps?.caption?.text && <div style={{ marginBottom:10, padding:10, background:B.bgCard, borderRadius:10, border:`1px solid ${B.border}` }}>
                 <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:4 }}>📝 Legenda para revisão:</p>
                 <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line", color:B.text, maxHeight:80, overflow:"auto" }}>{sel.steps.caption.text}</p>
                 {sel.steps?.caption?.hashtags && <p style={{ fontSize:10, color:B.blue, marginTop:4 }}>{sel.steps.caption.hashtags}</p>}
