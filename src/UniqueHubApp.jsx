@@ -7382,25 +7382,22 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                   <div style={{ padding:12 }}>
                     <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:10, textAlign:"center" }}>Publicar sem aprovação do cliente</p>
                     {hasApi && imgFiles.length > 0 ? <>
-                      {schedTs ? <div style={{ marginBottom:12 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"8px 12px", borderRadius:10, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                          <div>
-                            <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>Publicar no horário agendado</p>
-                            <p style={{ fontSize:10, color:B.muted }}>{schedLabel}</p>
-                          </div>
+                      {/* Schedule inputs */}
+                      <div style={{ marginBottom:12, padding:12, borderRadius:12, background:`${B.accent}05`, border:`1px solid ${B.accent}15` }}>
+                        <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:8 }}>Quando publicar?</p>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                          <div><label style={{ fontSize:10, fontWeight:600, color:B.muted, display:"block", marginBottom:3 }}>Data</label><input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }}/></div>
+                          <div><label style={{ fontSize:10, fontWeight:600, color:B.muted, display:"block", marginBottom:3 }}>Horário</label><input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" style={{ width:"100%", boxSizing:"border-box" }}/></div>
                         </div>
-                        {publishButtons()}
-                      </div> : <div style={{ marginBottom:12 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, padding:"8px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
-                          <div>
-                            <p style={{ fontSize:11, fontWeight:700, color:B.green }}>Publicação imediata</p>
-                            <p style={{ fontSize:10, color:B.muted }}>O post será publicado agora mesmo.</p>
-                          </div>
-                        </div>
-                        {publishButtons()}
-                      </div>}
+                        {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", borderRadius:8, background:"#F59E0B10", border:"1px solid #F59E0B20" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <span style={{ fontSize:10, fontWeight:600, color:"#F59E0B" }}>Agendado: {schedLabel}</span>
+                        </div> : <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", borderRadius:8, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+                          <span style={{ fontSize:10, fontWeight:600, color:B.green }}>Publicação imediata (sem data/hora)</span>
+                        </div>}
+                      </div>
+                      {publishButtons()}
                     </> : <div style={{ textAlign:"center", padding:10 }}>
                       <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>{imgFiles.length === 0 ? "Nenhuma imagem disponível para publicar." : "Nenhuma rede social com API conectada."}</p>
                       <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Marcar como publicado</button>
