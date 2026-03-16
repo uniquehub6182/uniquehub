@@ -2892,7 +2892,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     /* ── Phone frame: wraps a real mobile page inside a contained block ── */
     const phoneFrame = (title, iconKey, openFn, children) => (
       <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
-        <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA",minHeight:0}}>
+        <div data-pf-header="1" style={{height:40,minHeight:40,maxHeight:40,padding:"0 14px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,flexGrow:0,background:"#FAFAFA",boxSizing:"border-box"}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>{title}</span></div>
           <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
         </div>
@@ -17140,6 +17140,7 @@ html.uh-desktop .overlay{z-index:10000!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:20px!important;align-items:start!important}
 .phone-block{overflow:hidden!important;isolation:isolate;max-width:100%!important;width:100%!important}
+[data-pf-header]{height:40px!important;min-height:40px!important;max-height:40px!important;flex-shrink:0!important;flex-grow:0!important;display:flex!important;overflow:visible!important;position:relative!important}
 .phone-viewport{transform:scale(1);-webkit-overflow-scrolling:touch;scrollbar-width:thin;max-width:100%!important;width:100%!important}
 .phone-viewport::-webkit-scrollbar{width:3px}
 .phone-viewport::-webkit-scrollbar-track{background:transparent}
