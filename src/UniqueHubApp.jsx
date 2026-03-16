@@ -18153,13 +18153,16 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
-  const [sub, setSub] = useState(() => {
-    try { return sessionStorage.getItem("uh_sub") || null; } catch { return null; }
-  });
+  const [sub, setSub] = useState(null); /* Don't restore sub on refresh — prevents black screen crashes */
   const [more, setMore] = useState(false);
   /* Sync tab/sub to sessionStorage for refresh persistence */
   useEffect(() => { try { sessionStorage.setItem("uh_tab", tab); } catch {} }, [tab]);
-  useEffect(() => { try { if (sub) sessionStorage.setItem("uh_sub", sub); else sessionStorage.removeItem("uh_sub"); } catch {} }, [sub]);
+  useEffect(() => { try { if (sub) sessionStorage.setItem("uh_sub", sub); else sessionStorage.removeItem("uh_sub"); } catch {} 
+    /* Clear sub on page unload to prevent stale state on reload */
+    const clearSub = () => { try { sessionStorage.removeItem("uh_sub"); } catch {} };
+    window.addEventListener("beforeunload", clearSub);
+    return () => window.removeEventListener("beforeunload", clearSub);
+  }, [sub]);
   const [navPicks, setNavPicks] = useState(() => {
     if (cloudNav) return cloudNav;
     try { const s = localStorage.getItem("uh_nav_picks"); return s ? JSON.parse(s) : DEFAULT_NAV; } catch { return DEFAULT_NAV; }
