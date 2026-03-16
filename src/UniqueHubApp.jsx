@@ -3612,15 +3612,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           console.log("[IG Connect] Found client:", client.name);
           const ns = {
             ...client.socials,
-            instagram: { connected: true, user: `@${result.username}`, followers: result.followers_count ? `${result.followers_count}` : "", oauth: true, ig_user_id: result.ig_user_id, profile_picture_url: result.profile_picture_url }
+            instagram: { connected: true, user: result.username ? `@${result.username}` : "Conectado", followers: result.followers_count ? `${result.followers_count}` : "", oauth: true, ig_user_id: result.ig_user_id, profile_picture_url: result.profile_picture_url || "" }
           };
           updateClient(client.id, { socials: ns });
           setSel({ ...client, socials: ns });
           setProfileTab("socials");
-          showToast(`Instagram @${result.username} conectado! ✓`);
+          showToast(result.username ? `Instagram @${result.username} conectado! ✓` : "Instagram conectado com sucesso! ✓");
         } else {
           console.warn("[IG Connect] Client not found for id:", clientId);
-          showToast(`Instagram @${result.username} conectado! — abra o cliente para ver`);
+          showToast(result.username ? `Instagram @${result.username} conectado!` : "Instagram conectado! — abra o cliente para ver");
         }
       }
     } catch(e) { console.error("[Meta Connect] Error:", e); }
