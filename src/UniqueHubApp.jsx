@@ -10241,6 +10241,67 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"about", l:"Sobre", desc:"Versão e informações" },
   ];
 
+  /* ── Desktop Settings Sidebar (DOM injection — no sub-page changes needed) ── */
+  const sidebarRef = useRef(null);
+  const sidebarStyleRef = useRef(null);
+  useEffect(() => {
+    if (!isSetDesktop || !sub) {
+      if (sidebarRef.current) { sidebarRef.current.remove(); sidebarRef.current = null; }
+      if (sidebarStyleRef.current) { sidebarStyleRef.current.remove(); sidebarStyleRef.current = null; }
+      return;
+    }
+    /* Inject CSS to push .pg content right */
+    if (!sidebarStyleRef.current) {
+      const st = document.createElement("style");
+      st.textContent = `.uh-desktop .pg { margin-left:260px!important; width:calc(100% - 260px)!important; max-width:none!important; }`;
+      document.head.appendChild(st);
+      sidebarStyleRef.current = st;
+    }
+    /* Inject sidebar DOM */
+    if (!sidebarRef.current) {
+      const el = document.createElement("div");
+      el.id = "settings-sidebar";
+      el.style.cssText = `position:fixed;left:0;top:0;bottom:0;width:260px;background:${B.bgCard||"#fff"};border-right:1px solid ${B.border};z-index:51;display:flex;flex-direction:column;padding-top:70px;font-family:inherit;`;
+      document.body.appendChild(el);
+      sidebarRef.current = el;
+    }
+    /* Render sidebar content */
+    const el = sidebarRef.current;
+    const accent = B.accent;
+    const items = SET_ITEMS;
+    el.innerHTML = `
+      <div style="padding:14px 16px;border-bottom:1px solid ${B.border}">
+        <div style="display:flex;align-items:center;gap:10">
+          <div style="width:36px;height:36px;border-radius:50%;background:${B.accent}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:${B.accent}">${(user?.name||"U")[0]}</div>
+          <div><p style="font-size:13px;font-weight:700;margin:0">${user?.name||""}</p><p style="font-size:10px;color:${B.muted};margin:0">${user?.role||"Colaborador"}</p></div>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:6px 0" id="set-sidebar-items"></div>
+    `;
+    const container = el.querySelector("#set-sidebar-items");
+    items.forEach(s => {
+      const btn = document.createElement("button");
+      const isSel = sub === s.k;
+      btn.style.cssText = `display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:${isSel?700:500};background:${isSel?accent+"10":"transparent"};color:${isSel?accent:B.text};border-left:${isSel?"3px solid "+accent:"3px solid transparent"};text-align:left;`;
+      btn.textContent = s.l;
+      if (s.badge > 0) { btn.innerHTML += ` <span style="background:${B.red};color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;margin-left:auto">${s.badge}</span>`; }
+      btn.onclick = () => { if (s.k === "navmenu") { onNavEdit && onNavEdit(); return; } setSub(sub === s.k ? null : s.k); };
+      container.appendChild(btn);
+    });
+    const sep = document.createElement("div");
+    sep.style.cssText = `border-top:1px solid ${B.border};margin:8px 16px 0`;
+    container.appendChild(sep);
+    const logout = document.createElement("button");
+    logout.style.cssText = `display:flex;align-items:center;width:100%;padding:11px 16px;border:none;cursor:pointer;font-family:inherit;font-size:13px;color:${B.red};background:transparent;border-left:3px solid transparent`;
+    logout.textContent = "Sair da Conta";
+    logout.onclick = onLogout;
+    container.appendChild(logout);
+    return () => {
+      if (sidebarRef.current) { sidebarRef.current.remove(); sidebarRef.current = null; }
+      if (sidebarStyleRef.current) { sidebarStyleRef.current.remove(); sidebarStyleRef.current = null; }
+    };
+  }, [isSetDesktop, sub, B.bgCard, B.border, B.accent, B.text, B.muted, B.red]);
+
   /* ═══ PROFILE ═══ */
   if (sub === "profile") return (
     <div className="pg">
