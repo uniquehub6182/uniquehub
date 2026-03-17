@@ -9946,6 +9946,7 @@ const profileFieldIcon = (k) => {
   return <span style={{fontSize:14}}>•</span>;
 };
 function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud }) {
+  const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [twoFA, setTwoFA] = useState(false);
@@ -10228,7 +10229,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   );
 
   /* ═══ PROFILE ═══ */
-  if (sub === "profile") return (
+  if (sub === "profile" && !isSetDesktop) return (
     <div className="pg">
       {ToastEl}
       <Head title="Meu Perfil" onBack={() => { setSub(null); setEditProfile(false); }} />
@@ -10402,7 +10403,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
 
   /* ═══ APPEARANCE ═══ */
-  if (sub === "aparencia") {
+  if (sub === "aparencia" && !isSetDesktop) {
     const UP = uiPrefs || {};
     const setP = (k, v) => { updateUiPrefs({ [k]: v }); showToast("Aplicado ✓"); };
 
@@ -10596,7 +10597,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ NOTIFICATIONS ═══ */
-  if (sub === "notifs") {
+  if (sub === "notifs" && !isSetDesktop) {
     const NotifSection = ({ icon, color, title, desc, master, onMaster, children }) => (
       <div style={{ marginBottom: 14 }}>
         <Card style={{ borderLeft: `4px solid ${color}`, marginBottom: children && master ? 4 : 0 }}>
@@ -10750,7 +10751,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ SECURITY ═══ */
-  if (sub === "sec") {
+  if (sub === "sec" && !isSetDesktop) {
     /* Change password sub-view */
     if (changePw) return (
       <div className="pg">
@@ -11112,7 +11113,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     showToast("Permissões salvas ✓");
   };
 
-  if (sub === "permissions") {
+  if (sub === "permissions" && !isSetDesktop) {
     if (!permLoaded) { loadPerms(); return <div className="pg"><Head title="Permissões" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
     if (!permRole) return (
       <div className="pg">
@@ -11191,7 +11192,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ AI CONFIG (admin only) ═══ */
   /* ═══ IDENTIDADE DA AGÊNCIA (admin only) ═══ */
-  if (sub === "agencyid") {
+  if (sub === "agencyid" && !isSetDesktop) {
     if (!agLoaded) return <div className="pg"><Head title="Identidade" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
 
     const saveAg = async () => {
@@ -11245,7 +11246,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
   }
 
-  if (sub === "aiconfig") {
+  if (sub === "aiconfig" && !isSetDesktop) {
     if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
     const saveAI = async () => {
       setAiCfgSaving(true);
@@ -11321,7 +11322,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ ABOUT ═══ */
-  if (sub === "about") return (
+  if (sub === "about" && !isSetDesktop) return (
     <div className="pg">
       {ToastEl}
       <Head title="Sobre" onBack={() => setSub(null)} />
@@ -11351,7 +11352,226 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   );
 
   /* ═══ APPROVALS ═══ */
-  if (sub === "approvals") return <ApprovalsPage onBack={() => setSub(null)} />;
+  if (sub === "approvals" && !isSetDesktop) return <ApprovalsPage onBack={() => setSub(null)} />;
+
+  /* ── DESKTOP SETTINGS ── */
+  const SET_MENU = [
+    { k:"profile", l:"Perfil", ic:IC.team, desc:"Dados pessoais, contato" },
+    ...(user?.supaRole==="admin"?[{ k:"approvals", l:"Aprovações", ic:IC.shield, desc:"Aprovar cadastros", badge:pendingCount }]:[]),
+    ...(user?.supaRole==="admin"?[{ k:"permissions", l:"Permissões", ic:IC.lock, desc:"Acesso por cargo" }]:[]),
+    ...(user?.supaRole==="admin"?[{ k:"agencyid", l:"Identidade", ic:IC.clients, desc:"Nome, logo, slogan" }]:[]),
+    ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", ic:IC.ai, desc:"Chaves API e provedor" }]:[]),
+    { k:"aparencia", l:"Aparência", ic:IC.palette, desc:"Tema, cores, fontes" },
+    { k:"notifs", l:"Notificações", ic:IC.bell, desc:"Sons, alertas, categorias" },
+    { k:"sec", l:"Segurança", ic:IC.lock, desc:"Senha, 2FA, sessões" },
+    { k:"about", l:"Sobre", ic:IC.info, desc:"Versão e termos" },
+  ];
+
+  if (isSetDesktop) {
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
+          {/* LEFT: Profile + Nav */}
+          <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Profile card */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"20px", textAlign:"center" }}>
+              <Av src={user?.photo} name={user?.name} sz={64} fs={24}/>
+              <p style={{ fontSize:16, fontWeight:800, color:"#fff", marginTop:8 }}>{user?.name}</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{user?.role || user?.supaRole || "Colaborador"}</p>
+              <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginTop:4 }}>{user?.email}</p>
+            </div>
+            {/* Menu */}
+            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", flex:1, overflowY:"auto" }}>
+              {SET_MENU.map(s => {
+                const isSel = sub === s.k;
+                return (
+                  <button key={s.k} onClick={()=>setSub(isSel?null:s.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isSel?700:500, background:isSel?`${B.accent}10`:"transparent", color:isSel?B.accent:B.text, borderLeft:isSel?`3px solid ${B.accent}`:"3px solid transparent" }}>
+                    <div style={{ width:28, height:28, borderRadius:8, background:`${isSel?B.accent:B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ display:"flex", transform:"scale(0.65)" }}>{typeof s.ic==="function"?s.ic(isSel?B.accent:B.muted):s.ic}</span></div>
+                    <div style={{ flex:1, textAlign:"left" }}><span>{s.l}</span></div>
+                    {s.badge>0 && <span style={{ background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"2px 7px", borderRadius:10 }}>{s.badge}</span>}
+                  </button>
+                );
+              })}
+              <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:500, background:"transparent", color:B.red, borderLeft:"3px solid transparent" }}>
+                <span style={{ display:"flex" }}>{IC.logout()}</span> Sair da Conta
+              </button>
+            </div>
+          </div>
+          {/* RIGHT: Content */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
+              {/* No sub: overview */}
+              {!sub && <>
+                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Configurações</h3>
+                <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Selecione uma opção na lateral para configurar</p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:14 }}>
+                  {SET_MENU.map(s => (
+                    <div key={s.k} onClick={()=>setSub(s.k)} style={{ padding:"20px 18px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${B.accent}40`;e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                      <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}><span style={{ display:"flex", transform:"scale(0.85)" }}>{typeof s.ic==="function"?s.ic(B.accent):s.ic}</span></div>
+                      <p style={{ fontSize:14, fontWeight:700 }}>{s.l}</p>
+                      <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{s.desc}</p>
+                      {s.badge>0 && <span style={{ display:"inline-block", marginTop:6, background:B.red, color:"#fff", fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:8 }}>{s.badge} pendentes</span>}
+                    </div>
+                  ))}
+                </div>
+              </>}
+              {/* Profile */}
+              {sub==="profile" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Meu Perfil</h3>
+                <div style={{ display:"flex", gap:20 }}>
+                  <div style={{ textAlign:"center" }}>
+                    <Av src={user?.photo} name={user?.name} sz={80} fs={30}/>
+                    <label style={{ display:"block", marginTop:8, fontSize:12, fontWeight:600, color:B.accent, cursor:"pointer" }}>Trocar foto<input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={async(e)=>{const f=e.target.files?.[0];if(!f||!supabase)return;setPhotoUploading(true);const path=`avatars/${user.id}_${Date.now()}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const url=u.publicUrl;await supabase.from("profiles").update({photo_url:url}).eq("id",user.id);await supaSetSetting(`profile_photo_${user.id}`,url);setUser(p=>({...p,photo:url}));showToast("Foto atualizada ✓");}setPhotoUploading(false);}}/></label>
+                  </div>
+                  <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Nome completo</label><input value={pf.name} onChange={e=>pfUp("name",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Apelido</label><input value={pf.nick} onChange={e=>pfUp("nick",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Telefone</label><input value={pf.phone} onChange={e=>pfUp("phone",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>CPF</label><input value={pf.cpf} onChange={e=>pfUp("cpf",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Data de nascimento</label><input type="date" value={pf.birth} onChange={e=>pfUp("birth",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>PIX</label><input value={pf.pix} onChange={e=>pfUp("pix",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
+                    <div style={{ gridColumn:"span 2" }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Bio</label><textarea value={pf.bio} onChange={e=>pfUp("bio",e.target.value)} className="tinput" style={{ fontSize:13, minHeight:60, resize:"vertical" }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Contato de emergência</label><input value={pf.emergency_name} onChange={e=>pfUp("emergency_name",e.target.value)} placeholder="Nome" className="tinput" style={{ fontSize:13 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Tel. emergência</label><input value={pf.emergency_phone} onChange={e=>pfUp("emergency_phone",e.target.value)} className="tinput" style={{ fontSize:13 }}/></div>
+                  </div>
+                </div>
+                <button onClick={saveProfile} disabled={profileSaving} style={{ marginTop:20, padding:"12px 40px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>{profileSaving?"Salvando...":"Salvar Perfil"}</button>
+              </>}
+              {/* Aparência */}
+              {sub==="aparencia" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Aparência</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+                  <div>
+                    <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Modo Escuro</p>
+                    <div onClick={()=>setDark(!dark)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${dark?B.accent:B.border}`, cursor:"pointer", background:dark?`${B.accent}08`:"transparent" }}>
+                      <div style={{ width:44, height:24, borderRadius:12, background:dark?B.accent:`${B.muted}30`, padding:2, cursor:"pointer" }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:dark?"translateX(20px)":"translateX(0)", transition:"transform .2s" }}/></div>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{dark?"Ativado":"Desativado"}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Cor de Destaque</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                      {[{k:"lime",c:"#C8FF00",l:"Lima"},{k:"blue",c:"#3B82F6",l:"Azul"},{k:"purple",c:"#8B5CF6",l:"Roxo"},{k:"pink",c:"#EC4899",l:"Rosa"},{k:"orange",c:"#F97316",l:"Laranja"},{k:"cyan",c:"#06B6D4",l:"Ciano"}].map(t=>(
+                        <div key={t.k} onClick={()=>setThemeColor(t.k)} style={{ width:40, height:40, borderRadius:12, background:t.c, cursor:"pointer", border:themeColor===t.k?`3px solid ${B.text}`:"3px solid transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>{themeColor===t.k && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>}
+              {/* AI Config */}
+              {sub==="aiconfig" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Assistente IA</h3>
+                <p style={{ fontSize:13, color:B.muted, marginBottom:20 }}>Configure as chaves de API para cada modelo de IA</p>
+                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                  {[{k:"openai_key",l:"OpenAI (GPT-4o)",desc:"platform.openai.com → API Keys",c:"#10A37F"},{k:"gemini_key",l:"Google Gemini",desc:"aistudio.google.com → Get API Key",c:"#4285F4"},{k:"claude_key",l:"Claude (Anthropic)",desc:"console.anthropic.com → API Keys",c:"#D97706"}].map(ai=>(
+                    <div key={ai.k} style={{ padding:"18px 20px", borderRadius:16, border:`1.5px solid ${B.border}` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+                        <div style={{ width:10, height:10, borderRadius:5, background:aiCfgKeys[ai.k]?B.green:B.muted }}/>
+                        <p style={{ fontSize:15, fontWeight:700, color:ai.c }}>{ai.l}</p>
+                        <span style={{ fontSize:11, color:B.muted, marginLeft:"auto" }}>{ai.desc}</span>
+                      </div>
+                      <input value={aiCfgKeys[ai.k]||""} onChange={e=>setAiCfgKeys(p=>({...p,[ai.k]:e.target.value}))} placeholder={`Cole sua chave ${ai.l}...`} type="password" style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"monospace", fontSize:13, outline:"none" }}/>
+                    </div>
+                  ))}
+                  <div style={{ padding:"18px 20px", borderRadius:16, border:`1.5px solid ${B.border}` }}>
+                    <p style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>Provedor padrão</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      {[{k:"openai",l:"GPT-4o"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p=>(
+                        <button key={p.k} onClick={()=>setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px", borderRadius:10, border:`1.5px solid ${aiCfgKeys.ai_provider===p.k?B.accent:B.border}`, background:aiCfgKeys.ai_provider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiCfgKeys.ai_provider===p.k?700:500 }}>{p.l}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={async()=>{await supaSetSetting("ai_keys",JSON.stringify(aiCfgKeys));showToast("Chaves salvas ✓");}} style={{ padding:"12px 40px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, alignSelf:"flex-start" }}>Salvar Chaves</button>
+                </div>
+              </>}
+              {/* Security */}
+              {sub==="sec" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Segurança</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+                  <div style={{ padding:"20px", borderRadius:16, border:`1px solid ${B.border}` }}>
+                    <p style={{ fontSize:15, fontWeight:700, marginBottom:12 }}>Alterar Senha</p>
+                    <input type="password" placeholder="Senha atual" className="tinput" style={{ fontSize:13, marginBottom:8 }}/>
+                    <input type="password" placeholder="Nova senha" className="tinput" style={{ fontSize:13, marginBottom:8 }}/>
+                    <input type="password" placeholder="Confirmar nova senha" className="tinput" style={{ fontSize:13, marginBottom:12 }}/>
+                    <button onClick={()=>showToast("Funcionalidade em desenvolvimento")} style={{ padding:"10px 24px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Alterar Senha</button>
+                  </div>
+                  <div style={{ padding:"20px", borderRadius:16, border:`1px solid ${B.border}` }}>
+                    <p style={{ fontSize:15, fontWeight:700, marginBottom:12 }}>Autenticação 2 Fatores</p>
+                    <div onClick={()=>setTwoFA(!twoFA)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${twoFA?B.green:B.border}`, cursor:"pointer", background:twoFA?`${B.green}06`:"transparent" }}>
+                      <div style={{ width:44, height:24, borderRadius:12, background:twoFA?B.green:`${B.muted}30`, padding:2 }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:twoFA?"translateX(20px)":"translateX(0)", transition:"transform .2s" }}/></div>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{twoFA?"Ativado":"Desativado"}</span>
+                    </div>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:10, lineHeight:1.5 }}>Adiciona uma camada extra de proteção exigindo um código ao fazer login.</p>
+                  </div>
+                </div>
+                <div style={{ marginTop:20, padding:"16px 20px", borderRadius:14, background:`${B.red}04`, border:`1px solid ${B.red}15` }}>
+                  <p style={{ fontSize:14, fontWeight:700, color:B.red }}>Zona de Perigo</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Encerrar todas as sessões em outros dispositivos</p>
+                  <button onClick={()=>showToast("Todas as sessões encerradas ✓")} style={{ marginTop:10, padding:"8px 18px", borderRadius:8, background:`${B.red}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Encerrar Sessões</button>
+                </div>
+              </>}
+              {/* Notifs */}
+              {sub==="notifs" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Notificações</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                  {[{k:"chat",l:"Chat",desc:"Novas mensagens e menções",ic:"💬"},{k:"content",l:"Conteúdo",desc:"Demandas e aprovações",ic:"📋"},{k:"clients",l:"Clientes",desc:"Aprovações e feedbacks",ic:"👥"},{k:"team",l:"Equipe",desc:"Novos membros e updates",ic:"🤝"},{k:"financial",l:"Financeiro",desc:"Pagamentos e faturas",ic:"💰"},{k:"calendar",l:"Calendário",desc:"Eventos e lembretes",ic:"📅"}].map(n=>(
+                    <div key={n.k} style={{ padding:"16px 18px", borderRadius:14, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
+                      <span style={{ fontSize:22 }}>{n.ic}</span>
+                      <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{n.l}</p><p style={{ fontSize:11, color:B.muted }}>{n.desc}</p></div>
+                      <div style={{ width:44, height:24, borderRadius:12, background:B.accent, padding:2, cursor:"pointer" }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:"translateX(20px)", transition:"transform .2s" }}/></div>
+                    </div>
+                  ))}
+                </div>
+              </>}
+
+              {/* About */}
+              {sub==="about" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Sobre o UniqueHub</h3>
+                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  {[{l:"Versão",v:"1.0 (build 3.04A)"},{l:"Plataforma",v:"React + Vite + Supabase"},{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Suporte",v:"suporte@uniquemkt.com.br"}].map((r,i)=>(
+                    <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"12px 16px", borderRadius:12, background:i%2===0?B.bg:"transparent" }}>
+                      <span style={{ fontSize:13, color:B.muted }}>{r.l}</span>
+                      <span style={{ fontSize:13, fontWeight:600 }}>{r.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </>}
+              {/* Agency Identity */}
+              {sub==="agencyid" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Identidade da Agência</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Nome da agência</label><input value={agCfg.name||""} onChange={e=>setAgCfg(p=>({...p,name:e.target.value}))} className="tinput" style={{ fontSize:14 }}/></div>
+                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Slogan</label><input value={agCfg.slogan||""} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
+                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Cidade</label><input value={agCfg.city||""} onChange={e=>setAgCfg(p=>({...p,city:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
+                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>URL do Logo</label><input value={agCfg.logo_url||""} onChange={e=>setAgCfg(p=>({...p,logo_url:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
+                  <div style={{ gridColumn:"span 2" }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Slogan</label><input value={agCfg.slogan||""} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
+                </div>
+                <button onClick={async()=>{if(agCfg){await supaSetSetting("agency_identity",JSON.stringify(agCfg));if(onAgencyUpdate)onAgencyUpdate(agCfg);showToast("Identidade salva ✓");}}} style={{ marginTop:16, padding:"12px 40px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>Salvar</button>
+              </>}
+
+              {/* Permissions — redirect to standalone */}
+              {sub==="permissions" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Permissões por Cargo</h3>
+                <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Configure o acesso de cada cargo às áreas do sistema</p>
+                <button onClick={()=>{/* Open permissions in full page mode */}} style={{ padding:"12px 24px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>Abrir Gerenciador de Permissões</button>
+              </>}
+
+              {/* Approvals — redirect to standalone */}
+              {sub==="approvals" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Aprovações Pendentes</h3>
+                <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Aprove ou rejeite novos cadastros de colaboradores</p>
+                {pendingCount===0 && <p style={{ fontSize:14, color:B.muted, padding:30, textAlign:"center" }}>Nenhuma aprovação pendente</p>}
+                {pendingCount>0 && <p style={{ fontSize:14, fontWeight:700, color:B.orange }}>{pendingCount} cadastro(s) aguardando aprovação</p>}
+              </>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   /* ═══ SETTINGS MAIN ═══ */
   return (
