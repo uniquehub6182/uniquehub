@@ -5842,6 +5842,204 @@ function FinancialPage({ onBack, clients: propClients }) {
     { k:"asaas", l:"Asaas", icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="14" x2="10" y2="14"/></svg> },
   ];
 
+  /* ── DESKTOP GAMIFY ── */
+  if (isGamDesktop) {
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.gamify} label="Engajamento" title="Gamificação" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
+          {/* LEFT: My profile + nav */}
+          <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* My stats */}
+            <div style={{ background:B.dark, borderRadius:16, padding:"20px 18px", textAlign:"center" }}>
+              <div style={{ position:"relative", display:"inline-block", marginBottom:10 }}>
+                <Av src={me.photo} name={me.name} sz={64} fs={24}/>
+                <div style={{ position:"absolute", bottom:-4, right:-4, background:B.accent, borderRadius:8, padding:"2px 8px", fontSize:11, fontWeight:800, color:B.dark }}>#{myRank}</div>
+              </div>
+              <p style={{ fontSize:16, fontWeight:800, color:"#fff" }}>{me.name}</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)", marginBottom:12 }}>{myLevel?.title} · Nível {myLevel?.level}</p>
+              <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:8, height:8, marginBottom:6 }}><div style={{ width:`${xpProgress}%`, height:"100%", borderRadius:8, background:B.accent }}/></div>
+              <p style={{ fontSize:20, fontWeight:900, color:B.accent }}>{me.xp.toLocaleString()} XP</p>
+              <p style={{ fontSize:9, color:"rgba(255,255,255,0.4)" }}>{myLevel?.max - me.xp} XP para nível {(myLevel?.level||0)+1}</p>
+              <div style={{ display:"flex", justifyContent:"center", gap:16, marginTop:14 }}>
+                <div><p style={{ fontSize:16, fontWeight:800, color:"#fff" }}>{me.streak}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Check-ins</p></div>
+                <div><p style={{ fontSize:16, fontWeight:800, color:"#fff" }}>{me.tasksMonth}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Tarefas</p></div>
+                <div><p style={{ fontSize:16, fontWeight:800, color:"#fff" }}>{me.postsMonth}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Posts</p></div>
+              </div>
+            </div>
+            {/* Tab nav */}
+            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              {TABS_LIST.map(t => (
+                <button key={t.k} onClick={()=>setTab(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===t.k?700:500, background:tab===t.k?`${B.accent}10`:"transparent", color:tab===t.k?B.accent:B.text, borderLeft:tab===t.k?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .15s" }}>{t.l}</button>
+              ))}
+            </div>
+            {/* Admin: award XP */}
+            {isAdmin && <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
+              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Dar XP (Admin)</p>
+              <select value={awardUser||""} onChange={e=>setAwardUser(e.target.value)} style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}>
+                <option value="">Selecionar membro</option>
+                {teamData.map(m=><option key={m.user_id} value={m.user_id}>{m.name}</option>)}
+              </select>
+              <input value={awardForm.xp} onChange={e=>setAwardForm(p=>({...p,xp:e.target.value}))} placeholder="XP (ex: 100)" style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}/>
+              <input value={awardForm.desc} onChange={e=>setAwardForm(p=>({...p,desc:e.target.value}))} placeholder="Motivo" style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}/>
+              <button onClick={async()=>{if(!awardUser||!awardForm.xp)return showToast("Selecione membro e XP");const xp=parseInt(awardForm.xp);if(isNaN(xp)||xp<=0)return showToast("XP inválido");await supaAwardXp(awardUser,"bonus",xp,awardForm.desc||"Bônus admin");setAwardUser(null);setAwardForm({xp:"",desc:""});setXpLoaded(false);showToast(`+${xp} XP concedido ✓`);}} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Conceder XP</button>
+            </div>}
+          </div>
+          {/* ── RIGHT: Content ── */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
+
+              {/* ═══ RANKING TAB ═══ */}
+              {tab==="ranking" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>🏆 Ranking da Equipe</h3>
+                {/* Podium top 3 */}
+                {sorted.length>=3 && <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:16, marginBottom:28, padding:"20px 0" }}>
+                  {[sorted[1],sorted[0],sorted[2]].map((m,i) => {
+                    const pos = [2,1,3][i];
+                    const heights = [120,160,100];
+                    const medals = ["🥈","🥇","🥉"];
+                    const sizes = [52,64,48];
+                    return (
+                      <div key={m.user_id} style={{ textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center" }}>
+                        <p style={{ fontSize:28, marginBottom:4 }}>{medals[i]}</p>
+                        <Av src={m.photo} name={m.name} sz={sizes[i]} fs={sizes[i]/3}/>
+                        <p style={{ fontSize:13, fontWeight:700, marginTop:6 }}>{m.name?.split(" ")[0]}</p>
+                        <p style={{ fontSize:12, fontWeight:800, color:B.accent }}>{m.xp.toLocaleString()} XP</p>
+                        <div style={{ width:80, height:heights[i], borderRadius:"12px 12px 0 0", background:pos===1?`linear-gradient(180deg,${B.accent},${B.accent}90)`:pos===2?`linear-gradient(180deg,#C0C0C0,#A0A0A0)`:`linear-gradient(180deg,#CD7F32,#B87333)`, marginTop:6, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ fontSize:28, fontWeight:900, color:pos===1?B.dark:"#fff" }}>#{pos}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>}
+                {/* Full ranking table */}
+                <div style={{ borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"50px 1fr 100px 80px 80px 80px 100px", padding:"10px 16px", background:B.bg, fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>
+                    <span>#</span><span>Membro</span><span>XP Total</span><span>Check-ins</span><span>Tarefas</span><span>Posts</span><span>Nível</span>
+                  </div>
+                  {sorted.map((m,i) => {
+                    const lv = getLevel(m.xp);
+                    const isMe = m.user_id === user?.id;
+                    return (
+                      <div key={m.user_id} style={{ display:"grid", gridTemplateColumns:"50px 1fr 100px 80px 80px 80px 100px", padding:"12px 16px", alignItems:"center", background:isMe?`${B.accent}06`:"transparent", borderTop:`1px solid ${B.border}` }}>
+                        <span style={{ fontSize:14, fontWeight:800, color:i<3?B.accent:B.muted }}>#{i+1}</span>
+                        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                          <Av src={m.photo} name={m.name} sz={32} fs={12}/>
+                          <div><p style={{ fontSize:13, fontWeight:isMe?700:500 }}>{m.name}{isMe?" (você)":""}</p><p style={{ fontSize:10, color:B.muted }}>{m.role}</p></div>
+                        </div>
+                        <span style={{ fontSize:14, fontWeight:800, color:B.accent }}>{m.xp.toLocaleString()}</span>
+                        <span style={{ fontSize:13, color:B.text }}>{m.streak}</span>
+                        <span style={{ fontSize:13, color:B.text }}>{m.tasksMonth}</span>
+                        <span style={{ fontSize:13, color:B.text }}>{m.postsMonth}</span>
+                        <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:6, background:`${B.accent}10`, color:B.accent, textAlign:"center" }}>{lv.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+              {/* ═══ CHALLENGES TAB ═══ */}
+              {tab==="challenges" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>🎯 Desafios Ativos</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:14 }}>
+                  {CHALLENGES.map(ch => {
+                    const pct = Math.round((ch.progress/ch.total)*100);
+                    return (
+                      <div key={ch.id} style={{ padding:"20px", borderRadius:16, border:`1px solid ${B.border}`, background:"transparent" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+                          <span style={{ fontSize:28 }}>{ch.icon}</span>
+                          <div style={{ flex:1 }}>
+                            <p style={{ fontSize:15, fontWeight:800 }}>{ch.title}</p>
+                            <p style={{ fontSize:12, color:B.muted }}>{ch.desc}</p>
+                          </div>
+                          <span style={{ fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:8, background:`${ch.color}15`, color:ch.color }}>{ch.type}</span>
+                        </div>
+                        <div style={{ background:B.bg, borderRadius:8, height:10, marginBottom:8 }}><div style={{ width:`${pct}%`, height:"100%", borderRadius:8, background:ch.color, transition:"width .3s" }}/></div>
+                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:B.muted }}>
+                          <span>{ch.progress}/{ch.total} ({pct}%)</span>
+                          <span>⏰ {ch.deadline}</span>
+                          <span style={{ fontWeight:700, color:B.accent }}>+{ch.reward} XP</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+              {/* ═══ BADGES TAB ═══ */}
+              {tab==="badges" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>🏅 Conquistas</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:12 }}>
+                  {ALL_BADGES.map(b => {
+                    const earned = myBadges.includes(b.name);
+                    return (
+                      <div key={b.id} onClick={()=>setSelBadge(b)} style={{ padding:"20px 16px", borderRadius:16, border:`1.5px solid ${earned?B.accent:B.border}`, background:earned?`${B.accent}06`:"transparent", cursor:"pointer", textAlign:"center", opacity:earned?1:0.6, transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                        <span style={{ fontSize:36, display:"block", marginBottom:8 }}>{b.emoji}</span>
+                        <p style={{ fontSize:14, fontWeight:700 }}>{b.name}</p>
+                        <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.4 }}>{b.desc}</p>
+                        <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:10 }}>
+                          <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:6, background:`${rarityColor(b.rarity)}15`, color:rarityColor(b.rarity) }}>{b.rarity}</span>
+                          <span style={{ fontSize:10, fontWeight:700, color:B.accent }}>+{b.xpReward} XP</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+              {/* ═══ REWARDS TAB ═══ */}
+              {tab==="rewards" && <>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+                  <h3 style={{ fontSize:20, fontWeight:900 }}>🛒 Loja de Recompensas</h3>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:`${B.accent}10` }}>
+                    <span style={{ fontSize:16, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()} XP</span>
+                    <span style={{ fontSize:11, color:B.muted }}>disponíveis</span>
+                  </div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:14 }}>
+                  {REWARDS.map(r => {
+                    const canBuy = me.xp >= r.cost;
+                    return (
+                      <div key={r.id} onClick={()=>setSelReward(r)} style={{ padding:"20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+                          <span style={{ fontSize:32 }}>{r.icon}</span>
+                          <div style={{ flex:1 }}>
+                            <p style={{ fontSize:15, fontWeight:800 }}>{r.name}</p>
+                            <p style={{ fontSize:11, color:B.muted }}>{r.desc}</p>
+                          </div>
+                        </div>
+                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                          <span style={{ fontSize:14, fontWeight:800, color:canBuy?B.accent:B.red }}>{r.cost.toLocaleString()} XP</span>
+                          <span style={{ fontSize:10, color:B.muted }}>{r.stock} disponíveis</span>
+                          <span style={{ fontSize:10, fontWeight:600, padding:"3px 10px", borderRadius:6, background:canBuy?`${B.green}15`:`${B.red}10`, color:canBuy?B.green:B.red }}>{canBuy?"Pode resgatar":"XP insuficiente"}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+              {/* ═══ HISTORY TAB ═══ */}
+              {tab==="history" && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>📊 Histórico de XP</h3>
+                {myHistory.length===0 && <p style={{ fontSize:14, color:B.muted, textAlign:"center", padding:40 }}>Nenhum evento de XP registrado</p>}
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  {myHistory.map((ev,i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 16px", borderRadius:14, background:i%2===0?B.bg:"transparent" }}>
+                      <span style={{ fontSize:20 }}>{actionIcon(ev.action)}</span>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:13, fontWeight:600 }}>{ev.description || ev.action}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{fmtXpTime(ev.created_at)}</p>
+                      </div>
+                      <span style={{ fontSize:14, fontWeight:800, color:ev.xp_amount>=0?B.green:B.red }}>{ev.xp_amount>=0?"+":""}{ev.xp_amount} XP</span>
+                    </div>
+                  ))}
+                </div>
+              </>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   return (
@@ -15120,6 +15318,7 @@ function IdeasPage({ onBack, user, clients: propClients }) {
 }
 
 function GamifyPage({ onBack, user, team }) {
+  const isGamDesktop = useIsDesktop();
   const [tab, setTab] = useState("ranking");
   const [selBadge, setSelBadge] = useState(null);
   const [selReward, setSelReward] = useState(null);
