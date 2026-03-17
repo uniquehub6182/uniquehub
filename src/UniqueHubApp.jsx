@@ -3711,6 +3711,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   }, [profileTab, sel]);
   const [confirmAction, setConfirmAction] = useState(null);
   const [editClient, setEditClient] = useState(false);
+  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
   const { showToast, ToastEl } = useToast();
 
