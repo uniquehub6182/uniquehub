@@ -10253,7 +10253,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     /* Inject CSS to push .pg content right */
     if (!sidebarStyleRef.current) {
       const st = document.createElement("style");
-      st.textContent = `.uh-desktop .pg { margin-left:260px!important; width:calc(100% - 260px)!important; max-width:none!important; }`;
+      st.textContent = `html.uh-desktop .pg { margin-left:276px!important; margin-right:16px!important; width:auto!important; max-width:calc(100% - 292px)!important; }`;
       document.head.appendChild(st);
       sidebarStyleRef.current = st;
     }
