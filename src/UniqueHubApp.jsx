@@ -17297,17 +17297,14 @@ function Match4BizPage({ onBack, clients, user }) {
     showToast("Match excluído ✓");
   };
 
-  /* ── DESKTOP MATCH4BIZ ── */
-  const getClientData = (id, name) => {
-    const c = CDATA.find(x => (x.supaId||x.id) === id) || CDATA.find(x => x.name === name);
-    return { name: c?.name || name, photo: c?.photo || c?.avatar || c?.logo || null, segment: c?.segment || c?.niche || "" };
-  };
+  /* ── DESKTOP MATCH4BIZ v3 ── */
+  const getCD = (id, name) => { const c = CDATA.find(x=>(x.supaId||x.id)===id)||CDATA.find(x=>x.name===name); return { name:c?.name||name, photo:c?.photo||c?.avatar||c?.logo||null, segment:c?.segment||c?.niche||"" }; };
 
   if (isM4bDesktop) {
-    const m = selMatch ? (matches.find(x=>x.id===selMatch.id) || selMatch) : null;
-    const mSt = m ? (statusMap[m.status] || statusMap.new) : null;
-    const cA = m ? getClientData(m.client_a_id, m.client_a_name) : null;
-    const cB = m ? getClientData(m.client_b_id, m.client_b_name) : null;
+    const m = selMatch ? (matches.find(x=>x.id===selMatch.id)||selMatch) : null;
+    const mSt = m ? (statusMap[m.status]||statusMap.new) : null;
+    const cA = m ? getCD(m.client_a_id,m.client_a_name) : null;
+    const cB = m ? getCD(m.client_b_id,m.client_b_name) : null;
     const hasRight = !!(m || creating);
 
     return (
@@ -17315,94 +17312,70 @@ function Match4BizPage({ onBack, clients, user }) {
         {ToastEl}
         <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={false} />
 
-        {/* Stats bar */}
-        <div style={{ display:"flex", gap:12, marginTop:12, marginBottom:14 }}>
-          {[
-            { l:"Total Matches", v:totalMatches, c:B.accent },
-            { l:"Em andamento", v:activeDeals, c:B.orange },
-            { l:"Fechados", v:wonDeals.length, c:B.green },
-            { l:"Taxa de conversão", v:`${conversionRate}%`, c:B.purple },
-            { l:"Receita gerada", v:`R$ ${totalRevenue.toLocaleString("pt-BR")}`, c:B.green },
-          ].map((s,i) => (
-            <div key={i} style={{ flex:1, padding:"12px 16px", borderRadius:14, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, textAlign:"center" }}>
-              <p style={{ fontSize:18, fontWeight:900, color:s.c }}>{s.v}</p>
-              <p style={{ fontSize:10, color:B.muted }}>{s.l}</p>
-            </div>
-          ))}
+        {/* Stats + actions bar */}
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginTop:12, marginBottom:14 }}>
+          <div style={{ display:"flex", gap:8, flex:1 }}>
+            {[
+              { l:"Matches", v:totalMatches, c:B.accent },
+              { l:"Ativos", v:activeDeals, c:B.orange },
+              { l:"Fechados", v:wonDeals.length, c:B.green },
+              { l:"Receita", v:`R$${totalRevenue.toLocaleString("pt-BR")}`, c:B.green },
+            ].map((s,i) => (
+              <div key={i} style={{ padding:"10px 18px", borderRadius:12, background:`${s.c}08`, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:20, fontWeight:900, color:s.c }}>{s.v}</span>
+                <span style={{ fontSize:11, color:B.muted, fontWeight:500 }}>{s.l}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display:"flex", gap:6 }}>
+            {[{k:"all",l:"Todos"},...Object.entries(statusMap).map(([k,v])=>({k,l:v.l}))].map(f=>(
+              <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${filter===f.k?B.accent:B.border}`, background:filter===f.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted }}>{f.l}</button>
+            ))}
+          </div>
+          {isAdmin && <button onClick={()=>{setCreating(true);setSelMatch(null);setCreateForm({a:"",b:"",fee:"150"});}} style={{ padding:"10px 22px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>+ Novo Match</button>}
         </div>
 
         <div style={{ display:"flex", gap:16, flex:1, minHeight:0 }}>
-          {/* LEFT/MAIN: Match cards */}
-          <div style={{ width:hasRight?360:undefined, flex:hasRight?undefined:1, flexShrink:0, display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
-            {/* Filters + New */}
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <div style={{ display:"flex", gap:4, flex:1, flexWrap:"wrap" }}>
-                {[{k:"all",l:"Todos"},...Object.entries(statusMap).map(([k,v])=>({k,l:v.l}))].map(f=>(
-                  <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"6px 14px", borderRadius:10, border:`1.5px solid ${filter===f.k?B.accent:B.border}`, background:filter===f.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted }}>{f.l}</button>
-                ))}
-              </div>
-              {isAdmin && <button onClick={()=>{setCreating(true);setSelMatch(null);setCreateForm({a:"",b:"",fee:"150"});}} style={{ padding:"9px 18px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>+ Novo Match</button>}
-            </div>
-
-            {/* Match cards */}
-            <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:hasRight?4:10 }}>
-              {!matchesLoaded && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Carregando matches...</p>}
-              {matchesLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhum match</p><p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Crie uma conexão entre dois clientes</p></div>}
-              {filtered.map(match => {
-                const isSel = selMatch?.id === match.id;
-                const ms = statusMap[match.status] || statusMap.new;
-                const ca = getClientData(match.client_a_id, match.client_a_name);
-                const cb = getClientData(match.client_b_id, match.client_b_name);
-                const cCount = [match.admin_confirmed, match.client_a_confirmed, match.client_b_confirmed].filter(Boolean).length;
-
-                return hasRight ? (
-                  /* Compact list item */
-                  <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent" }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
-                    <div style={{ display:"flex", alignItems:"center" }}>
-                      <Av src={ca.photo} name={ca.name} sz={30} fs={11}/>
-                      <div style={{ width:16, height:16, borderRadius:5, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 -4px", zIndex:1, border:`2px solid ${isSel?`${B.accent}15`:B.bgCard||"#fff"}` }}><svg width="8" height="8" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-                      <Av src={cb.photo} name={cb.name} sz={30} fs={11}/>
+          {/* Match cards */}
+          <div style={{ width:hasRight?380:undefined, flex:hasRight?undefined:1, flexShrink:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
+            {!matchesLoaded && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Carregando...</p>}
+            {matchesLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"80px 0" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" style={{ opacity:0.3, margin:"0 auto 12px", display:"block" }}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><p style={{ fontSize:16, fontWeight:700, color:B.muted }}>Nenhum match encontrado</p><p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Conecte dois clientes para iniciar</p></div>}
+            {filtered.map(match => {
+              const isSel = selMatch?.id===match.id;
+              const ms = statusMap[match.status]||statusMap.new;
+              const ca = getCD(match.client_a_id,match.client_a_name);
+              const cb = getCD(match.client_b_id,match.client_b_name);
+              const cCnt = [match.admin_confirmed,match.client_a_confirmed,match.client_b_confirmed].filter(Boolean).length;
+              return (
+                <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ padding:"16px 18px", borderRadius:16, background:B.bgCard||"#fff", border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+                  {/* Companies row */}
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
+                      <Av src={ca.photo} name={ca.name} sz={40} fs={15}/>
+                      <div style={{ minWidth:0, flex:1 }}><p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ca.name}</p>{!hasRight && ca.segment && <p style={{ fontSize:10, color:B.muted }}>{ca.segment}</p>}</div>
                     </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ca.name?.split(" ")[0]} × {cb.name?.split(" ")[0]}</p>
-                      <span style={{ fontSize:9, fontWeight:600, padding:"2px 6px", borderRadius:4, background:ms.bg, color:ms.c }}>{ms.l}</span>
-                    </div>
-                    {match.value>0 && <span style={{ fontSize:11, fontWeight:800, color:B.green }}>R${match.value.toLocaleString("pt-BR")}</span>}
-                  </div>
-                ) : (
-                  /* Full card */
-                  <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ display:"flex", alignItems:"center", gap:16, padding:"18px 20px", borderRadius:18, background:B.bgCard||"#fff", border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.07)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                    {/* Client A */}
-                    <div style={{ display:"flex", alignItems:"center", gap:10, flex:1 }}>
-                      <Av src={ca.photo} name={ca.name} sz={44} fs={16}/>
-                      <div><p style={{ fontSize:14, fontWeight:700 }}>{ca.name}</p>{ca.segment && <p style={{ fontSize:10, color:B.muted }}>{ca.segment}</p>}</div>
-                    </div>
-                    {/* Heart */}
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, flexShrink:0, padding:"0 8px" }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                      <span style={{ fontSize:8, fontWeight:700, color:B.muted }}>MATCH</span>
-                    </div>
-                    {/* Client B */}
-                    <div style={{ display:"flex", alignItems:"center", gap:10, flex:1 }}>
-                      <Av src={cb.photo} name={cb.name} sz={44} fs={16}/>
-                      <div><p style={{ fontSize:14, fontWeight:700 }}>{cb.name}</p>{cb.segment && <p style={{ fontSize:10, color:B.muted }}>{cb.segment}</p>}</div>
-                    </div>
-                    {/* Status + meta */}
-                    <div style={{ textAlign:"right", flexShrink:0 }}>
-                      <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:8, background:ms.bg, color:ms.c }}>{ms.l}</span>
-                      {match.value>0 && <p style={{ fontSize:14, fontWeight:800, color:B.green, marginTop:6 }}>R$ {match.value.toLocaleString("pt-BR")}</p>}
-                      <div style={{ display:"flex", gap:6, justifyContent:"flex-end", marginTop:4 }}>
-                        {cCount>0 && <span style={{ fontSize:9, color:B.green }}>✓ {cCount}/3</span>}
-                        <span style={{ fontSize:9, color:B.muted }}>{new Date(match.created_at).toLocaleDateString("pt-BR")}</span>
-                      </div>
+                    <div style={{ width:28, height:28, borderRadius:8, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, justifyContent:"flex-end" }}>
+                      <div style={{ minWidth:0, flex:1, textAlign:"right" }}><p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cb.name}</p>{!hasRight && cb.segment && <p style={{ fontSize:10, color:B.muted }}>{cb.segment}</p>}</div>
+                      <Av src={cb.photo} name={cb.name} sz={40} fs={15}/>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  {/* Bottom meta */}
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
+                    <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, background:ms.bg, color:ms.c }}>{ms.l}</span>
+                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                      {cCnt>0 && <span style={{ fontSize:10, color:B.green, fontWeight:600 }}>✓ {cCnt}/3</span>}
+                      {(match.messages||[]).length>0 && <span style={{ fontSize:10, color:B.muted }}>💬 {(match.messages||[]).length}</span>}
+                      {match.value>0 && <span style={{ fontSize:12, fontWeight:800, color:B.green }}>R$ {match.value.toLocaleString("pt-BR")}</span>}
+                      <span style={{ fontSize:10, color:B.muted }}>{new Date(match.created_at).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* RIGHT: Detail or Create */}
+          {/* RIGHT panel */}
           {hasRight && <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             {creating ? <>
               <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -17410,125 +17383,125 @@ function Match4BizPage({ onBack, clients, user }) {
                 <button onClick={()=>setCreating(false)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               </div>
               <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
-                <p style={{ fontSize:14, color:B.muted, marginBottom:20 }}>Conecte dois clientes que podem fazer negócios juntos.</p>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
+                <p style={{ fontSize:13, color:B.muted, marginBottom:20, lineHeight:1.6 }}>Conecte dois clientes que podem fazer negócios juntos. Cada empresa paga uma taxa pela conexão.</p>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:24 }}>
                   <div>
                     <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Empresa A</label>
-                    <select value={createForm.a} onChange={e=>setCreateForm(p=>({...p,a:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14 }}>
-                      <option value="">Selecione...</option>
-                      {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
-                    </select>
-                    {createForm.a && (() => { const cd = getClientData(createForm.a,""); return cd.name ? <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8, padding:"8px 10px", borderRadius:10, background:B.bg }}><Av src={cd.photo} name={cd.name} sz={28} fs={10}/><span style={{ fontSize:12, fontWeight:600 }}>{cd.name}</span></div> : null; })()}
+                    <select value={createForm.a} onChange={e=>setCreateForm(p=>({...p,a:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, background:"transparent" }}><option value="">Selecione...</option>{CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}</select>
+                    {createForm.a && (()=>{const cd=getCD(createForm.a,"");return cd.name?<div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, padding:"10px 12px", borderRadius:12, background:B.bg }}><Av src={cd.photo} name={cd.name} sz={32} fs={12}/><div><p style={{ fontSize:13, fontWeight:700 }}>{cd.name}</p>{cd.segment&&<p style={{ fontSize:10, color:B.muted }}>{cd.segment}</p>}</div></div>:null;})()}
                   </div>
                   <div>
                     <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Empresa B</label>
-                    <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14 }}>
-                      <option value="">Selecione...</option>
-                      {CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
-                    </select>
-                    {createForm.b && (() => { const cd = getClientData(createForm.b,""); return cd.name ? <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8, padding:"8px 10px", borderRadius:10, background:B.bg }}><Av src={cd.photo} name={cd.name} sz={28} fs={10}/><span style={{ fontSize:12, fontWeight:600 }}>{cd.name}</span></div> : null; })()}
+                    <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, background:"transparent" }}><option value="">Selecione...</option>{CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}</select>
+                    {createForm.b && (()=>{const cd=getCD(createForm.b,"");return cd.name?<div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, padding:"10px 12px", borderRadius:12, background:B.bg }}><Av src={cd.photo} name={cd.name} sz={32} fs={12}/><div><p style={{ fontSize:13, fontWeight:700 }}>{cd.name}</p>{cd.segment&&<p style={{ fontSize:10, color:B.muted }}>{cd.segment}</p>}</div></div>:null;})()}
                   </div>
                 </div>
-                <div style={{ marginBottom:20 }}>
-                  <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Taxa por empresa (R$)</label>
-                  <input type="number" value={createForm.fee} onChange={e=>setCreateForm(p=>({...p,fee:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:16, fontWeight:700 }}/>
-                  <p style={{ fontSize:11, color:B.muted, marginTop:6 }}>Receita total: <strong style={{color:B.green}}>R$ {((parseFloat(createForm.fee)||0)*2).toLocaleString("pt-BR")}</strong></p>
-                </div>
-                <button onClick={handleCreateMatch} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>Criar Match</button>
+                <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Taxa por empresa (R$)</label>
+                <input type="number" value={createForm.fee} onChange={e=>setCreateForm(p=>({...p,fee:e.target.value}))} style={{ width:200, padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:18, fontWeight:700 }}/>
+                <p style={{ fontSize:12, color:B.muted, marginTop:6, marginBottom:20 }}>Receita total: <strong style={{color:B.green}}>R$ {((parseFloat(createForm.fee)||0)*2).toLocaleString("pt-BR")}</strong></p>
+                <button onClick={handleCreateMatch} style={{ padding:"14px 40px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>Criar Match</button>
               </div>
 
             </> : m ? <>
-              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
-                <button onClick={()=>setSelMatch(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Detalhe do Match</p></div>
-                <span style={{ fontSize:12, fontWeight:700, padding:"5px 14px", borderRadius:10, background:mSt.bg, color:mSt.c }}>{mSt.l}</span>
-              </div>
-              <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
-                {/* Companies */}
-                <div style={{ display:"flex", alignItems:"center", gap:20, padding:"24px", borderRadius:20, background:B.bg, marginBottom:24 }}>
-                  <div style={{ flex:1, textAlign:"center" }}>
-                    <Av src={cA.photo} name={cA.name} sz={64} fs={24}/>
-                    <p style={{ fontSize:16, fontWeight:800, marginTop:10 }}>{cA.name}</p>
-                    {cA.segment && <p style={{ fontSize:11, color:B.muted }}>{cA.segment}</p>}
-                    <span style={{ display:"inline-block", marginTop:6, fontSize:10, fontWeight:600, color:m.client_a_confirmed?B.green:B.orange }}>{m.client_a_confirmed?"✓ Confirmou":"Pendente"}</span>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0 }}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                    <p style={{ fontSize:9, fontWeight:800, color:B.muted, letterSpacing:1 }}>MATCH</p>
-                  </div>
-                  <div style={{ flex:1, textAlign:"center" }}>
-                    <Av src={cB.photo} name={cB.name} sz={64} fs={24}/>
-                    <p style={{ fontSize:16, fontWeight:800, marginTop:10 }}>{cB.name}</p>
-                    {cB.segment && <p style={{ fontSize:11, color:B.muted }}>{cB.segment}</p>}
-                    <span style={{ display:"inline-block", marginTop:6, fontSize:10, fontWeight:600, color:m.client_b_confirmed?B.green:B.orange }}>{m.client_b_confirmed?"✓ Confirmou":"Pendente"}</span>
+              <div style={{ flex:1, overflowY:"auto" }}>
+                {/* Hero: company cards side by side */}
+                <div style={{ padding:"28px 32px", background:`linear-gradient(135deg, ${B.accent}06, ${B.accent}02)`, borderBottom:`1px solid ${B.border}` }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:0 }}>
+                    {/* Company A */}
+                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
+                      <Av src={cA.photo} name={cA.name} sz={52} fs={20}/>
+                      <div>
+                        <p style={{ fontSize:16, fontWeight:800 }}>{cA.name}</p>
+                        {cA.segment && <p style={{ fontSize:11, color:B.muted }}>{cA.segment}</p>}
+                        <span style={{ display:"inline-block", marginTop:4, fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:6, background:m.client_a_confirmed?`${B.green}12`:`${B.orange}12`, color:m.client_a_confirmed?B.green:B.orange }}>{m.client_a_confirmed?"✓ Confirmado":"Pendente"}</span>
+                      </div>
+                    </div>
+                    {/* Heart connector */}
+                    <div style={{ width:56, display:"flex", flexDirection:"column", alignItems:"center", gap:2, flexShrink:0, margin:"0 -8px", zIndex:1 }}>
+                      <div style={{ width:44, height:44, borderRadius:14, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px rgba(200,255,0,0.3)" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+                    </div>
+                    {/* Company B */}
+                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
+                      <Av src={cB.photo} name={cB.name} sz={52} fs={20}/>
+                      <div>
+                        <p style={{ fontSize:16, fontWeight:800 }}>{cB.name}</p>
+                        {cB.segment && <p style={{ fontSize:11, color:B.muted }}>{cB.segment}</p>}
+                        <span style={{ display:"inline-block", marginTop:4, fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:6, background:m.client_b_confirmed?`${B.green}12`:`${B.orange}12`, color:m.client_b_confirmed?B.green:B.orange }}>{m.client_b_confirmed?"✓ Confirmado":"Pendente"}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                {/* Status + Fee row */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:24 }}>
-                  <div style={{ padding:"18px", borderRadius:16, border:`1px solid ${B.border}` }}>
-                    <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>STATUS</p>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                      {Object.entries(statusMap).map(([k,v])=>(
-                        <button key={k} onClick={()=>updateStatus(m.id,k)} style={{ padding:"8px 14px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:12, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
+                {/* Content */}
+                <div style={{ padding:"24px 32px" }}>
+                  {/* Status + Financial grid */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:24 }}>
+                    <div>
+                      <p style={{ fontSize:12, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Status do Negócio</p>
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                        {Object.entries(statusMap).map(([k,v])=>(
+                          <button key={k} onClick={()=>updateStatus(m.id,k)} style={{ padding:"8px 16px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:12, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
+                        ))}
+                      </div>
+                      {m.status==="closed_won" && <div style={{ marginTop:12 }}><label style={{ fontSize:11, fontWeight:600, color:B.muted }}>Valor do negócio</label><input value={m.value||""} onChange={e=>updateValue(m.id,e.target.value)} type="number" placeholder="0,00" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:18, fontWeight:700, marginTop:4 }}/></div>}
+                      <p style={{ fontSize:10, color:B.muted, marginTop:10 }}>Criado em {new Date(m.created_at).toLocaleDateString("pt-BR")}{m.created_by?` por ${m.created_by}`:""}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize:12, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Financeiro</p>
+                      <div style={{ display:"flex", gap:10 }}>
+                        <div style={{ flex:1, padding:"16px", borderRadius:14, background:`${B.green}06`, border:`1px solid ${B.green}15`, textAlign:"center" }}>
+                          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Taxa por empresa</p>
+                          <p style={{ fontSize:22, fontWeight:900, color:B.green }}>R$ {(parseFloat(m.match_fee)||0).toLocaleString("pt-BR")}</p>
+                        </div>
+                        <div style={{ flex:1, padding:"16px", borderRadius:14, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+                          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Receita total</p>
+                          <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>R$ {((parseFloat(m.match_fee)||0)*2).toLocaleString("pt-BR")}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Confirmations */}
+                  <div style={{ marginBottom:24 }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Confirmações</p>
+                    <div style={{ display:"flex", gap:10 }}>
+                      {[{key:"admin_confirmed",name:"Admin",photo:null},{key:"client_a_confirmed",name:cA.name,photo:cA.photo},{key:"client_b_confirmed",name:cB.name,photo:cB.photo}].map(cf=>(
+                        <div key={cf.key} style={{ flex:1, padding:"16px", borderRadius:14, background:m[cf.key]?`${B.green}04`:B.bg, border:`1.5px solid ${m[cf.key]?B.green+"20":B.border}`, textAlign:"center" }}>
+                          <Av src={cf.photo} name={cf.name} sz={40} fs={15}/>
+                          <p style={{ fontSize:13, fontWeight:700, marginTop:8 }}>{cf.name?.split(" ")[0]}</p>
+                          {m[cf.key] ? <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:6 }}>✓ Confirmado</p>
+                          : isAdmin ? <button onClick={()=>{const upd={[cf.key]:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast("Confirmado ✓");}} style={{ marginTop:6, padding:"6px 16px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>Confirmar</button>
+                          : <p style={{ fontSize:11, color:B.orange, marginTop:6 }}>Pendente</p>}
+                        </div>
                       ))}
                     </div>
-                    {m.status==="closed_won" && <div style={{ marginTop:12 }}><label style={{ fontSize:11, fontWeight:600, color:B.muted }}>Valor do negócio</label><input value={m.value||""} onChange={e=>updateValue(m.id,e.target.value)} type="number" placeholder="0,00" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:18, fontWeight:700, marginTop:4 }}/></div>}
                   </div>
-                  <div style={{ padding:"18px", borderRadius:16, border:`1px solid ${B.border}` }}>
-                    <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>FINANCEIRO</p>
-                    <div style={{ display:"flex", gap:10 }}>
-                      <div style={{ flex:1, padding:"14px", borderRadius:12, background:`${B.green}06`, textAlign:"center" }}>
-                        <p style={{ fontSize:9, color:B.muted }}>Taxa/empresa</p>
-                        <p style={{ fontSize:20, fontWeight:900, color:B.green }}>R$ {(parseFloat(m.match_fee)||0).toLocaleString("pt-BR")}</p>
-                      </div>
-                      <div style={{ flex:1, padding:"14px", borderRadius:12, background:`${B.accent}06`, textAlign:"center" }}>
-                        <p style={{ fontSize:9, color:B.muted }}>Receita total</p>
-                        <p style={{ fontSize:20, fontWeight:900, color:B.accent }}>R$ {((parseFloat(m.match_fee)||0)*2).toLocaleString("pt-BR")}</p>
-                      </div>
+                  {/* Chat */}
+                  <div style={{ borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+                    <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, background:B.bg, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <p style={{ fontSize:12, fontWeight:700, color:B.muted }}>Conversa</p>
+                      <span style={{ fontSize:11, color:B.muted }}>{(m.messages||[]).length} mensagens</span>
                     </div>
-                    <p style={{ fontSize:10, color:B.muted, marginTop:8, textAlign:"center" }}>Data: {new Date(m.created_at).toLocaleDateString("pt-BR")}{m.created_by?` · por ${m.created_by}`:""}</p>
-                  </div>
-                </div>
-                {/* Confirmations */}
-                <div style={{ marginBottom:24 }}>
-                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>CONFIRMAÇÕES</p>
-                  <div style={{ display:"flex", gap:10 }}>
-                    {[{key:"admin_confirmed",name:"Admin (Agência)",photo:null,c:B.accent},{key:"client_a_confirmed",name:cA.name,photo:cA.photo,c:B.blue},{key:"client_b_confirmed",name:cB.name,photo:cB.photo,c:B.purple}].map(cf=>(
-                      <div key={cf.key} style={{ flex:1, padding:"14px", borderRadius:14, background:m[cf.key]?`${B.green}06`:`${B.bg}`, border:`1.5px solid ${m[cf.key]?B.green+"25":B.border}`, textAlign:"center" }}>
-                        <Av src={cf.photo} name={cf.name} sz={36} fs={13}/>
-                        <p style={{ fontSize:12, fontWeight:700, marginTop:6 }}>{cf.name?.split(" ")[0]}</p>
-                        {m[cf.key] ? <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:4 }}>✓ Confirmado</p>
-                        : isAdmin ? <button onClick={()=>{const upd={[cf.key]:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast("Confirmado ✓");}} style={{ marginTop:6, padding:"6px 14px", borderRadius:8, background:cf.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>Confirmar</button>
-                        : <p style={{ fontSize:11, color:B.orange, marginTop:4 }}>Pendente</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Chat */}
-                <div style={{ borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
-                  <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, background:B.bg }}><p style={{ fontSize:11, fontWeight:700, color:B.muted }}>CONVERSA ({(m.messages||[]).length})</p></div>
-                  <div style={{ maxHeight:220, overflowY:"auto", padding:"10px 14px" }}>
-                    {(m.messages||[]).length===0 && <p style={{ textAlign:"center", color:B.muted, padding:16, fontSize:12 }}>Nenhuma mensagem</p>}
-                    {(m.messages||[]).map((msg,i) => {
-                      const isAg = msg.from==="agency";
-                      return (
-                        <div key={i} style={{ padding:"10px 12px", borderRadius:12, background:isAg?`${B.accent}06`:`${B.muted}04`, marginBottom:6 }}>
-                          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
-                            <span style={{ fontSize:11, fontWeight:700, color:isAg?B.accent:B.text }}>{msg.from==="a"?cA?.name:msg.from==="b"?cB?.name:"Unique Marketing"}</span>
-                            <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
+                    <div style={{ maxHeight:200, overflowY:"auto", padding:"10px 14px" }}>
+                      {(m.messages||[]).length===0 && <p style={{ textAlign:"center", color:B.muted, padding:16, fontSize:12 }}>Nenhuma mensagem</p>}
+                      {(m.messages||[]).map((msg,i) => {
+                        const isAg = msg.from==="agency";
+                        return (
+                          <div key={i} style={{ padding:"8px 12px", borderRadius:10, background:isAg?`${B.accent}06`:`${B.bg}`, marginBottom:4 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
+                              <span style={{ fontSize:11, fontWeight:700, color:isAg?B.accent:B.text }}>{msg.from==="a"?cA?.name:msg.from==="b"?cB?.name:"Unique Marketing"}</span>
+                              <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
+                            </div>
+                            <p style={{ fontSize:13, lineHeight:1.5 }}>{msg.text}</p>
                           </div>
-                          <p style={{ fontSize:13, lineHeight:1.5 }}>{msg.text}</p>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                    <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
+                      <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg(m.id)} placeholder="Intervir na conversa..." style={{ flex:1, padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, outline:"none" }}/>
+                      <button onClick={()=>sendMsg(m.id)} disabled={!msgInput.trim()} style={{ padding:"10px 18px", borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}15`, border:"none", cursor:msgInput.trim()?"pointer":"default", fontFamily:"inherit", fontSize:12, fontWeight:700, color:msgInput.trim()?B.dark:B.muted }}>Enviar</button>
+                    </div>
                   </div>
-                  <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
-                    <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg(m.id)} placeholder="Intervir na conversa..." style={{ flex:1, padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, outline:"none" }}/>
-                    <button onClick={()=>sendMsg(m.id)} disabled={!msgInput.trim()} style={{ padding:"10px 18px", borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}20`, border:"none", cursor:msgInput.trim()?"pointer":"default", fontFamily:"inherit", fontSize:12, fontWeight:700, color:msgInput.trim()?B.dark:B.muted }}>Enviar</button>
-                  </div>
+                  {isAdmin && <button onClick={()=>deleteMatch(m.id)} style={{ marginTop:20, width:"100%", padding:"10px 0", borderRadius:12, background:`${B.red}04`, border:`1px solid ${B.red}15`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>Excluir este match</button>}
                 </div>
-                {isAdmin && <button onClick={()=>deleteMatch(m.id)} style={{ marginTop:16, width:"100%", padding:"10px 0", borderRadius:12, background:`${B.red}06`, border:`1px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>Excluir match</button>}
               </div>
             </> : null}
           </div>}
