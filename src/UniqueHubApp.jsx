@@ -15129,7 +15129,8 @@ function GamifyPage({ onBack, user, team }) {
   const [xpLoaded, setXpLoaded] = useState(false);
   const [awardUser, setAwardUser] = useState(null);
   const [awardForm, setAwardForm] = useState({ xp:"", desc:"" });
-  const [resetConfirm, setResetConfirm] = useState(null); /* null | "all" | userId */
+  const [resetConfirm, setResetConfirm] = useState(null);
+  const [redemptions, setRedemptions] = useState([]);
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
 
@@ -15137,7 +15138,23 @@ function GamifyPage({ onBack, user, team }) {
   useEffect(() => {
     if (xpLoaded) return;
     supaLoadAllXp().then(rows => { setXpEvents(rows); setXpLoaded(true); });
+    /* Load redemptions */
+    supaGetSetting("gamify_redemptions").then(r => { if(r) try { setRedemptions(typeof r==="string"?JSON.parse(r):r); } catch(e){} });
   }, [xpLoaded]);
+
+  const redeemReward = async (reward) => {
+    if (me.xp < reward.cost) return showToast("XP insuficiente");
+    const entry = { id:Date.now(), rewardId:reward.id, rewardName:reward.name, userId:user?.id, userName:user?.name||"—", cost:reward.cost, date:new Date().toISOString(), status:"pending" };
+    const updated = [...redemptions, entry];
+    setRedemptions(updated);
+    await supaSetSetting("gamify_redemptions", JSON.stringify(updated));
+    /* Deduct XP */
+    await supaAwardXp(user?.id, "redeem", -reward.cost, `Resgate: ${reward.name}`);
+    setXpLoaded(false);
+    setRedeemConfirm(false);
+    setSelReward(null);
+    showToast(`${reward.name} resgatado! O admin será notificado ✓`);
+  };
 
   /* ── LEVELS ── */
   const LEVELS = [
@@ -15182,7 +15199,27 @@ function GamifyPage({ onBack, user, team }) {
   const sorted = [...teamData].sort((a,b) => b.xp - a.xp);
   const me = teamData.find(t => t.user_id === user?.id) || teamData[0] || { id:0, name:"—", xp:0, events:[], badges:[] };
   /* Derive badges from XP events (action=badge) */
-  const myBadges = (me?.events || []).filter(e => e.action === "badge").map(e => e.description);
+  const myBadgeNames = (me?.events || []).filter(e => e.action === "badge").map(e => e.description);
+  /* Also auto-check based on real activity */
+  const myPosts = (me?.events||[]).filter(e=>e.action==="post_published"||e.action==="reels").length;
+  const myTasks = (me?.events||[]).filter(e=>e.action==="task_done").length;
+  const myCheckins = (me?.events||[]).filter(e=>e.action==="checkin").length;
+  const myVideos = (me?.events||[]).filter(e=>e.action==="reels").length;
+  const autoEarned = id => {
+    if(id==="firstPost") return myPosts >= 1;
+    if(id==="streak7") return myCheckins >= 7;
+    if(id==="streak30") return myCheckins >= 30;
+    if(id==="speed") return myTasks >= 5;
+    if(id==="creative50") return myPosts >= 50;
+    if(id==="volume100") return myTasks >= 100;
+    if(id==="videoMaster") return myVideos >= 20;
+    if(id==="xp500") return (me?.xp||0) >= 500;
+    if(id==="xp2000") return (me?.xp||0) >= 2000;
+    if(id==="xp5000") return (me?.xp||0) >= 5000;
+    if(id==="xp10000") return (me?.xp||0) >= 10000;
+    return false;
+  };
+  const isBadgeEarned = b => myBadgeNames.includes(b.name) || autoEarned(b.id);
   const myLevel = getLevel(me?.xp || 0);
   const xpProgress = myLevel ? ((me.xp - myLevel.min) / (myLevel.max - myLevel.min)) * 100 : 0;
   const myRank = sorted.findIndex(t => t.user_id === me?.user_id) + 1;
@@ -15204,6 +15241,10 @@ function GamifyPage({ onBack, user, team }) {
     { id:"videoMaster", emoji:"🎬", name:"Cineasta", desc:"Produziu 20+ vídeos/reels", xpReward:300, rarity:"Raro" },
     { id:"revenue", emoji:"💰", name:"Gerador", desc:"Contribuiu para R$50k+ em receita", xpReward:500, rarity:"Lendário" },
     { id:"perfect", emoji:"🏆", name:"Perfeição", desc:"100% de entregas no prazo por 30 dias", xpReward:600, rarity:"Lendário" },
+    { id:"xp500", emoji:"🌟", name:"Estrela Nascente", desc:"Acumulou 500 XP no total", xpReward:0, rarity:"Comum" },
+    { id:"xp2000", emoji:"💫", name:"Ascensão", desc:"Acumulou 2.000 XP no total", xpReward:0, rarity:"Raro" },
+    { id:"xp5000", emoji:"🌙", name:"Veterano", desc:"Acumulou 5.000 XP no total", xpReward:0, rarity:"Épico" },
+    { id:"xp10000", emoji:"👑", name:"Lendário", desc:"Acumulou 10.000 XP no total", xpReward:0, rarity:"Lendário" },
   ];
 
   const rarityColor = r => ({ "Comum":B.muted, "Raro":B.blue, "Épico":B.purple, "Lendário":"#F59E0B" }[r] || B.muted);
@@ -15218,15 +15259,16 @@ function GamifyPage({ onBack, user, team }) {
   ];
 
   /* ── REWARDS SHOP ── */
+  const RwdIcon = ({d,c="#666"}) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
   const REWARDS = [
-    { id:1, name:"Day Off Extra", desc:"Um dia de folga adicional no mês", cost:3000, icon:"🏖️", cat:"Benefício", stock:2 },
-    { id:2, name:"Almoço com o CEO", desc:"Almoço especial para trocar ideias", cost:1500, icon:"🍽️", cat:"Experiência", stock:4 },
-    { id:3, name:"Gift Card R$100", desc:"Cartão presente para usar onde quiser", cost:2000, icon:"🎁", cat:"Prêmio", stock:5 },
-    { id:4, name:"Home Office Flexível", desc:"1 semana de home office livre", cost:2500, icon:"🏠", cat:"Benefício", stock:3 },
-    { id:5, name:"Curso Online", desc:"Curso à escolha pago pela agência", cost:4000, icon:"📚", cat:"Desenvolvimento", stock:3 },
-    { id:6, name:"Bônus R$250", desc:"Bônus direto no salário", cost:5000, icon:"💵", cat:"Prêmio", stock:2 },
-    { id:7, name:"Cadeira Ergonômica", desc:"Upgrade para cadeira premium", cost:6000, icon:"🪑", cat:"Escritório", stock:1 },
-    { id:8, name:"Horário Flexível", desc:"1 mês de horário flexível", cost:3500, icon:"⏰", cat:"Benefício", stock:2 },
+    { id:1, name:"Day Off Extra", desc:"Um dia de folga adicional no mês", cost:3000, icon:<RwdIcon d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" c={B.blue}/>, cat:"Benefício", stock:2 },
+    { id:2, name:"Almoço Especial", desc:"Almoço especial com a liderança", cost:1500, icon:<RwdIcon d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" c={B.orange}/>, cat:"Experiência", stock:4 },
+    { id:3, name:"Gift Card R$100", desc:"Cartão presente de R$100 à escolha", cost:2000, icon:<RwdIcon d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 110-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 100-5C13 2 12 7 12 7z" c={B.accent}/>, cat:"Prêmio", stock:5 },
+    { id:4, name:"Home Office Flex", desc:"1 semana de home office livre", cost:2500, icon:<RwdIcon d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10" c={B.green}/>, cat:"Benefício", stock:3 },
+    { id:5, name:"Curso Online", desc:"Curso à escolha pago pela agência", cost:4000, icon:<RwdIcon d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z" c={B.purple}/>, cat:"Desenvolvimento", stock:3 },
+    { id:6, name:"Bônus R$250", desc:"Bônus adicional no próximo salário", cost:5000, icon:<RwdIcon d="M12 1v22M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6" c={B.green}/>, cat:"Prêmio", stock:2 },
+    { id:7, name:"Setup Upgrade", desc:"Upgrade de equipamento do escritório", cost:6000, icon:<RwdIcon d="M20 7h-9M14 17H5M17 17a3 3 0 100-6 3 3 0 000 6zM7 7a3 3 0 100-6 3 3 0 000 6z" c={B.cyan}/>, cat:"Escritório", stock:1 },
+    { id:8, name:"Horário Flexível", desc:"1 mês de horário flexível", cost:3500, icon:<RwdIcon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2" c={B.blue}/>, cat:"Benefício", stock:2 },
   ];
 
   /* ── XP HISTORY (real from Supabase) ── */
@@ -15370,19 +15412,51 @@ function GamifyPage({ onBack, user, team }) {
               </>}
               {/* ═══ BADGES TAB ═══ */}
               {tab==="badges" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>🏅 Conquistas</h3>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:12 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+                  <div><h3 style={{ fontSize:20, fontWeight:900 }}>Conquistas</h3><p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{ALL_BADGES.filter(b=>isBadgeEarned(b)).length} de {ALL_BADGES.length} desbloqueadas</p></div>
+                  <div style={{ display:"flex", gap:10 }}>
+                    {["Comum","Raro","Épico","Lendário"].map(r=>{const cnt=ALL_BADGES.filter(b=>b.rarity===r&&isBadgeEarned(b)).length;const tot=ALL_BADGES.filter(b=>b.rarity===r).length;return(
+                      <div key={r} style={{ textAlign:"center", padding:"8px 14px", borderRadius:10, background:`${rarityColor(r)}08` }}>
+                        <p style={{ fontSize:14, fontWeight:800, color:rarityColor(r) }}>{cnt}/{tot}</p>
+                        <p style={{ fontSize:9, color:B.muted }}>{r}</p>
+                      </div>
+                    );})}
+                  </div>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:14 }}>
                   {ALL_BADGES.map(b => {
-                    const earned = myBadges.includes(b.name);
+                    const earned = isBadgeEarned(b);
+                    /* Progress calc */
+                    let prog = earned ? 100 : 0;
+                    if(!earned) {
+                      if(b.id==="firstPost") prog = Math.min(99,Math.round(myPosts/1*100));
+                      else if(b.id==="streak7") prog = Math.min(99,Math.round(myCheckins/7*100));
+                      else if(b.id==="streak30") prog = Math.min(99,Math.round(myCheckins/30*100));
+                      else if(b.id==="speed") prog = Math.min(99,Math.round(myTasks/5*100));
+                      else if(b.id==="creative50") prog = Math.min(99,Math.round(myPosts/50*100));
+                      else if(b.id==="volume100") prog = Math.min(99,Math.round(myTasks/100*100));
+                      else if(b.id==="videoMaster") prog = Math.min(99,Math.round(myVideos/20*100));
+                      else if(b.id==="xp500") prog = Math.min(99,Math.round((me?.xp||0)/500*100));
+                      else if(b.id==="xp2000") prog = Math.min(99,Math.round((me?.xp||0)/2000*100));
+                      else if(b.id==="xp5000") prog = Math.min(99,Math.round((me?.xp||0)/5000*100));
+                      else if(b.id==="xp10000") prog = Math.min(99,Math.round((me?.xp||0)/10000*100));
+                    }
                     return (
-                      <div key={b.id} onClick={()=>setSelBadge(b)} style={{ padding:"20px 16px", borderRadius:16, border:`1.5px solid ${earned?B.accent:B.border}`, background:earned?`${B.accent}06`:"transparent", cursor:"pointer", textAlign:"center", opacity:earned?1:0.6, transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                        <span style={{ fontSize:36, display:"block", marginBottom:8 }}>{b.emoji}</span>
-                        <p style={{ fontSize:14, fontWeight:700 }}>{b.name}</p>
-                        <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.4 }}>{b.desc}</p>
-                        <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:10 }}>
-                          <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:6, background:`${rarityColor(b.rarity)}15`, color:rarityColor(b.rarity) }}>{b.rarity}</span>
-                          <span style={{ fontSize:10, fontWeight:700, color:B.accent }}>+{b.xpReward} XP</span>
+                      <div key={b.id} style={{ padding:"20px", borderRadius:18, border:earned?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:earned?`${B.accent}04`:(B.bgCard||"#fff"), transition:"all .25s", position:"relative", overflow:"hidden" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                        {earned && <div style={{ position:"absolute", top:12, right:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={B.accent} stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="16 8 10 14 7 11" stroke="#fff" strokeWidth="2.5" fill="none"/></svg></div>}
+                        <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:12 }}>
+                          <div style={{ width:48, height:48, borderRadius:14, background:earned?`${B.accent}15`:`${rarityColor(b.rarity)}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{b.emoji}</div>
+                          <div style={{ flex:1 }}>
+                            <p style={{ fontSize:15, fontWeight:800, color:earned?B.text:B.muted }}>{b.name}</p>
+                            <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:6, background:`${rarityColor(b.rarity)}12`, color:rarityColor(b.rarity) }}>{b.rarity}{b.xpReward>0?` · +${b.xpReward} XP`:""}</span>
+                          </div>
                         </div>
+                        <p style={{ fontSize:12, color:B.muted, lineHeight:1.5, marginBottom:12 }}>{b.desc}</p>
+                        {/* Progress bar */}
+                        <div style={{ background:`${B.border}50`, borderRadius:6, height:6, overflow:"hidden" }}>
+                          <div style={{ width:`${prog}%`, height:"100%", borderRadius:6, background:earned?B.accent:rarityColor(b.rarity), transition:"width .5s" }}/>
+                        </div>
+                        <p style={{ fontSize:10, color:earned?B.accent:B.muted, fontWeight:600, marginTop:6, textAlign:"right" }}>{earned?"Desbloqueada ✓":`${prog}%`}</p>
                       </div>
                     );
                   })}
@@ -15390,34 +15464,52 @@ function GamifyPage({ onBack, user, team }) {
               </>}
               {/* ═══ REWARDS TAB ═══ */}
               {tab==="rewards" && <>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-                  <h3 style={{ fontSize:20, fontWeight:900 }}>🛒 Loja de Recompensas</h3>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:10, background:`${B.accent}10` }}>
-                    <span style={{ fontSize:16, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()} XP</span>
-                    <span style={{ fontSize:11, color:B.muted }}>disponíveis</span>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+                  <div><h3 style={{ fontSize:20, fontWeight:900 }}>Recompensas</h3><p style={{ fontSize:12, color:B.muted, marginTop:2 }}>Troque seu XP por benefícios reais</p></div>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 20px", borderRadius:14, background:B.dark }}>
+                    <span style={{ fontSize:20, fontWeight:900, color:B.accent }}>{me.xp.toLocaleString()}</span>
+                    <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>XP disponíveis</span>
                   </div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:14 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:16 }}>
                   {REWARDS.map(r => {
                     const canBuy = me.xp >= r.cost;
+                    const pending = redemptions.some(rd=>rd.rewardId===r.id && rd.userId===user?.id && rd.status==="pending");
                     return (
-                      <div key={r.id} onClick={()=>setSelReward(r)} style={{ padding:"20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
-                          <span style={{ fontSize:32 }}>{r.icon}</span>
-                          <div style={{ flex:1 }}>
-                            <p style={{ fontSize:15, fontWeight:800 }}>{r.name}</p>
-                            <p style={{ fontSize:11, color:B.muted }}>{r.desc}</p>
+                      <div key={r.id} style={{ display:"flex", alignItems:"center", gap:16, padding:"20px 22px", borderRadius:18, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                        <div style={{ width:52, height:52, borderRadius:16, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{r.icon}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ fontSize:15, fontWeight:800 }}>{r.name}</p>
+                          <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{r.desc}</p>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+                            <span style={{ fontSize:10, fontWeight:600, padding:"3px 10px", borderRadius:6, background:B.bg, color:B.muted }}>{r.cat}</span>
+                            <span style={{ fontSize:10, color:B.muted }}>{r.stock} restantes</span>
                           </div>
                         </div>
-                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                          <span style={{ fontSize:14, fontWeight:800, color:canBuy?B.accent:B.red }}>{r.cost.toLocaleString()} XP</span>
-                          <span style={{ fontSize:10, color:B.muted }}>{r.stock} disponíveis</span>
-                          <span style={{ fontSize:10, fontWeight:600, padding:"3px 10px", borderRadius:6, background:canBuy?`${B.green}15`:`${B.red}10`, color:canBuy?B.green:B.red }}>{canBuy?"Pode resgatar":"XP insuficiente"}</span>
+                        <div style={{ textAlign:"center", flexShrink:0 }}>
+                          <p style={{ fontSize:18, fontWeight:900, color:canBuy?B.text:B.muted, marginBottom:8 }}>{r.cost.toLocaleString()}<span style={{ fontSize:10, fontWeight:600 }}> XP</span></p>
+                          {pending ? <span style={{ display:"block", padding:"8px 16px", borderRadius:10, background:`${B.orange}12`, fontSize:12, fontWeight:700, color:B.orange }}>Pendente</span>
+                          : <button onClick={()=>{setSelReward(r);setRedeemConfirm(true);}} disabled={!canBuy} style={{ padding:"10px 20px", borderRadius:12, background:canBuy?B.accent:`${B.border}`, border:"none", cursor:canBuy?"pointer":"default", fontFamily:"inherit", fontSize:13, fontWeight:700, color:canBuy?B.dark:B.muted }}>Resgatar</button>}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                {/* Admin: pending redemptions */}
+                {isAdmin && redemptions.filter(r=>r.status==="pending").length>0 && <div style={{ marginTop:28, borderTop:`1px solid ${B.border}`, paddingTop:20 }}>
+                  <h4 style={{ fontSize:16, fontWeight:800, marginBottom:14, color:B.orange }}>Resgates Pendentes (Admin)</h4>
+                  {redemptions.filter(r=>r.status==="pending").map(rd => (
+                    <div key={rd.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 18px", borderRadius:14, border:`1.5px solid ${B.orange}20`, background:`${B.orange}04`, marginBottom:8 }}>
+                      <Av name={rd.userName} sz={36} fs={13}/>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:14, fontWeight:700 }}>{rd.userName} <span style={{ fontWeight:400, color:B.muted }}>quer resgatar</span> <strong>{rd.rewardName}</strong></p>
+                        <p style={{ fontSize:11, color:B.muted }}>{new Date(rd.date).toLocaleDateString("pt-BR")} · {rd.cost.toLocaleString()} XP</p>
+                      </div>
+                      <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"approved"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));showToast("Aprovado ✓");}} style={{ padding:"8px 16px", borderRadius:10, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>Aprovar</button>
+                      <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"rejected"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));await supaAwardXp(rd.userId,"refund",rd.cost,`Reembolso: ${rd.rewardName}`);setXpLoaded(false);showToast("Rejeitado + XP devolvido ✓");}} style={{ padding:"8px 16px", borderRadius:10, background:`${B.red}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Rejeitar</button>
+                    </div>
+                  ))}
+                </div>}
               </>}
               {/* ═══ HISTORY TAB ═══ */}
               {tab==="history" && <>
@@ -15439,6 +15531,26 @@ function GamifyPage({ onBack, user, team }) {
             </div>
           </div>
         </div>
+        {/* Redeem confirmation modal */}
+        {redeemConfirm && selReward && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>{setRedeemConfirm(false);setSelReward(null);}}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard||"#fff", borderRadius:24, padding:"32px", maxWidth:400, width:"90%", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ textAlign:"center", marginBottom:20 }}>
+              <div style={{ width:56, height:56, borderRadius:16, background:B.bg, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}>{selReward.icon}</div>
+              <h3 style={{ fontSize:20, fontWeight:900 }}>{selReward.name}</h3>
+              <p style={{ fontSize:13, color:B.muted, marginTop:4 }}>{selReward.desc}</p>
+            </div>
+            <div style={{ background:B.bg, borderRadius:14, padding:"16px", marginBottom:20 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}><span style={{ fontSize:13, color:B.muted }}>Custo</span><span style={{ fontSize:15, fontWeight:800 }}>{selReward.cost.toLocaleString()} XP</span></div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}><span style={{ fontSize:13, color:B.muted }}>Seu saldo</span><span style={{ fontSize:15, fontWeight:800, color:B.accent }}>{me.xp.toLocaleString()} XP</span></div>
+              <div style={{ display:"flex", justifyContent:"space-between", borderTop:`1px solid ${B.border}`, paddingTop:8 }}><span style={{ fontSize:13, fontWeight:700 }}>Após resgate</span><span style={{ fontSize:15, fontWeight:800, color:B.green }}>{(me.xp-selReward.cost).toLocaleString()} XP</span></div>
+            </div>
+            <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginBottom:16 }}>O resgate será enviado para aprovação do admin</p>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>{setRedeemConfirm(false);setSelReward(null);}} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:600 }}>Cancelar</button>
+              <button onClick={()=>redeemReward(selReward)} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>Confirmar</button>
+            </div>
+          </div>
+        </div>}
       </div>
     );
   }
@@ -15678,13 +15790,13 @@ function GamifyPage({ onBack, user, team }) {
       {/* ═══ BADGES TAB ═══ */}
       {tab === "badges" && <>
         <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.accent }}>{myBadges.length}</p><p style={{ fontSize:10, color:B.muted }}>Conquistadas</p></Card>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.accent }}>{ALL_BADGES.filter(b=>isBadgeEarned(b)).length}</p><p style={{ fontSize:10, color:B.muted }}>Conquistadas</p></Card>
           <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800 }}>{ALL_BADGES.length}</p><p style={{ fontSize:10, color:B.muted }}>Total</p></Card>
-          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.purple }}>{ALL_BADGES.filter(b=>b.rarity==="Épico"||b.rarity==="Lendário").filter(b=>myBadges.includes(b.id)).length}</p><p style={{ fontSize:10, color:B.muted }}>Raras+</p></Card>
+          <Card style={{ flex:1, textAlign:"center", padding:12 }}><p style={{ fontSize:20, fontWeight:800, color:B.purple }}>{ALL_BADGES.filter(b=>(b.rarity==="Épico"||b.rarity==="Lendário")&&isBadgeEarned(b)).length}</p><p style={{ fontSize:10, color:B.muted }}>Raras+</p></Card>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
           {ALL_BADGES.map((b, i) => {
-            const earned = myBadges.includes(b.id);
+            const earned = isBadgeEarned(b);
             return (
               <Card key={b.id} delay={i*0.03} onClick={() => setSelBadge(b.id)} style={{ cursor:"pointer", textAlign:"center", padding:14, opacity:earned?1:0.4, border:earned?`1.5px solid ${rarityColor(b.rarity)}30`:"none" }}>
                 <span style={{ fontSize:28, display:"block", marginBottom:6, filter:earned?"none":"grayscale(1)" }}>{b.emoji}</span>
@@ -15755,7 +15867,7 @@ function GamifyPage({ onBack, user, team }) {
       {selBadge && (() => {
         const b = ALL_BADGES.find(x => x.id === selBadge);
         if (!b) return null;
-        const earned = myBadges.includes(selBadge);
+        const earned = selBadge ? isBadgeEarned(selBadge) : false;
         return (
           <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:50, background:B.bg, overflowY:"auto", paddingLeft:16, paddingRight:16, paddingTop:TOP }}>
             <div style={{ paddingTop:16 }}>
