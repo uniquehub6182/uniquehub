@@ -16230,9 +16230,10 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   const curModel = AI_MODELS.find(m=>m.k===selModel) || AI_MODELS[0];
 
   if (isAIDesktop) {
-    const pinned = conversations.filter(c => c.pinned);
-    const recent = conversations.filter(c => !c.pinned);
-    const showConvs = searchQ.trim() ? conversations.filter(c => c.title.toLowerCase().includes(searchQ.toLowerCase())) : [...pinned, ...recent];
+    const modelConvs = conversations.filter(c => !c.model || c.model === selModel);
+    const pinned = modelConvs.filter(c => c.pinned);
+    const recent = modelConvs.filter(c => !c.pinned);
+    const showConvs = searchQ.trim() ? modelConvs.filter(c => c.title.toLowerCase().includes(searchQ.toLowerCase())) : [...pinned, ...recent];
     const hasChat = view === "chat";
     const hasMessages = hasChat && messages.length > 0;
 
@@ -16250,7 +16251,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
             <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
               <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Modelo de IA</p>
               {AI_MODELS.map(m => (
-                <div key={m.k} onClick={()=>{setSelModel(m.k);supaSetSetting("ai_keys",JSON.stringify({...aiKeys,ai_provider:m.k}));setAiKeys(p=>({...p,ai_provider:m.k}));}} style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"12px", borderRadius:14, cursor:"pointer", background:selModel===m.k?`${m.c}08`:"transparent", border:selModel===m.k?`1.5px solid ${m.c}25`:"1.5px solid transparent", marginBottom:6, transition:"all .15s" }} onMouseEnter={e=>{if(selModel!==m.k)e.currentTarget.style.background=`${m.c}04`;}} onMouseLeave={e=>{if(selModel!==m.k)e.currentTarget.style.background="transparent";}}>
+                <div key={m.k} onClick={()=>{if(selModel===m.k)return;setSelModel(m.k);supaSetSetting("ai_keys",JSON.stringify({...aiKeys,ai_provider:m.k}));setAiKeys(p=>({...p,ai_provider:m.k}));setActiveChat(null);setMessages([]);setView("history");setInput("");}} style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"12px", borderRadius:14, cursor:"pointer", background:selModel===m.k?`${m.c}08`:"transparent", border:selModel===m.k?`1.5px solid ${m.c}25`:"1.5px solid transparent", marginBottom:6, transition:"all .15s" }} onMouseEnter={e=>{if(selModel!==m.k)e.currentTarget.style.background=`${m.c}04`;}} onMouseLeave={e=>{if(selModel!==m.k)e.currentTarget.style.background="transparent";}}>
                   <div style={{ width:36, height:36, borderRadius:10, background:`${m.c}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>{m.logo}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -16266,7 +16267,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
             <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted, flex:1 }}>Histórico</p>
-                <span style={{ fontSize:10, color:B.muted }}>{conversations.length}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{modelConvs.length}</span>
               </div>
               <div style={{ padding:"6px 8px", borderBottom:`1px solid ${B.border}` }}>
                 <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar conversas..." style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, outline:"none", background:"transparent" }}/>
