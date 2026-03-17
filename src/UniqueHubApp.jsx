@@ -17211,6 +17211,7 @@ function PlaceholderPage({ title, onBack, icon }) {
 
 /* ═══════════════════════ MATCH4BIZ (AGENCY PANEL) ═══════════════════════ */
 function Match4BizPage({ onBack, clients, user }) {
+  const isM4bDesktop = useIsDesktop();
   const [view, setView] = useState("dashboard");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selMatch, setSelMatch] = useState(null);
@@ -17296,8 +17297,214 @@ function Match4BizPage({ onBack, clients, user }) {
     showToast("Match excluído ✓");
   };
 
+  /* ── DESKTOP MATCH4BIZ ── */
+  if (isM4bDesktop) {
+    const m = selMatch ? (matches.find(x=>x.id===selMatch.id) || selMatch) : null;
+    const st = m ? (statusMap[m.status] || statusMap.new) : null;
+    const hasRight = !!(m || creating);
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
+          {/* LEFT: Stats + List */}
+          <div style={{ width:hasRight?340:undefined, flex:hasRight?undefined:1, flexShrink:0, display:"flex", flexDirection:"column", gap:10, minWidth:0, overflowY:"auto" }}>
+            {/* Stats */}
+            <div style={{ display:"grid", gridTemplateColumns:hasRight?"1fr 1fr":"repeat(4, 1fr)", gap:8 }}>
+              {[
+                { l:"Matches", v:totalMatches, c:B.accent, ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg> },
+                { l:"Receita Taxas", v:`R$ ${totalFees.toLocaleString("pt-BR")}`, c:B.green, ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
+                { l:"Em andamento", v:activeDeals, c:B.orange, ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+                { l:"Conversão", v:`${conversionRate}%`, c:B.purple, ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.purple} strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
+              ].map((s,i) => (
+                <div key={i} style={{ background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border}`, padding:"14px 16px", display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:`${s.c}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{s.ic}</div>
+                  <div><p style={{ fontSize:18, fontWeight:800, color:s.c }}>{s.v}</p><p style={{ fontSize:10, color:B.muted }}>{s.l}</p></div>
+                </div>
+              ))}
+            </div>
+            {/* Filters + New button */}
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ display:"flex", gap:4, flex:1, flexWrap:"wrap" }}>
+                {[{k:"all",l:`Todos (${totalMatches})`},...Object.entries(statusMap).map(([k,v])=>({k,l:`${v.l} (${matches.filter(x=>x.status===k).length})`}))].map(f=>(
+                  <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${filter===f.k?B.accent:B.border}`, background:filter===f.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted }}>{f.l}</button>
+                ))}
+              </div>
+              {isAdmin && <button onClick={()=>{setCreating(true);setSelMatch(null);setCreateForm({a:"",b:"",fee:"150"});}} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>+ Novo Match</button>}
+            </div>
+            {/* Match list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+                {!matchesLoaded && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:12 }}>Carregando...</p>}
+                {matchesLoaded && filtered.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:30, fontSize:13 }}>Nenhum match</p>}
+                {filtered.map(match => {
+                  const isSel = selMatch?.id === match.id;
+                  const mst = statusMap[match.status] || statusMap.new;
+                  const confirmCount = [match.admin_confirmed, match.client_a_confirmed, match.client_b_confirmed].filter(Boolean).length;
+                  return (
+                    <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent", marginBottom:4 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
+                      {/* Avatars */}
+                      <div style={{ display:"flex", alignItems:"center" }}>
+                        <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:B.accent }}>{match.client_a_name?.[0]||"A"}</div>
+                        <div style={{ width:20, height:20, borderRadius:6, background:B.bgCard||"#fff", border:`1.5px solid ${B.accent}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 -6px", zIndex:1 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                        </div>
+                        <div style={{ width:36, height:36, borderRadius:10, background:`${B.purple}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, color:B.purple }}>{match.client_b_name?.[0]||"B"}</div>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:13, fontWeight:700 }}>{match.client_a_name?.split(" ").slice(0,2).join(" ")} × {match.client_b_name?.split(" ").slice(0,2).join(" ")}</p>
+                        <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:4 }}>
+                          <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:6, background:mst.bg, color:mst.c }}>{mst.l}</span>
+                          {confirmCount>0 && <span style={{ fontSize:9, color:B.green }}>✓ {confirmCount}/3</span>}
+                          {(match.messages||[]).length>0 && <span style={{ fontSize:9, color:B.muted }}>💬 {(match.messages||[]).length}</span>}
+                        </div>
+                      </div>
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        {match.value>0 && <p style={{ fontSize:13, fontWeight:800, color:B.green }}>R$ {match.value.toLocaleString("pt-BR")}</p>}
+                        <p style={{ fontSize:10, color:B.muted }}>{new Date(match.created_at).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* RIGHT: Detail or Create */}
+          {hasRight && <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            {creating ? <>
+              {/* Create form */}
+              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <p style={{ fontSize:18, fontWeight:800 }}>Novo Match</p>
+                <button onClick={()=>setCreating(false)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Empresa A</label>
+                    <select value={createForm.a} onChange={e=>setCreateForm(p=>({...p,a:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14 }}>
+                      <option value="">Selecione...</option>
+                      {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Empresa B</label>
+                    <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14 }}>
+                      <option value="">Selecione...</option>
+                      {CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginBottom:20 }}>
+                  <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Taxa do Match (R$ por empresa)</label>
+                  <input type="number" value={createForm.fee} onChange={e=>setCreateForm(p=>({...p,fee:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:16, fontWeight:700 }} placeholder="150"/>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:6 }}>Cada empresa paga esta taxa. Total para a agência: R$ {((parseFloat(createForm.fee)||0)*2).toLocaleString("pt-BR")}</p>
+                </div>
+                <button onClick={handleCreateMatch} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>Criar Match</button>
+              </div>
+            </> : m ? <>
+              {/* Match detail */}
+              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
+                <button onClick={()=>setSelMatch(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>{m.client_a_name?.split(" ").slice(0,2).join(" ")} × {m.client_b_name?.split(" ").slice(0,2).join(" ")}</p></div>
+                <span style={{ fontSize:12, fontWeight:700, padding:"5px 14px", borderRadius:10, background:st.bg, color:st.c }}>{st.l}</span>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
+                {/* Companies card */}
+                <div style={{ display:"flex", alignItems:"center", gap:20, padding:"20px", borderRadius:16, background:B.bg, marginBottom:20 }}>
+                  <div style={{ flex:1, textAlign:"center" }}>
+                    <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:700, color:B.accent, margin:"0 auto 8px" }}>{m.client_a_name?.[0]||"A"}</div>
+                    <p style={{ fontSize:15, fontWeight:800 }}>{m.client_a_name}</p>
+                    <span style={{ fontSize:10, fontWeight:600, color:m.client_a_confirmed?B.green:B.muted }}>{m.client_a_confirmed?"✓ Confirmou":"Pendente"}</span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                    <p style={{ fontSize:9, fontWeight:700, color:B.muted }}>MATCH</p>
+                  </div>
+                  <div style={{ flex:1, textAlign:"center" }}>
+                    <div style={{ width:56, height:56, borderRadius:16, background:`${B.purple}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:700, color:B.purple, margin:"0 auto 8px" }}>{m.client_b_name?.[0]||"B"}</div>
+                    <p style={{ fontSize:15, fontWeight:800 }}>{m.client_b_name}</p>
+                    <span style={{ fontSize:10, fontWeight:600, color:m.client_b_confirmed?B.green:B.muted }}>{m.client_b_confirmed?"✓ Confirmou":"Pendente"}</span>
+                  </div>
+                </div>
+                {/* Status + Fee */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
+                  <div>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>STATUS</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {Object.entries(statusMap).map(([k,v])=>(
+                        <button key={k} onClick={()=>updateStatus(m.id,k)} style={{ padding:"7px 14px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:12, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
+                      ))}
+                    </div>
+                    {m.status==="closed_won" && <div style={{ marginTop:10 }}>
+                      <label style={{ fontSize:11, fontWeight:600, color:B.muted }}>Valor do negócio (R$)</label>
+                      <input value={m.value||""} onChange={e=>updateValue(m.id,e.target.value)} type="number" placeholder="0,00" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:16, fontWeight:700, marginTop:4 }}/>
+                    </div>}
+                  </div>
+                  <div>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>TAXA E RECEITA</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <div style={{ flex:1, padding:"12px", borderRadius:12, background:`${B.green}08`, textAlign:"center" }}>
+                        <p style={{ fontSize:9, color:B.muted }}>Taxa/empresa</p>
+                        <p style={{ fontSize:18, fontWeight:800, color:B.green }}>R$ {(parseFloat(m.match_fee)||0).toLocaleString("pt-BR")}</p>
+                      </div>
+                      <div style={{ flex:1, padding:"12px", borderRadius:12, background:`${B.accent}08`, textAlign:"center" }}>
+                        <p style={{ fontSize:9, color:B.muted }}>Receita total</p>
+                        <p style={{ fontSize:18, fontWeight:800, color:B.accent }}>R$ {((parseFloat(m.match_fee)||0)*2).toLocaleString("pt-BR")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Confirmations */}
+                <div style={{ marginBottom:20 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>CONFIRMAÇÕES</p>
+                  <div style={{ display:"flex", gap:8 }}>
+                    {[{key:"admin_confirmed",name:"Admin",c:B.accent},{key:"client_a_confirmed",name:m.client_a_name,c:B.blue},{key:"client_b_confirmed",name:m.client_b_name,c:B.purple}].map(cf=>(
+                      <div key={cf.key} style={{ flex:1, padding:"12px", borderRadius:12, background:m[cf.key]?`${B.green}06`:`${B.muted}04`, border:`1.5px solid ${m[cf.key]?B.green+"25":B.border}`, textAlign:"center" }}>
+                        <p style={{ fontSize:12, fontWeight:700 }}>{cf.name?.split(" ")[0]}</p>
+                        {m[cf.key] ? <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:4 }}>✓ Confirmado</p>
+                        : isAdmin ? <button onClick={()=>{const upd={[cf.key]:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast("Confirmado ✓");}} style={{ marginTop:4, padding:"4px 12px", borderRadius:6, background:cf.c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:"#fff" }}>Confirmar</button>
+                        : <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Pendente</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Chat */}
+                <div style={{ borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+                  <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, background:B.bg }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:B.muted }}>HISTÓRICO DE CONVERSA ({(m.messages||[]).length})</p>
+                  </div>
+                  <div style={{ maxHeight:250, overflowY:"auto", padding:"12px 14px" }}>
+                    {(m.messages||[]).length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhuma mensagem</p>}
+                    {(m.messages||[]).map((msg,i) => {
+                      const isAg = msg.from==="agency";
+                      return (
+                        <div key={i} style={{ padding:"10px 12px", borderRadius:12, background:isAg?`${B.accent}06`:`${B.muted}04`, marginBottom:6, border:isAg?`1px solid ${B.accent}10`:"none" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
+                            <span style={{ fontSize:11, fontWeight:700, color:isAg?B.accent:B.text }}>{msg.from==="a"?m.client_a_name:msg.from==="b"?m.client_b_name:"Unique Marketing"}</span>
+                            <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
+                          </div>
+                          <p style={{ fontSize:13, lineHeight:1.5 }}>{msg.text}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
+                    <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg(m.id)} placeholder="Intervir na conversa..." style={{ flex:1, padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, outline:"none" }}/>
+                    <button onClick={()=>sendMsg(m.id)} disabled={!msgInput.trim()} style={{ padding:"10px 18px", borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}20`, border:"none", cursor:msgInput.trim()?"pointer":"default", fontFamily:"inherit", fontSize:12, fontWeight:700, color:msgInput.trim()?B.dark:B.muted }}>Enviar</button>
+                  </div>
+                </div>
+                {/* Admin delete */}
+                {isAdmin && <button onClick={()=>deleteMatch(m.id)} style={{ marginTop:16, width:"100%", padding:"10px 0", borderRadius:12, background:`${B.red}06`, border:`1px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>Excluir match</button>}
+              </div>
+            </> : null}
+          </div>}
+        </div>
+      </div>
+    );
+  }
+
   /* ── MATCH DETAIL ── */
-  if (view === "detail" && selMatch) {
+  if (view === "detail" && selMatch && !isM4bDesktop) {
     const m = matches.find(x => x.id === selMatch.id) || selMatch;
     const st = statusMap[m.status] || statusMap.new;
     return (
@@ -17427,7 +17634,7 @@ function Match4BizPage({ onBack, clients, user }) {
   }
 
   /* ── MATCHES LIST ── */
-  if (view === "list") {
+  if (view === "list" && !isM4bDesktop) {
     return (
       <div className="pg">
         {ToastEl}
