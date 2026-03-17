@@ -15652,6 +15652,7 @@ function GamifyPage({ onBack, user, team }) {
 }
 
 function AIPage({ onBack, user, agencyIdentity, isClientView }) {
+  const isAIDesktop = useIsDesktop();
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
@@ -15858,6 +15859,110 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   };
 
   /* ═══ HISTORY VIEW ═══ */
+  /* ── DESKTOP AI — SIDEBAR + CHAT ── */
+  if (isAIDesktop) {
+    const pinned = conversations.filter(c => c.pinned);
+    const recent = conversations.filter(c => !c.pinned);
+    const q = searchQ.toLowerCase().trim();
+    const filteredConvs = q ? conversations.filter(c => c.title.toLowerCase().includes(q) || c.messages.some(m => m.content.toLowerCase().includes(q))) : null;
+    const showConvs = filteredConvs || [...pinned, ...recent];
+    const hasChat = view === "chat";
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
+          {/* LEFT: History + Presets */}
+          <div style={{ width:300, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* New chat button */}
+            <button onClick={startNewChat} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Conversa
+            </button>
+            {/* Search */}
+            <div style={{ position:"relative" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar conversas..." style={{ width:"100%", padding:"10px 12px 10px 36px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", fontFamily:"inherit", fontSize:12, outline:"none" }}/>
+            </div>
+            {/* Conversation list */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
+                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Conversas ({conversations.length})</p>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"4px 6px" }}>
+                {showConvs.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhuma conversa</p>}
+                {showConvs.map(c => {
+                  const isSel = activeChat === c.id && hasChat;
+                  return (
+                    <div key={c.id} onClick={()=>openChat(c)} style={{ display:"flex", gap:10, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{IC.ai(B.accent)}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, fontWeight:isSel?700:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.pinned?"📌 ":""}{c.title}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{c.date} · {c.messages?.length||0} msgs</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          {/* RIGHT: Chat area */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            {(!hasChat || (hasChat && messages.length===0 && !loading)) ? <>
+              {/* Empty state — presets */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"0 32px", overflowY:"auto" }}>
+                <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
+                  <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
+                </div>
+                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:6 }}>Olá, {user?.name?.split(" ")[0] || "equipe"}!</h3>
+                <p style={{ fontSize:14, color:B.muted, lineHeight:1.6, marginBottom:28, maxWidth:500, textAlign:"center" }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta abaixo.</p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10, width:"100%", maxWidth:700 }}>
+                  {PRESETS.map((p, i) => (
+                    <div key={i} onClick={() => { if(!hasChat)startNewChat(); setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ padding:"16px 14px", borderRadius:14, border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:"transparent", cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{if(selPreset!==i)e.currentTarget.style.borderColor=`${B.accent}50`;}} onMouseLeave={e=>{if(selPreset!==i)e.currentTarget.style.borderColor=B.border;}}>
+                      <div style={{ display:"flex", justifyContent:"center", marginBottom:8 }}>{p.icon}</div>
+                      <p style={{ fontSize:12, fontWeight:700, lineHeight:1.3 }}>{p.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </> : <>
+              {/* Active chat with messages */}
+              <div style={{ padding:"12px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
+                  <p style={{ fontSize:10, color:B.muted }}>Powered by {activeProvider==="gemini"?"Google Gemini":activeProvider==="claude"?"Claude":"GPT-4"}</p>
+                </div>
+                <button onClick={startNewChat} style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>+ Nova</button>
+              </div>
+              {/* Messages */}
+              <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+                {messages.map((m, i) => (
+                  <div key={i} style={{ display:"flex", gap:12, marginBottom:16, justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
+                    {m.role==="assistant" && <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2 }}><span style={{ color:B.accent, display:"flex", transform:"scale(0.8)" }}>{IC.ai(B.accent)}</span></div>}
+                    <div style={{ maxWidth:"75%", padding:"12px 16px", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?B.accent:(B.bg||"#F5F5F5"), color:m.role==="user"?B.dark:B.text, fontSize:14, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {loading && <div style={{ display:"flex", gap:12, marginBottom:16 }}>
+                  <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ color:B.accent, display:"flex", transform:"scale(0.8)" }}>{IC.ai(B.accent)}</span></div>
+                  <div style={{ padding:"12px 16px", borderRadius:"18px 18px 18px 4px", background:B.bg }}><div style={{ display:"flex", gap:4 }}><div style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:"skPulse 1.4s ease-in-out infinite" }}/><div style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:"skPulse 1.4s ease-in-out 0.2s infinite" }}/><div style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:"skPulse 1.4s ease-in-out 0.4s infinite" }}/></div></div>
+                </div>}
+              </div>
+            </>}
+            {/* Input bar */}
+            <div style={{ padding:"12px 18px", borderTop:`1px solid ${B.border}`, display:"flex", gap:10, alignItems:"flex-end", flexShrink:0 }}>
+              <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder="Pergunte qualquer coisa..." style={{ flex:1, minHeight:44, maxHeight:120, resize:"none", padding:"12px 16px", borderRadius:14, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, lineHeight:1.5, outline:"none", background:"transparent" }}/>
+              <button onClick={()=>{if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}} disabled={loading||!input.trim()} style={{ width:44, height:44, borderRadius:14, background:input.trim()?B.accent:`${B.accent}30`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?B.dark:"#fff"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (view === "history") {
     const pinned = conversations.filter(c => c.pinned);
     const recent = conversations.filter(c => !c.pinned);
