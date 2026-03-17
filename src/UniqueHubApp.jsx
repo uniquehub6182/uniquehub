@@ -11355,216 +11355,238 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "approvals" && !isSetDesktop) return <ApprovalsPage onBack={() => setSub(null)} />;
 
   /* ── DESKTOP SETTINGS ── */
-  const SET_MENU = [
-    { k:"profile", l:"Perfil", ic:IC.team, desc:"Dados pessoais, contato" },
-    ...(user?.supaRole==="admin"?[{ k:"approvals", l:"Aprovações", ic:IC.shield, desc:"Aprovar cadastros", badge:pendingCount }]:[]),
-    ...(user?.supaRole==="admin"?[{ k:"permissions", l:"Permissões", ic:IC.lock, desc:"Acesso por cargo" }]:[]),
-    ...(user?.supaRole==="admin"?[{ k:"agencyid", l:"Identidade", ic:IC.clients, desc:"Nome, logo, slogan" }]:[]),
-    ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", ic:IC.ai, desc:"Chaves API e provedor" }]:[]),
-    { k:"aparencia", l:"Aparência", ic:IC.palette, desc:"Tema, cores, fontes" },
-    { k:"notifs", l:"Notificações", ic:IC.bell, desc:"Sons, alertas, categorias" },
-    { k:"sec", l:"Segurança", ic:IC.lock, desc:"Senha, 2FA, sessões" },
-    { k:"about", l:"Sobre", ic:IC.info, desc:"Versão e termos" },
-  ];
-
   if (isSetDesktop) {
+    const SET_ITEMS = [
+      { k:"profile", l:"Perfil", desc:"Dados pessoais e contato" },
+      ...(user?.supaRole==="admin"?[{ k:"approvals", l:"Aprovações", desc:"Aprovar cadastros", badge:pendingCount }]:[]),
+      ...(user?.supaRole==="admin"?[{ k:"permissions", l:"Permissões", desc:"Acesso por cargo" }]:[]),
+      ...(user?.supaRole==="admin"?[{ k:"agencyid", l:"Identidade da Agência", desc:"Nome, logo, slogan" }]:[]),
+      ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", desc:"Chaves API e provedor" }]:[]),
+      { k:"aparencia", l:"Aparência", desc:"Tema, cores, densidade" },
+      { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
+      { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
+      { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
+      { k:"about", l:"Sobre", desc:"Versão e informações" },
+    ];
+    /* Load agency config for desktop */
+    if (sub==="agencyid" && !agLoaded) { supaGetSetting("agency_identity").then(raw => { if(raw) try { setAgCfg(prev => ({...prev,...JSON.parse(raw)})); } catch{}; setAgLoaded(true); }); }
+    /* Load AI config for desktop */
+    if (sub==="aiconfig" && !aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({...prev,...k})); setAiCfgLoaded(true); }); }
+    /* Load permissions for desktop */
+    if (sub==="permissions" && !permLoaded) { loadPerms(); }
+
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={false} />
         <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
-          {/* LEFT: Profile + Nav */}
+          {/* Sidebar */}
           <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            {/* Profile card */}
             <div style={{ background:B.dark, borderRadius:16, padding:"20px", textAlign:"center" }}>
-              <Av src={user?.photo} name={user?.name} sz={64} fs={24}/>
-              <p style={{ fontSize:16, fontWeight:800, color:"#fff", marginTop:8 }}>{user?.name}</p>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{user?.role || user?.supaRole || "Colaborador"}</p>
-              <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginTop:4 }}>{user?.email}</p>
+              <Av src={user?.photo} name={user?.name} sz={56} fs={20}/>
+              <p style={{ fontSize:15, fontWeight:800, color:"#fff", marginTop:8 }}>{user?.name}</p>
+              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{user?.role||"Colaborador"}</p>
             </div>
-            {/* Menu */}
             <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", flex:1, overflowY:"auto" }}>
-              {SET_MENU.map(s => {
-                const isSel = sub === s.k;
-                return (
-                  <button key={s.k} onClick={()=>setSub(isSel?null:s.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isSel?700:500, background:isSel?`${B.accent}10`:"transparent", color:isSel?B.accent:B.text, borderLeft:isSel?`3px solid ${B.accent}`:"3px solid transparent" }}>
-                    <div style={{ width:28, height:28, borderRadius:8, background:`${isSel?B.accent:B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ display:"flex", transform:"scale(0.65)" }}>{typeof s.ic==="function"?s.ic(isSel?B.accent:B.muted):s.ic}</span></div>
-                    <div style={{ flex:1, textAlign:"left" }}><span>{s.l}</span></div>
-                    {s.badge>0 && <span style={{ background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"2px 7px", borderRadius:10 }}>{s.badge}</span>}
-                  </button>
-                );
-              })}
-              <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:500, background:"transparent", color:B.red, borderLeft:"3px solid transparent" }}>
-                <span style={{ display:"flex" }}>{IC.logout()}</span> Sair da Conta
-              </button>
+              {SET_ITEMS.map(s => (
+                <button key={s.k} onClick={()=>{if(s.k==="navmenu"){onNavEdit&&onNavEdit();return;}setSub(sub===s.k?null:s.k);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"12px 14px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:sub===s.k?700:500, background:sub===s.k?`${B.accent}10`:"transparent", color:sub===s.k?B.accent:B.text, borderLeft:sub===s.k?`3px solid ${B.accent}`:"3px solid transparent", textAlign:"left" }}>
+                  <span style={{ flex:1 }}>{s.l}</span>
+                  {s.badge>0 && <span style={{ background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"2px 7px", borderRadius:10 }}>{s.badge}</span>}
+                </button>
+              ))}
+              <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"12px 14px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:500, color:B.red, background:"transparent", borderLeft:"3px solid transparent" }}>Sair da Conta</button>
             </div>
           </div>
-          {/* RIGHT: Content */}
+          {/* Content */}
           <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
-            <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
-              {/* No sub: overview */}
-              {!sub && <>
-                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Configurações</h3>
-                <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Selecione uma opção na lateral para configurar</p>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:14 }}>
-                  {SET_MENU.map(s => (
-                    <div key={s.k} onClick={()=>setSub(s.k)} style={{ padding:"20px 18px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${B.accent}40`;e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                      <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}><span style={{ display:"flex", transform:"scale(0.85)" }}>{typeof s.ic==="function"?s.ic(B.accent):s.ic}</span></div>
-                      <p style={{ fontSize:14, fontWeight:700 }}>{s.l}</p>
+            <div style={{ flex:1, overflowY:"auto", padding:sub?"0":"24px 28px" }}>
+              {/* Overview */}
+              {!sub && <div style={{ padding:0 }}>
+                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:20 }}>Configurações</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:12 }}>
+                  {SET_ITEMS.map(s=>(
+                    <div key={s.k} onClick={()=>{if(s.k==="navmenu"){onNavEdit&&onNavEdit();return;}setSub(s.k);}} style={{ padding:"18px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${B.accent}40`;e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                      <p style={{ fontSize:15, fontWeight:700 }}>{s.l}</p>
                       <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{s.desc}</p>
-                      {s.badge>0 && <span style={{ display:"inline-block", marginTop:6, background:B.red, color:"#fff", fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:8 }}>{s.badge} pendentes</span>}
+                      {s.badge>0 && <span style={{ display:"inline-block", marginTop:8, background:B.red, color:"#fff", fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:8 }}>{s.badge} pendentes</span>}
                     </div>
                   ))}
                 </div>
-              </>}
+              </div>}
+              {/* Approvals - use real component */}
+              {sub==="approvals" && <div style={{ padding:"24px 28px" }}><ApprovalsPage onBack={()=>setSub(null)} /></div>}
+
               {/* Profile */}
-              {sub==="profile" && <>
+              {sub==="profile" && <div style={{ padding:"24px 28px" }}>
                 <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Meu Perfil</h3>
-                <div style={{ display:"flex", gap:20 }}>
-                  <div style={{ textAlign:"center" }}>
-                    <Av src={user?.photo} name={user?.name} sz={80} fs={30}/>
-                    <label style={{ display:"block", marginTop:8, fontSize:12, fontWeight:600, color:B.accent, cursor:"pointer" }}>Trocar foto<input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={async(e)=>{const f=e.target.files?.[0];if(!f||!supabase)return;setPhotoUploading(true);const path=`avatars/${user.id}_${Date.now()}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const url=u.publicUrl;await supabase.from("profiles").update({photo_url:url}).eq("id",user.id);await supaSetSetting(`profile_photo_${user.id}`,url);setUser(p=>({...p,photo:url}));showToast("Foto atualizada ✓");}setPhotoUploading(false);}}/></label>
+                <div style={{ display:"flex", gap:24 }}>
+                  <div style={{ textAlign:"center", flexShrink:0 }}>
+                    <Av src={user?.photo} name={user?.name} sz={80} fs={28}/>
+                    <label style={{ display:"block", marginTop:10, fontSize:12, fontWeight:600, color:B.accent, cursor:"pointer" }}>{photoUploading?"Enviando...":"Trocar foto"}<input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={async(e)=>{const f=e.target.files?.[0];if(!f||!supabase)return;setPhotoUploading(true);const path=`avatars/${user.id}_${Date.now()}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const url=u.publicUrl;await supabase.from("profiles").update({photo_url:url}).eq("id",user.id);await supaSetSetting(`profile_photo_${user.id}`,url);setUser(p=>({...p,photo:url}));showToast("Foto atualizada ✓");}setPhotoUploading(false);}}/></label>
                   </div>
-                  <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Nome completo</label><input value={pf.name} onChange={e=>pfUp("name",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Apelido</label><input value={pf.nick} onChange={e=>pfUp("nick",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Telefone</label><input value={pf.phone} onChange={e=>pfUp("phone",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>CPF</label><input value={pf.cpf} onChange={e=>pfUp("cpf",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Data de nascimento</label><input type="date" value={pf.birth} onChange={e=>pfUp("birth",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>PIX</label><input value={pf.pix} onChange={e=>pfUp("pix",e.target.value)} className="tinput" style={{ fontSize:14 }}/></div>
-                    <div style={{ gridColumn:"span 2" }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Bio</label><textarea value={pf.bio} onChange={e=>pfUp("bio",e.target.value)} className="tinput" style={{ fontSize:13, minHeight:60, resize:"vertical" }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Contato de emergência</label><input value={pf.emergency_name} onChange={e=>pfUp("emergency_name",e.target.value)} placeholder="Nome" className="tinput" style={{ fontSize:13 }}/></div>
-                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Tel. emergência</label><input value={pf.emergency_phone} onChange={e=>pfUp("emergency_phone",e.target.value)} className="tinput" style={{ fontSize:13 }}/></div>
+                  <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                    {[{k:"name",l:"Nome",ph:"Nome completo"},{k:"nick",l:"Apelido",ph:"Apelido"},{k:"phone",l:"Telefone",ph:"(21) 99999-9999"},{k:"cpf",l:"CPF",ph:"000.000.000-00"},{k:"birth",l:"Data de nascimento",ph:"",tp:"date"},{k:"pix",l:"PIX",ph:"Chave PIX"},{k:"social",l:"Instagram/LinkedIn",ph:"@usuario"},{k:"shirt_size",l:"Camiseta",ph:"M, G, GG..."}].map(f=>(
+                      <div key={f.k}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>{f.l}</label><input value={pf[f.k]||""} onChange={e=>pfUp(f.k,e.target.value)} placeholder={f.ph} type={f.tp||"text"} className="tinput" style={{ fontSize:13 }}/></div>
+                    ))}
+                    <div style={{ gridColumn:"span 2" }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Bio</label><textarea value={pf.bio||""} onChange={e=>pfUp("bio",e.target.value)} placeholder="Sobre você..." className="tinput" style={{ fontSize:13, minHeight:60, resize:"vertical" }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Contato emergência</label><input value={pf.emergency_name||""} onChange={e=>pfUp("emergency_name",e.target.value)} placeholder="Nome" className="tinput" style={{ fontSize:12 }}/></div>
+                    <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Tel. emergência</label><input value={pf.emergency_phone||""} onChange={e=>pfUp("emergency_phone",e.target.value)} placeholder="Telefone" className="tinput" style={{ fontSize:12 }}/></div>
                   </div>
                 </div>
-                <button onClick={saveProfile} disabled={profileSaving} style={{ marginTop:20, padding:"12px 40px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>{profileSaving?"Salvando...":"Salvar Perfil"}</button>
-              </>}
-              {/* Aparência */}
-              {sub==="aparencia" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Aparência</h3>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
-                  <div>
-                    <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Modo Escuro</p>
-                    <div onClick={()=>setDark(!dark)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${dark?B.accent:B.border}`, cursor:"pointer", background:dark?`${B.accent}08`:"transparent" }}>
-                      <div style={{ width:44, height:24, borderRadius:12, background:dark?B.accent:`${B.muted}30`, padding:2, cursor:"pointer" }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:dark?"translateX(20px)":"translateX(0)", transition:"transform .2s" }}/></div>
-                      <span style={{ fontSize:13, fontWeight:600 }}>{dark?"Ativado":"Desativado"}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Cor de Destaque</p>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-                      {[{k:"lime",c:"#C8FF00",l:"Lima"},{k:"blue",c:"#3B82F6",l:"Azul"},{k:"purple",c:"#8B5CF6",l:"Roxo"},{k:"pink",c:"#EC4899",l:"Rosa"},{k:"orange",c:"#F97316",l:"Laranja"},{k:"cyan",c:"#06B6D4",l:"Ciano"}].map(t=>(
-                        <div key={t.k} onClick={()=>setThemeColor(t.k)} style={{ width:40, height:40, borderRadius:12, background:t.c, cursor:"pointer", border:themeColor===t.k?`3px solid ${B.text}`:"3px solid transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>{themeColor===t.k && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}</div>
-                      ))}
-                    </div>
-                  </div>
+                <div style={{ display:"flex", gap:12, marginTop:20 }}>
+                  <button onClick={saveProfile} disabled={profileSaving} style={{ padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>{profileSaving?"Salvando...":"Salvar Perfil"}</button>
                 </div>
-              </>}
+              </div>}
               {/* AI Config */}
-              {sub==="aiconfig" && <>
+              {sub==="aiconfig" && <div style={{ padding:"24px 28px" }}>
                 <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Assistente IA</h3>
-                <p style={{ fontSize:13, color:B.muted, marginBottom:20 }}>Configure as chaves de API para cada modelo de IA</p>
-                <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                <p style={{ fontSize:13, color:B.muted, marginBottom:20 }}>Configure as chaves de API para cada provedor</p>
+                {!aiCfgLoaded ? <p style={{ color:B.muted, padding:20 }}>Carregando...</p> : <>
                   {[{k:"openai_key",l:"OpenAI (GPT-4o)",desc:"platform.openai.com → API Keys",c:"#10A37F"},{k:"gemini_key",l:"Google Gemini",desc:"aistudio.google.com → Get API Key",c:"#4285F4"},{k:"claude_key",l:"Claude (Anthropic)",desc:"console.anthropic.com → API Keys",c:"#D97706"}].map(ai=>(
-                    <div key={ai.k} style={{ padding:"18px 20px", borderRadius:16, border:`1.5px solid ${B.border}` }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-                        <div style={{ width:10, height:10, borderRadius:5, background:aiCfgKeys[ai.k]?B.green:B.muted }}/>
-                        <p style={{ fontSize:15, fontWeight:700, color:ai.c }}>{ai.l}</p>
+                    <div key={ai.k} style={{ padding:"16px 18px", borderRadius:14, border:`1.5px solid ${B.border}`, marginBottom:10 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                        <div style={{ width:10, height:10, borderRadius:5, background:aiCfgKeys[ai.k]?B.green:`${B.muted}40` }}/>
+                        <p style={{ fontSize:14, fontWeight:700, color:ai.c }}>{ai.l}</p>
                         <span style={{ fontSize:11, color:B.muted, marginLeft:"auto" }}>{ai.desc}</span>
                       </div>
-                      <input value={aiCfgKeys[ai.k]||""} onChange={e=>setAiCfgKeys(p=>({...p,[ai.k]:e.target.value}))} placeholder={`Cole sua chave ${ai.l}...`} type="password" style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"monospace", fontSize:13, outline:"none" }}/>
+                      <input value={aiCfgKeys[ai.k]||""} onChange={e=>setAiCfgKeys(p=>({...p,[ai.k]:e.target.value}))} placeholder={`Chave ${ai.l}`} type="password" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"monospace", fontSize:13, outline:"none" }}/>
                     </div>
                   ))}
-                  <div style={{ padding:"18px 20px", borderRadius:16, border:`1.5px solid ${B.border}` }}>
-                    <p style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>Provedor padrão</p>
-                    <div style={{ display:"flex", gap:8 }}>
-                      {[{k:"openai",l:"GPT-4o"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p=>(
-                        <button key={p.k} onClick={()=>setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px", borderRadius:10, border:`1.5px solid ${aiCfgKeys.ai_provider===p.k?B.accent:B.border}`, background:aiCfgKeys.ai_provider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiCfgKeys.ai_provider===p.k?700:500 }}>{p.l}</button>
-                      ))}
-                    </div>
+                  <div style={{ padding:"16px 18px", borderRadius:14, border:`1.5px solid ${B.border}`, marginBottom:14 }}>
+                    <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Provedor padrão</p>
+                    <div style={{ display:"flex", gap:6 }}>{[{k:"openai",l:"GPT-4o"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p=>(
+                      <button key={p.k} onClick={()=>setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px", borderRadius:10, border:`1.5px solid ${aiCfgKeys.ai_provider===p.k?B.accent:B.border}`, background:aiCfgKeys.ai_provider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiCfgKeys.ai_provider===p.k?700:500 }}>{p.l}</button>
+                    ))}</div>
                   </div>
-                  <button onClick={async()=>{await supaSetSetting("ai_keys",JSON.stringify(aiCfgKeys));showToast("Chaves salvas ✓");}} style={{ padding:"12px 40px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, alignSelf:"flex-start" }}>Salvar Chaves</button>
+                  <button onClick={async()=>{await supaSetSetting("openai_key",aiCfgKeys.openai_key||"");await supaSetSetting("gemini_key",aiCfgKeys.gemini_key||"");await supaSetSetting("claude_key",aiCfgKeys.claude_key||"");await supaSetSetting("ai_provider",aiCfgKeys.ai_provider||"openai");await supaSetSetting("ai_keys",JSON.stringify(aiCfgKeys));showToast("Chaves salvas ✓");}} style={{ padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>Salvar Chaves</button>
+                </>}
+              </div>}
+              {/* Agency Identity */}
+              {sub==="agencyid" && <div style={{ padding:"24px 28px" }}>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Identidade da Agência</h3>
+                {!agLoaded ? <p style={{ color:B.muted, padding:20 }}>Carregando...</p> : <>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                    <div><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Nome da agência</label><input value={agCfg.name||""} onChange={e=>setAgCfg(p=>({...p,name:e.target.value}))} placeholder="Unique Marketing 360" className="tinput" style={{ fontSize:14 }}/></div>
+                    <div><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Slogan</label><input value={agCfg.slogan||""} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} placeholder="Agência de marketing 360" className="tinput" style={{ fontSize:13 }}/></div>
+                    <div><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Cidade</label><input value={agCfg.city||""} onChange={e=>setAgCfg(p=>({...p,city:e.target.value}))} placeholder="Petrópolis, RJ" className="tinput" style={{ fontSize:13 }}/></div>
+                    <div><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>URL do Logo</label><input value={agCfg.logo_url||""} onChange={e=>setAgCfg(p=>({...p,logo_url:e.target.value}))} placeholder="https://..." className="tinput" style={{ fontSize:13 }}/></div>
+                  </div>
+                  <button onClick={async()=>{setAgSaving(true);await supaSetSetting("agency_identity",JSON.stringify(agCfg));if(onAgencyUpdate)onAgencyUpdate(agCfg);setAgSaving(false);showToast("Identidade salva ✓");}} disabled={agSaving} style={{ marginTop:16, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>{agSaving?"Salvando...":"Salvar"}</button>
+                </>}
+              </div>}
+              {/* Appearance */}
+              {sub==="aparencia" && <div style={{ padding:"24px 28px" }}>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Aparência</h3>
+                <div style={{ marginBottom:20 }}>
+                  <p style={{ fontSize:14, fontWeight:700, marginBottom:10 }}>Modo Escuro</p>
+                  <div onClick={()=>setDark(!dark)} style={{ display:"inline-flex", alignItems:"center", gap:12, padding:"14px 20px", borderRadius:14, border:`1.5px solid ${dark?B.accent:B.border}`, cursor:"pointer", background:dark?`${B.accent}08`:"transparent" }}>
+                    <div style={{ width:48, height:26, borderRadius:13, background:dark?B.accent:`${B.muted}30`, padding:2, cursor:"pointer" }}><div style={{ width:22, height:22, borderRadius:11, background:"#fff", transform:dark?"translateX(22px)":"translateX(0)", transition:"transform .2s" }}/></div>
+                    <span style={{ fontSize:14, fontWeight:600 }}>{dark?"Ativado":"Desativado"}</span>
+                  </div>
                 </div>
-              </>}
+                <div>
+                  <p style={{ fontSize:14, fontWeight:700, marginBottom:10 }}>Cor de Destaque</p>
+                  <div style={{ display:"flex", gap:10 }}>
+                    {[{k:"lime",c:"#C8FF00",l:"Lima"},{k:"blue",c:"#3B82F6",l:"Azul"},{k:"purple",c:"#8B5CF6",l:"Roxo"},{k:"pink",c:"#EC4899",l:"Rosa"},{k:"orange",c:"#F97316",l:"Laranja"},{k:"cyan",c:"#06B6D4",l:"Ciano"}].map(t=>(
+                      <div key={t.k} onClick={()=>setThemeColor(t.k)} style={{ textAlign:"center", cursor:"pointer" }}>
+                        <div style={{ width:44, height:44, borderRadius:14, background:t.c, border:themeColor===t.k?`3px solid ${B.text}`:"3px solid transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>{themeColor===t.k && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}</div>
+                        <p style={{ fontSize:10, marginTop:4, fontWeight:themeColor===t.k?700:400, color:themeColor===t.k?B.text:B.muted }}>{t.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>}
+              {/* Notifications */}
+              {sub==="notifs" && <div style={{ padding:"24px 28px" }}>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Notificações</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+                  {[{k:"notifChat",l:"Chat",desc:"Mensagens e menções"},{k:"notifContent",l:"Conteúdo",desc:"Demandas e aprovações"},{k:"notifClient",l:"Clientes",desc:"Feedbacks e updates"},{k:"notifTeam",l:"Equipe",desc:"Membros e check-ins"},{k:"notifFinancial",l:"Financeiro",desc:"Pagamentos e faturas"},{k:"notifCalendar",l:"Calendário",desc:"Eventos e lembretes"}].map(n=>(
+                    <div key={n.k} style={{ padding:"16px 18px", borderRadius:14, border:`1px solid ${B.border}` }}>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                        <p style={{ fontSize:14, fontWeight:700 }}>{n.l}</p>
+                        <div style={{ width:44, height:24, borderRadius:12, background:B.accent, padding:2, cursor:"pointer" }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:"translateX(20px)", transition:"transform .2s" }}/></div>
+                      </div>
+                      <p style={{ fontSize:11, color:B.muted }}>{n.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:16 }}>
+                  <p style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>Som de Notificação</p>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:12, border:`1px solid ${B.border}` }}>
+                    <div style={{ width:44, height:24, borderRadius:12, background:B.accent, padding:2, cursor:"pointer" }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:"translateX(20px)" }}/></div>
+                    <span style={{ fontSize:13, fontWeight:600 }}>Ativado</span>
+                    <button onClick={()=>{try{new Audio("/notif.wav").play();}catch{}showToast("Som tocado ✓");}} style={{ marginLeft:"auto", padding:"6px 14px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.accent }}>🔊 Testar</button>
+                  </div>
+                </div>
+              </div>}
               {/* Security */}
-              {sub==="sec" && <>
+              {sub==="sec" && <div style={{ padding:"24px 28px" }}>
                 <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Segurança</h3>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
                   <div style={{ padding:"20px", borderRadius:16, border:`1px solid ${B.border}` }}>
                     <p style={{ fontSize:15, fontWeight:700, marginBottom:12 }}>Alterar Senha</p>
                     <input type="password" placeholder="Senha atual" className="tinput" style={{ fontSize:13, marginBottom:8 }}/>
-                    <input type="password" placeholder="Nova senha" className="tinput" style={{ fontSize:13, marginBottom:8 }}/>
+                    <input type="password" placeholder="Nova senha (8+ chars)" className="tinput" style={{ fontSize:13, marginBottom:8 }}/>
                     <input type="password" placeholder="Confirmar nova senha" className="tinput" style={{ fontSize:13, marginBottom:12 }}/>
-                    <button onClick={()=>showToast("Funcionalidade em desenvolvimento")} style={{ padding:"10px 24px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Alterar Senha</button>
+                    <button onClick={async()=>{showToast("Use o fluxo de redefinição de senha do Supabase");}} style={{ padding:"10px 24px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Alterar</button>
                   </div>
                   <div style={{ padding:"20px", borderRadius:16, border:`1px solid ${B.border}` }}>
                     <p style={{ fontSize:15, fontWeight:700, marginBottom:12 }}>Autenticação 2 Fatores</p>
                     <div onClick={()=>setTwoFA(!twoFA)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:14, border:`1.5px solid ${twoFA?B.green:B.border}`, cursor:"pointer", background:twoFA?`${B.green}06`:"transparent" }}>
-                      <div style={{ width:44, height:24, borderRadius:12, background:twoFA?B.green:`${B.muted}30`, padding:2 }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:twoFA?"translateX(20px)":"translateX(0)", transition:"transform .2s" }}/></div>
-                      <span style={{ fontSize:13, fontWeight:600 }}>{twoFA?"Ativado":"Desativado"}</span>
+                      <div style={{ width:48, height:26, borderRadius:13, background:twoFA?B.green:`${B.muted}30`, padding:2 }}><div style={{ width:22, height:22, borderRadius:11, background:"#fff", transform:twoFA?"translateX(22px)":"translateX(0)", transition:"transform .2s" }}/></div>
+                      <span style={{ fontSize:14, fontWeight:600 }}>{twoFA?"Ativado":"Desativado"}</span>
                     </div>
-                    <p style={{ fontSize:11, color:B.muted, marginTop:10, lineHeight:1.5 }}>Adiciona uma camada extra de proteção exigindo um código ao fazer login.</p>
+                    <p style={{ fontSize:11, color:B.muted, marginTop:10, lineHeight:1.5 }}>Camada extra de proteção ao fazer login.</p>
                   </div>
                 </div>
                 <div style={{ marginTop:20, padding:"16px 20px", borderRadius:14, background:`${B.red}04`, border:`1px solid ${B.red}15` }}>
-                  <p style={{ fontSize:14, fontWeight:700, color:B.red }}>Zona de Perigo</p>
-                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Encerrar todas as sessões em outros dispositivos</p>
-                  <button onClick={()=>showToast("Todas as sessões encerradas ✓")} style={{ marginTop:10, padding:"8px 18px", borderRadius:8, background:`${B.red}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Encerrar Sessões</button>
+                  <p style={{ fontSize:14, fontWeight:700, color:B.red, marginBottom:4 }}>Zona de Perigo</p>
+                  <div style={{ display:"flex", gap:10 }}>
+                    <button onClick={()=>showToast("Sessões encerradas ✓")} style={{ padding:"8px 18px", borderRadius:8, background:`${B.red}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Encerrar todas as sessões</button>
+                  </div>
                 </div>
-              </>}
-              {/* Notifs */}
-              {sub==="notifs" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Notificações</h3>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-                  {[{k:"chat",l:"Chat",desc:"Novas mensagens e menções",ic:"💬"},{k:"content",l:"Conteúdo",desc:"Demandas e aprovações",ic:"📋"},{k:"clients",l:"Clientes",desc:"Aprovações e feedbacks",ic:"👥"},{k:"team",l:"Equipe",desc:"Novos membros e updates",ic:"🤝"},{k:"financial",l:"Financeiro",desc:"Pagamentos e faturas",ic:"💰"},{k:"calendar",l:"Calendário",desc:"Eventos e lembretes",ic:"📅"}].map(n=>(
-                    <div key={n.k} style={{ padding:"16px 18px", borderRadius:14, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
-                      <span style={{ fontSize:22 }}>{n.ic}</span>
-                      <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{n.l}</p><p style={{ fontSize:11, color:B.muted }}>{n.desc}</p></div>
-                      <div style={{ width:44, height:24, borderRadius:12, background:B.accent, padding:2, cursor:"pointer" }}><div style={{ width:20, height:20, borderRadius:10, background:"#fff", transform:"translateX(20px)", transition:"transform .2s" }}/></div>
-                    </div>
-                  ))}
-                </div>
-              </>}
-
+              </div>}
+              {/* Permissions */}
+              {sub==="permissions" && <div style={{ padding:"24px 28px" }}>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Permissões por Cargo</h3>
+                <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Configure o acesso de cada cargo às áreas do sistema</p>
+                {!permLoaded ? <p style={{ color:B.muted, padding:20 }}>Carregando permissões...</p> : <>
+                  <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                    {["head","gerente","social_media","designer","audiovisual","closer","financeiro","atendimento"].map(r=>(
+                      <button key={r} onClick={()=>setPermRole(r)} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${permRole===r?B.accent:B.border}`, background:permRole===r?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:permRole===r?700:500, color:permRole===r?B.accent:B.muted, textTransform:"capitalize" }}>{r.replace(/_/g," ")}</button>
+                    ))}
+                  </div>
+                  {permRole && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                    {(PERM_AREAS||[{k:"clients",l:"Clientes"},{k:"content",l:"Conteúdo"},{k:"chat",l:"Chat"},{k:"financial",l:"Financeiro"},{k:"reports",l:"Relatórios"},{k:"calendar",l:"Calendário"},{k:"team",l:"Equipe"},{k:"library",l:"Biblioteca"},{k:"news",l:"News"},{k:"ideas",l:"Ideias"},{k:"gamify",l:"Ranking"},{k:"match4biz",l:"Match4Biz"},{k:"ai",l:"IA"},{k:"academy",l:"Academy"},{k:"settings",l:"Configurações"}]).map(a=>{
+                      const key = `${permRole}.${a.k}`;
+                      const on = permMap[key] !== false;
+                      return (
+                        <div key={a.k} onClick={()=>setPermMap(p=>({...p,[key]:!on}))} style={{ padding:"12px 16px", borderRadius:12, border:`1.5px solid ${on?B.green+"30":B.border}`, background:on?`${B.green}04`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                          <span style={{ fontSize:13, fontWeight:on?700:500 }}>{a.l||a.k}</span>
+                          <div style={{ width:36, height:20, borderRadius:10, background:on?B.green:`${B.muted}25`, padding:2 }}><div style={{ width:16, height:16, borderRadius:8, background:"#fff", transform:on?"translateX(16px)":"translateX(0)", transition:"transform .2s" }}/></div>
+                        </div>
+                      );
+                    })}
+                  </div>}
+                  {permRole && <button onClick={async()=>{setPermSaving(true);await supaSetSetting("permissions",JSON.stringify(permMap));setPermSaving(false);showToast("Permissões salvas ✓");}} disabled={permSaving} style={{ marginTop:16, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>{permSaving?"Salvando...":"Salvar Permissões"}</button>}
+                </>}
+              </div>}
               {/* About */}
-              {sub==="about" && <>
+              {sub==="about" && <div style={{ padding:"24px 28px" }}>
                 <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Sobre o UniqueHub</h3>
-                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                  {[{l:"Versão",v:"1.0 (build 3.04A)"},{l:"Plataforma",v:"React + Vite + Supabase"},{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Suporte",v:"suporte@uniquemkt.com.br"}].map((r,i)=>(
-                    <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"12px 16px", borderRadius:12, background:i%2===0?B.bg:"transparent" }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {[{l:"Versão",v:"1.0 (build 3.04A)"},{l:"Plataforma",v:"React + Vite + Supabase"},{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"E-mail",v:"suporte@uniquemkt.com.br"},{l:"Hospedagem",v:"Vercel (uniquehub.com.br)"},{l:"Banco de dados",v:"Supabase (PostgreSQL)"},{l:"Autenticação",v:"Supabase Auth"},{l:"Storage",v:"Supabase Storage"}].map((r,i)=>(
+                    <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"12px 16px", borderRadius:10, background:i%2===0?B.bg:"transparent" }}>
                       <span style={{ fontSize:13, color:B.muted }}>{r.l}</span>
                       <span style={{ fontSize:13, fontWeight:600 }}>{r.v}</span>
                     </div>
                   ))}
                 </div>
-              </>}
-              {/* Agency Identity */}
-              {sub==="agencyid" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:20 }}>Identidade da Agência</h3>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Nome da agência</label><input value={agCfg.name||""} onChange={e=>setAgCfg(p=>({...p,name:e.target.value}))} className="tinput" style={{ fontSize:14 }}/></div>
-                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Slogan</label><input value={agCfg.slogan||""} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
-                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Cidade</label><input value={agCfg.city||""} onChange={e=>setAgCfg(p=>({...p,city:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
-                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>URL do Logo</label><input value={agCfg.logo_url||""} onChange={e=>setAgCfg(p=>({...p,logo_url:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
-                  <div style={{ gridColumn:"span 2" }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Slogan</label><input value={agCfg.slogan||""} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} className="tinput" style={{ fontSize:13 }}/></div>
+                <div style={{ marginTop:20, padding:"16px 20px", borderRadius:14, background:`${B.accent}04`, border:`1px solid ${B.accent}15` }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:B.accent }}>UniqueHub Agency Platform</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.6 }}>Plataforma completa de gestão para agências de marketing digital. Gerencie clientes, conteúdo, equipe, financeiro, gamificação e muito mais em um só lugar.</p>
                 </div>
-                <button onClick={async()=>{if(agCfg){await supaSetSetting("agency_identity",JSON.stringify(agCfg));if(onAgencyUpdate)onAgencyUpdate(agCfg);showToast("Identidade salva ✓");}}} style={{ marginTop:16, padding:"12px 40px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>Salvar</button>
-              </>}
-
-              {/* Permissions — redirect to standalone */}
-              {sub==="permissions" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Permissões por Cargo</h3>
-                <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Configure o acesso de cada cargo às áreas do sistema</p>
-                <button onClick={()=>{/* Open permissions in full page mode */}} style={{ padding:"12px 24px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>Abrir Gerenciador de Permissões</button>
-              </>}
-
-              {/* Approvals — redirect to standalone */}
-              {sub==="approvals" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:8 }}>Aprovações Pendentes</h3>
-                <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Aprove ou rejeite novos cadastros de colaboradores</p>
-                {pendingCount===0 && <p style={{ fontSize:14, color:B.muted, padding:30, textAlign:"center" }}>Nenhuma aprovação pendente</p>}
-                {pendingCount>0 && <p style={{ fontSize:14, fontWeight:700, color:B.orange }}>{pendingCount} cadastro(s) aguardando aprovação</p>}
-              </>}
+              </div>}
             </div>
           </div>
         </div>
