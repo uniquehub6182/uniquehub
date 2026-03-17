@@ -14447,215 +14447,182 @@ REGRAS:
     );
   }
 
-  /* ── DESKTOP NEWS — PORTAL STYLE ── */
-  const shareUrl = (url, title) => encodeURIComponent(url || window.location.href);
-  const shareText = (title) => encodeURIComponent(title || "");
-
+  /* ── DESKTOP NEWS ── */
   if (isNewsDesktop) {
     const a = selArticle;
     const isCreating = showCreateChoice || creating || aiMode;
+    const shareUrl_ = (url) => encodeURIComponent(url || window.location.href);
+    const shareText_ = (t) => encodeURIComponent(t || "");
     const pinned = articles.filter(x=>x.pinned);
     const hero = pinned[0] || filtered[0];
-    const grid = filtered.filter(x => x.id !== hero?.id);
+    const rest = filtered.filter(x => x.id !== hero?.id);
 
-    /* ═══ ARTICLE — IMMERSIVE OVERLAY ═══ */
-    if (a) {
-      const artUrl = a.sourceUrl || window.location.href;
-      const artTitle = a.title || "";
-      const ShareBtn = ({href,bg,children,title:t}) => <a href={href} target="_blank" rel="noopener" style={{ width:40, height:40, borderRadius:12, background:bg, display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none", transition:"transform .15s" }} title={t} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>{children}</a>;
-      return (
-        <div style={{ position:"fixed", inset:0, zIndex:999, background:B.bg||"#F5F5F5", display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          {/* Top bar */}
-          <div style={{ height:56, background:B.bgCard||"#fff", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", padding:"0 24px", gap:16, flexShrink:0 }}>
-            <button onClick={()=>setSelArticle(null)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:600, color:B.text }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
-            </button>
-            <div style={{ flex:1, display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:13, fontWeight:700, padding:"5px 14px", borderRadius:8, background:`${catColor(a.cat)}15`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
-              <span style={{ fontSize:13, color:B.muted }}>{a.readTime} de leitura</span>
-              <span style={{ fontSize:13, color:B.muted }}>· {a.date}</span>
-            </div>
-            {/* Share icons in top bar */}
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:12, color:B.muted, marginRight:4 }}>Compartilhar</span>
-              <ShareBtn href={`https://wa.me/?text=${shareText(artTitle)}%20${shareUrl(artUrl)}`} bg="#25D366" title="WhatsApp"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.624-1.467A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.115 0-4.142-.588-5.904-1.699l-.424-.263-2.743.871.844-2.612-.286-.443A9.724 9.724 0 012.25 12C2.25 6.624 6.624 2.25 12 2.25S21.75 6.624 21.75 12 17.376 21.75 12 21.75z"/></svg></ShareBtn>
-              <ShareBtn href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl(artUrl)}`} bg="#4267B2" title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></ShareBtn>
-              <ShareBtn href={`https://twitter.com/intent/tweet?text=${shareText(artTitle)}&url=${shareUrl(artUrl)}`} bg="#000" title="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></ShareBtn>
-              <ShareBtn href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl(artUrl)}`} bg="#0A66C2" title="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></ShareBtn>
-              <button onClick={()=>{navigator.clipboard.writeText(artUrl);showToast("Link copiado ✓");}} style={{ width:40, height:40, borderRadius:12, background:B.bg, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"transform .15s" }} title="Copiar link" onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
-            </div>
-            {isAdmin && <div style={{ display:"flex", gap:6, marginLeft:8 }}>
-              <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime});setPhotoPreview(a.photo);}} style={{ padding:"8px 14px", borderRadius:8, border:`1px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.accent }}>✏️ Editar</button>
-              <button onClick={()=>togglePin(a)} style={{ padding:"8px 14px", borderRadius:8, border:`1px solid ${a.pinned?B.accent:B.border}`, background:a.pinned?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐":"☆"}</button>
-            </div>}
-          </div>
-          {/* Scrollable reading area */}
-          <div style={{ flex:1, overflowY:"auto" }}>
-            {/* Hero image full-width */}
-            {a.photo && <div style={{ width:"100%", maxHeight:420, overflow:"hidden", position:"relative" }}>
-              <img src={a.photo} alt="" style={{ width:"100%", height:420, objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";}}/>
-              <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 60%,rgba(0,0,0,0.4) 100%)" }}/>
-            </div>}
-
-            {/* Content container — centered, max 760px */}
-            <div style={{ maxWidth:760, margin:"0 auto", padding:a.photo?"40px 32px 60px":"48px 32px 60px" }}>
-              {/* Title */}
-              <h1 style={{ fontSize:38, fontWeight:900, lineHeight:1.2, color:B.text, letterSpacing:"-0.5px", marginBottom:16 }}>{a.title}</h1>
-
-              {/* Meta line */}
-              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
-                <span style={{ fontSize:14, fontWeight:700, padding:"6px 16px", borderRadius:10, background:`${catColor(a.cat)}15`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
-                <span style={{ fontSize:14, color:B.muted }}>{a.readTime}</span>
-                <span style={{ fontSize:14, color:B.muted }}>{a.date}</span>
-                {a.source && <span style={{ fontSize:14, color:B.muted }}>· {a.source}</span>}
-              </div>
-
-              {/* Summary — highlighted quote style */}
-              <div style={{ padding:"20px 24px", marginBottom:32, borderRadius:16, background:`${B.accent}06`, borderLeft:`5px solid ${B.accent}` }}>
-                <p style={{ fontSize:18, color:B.text, lineHeight:1.7, fontStyle:"italic", fontWeight:500 }}>{a.summary}</p>
-              </div>
-              {/* Source card */}
-              {a.source && <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"10px 18px", borderRadius:12, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, marginBottom:32, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                <span style={{ fontSize:13, color:B.muted }}>Fonte:</span>
-                {a.sourceUrl ? <a href={a.sourceUrl.startsWith("http")?a.sourceUrl:`https://${a.sourceUrl}`} target="_blank" rel="noopener" style={{ fontSize:14, color:B.accent, fontWeight:700, textDecoration:"none" }}>{a.source} ↗</a> : <span style={{ fontSize:14, fontWeight:700 }}>{a.source}</span>}
-              </div>}
-
-              {/* Body — clean typography */}
-              <div style={{ fontSize:18, lineHeight:2, color:B.text, fontWeight:400 }}>
-                {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{ marginBottom:22 }}>{p}</p>)}
-              </div>
-
-              {/* Tags */}
-              {a.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:36, paddingTop:28, borderTop:`1px solid ${B.border}` }}>
-                <span style={{ fontSize:13, color:B.muted, lineHeight:"36px" }}>Tags:</span>
-                {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:14, fontWeight:600, padding:"8px 18px", borderRadius:12, background:`${B.accent}08`, color:B.accent, cursor:"default", transition:"background .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}15`} onMouseLeave={e=>e.currentTarget.style.background=`${B.accent}08`}>#{t}</span>)}
-              </div>}
-              {/* Bottom share CTA */}
-              <div style={{ marginTop:40, padding:"28px 32px", borderRadius:20, background:B.dark, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <div>
-                  <p style={{ fontSize:18, fontWeight:800, color:"#fff" }}>Gostou? Compartilhe com a equipe!</p>
-                  <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Ajude mais profissionais a ficarem por dentro</p>
-                </div>
-                <div style={{ display:"flex", gap:8 }}>
-                  <a href={`https://wa.me/?text=${shareText(artTitle)}%20${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"10px 20px", borderRadius:12, background:"#25D366", color:"#fff", fontSize:13, fontWeight:700, textDecoration:"none", display:"flex", alignItems:"center", gap:6 }}>💬 WhatsApp</a>
-                  <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"10px 20px", borderRadius:12, background:"#4267B2", color:"#fff", fontSize:13, fontWeight:700, textDecoration:"none" }}>Facebook</a>
-                  <button onClick={()=>{navigator.clipboard.writeText(artUrl);showToast("Link copiado ✓");}} style={{ padding:"10px 20px", borderRadius:12, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>🔗 Copiar link</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-
-
-    /* ═══ MAIN FEED / CREATE ═══ */
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} />
-        <div style={{ display:"flex", gap:20, marginTop:12, height:"calc(100vh - 230px)" }}>
-          {/* Main feed */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
-            {/* Category bar */}
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
-              <div style={{ display:"flex", gap:6, flex:1, flexWrap:"wrap" }}>
-                {[{k:"all",l:"Todos"},...CATS.slice(0,8)].map(c=>(
-                  <button key={c.k} onClick={()=>setTab(c.k)} style={{ padding:"9px 18px", borderRadius:12, border:`1.5px solid ${tab===c.k?B.accent:B.border}`, background:tab===c.k?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===c.k?700:500, color:tab===c.k?B.dark:B.muted, transition:"all .15s" }}>{c.l}</button>
-                ))}
-              </div>
-              {isAdmin && !isClientView && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);setCreating(false);setAiMode(false);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Novo Artigo</button>}
-            </div>
-            {/* Feed scroll */}
-            <div style={{ flex:1, overflowY:"auto", paddingRight:4 }}>
-              {!loaded && <div style={{ textAlign:"center", padding:"80px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:600 }}>Carregando artigos...</p></div>}
-              {loaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"80px 0" }}><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhum artigo nesta categoria</p></div>}
 
-              {/* Hero article */}
-              {loaded && hero && <div onClick={()=>setSelArticle(hero)} style={{ borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:24, position:"relative", minHeight:300, background:hero.photo?`url(${hero.photo}) center/cover`:B.dark }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 12px 32px rgba(0,0,0,0.15)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)" }}/>
-                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"28px 32px" }}>
-                  {hero.pinned && <span style={{ display:"inline-block", background:B.red, color:"#fff", fontSize:11, fontWeight:800, padding:"4px 14px", borderRadius:100, marginBottom:12, letterSpacing:0.5 }}>⭐ DESTAQUE</span>}
-                  <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", lineHeight:1.25, marginBottom:8 }}>{hero.title}</h2>
-                  <p style={{ fontSize:15, color:"rgba(255,255,255,0.85)", lineHeight:1.6, maxWidth:600 }}>{hero.summary}</p>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:14 }}>
-                    <span style={{ fontSize:12, fontWeight:700, padding:"5px 14px", borderRadius:8, background:"rgba(255,255,255,0.2)", color:"#fff", backdropFilter:"blur(8px)" }}>{catLabel(hero.cat)}</span>
-                    <span style={{ fontSize:12, color:"rgba(255,255,255,0.7)" }}>{hero.readTime}</span>
-                    {hero.source && <span style={{ fontSize:12, color:"rgba(255,255,255,0.7)" }}>· {hero.source}</span>}
+        {/* Top bar */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:12, marginBottom:16 }}>
+          <div style={{ display:"flex", gap:6, flex:1, flexWrap:"wrap" }}>
+            {[{k:"all",l:"Todos"},...CATS.slice(0,8)].map(c=>(
+              <button key={c.k} onClick={()=>setTab(c.k)} style={{ padding:"9px 18px", borderRadius:12, border:`1.5px solid ${tab===c.k?B.accent:B.border}`, background:tab===c.k?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===c.k?700:500, color:tab===c.k?B.dark:B.muted }}>{c.l}</button>
+            ))}
+          </div>
+          {isAdmin && !isClientView && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);setCreating(false);setAiMode(false);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Novo Artigo</button>}
+        </div>
+
+        {/* Main content */}
+        <div style={{ flex:1, display:"flex", gap:20, minHeight:0, overflow:"hidden" }}>
+
+          {/* ── Article content (when selected) ── */}
+          {a && <div style={{ flex:1, overflowY:"auto", minWidth:0, paddingRight:8 }}>
+            <div style={{ background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+              {/* Cover */}
+              {a.photo && <img src={a.photo} alt="" style={{ width:"100%", height:320, objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";}}/>}
+              <div style={{ padding:"32px 36px 40px" }}>
+                {/* Meta */}
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+                  <span style={{ fontSize:13, fontWeight:700, padding:"5px 14px", borderRadius:10, background:`${catColor(a.cat)}15`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
+                  <span style={{ fontSize:13, color:B.muted }}>{a.readTime}</span>
+                  <span style={{ fontSize:13, color:B.muted }}>{a.date}</span>
+                  {a.source && (a.sourceUrl ? <a href={a.sourceUrl.startsWith("http")?a.sourceUrl:`https://${a.sourceUrl}`} target="_blank" rel="noopener" style={{ fontSize:13, color:B.accent, fontWeight:600, textDecoration:"none", marginLeft:"auto" }}>{a.source} ↗</a> : <span style={{ fontSize:13, fontWeight:600, marginLeft:"auto" }}>{a.source}</span>)}
+                </div>
+                {/* Title */}
+                <h1 style={{ fontSize:32, fontWeight:900, lineHeight:1.25, color:B.text, marginBottom:14 }}>{a.title}</h1>
+                {/* Summary */}
+                <p style={{ fontSize:17, color:B.muted, lineHeight:1.7, marginBottom:28, paddingLeft:16, borderLeft:`4px solid ${B.accent}`, fontStyle:"italic" }}>{a.summary}</p>
+                {/* Body */}
+                <div style={{ fontSize:17, lineHeight:1.95, color:B.text }}>
+                  {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{ marginBottom:18 }}>{p}</p>)}
+                </div>
+                {/* Tags */}
+                {a.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:28, paddingTop:20, borderTop:`1px solid ${B.border}` }}>
+                  {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:13, fontWeight:600, padding:"6px 16px", borderRadius:10, background:`${B.accent}08`, color:B.accent }}>#{t}</span>)}
+                </div>}
+                {/* Share + Admin bar */}
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:28, padding:"20px 24px", borderRadius:16, background:B.bg }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ fontSize:13, fontWeight:600, color:B.muted, marginRight:4 }}>Compartilhar:</span>
+                    {[
+                      {href:`https://wa.me/?text=${shareText_(a.title)}%20${shareUrl_(a.sourceUrl)}`,bg:"#25D366",l:"WhatsApp"},
+                      {href:`https://www.facebook.com/sharer/sharer.php?u=${shareUrl_(a.sourceUrl)}`,bg:"#4267B2",l:"Facebook"},
+                      {href:`https://twitter.com/intent/tweet?text=${shareText_(a.title)}&url=${shareUrl_(a.sourceUrl)}`,bg:"#000",l:"X"},
+                      {href:`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl_(a.sourceUrl)}`,bg:"#0A66C2",l:"LinkedIn"},
+                    ].map(s=><a key={s.l} href={s.href} target="_blank" rel="noopener" style={{ padding:"7px 14px", borderRadius:10, background:s.bg, color:"#fff", fontSize:11, fontWeight:700, textDecoration:"none" }}>{s.l}</a>)}
+                    <button onClick={()=>{navigator.clipboard.writeText(a.sourceUrl||window.location.href);showToast("Link copiado ✓");}} style={{ padding:"7px 14px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>🔗 Copiar</button>
+                  </div>
+                  {isAdmin && <div style={{ display:"flex", gap:6 }}>
+                    <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime});setPhotoPreview(a.photo);}} style={{ padding:"7px 14px", borderRadius:10, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>✏️ Editar</button>
+                    <button onClick={()=>togglePin(a)} style={{ padding:"7px 14px", borderRadius:10, background:a.pinned?`${B.accent}15`:"transparent", border:`1px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐ Fixado":"☆ Fixar"}</button>
+                  </div>}
+                </div>
+              </div>
+            </div>
+          </div>}
+
+          {/* ── Cards sidebar (when article open) or full grid (when closed) ── */}
+          <div style={{ width:a?320:undefined, flex:a?undefined:1, flexShrink:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:a?0:0, minWidth:0 }}>
+            {!loaded && <div style={{ textAlign:"center", padding:"80px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:600 }}>Carregando...</p></div>}
+            {loaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"80px 0" }}><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhum artigo</p></div>}
+
+            {loaded && !a && <>
+              {/* ── FULL GRID — no article selected ── */}
+              {/* Hero */}
+              {hero && <div onClick={()=>setSelArticle(hero)} style={{ borderRadius:20, overflow:"hidden", cursor:"pointer", marginBottom:20, position:"relative", minHeight:320, background:hero.photo?`url(${hero.photo}) center/cover`:B.dark, transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 12px 32px rgba(0,0,0,0.15)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.75) 100%)", borderRadius:20 }}/>
+                <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"32px" }}>
+                  {hero.pinned && <span style={{ display:"inline-block", background:B.red, color:"#fff", fontSize:11, fontWeight:800, padding:"4px 14px", borderRadius:100, marginBottom:12 }}>⭐ DESTAQUE</span>}
+                  <h2 style={{ fontSize:26, fontWeight:900, color:"#fff", lineHeight:1.25, marginBottom:8 }}>{hero.title}</h2>
+                  <p style={{ fontSize:15, color:"rgba(255,255,255,0.8)", lineHeight:1.6, maxWidth:650 }}>{hero.summary}</p>
+                  <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                    <span style={{ fontSize:12, fontWeight:700, padding:"5px 14px", borderRadius:8, background:"rgba(255,255,255,0.15)", color:"#fff", backdropFilter:"blur(6px)" }}>{catLabel(hero.cat)}</span>
+                    <span style={{ fontSize:12, color:"rgba(255,255,255,0.7)", lineHeight:"30px" }}>{hero.readTime}{hero.source?` · ${hero.source}`:""}</span>
                   </div>
                 </div>
               </div>}
-              {/* Article grid */}
-              {loaded && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:18 }}>
-                {grid.map((art) => (
+              {/* Grid */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:18 }}>
+                {rest.map(art => (
                   <div key={art.id} onClick={()=>setSelArticle(art)} style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", background:B.bgCard||"#fff", border:`1px solid ${B.border}`, transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                    {art.photo ? <div style={{ width:"100%", height:170, background:`url(${art.photo}) center/cover` }}/> : <div style={{ width:"100%", height:100, background:`linear-gradient(135deg, ${catColor(art.cat)}15, ${catColor(art.cat)}05)`, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ fontSize:32, opacity:0.3 }}>{art.cat==="ia"?"🤖":art.cat==="trends"?"📈":"📰"}</div></div>}
+                    {art.photo ? <div style={{ width:"100%", height:170, background:`url(${art.photo}) center/cover` }}/> : <div style={{ width:"100%", height:90, background:`linear-gradient(135deg, ${catColor(art.cat)}15, ${catColor(art.cat)}05)`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:28, opacity:0.3 }}>{art.cat==="ia"?"🤖":art.cat==="trends"?"📈":"📰"}</span></div>}
                     <div style={{ padding:"18px 20px" }}>
-                      <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:8, color:B.text }}>{art.title}</h3>
+                      <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:8 }}>{art.title}</h3>
                       <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden", marginBottom:14 }}>{art.summary}</p>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${catColor(art.cat)}12`, color:catColor(art.cat) }}>{catLabel(art.cat)}</span>
-                          <span style={{ fontSize:11, color:B.muted }}>{art.readTime}</span>
-                        </div>
-                        {art.source && <span style={{ fontSize:11, color:B.muted }}>{art.source}</span>}
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${catColor(art.cat)}12`, color:catColor(art.cat) }}>{catLabel(art.cat)}</span>
+                        <span style={{ fontSize:11, color:B.muted }}>{art.readTime}</span>
+                        {art.source && <span style={{ fontSize:11, color:B.muted, marginLeft:"auto" }}>{art.source}</span>}
                       </div>
                     </div>
                   </div>
                 ))}
-              </div>}
-            </div>
+              </div>
+            </>}
+            {/* ── SIDEBAR — article selected ── */}
+            {loaded && a && <>
+              <div style={{ padding:"12px 0", borderBottom:`1px solid ${B.border}`, marginBottom:8 }}>
+                <p style={{ fontSize:13, fontWeight:800, color:B.text }}>Mais notícias</p>
+              </div>
+              {filtered.filter(x=>x.id!==a.id).map(art => {
+                const isSel = false;
+                return (
+                  <div key={art.id} onClick={()=>setSelArticle(art)} style={{ display:"flex", gap:12, padding:"12px 8px", borderRadius:14, cursor:"pointer", borderBottom:`1px solid ${B.border}08`, transition:"background .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}05`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    {art.photo ? <div style={{ width:72, height:72, borderRadius:12, background:`url(${art.photo}) center/cover`, flexShrink:0 }}/> : <div style={{ width:72, height:72, borderRadius:12, background:`${catColor(art.cat)}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:24, opacity:0.3 }}>📰</span></div>}
+                    <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                      <h4 style={{ fontSize:14, fontWeight:700, lineHeight:1.3, color:B.text, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", marginBottom:6 }}>{art.title}</h4>
+                      <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                        <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:6, background:`${catColor(art.cat)}12`, color:catColor(art.cat) }}>{catLabel(art.cat)}</span>
+                        <span style={{ fontSize:10, color:B.muted }}>{art.readTime}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>}
           </div>
-          {/* Right panel — create */}
+
+          {/* ── Create panel ── */}
           {isCreating && <div style={{ width:400, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:"18px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <p style={{ fontSize:18, fontWeight:800 }}>{aiMode?"IA Reescrever":creating?"Novo Artigo":"Criar"}</p>
+              <p style={{ fontSize:18, fontWeight:800 }}>{aiMode?"🤖 IA Reescrever":creating?"✍️ Novo Artigo":"Criar"}</p>
               <button onClick={()=>{setShowCreateChoice(false);setCreating(false);setAiMode(false);setForm({});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
               {showCreateChoice && !creating && !aiMode && <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-                <p style={{ fontSize:14, color:B.muted, textAlign:"center", marginBottom:4 }}>Como você quer criar?</p>
                 <div onClick={()=>startCreation("manual")} style={{ padding:"28px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                  <p style={{ fontSize:28, marginBottom:8 }}>✍️</p>
-                  <p style={{ fontSize:17, fontWeight:800 }}>Escrever</p>
-                  <p style={{ fontSize:13, color:B.muted, marginTop:6, lineHeight:1.5 }}>Crie do zero com título, texto e imagem</p>
+                  <p style={{ fontSize:28, marginBottom:8 }}>✍️</p><p style={{ fontSize:17, fontWeight:800 }}>Escrever</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Crie do zero</p>
                 </div>
                 <div onClick={()=>startCreation("ai")} style={{ padding:"28px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#6366F1";e.currentTarget.style.background="#6366F106";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                  <p style={{ fontSize:28, marginBottom:8 }}>🤖</p>
-                  <p style={{ fontSize:17, fontWeight:800 }}>IA Reescrever</p>
-                  <p style={{ fontSize:13, color:B.muted, marginTop:6, lineHeight:1.5 }}>Cole um link e a IA reescreve no estilo Unique</p>
+                  <p style={{ fontSize:28, marginBottom:8 }}>🤖</p><p style={{ fontSize:17, fontWeight:800 }}>IA Reescrever</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Cole um link</p>
                 </div>
               </div>}
               {aiMode && <>
-                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"50px 0" }}><div style={{ width:44, height:44, border:`3px solid #6366F130`, borderTop:`3px solid #6366F1`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:700 }}>Gerando com IA...</p><p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Isso pode levar alguns segundos</p></div>}
+                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"50px 0" }}><div style={{ width:44, height:44, border:`3px solid #6366F130`, borderTop:`3px solid #6366F1`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:700 }}>Gerando...</p></div>}
                 {(aiStep==="url"||aiStep==="done") && <>
                   {aiError && <p style={{ fontSize:12, color:B.red, marginBottom:14, padding:"10px 14px", borderRadius:10, background:`${B.red}08` }}>{aiError}</p>}
-                  <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Link da notícia</label><input value={aiUrl} onChange={e=>setAiUrl(e.target.value)} placeholder="https://..." className="tinput" style={{ fontSize:14 }}/></div>
-                  <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Ou cole o texto</label><textarea value={aiManualText} onChange={e=>setAiManualText(e.target.value)} placeholder="Cole o texto aqui..." className="tinput" style={{ fontSize:13, minHeight:90, resize:"vertical" }}/></div>
-                  <div style={{ marginBottom:18 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:8 }}>Tom da reescrita *</label><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Link</label><input value={aiUrl} onChange={e=>setAiUrl(e.target.value)} placeholder="https://..." className="tinput" style={{ fontSize:14 }}/></div>
+                  <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Ou cole o texto</label><textarea value={aiManualText} onChange={e=>setAiManualText(e.target.value)} placeholder="Cole aqui..." className="tinput" style={{ fontSize:13, minHeight:90, resize:"vertical" }}/></div>
+                  <div style={{ marginBottom:18 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:8 }}>Tom *</label><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                     {[{k:"descolado",l:"😎 Descolado"},{k:"serio",l:"📊 Sério"},{k:"inspirador",l:"✨ Inspirador"},{k:"provocativo",l:"🔥 Provocativo"},{k:"educativo",l:"📚 Educativo"}].map(t=>(
-                      <button key={t.k} onClick={()=>setAiTone(t.k)} style={{ padding:"9px 14px", borderRadius:10, border:`1.5px solid ${aiTone===t.k?"#6366F1":B.border}`, background:aiTone===t.k?"#6366F112":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiTone===t.k?700:500, color:aiTone===t.k?"#6366F1":B.text }}>{t.l}</button>
+                      <button key={t.k} onClick={()=>setAiTone(t.k)} style={{ padding:"9px 14px", borderRadius:10, border:`1.5px solid ${aiTone===t.k?"#6366F1":B.border}`, background:aiTone===t.k?"#6366F112":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiTone===t.k?700:500 }}>{t.l}</button>
                     ))}
                   </div></div>
-                  <button onClick={aiGenerateArticle} disabled={aiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar com IA</button>
+                  <button onClick={aiGenerateArticle} disabled={aiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
                 </>}
               </>}
               {creating && <>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título do artigo" className="tinput" style={{ fontSize:15 }}/></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Resumo</label><input value={form.summary||""} onChange={e=>setForm(p=>({...p,summary:e.target.value}))} placeholder="Resumo curto..." className="tinput" style={{ fontSize:13 }}/></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                  {CATS.slice(0,8).map(c=><button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.cat===c.k?B.accent:B.border}`, background:form.cat===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:form.cat===c.k?700:500 }}>{c.l}</button>)}
-                </div></div>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título" className="tinput" style={{ fontSize:15 }}/></div>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Resumo</label><input value={form.summary||""} onChange={e=>setForm(p=>({...p,summary:e.target.value}))} placeholder="Resumo curto" className="tinput" style={{ fontSize:13 }}/></div>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>{CATS.slice(0,8).map(c=><button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.cat===c.k?B.accent:B.border}`, background:form.cat===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:form.cat===c.k?700:500 }}>{c.l}</button>)}</div></div>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Corpo *</label><textarea value={form.body||""} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Escreva o artigo..." className="tinput" style={{ fontSize:14, minHeight:180, resize:"vertical", lineHeight:1.7 }}/></div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
                   <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Fonte</label><input value={form.source||""} onChange={e=>setForm(p=>({...p,source:e.target.value}))} className="tinput" style={{ fontSize:12 }}/></div>
-                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>URL fonte</label><input value={form.sourceUrl||""} onChange={e=>setForm(p=>({...p,sourceUrl:e.target.value}))} className="tinput" style={{ fontSize:12 }}/></div>
+                  <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>URL</label><input value={form.sourceUrl||""} onChange={e=>setForm(p=>({...p,sourceUrl:e.target.value}))} className="tinput" style={{ fontSize:12 }}/></div>
                 </div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Tags</label><input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="marketing, ia, tendências" className="tinput" style={{ fontSize:12 }}/></div>
-                <div style={{ marginBottom:16 }}><label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"22px", borderRadius:14, border:`2px dashed ${photoPreview?B.green:`${B.accent}30`}`, background:photoPreview?`${B.green}04`:`${B.accent}03`, cursor:"pointer", fontSize:13, fontWeight:600, color:photoPreview?B.green:B.accent }}>{photoPreview?"✓ Foto selecionada":"📷 Adicionar foto de capa"}<input ref={newsPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>setPhotoPreview(ev.target.result);r.readAsDataURL(f);}}}/></label></div>
-                <button onClick={async()=>{if(!form.title?.trim()||!form.body?.trim()){showToast("Título e corpo são obrigatórios");return;}let photoUrl=photoPreview&&photoPreview.startsWith("data:")?"":photoPreview;if(newsPhotoRef.current?.files?.[0]&&supabase){const file=newsPhotoRef.current.files[0];const path=`news/${Date.now()}_${file.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,file,{upsert:true});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);photoUrl=u.publicUrl;}}const body=photoUrl?`__PHOTO__:${photoUrl}\n${form.body}`:form.body;const ne={title:form.title.trim(),summary:form.summary||"",body,cat:form.cat||"tips",tags:form.tags?form.tags.split(",").map(s=>s.trim()).filter(Boolean):[],source:form.source||"",sourceUrl:form.sourceUrl||"",readTime:form.readTime||`${Math.max(1,Math.ceil((form.body||"").split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),photo:photoUrl||null};const saved=await supaCreateNews(ne);if(saved){setArticles(p=>[{...ne,id:saved.id,supaId:saved.id},...p]);setCreating(false);setForm({});setPhotoPreview(null);showToast("Artigo publicado ✓");}}} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>🚀 Publicar</button>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Tags</label><input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="marketing, ia" className="tinput" style={{ fontSize:12 }}/></div>
+                <div style={{ marginBottom:16 }}><label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"22px", borderRadius:14, border:`2px dashed ${photoPreview?B.green:`${B.accent}30`}`, background:photoPreview?`${B.green}04`:`${B.accent}03`, cursor:"pointer", fontSize:13, fontWeight:600, color:photoPreview?B.green:B.accent }}>{photoPreview?"✓ Foto":"📷 Foto de capa"}<input ref={newsPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>setPhotoPreview(ev.target.result);r.readAsDataURL(f);}}}/></label></div>
+                <button onClick={async()=>{if(!form.title?.trim()||!form.body?.trim()){showToast("Título e corpo obrigatórios");return;}let photoUrl=photoPreview&&photoPreview.startsWith("data:")?"":photoPreview;if(newsPhotoRef.current?.files?.[0]&&supabase){const file=newsPhotoRef.current.files[0];const path=`news/${Date.now()}_${file.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,file,{upsert:true});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);photoUrl=u.publicUrl;}}const body=photoUrl?`__PHOTO__:${photoUrl}\n${form.body}`:form.body;const ne={title:form.title.trim(),summary:form.summary||"",body,cat:form.cat||"tips",tags:form.tags?form.tags.split(",").map(s=>s.trim()).filter(Boolean):[],source:form.source||"",sourceUrl:form.sourceUrl||"",readTime:`${Math.max(1,Math.ceil((form.body||"").split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),photo:photoUrl||null};const saved=await supaCreateNews(ne);if(saved){setArticles(p=>[{...ne,id:saved.id,supaId:saved.id},...p]);setCreating(false);setForm({});setPhotoPreview(null);showToast("Publicado ✓");}}} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>🚀 Publicar</button>
               </>}
             </div>
           </div>}
