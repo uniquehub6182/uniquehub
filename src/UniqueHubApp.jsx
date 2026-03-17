@@ -15859,21 +15859,22 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   };
 
   /* ═══ HISTORY VIEW ═══ */
-  /* ── DESKTOP AI — PREMIUM INTERFACE ── */
+  /* ── DESKTOP AI v4 ── */
   const AI_MODELS = [
-    { k:"openai", l:"GPT-4o", sub:"OpenAI", icon:"🟢", c:"#10A37F", bg:"linear-gradient(135deg,#10A37F20,#10A37F05)" },
-    { k:"gemini", l:"Gemini 2.0", sub:"Google", icon:"🔵", c:"#4285F4", bg:"linear-gradient(135deg,#4285F420,#4285F405)" },
-    { k:"claude", l:"Claude", sub:"Anthropic", icon:"🟣", c:"#7C3AED", bg:"linear-gradient(135deg,#7C3AED20,#7C3AED05)" },
+    { k:"openai", l:"GPT-4o", sub:"OpenAI", c:"#10A37F", desc:"Excelente para textos criativos, legendas, copys e brainstorming. Responde rápido e com qualidade consistente.",
+      logo:<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.708.2 6.046 6.046 0 005.63 4.2a5.985 5.985 0 00-3.998 2.9 6.046 6.046 0 00.744 7.093 5.985 5.985 0 00.516 4.911 6.046 6.046 0 006.51 2.9A6.065 6.065 0 0012.95 23.8a6.046 6.046 0 006.076-4A5.985 5.985 0 0023.026 16.9a6.046 6.046 0 00-.744-7.079zM12.95 22.098a4.512 4.512 0 01-2.9-1.048l.144-.082 4.81-2.778a.783.783 0 00.395-.678v-6.779l2.033 1.174a.073.073 0 01.04.056v5.614a4.535 4.535 0 01-4.522 4.521zm-9.716-4.148a4.512 4.512 0 01-.54-3.037l.144.086 4.81 2.778a.783.783 0 00.787 0l5.875-3.392v2.348a.073.073 0 01-.03.062l-4.866 2.81a4.535 4.535 0 01-6.18-1.655zm-1.265-10.5a4.512 4.512 0 012.37-1.987v5.726a.783.783 0 00.395.677l5.875 3.392-2.033 1.174a.073.073 0 01-.069.006l-4.866-2.81a4.535 4.535 0 01-1.672-6.178zm16.7 3.883l-5.875-3.392 2.033-1.174a.073.073 0 01.069-.006l4.866 2.81a4.535 4.535 0 01-.7 8.165v-5.726a.783.783 0 00-.393-.677zm2.023-3.06l-.144-.086-4.81-2.778a.783.783 0 00-.787 0l-5.875 3.392V7.253a.073.073 0 01.03-.062l4.866-2.81a4.535 4.535 0 016.72 4.892zM8.678 14.394L6.645 13.22a.073.073 0 01-.04-.056V7.55a4.535 4.535 0 017.422-3.473l-.144.082-4.81 2.778a.783.783 0 00-.395.678zm1.103-2.382l2.616-1.511 2.617 1.511v3.021l-2.617 1.511-2.616-1.511z" fill="#10A37F"/></svg> },
+    { k:"gemini", l:"Gemini 2.0", sub:"Google", c:"#4285F4", desc:"Modelo multimodal do Google. Rápido, bom com dados e análises. Ideal para pesquisas e resumos de conteúdo.",
+      logo:<svg width="22" height="22" viewBox="0 0 24 24"><defs><linearGradient id="gm1" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stopColor="#4285F4"/><stop offset="1" stopColor="#886FBF"/></linearGradient></defs><path d="M12 24C12 24 12 12 24 12C12 12 12 0 12 0C12 0 12 12 0 12C12 12 12 24 12 24Z" fill="url(#gm1)"/></svg> },
+    { k:"claude", l:"Claude Sonnet", sub:"Anthropic", c:"#D97706", desc:"Especialista em análise profunda, raciocínio lógico e textos longos. Melhor para estratégias complexas e planejamento.",
+      logo:<svg width="22" height="22" viewBox="0 0 24 24"><path d="M16.31 2H7.69a.77.77 0 00-.66.38L2.17 11.62a.77.77 0 000 .76l4.86 9.24a.77.77 0 00.66.38h8.62a.77.77 0 00.66-.38l4.86-9.24a.77.77 0 000-.76L17 2.38A.77.77 0 0016.31 2z" fill="#D97706"/><path d="M14.5 8.5L12 7l-2.5 1.5v3L12 13l2.5-1.5v-3z" fill="#fff"/></svg> },
   ];
   const [selModel, setSelModel] = useState(aiKeys.ai_provider || "openai");
-  const [showModelPicker, setShowModelPicker] = useState(false);
   const curModel = AI_MODELS.find(m=>m.k===selModel) || AI_MODELS[0];
 
   if (isAIDesktop) {
     const pinned = conversations.filter(c => c.pinned);
     const recent = conversations.filter(c => !c.pinned);
-    const q = searchQ.toLowerCase().trim();
-    const showConvs = q ? conversations.filter(c => c.title.toLowerCase().includes(q)) : [...pinned, ...recent];
+    const showConvs = searchQ.trim() ? conversations.filter(c => c.title.toLowerCase().includes(searchQ.toLowerCase())) : [...pinned, ...recent];
     const hasChat = view === "chat";
     const hasMessages = hasChat && messages.length > 0;
 
@@ -15883,44 +15884,44 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
         <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={false} />
         <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
 
-          {/* ── LEFT: Conversations ── */}
+          {/* ── LEFT ── */}
           <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            <button onClick={()=>{startNewChat();setSelModel(aiKeys.ai_provider||"openai");}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.opacity="0.85"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Conversa
-            </button>
-            {/* Model selector */}
-            <div style={{ background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border}`, padding:"10px" }}>
-              <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, padding:"0 6px", marginBottom:6 }}>Modelo de IA</p>
+            <button onClick={()=>{startNewChat();}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Nova Conversa</button>
+
+            {/* Model cards */}
+            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
+              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Modelo de IA</p>
               {AI_MODELS.map(m => (
-                <div key={m.k} onClick={()=>{setSelModel(m.k);supaSetSetting("ai_keys",JSON.stringify({...aiKeys,ai_provider:m.k}));setAiKeys(p=>({...p,ai_provider:m.k}));}} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:selModel===m.k?m.bg:"transparent", border:selModel===m.k?`1.5px solid ${m.c}20`:"1.5px solid transparent", marginBottom:2, transition:"all .15s" }}>
-                  <span style={{ fontSize:18 }}>{m.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontSize:13, fontWeight:selModel===m.k?700:500, color:selModel===m.k?m.c:B.text }}>{m.l}</p>
-                    <p style={{ fontSize:9, color:B.muted }}>{m.sub}</p>
+                <div key={m.k} onClick={()=>{setSelModel(m.k);supaSetSetting("ai_keys",JSON.stringify({...aiKeys,ai_provider:m.k}));setAiKeys(p=>({...p,ai_provider:m.k}));}} style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"12px", borderRadius:14, cursor:"pointer", background:selModel===m.k?`${m.c}08`:"transparent", border:selModel===m.k?`1.5px solid ${m.c}25`:"1.5px solid transparent", marginBottom:6, transition:"all .15s" }} onMouseEnter={e=>{if(selModel!==m.k)e.currentTarget.style.background=`${m.c}04`;}} onMouseLeave={e=>{if(selModel!==m.k)e.currentTarget.style.background="transparent";}}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:`${m.c}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}>{m.logo}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <p style={{ fontSize:14, fontWeight:selModel===m.k?700:600, color:selModel===m.k?m.c:B.text }}>{m.l}</p>
+                      {selModel===m.k && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={m.c} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                    <p style={{ fontSize:10, color:B.muted, lineHeight:1.4, marginTop:3 }}>{m.desc}</p>
                   </div>
-                  {selModel===m.k && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={m.c} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
               ))}
             </div>
-            {/* Conversations list */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+            {/* History */}
+            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted, flex:1 }}>Histórico</p>
                 <span style={{ fontSize:10, color:B.muted }}>{conversations.length}</span>
               </div>
-              <div style={{ padding:"6px", borderBottom:`1px solid ${B.border}` }}>
-                <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar..." style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, outline:"none", background:"transparent" }}/>
+              <div style={{ padding:"6px 8px", borderBottom:`1px solid ${B.border}` }}>
+                <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar conversas..." style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, outline:"none", background:"transparent" }}/>
               </div>
               <div style={{ flex:1, overflowY:"auto", padding:"4px 6px" }}>
                 {showConvs.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:24, fontSize:12 }}>Nenhuma conversa</p>}
                 {showConvs.map(c => {
-                  const isSel = activeChat === c.id && hasChat;
+                  const isSel = activeChat===c.id && hasChat;
                   return (
-                    <div key={c.id} onClick={()=>openChat(c)} style={{ display:"flex", gap:10, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", marginBottom:1 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
-                      <div style={{ width:32, height:32, borderRadius:8, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:14 }}>💬</div>
+                    <div key={c.id} onClick={()=>openChat(c)} style={{ display:"flex", gap:8, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", marginBottom:1 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ fontSize:12, fontWeight:isSel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{c.pinned?"📌 ":""}{c.title}</p>
-                        <p style={{ fontSize:10, color:B.muted }}>{c.date} · {c.messages?.length||0} msgs</p>
+                        <p style={{ fontSize:12, fontWeight:isSel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.pinned?"📌 ":""}{c.title}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{c.date}</p>
                       </div>
                     </div>
                   );
@@ -15931,96 +15932,69 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
           {/* ── RIGHT: Chat ── */}
           <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             {!hasMessages && !loading ? <>
-              {/* ═══ WELCOME SCREEN ═══ */}
-              <div style={{ flex:1, display:"flex", flexDirection:"column", overflowY:"auto" }}>
-                {/* Hero */}
-                <div style={{ textAlign:"center", padding:"48px 40px 32px" }}>
-                  <div style={{ width:80, height:80, borderRadius:24, background:curModel.bg, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:20, fontSize:40 }}>{curModel.icon}</div>
-                  <h2 style={{ fontSize:28, fontWeight:900, color:B.text, marginBottom:8 }}>Como posso ajudar?</h2>
-                  <p style={{ fontSize:15, color:B.muted, lineHeight:1.6, maxWidth:500, margin:"0 auto" }}>Escolha um atalho abaixo ou escreva sua pergunta. Estou usando <strong style={{color:curModel.c}}>{curModel.l}</strong></p>
+              {/* ═══ WELCOME ═══ */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", padding:"0 48px", overflowY:"auto" }}>
+                <div style={{ textAlign:"center", marginBottom:28 }}>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:10, padding:"10px 20px", borderRadius:14, background:`${curModel.c}08`, marginBottom:16 }}>
+                    <span style={{ display:"flex" }}>{curModel.logo}</span>
+                    <span style={{ fontSize:15, fontWeight:700, color:curModel.c }}>{curModel.l}</span>
+                  </div>
+                  <h2 style={{ fontSize:26, fontWeight:900, color:B.text, marginBottom:6 }}>O que vamos criar hoje?</h2>
+                  <p style={{ fontSize:14, color:B.muted, maxWidth:480, margin:"0 auto" }}>Escolha um atalho ou escreva sua pergunta</p>
                 </div>
-                {/* Preset cards — 2 rows of 4 */}
-                <div style={{ padding:"0 40px 32px", display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:14 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:12, maxWidth:720, margin:"0 auto", width:"100%" }}>
                   {PRESETS.slice(0,8).map((p, i) => {
-                    const colors = [B.accent,"#E91E63","#4285F4","#FF6D00","#7C3AED","#00BCD4","#E91E63","#10A37F"];
-                    const col = colors[i%colors.length];
+                    const cols = [B.accent,"#E91E63","#4285F4","#FF6D00","#7C3AED","#00BCD4","#E91E63","#10A37F"];
+                    const col = cols[i%cols.length];
                     return (
-                      <div key={i} onClick={() => { if(!hasChat)startNewChat(); setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ padding:"22px 18px", borderRadius:18, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", transition:"all .25s", display:"flex", flexDirection:"column", gap:10, minHeight:120 }} onMouseEnter={e=>{e.currentTarget.style.background=`${col}06`;e.currentTarget.style.borderColor=`${col}30`;e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 24px ${col}15`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                        <div style={{ width:40, height:40, borderRadius:12, background:`${col}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{p.icon}</div>
-                        <p style={{ fontSize:14, fontWeight:700, lineHeight:1.3, color:B.text }}>{p.label}</p>
+                      <div key={i} onClick={() => { if(!hasChat)startNewChat(); setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ padding:"18px 16px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.background=`${col}06`;e.currentTarget.style.borderColor=`${col}30`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";}}>
+                        <div style={{ width:36, height:36, borderRadius:10, background:`${col}12`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>{p.icon}</div>
+                        <p style={{ fontSize:13, fontWeight:700, lineHeight:1.3, color:B.text }}>{p.label}</p>
                       </div>
                     );
                   })}
                 </div>
-                {/* Quick tips */}
-                <div style={{ padding:"0 40px 24px" }}>
-                  <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
-                    {["Seja específico na pergunta","Peça exemplos práticos","Diga o tom que quer"].map((tip,i) => (
-                      <div key={i} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, background:B.bg }}>
-                        <span style={{ fontSize:12 }}>💡</span>
-                        <span style={{ fontSize:12, color:B.muted, fontWeight:500 }}>{tip}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </> : <>
-              {/* ═══ CHAT MESSAGES ═══ */}
+              {/* ═══ MESSAGES ═══ */}
               <div style={{ padding:"10px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
-                <span style={{ fontSize:20 }}>{curModel.icon}</span>
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:15, fontWeight:700, color:B.text }}>{curModel.l}</p>
-                  <p style={{ fontSize:10, color:B.muted }}>{curModel.sub}</p>
-                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ display:"flex" }}>{curModel.logo}</span><span style={{ fontSize:15, fontWeight:700 }}>{curModel.l}</span></div>
+                <span style={{ fontSize:11, color:B.muted }}>{curModel.sub}</span>
+                <div style={{ flex:1 }}/>
                 <button onClick={startNewChat} style={{ padding:"7px 14px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>+ Nova</button>
               </div>
               <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"20px 0" }}>
                 <div style={{ maxWidth:780, margin:"0 auto", padding:"0 28px" }}>
                   {messages.map((m, i) => (
-                    <div key={i} style={{ display:"flex", gap:14, marginBottom:28, alignItems:"flex-start" }}>
-                      {m.role==="assistant" ? <div style={{ width:38, height:38, borderRadius:12, background:curModel.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:20 }}>{curModel.icon}</div>
-                      : <div style={{ width:38, height:38, borderRadius:12, overflow:"hidden", flexShrink:0 }}><Av name={user?.name||"U"} sz={38} fs={14}/></div>}
+                    <div key={i} style={{ display:"flex", gap:14, marginBottom:24, alignItems:"flex-start" }}>
+                      {m.role==="assistant" ? <div style={{ width:36, height:36, borderRadius:10, background:`${curModel.c}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{curModel.logo}</div>
+                      : <div style={{ width:36, height:36, borderRadius:10, overflow:"hidden", flexShrink:0 }}><Av name={user?.name||"U"} sz={36} fs={13}/></div>}
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                          <p style={{ fontSize:13, fontWeight:700, color:m.role==="assistant"?curModel.c:B.text }}>{m.role==="assistant"?curModel.l:(user?.name?.split(" ")[0]||"Você")}</p>
-                          <span style={{ fontSize:10, color:B.muted }}>{m.timestamp||""}</span>
-                        </div>
-                        <div style={{ fontSize:15, lineHeight:1.85, color:B.text, whiteSpace:"pre-wrap", wordBreak:"break-word", padding:m.role==="assistant"?"16px 20px":"0", background:m.role==="assistant"?B.bg:"transparent", borderRadius:m.role==="assistant"?16:0 }}>
-                          {m.content}
-                        </div>
+                        <p style={{ fontSize:12, fontWeight:700, color:m.role==="assistant"?curModel.c:B.text, marginBottom:6 }}>{m.role==="assistant"?curModel.l:(user?.name?.split(" ")[0]||"Você")}</p>
+                        <div style={{ fontSize:15, lineHeight:1.85, color:B.text, whiteSpace:"pre-wrap", wordBreak:"break-word", ...(m.role==="assistant"?{padding:"16px 20px",background:B.bg,borderRadius:16}:{}) }}>{m.content}</div>
                         {m.role==="assistant" && <div style={{ display:"flex", gap:6, marginTop:8 }}>
-                          <button onClick={()=>{navigator.clipboard.writeText(m.content);showToast("Copiado ✓");}} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.muted }} onMouseEnter={e=>e.currentTarget.style.borderColor=B.accent} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>📋 Copiar</button>
+                          <button onClick={()=>{navigator.clipboard.writeText(m.content);showToast("Copiado ✓");}} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.muted }}>📋 Copiar</button>
                         </div>}
                       </div>
                     </div>
                   ))}
-                  {loading && <div style={{ display:"flex", gap:14, marginBottom:28 }}>
-                    <div style={{ width:38, height:38, borderRadius:12, background:curModel.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:20 }}>{curModel.icon}</div>
-                    <div>
-                      <p style={{ fontSize:13, fontWeight:700, color:curModel.c, marginBottom:6 }}>{curModel.l}</p>
-                      <div style={{ padding:"16px 20px", background:B.bg, borderRadius:16, display:"flex", gap:6 }}>
-                        <div style={{ width:8, height:8, borderRadius:4, background:curModel.c, opacity:0.7, animation:"skPulse 1.4s ease-in-out infinite" }}/>
-                        <div style={{ width:8, height:8, borderRadius:4, background:curModel.c, opacity:0.7, animation:"skPulse 1.4s ease-in-out 0.2s infinite" }}/>
-                        <div style={{ width:8, height:8, borderRadius:4, background:curModel.c, opacity:0.7, animation:"skPulse 1.4s ease-in-out 0.4s infinite" }}/>
-                      </div>
-                    </div>
+                  {loading && <div style={{ display:"flex", gap:14 }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:`${curModel.c}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{curModel.logo}</div>
+                    <div><p style={{ fontSize:12, fontWeight:700, color:curModel.c, marginBottom:6 }}>{curModel.l}</p><div style={{ padding:"16px 20px", background:B.bg, borderRadius:16, display:"flex", gap:6 }}><div style={{ width:8, height:8, borderRadius:4, background:curModel.c, opacity:0.6, animation:"skPulse 1.4s ease-in-out infinite" }}/><div style={{ width:8, height:8, borderRadius:4, background:curModel.c, opacity:0.6, animation:"skPulse 1.4s ease-in-out 0.2s infinite" }}/><div style={{ width:8, height:8, borderRadius:4, background:curModel.c, opacity:0.6, animation:"skPulse 1.4s ease-in-out 0.4s infinite" }}/></div></div>
                   </div>}
                 </div>
               </div>
             </>}
-            {/* ═══ INPUT BAR ═══ */}
-            <div style={{ padding:"16px 28px 20px", flexShrink:0 }}>
+            {/* Input */}
+            <div style={{ padding:"14px 28px 18px", flexShrink:0, borderTop:`1px solid ${B.border}` }}>
               <div style={{ maxWidth:780, margin:"0 auto" }}>
-                <div style={{ display:"flex", gap:10, alignItems:"flex-end", background:B.bg||"#F5F5F5", borderRadius:18, padding:"8px 8px 8px 20px", border:`1.5px solid ${B.border}`, transition:"border-color .2s" }} onFocus={e=>e.currentTarget.style.borderColor=curModel.c} onBlur={e=>e.currentTarget.style.borderColor=B.border}>
-                  <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder={`Pergunte ao ${curModel.l}...`} rows={1} style={{ flex:1, minHeight:44, maxHeight:160, resize:"none", padding:"10px 0", fontFamily:"inherit", fontSize:15, lineHeight:1.6, border:"none", background:"transparent", outline:"none", color:B.text }}/>
-                  <button onClick={()=>{if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}} disabled={loading||!input.trim()} style={{ width:44, height:44, borderRadius:14, background:input.trim()?curModel.c:`${curModel.c}25`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
+                <div style={{ display:"flex", alignItems:"flex-end", gap:10, background:B.bg||"#F5F5F5", borderRadius:16, padding:"6px 6px 6px 18px", border:`1.5px solid ${B.border}`, transition:"border-color .2s" }} onFocusCapture={()=>document.activeElement?.closest?.('[style]')&&(document.activeElement.closest('[style*=border]')||{}).style} >
+                  <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder={`Pergunte ao ${curModel.l}...`} rows={1} style={{ flex:1, minHeight:42, maxHeight:140, resize:"none", padding:"10px 0", fontFamily:"inherit", fontSize:15, lineHeight:1.5, border:"none", background:"transparent", outline:"none", color:B.text }}/>
+                  <button onClick={()=>{if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}} disabled={loading||!input.trim()} style={{ width:42, height:42, borderRadius:12, background:input.trim()?curModel.c:`${curModel.c}25`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#fff":"rgba(255,255,255,0.5)"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   </button>
                 </div>
-                <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 4px 0" }}>
-                  <p style={{ fontSize:10, color:B.muted }}>Usando <span style={{ fontWeight:700, color:curModel.c }}>{curModel.icon} {curModel.l}</span> · Enter envia · Shift+Enter nova linha</p>
-                  <p style={{ fontSize:10, color:B.muted }}>As respostas podem conter imprecisões</p>
-                </div>
+                <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:6 }}>{curModel.l} · Enter envia · Shift+Enter nova linha</p>
               </div>
             </div>
           </div>
