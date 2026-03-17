@@ -14923,123 +14923,131 @@ function IdeasPage({ onBack, user, clients: propClients }) {
     );
   }
 
-  /* ── DESKTOP IDEAS — MURAL ── */
+  /* ── DESKTOP IDEAS — CARD GRID + SIDE DETAIL ── */
   if (isIdeasDesktop) {
+    const idea = selIdea ? ideas.find(i=>i.id===selIdea) : null;
+    const st = idea ? (statusCfg[idea.status]||statusCfg.pending) : null;
+    const hasRight = !!(idea || adding);
+    const CDATA = propClients || [];
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.ideas} label="Criatividade" title="Ideias" collapsed={false} onBack={onBack} />
         {/* Top bar */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12, marginBottom:16 }}>
-          <div style={{ display:"flex", gap:6, flex:1, flexWrap:"wrap" }}>
-            {[{k:"all",l:`Todas (${ideas.length})`},{k:"approved",l:`✅ Aprovadas (${ideas.filter(i=>i.status==="approved").length})`},{k:"review",l:`🔍 Análise (${ideas.filter(i=>i.status==="review").length})`},{k:"pending",l:`⏳ Pendentes (${ideas.filter(i=>i.status==="pending").length})`}].map(f=>(
-              <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"9px 18px", borderRadius:12, border:`1.5px solid ${filter===f.k?B.accent:B.border}`, background:filter===f.k?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:filter===f.k?700:500, color:filter===f.k?B.dark:B.muted }}>{f.l}</button>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12, marginBottom:14 }}>
+          <div style={{ display:"flex", gap:6, flex:1 }}>
+            {[{k:"all",l:"Todas",n:ideas.length},{k:"approved",l:"Aprovadas",n:ideas.filter(i=>i.status==="approved").length,c:B.green},{k:"review",l:"Em análise",n:ideas.filter(i=>i.status==="review").length,c:B.orange},{k:"pending",l:"Pendentes",n:ideas.filter(i=>i.status==="pending").length,c:B.muted}].map(f=>(
+              <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${filter===f.k?(f.c||B.accent):B.border}`, background:filter===f.k?`${f.c||B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:filter===f.k?700:500, color:filter===f.k?(f.c||B.accent):B.muted }}>{f.l} <span style={{ fontWeight:800 }}>({f.n})</span></button>
             ))}
           </div>
-          <button onClick={()=>{setAdding(!adding);setSelIdea(null);setForm({});}} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 20px", borderRadius:12, background:adding?B.dark:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:adding?"#fff":B.dark }}>{adding?"✕ Cancelar":"💡 Nova Ideia"}</button>
+          <button onClick={()=>{setAdding(!adding);setSelIdea(null);setForm({});}} style={{ padding:"10px 20px", borderRadius:12, background:adding?B.dark:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:adding?"#fff":B.dark }}>{adding?"✕ Cancelar":"💡 Nova Ideia"}</button>
         </div>
-        {/* Scrollable area */}
-        <div style={{ flex:1, overflowY:"auto", paddingRight:4 }}>
-          {/* Inline add form */}
-          {adding && <div style={{ background:B.bgCard||"#fff", borderRadius:20, border:`2px solid ${B.accent}`, padding:"24px 28px", marginBottom:20 }}>
-            <p style={{ fontSize:18, fontWeight:800, marginBottom:16 }}>💡 Nova Ideia</p>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-              <div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Série de Reels educativos..." className="tinput" style={{ fontSize:15 }}/></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Descrição</label><textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva a ideia..." className="tinput" style={{ fontSize:14, minHeight:100, resize:"vertical", lineHeight:1.7 }}/></div>
+        <div style={{ flex:1, display:"flex", gap:16, minHeight:0 }}>
+          {/* Cards grid */}
+          <div style={{ flex:1, overflowY:"auto", minWidth:0, paddingRight:4 }}>
+            {!ideasLoaded && <div style={{ textAlign:"center", padding:"60px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/></div>}
+            {ideasLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:36, marginBottom:8 }}>💡</p><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhuma ideia</p></div>}
+            <div style={{ display:"grid", gridTemplateColumns:hasRight?"repeat(auto-fill, minmax(220px, 1fr))":"repeat(auto-fill, minmax(280px, 1fr))", gap:12 }}>
+              {filtered.map(idea_ => {
+                const s = statusCfg[idea_.status]||statusCfg.pending;
+                const isSel = selIdea === idea_.id;
+                return (
+                  <div key={idea_.id} onClick={()=>{setSelIdea(isSel?null:idea_.id);setAdding(false);}} style={{ background:B.bgCard||"#fff", borderRadius:16, border:isSel?`2px solid ${B.accent}`:`1px solid ${B.border}`, padding:hasRight?"14px 16px":"18px 20px", cursor:"pointer", transition:"all .2s", display:"flex", flexDirection:"column", gap:hasRight?8:10 }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+                    {/* Status + client */}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:6, background:`${s.c}12`, color:s.c }}>{s.l}</span>
+                      {idea_.client && idea_.client!=="Todos" && <span style={{ fontSize:10, fontWeight:600, color:B.accent }}>{idea_.client}</span>}
+                    </div>
+                    {/* Title */}
+                    <h4 style={{ fontSize:hasRight?14:16, fontWeight:800, lineHeight:1.3, color:B.text }}>{idea_.title}</h4>
+                    {/* Desc preview (only when no side panel) */}
+                    {!hasRight && idea_.desc && <p style={{ fontSize:13, color:B.muted, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{idea_.desc}</p>}
+                    {/* Tags */}
+                    {idea_.tags?.length>0 && <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                      {idea_.tags.slice(0,hasRight?2:4).map((t,ti)=><span key={ti} style={{ fontSize:9, fontWeight:600, padding:"2px 7px", borderRadius:5, background:`${B.accent}08`, color:B.accent }}>#{t}</span>)}
+                    </div>}
+                    {/* Footer: vote + meta */}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"auto", paddingTop:4 }}>
+                      <button onClick={e=>{e.stopPropagation();vote(idea_.id);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1.5px solid ${B.accent}20`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:800, color:B.accent }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}15`} onMouseLeave={e=>e.currentTarget.style.background=`${B.accent}06`}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg> {idea_.votes}
+                      </button>
+                      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                        <span style={{ fontSize:10, color:B.muted }}>{idea_.author}</span>
+                        {idea_.comments?.length>0 && <span style={{ fontSize:10, color:B.muted }}>💬 {idea_.comments.length}</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* Side panel */}
+          {hasRight && <div style={{ width:420, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {adding ? <>
+              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <p style={{ fontSize:18, fontWeight:800 }}>💡 Nova Ideia</p>
+                <button onClick={()=>{setAdding(false);setForm({});}} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               </div>
-              <div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:8 }}>Cliente</label><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
+                <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Série de Reels educativos..." className="tinput" style={{ fontSize:15 }}/></div>
+                <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Descrição</label><textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva a ideia em detalhes: objetivo, execução, recursos..." className="tinput" style={{ fontSize:14, minHeight:120, resize:"vertical", lineHeight:1.7 }}/></div>
+                <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:8 }}>Cliente</label><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                   <button onClick={()=>setForm(p=>({...p,client:"Todos"}))} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${(form.client||"Todos")==="Todos"?B.accent:B.border}`, background:(form.client||"Todos")==="Todos"?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>Todos</button>
-                  {(propClients||[]).slice(0,6).map(c=><button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>{c.name}</button>)}
+                  {CDATA.map(c=><button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>{c.name}</button>)}
                 </div></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Tags</label><input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="Reels, Instagram, Conteúdo" className="tinput" style={{ fontSize:13 }}/></div>
+                <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Tags</label><input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="Reels, Instagram, Conteúdo" className="tinput" style={{ fontSize:13 }}/></div>
                 <button onClick={addIdea} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>🚀 Publicar Ideia</button>
               </div>
-            </div>
-          </div>}
-          {/* Ideas grid */}
-          {!ideasLoaded && <div style={{ textAlign:"center", padding:"60px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/></div>}
-          {ideasLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:36, marginBottom:8 }}>💡</p><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhuma ideia ainda</p><p style={{ fontSize:13, color:B.muted, marginTop:4 }}>Clique em "Nova Ideia" para começar</p></div>}
-
-          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-            {filtered.map(idea_ => {
-              const isOpen = selIdea === idea_.id;
-              const s = statusCfg[idea_.status]||statusCfg.pending;
-              return (
-                <div key={idea_.id} style={{ background:B.bgCard||"#fff", borderRadius:18, border:isOpen?`2px solid ${B.accent}`:`1px solid ${B.border}`, overflow:"hidden", transition:"all .2s" }}>
-                  {/* Card header — always visible */}
-                  <div onClick={()=>setSelIdea(isOpen?null:idea_.id)} style={{ display:"flex", alignItems:"center", gap:16, padding:"18px 22px", cursor:"pointer" }} onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background=`${B.accent}03`;}} onMouseLeave={e=>{if(!isOpen)e.currentTarget.style.background="transparent";}}>
-                    {/* Vote button */}
-                    <button onClick={e=>{e.stopPropagation();vote(idea_.id);}} style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 12px", borderRadius:12, border:`1.5px solid ${B.accent}20`, background:`${B.accent}06`, cursor:"pointer", flexShrink:0, fontFamily:"inherit", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.background=`${B.accent}15`;e.currentTarget.style.transform="scale(1.05)";}} onMouseLeave={e=>{e.currentTarget.style.background=`${B.accent}06`;e.currentTarget.style.transform="scale(1)";}}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
-                      <span style={{ fontSize:16, fontWeight:900, color:B.accent, marginTop:2 }}>{idea_.votes}</span>
-                    </button>
-                    {/* Title + meta */}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <h3 style={{ fontSize:17, fontWeight:800, color:B.text, marginBottom:4 }}>{idea_.title}</h3>
-                      <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                        <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:8, background:`${s.c}12`, color:s.c }}>{s.l}</span>
-                        <span style={{ fontSize:12, color:B.muted }}>{idea_.author}</span>
-                        <span style={{ fontSize:12, color:B.muted }}>· {idea_.date}</span>
-                        {idea_.client && idea_.client!=="Todos" && <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${B.accent}08`, color:B.accent }}>{idea_.client}</span>}
-                        {idea_.comments?.length>0 && <span style={{ fontSize:12, color:B.muted }}>💬 {idea_.comments.length}</span>}
-                      </div>
-                    </div>
-                    {/* Tags preview */}
-                    {idea_.tags?.length>0 && !isOpen && <div style={{ display:"flex", gap:4, flexShrink:0 }}>
-                      {idea_.tags.slice(0,3).map((t,ti)=><span key={ti} style={{ fontSize:10, fontWeight:600, padding:"3px 8px", borderRadius:6, background:`${B.accent}06`, color:B.accent }}>#{t}</span>)}
-                    </div>}
-                    {/* Expand arrow */}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0, transition:"transform .2s", transform:isOpen?"rotate(180deg)":"rotate(0deg)" }}><polyline points="6 9 12 15 18 9"/></svg>
-                  </div>
-
-                  {/* Expanded content */}
-                  {isOpen && <div style={{ padding:"0 22px 22px", borderTop:`1px solid ${B.border}` }}>
-                    <div style={{ display:"flex", gap:24, paddingTop:20 }}>
-                      {/* Left: description + tags */}
-                      <div style={{ flex:1, minWidth:0 }}>
-                        {idea_.desc && <p style={{ fontSize:15, color:B.text, lineHeight:1.8, marginBottom:16, whiteSpace:"pre-wrap" }}>{idea_.desc}</p>}
-                        {!idea_.desc && <p style={{ fontSize:14, color:B.muted, fontStyle:"italic", marginBottom:16 }}>Sem descrição detalhada</p>}
-                        {idea_.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
-                          {idea_.tags.map((t,ti)=><span key={ti} style={{ fontSize:12, fontWeight:600, padding:"5px 14px", borderRadius:10, background:`${B.accent}08`, color:B.accent }}>#{t}</span>)}
-                        </div>}
-                        {/* Admin status changer */}
-                        {user?.supaRole==="admin" && <div style={{ display:"flex", gap:6, marginBottom:16 }}>
-                          {["pending","review","approved","rejected"].map(st_=>{const sc_=statusCfg[st_];return(
-                            <button key={st_} onClick={()=>{setIdeas(p=>p.map(i=>i.id===idea_.id?{...i,status:st_}:i));if(idea_.supaId)supaUpdateIdea(idea_.supaId,{status:st_});showToast("Status: "+sc_.l+" ✓");}} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${idea_.status===st_?sc_.c:B.border}`, background:idea_.status===st_?`${sc_.c}15`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:idea_.status===st_?700:500, color:idea_.status===st_?sc_.c:B.muted }}>{sc_.l}</button>
-                          );})}
-                        </div>}
-                      </div>
-                      {/* Right: comments */}
-                      <div style={{ width:340, flexShrink:0, background:B.bg, borderRadius:16, padding:"16px 18px" }}>
-                        <p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>💬 Comentários ({(idea_.comments||[]).length})</p>
-                        {(idea_.comments||[]).length===0 && <p style={{ fontSize:12, color:B.muted, marginBottom:12 }}>Nenhum comentário. Seja o primeiro!</p>}
-                        <div style={{ maxHeight:200, overflowY:"auto", marginBottom:12 }}>
-                          {(idea_.comments||[]).map((c,ci) => (
-                            <div key={ci} style={{ display:"flex", gap:8, marginBottom:10 }}>
-                              <Av name={c.by} sz={28} fs={10}/>
-                              <div style={{ flex:1, background:B.bgCard||"#fff", padding:"8px 12px", borderRadius:12 }}>
-                                <div style={{ display:"flex", gap:6, alignItems:"center", marginBottom:2 }}>
-                                  <span style={{ fontSize:12, fontWeight:700 }}>{c.by}</span>
-                                  <span style={{ fontSize:9, color:B.muted }}>{c.date}</span>
-                                </div>
-                                <p style={{ fontSize:13, color:B.text, lineHeight:1.4 }}>{c.text}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div style={{ display:"flex", gap:6 }}>
-                          <input value={newComment} onChange={e=>setNewComment(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addComment(idea_.id);}} placeholder="Escreva..." style={{ flex:1, padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, outline:"none" }}/>
-                          <button onClick={()=>addComment(idea_.id)} style={{ padding:"10px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Enviar</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>}
+            </> : idea ? <>
+              {/* Idea detail */}
+              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
+                <button onClick={()=>setSelIdea(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                <span style={{ fontSize:13, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${st.c}15`, color:st.c }}>{st.l}</span>
+                <span style={{ fontSize:13, color:B.muted }}>{idea.date}</span>
+                <div style={{ marginLeft:"auto" }}>
+                  <button onClick={()=>vote(idea.id)} style={{ display:"flex", alignItems:"center", gap:5, padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:800, color:B.accent }}>▲ {idea.votes}</button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"22px 24px" }}>
+                <h2 style={{ fontSize:22, fontWeight:900, lineHeight:1.3, marginBottom:8 }}>{idea.title}</h2>
+                <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:16 }}>
+                  <span style={{ fontSize:12, color:B.muted }}>por <strong>{idea.author}</strong></span>
+                  {idea.client && idea.client!=="Todos" && <span style={{ fontSize:12, fontWeight:600, padding:"4px 12px", borderRadius:8, background:`${B.accent}08`, color:B.accent }}>{idea.client}</span>}
+                </div>
+                {idea.desc ? <p style={{ fontSize:15, color:B.text, lineHeight:1.8, marginBottom:20, whiteSpace:"pre-wrap" }}>{idea.desc}</p> : <p style={{ fontSize:14, color:B.muted, fontStyle:"italic", marginBottom:20 }}>Sem descrição detalhada</p>}
+                {idea.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
+                  {idea.tags.map((t,ti)=><span key={ti} style={{ fontSize:12, fontWeight:600, padding:"5px 14px", borderRadius:10, background:`${B.accent}08`, color:B.accent }}>#{t}</span>)}
+                </div>}
+                {/* Admin status */}
+                {user?.supaRole==="admin" && <div style={{ padding:"14px 16px", borderRadius:14, background:B.bg, marginBottom:20 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8, textTransform:"uppercase" }}>Alterar status</p>
+                  <div style={{ display:"flex", gap:6 }}>
+                    {["pending","review","approved","rejected"].map(st_=>{const sc_=statusCfg[st_];return(
+                      <button key={st_} onClick={()=>{setIdeas(p=>p.map(i=>i.id===idea.id?{...i,status:st_}:i));if(idea.supaId)supaUpdateIdea(idea.supaId,{status:st_});showToast(sc_.l+" ✓");}} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${idea.status===st_?sc_.c:B.border}`, background:idea.status===st_?`${sc_.c}15`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:idea.status===st_?700:500, color:idea.status===st_?sc_.c:B.muted }}>{sc_.l}</button>
+                    );})}
+                  </div>
+                </div>}
+                {/* Comments */}
+                <div style={{ borderTop:`1px solid ${B.border}`, paddingTop:18 }}>
+                  <p style={{ fontSize:15, fontWeight:800, marginBottom:14 }}>💬 Comentários ({(idea.comments||[]).length})</p>
+                  {(idea.comments||[]).length===0 && <p style={{ fontSize:13, color:B.muted, marginBottom:14 }}>Nenhum comentário. Seja o primeiro!</p>}
+                  {(idea.comments||[]).map((c,ci) => (
+                    <div key={ci} style={{ display:"flex", gap:10, marginBottom:12 }}>
+                      <Av name={c.by} sz={32} fs={12}/>
+                      <div style={{ flex:1, background:B.bg, padding:"10px 14px", borderRadius:14 }}>
+                        <div style={{ display:"flex", gap:6, alignItems:"center", marginBottom:3 }}><span style={{ fontSize:13, fontWeight:700 }}>{c.by}</span><span style={{ fontSize:10, color:B.muted }}>{c.date}</span></div>
+                        <p style={{ fontSize:14, color:B.text, lineHeight:1.5 }}>{c.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                    <input value={newComment} onChange={e=>setNewComment(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addComment(idea.id);}} placeholder="Escreva um comentário..." style={{ flex:1, padding:"12px 16px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, outline:"none" }}/>
+                    <button onClick={()=>addComment(idea.id)} style={{ padding:"12px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Enviar</button>
+                  </div>
+                </div>
+              </div>
+            </> : null}
+          </div>}
         </div>
       </div>
     );
