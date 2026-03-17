@@ -16084,6 +16084,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
     setActiveChat(conv.id);
     setMessages([...conv.messages]);
     setView("chat");
+    if (conv.model) setSelModel(conv.model);
   };
 
   const saveToHistory = (chatId, msgs) => {
@@ -16095,9 +16096,9 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
       const exists = prev.find(c => c.id === chatId);
       let updated;
       if (exists) {
-        updated = prev.map(c => c.id === chatId ? { ...c, messages: msgs, title, updatedAt: ts } : c);
+        updated = prev.map(c => c.id === chatId ? { ...c, messages: msgs, title, updatedAt: ts, model: c.model || selModel } : c);
       } else {
-        updated = [{ id: chatId, title, messages: msgs, updatedAt: ts, pinned: false }, ...prev];
+        updated = [{ id: chatId, title, messages: msgs, updatedAt: ts, pinned: false, model: selModel }, ...prev];
       }
       /* Persist to Supabase (keep last 50 conversations, trim messages to last 30 per conversation) */
       const toSave = updated.slice(0, 50).map(c => ({ ...c, messages: (c.messages || []).slice(-30) }));
@@ -16274,11 +16275,13 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
                 {showConvs.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:24, fontSize:12 }}>Nenhuma conversa</p>}
                 {showConvs.map(c => {
                   const isSel = activeChat===c.id && hasChat;
+                  const cMod = AI_MODELS.find(m=>m.k===c.model) || null;
                   return (
                     <div key={c.id} onClick={()=>openChat(c)} style={{ display:"flex", gap:8, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", marginBottom:1 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
+                      {cMod && <div style={{ width:28, height:28, borderRadius:8, background:`${cMod.c}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:1 }}><span style={{ display:"flex", transform:"scale(0.7)" }}>{cMod.logo}</span></div>}
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ fontSize:12, fontWeight:isSel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.pinned?"📌 ":""}{c.title}</p>
-                        <p style={{ fontSize:10, color:B.muted }}>{c.date}</p>
+                        <p style={{ fontSize:10, color:B.muted }}>{c.date}{cMod?` · ${cMod.l}`:""}</p>
                       </div>
                     </div>
                   );
