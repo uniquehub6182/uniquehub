@@ -14458,85 +14458,99 @@ REGRAS:
     const hero = pinned[0] || filtered[0];
     const grid = filtered.filter(x => x.id !== hero?.id);
 
-    /* ═══ ARTICLE READING VIEW ═══ */
+    /* ═══ ARTICLE — IMMERSIVE OVERLAY ═══ */
     if (a) {
       const artUrl = a.sourceUrl || window.location.href;
       const artTitle = a.title || "";
+      const ShareBtn = ({href,bg,children,title:t}) => <a href={href} target="_blank" rel="noopener" style={{ width:40, height:40, borderRadius:12, background:bg, display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none", transition:"transform .15s" }} title={t} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>{children}</a>;
       return (
-        <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-          {ToastEl}
-          <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} />
-          <div style={{ flex:1, overflowY:"auto", marginTop:12 }}>
-            {/* Back + category bar */}
-            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
-              <button onClick={()=>setSelArticle(null)} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:600, color:B.text }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
-              </button>
-              <span style={{ fontSize:13, fontWeight:700, padding:"6px 16px", borderRadius:10, background:`${catColor(a.cat)}15`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
+        <div style={{ position:"fixed", inset:0, zIndex:999, background:B.bg||"#F5F5F5", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          {/* Top bar */}
+          <div style={{ height:56, background:B.bgCard||"#fff", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", padding:"0 24px", gap:16, flexShrink:0 }}>
+            <button onClick={()=>setSelArticle(null)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:600, color:B.text }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
+            </button>
+            <div style={{ flex:1, display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:13, fontWeight:700, padding:"5px 14px", borderRadius:8, background:`${catColor(a.cat)}15`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
               <span style={{ fontSize:13, color:B.muted }}>{a.readTime} de leitura</span>
               <span style={{ fontSize:13, color:B.muted }}>· {a.date}</span>
-              {isAdmin && <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-                <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime});setPhotoPreview(a.photo);}} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent }}>✏️ Editar</button>
-                <button onClick={()=>togglePin(a)} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${a.pinned?B.accent:B.border}`, background:a.pinned?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐ Fixado":"☆ Fixar"}</button>
-              </div>}
             </div>
-            {/* Article content — centered */}
-            <div style={{ maxWidth:800, margin:"0 auto" }}>
-              {/* Hero image */}
-              {a.photo && <div style={{ borderRadius:24, overflow:"hidden", marginBottom:28 }}>
-                <img src={a.photo} alt="" style={{ width:"100%", height:380, objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";}}/>
+            {/* Share icons in top bar */}
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:12, color:B.muted, marginRight:4 }}>Compartilhar</span>
+              <ShareBtn href={`https://wa.me/?text=${shareText(artTitle)}%20${shareUrl(artUrl)}`} bg="#25D366" title="WhatsApp"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.624-1.467A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.115 0-4.142-.588-5.904-1.699l-.424-.263-2.743.871.844-2.612-.286-.443A9.724 9.724 0 012.25 12C2.25 6.624 6.624 2.25 12 2.25S21.75 6.624 21.75 12 17.376 21.75 12 21.75z"/></svg></ShareBtn>
+              <ShareBtn href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl(artUrl)}`} bg="#4267B2" title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></ShareBtn>
+              <ShareBtn href={`https://twitter.com/intent/tweet?text=${shareText(artTitle)}&url=${shareUrl(artUrl)}`} bg="#000" title="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></ShareBtn>
+              <ShareBtn href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl(artUrl)}`} bg="#0A66C2" title="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></ShareBtn>
+              <button onClick={()=>{navigator.clipboard.writeText(artUrl);showToast("Link copiado ✓");}} style={{ width:40, height:40, borderRadius:12, background:B.bg, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"transform .15s" }} title="Copiar link" onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
+            </div>
+            {isAdmin && <div style={{ display:"flex", gap:6, marginLeft:8 }}>
+              <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime});setPhotoPreview(a.photo);}} style={{ padding:"8px 14px", borderRadius:8, border:`1px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.accent }}>✏️ Editar</button>
+              <button onClick={()=>togglePin(a)} style={{ padding:"8px 14px", borderRadius:8, border:`1px solid ${a.pinned?B.accent:B.border}`, background:a.pinned?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐":"☆"}</button>
+            </div>}
+          </div>
+          {/* Scrollable reading area */}
+          <div style={{ flex:1, overflowY:"auto" }}>
+            {/* Hero image full-width */}
+            {a.photo && <div style={{ width:"100%", maxHeight:420, overflow:"hidden", position:"relative" }}>
+              <img src={a.photo} alt="" style={{ width:"100%", height:420, objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";}}/>
+              <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 60%,rgba(0,0,0,0.4) 100%)" }}/>
+            </div>}
+
+            {/* Content container — centered, max 760px */}
+            <div style={{ maxWidth:760, margin:"0 auto", padding:a.photo?"40px 32px 60px":"48px 32px 60px" }}>
+              {/* Title */}
+              <h1 style={{ fontSize:38, fontWeight:900, lineHeight:1.2, color:B.text, letterSpacing:"-0.5px", marginBottom:16 }}>{a.title}</h1>
+
+              {/* Meta line */}
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
+                <span style={{ fontSize:14, fontWeight:700, padding:"6px 16px", borderRadius:10, background:`${catColor(a.cat)}15`, color:catColor(a.cat) }}>{catLabel(a.cat)}</span>
+                <span style={{ fontSize:14, color:B.muted }}>{a.readTime}</span>
+                <span style={{ fontSize:14, color:B.muted }}>{a.date}</span>
+                {a.source && <span style={{ fontSize:14, color:B.muted }}>· {a.source}</span>}
+              </div>
+
+              {/* Summary — highlighted quote style */}
+              <div style={{ padding:"20px 24px", marginBottom:32, borderRadius:16, background:`${B.accent}06`, borderLeft:`5px solid ${B.accent}` }}>
+                <p style={{ fontSize:18, color:B.text, lineHeight:1.7, fontStyle:"italic", fontWeight:500 }}>{a.summary}</p>
+              </div>
+              {/* Source card */}
+              {a.source && <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"10px 18px", borderRadius:12, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, marginBottom:32, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                <span style={{ fontSize:13, color:B.muted }}>Fonte:</span>
+                {a.sourceUrl ? <a href={a.sourceUrl.startsWith("http")?a.sourceUrl:`https://${a.sourceUrl}`} target="_blank" rel="noopener" style={{ fontSize:14, color:B.accent, fontWeight:700, textDecoration:"none" }}>{a.source} ↗</a> : <span style={{ fontSize:14, fontWeight:700 }}>{a.source}</span>}
               </div>}
 
-              {/* Title */}
-              <h1 style={{ fontSize:36, fontWeight:900, lineHeight:1.2, marginBottom:14, color:B.text, letterSpacing:"-0.5px" }}>{a.title}</h1>
-
-              {/* Summary */}
-              <p style={{ fontSize:18, color:B.muted, lineHeight:1.7, marginBottom:24, paddingLeft:18, borderLeft:`4px solid ${B.accent}`, fontStyle:"italic" }}>{a.summary}</p>
-
-              {/* Source + Share bar */}
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 0", marginBottom:28, borderTop:`1px solid ${B.border}`, borderBottom:`1px solid ${B.border}` }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  {a.source && <>
-                    <span style={{ fontSize:13, color:B.muted }}>Fonte:</span>
-                    {a.sourceUrl ? <a href={a.sourceUrl.startsWith("http")?a.sourceUrl:`https://${a.sourceUrl}`} target="_blank" rel="noopener" style={{ fontSize:14, color:B.accent, fontWeight:700, textDecoration:"none" }}>{a.source} ↗</a> : <span style={{ fontSize:14, fontWeight:700 }}>{a.source}</span>}
-                  </>}
-                </div>
-                {/* Share buttons */}
-                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:12, color:B.muted, marginRight:4 }}>Compartilhar:</span>
-                  <a href={`https://wa.me/?text=${shareText(artTitle)}%20${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ width:36, height:36, borderRadius:10, background:"#25D366", display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }} title="WhatsApp"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.624-1.467A11.955 11.955 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-2.115 0-4.142-.588-5.904-1.699l-.424-.263-2.743.871.844-2.612-.286-.443A9.724 9.724 0 012.25 12C2.25 6.624 6.624 2.25 12 2.25S21.75 6.624 21.75 12 17.376 21.75 12 21.75z"/></svg></a>
-                  <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ width:36, height:36, borderRadius:10, background:"#4267B2", display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }} title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
-                  <a href={`https://twitter.com/intent/tweet?text=${shareText(artTitle)}&url=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ width:36, height:36, borderRadius:10, background:"#000", display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }} title="X/Twitter"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-                  <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ width:36, height:36, borderRadius:10, background:"#0A66C2", display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }} title="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-                  <button onClick={()=>{navigator.clipboard.writeText(artUrl);showToast("Link copiado ✓");}} style={{ width:36, height:36, borderRadius:10, background:B.bg, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }} title="Copiar link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></button>
-                </div>
-              </div>
-              {/* Body */}
-              <div style={{ fontSize:17, lineHeight:2, color:B.text }}>
-                {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{ marginBottom:20 }}>{p}</p>)}
+              {/* Body — clean typography */}
+              <div style={{ fontSize:18, lineHeight:2, color:B.text, fontWeight:400 }}>
+                {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{ marginBottom:22 }}>{p}</p>)}
               </div>
 
               {/* Tags */}
-              {a.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:32, paddingTop:24, borderTop:`1px solid ${B.border}` }}>
-                {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:14, fontWeight:600, padding:"8px 18px", borderRadius:12, background:`${B.accent}10`, color:B.accent, cursor:"default" }}>#{t}</span>)}
+              {a.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:36, paddingTop:28, borderTop:`1px solid ${B.border}` }}>
+                <span style={{ fontSize:13, color:B.muted, lineHeight:"36px" }}>Tags:</span>
+                {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:14, fontWeight:600, padding:"8px 18px", borderRadius:12, background:`${B.accent}08`, color:B.accent, cursor:"default", transition:"background .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}15`} onMouseLeave={e=>e.currentTarget.style.background=`${B.accent}08`}>#{t}</span>)}
               </div>}
-
-              {/* Bottom share bar */}
-              <div style={{ marginTop:32, padding:"20px 24px", borderRadius:16, background:B.bg, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Gostou? Compartilhe!</p>
+              {/* Bottom share CTA */}
+              <div style={{ marginTop:40, padding:"28px 32px", borderRadius:20, background:B.dark, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div>
+                  <p style={{ fontSize:18, fontWeight:800, color:"#fff" }}>Gostou? Compartilhe com a equipe!</p>
+                  <p style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Ajude mais profissionais a ficarem por dentro</p>
+                </div>
                 <div style={{ display:"flex", gap:8 }}>
-                  <a href={`https://wa.me/?text=${shareText(artTitle)}%20${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"8px 16px", borderRadius:10, background:"#25D366", color:"#fff", fontSize:12, fontWeight:700, textDecoration:"none", display:"flex", alignItems:"center", gap:6 }}>WhatsApp</a>
-                  <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"8px 16px", borderRadius:10, background:"#4267B2", color:"#fff", fontSize:12, fontWeight:700, textDecoration:"none" }}>Facebook</a>
-                  <a href={`https://twitter.com/intent/tweet?text=${shareText(artTitle)}&url=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"8px 16px", borderRadius:10, background:"#000", color:"#fff", fontSize:12, fontWeight:700, textDecoration:"none" }}>X</a>
-                  <button onClick={()=>{navigator.clipboard.writeText(artUrl);showToast("Link copiado ✓");}} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.text }}>🔗 Copiar</button>
+                  <a href={`https://wa.me/?text=${shareText(artTitle)}%20${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"10px 20px", borderRadius:12, background:"#25D366", color:"#fff", fontSize:13, fontWeight:700, textDecoration:"none", display:"flex", alignItems:"center", gap:6 }}>💬 WhatsApp</a>
+                  <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl(artUrl)}`} target="_blank" rel="noopener" style={{ padding:"10px 20px", borderRadius:12, background:"#4267B2", color:"#fff", fontSize:13, fontWeight:700, textDecoration:"none" }}>Facebook</a>
+                  <button onClick={()=>{navigator.clipboard.writeText(artUrl);showToast("Link copiado ✓");}} style={{ padding:"10px 20px", borderRadius:12, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>🔗 Copiar link</button>
                 </div>
               </div>
-              <div style={{ height:60 }}/>
             </div>
           </div>
         </div>
       );
     }
+
+
+
     /* ═══ MAIN FEED / CREATE ═══ */
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
