@@ -15859,103 +15859,146 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   };
 
   /* ═══ HISTORY VIEW ═══ */
-  /* ── DESKTOP AI — SIDEBAR + CHAT ── */
+  /* ── DESKTOP AI — PROFESSIONAL CHAT INTERFACE ── */
+  const AI_MODELS = [
+    { k:"openai", l:"GPT-4o", desc:"OpenAI · Melhor para textos criativos", icon:"🟢", c:"#10A37F" },
+    { k:"gemini", l:"Gemini 2.0", desc:"Google · Rápido e multimodal", icon:"🔵", c:"#4285F4" },
+    { k:"claude", l:"Claude", desc:"Anthropic · Análise profunda", icon:"🟣", c:"#7C3AED" },
+  ];
+  const [selModel, setSelModel] = useState(aiKeys.ai_provider || "openai");
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const curModel = AI_MODELS.find(m=>m.k===selModel) || AI_MODELS[0];
+
   if (isAIDesktop) {
     const pinned = conversations.filter(c => c.pinned);
     const recent = conversations.filter(c => !c.pinned);
     const q = searchQ.toLowerCase().trim();
-    const filteredConvs = q ? conversations.filter(c => c.title.toLowerCase().includes(q) || c.messages.some(m => m.content.toLowerCase().includes(q))) : null;
+    const filteredConvs = q ? conversations.filter(c => c.title.toLowerCase().includes(q)) : null;
     const showConvs = filteredConvs || [...pinned, ...recent];
     const hasChat = view === "chat";
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={false} />
-        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
-          {/* LEFT: History + Presets */}
-          <div style={{ width:300, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            {/* New chat button */}
-            <button onClick={startNewChat} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Conversa
-            </button>
-            {/* Search */}
-            <div style={{ position:"relative" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar conversas..." style={{ width:"100%", padding:"10px 12px 10px 36px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", fontFamily:"inherit", fontSize:12, outline:"none" }}/>
+        <div style={{ display:"flex", gap:0, marginTop:12, flex:1, minHeight:0, borderRadius:20, overflow:"hidden", border:`1px solid ${B.border}` }}>
+
+          {/* ── LEFT SIDEBAR ── */}
+          <div style={{ width:280, flexShrink:0, background:B.dark, display:"flex", flexDirection:"column" }}>
+            {/* New chat */}
+            <div style={{ padding:"16px 14px 12px" }}>
+              <button onClick={()=>{startNewChat();setSelModel(aiKeys.ai_provider||"openai");}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Conversa
+              </button>
             </div>
-            {/* Conversation list */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
-                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Conversas ({conversations.length})</p>
+            {/* Search */}
+            <div style={{ padding:"0 14px 10px" }}>
+              <div style={{ position:"relative" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar..." style={{ width:"100%", padding:"9px 10px 9px 32px", borderRadius:10, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.06)", fontFamily:"inherit", fontSize:12, color:"#fff", outline:"none" }}/>
               </div>
-              <div style={{ flex:1, overflowY:"auto", padding:"4px 6px" }}>
-                {showConvs.length===0 && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Nenhuma conversa</p>}
-                {showConvs.map(c => {
-                  const isSel = activeChat === c.id && hasChat;
-                  return (
-                    <div key={c.id} onClick={()=>openChat(c)} style={{ display:"flex", gap:10, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
-                      <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{IC.ai(B.accent)}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ fontSize:12, fontWeight:isSel?700:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.pinned?"📌 ":""}{c.title}</p>
-                        <p style={{ fontSize:10, color:B.muted }}>{c.date} · {c.messages?.length||0} msgs</p>
-                      </div>
+            </div>
+            {/* Conversations */}
+            <div style={{ flex:1, overflowY:"auto", padding:"0 8px" }}>
+              {showConvs.length===0 && <p style={{ textAlign:"center", color:"rgba(255,255,255,0.3)", padding:20, fontSize:12 }}>Nenhuma conversa</p>}
+              {showConvs.map(c => {
+                const isSel = activeChat === c.id && hasChat;
+                return (
+                  <div key={c.id} onClick={()=>openChat(c)} style={{ display:"flex", gap:10, padding:"10px 10px", borderRadius:10, cursor:"pointer", background:isSel?"rgba(255,255,255,0.1)":"transparent", marginBottom:2, transition:"background .15s" }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="rgba(255,255,255,0.05)";}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                    <div style={{ width:32, height:32, borderRadius:8, background:"rgba(255,255,255,0.08)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:14 }}>💬</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:isSel?700:500, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.pinned?"📌 ":""}{c.title}</p>
+                      <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>{c.date} · {c.messages?.length||0} msgs</p>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Model info at bottom */}
+            <div style={{ padding:"12px 14px", borderTop:"1px solid rgba(255,255,255,0.08)" }}>
+              <p style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textAlign:"center" }}>Powered by AI · {conversations.length} conversas</p>
             </div>
           </div>
-          {/* RIGHT: Chat area */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+          {/* ── RIGHT: Chat Area ── */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", background:B.bgCard||"#fff", minWidth:0 }}>
+            {/* Top bar with model picker */}
+            <div style={{ padding:"12px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+              {/* Model picker button */}
+              <div style={{ position:"relative" }}>
+                <button onClick={()=>setShowModelPicker(!showModelPicker)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 16px", borderRadius:12, border:`1.5px solid ${showModelPicker?curModel.c:B.border}`, background:showModelPicker?`${curModel.c}08`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.text }}>
+                  <span style={{ fontSize:16 }}>{curModel.icon}</span> {curModel.l}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" style={{ transform:showModelPicker?"rotate(180deg)":"none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {showModelPicker && <div style={{ position:"absolute", top:"100%", left:0, marginTop:6, background:B.bgCard||"#fff", borderRadius:16, boxShadow:"0 8px 32px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:8, zIndex:20, minWidth:280 }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", padding:"6px 12px", letterSpacing:0.5 }}>Escolha o modelo de IA</p>
+                  {AI_MODELS.map(m => (
+                    <div key={m.k} onClick={()=>{setSelModel(m.k);setShowModelPicker(false);/* Save preference */ supaSetSetting("ai_keys",JSON.stringify({...aiKeys,ai_provider:m.k}));setAiKeys(p=>({...p,ai_provider:m.k}));}} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:12, cursor:"pointer", background:selModel===m.k?`${m.c}08`:"transparent", border:selModel===m.k?`1.5px solid ${m.c}20`:"1.5px solid transparent", marginBottom:4, transition:"all .15s" }} onMouseEnter={e=>{if(selModel!==m.k)e.currentTarget.style.background=`${m.c}04`;}} onMouseLeave={e=>{if(selModel!==m.k)e.currentTarget.style.background="transparent";}}>
+                      <span style={{ fontSize:24 }}>{m.icon}</span>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:14, fontWeight:700, color:B.text }}>{m.l}</p>
+                        <p style={{ fontSize:11, color:B.muted }}>{m.desc}</p>
+                      </div>
+                      {selModel===m.k && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={m.c} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                  ))}
+                </div>}
+              </div>
+              <div style={{ flex:1 }}/>
+              {hasChat && <button onClick={startNewChat} style={{ padding:"8px 16px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>+ Nova conversa</button>}
+            </div>
             {(!hasChat || (hasChat && messages.length===0 && !loading)) ? <>
-              {/* Empty state — presets */}
-              <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"0 32px", overflowY:"auto" }}>
-                <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
-                  <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
-                </div>
-                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:6 }}>Olá, {user?.name?.split(" ")[0] || "equipe"}!</h3>
-                <p style={{ fontSize:14, color:B.muted, lineHeight:1.6, marginBottom:28, maxWidth:500, textAlign:"center" }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta abaixo.</p>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10, width:"100%", maxWidth:700 }}>
-                  {PRESETS.map((p, i) => (
-                    <div key={i} onClick={() => { if(!hasChat)startNewChat(); setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ padding:"16px 14px", borderRadius:14, border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:"transparent", cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{if(selPreset!==i)e.currentTarget.style.borderColor=`${B.accent}50`;}} onMouseLeave={e=>{if(selPreset!==i)e.currentTarget.style.borderColor=B.border;}}>
-                      <div style={{ display:"flex", justifyContent:"center", marginBottom:8 }}>{p.icon}</div>
-                      <p style={{ fontSize:12, fontWeight:700, lineHeight:1.3 }}>{p.label}</p>
+              {/* Welcome screen */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"0 40px", overflowY:"auto" }}>
+                <div style={{ width:72, height:72, borderRadius:22, background:`linear-gradient(135deg, ${curModel.c}20, ${curModel.c}05)`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20, fontSize:36 }}>{curModel.icon}</div>
+                <h2 style={{ fontSize:28, fontWeight:900, marginBottom:6, color:B.text }}>Olá, {user?.name?.split(" ")[0] || "equipe"}!</h2>
+                <p style={{ fontSize:15, color:B.muted, lineHeight:1.6, marginBottom:32, maxWidth:500, textAlign:"center" }}>Estou aqui para ajudar com ideias, textos, estratégias e muito mais. Escolha um atalho ou digite abaixo.</p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:12, width:"100%", maxWidth:740 }}>
+                  {PRESETS.slice(0,8).map((p, i) => (
+                    <div key={i} onClick={() => { if(!hasChat)startNewChat(); setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ padding:"18px 16px", borderRadius:16, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", textAlign:"center", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=`${B.accent}04`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";e.currentTarget.style.transform="none";}}>
+                      <div style={{ display:"flex", justifyContent:"center", marginBottom:10 }}>{p.icon}</div>
+                      <p style={{ fontSize:13, fontWeight:700, lineHeight:1.3, color:B.text }}>{p.label}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </> : <>
-              {/* Active chat with messages */}
-              <div style={{ padding:"12px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:14, fontWeight:700 }}>Assistente IA</p>
-                  <p style={{ fontSize:10, color:B.muted }}>Powered by {activeProvider==="gemini"?"Google Gemini":activeProvider==="claude"?"Claude":"GPT-4"}</p>
-                </div>
-                <button onClick={startNewChat} style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>+ Nova</button>
-              </div>
               {/* Messages */}
-              <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
-                {messages.map((m, i) => (
-                  <div key={i} style={{ display:"flex", gap:12, marginBottom:16, justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
-                    {m.role==="assistant" && <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2 }}><span style={{ color:B.accent, display:"flex", transform:"scale(0.8)" }}>{IC.ai(B.accent)}</span></div>}
-                    <div style={{ maxWidth:"75%", padding:"12px 16px", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.role==="user"?B.accent:(B.bg||"#F5F5F5"), color:m.role==="user"?B.dark:B.text, fontSize:14, lineHeight:1.7, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
-                      {m.content}
+              <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"20px 0" }}>
+                <div style={{ maxWidth:760, margin:"0 auto", padding:"0 24px" }}>
+                  {messages.map((m, i) => (
+                    <div key={i} style={{ display:"flex", gap:14, marginBottom:24 }}>
+                      {m.role==="assistant" ? <div style={{ width:36, height:36, borderRadius:12, background:`${curModel.c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18, marginTop:2 }}>{curModel.icon}</div>
+                      : <div style={{ width:36, height:36, borderRadius:12, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2 }}><Av name={user?.name||"U"} sz={36} fs={13}/></div>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:12, fontWeight:700, color:m.role==="assistant"?curModel.c:B.text, marginBottom:6 }}>{m.role==="assistant"?curModel.l:(user?.name||"Você")}</p>
+                        <div style={{ fontSize:15, lineHeight:1.8, color:B.text, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{m.content}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {loading && <div style={{ display:"flex", gap:12, marginBottom:16 }}>
-                  <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ color:B.accent, display:"flex", transform:"scale(0.8)" }}>{IC.ai(B.accent)}</span></div>
-                  <div style={{ padding:"12px 16px", borderRadius:"18px 18px 18px 4px", background:B.bg }}><div style={{ display:"flex", gap:4 }}><div style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:"skPulse 1.4s ease-in-out infinite" }}/><div style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:"skPulse 1.4s ease-in-out 0.2s infinite" }}/><div style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:"skPulse 1.4s ease-in-out 0.4s infinite" }}/></div></div>
-                </div>}
+                  ))}
+                  {loading && <div style={{ display:"flex", gap:14, marginBottom:24 }}>
+                    <div style={{ width:36, height:36, borderRadius:12, background:`${curModel.c}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{curModel.icon}</div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontSize:12, fontWeight:700, color:curModel.c, marginBottom:6 }}>{curModel.l}</p>
+                      <div style={{ display:"flex", gap:6, padding:"8px 0" }}>
+                        <div style={{ width:8, height:8, borderRadius:4, background:curModel.c, animation:"skPulse 1.4s ease-in-out infinite" }}/>
+                        <div style={{ width:8, height:8, borderRadius:4, background:curModel.c, animation:"skPulse 1.4s ease-in-out 0.2s infinite" }}/>
+                        <div style={{ width:8, height:8, borderRadius:4, background:curModel.c, animation:"skPulse 1.4s ease-in-out 0.4s infinite" }}/>
+                      </div>
+                    </div>
+                  </div>}
+                </div>
               </div>
             </>}
             {/* Input bar */}
-            <div style={{ padding:"12px 18px", borderTop:`1px solid ${B.border}`, display:"flex", gap:10, alignItems:"flex-end", flexShrink:0 }}>
-              <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder="Pergunte qualquer coisa..." style={{ flex:1, minHeight:44, maxHeight:120, resize:"none", padding:"12px 16px", borderRadius:14, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, lineHeight:1.5, outline:"none", background:"transparent" }}/>
-              <button onClick={()=>{if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}} disabled={loading||!input.trim()} style={{ width:44, height:44, borderRadius:14, background:input.trim()?B.accent:`${B.accent}30`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?B.dark:"#fff"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              </button>
+            <div style={{ padding:"16px 24px 20px", flexShrink:0 }}>
+              <div style={{ maxWidth:760, margin:"0 auto", display:"flex", gap:12, alignItems:"flex-end" }}>
+                <div style={{ flex:1, position:"relative", background:B.bg||"#F5F5F5", borderRadius:16, border:`1.5px solid ${B.border}`, overflow:"hidden" }}>
+                  <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder="Pergunte qualquer coisa..." rows={1} style={{ width:"100%", minHeight:52, maxHeight:160, resize:"none", padding:"16px 60px 16px 20px", fontFamily:"inherit", fontSize:15, lineHeight:1.6, border:"none", background:"transparent", outline:"none", color:B.text }}/>
+                  <button onClick={()=>{if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}} disabled={loading||!input.trim()} style={{ position:"absolute", right:10, bottom:10, width:40, height:40, borderRadius:12, background:input.trim()?curModel.c:`${curModel.c}30`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#fff":"rgba(255,255,255,0.5)"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:8 }}>Usando <strong>{curModel.l}</strong> · Shift+Enter para nova linha</p>
             </div>
           </div>
         </div>
