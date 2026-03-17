@@ -15315,9 +15315,15 @@ function GamifyPage({ onBack, user, team }) {
             </div>
             {/* Tab nav */}
             <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-              {TABS_LIST.map(t => (
-                <button key={t.k} onClick={()=>setTab(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===t.k?700:500, background:tab===t.k?`${B.accent}10`:"transparent", color:tab===t.k?B.accent:B.text, borderLeft:tab===t.k?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .15s" }}>{t.l}</button>
-              ))}
+              {[...TABS_LIST, ...(isAdmin?[{k:"redemptions",l:"Resgates"}]:[])].map(t => {
+                const pendingCnt = t.k==="redemptions" ? redemptions.filter(r=>r.status==="pending").length : 0;
+                return (
+                  <button key={t.k} onClick={()=>setTab(t.k)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===t.k?700:500, background:tab===t.k?`${B.accent}10`:"transparent", color:tab===t.k?B.accent:B.text, borderLeft:tab===t.k?`3px solid ${B.accent}`:"3px solid transparent", transition:"all .15s" }}>
+                    {t.l}
+                    {pendingCnt>0 && <span style={{ marginLeft:"auto", background:B.red, color:"#fff", fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:10, minWidth:20, textAlign:"center" }}>{pendingCnt}</span>}
+                  </button>
+                );
+              })}
             </div>
             {/* Admin: award XP */}
             {isAdmin && <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
@@ -15527,6 +15533,46 @@ function GamifyPage({ onBack, user, team }) {
                     </div>
                   ))}
                 </div>
+              </>}
+
+              {/* ═══ REDEMPTIONS TAB (Admin) ═══ */}
+              {tab==="redemptions" && isAdmin && <>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+                  <div><h3 style={{ fontSize:20, fontWeight:900 }}>Resgates</h3><p style={{ fontSize:12, color:B.muted, marginTop:2 }}>Gerencie os pedidos de resgate da equipe</p></div>
+                  <div style={{ display:"flex", gap:10 }}>
+                    {["pending","approved","rejected"].map(st_=>{const cnt=redemptions.filter(r=>r.status===st_).length;const cfg={pending:{l:"Pendentes",c:B.orange},approved:{l:"Aprovados",c:B.green},rejected:{l:"Rejeitados",c:B.red}}[st_];return(
+                      <div key={st_} style={{ textAlign:"center", padding:"8px 16px", borderRadius:10, background:`${cfg.c}08` }}><p style={{ fontSize:16, fontWeight:800, color:cfg.c }}>{cnt}</p><p style={{ fontSize:9, color:B.muted }}>{cfg.l}</p></div>
+                    );})}
+                  </div>
+                </div>
+                {redemptions.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhum resgate ainda</p><p style={{ fontSize:13, color:B.muted, marginTop:4 }}>Quando alguém resgatar, aparecerá aqui</p></div>}
+                {redemptions.filter(r=>r.status==="pending").length>0 && <>
+                  <p style={{ fontSize:14, fontWeight:800, color:B.orange, marginBottom:10 }}>Aguardando aprovação</p>
+                  {redemptions.filter(r=>r.status==="pending").map(rd => (
+                    <div key={rd.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 20px", borderRadius:16, border:`1.5px solid ${B.orange}25`, background:`${B.orange}04`, marginBottom:8 }}>
+                      <Av name={rd.userName} sz={40} fs={15}/>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:15, fontWeight:700 }}>{rd.userName}</p>
+                        <p style={{ fontSize:13 }}>Quer resgatar <strong>{rd.rewardName}</strong></p>
+                        <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{new Date(rd.date).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})} · {rd.cost.toLocaleString()} XP</p>
+                      </div>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"approved"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));showToast("Aprovado ✓");}} style={{ padding:"10px 20px", borderRadius:12, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Aprovar</button>
+                        <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"rejected"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));await supaAwardXp(rd.userId,"refund",rd.cost,`Reembolso: ${rd.rewardName}`);setXpLoaded(false);showToast("Rejeitado + XP devolvido ✓");}} style={{ padding:"10px 20px", borderRadius:12, background:`${B.red}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Rejeitar</button>
+                      </div>
+                    </div>
+                  ))}
+                </>}
+                {redemptions.filter(r=>r.status!=="pending").length>0 && <div style={{ marginTop:20 }}>
+                  <p style={{ fontSize:14, fontWeight:800, color:B.muted, marginBottom:10 }}>Histórico</p>
+                  {redemptions.filter(r=>r.status!=="pending").map(rd => (
+                    <div key={rd.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:12, background:rd.status==="approved"?`${B.green}04`:`${B.red}04`, marginBottom:4 }}>
+                      <Av name={rd.userName} sz={32} fs={12}/>
+                      <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{rd.userName} — {rd.rewardName}</p><p style={{ fontSize:10, color:B.muted }}>{new Date(rd.date).toLocaleDateString("pt-BR")} · {rd.cost} XP</p></div>
+                      <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:8, background:rd.status==="approved"?`${B.green}12`:`${B.red}12`, color:rd.status==="approved"?B.green:B.red }}>{rd.status==="approved"?"Aprovado":"Rejeitado"}</span>
+                    </div>
+                  ))}
+                </div>}
               </>}
             </div>
           </div>
