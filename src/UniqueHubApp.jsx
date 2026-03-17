@@ -14942,9 +14942,9 @@ function IdeasPage({ onBack, user, clients: propClients }) {
           </div>
           <button onClick={()=>{setAdding(!adding);setSelIdea(null);setForm({});}} style={{ padding:"10px 20px", borderRadius:12, background:adding?B.dark:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:adding?"#fff":B.dark }}>{adding?"✕ Cancelar":"💡 Nova Ideia"}</button>
         </div>
-        <div style={{ flex:1, display:"flex", gap:16, minHeight:0 }}>
-          {/* Cards grid */}
-          <div style={{ flex:1, overflowY:"auto", minWidth:0, paddingRight:4 }}>
+        <div style={{ flex:1, display:"flex", flexDirection:"row-reverse", gap:16, minHeight:0 }}>
+          {/* Cards grid (visually RIGHT) */}
+          <div style={{ width:hasRight?340:undefined, flex:hasRight?undefined:1, overflowY:"auto", minWidth:0, paddingRight:4, flexShrink:0 }}>
             {!ideasLoaded && <div style={{ textAlign:"center", padding:"60px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/></div>}
             {ideasLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:36, marginBottom:8 }}>💡</p><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhuma ideia</p></div>}
             <div style={{ display:"grid", gridTemplateColumns:hasRight?"repeat(auto-fill, minmax(220px, 1fr))":"repeat(auto-fill, minmax(280px, 1fr))", gap:12 }}>
@@ -14981,8 +14981,8 @@ function IdeasPage({ onBack, user, clients: propClients }) {
               })}
             </div>
           </div>
-          {/* Side panel */}
-          {hasRight && <div style={{ width:420, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          {/* Detail panel (visually LEFT) */}
+          {hasRight && <div style={{ flex:1, minWidth:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {adding ? <>
               <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <p style={{ fontSize:18, fontWeight:800 }}>💡 Nova Ideia</p>
