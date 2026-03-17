@@ -14457,24 +14457,36 @@ REGRAS:
         <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} />
         <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
           {/* ── LEFT: Feed ── */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:12, minWidth:0 }}>
+          <div style={{ width:rightOpen?320:undefined, flex:rightOpen?undefined:1, flexShrink:0, display:"flex", flexDirection:"column", gap:12, minWidth:0 }}>
             {/* Top bar */}
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <div style={{ display:"flex", gap:6, flex:1, flexWrap:"wrap" }}>
-                {[{k:"all",l:"Todos"},...CATS.slice(0,8)].map(c=>(
-                  <button key={c.k} onClick={()=>setTab(c.k)} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${tab===c.k?B.accent:B.border}`, background:tab===c.k?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===c.k?700:500, color:tab===c.k?B.dark:B.muted }}>{c.l}</button>
+            <div style={{ display:"flex", alignItems:"center", gap:rightOpen?4:8, flexWrap:"wrap" }}>
+              <div style={{ display:"flex", gap:rightOpen?3:6, flex:1, flexWrap:"wrap" }}>
+                {[{k:"all",l:"Todos"},...CATS.slice(0,rightOpen?4:8)].map(c=>(
+                  <button key={c.k} onClick={()=>setTab(c.k)} style={{ padding:rightOpen?"5px 10px":"8px 16px", borderRadius:rightOpen?8:10, border:`1.5px solid ${tab===c.k?B.accent:B.border}`, background:tab===c.k?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:rightOpen?11:13, fontWeight:tab===c.k?700:500, color:tab===c.k?B.dark:B.muted }}>{c.l}</button>
                 ))}
               </div>
-              {isAdmin && !isClientView && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);setCreating(false);setAiMode(false);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 18px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>+ Novo Artigo</button>}
+              {isAdmin && !isClientView && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);setCreating(false);setAiMode(false);}} style={{ display:"flex", alignItems:"center", gap:6, padding:rightOpen?"7px 12px":"10px 18px", borderRadius:rightOpen?8:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:rightOpen?11:13, fontWeight:700, color:B.dark }}>{rightOpen?"+":"+ Novo Artigo"}</button>}
             </div>
             {/* Scrollable feed */}
             <div style={{ flex:1, overflowY:"auto", paddingRight:4 }}>
               {!loaded && <div style={{ textAlign:"center", padding:"60px 0" }}><div style={{ width:40, height:40, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 12px" }}/><p style={{ fontSize:14, fontWeight:600 }}>Carregando...</p></div>}
               {loaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:16, fontWeight:700, color:B.muted }}>Nenhum artigo</p></div>}
-              <div style={{ display:"grid", gridTemplateColumns:rightOpen?"1fr":"repeat(auto-fill, minmax(300px, 1fr))", gap:14 }}>
+              <div style={{ display:rightOpen?"flex":"grid", flexDirection:rightOpen?"column":undefined, gridTemplateColumns:rightOpen?undefined:"repeat(auto-fill, minmax(300px, 1fr))", gap:rightOpen?4:14 }}>
                 {filtered.map((art,i) => {
                   const isSel = a?.id===art.id;
-                  return (
+                  return rightOpen ? (
+                    /* Compact list item */
+                    <div key={art.id} onClick={()=>{setSelArticle(art);setShowCreateChoice(false);setCreating(false);setAiMode(false);}} style={{ display:"flex", gap:10, padding:"10px 12px", borderRadius:12, cursor:"pointer", background:isSel?`${B.accent}08`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent" }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background=isSel?`${B.accent}08`:"transparent";}}>
+                      {art.photo ? <div style={{ width:48, height:48, borderRadius:10, background:`url(${art.photo}) center/cover`, flexShrink:0 }}/> : <div style={{ width:48, height:48, borderRadius:10, background:`${catColor(art.cat)}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><div style={{ width:4, height:20, borderRadius:2, background:catColor(art.cat) }}/></div>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{art.pinned?"⭐ ":""}{art.title}</p>
+                        <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:4 }}>
+                          <span style={{ fontSize:9, fontWeight:600, padding:"2px 6px", borderRadius:4, background:`${catColor(art.cat)}12`, color:catColor(art.cat) }}>{catLabel(art.cat)}</span>
+                          <span style={{ fontSize:9, color:B.muted }}>{art.readTime}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
                     <div key={art.id} onClick={()=>{setSelArticle(art);setShowCreateChoice(false);setCreating(false);setAiMode(false);}} style={{ borderRadius:16, overflow:"hidden", cursor:"pointer", background:isSel?`${B.accent}06`:(B.bgCard||"#fff"), border:isSel?`2px solid ${B.accent}`:`1px solid ${B.border}`, transition:"all .2s" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";e.currentTarget.style.transform="translateY(-2px)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}}>
                       {art.photo && <div style={{ width:"100%", height:rightOpen?100:160, background:`url(${art.photo}) center/cover`, position:"relative" }}>
                         {art.pinned && <span style={{ position:"absolute", top:8, left:8, background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"3px 8px", borderRadius:6 }}>⭐ Destaque</span>}
@@ -14488,13 +14500,13 @@ REGRAS:
                         </div>
                       </div>
                     </div>
-                  );
+                  ); /* end full card (panel closed) */
                 })}
               </div>
             </div>
           </div>
           {/* ── RIGHT: Reading / Creating Panel ── */}
-          {rightOpen && <div style={{ width:480, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          {rightOpen && <div style={{ flex:1, minWidth:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {a ? <>
               {/* Article reading */}
               <div style={{ padding:"14px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
