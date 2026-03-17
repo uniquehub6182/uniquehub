@@ -16610,6 +16610,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
 
 
 function HelpPage({ onBack }) {
+  const isHelpDesktop = useIsDesktop();
   const [selCat, setSelCat] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selQ, setSelQ] = useState(null);
@@ -16698,8 +16699,34 @@ function HelpPage({ onBack }) {
       { q:"Como configurar notificações?", a:"Vá em Configurações > Notificações. Ative ou desative notificações por categoria: Chat, Conteúdo, Clientes, Equipe, Financeiro. Cada categoria tem sub-opções para controle granular." },
     ]},
     { cat:"Relatórios & Métricas", icon:IC.reports, color:"#3B82F6", questions:[
-      { q:"Que tipos de relatório existem?", a:"O UniqueHub oferece relatórios de: Performance de conteúdo (demandas por etapa, tempo médio), Financeiro (receita mensal, comparativo), Equipe (check-ins, produtividade), Clientes (satisfação, retenção)." },
-      { q:"Como exportar um relatório?", a:"Na seção Relatórios, após selecionar o tipo e período, use o botão 'Exportar' para gerar o relatório em formato compatível. Os dados podem ser usados para apresentações ou análises externas." },
+      { q:"Que tipos de relatório existem?", a:"O UniqueHub oferece relatórios de Instagram (alcance, engajamento, crescimento de seguidores) e Facebook (impressões, curtidas, alcance) com dados reais da API Meta. Selecione o período (7d, 14d, 30d, mês) e o cliente para ver os KPIs detalhados." },
+      { q:"Como exportar um relatório?", a:"Na seção Relatórios, após selecionar o cliente e período, use o botão 'Exportar PDF' no canto superior. O relatório é gerado com todos os gráficos e métricas para apresentar ao cliente." },
+      { q:"Como ver posts publicados de um cliente?", a:"Em Relatórios, selecione o cliente e vá na aba 'Posts'. Você verá todos os posts publicados com thumbnails, curtidas, comentários, salvos e compartilhamentos." },
+    ]},
+    { cat:"Match4Biz", icon:IC.match4biz, color:"#E91E63", questions:[
+      { q:"O que é o Match4Biz?", a:"O Match4Biz é um sistema de networking entre os clientes da agência. A ideia é conectar clientes que podem fazer negócios juntos — por exemplo, um restaurante com um fornecedor de embalagens. A agência cobra uma taxa pela conexão." },
+      { q:"Como criar um match?", a:"Vá em Match4Biz e clique em '+ Novo Match'. Selecione as duas empresas e defina a taxa por empresa. O match é criado com status 'Novo' e cada parte precisa confirmar participação." },
+      { q:"Como funciona a taxa do match?", a:"A taxa é cobrada por empresa. Ex: se definir R$150, cada empresa paga R$150, totalizando R$300 de receita para a agência. O valor é configurável em cada match." },
+      { q:"O que são as confirmações?", a:"Cada match precisa de 3 confirmações: Admin (agência), Empresa A e Empresa B. Quando todas confirmam, o match está oficialmente ativo e as empresas podem ser apresentadas." },
+      { q:"Quais são os status do match?", a:"Novo → Conversando → Negociando → Fechado ✓ (sucesso) ou Não Rolou (sem acordo). Quando fecha, você pode registrar o valor do negócio gerado pela conexão." },
+    ]},
+    { cat:"Ideias & Sugestões", icon:IC.ideas, color:"#9333EA", questions:[
+      { q:"Como funciona o Mural de Ideias?", a:"É um espaço para a equipe sugerir ideias criativas de conteúdo, estratégias e melhorias. Qualquer membro pode criar uma ideia, e outros podem votar e comentar." },
+      { q:"Como votar em uma ideia?", a:"Clique no botão ▲ ao lado da ideia para votar. Quanto mais votos, mais destaque a ideia ganha na lista. As ideias mais votadas aparecem primeiro." },
+      { q:"Como os status das ideias funcionam?", a:"O admin pode alterar o status: Pendente (aguardando análise) → Em Análise (sendo avaliada) → Aprovada (será executada) → Rejeitada (descartada). Tags e cliente relacionado ajudam a organizar." },
+    ]},
+    { cat:"Biblioteca de Arquivos", icon:IC.library, color:"#0EA5E9", questions:[
+      { q:"O que é a Biblioteca?", a:"É o repositório central de todos os arquivos da agência e dos clientes. Organize manuais de marca, posts, vídeos, contratos e qualquer documento por cliente e categoria." },
+      { q:"Como fazer upload?", a:"Na Biblioteca, clique em '+ Upload' ou arraste arquivos para a área de upload. Selecione o cliente e a categoria. Suporta imagens, PDFs, vídeos, documentos e apresentações." },
+      { q:"Como organizar os arquivos?", a:"Filtre por cliente na sidebar esquerda e por categoria (Manual de Marca, Posts, Stories, Vídeos, Contratos, etc.). Use a busca por nome e alterne entre visualização em grid ou lista." },
+    ]},
+    { cat:"Assistente de IA", icon:IC.ai, color:B.accent, questions:[
+      { q:"Quais modelos de IA estão disponíveis?", a:"O UniqueHub oferece 3 modelos: GPT-4o (OpenAI — melhor para textos criativos e legendas), Gemini 2.0 (Google — rápido e multimodal, inclui geração de imagens com Nano Banana) e Claude (Anthropic — análise profunda e textos longos). Você escolhe qual usar." },
+      { q:"Como trocar de modelo de IA?", a:"Na sidebar do Assistente IA, clique no modelo desejado (GPT-4o, Gemini ou Claude). A troca é instantânea e a preferência é salva. Cada modelo tem suas conversas separadas." },
+      { q:"Como configurar as chaves de API?", a:"Vá em Configurações > Assistente IA. Insira a chave da API de cada provedor: OpenAI (platform.openai.com), Google Gemini (aistudio.google.com) ou Claude (console.anthropic.com). Cada serviço requer créditos próprios." },
+      { q:"O que é o Nano Banana?", a:"Nano Banana é o gerador de imagens nativo do Google Gemini. Com ele, você pode gerar imagens de alta qualidade (até 4K) a partir de descrições em texto, editar fotos existentes e criar recursos visuais para marketing. Funciona com a mesma chave do Gemini." },
+      { q:"As conversas de cada IA são separadas?", a:"Sim! Cada modelo tem seu próprio histórico de conversas. Quando você troca de GPT-4o para Claude, as conversas de um não aparecem no outro. O ícone e nome do modelo ficam visíveis em cada conversa." },
+      { q:"Quanto custa usar cada IA?", a:"Os custos dependem do provedor: OpenAI cobra ~$0.01/1K tokens, Gemini tem plano gratuito generoso (15 requisições/min no Flash) e Claude custa ~$0.003/1K tokens. Adicione créditos no painel de cada provedor." },
     ]},
   ];
 
@@ -16737,13 +16764,14 @@ function HelpPage({ onBack }) {
       "5. Administradores podem conceder XP bonus diretamente pelo Ranking",
       "6. Mantenha uma sequência de check-ins para subir no ranking mais rápido!"
     ]},
-    { title:"Guia: Assistente de IA", desc:"Use inteligência artificial para otimizar seu trabalho", icon:IC.ai, color:B.accent, steps:[
-      "1. Configure a chave OpenAI em Configurações > Assistente IA (apenas admin)",
-      "2. Acesse o Assistente IA pelo menu para iniciar uma conversa",
-      "3. Peça ajuda para: gerar legendas, criar estratégias, brainstorm de ideias, análise de concorrência",
-      "4. O assistente conhece o contexto da agência e pode personalizar as sugestões",
-      "5. Copie as sugestões diretamente para as demandas de conteúdo",
-      "6. Quanto mais contexto você der, melhores serão as respostas"
+    { title:"Guia: Assistente de IA", desc:"Use 3 modelos de inteligência artificial no seu dia a dia", icon:IC.ai, color:B.accent, steps:[
+      "1. Configure as chaves em Configurações > Assistente IA: OpenAI, Gemini e/ou Claude",
+      "2. Acesse o Assistente IA e escolha o modelo na sidebar: GPT-4o, Gemini 2.0 ou Claude",
+      "3. GPT-4o: melhor para legendas, copys, brainstorming e textos criativos",
+      "4. Gemini 2.0: rápido, bom com dados e inclui Nano Banana (geração de imagens)",
+      "5. Claude: especialista em análise profunda, textos longos e planejamento estratégico",
+      "6. Cada modelo tem histórico de conversas separado — não se misturam",
+      "7. Use os atalhos pré-definidos (Criar Legenda, Roteiro Reels, etc.) para agilizar"
     ]},
     { title:"Guia: Financeiro da Agência", desc:"Controle total de faturamento, faturas e indicadores financeiros", icon:IC.financial, color:B.green, steps:[
       "1. Cada cliente tem um plano mensal (valor e tipo: Basic, Pro, Premium, Enterprise)",
@@ -16752,6 +16780,22 @@ function HelpPage({ onBack }) {
       "4. Marque pagamentos recebidos para atualizar o status (pendente → pago)",
       "5. Use Relatórios > Financeiro para comparar meses e identificar tendências",
       "6. Cards na Home mostram um resumo rápido da saúde financeira da agência"
+    ]},
+    { title:"Guia: Match4Biz (Networking)", desc:"Conecte clientes para gerar negócios e receita extra", icon:IC.match4biz, color:"#E91E63", steps:[
+      "1. Identifique dois clientes que podem se beneficiar mutuamente",
+      "2. Crie um Match com '+ Novo Match' e defina a taxa por empresa (ex: R$150)",
+      "3. Cada parte precisa confirmar: Admin, Empresa A e Empresa B",
+      "4. Acompanhe o status: Novo → Conversando → Negociando → Fechado",
+      "5. Quando fechar, registre o valor do negócio gerado pela conexão",
+      "6. A receita das taxas e dos negócios gerados aparece nos indicadores do Match4Biz"
+    ]},
+    { title:"Guia: Loja de Recompensas", desc:"Sistema de troca de XP por benefícios reais", icon:IC.gamify, color:"#F59E0B", steps:[
+      "1. Colaboradores acumulam XP por ações no app (check-in, tarefas, posts)",
+      "2. Na Gamificação > Loja, os itens disponíveis mostram custo em XP e estoque",
+      "3. Ao resgatar, o XP é descontado e um pedido 'Pendente' é criado",
+      "4. O admin recebe o pedido na aba 'Resgates' com badge de contagem",
+      "5. Admin pode Aprovar (benefício concedido) ou Rejeitar (XP é devolvido)",
+      "6. Todo o histórico de resgates fica registrado para transparência"
     ]},
   ];
 
@@ -16793,6 +16837,169 @@ function HelpPage({ onBack }) {
   /* ── SEARCH ── */
   const allQuestions = FAQ.flatMap((cat, ci) => cat.questions.map((q, qi) => ({ ...q, catIdx:ci, qIdx:qi, catName:cat.cat, color:cat.color })));
   const searchResults = searchQ.trim().length >= 2 ? allQuestions.filter(q => q.q.toLowerCase().includes(searchQ.toLowerCase()) || q.a.toLowerCase().includes(searchQ.toLowerCase())) : [];
+
+  /* ── DESKTOP HELP ── */
+  if (isHelpDesktop) {
+    const allQ = FAQ.flatMap((cat, ci) => cat.questions.map((q, qi) => ({ ...q, catIdx:ci, qIdx:qi, catName:cat.cat, color:cat.color, icon:cat.icon })));
+    const sRes = searchQ.trim().length >= 2 ? allQ.filter(q => q.q.toLowerCase().includes(searchQ.toLowerCase()) || q.a.toLowerCase().includes(searchQ.toLowerCase())) : [];
+    const showSearch = searchQ.trim().length >= 2;
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.help} label="Suporte" title="Central de Ajuda" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
+          {/* LEFT: Nav + Search */}
+          <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
+            {/* Search */}
+            <div style={{ position:"relative" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar ajuda..." style={{ width:"100%", padding:"12px 14px 12px 40px", borderRadius:14, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, outline:"none", background:B.bgCard||"#fff" }}/>
+            </div>
+            {/* Tab nav */}
+            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+              {[{k:"faq",l:"Perguntas Frequentes",ic:"❓"},{k:"guides",l:"Guias Passo a Passo",ic:"📖"},{k:"shortcuts",l:"Dicas & Atalhos",ic:"⚡"},{k:"videos",l:"Vídeo Tutoriais",ic:"🎬"},{k:"contact",l:"Falar com Suporte",ic:"📞"}].map(t => (
+                <button key={t.k} onClick={()=>{if(t.k==="contact"){setContactForm(true);}else{setHelpTab(t.k);setSelCat(null);setSelQ(null);}}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"13px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:helpTab===t.k?700:500, background:helpTab===t.k?`${B.accent}10`:"transparent", color:helpTab===t.k?B.accent:B.text, borderLeft:helpTab===t.k?`3px solid ${B.accent}`:"3px solid transparent" }}>
+                  <span style={{ fontSize:15 }}>{t.ic}</span> {t.l}
+                </button>
+              ))}
+            </div>
+            {/* FAQ Categories (when on FAQ tab) */}
+            {helpTab==="faq" && <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", flex:1, overflowY:"auto" }}>
+              <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}` }}><p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Categorias ({FAQ.length})</p></div>
+              {FAQ.map((cat, ci) => (
+                <button key={ci} onClick={()=>{setSelCat(ci);setSelQ(null);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"11px 14px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:selCat===ci?700:500, background:selCat===ci?`${cat.color}08`:"transparent", color:selCat===ci?cat.color:B.text, borderLeft:selCat===ci?`3px solid ${cat.color}`:"3px solid transparent" }}>
+                  <div style={{ width:24, height:24, borderRadius:6, background:`${cat.color}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ display:"flex", transform:"scale(0.6)" }}>{typeof cat.icon==="function"?cat.icon(cat.color):cat.icon}</span></div>
+                  <span style={{ flex:1, textAlign:"left" }}>{cat.cat}</span>
+                  <span style={{ fontSize:10, color:B.muted }}>{cat.questions.length}</span>
+                </button>
+              ))}
+            </div>}
+          </div>
+          {/* RIGHT: Content */}
+          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
+
+              {/* Search results */}
+              {showSearch && <>
+                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>Resultados para "{searchQ}" ({sRes.length})</h3>
+                {sRes.length===0 && <p style={{ fontSize:14, color:B.muted, padding:20 }}>Nenhum resultado encontrado. Tente termos diferentes.</p>}
+                {sRes.map((q,i) => (
+                  <div key={i} style={{ padding:"16px 18px", borderRadius:14, border:`1px solid ${B.border}`, marginBottom:8, cursor:"pointer" }} onClick={()=>{setSearchQ("");setSelCat(q.catIdx);setSelQ(q.qIdx);setHelpTab("faq");}}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}><span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:6, background:`${q.color}12`, color:q.color }}>{q.catName}</span></div>
+                    <p style={{ fontSize:14, fontWeight:700 }}>{q.q}</p>
+                    <p style={{ fontSize:12, color:B.muted, marginTop:4, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{q.a}</p>
+                  </div>
+                ))}
+              </>}
+
+              {/* FAQ */}
+              {!showSearch && helpTab==="faq" && <>
+                {selCat===null ? <>
+                  <h3 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Perguntas Frequentes</h3>
+                  <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Selecione uma categoria na lateral ou busque por palavra-chave</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:12 }}>
+                    {FAQ.map((cat, ci) => (
+                      <div key={ci} onClick={()=>setSelCat(ci)} style={{ padding:"20px 18px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${cat.color}40`;e.currentTarget.style.background=`${cat.color}04`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                        <div style={{ width:40, height:40, borderRadius:12, background:`${cat.color}12`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}><span style={{ display:"flex", transform:"scale(0.85)" }}>{typeof cat.icon==="function"?cat.icon(cat.color):cat.icon}</span></div>
+                        <p style={{ fontSize:14, fontWeight:700 }}>{cat.cat}</p>
+                        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{cat.questions.length} perguntas</p>
+                      </div>
+                    ))}
+                  </div>
+                </> : <>
+                  <button onClick={()=>{setSelCat(null);setSelQ(null);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:16 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Todas as categorias
+                  </button>
+                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16, color:FAQ[selCat].color }}>{FAQ[selCat].cat}</h3>
+                  {FAQ[selCat].questions.map((q, qi) => {
+                    const isOpen = selQ === qi;
+                    return (
+                      <div key={qi} style={{ borderRadius:14, border:`1px solid ${isOpen?FAQ[selCat].color+"30":B.border}`, marginBottom:8, overflow:"hidden", background:isOpen?`${FAQ[selCat].color}04`:"transparent" }}>
+                        <button onClick={()=>setSelQ(isOpen?null:qi)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"14px 18px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:isOpen?700:600, color:B.text, background:"transparent", textAlign:"left" }}>
+                          <span>{q.q}</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ flexShrink:0, transform:isOpen?"rotate(180deg)":"none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        {isOpen && <div style={{ padding:"0 18px 16px" }}><p style={{ fontSize:14, color:B.text, lineHeight:1.8 }}>{q.a}</p></div>}
+                      </div>
+                    );
+                  })}
+                </>}
+              </>}
+              {/* GUIDES */}
+              {!showSearch && helpTab==="guides" && <>
+                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Guias Passo a Passo</h3>
+                <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Aprenda a usar cada funcionalidade do UniqueHub</p>
+                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  {GUIDES.map((g, gi) => {
+                    const isOpen = selCat === gi;
+                    return (
+                      <div key={gi} style={{ borderRadius:18, border:`1.5px solid ${isOpen?g.color+"30":B.border}`, overflow:"hidden", background:isOpen?`${g.color}03`:"transparent" }}>
+                        <div onClick={()=>setSelCat(isOpen?null:gi)} style={{ display:"flex", alignItems:"center", gap:14, padding:"18px 20px", cursor:"pointer" }}>
+                          <div style={{ width:44, height:44, borderRadius:14, background:`${g.color}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ display:"flex", transform:"scale(0.85)" }}>{typeof g.icon==="function"?g.icon(g.color):g.icon}</span></div>
+                          <div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:800 }}>{g.title}</p><p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{g.desc}</p></div>
+                          <span style={{ fontSize:11, fontWeight:600, color:g.color, padding:"4px 12px", borderRadius:8, background:`${g.color}10` }}>{g.steps.length} passos</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ flexShrink:0, transform:isOpen?"rotate(180deg)":"none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        {isOpen && <div style={{ padding:"0 20px 20px 78px" }}>
+                          {g.steps.map((s, si) => (
+                            <div key={si} style={{ display:"flex", gap:10, padding:"8px 0", borderTop:si?`1px solid ${B.border}08`:"none" }}>
+                              <p style={{ fontSize:13, lineHeight:1.6, color:B.text }}>{s}</p>
+                            </div>
+                          ))}
+                        </div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+              {/* SHORTCUTS */}
+              {!showSearch && helpTab==="shortcuts" && <>
+                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Dicas & Atalhos</h3>
+                <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Truques para usar o UniqueHub como um profissional</p>
+                {SHORTCUTS.map((sec, si) => (
+                  <div key={si} style={{ marginBottom:20 }}>
+                    <p style={{ fontSize:14, fontWeight:800, marginBottom:10, paddingBottom:8, borderBottom:`1px solid ${B.border}` }}>{sec.section}</p>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {sec.items.map((item, ii) => (
+                        <div key={ii} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 16px", borderRadius:12, background:B.bg }}>
+                          <span style={{ fontSize:13, fontWeight:700, padding:"4px 12px", borderRadius:8, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, color:B.accent, whiteSpace:"nowrap" }}>{item.keys}</span>
+                          <p style={{ fontSize:13, color:B.text }}>{item.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>}
+              {/* VIDEOS */}
+              {!showSearch && helpTab==="videos" && <>
+                <h3 style={{ fontSize:22, fontWeight:900, marginBottom:8 }}>Vídeo Tutoriais</h3>
+                <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Assista e aprenda no seu ritmo</p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:14 }}>
+                  {VIDEOS.map((v, vi) => (
+                    <div key={vi} style={{ padding:"20px 18px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s", display:"flex", alignItems:"center", gap:14 }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                      <div style={{ width:48, height:48, borderRadius:14, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ display:"flex" }}>{v.icon}</span></div>
+                      <div style={{ flex:1 }}>
+                        <p style={{ fontSize:14, fontWeight:700 }}>{v.title}</p>
+                        <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{v.desc}</p>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 12px", borderRadius:8, background:`${B.accent}08` }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill={B.accent} stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{v.dur}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:20, padding:"20px 24px", borderRadius:16, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Vídeos em breve!</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Estamos preparando tutoriais em vídeo para cada funcionalidade. Fique ligado!</p>
+                </div>
+              </>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── CONTACT FORM ── */
   if (contactForm) return (
