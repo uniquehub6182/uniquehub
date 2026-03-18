@@ -14209,7 +14209,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
           {/* MAIN CONTENT */}
           <div id="uh-report-content" style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {loading ? <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <div style={{ textAlign:"center" }}><div style={{ width:40, height:40, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 12px" }}/><p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p></div>
+              <div style={{ textAlign:"center" }}><div style={{ width:40, height:40, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 12px" }}/><p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p></div>
             </div> : !selClient ? <>
               {/* ═══ OVERVIEW ═══ */}
               <div style={{ padding:"14px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -14385,7 +14385,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
       {/* Loading state */}
       {loading && <Card style={{ textAlign:"center", padding:24 }}>
         <div style={{ width:40, height:40, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
-          <div style={{ width:20, height:20, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite" }} />
+          <div style={{ width:20, height:20, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"spin 1s linear infinite" }} />
         </div>
         <p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p>
         <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Buscando dados do Facebook e Instagram via Graph API</p>
@@ -15201,7 +15201,7 @@ REGRAS:
 
           {/* ── Cards sidebar (when article open) or full grid (when closed) ── */}
           <div style={{ width:a?320:undefined, flex:a?undefined:1, flexShrink:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:a?0:0, minWidth:0 }}>
-            {!loaded && <div style={{ textAlign:"center", padding:"80px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:600 }}>Carregando...</p></div>}
+            {!loaded && <div style={{ textAlign:"center", padding:"80px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:600 }}>Carregando...</p></div>}
             {loaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"80px 0" }}><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhum artigo</p></div>}
 
             {loaded && !a && <>
@@ -15276,7 +15276,7 @@ REGRAS:
                 </div>
               </div>}
               {aiMode && <>
-                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"50px 0" }}><div style={{ width:44, height:44, border:`3px solid #6366F130`, borderTop:`3px solid #6366F1`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:700 }}>Gerando...</p></div>}
+                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"50px 0" }}><div style={{ width:44, height:44, border:`3px solid #6366F130`, borderTop:`3px solid #6366F1`, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:700 }}>Gerando...</p></div>}
                 {(aiStep==="url"||aiStep==="done") && <>
                   {aiError && <p style={{ fontSize:12, color:B.red, marginBottom:14, padding:"10px 14px", borderRadius:10, background:`${B.red}08` }}>{aiError}</p>}
                   <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Link</label><input value={aiUrl} onChange={e=>setAiUrl(e.target.value)} placeholder="https://..." className="tinput" style={{ fontSize:14 }}/></div>
@@ -15625,7 +15625,7 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile }) {
         <div style={{ flex:1, display:"flex", flexDirection:"row-reverse", gap:16, minHeight:0 }}>
           {/* Cards grid (visually RIGHT) */}
           <div style={{ width:hasRight?340:undefined, flex:hasRight?undefined:1, overflowY:"auto", minWidth:0, paddingRight:4, flexShrink:0 }}>
-            {!ideasLoaded && <div style={{ textAlign:"center", padding:"60px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 14px" }}/></div>}
+            {!ideasLoaded && <div style={{ textAlign:"center", padding:"60px 0" }}><div style={{ width:44, height:44, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 14px" }}/></div>}
             {ideasLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"60px 0" }}><p style={{ fontSize:36, marginBottom:8 }}>💡</p><p style={{ fontSize:18, fontWeight:700, color:B.muted }}>Nenhuma ideia</p></div>}
             <div style={{ display:"grid", gridTemplateColumns:hasRight?"repeat(auto-fill, minmax(220px, 1fr))":"repeat(auto-fill, minmax(280px, 1fr))", gap:12 }}>
               {filtered.map(idea_ => {
