@@ -9615,10 +9615,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     const val = e.target.value;
     setInput(val);
     emitTyping();
-    /* Detect @ mention */
+    /* Detect @ mention — unicode-aware for accented names */
     const cursor = e.target.selectionStart || val.length;
     const before = val.slice(0, cursor);
-    const atMatch = before.match(/@(\w*)$/);
+    const atMatch = before.match(/@(\S*)$/);
     if (atMatch && selConv?.type === "group") {
       setMentionQuery(atMatch[1].toLowerCase());
       setShowMentions(true);
@@ -9645,12 +9645,19 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
 
   const renderMsgContent = (text) => {
     if (!text) return null;
-    const parts = text.split(/(@\w+(?:\s\w+)?)/g);
+    const members = selConv?.members || [];
+    /* Build list of @Name patterns to highlight, sorted longest first */
+    const names = members.map(m => m.name).filter(Boolean).sort((a, b) => b.length - a.length);
+    if (!names.length) return text;
+    /* Build regex matching @FullName for any member */
+    const escaped = names.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const re = new RegExp(`(@(?:${escaped.join("|")}))`, "gi");
+    const parts = text.split(re);
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
         const name = part.slice(1);
-        const isMember = (selConv?.members || []).some(m => m.name?.toLowerCase() === name.toLowerCase() || m.name?.toLowerCase().startsWith(name.toLowerCase()));
-        if (isMember) return <span key={i} style={{ fontWeight:700, color:B.accent, background:`${B.accent}15`, padding:"0 3px", borderRadius:4 }}>{part}</span>;
+        const found = members.some(m => m.name?.toLowerCase() === name.toLowerCase());
+        if (found) return <span key={i} style={{ fontWeight:700, color:"#1D9BF0", cursor:"pointer" }}>{part}</span>;
       }
       return <span key={i}>{part}</span>;
     });
