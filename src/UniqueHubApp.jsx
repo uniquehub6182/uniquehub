@@ -3094,7 +3094,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           </div>
         );
       }
-      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca} forceMobile />);
+      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca} forceMobile goTab={goTab} />);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop} forceMobile />);
       if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={null} user={user} canAccess={ca} forceMobile />);
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
@@ -6831,7 +6831,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca, forceMobile }) {
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca, forceMobile, goTab: goTabProp }) {
   const canAccessFn = ca || (() => true);
   const isContentDesktop = forceMobile ? false : (typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop"));
   const contained = !!forceMobile;
@@ -8183,7 +8183,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
       {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
         <span style={{fontSize:13,fontWeight:700,color:B.text}}>{totalCount} demanda{totalCount!==1?"s":""}</span>
-        <button onClick={()=>{setCreating(true);setCreateType(null);setForm({});}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
+        <button onClick={()=>{ if(goTabProp) goTabProp("content"); else { setCreating(true);setCreateType(null);setForm({}); } }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
       </div>}
 
       {/* Quick Publish button (mobile only) */}
@@ -8414,7 +8414,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           <div key={d.id} draggable
                             onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.5"; }}
                             onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
-                            onClick={() => setSel(d)}
+                            onClick={() => contained && goTabProp ? goTabProp("content", d.id) : setSel(d)}
                             style={{ background:"#fff", borderRadius:14, padding:"12px 14px", border:"1px solid rgba(0,0,0,0.06)", cursor:"grab", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", transition:"box-shadow .15s" }}
                             onMouseEnter={e => e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)"}
                             onMouseLeave={e => e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)"}
@@ -8487,7 +8487,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
                           onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
                           onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+"\n📎 "+f.name+": "+f.webViewLink;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast("📎 "+f.name+" anexado")}catch{}}}}
-                          onClick={e=>{e.stopPropagation();setSel(d);}}
+                          onClick={e=>{e.stopPropagation(); contained && goTabProp ? goTabProp("content", d.id) : setSel(d);}}
                           style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
                           onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
                           onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
