@@ -887,11 +887,11 @@ const supaLoadConversations = async (userId) => {
     return result;
   } catch(e) { console.error("loadConvs:", e); return []; }
 };
-const supaLoadMessages = async (convId, limit = 50) => {
+const supaLoadMessages = async (convId, limit = 200) => {
   if (!supabase || !convId) return [];
   try {
-    const { data } = await supabase.from("messages").select("*, profiles:sender_id(name, email)").eq("conversation_id", convId).order("created_at", { ascending: true }).limit(limit);
-    return data || [];
+    const { data } = await supabase.from("messages").select("*, profiles:sender_id(name, email)").eq("conversation_id", convId).order("created_at", { ascending: false }).limit(limit);
+    return (data || []).reverse();
   } catch(e) { return []; }
 };
 const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fileType, replyToId) => {
