@@ -13571,7 +13571,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                     </label>
                     {!isClientView && <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput" style={{ fontSize:12 }}>{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
                     <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Nome</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" style={{ fontSize:12 }} /></div>
-                    <div style={{ marginBottom:14 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{LIB_CATS.slice(0,8).map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${fileForm.category===c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600 }}>{c.icon} {c.label}</button>)}</div></div>
+                    <div style={{ marginBottom:14 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{LIB_CATS.filter(c=>c.k!=="all").map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${fileForm.category===c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600 }}>{c.icon} {c.label}</button>)}</div></div>
                     <button onClick={uploadLibFile} disabled={uploading} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:uploading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, opacity:uploading?0.6:1 }}>{uploading?"Enviando...":"Enviar Arquivo"}</button>
                   </div>
                 </> : f ? <>
@@ -14734,9 +14734,9 @@ REGRAS:
         setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
         showToast("Notícia gerada com foto — revise e publique!");
       } else {
-        /* No photo — go directly to edit form (photo can be added there) */
-        setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
-        showToast("Notícia gerada — adicione uma foto e publique!");
+        /* No photo — show photo step with keywords */
+        setAiPhotoSuggestions({ keywords: photoKeywords });
+        setAiStep("photo"); setAiLoading(false);
       }
     } catch(e) {
       console.error("AI news generation error:", e);
@@ -15284,11 +15284,12 @@ REGRAS:
                 </div>
               </div>}
               {aiMode && <>
-                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"40px 0" }}>
+                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"30px 0" }}>
                   <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"pulse 1.5s ease infinite" }}>{IC.ai(B.accent)}</div>
                   <style>{`@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.95)}}`}</style>
                   <p style={{ fontSize:16, fontWeight:800, color:B.text }}>Munique A.I escrevendo...</p>
                   <p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Lendo o artigo e reescrevendo no tom escolhido</p>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Isso pode levar de 10 a 20 segundos</p>
                   <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:16 }}>{[0,1,2].map(i=><div key={i} style={{ width:8, height:8, borderRadius:"50%", background:B.accent, animation:`bounce 1.4s ease infinite ${i*0.2}s` }}/>)}</div>
                   <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}`}</style>
                 </div>}
@@ -15304,26 +15305,38 @@ REGRAS:
                   <button onClick={aiGenerateArticle} disabled={aiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
                 </>}
                 {aiStep==="photo" && <>
-                  <p style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>Notícia gerada!</p>
-                  <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>Escolha uma foto de capa ou continue sem foto.</p>
-                  <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título</label><p style={{ fontSize:14, fontWeight:700 }}>{form.title}</p></div>
-                  {aiPhotoSuggestions?.keywords?.length > 0 && <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Termos sugeridos para foto</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{aiPhotoSuggestions.keywords.map((kw,i)=><span key={i} style={{ padding:"4px 10px", borderRadius:6, background:`${B.accent}10`, color:B.accent, fontSize:11, fontWeight:600 }}>{kw}</span>)}</div></div>}
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Upload de foto</label>
-                    <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"16px", borderRadius:14, border:`2px dashed ${aiPhotoUrl?B.green:`${B.accent}30`}`, background:aiPhotoUrl?`${B.green}04`:`${B.accent}03`, cursor:"pointer", fontSize:13, fontWeight:600, color:aiPhotoUrl?B.green:B.accent }}>
-                      {aiPhotoUrl?"✓ Foto selecionada":"📷 Escolher foto do computador"}
-                      <input type="file" accept="image/*" style={{display:"none"}} onChange={async(e)=>{const f=e.target.files?.[0];if(!f||!supabase)return;showToast("Enviando foto...");try{const path=`news/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);setAiPhotoUrl(u.publicUrl);showToast("Foto enviada ✓");}else{console.error("Upload error:",error);showToast("Erro no upload: "+error.message);}}catch(err){console.error("Upload exception:",err);showToast("Erro no upload");}}}/>
+                  <div style={{ textAlign:"center", marginBottom:16 }}>
+                    <div style={{ width:48, height:48, borderRadius:14, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <p style={{ fontSize:16, fontWeight:800, color:B.text }}>Notícia gerada!</p>
+                    <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Agora escolha a foto de capa</p>
+                  </div>
+                  <div style={{ padding:"12px", borderRadius:12, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, marginBottom:14 }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:B.text, marginBottom:2 }}>{form.title}</p>
+                    <p style={{ fontSize:10, color:B.muted }}>{form.cat && <span style={{ textTransform:"capitalize" }}>{form.cat}</span>} · {form.readTime}</p>
+                  </div>
+                  {aiPhotoSuggestions?.keywords?.length > 0 && <div style={{ marginBottom:14 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:6 }}>Termos sugeridos para buscar imagem no Google:</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{aiPhotoSuggestions.keywords.map((kw,i)=><span key={i} style={{ padding:"5px 12px", borderRadius:8, background:B.dark==="#fff"?"#F3F4F6":"#2A2D35", color:B.text, fontSize:11, fontWeight:600, border:`1px solid ${B.border}` }}>{kw}</span>)}</div>
+                  </div>}
+                  <div style={{ marginBottom:10 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:6 }}>Fazer upload da foto</p>
+                    <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${aiPhotoUrl?B.green:B.border}`, background:aiPhotoUrl?`${B.green}04`:B.bg, cursor:"pointer", fontSize:12, fontWeight:600, color:aiPhotoUrl?B.green:B.muted }}>
+                      {aiPhotoUrl?"✓ Foto selecionada":"Escolher foto do computador"}
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>setAiPhotoUrl(ev.target.result);r.readAsDataURL(f);}}/>
                     </label>
                   </div>
-                  <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Ou colar URL da foto</label><input value={aiPhotoUrl} onChange={e=>setAiPhotoUrl(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ fontSize:13 }}/></div>
-                  {aiPhotoUrl && <img src={aiPhotoUrl} alt="preview" style={{ width:"100%", height:140, objectFit:"cover", borderRadius:10, marginBottom:14 }} onError={e=>{e.target.style.display="none";}}/>}
-                  <button onClick={()=>{setForm(p=>({...p,photo:aiPhotoUrl||null}));setCreating(true);setAiMode(false);setAiStep("done");showToast(aiPhotoUrl?"Foto adicionada — revise e publique!":"Continue sem foto — edite depois");}} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>{aiPhotoUrl?"Usar esta foto":"Continuar sem foto"}</button>
+                  <div style={{ marginBottom:10 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:6 }}>Ou colar link da imagem</p>
+                    <input value={(aiPhotoUrl&&!aiPhotoUrl.startsWith("data:"))?aiPhotoUrl:""} onChange={e=>setAiPhotoUrl(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ fontSize:12 }}/>
+                  </div>
+                  {aiPhotoUrl && <img src={aiPhotoUrl} alt="preview" style={{ width:"100%", height:140, objectFit:"cover", borderRadius:10, marginBottom:12 }} onError={e=>{e.target.style.display="none";}}/>}
+                  <button onClick={()=>{setForm(p=>({...p,photo:aiPhotoUrl||null}));setPhotoPreview(aiPhotoUrl||null);setCreating(true);setAiMode(false);setAiStep("done");}} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>{aiPhotoUrl?"Usar esta foto e revisar":"Continuar sem foto"}</button>
                 </>}
               </>}
               {creating && <>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título" className="tinput" style={{ fontSize:15 }}/></div>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Resumo</label><input value={form.summary||""} onChange={e=>setForm(p=>({...p,summary:e.target.value}))} placeholder="Resumo curto" className="tinput" style={{ fontSize:13 }}/></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>{CATS.slice(0,8).map(c=><button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.cat===c.k?B.accent:B.border}`, background:form.cat===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:form.cat===c.k?700:500 }}>{c.l}</button>)}</div></div>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>{CATS.filter(c=>c.k!=="all").map(c=><button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.cat===c.k?B.accent:B.border}`, background:form.cat===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:form.cat===c.k?700:500 }}>{c.l}</button>)}</div></div>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Corpo *</label><textarea value={form.body||""} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Escreva o artigo..." className="tinput" style={{ fontSize:14, minHeight:180, resize:"vertical", lineHeight:1.7 }}/></div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
                   <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Fonte</label><input value={form.source||""} onChange={e=>setForm(p=>({...p,source:e.target.value}))} className="tinput" style={{ fontSize:12 }}/></div>
@@ -15342,7 +15355,7 @@ REGRAS:
               {editingArticle && <>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título" className="tinput" style={{ fontSize:15 }}/></div>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Resumo</label><input value={form.summary||""} onChange={e=>setForm(p=>({...p,summary:e.target.value}))} placeholder="Resumo curto" className="tinput" style={{ fontSize:13 }}/></div>
-                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>{CATS.slice(0,8).map(c=><button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.cat===c.k?B.accent:B.border}`, background:form.cat===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:form.cat===c.k?700:500 }}>{c.l}</button>)}</div></div>
+                <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>{CATS.filter(c=>c.k!=="all").map(c=><button key={c.k} onClick={()=>setForm(p=>({...p,cat:c.k}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.cat===c.k?B.accent:B.border}`, background:form.cat===c.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:form.cat===c.k?700:500 }}>{c.l}</button>)}</div></div>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Corpo *</label><textarea value={form.body||""} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Texto do artigo..." className="tinput" style={{ fontSize:14, minHeight:180, resize:"vertical", lineHeight:1.7 }}/></div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
                   <div><label style={{ fontSize:11, fontWeight:700, color:B.muted, display:"block", marginBottom:4 }}>Fonte</label><input value={form.source||""} onChange={e=>setForm(p=>({...p,source:e.target.value}))} className="tinput" style={{ fontSize:12 }}/></div>
