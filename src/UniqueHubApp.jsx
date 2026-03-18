@@ -10137,7 +10137,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                     <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros · Clique para ver`:(otherIsOnline?"Online":"Offline")}</p>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
-
+                    <button onClick={toggleMute} title={isMuted?"Ativar notificações":"Silenciar"} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {isMuted ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>}
+                    </button>
                     {(user?.supaRole==="admin") && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid #EF444430`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }} title="Excluir conversa"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>}
                   </div>
                 </div>
@@ -10215,7 +10218,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                           : m.file_url && (m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"")) ? <div style={{ minWidth:180, maxWidth:240 }}><AudioPlayer src={m.file_url} isMe={isMine} accent={B.accent} muted={B.muted} /></div>
                           : m.file_url && (m.file_type?.startsWith("video") || /\.(mp4|mov|avi|mkv)$/i.test(m.file_name||"")) ? <video controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:12 }} />
                           : m.file_url ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {m.file_name||"Arquivo"}</a>
-                          : <span style={{ whiteSpace:"pre-wrap" }}>{m.content}</span>}
+                          : <span style={{ whiteSpace:"pre-wrap" }}>{renderMsgContent(m.content)}</span>}
                           {m.reactions && Object.keys(m.reactions).length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
                             {Object.entries(m.reactions).map(([em,us])=>us.length>0&&<button key={em} onClick={()=>addReaction(m.id,em)} style={{ background:us.includes(user.id)?`${B.accent}20`:"rgba(0,0,0,0.06)", borderRadius:10, padding:"1px 6px", fontSize:11, border:us.includes(user.id)?`1px solid ${B.accent}30`:"1px solid transparent", cursor:"pointer", fontFamily:"inherit" }}>{em} {us.length}</button>)}
                           </div>}
