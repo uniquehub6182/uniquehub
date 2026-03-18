@@ -2598,6 +2598,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [dpNews, setDpNews] = useState([]);
   const [dpNewsExpanded, setDpNewsExpanded] = useState(null);
+  const [dpNewsCreating, setDpNewsCreating] = useState(false);
+  const [dpNewsForm, setDpNewsForm] = useState({title:"",body:"",cat:"tips",source:""});
+  const [dpNewsSaving, setDpNewsSaving] = useState(false);
   useEffect(() => { supaLoadNews().then(rows => { if(rows?.length) setDpNews(rows); }); }, []);
   const [driveUrl, setDriveUrl] = useState(() => { try { return localStorage.getItem("uh_drive_url")||""; } catch { return ""; } });
   const [driveType, setDriveType] = useState(() => { try { return localStorage.getItem("uh_drive_type")||""; } catch { return ""; } });
@@ -2969,7 +2972,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const catPhoto2 = (cat) => `https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=250&fit=crop`;
         const expanded = dpNewsExpanded;
         const expandedArt = expanded ? dpNews.find(a=>a.id===expanded) : null;
-        return phoneFrame("Comunicados","news",()=>goSub("news"),<div style={{flex:1,display:"flex",flexDirection:"column",height:"100%"}}>
+        return phoneFrame("Comunicados","news",()=>goSub("news"),<div style={{flex:1,display:"flex",flexDirection:"column",height:"100%",position:"relative"}}>
             {/* scrollable content */}
             <div style={{flex:1,overflowY:"auto",padding:"12px 16px 16px"}}>
               {expandedArt ? <div>
@@ -2998,7 +3001,27 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 {dpNews.length===0 && <div style={{gridColumn:"1/-1",textAlign:"center",padding:30}}><p style={{fontSize:12,color:"#9CA3AF"}}>Nenhuma notícia publicada</p></div>}
               </div>}
             </div>
-          </div>, ()=>{sessionStorage.setItem("uh_news_create","1");goSub("news");});
+            {/* ── INLINE CREATE OVERLAY ── */}
+            {dpNewsCreating && <>
+              <div onClick={()=>{setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});}} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.3)",zIndex:20,borderRadius:"var(--uh-radius)"}} />
+              <div style={{position:"absolute",top:0,right:0,bottom:0,width:"100%",background:B.bgCard,zIndex:21,display:"flex",flexDirection:"column",animation:"slideInRight .2s ease both",borderRadius:"var(--uh-radius)",overflow:"hidden"}}>
+                <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+                <div style={{padding:"8px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <button onClick={()=>{setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                  <p style={{flex:1,fontSize:13,fontWeight:700,color:B.text}}>Nova notícia</p>
+                </div>
+                <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}}>
+                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Título *</p><input value={dpNewsForm.title} onChange={e=>setDpNewsForm(p=>({...p,title:e.target.value}))} placeholder="Título da notícia" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Categoria</p><select value={dpNewsForm.cat} onChange={e=>setDpNewsForm(p=>({...p,cat:e.target.value}))} className="tinput" style={{width:"100%",boxSizing:"border-box"}}>{Object.entries(catLabel2).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
+                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Conteúdo *</p><textarea value={dpNewsForm.body} onChange={e=>setDpNewsForm(p=>({...p,body:e.target.value}))} placeholder="Escreva o conteúdo da notícia..." className="tinput" rows={6} style={{width:"100%",boxSizing:"border-box",resize:"vertical"}}/></div>
+                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Fonte (opcional)</p><input value={dpNewsForm.source} onChange={e=>setDpNewsForm(p=>({...p,source:e.target.value}))} placeholder="Ex: Meio & Mensagem" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+                  <button disabled={dpNewsSaving} onClick={async()=>{if(!dpNewsForm.title?.trim()||!dpNewsForm.body?.trim()){showToast("Título e conteúdo obrigatórios");return;}setDpNewsSaving(true);const ne={title:dpNewsForm.title.trim(),body:dpNewsForm.body.trim(),cat:dpNewsForm.cat||"tips",source:dpNewsForm.source||"",readTime:`${Math.max(1,Math.ceil(dpNewsForm.body.split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),tags:[],summary:""};const saved=await supaCreateNews(ne);if(saved){setDpNews(p=>[{...ne,id:saved.id},...p]);setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});showToast("Publicado ✓");}else{showToast("Erro ao publicar");}setDpNewsSaving(false);}} style={{width:"100%",padding:"12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:dpNewsSaving?0.5:1,marginTop:4}}>
+                    {dpNewsSaving?"Publicando...":"Publicar notícia"}
+                  </button>
+                </div>
+              </div>
+            </>}
+          </div>, ()=>setDpNewsCreating(true));
       }
       if(pk==="ai") {
         /* Mini AI Chat Widget — uses hoisted state */
@@ -14968,19 +14991,19 @@ REGRAS:
       <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
         <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.news(B.accent)}</div>
         <h3 style={{ fontSize:16, fontWeight:800 }}>Como quer criar?</h3>
-        <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha entre escrever manualmente ou usar IA para reescrever uma notícia de outra fonte.</p>
+        <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Escolha a forma que preferir para publicar sua notícia</p>
       </Card>
       <Card onClick={()=>startCreation("manual")} style={{ cursor:"pointer", marginBottom:8, border:`1.5px solid ${B.border}` }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ width:44, height:44, borderRadius:14, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center", color:B.blue, flexShrink:0 }}>{IC.content(B.blue)}</div>
-          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar manualmente</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Escreva o título, conteúdo e detalhes do zero</p></div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Escreva do seu jeito</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Crie sua notícia manualmente com título, texto e imagem</p></div>
           {IC.chev()}
         </div>
       </Card>
       <Card onClick={()=>startCreation("ai")} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}30`, background:`${B.accent}04` }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ width:44, height:44, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, flexShrink:0 }}>{IC.ai(B.accent)}</div>
-          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar com Munique A.I</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Cole o link de uma notícia e a assistente inteligente reescreve no estilo Unique</p></div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Escreva com a Munique A.I</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Sua assistente inteligente reescreve qualquer notícia no estilo Unique</p></div>
           {IC.chev()}
         </div>
       </Card>
@@ -15168,7 +15191,7 @@ REGRAS:
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
-        <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />
+        <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} />
 
         {/* Top bar */}
         <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:12, marginBottom:16 }}>
@@ -15177,7 +15200,7 @@ REGRAS:
               <button key={c.k} onClick={()=>setTab(c.k)} style={{ padding:"9px 18px", borderRadius:12, border:`1.5px solid ${tab===c.k?B.accent:B.border}`, background:tab===c.k?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:tab===c.k?700:500, color:tab===c.k?B.dark:B.muted }}>{c.l}</button>
             ))}
           </div>
-          {isAdmin && !isClientView && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);setCreating(false);setAiMode(false);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Novo Artigo</button>}
+          {!isClientView && !isCreating && <button onClick={()=>{setShowCreateChoice(true);setSelArticle(null);setCreating(false);setAiMode(false);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Novo Artigo</button>}
         </div>
 
         {/* Main content */}
@@ -15299,10 +15322,10 @@ REGRAS:
             <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
               {showCreateChoice && !creating && !aiMode && <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
                 <div onClick={()=>startCreation("manual")} style={{ padding:"28px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                  <p style={{ fontSize:28, marginBottom:8 }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></p><p style={{ fontSize:17, fontWeight:800 }}>Escrever</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Crie do zero</p>
+                  <p style={{ fontSize:28, marginBottom:8 }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></p><p style={{ fontSize:17, fontWeight:800 }}>Escreva do seu jeito</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Crie sua notícia manualmente</p>
                 </div>
                 <div onClick={()=>startCreation("ai")} style={{ padding:"28px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#6366F1";e.currentTarget.style.background="#6366F106";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                  <p style={{ fontSize:28, marginBottom:8 }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a5 5 0 015 5v3H7V7a5 5 0 015-5z"/><rect x="3" y="10" width="18" height="12" rx="2"/><circle cx="12" cy="16" r="1"/></svg></p><p style={{ fontSize:17, fontWeight:800 }}>Munique A.I</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Cole um link</p>
+                  <p style={{ fontSize:28, marginBottom:8 }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a5 5 0 015 5v3H7V7a5 5 0 015-5z"/><rect x="3" y="10" width="18" height="12" rx="2"/><circle cx="12" cy="16" r="1"/></svg></p><p style={{ fontSize:17, fontWeight:800 }}>Escreva com a Munique A.I</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Sua assistente inteligente reescreve qualquer notícia</p>
                 </div>
               </div>}
               {aiMode && <>
