@@ -9253,6 +9253,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
   const [showAttach, setShowAttach] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null); /* {file, preview, name, type} */
+  const [viewImage, setViewImage] = useState(null); /* url for fullscreen viewer */
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -9786,6 +9788,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !selConv) return;
+    /* If image, show preview first */
+    if (file.type?.startsWith("image")) {
+      const r = new FileReader();
+      r.onload = ev => setPendingFile({ file, preview: ev.target.result, name: file.name, type: file.type });
+      r.readAsDataURL(file);
+      setShowAttach(false);
+      return;
+    }
+    /* Non-image: send immediately */
     showToast("Enviando arquivo...");
     const result = await supaUploadChatFile(file);
     if (result) {
@@ -9799,6 +9810,19 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
       showToast("Arquivo enviado ✓");
     } else { showToast("Erro ao enviar arquivo"); }
     setShowAttach(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+  const sendPendingFile = async () => {
+    if (!pendingFile || !selConv) return;
+    showToast("Enviando foto...");
+    const result = await supaUploadChatFile(pendingFile.file);
+    if (result) {
+      const msg = await supaSendMessage(selConv.id, user.id, "", result.url, result.name, result.type);
+      if (msg && typingChanRef.current) typingChanRef.current.send({ type: "broadcast", event: "new_msg", payload: msg });
+      if (msg && chatListChanRef.current) chatListChanRef.current.send({ type: "broadcast", event: "chat_update", payload: msg });
+      showToast("Foto enviada ✓");
+    } else { showToast("Erro ao enviar"); }
+    setPendingFile(null);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -9939,7 +9963,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                       {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMe?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMe?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||"Membro"}</p><p style={{ fontSize:11, color:isMe?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
                       {m.file_url ? (
                         m.file_type?.startsWith("image") ? (
-                          <img src={m.file_url} style={{ maxWidth:200, maxHeight:200, borderRadius:12, display:"block" }} alt={m.file_name||"img"} />
+                          <img src={m.file_url} onClick={()=>setViewImage(m.file_url)} style={{ maxWidth:180, maxHeight:220, borderRadius:10, display:"block", cursor:"pointer", objectFit:"cover" }} alt={m.file_name||"img"} />
                         ) : m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"") ? (
                           <div style={{ padding:"6px 8px", minWidth:180 }}>
                             <AudioPlayer src={m.file_url} isMe={isMe} accent={B.accent} muted={B.muted} />
@@ -10007,6 +10031,21 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           ))}
         </div>}
         {/* INPUT BAR */}
+        {/* Pending file preview */}
+        {pendingFile && <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, background:B.bgCard, display:"flex", alignItems:"center", gap:10 }}>
+          <img src={pendingFile.preview} alt="" style={{ width:60, height:60, borderRadius:10, objectFit:"cover" }}/>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:12, fontWeight:700, color:B.text }}>{pendingFile.name}</p>
+            <p style={{ fontSize:10, color:B.muted }}>Enviar esta foto?</p>
+          </div>
+          <button onClick={sendPendingFile} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Enviar</button>
+          <button onClick={()=>{setPendingFile(null);if(fileRef.current)fileRef.current.value="";}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>}
+        {/* Fullscreen image viewer */}
+        {viewImage && <div onClick={()=>setViewImage(null)} style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(0,0,0,0.92)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out" }}>
+          <button onClick={e=>{e.stopPropagation();setViewImage(null);}} style={{ position:"absolute", top:20, right:20, width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.15)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:10001 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <img src={viewImage} alt="" onClick={e=>e.stopPropagation()} style={{ maxWidth:"90vw", maxHeight:"90vh", objectFit:"contain", borderRadius:8, cursor:"default" }}/>
+        </div>}
         <div style={{ padding:contained?"8px 10px":`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":contained?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:contained?0:chatIsDesktop?100:80 }}>
           {isRecording ? (
             <>
@@ -10265,7 +10304,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                           {/* Reply quote in bubble */}
                           {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMine?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMine?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||rm.sender_name||"Membro"}</p><p style={{ fontSize:11, color:isMine?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
                           {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}</p>}
-                          {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" style={{ maxWidth:"100%", borderRadius:12 }} />
+                          {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" onClick={()=>setViewImage(m.file_url)} style={{ maxWidth:220, maxHeight:260, borderRadius:10, cursor:"pointer", objectFit:"cover" }} />
                           : m.file_url && (m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"")) ? <div style={{ minWidth:180, maxWidth:240 }}><AudioPlayer src={m.file_url} isMe={isMine} accent={B.accent} muted={B.muted} /></div>
                           : m.file_url && (m.file_type?.startsWith("video") || /\.(mp4|mov|avi|mkv)$/i.test(m.file_name||"")) ? <video controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:12 }} />
                           : m.file_url ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {m.file_name||"Arquivo"}</a>
