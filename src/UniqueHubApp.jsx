@@ -2619,6 +2619,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [apiKeyTmp, setApiKeyTmp] = useState("");
   const [driveIframeErr, setDriveIframeErr] = useState(false);
   const driveAutoLoadRef = useRef(null);
+
+  /* ── Contained Content mini-app state (hoisted) ── */
+  const [cView, setCView] = useState("kanban"); /* kanban | detail | create */
+  const [cSel, setCSel] = useState(null);
+  const [cCreateType, setCCreateType] = useState(null);
+  const [cForm, setCForm] = useState({});
   useEffect(() => {
     if (!driveApiKey && supabase) {
       supaGetSetting("google_drive_api_key").then(k => {
@@ -8178,9 +8184,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
-      {contained && canAccessFn("content.create") && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
+      {contained && canAccessFn("content.create") && cView==="kanban" && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
         <span style={{fontSize:13,fontWeight:700,color:B.text}}>{totalCount} demanda{totalCount!==1?"s":""}</span>
-        <button onClick={()=>{setCreating(true);setCreateType(null);setForm({});}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
+        <button onClick={()=>{setCView("create");setCCreateType(null);setCForm({});}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
       </div>}
 
       {/* Quick Publish button (mobile only) */}
@@ -8444,7 +8450,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </div>
         );
       })()}
-      {/* ── CONTAINED MINI-KANBAN (dashboard block) ── */}
+      {/* ── CONTAINED CONTENT MINI-APP (dashboard block) ── */}
       {contained && !isContentDesktop && (() => {
         const K_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedK = new Set(filtered.map(d=>d.stage));
@@ -8453,7 +8459,171 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));
           const dd = demands.find(x=>x.id===did);
           if(dd?.supaId) supaUpdateDemand(dd.supaId,{stage:ns});
+          showToast(`→ ${STAGE_CFG[ns]?.l||ns}`);
         };
+        const stgList = (t) => t==="campaign"?CAMPAIGN_STAGES:t==="video"?VIDEO_STAGES:SOCIAL_STAGES;
+
+        /* ── DETAIL VIEW ── */
+        if (cView === "detail" && cSel) {
+          const d = demands.find(x=>x.id===cSel.id) || cSel;
+          const cfg = STAGE_CFG[d.stage]||{l:d.stage,c:"#888"};
+          const pC = d.priority==="alta"?"#EF4444":d.priority==="média"?"#F59E0B":"#10B981";
+          const stages = stgList(d.type);
+          const stIdx = stages.indexOf(d.stage);
+          return (
+            <div style={{height:"100%",display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 4px"}}>
+              {/* Back + title */}
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",flexShrink:0}}>
+                <button onClick={()=>{setCView("kanban");setCSel(null);}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontSize:13,fontWeight:700,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title}</p>
+                  <div style={{display:"flex",gap:4,marginTop:2}}>
+                    <span style={{fontSize:8,fontWeight:700,color:pC,background:`${pC}15`,padding:"1px 5px",borderRadius:4}}>{d.priority||"média"}</span>
+                    <span style={{fontSize:8,color:B.muted}}>{d.client}</span>
+                  </div>
+                </div>
+                <button onClick={()=>goTab("content")} style={{fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Expandir ↗</button>
+              </div>
+              {/* Stage progress */}
+              <div style={{padding:"6px 10px",display:"flex",gap:3,flexShrink:0}}>
+                {stages.map((s,i)=>{
+                  const sc=STAGE_CFG[s]||{l:s,c:"#888"};
+                  const active=s===d.stage;
+                  const done=i<stIdx;
+                  return <div key={s} onClick={()=>moveK(d.id,s)} style={{flex:1,height:6,borderRadius:3,background:done?`${cfg.c}`:active?cfg.c:`${B.muted}15`,cursor:"pointer",transition:"all .15s"}} title={sc.l}/>;
+                })}
+              </div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 10px 8px"}}>
+                <span style={{fontSize:10,fontWeight:700,color:cfg.c}}>{cfg.l}</span>
+                <div style={{display:"flex",gap:4}}>
+                  {stIdx>0&&<button onClick={()=>moveK(d.id,stages[stIdx-1])} style={{fontSize:9,padding:"3px 8px",borderRadius:6,background:B.bg,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",color:B.muted}}>← Voltar</button>}
+                  {stIdx<stages.length-1&&<button onClick={()=>moveK(d.id,stages[stIdx+1])} style={{fontSize:9,padding:"3px 8px",borderRadius:6,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,color:"#0D0D0D"}}>Avançar →</button>}
+                </div>
+              </div>
+              {/* Info cards */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,padding:"0 10px 8px"}}>
+                <div style={{background:B.bg,borderRadius:10,padding:"8px 10px"}}>
+                  <p style={{fontSize:8,color:B.muted,marginBottom:2}}>Tipo</p>
+                  <p style={{fontSize:11,fontWeight:600,color:B.text}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"}</p>
+                </div>
+                <div style={{background:B.bg,borderRadius:10,padding:"8px 10px"}}>
+                  <p style={{fontSize:8,color:B.muted,marginBottom:2}}>Rede</p>
+                  <p style={{fontSize:11,fontWeight:600,color:B.text}}>{d.network||"—"}</p>
+                </div>
+                <div style={{background:B.bg,borderRadius:10,padding:"8px 10px"}}>
+                  <p style={{fontSize:8,color:B.muted,marginBottom:2}}>Formato</p>
+                  <p style={{fontSize:11,fontWeight:600,color:B.text}}>{d.format||"Feed"}</p>
+                </div>
+                <div style={{background:B.bg,borderRadius:10,padding:"8px 10px"}}>
+                  <p style={{fontSize:8,color:B.muted,marginBottom:2}}>Responsáveis</p>
+                  <p style={{fontSize:11,fontWeight:600,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(d.assignees||[]).join(", ")||"—"}</p>
+                </div>
+              </div>
+              {/* Idea / Caption preview */}
+              {(d.steps?.idea?.text||d.steps?.caption?.text)&&<div style={{padding:"0 10px 8px"}}>
+                <div style={{background:B.bg,borderRadius:10,padding:"10px 12px"}}>
+                  <p style={{fontSize:8,color:B.muted,marginBottom:4}}>{d.steps?.caption?.text?"Legenda":"Ideia"}</p>
+                  <p style={{fontSize:11,color:B.text,lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:4,WebkitBoxOrient:"vertical"}}>{d.steps?.caption?.text||d.steps?.idea?.text}</p>
+                </div>
+              </div>}
+              {/* Notes / attached files */}
+              {d.notes&&<div style={{padding:"0 10px 8px"}}>
+                <div style={{background:B.bg,borderRadius:10,padding:"10px 12px"}}>
+                  <p style={{fontSize:8,color:B.muted,marginBottom:4}}>Notas</p>
+                  <p style={{fontSize:10,color:B.text,lineHeight:1.4,whiteSpace:"pre-wrap"}}>{d.notes}</p>
+                </div>
+              </div>}
+            </div>
+          );
+        }
+
+        /* ── CREATE VIEW ── */
+        if (cView === "create") {
+          const handleCCreate = async () => {
+            if(!cForm.title?.trim()) { showToast("Insira um título"); return; }
+            const newD = {
+              id: Date.now(), title:cForm.title.trim(), type:cCreateType||"social", stage:"idea",
+              priority:cForm.priority||"média", client:cForm.client||CDATA[0]?.name||"",
+              network:cForm.network||"Instagram", format:cForm.format||"Feed",
+              assignees:[user?.name||"Matheus"], createdAt:new Date().toLocaleDateString("pt-BR"),
+              steps:{idea:{by:user?.name||"",text:cForm.idea||"",date:new Date().toLocaleDateString("pt-BR")}},
+            };
+            const result = await supaCreateDemand(newD);
+            if(result?.data){newD.id=result.data.id;newD.supaId=result.data.id;}
+            setDemands(p=>[newD,...p]);
+            setCView("kanban");setCCreateType(null);setCForm({});
+            showToast("Demanda criada ✓");
+          };
+          return (
+            <div style={{height:"100%",display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 4px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",flexShrink:0}}>
+                <button onClick={()=>{setCView("kanban");setCCreateType(null);setCForm({});}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <p style={{fontSize:14,fontWeight:700,color:B.text}}>Nova Demanda</p>
+              </div>
+              {/* Type picker */}
+              {!cCreateType ? (
+                <div style={{padding:"10px 10px",display:"flex",flexDirection:"column",gap:8}}>
+                  <p style={{fontSize:11,color:B.muted}}>Que tipo de demanda?</p>
+                  {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels",c:B.blue||"#3B82F6"},
+                    {k:"campaign",l:"Campanha",d:"Evento, ação, promoção",c:B.purple||"#8B5CF6"},
+                    {k:"video",l:"Vídeo",d:"Reels, TikTok, YouTube",c:B.orange||"#F59E0B"}
+                  ].map(t=>(
+                    <div key={t.k} onClick={()=>setCCreateType(t.k)} style={{padding:"12px 14px",borderRadius:12,border:`1.5px solid ${B.border}`,cursor:"pointer",background:B.bgCard,transition:"all .12s"}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>
+                      <p style={{fontSize:12,fontWeight:700,color:B.text}}>{t.l}</p>
+                      <p style={{fontSize:10,color:B.muted,marginTop:2}}>{t.d}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{padding:"6px 10px",display:"flex",flexDirection:"column",gap:8}}>
+                  <div>
+                    <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Título *</p>
+                    <input value={cForm.title||""} onChange={e=>setCForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Post sobre promoção de verão" style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:12,color:B.text,outline:"none",boxSizing:"border-box"}} />
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    <div>
+                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Cliente</p>
+                      <select value={cForm.client||""} onChange={e=>setCForm(p=>({...p,client:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
+                        <option value="">Selecionar...</option>
+                        {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Prioridade</p>
+                      <select value={cForm.priority||"média"} onChange={e=>setCForm(p=>({...p,priority:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
+                        <option value="baixa">Baixa</option>
+                        <option value="média">Média</option>
+                        <option value="alta">Alta</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    <div>
+                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Rede</p>
+                      <select value={cForm.network||"Instagram"} onChange={e=>setCForm(p=>({...p,network:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
+                        {["Instagram","Facebook","LinkedIn","TikTok","YouTube","Twitter/X"].map(n=><option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Formato</p>
+                      <select value={cForm.format||"Feed"} onChange={e=>setCForm(p=>({...p,format:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
+                        {["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><option key={f} value={f}>{f}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Ideia / Briefing</p>
+                    <textarea value={cForm.idea||""} onChange={e=>setCForm(p=>({...p,idea:e.target.value}))} placeholder="Descreva a ideia do conteúdo..." rows={3} style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
+                  </div>
+                  <button onClick={handleCCreate} style={{width:"100%",padding:"10px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Criar Demanda</button>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        /* ── KANBAN VIEW (default) ── */
         return (
           <div style={{display:"flex",gap:8,height:"calc(100% - 10px)",minWidth:visK.length*150,paddingBottom:8}}>
             {visK.map(stg=>{
@@ -8479,8 +8649,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
                           onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
                           onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
-                          onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+`\n📎 ${f.name}: ${f.webViewLink}`;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast(`📎 ${f.name} anexado a "${d.title}"`)}catch{}}}}
-                          onClick={e=>{e.stopPropagation();goTab("content");}}
+                          onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+"\n📎 "+f.name+": "+f.webViewLink;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast("📎 "+f.name+" anexado")}catch{}}}}
+                          onClick={e=>{e.stopPropagation();setCSel(d);setCView("detail");}}
                           style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
                           onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
                           onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
@@ -8505,7 +8675,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </div>
         );
       })()}
-
       <div className="demands-grid" style={isContentDesktop ? { display:"none" } : contained ? { display:"none" } : undefined}>
       {filtered.map((d,i) => {
         const isDone = ["published","completed"].includes(d.stage);
