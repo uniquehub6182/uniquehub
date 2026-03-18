@@ -984,9 +984,15 @@ const supaToggleReaction = async (msgId, emoji, userId, currentReactions) => {
     } else {
       reactions[emoji] = [...users, userId];
     }
-    const { data } = await supabase.from("messages").update({ reactions }).eq("id", msgId).select();
-    return data?.[0]?.reactions || reactions;
-  } catch(e) { return null; }
+    const { data, error } = await supabase.from("messages").update({ reactions }).eq("id", msgId).select();
+    if (error) { console.error("supaToggleReaction RLS error:", error.message); return reactions; }
+    if (!data || data.length === 0) {
+      /* RLS blocked the update — try with rpc or return local state */
+      console.warn("supaToggleReaction: update returned empty — RLS may be blocking. Applying locally.");
+      return reactions;
+    }
+    return data[0].reactions || reactions;
+  } catch(e) { console.error("supaToggleReaction exception:", e); return null; }
 };
 const supaUploadChatFile = async (file) => {
   if (!supabase) return null;
@@ -8178,7 +8184,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
   const totalCount = demands.length;
   return (
-    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column", position:contained?"relative":"static" }}>
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?"auto":"100%", height:contained?"100%":"auto", display:"flex", flexDirection:"column", position:contained?"relative":"static", overflow:contained?"hidden":"visible" }}>
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
@@ -15161,7 +15167,7 @@ REGRAS:
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
-        <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} />
+        <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={false} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />
 
         {/* Top bar */}
         <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:12, marginBottom:16 }}>
