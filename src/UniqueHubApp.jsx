@@ -8184,7 +8184,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* Quick Publish button (mobile only) */}
-      {!isContentDesktop && <div style={{ padding:"8px 16px 0" }}>
+      {!isContentDesktop && !contained && <div style={{ padding:"8px 16px 0" }}>
         <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Publicação Rápida (FB / IG)
@@ -8192,7 +8192,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* ── SCROLLABLE CONTENT ── */}
-      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:"auto", padding:"14px 16px 0" }}>
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"hidden":"auto", overflowX:contained?"auto":"hidden", padding:contained?"8px 10px":"14px 16px 0" }}>
 
       {/* ── Desktop toolbar: Data | Clientes | Publicação Rápida ── */}
       {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
@@ -8222,7 +8222,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* Client selector (mobile only) */}
-      {!isContentDesktop && <div style={{ marginBottom:10 }}>
+      {!isContentDesktop && !contained && <div style={{ marginBottom:10 }}>
         <button onClick={() => setShowClientPicker(!showClientPicker)} style={{
           width:"100%", display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? B.accent : B.border}`,
           background: clientFilter !== "all" ? `${B.accent}06` : B.bgCard, cursor:"pointer", fontFamily:"inherit", transition:"all .2s",
@@ -8252,7 +8252,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* Type tabs + Date filter row (mobile only) */}
-      {!isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+      {!isContentDesktop && !contained && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
         <div style={{ flex:1, display:"flex", gap:6, overflowX:"auto" }}>
           {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
@@ -8343,7 +8343,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       })()}
 
       {/* Active filters summary */}
-      {(clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+      {!contained && (clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
         <span style={{ fontSize:10, color:B.muted }}>Filtros:</span>
         {clientFilter !== "all" && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
           {clientFilter} <button onClick={()=>setClientFilter("all")} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -8355,7 +8355,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* Loading skeleton (mobile only) */}
-      {!isContentDesktop && demands.length === 0 && filtered.length === 0 && <div>
+      {!isContentDesktop && !contained && demands.length === 0 && filtered.length === 0 && <div>
         {[1,2,3].map(i => <Card key={i} style={{ marginBottom:8, opacity: 0.5 }}>
           <div style={{ display:"flex", gap:10, alignItems:"center" }}>
             <div className="skeleton" style={{ width:44, height:44, borderRadius:12, flexShrink:0 }} />
@@ -8369,7 +8369,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* Empty state */}
-      {demands.length > 0 && filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+      {!contained && demands.length > 0 && filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
         <div style={{ width:48, height:48, borderRadius:24, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.muted }}>{IC.search(B.muted)}</div>
         <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhuma demanda encontrada</p>
         <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou criar uma nova demanda.</p>
@@ -8444,7 +8444,69 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </div>
         );
       })()}
-      <div className="demands-grid" style={isContentDesktop ? { display:"none" } : undefined}>
+      {/* ── CONTAINED MINI-KANBAN (dashboard block) ── */}
+      {contained && !isContentDesktop && (() => {
+        const K_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
+        const usedK = new Set(filtered.map(d=>d.stage));
+        const visK = K_STAGES.filter(s=>usedK.has(s)||["idea","briefing","design","review","client","published"].includes(s));
+        const moveK = (did, ns) => {
+          setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));
+          const dd = demands.find(x=>x.id===did);
+          if(dd?.supaId) supaUpdateDemand(dd.supaId,{stage:ns});
+        };
+        return (
+          <div style={{display:"flex",gap:8,height:"calc(100% - 10px)",minWidth:visK.length*150,paddingBottom:8}}>
+            {visK.map(stg=>{
+              const cfg = STAGE_CFG[stg]||{l:stg,c:"#888"};
+              const items = filtered.filter(d=>d.stage===stg);
+              return (
+                <div key={stg} style={{flex:1,minWidth:140,maxWidth:200,display:"flex",flexDirection:"column",borderRadius:12,background:`${cfg.c}06`,padding:6}}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.background=`${cfg.c}15`;}}
+                  onDragLeave={e=>{e.currentTarget.style.background=`${cfg.c}06`;}}
+                  onDrop={e=>{e.preventDefault();e.currentTarget.style.background=`${cfg.c}06`;try{const dd=JSON.parse(e.dataTransfer.getData("text/plain"));if(dd.id)moveK(dd.id,stg);}catch{}}}
+                >
+                  <div style={{display:"flex",alignItems:"center",gap:5,padding:"5px 8px",marginBottom:6}}>
+                    <div style={{width:8,height:8,borderRadius:4,background:cfg.c,flexShrink:0}} />
+                    <span style={{fontSize:10,fontWeight:700,color:B.text}}>{cfg.l}</span>
+                    <span style={{fontSize:9,fontWeight:600,color:B.muted,marginLeft:"auto"}}>{items.length}</span>
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:5}}>
+                    {items.map(d=>{
+                      const pC = d.priority==="alta"?"#EF4444":d.priority==="média"?"#F59E0B":"#10B981";
+                      return (
+                        <div key={d.id} draggable
+                          onDragStart={e=>{e.dataTransfer.setData("text/plain",JSON.stringify({id:d.id}));e.currentTarget.style.opacity="0.5";}}
+                          onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
+                          onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
+                          onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
+                          onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+`\n📎 ${f.name}: ${f.webViewLink}`;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast(`📎 ${f.name} anexado a "${d.title}"`)}catch{}}}}
+                          onClick={e=>{e.stopPropagation();setExpandedId(expandedId===d.id?null:d.id);setSel(d);}}
+                          style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
+                          onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
+                          onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
+                        >
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+                            <span style={{fontSize:7,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}15`,padding:"1px 5px",borderRadius:4}}>{d.priority||"média"}</span>
+                            <span style={{fontSize:7,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"}</span>
+                          </div>
+                          <p style={{fontSize:10,fontWeight:700,color:B.text,lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",marginBottom:3}}>{d.title}</p>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:2}}>
+                            <p style={{fontSize:8,color:B.muted}}>{d.client}</p>
+                            {d.network&&<span style={{fontSize:7,color:B.muted}}>{d.network.split(", ")[0]}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {items.length===0&&<p style={{fontSize:9,color:B.muted,opacity:0.4,textAlign:"center",padding:10}}>—</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      <div className="demands-grid" style={isContentDesktop ? { display:"none" } : contained ? { display:"none" } : undefined}>
       {filtered.map((d,i) => {
         const isDone = ["published","completed"].includes(d.stage);
         const pColor = priorityColor(d.priority);
