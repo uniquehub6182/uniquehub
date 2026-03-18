@@ -9129,7 +9129,7 @@ const GeoPin = ({ lat, lng, label }) => {
   );
 };
 
-const fmtRecTime = (s) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
+const fmtRecTime = (s) => { if(!s || !isFinite(s)) return "0:00"; return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,"0")}`; };
 
 const AudioPlayer = ({ src, isMe, accent, muted }) => {
   const [playing, setPlaying] = useState(false);
@@ -9144,7 +9144,7 @@ const AudioPlayer = ({ src, isMe, accent, muted }) => {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:8, minWidth:180 }}>
       <audio ref={audioRef} src={src} preload="metadata"
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onLoadedMetadata={() => { const d = audioRef.current?.duration; setDuration(d && isFinite(d) ? d : 0); }}
         onTimeUpdate={() => { const a = audioRef.current; if(a) setProgress(a.duration ? (a.currentTime/a.duration)*100 : 0); }}
         onEnded={() => { setPlaying(false); setProgress(0); }}
       />
@@ -9226,6 +9226,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   const [view, setView] = useState("list");
   const [convs, setConvs] = useState([]);
   const [selConv, setSelConv] = useState(null);
+  const selConvRef = useRef(null);
+  useEffect(() => { selConvRef.current = selConv; }, [selConv]);
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
@@ -9452,13 +9454,19 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     return () => clearInterval(poll);
   }, [selConv?.id]);
 
-  /* Auto-scroll to bottom on new messages */
+  /* Auto-scroll to bottom on new messages — only if user is near bottom */
+  const isNearBottom = useRef(true);
   const scrollToBottom = (smooth=true) => {
     const el = msgsContainerRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "instant" });
   };
-  useEffect(() => { scrollToBottom(); }, [msgs]);
+  const handleMsgsScroll = () => {
+    const el = msgsContainerRef.current;
+    if (!el) return;
+    isNearBottom.current = (el.scrollHeight - el.scrollTop - el.clientHeight) < 150;
+  };
+  useEffect(() => { if(isNearBottom.current) scrollToBottom(); }, [msgs]);
 
   /* iOS keyboard fix: track visualViewport height and apply to conv container */
   const [vpHeight, setVpHeight] = useState(() => window.visualViewport?.height || window.innerHeight);
@@ -9490,7 +9498,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           return prev;
         }
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id ? (updated[idx].unread||0) + 1 : updated[idx].unread };
+        updated[idx] = { ...updated[idx], lastMsg: nm, unread: nm.sender_id !== user.id && nm.conversation_id !== selConvRef.current?.id ? (updated[idx].unread||0) + 1 : updated[idx].unread };
         return updated;
       });
     }).on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_members", filter: `user_id=eq.${user.id}` }, () => {
@@ -9505,7 +9513,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           return prev;
         }
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], lastMsg: p, unread: (updated[idx].unread||0) + 1 };
+        updated[idx] = { ...updated[idx], lastMsg: p, unread: p.conversation_id !== selConvRef.current?.id ? (updated[idx].unread||0) + 1 : updated[idx].unread };
         return updated;
       });
     }).subscribe();
@@ -9802,7 +9810,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
         </div>
 
         {/* MESSAGES */}
-        <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:contained?"8px 10px 4px":"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
+        <div ref={msgsContainerRef} onScroll={handleMsgsScroll} style={{ flex:1, overflowY:"auto", padding:contained?"8px 10px 4px":"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
           {pinnedOpen && msgs.filter(m=>m.pinned).length>0 && (
             <div style={{ background:`${B.accent}10`, border:`1px solid ${B.accent}30`, borderRadius:12, padding:"8px 12px", marginBottom:8, fontSize:12, color:B.accent, fontWeight:600 }}>
               📌 {msgs.find(m=>m.pinned)?.content}
@@ -10126,7 +10134,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                   </div>
                 </div>;
                 })()}
-                <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
+                <div ref={msgsContainerRef} onScroll={handleMsgsScroll} style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
                   {msgs.map((m,mi) => {
                     const isMine = m.sender_id === user.id;
                     const senderName = isMine ? user.name : (allProfiles.find(p=>p.id===m.sender_id)?.name || m.sender_name || m.profiles?.name || "Membro");
@@ -10271,7 +10279,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
           const avBg = bgPal[name.charCodeAt(0)%bgPal.length];
           return (
-            <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");}}
+            <div key={c.id} onClick={()=>{setSelConv(c);setView("chat");setConvs(p=>p.map(x=>x.id===c.id?{...x,unread:0}:x));}}
               style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 20px", borderBottom:`1px solid ${B.border}`, cursor:"pointer", background:B.bgCard, transition:"background .15s" }}
               onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`}
               onMouseLeave={e=>e.currentTarget.style.background=B.bgCard}
