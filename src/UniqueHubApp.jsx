@@ -9246,8 +9246,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   const [mentionIdx, setMentionIdx] = useState(0);
   const inputRef = useRef(null);
   const getMuted = () => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } };
-  const isMuted = selConv ? getMuted().includes(selConv.id) : false;
-  const toggleMute = () => { if(!selConv) return; const list=getMuted(); const next=list.includes(selConv.id)?list.filter(x=>x!==selConv.id):[...list,selConv.id]; localStorage.setItem("uh_muted_convs",JSON.stringify(next)); showToast(next.includes(selConv.id)?"🔇 Silenciado":"🔔 Notificações ativadas"); };
+  const [mutedConvs, setMutedConvs] = useState(getMuted);
+  const isMuted = selConv ? mutedConvs.includes(selConv.id) : false;
+  const toggleMute = () => { if(!selConv) return; const next=mutedConvs.includes(selConv.id)?mutedConvs.filter(x=>x!==selConv.id):[...mutedConvs,selConv.id]; setMutedConvs(next); localStorage.setItem("uh_muted_convs",JSON.stringify(next)); showToast(next.includes(selConv.id)?"🔇 Silenciado":"🔔 Notificações ativadas"); };
   const typingTimeout = useRef(null);
   const typingChanRef = useRef(null);
   const chatListChanRef = useRef(null);
@@ -9618,7 +9619,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     const cursor = e.target.selectionStart || val.length;
     const before = val.slice(0, cursor);
     const atMatch = before.match(/@(\w*)$/);
-    if (atMatch && selConv?.isGroup) {
+    if (atMatch && selConv?.type === "group") {
       setMentionQuery(atMatch[1].toLowerCase());
       setShowMentions(true);
       setMentionIdx(0);
