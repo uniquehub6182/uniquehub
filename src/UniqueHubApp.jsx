@@ -8196,7 +8196,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* ── SCROLLABLE CONTENT ── */}
-      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"hidden":"auto", overflowX:contained?"auto":"hidden", padding:contained?"8px 10px":"14px 16px 0" }}>
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"hidden":"auto", overflowX:contained?"auto":"hidden", padding:contained?"0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column" }}>
 
       {/* ── Desktop toolbar: Data | Clientes | Publicação Rápida ── */}
       {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
@@ -8463,7 +8463,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
         /* ── KANBAN VIEW (default) ── */
         return (
-          <div style={{display:"flex",gap:8,height:"calc(100% - 10px)",minWidth:visK.length*150,paddingBottom:8}}>
+          <div style={{display:"flex",gap:8,flex:1,minHeight:0,minWidth:visK.length*150,padding:"8px 10px"}}>
             {visK.map(stg=>{
               const cfg = STAGE_CFG[stg]||{l:stg,c:"#888"};
               const items = filtered.filter(d=>d.stage===stg);
