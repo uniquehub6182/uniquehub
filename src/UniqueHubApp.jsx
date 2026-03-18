@@ -2598,11 +2598,6 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
   const [dpNews, setDpNews] = useState([]);
   const [dpNewsExpanded, setDpNewsExpanded] = useState(null);
-  const [dpNewsCreating, setDpNewsCreating] = useState(false); /* true=choice, "manual"=form, "ai"=ai flow */
-  const [dpNewsForm, setDpNewsForm] = useState({title:"",body:"",cat:"tips",source:""});
-  const [dpNewsSaving, setDpNewsSaving] = useState(false);
-  const [dpAiUrl, setDpAiUrl] = useState("");
-  const [dpAiLoading, setDpAiLoading] = useState(false);
   useEffect(() => { supaLoadNews().then(rows => { if(rows?.length) setDpNews(rows); }); }, []);
   const [driveUrl, setDriveUrl] = useState(() => { try { return localStorage.getItem("uh_drive_url")||""; } catch { return ""; } });
   const [driveType, setDriveType] = useState(() => { try { return localStorage.getItem("uh_drive_type")||""; } catch { return ""; } });
@@ -2968,102 +2963,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
 
     /* ── Render a dashboard panel by key — real pages inside phone frames ── */
     const renderDPanel = (pk) => {
-      if(pk==="news") {
-        const catColor2 = {trends:"#7C3AED",updates:"#2563EB",tips:"#D97706",cases:"#059669",tools:"#0891B2",novidade:"#EC4899",branding:"#8B5CF6",estrategia:"#0EA5E9",publicidade:"#F59E0B",carreira:"#10B981",mktdigital:"#BBF246",ia:"#6366F1"};
-        const catLabel2 = {trends:"Tendência",updates:"Atualização",tips:"Dica",cases:"Case",tools:"Ferramenta",novidade:"Novidade",branding:"Branding",estrategia:"Estratégia",publicidade:"Publicidade",carreira:"Carreira",mktdigital:"Marketing Digital",ia:"Inteligência Artificial"};
-        const catPhoto2 = (cat) => `https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=250&fit=crop`;
-        const expanded = dpNewsExpanded;
-        const expandedArt = expanded ? dpNews.find(a=>a.id===expanded) : null;
-        return phoneFrame("Comunicados","news",()=>goSub("news"),<div style={{flex:1,display:"flex",flexDirection:"column",height:"100%",position:"relative"}}>
-            {/* scrollable content */}
-            <div style={{flex:1,overflowY:"auto",padding:"12px 16px 16px"}}>
-              {expandedArt ? <div>
-                <button onClick={()=>setDpNewsExpanded(null)} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#9CA3AF",marginBottom:10,padding:0}}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> Voltar
-                </button>
-                {expandedArt.photo && <img src={expandedArt.photo} alt="" style={{width:"100%",height:160,objectFit:"cover",borderRadius:14,marginBottom:12}} onError={e=>{e.target.style.display="none"}}/>}
-                <span style={{fontSize:9,fontWeight:800,color:catColor2[expandedArt.cat]||"#6366F1",textTransform:"uppercase",letterSpacing:0.8}}>{catLabel2[expandedArt.cat]||"Geral"}</span>
-                <h3 style={{fontSize:16,fontWeight:800,color:"#1A1D23",marginTop:4,lineHeight:1.3}}>{expandedArt.title}</h3>
-                {expandedArt.summary && <p style={{fontSize:12,color:"#6B7280",marginTop:6,lineHeight:1.5}}>{expandedArt.summary}</p>}
-                <div style={{fontSize:12,color:"#374151",marginTop:10,lineHeight:1.7,whiteSpace:"pre-line"}}>{expandedArt.body}</div>
-                {expandedArt.source && <p style={{fontSize:10,color:"#9CA3AF",marginTop:12}}>Fonte: {expandedArt.source}</p>}
-              </div> : <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                {dpNews.slice(0,8).map((a,i)=>(
-                  <div key={a.id||i} onClick={()=>setDpNewsExpanded(a.id)} style={{borderRadius:14,overflow:"hidden",cursor:"pointer",border:"1px solid rgba(0,0,0,0.06)",background:"#FAFAFA",transition:"box-shadow .15s"}}>
-                    <div style={{height:80,overflow:"hidden",position:"relative"}}>
-                      <img src={a.photo||catPhoto2(a.cat)} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>{e.target.onerror=null;e.target.src=catPhoto2();}}/>
-                      <span style={{position:"absolute",top:6,left:6,background:catColor2[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase"}}>{catLabel2[a.cat]||"Geral"}</span>
-                    </div>
-                    <div style={{padding:"8px 10px"}}>
-                      <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
-                      <p style={{fontSize:9,color:"#9CA3AF",marginTop:4}}>{a.readTime||"3 min"}</p>
-                    </div>
-                  </div>
-                ))}
-                {dpNews.length===0 && <div style={{gridColumn:"1/-1",textAlign:"center",padding:30}}><p style={{fontSize:12,color:"#9CA3AF"}}>Nenhuma notícia publicada</p></div>}
-              </div>}
-            </div>
-            {/* ── INLINE CREATE OVERLAY ── */}
-            {dpNewsCreating && <>
-              <div onClick={()=>{setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});}} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.3)",zIndex:20,borderRadius:"var(--uh-radius)"}} />
-              <div style={{position:"absolute",top:0,right:0,bottom:0,width:"100%",background:B.bgCard,zIndex:21,display:"flex",flexDirection:"column",animation:"slideInRight .2s ease both",borderRadius:"var(--uh-radius)",overflow:"hidden"}}>
-                <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-                <div style={{padding:"8px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                  <button onClick={()=>{if(dpNewsCreating==="manual"||dpNewsCreating==="ai"){setDpNewsCreating(true);setDpNewsForm({title:"",body:"",cat:"tips",source:""});setDpAiUrl("");}else{setDpNewsCreating(false);}}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>{(dpNewsCreating==="manual"||dpNewsCreating==="ai")?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}</button>
-                  <p style={{flex:1,fontSize:13,fontWeight:700,color:B.text}}>{dpNewsCreating==="manual"?"Escreva do seu jeito":dpNewsCreating==="ai"?"Munique A.I":"Nova notícia"}</p>
-                </div>
-                <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}}>
-                  {dpNewsCreating===true && <>
-                    {/* Choice screen */}
-                    <div style={{textAlign:"center",padding:"12px 0 8px"}}>
-                      <div style={{width:44,height:44,borderRadius:14,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px"}}>{IC.news(B.accent)}</div>
-                      <p style={{fontSize:14,fontWeight:800,color:B.text}}>Como quer criar?</p>
-                    </div>
-                    <div onClick={()=>setDpNewsCreating("manual")} style={{padding:"14px",borderRadius:14,border:`1.5px solid ${B.border}`,cursor:"pointer",display:"flex",alignItems:"center",gap:10}} onMouseEnter={e=>e.currentTarget.style.borderColor=B.accent} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>
-                      <div style={{width:36,height:36,borderRadius:10,background:`${B.blue||"#3B82F6"}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-                      <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text}}>Escreva do seu jeito</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>Crie sua notícia manualmente</p></div>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </div>
-                    <div onClick={()=>setDpNewsCreating("ai")} style={{padding:"14px",borderRadius:14,border:`1.5px solid ${B.accent}30`,background:`${B.accent}04`,cursor:"pointer",display:"flex",alignItems:"center",gap:10}} onMouseEnter={e=>e.currentTarget.style.borderColor=B.accent} onMouseLeave={e=>e.currentTarget.style.borderColor=`${B.accent}30`}>
-                      <div style={{width:36,height:36,borderRadius:10,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.ai(B.accent)}</div>
-                      <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text}}>Escreva com a Munique A.I</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>Sua assistente inteligente reescreve qualquer notícia</p></div>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </div>
-                  </>}
-                  {dpNewsCreating==="manual" && <>
-                    {/* Manual creation form */}
-                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Título *</p><input value={dpNewsForm.title} onChange={e=>setDpNewsForm(p=>({...p,title:e.target.value}))} placeholder="Título da notícia" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
-                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Categoria</p><select value={dpNewsForm.cat} onChange={e=>setDpNewsForm(p=>({...p,cat:e.target.value}))} className="tinput" style={{width:"100%",boxSizing:"border-box"}}>{Object.entries(catLabel2).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
-                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Conteúdo *</p><textarea value={dpNewsForm.body} onChange={e=>setDpNewsForm(p=>({...p,body:e.target.value}))} placeholder="Escreva o conteúdo da notícia..." className="tinput" rows={6} style={{width:"100%",boxSizing:"border-box",resize:"vertical"}}/></div>
-                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Fonte (opcional)</p><input value={dpNewsForm.source} onChange={e=>setDpNewsForm(p=>({...p,source:e.target.value}))} placeholder="Ex: Meio & Mensagem" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
-                    <button disabled={dpNewsSaving} onClick={async()=>{if(!dpNewsForm.title?.trim()||!dpNewsForm.body?.trim()){showToast("Título e conteúdo obrigatórios");return;}setDpNewsSaving(true);const ne={title:dpNewsForm.title.trim(),body:dpNewsForm.body.trim(),cat:dpNewsForm.cat||"tips",source:dpNewsForm.source||"",readTime:`${Math.max(1,Math.ceil(dpNewsForm.body.split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),tags:[],summary:""};const saved=await supaCreateNews(ne);if(saved){setDpNews(p=>[{...ne,id:saved.id},...p]);setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});showToast("Publicado ✓");}else{showToast("Erro ao publicar");}setDpNewsSaving(false);}} style={{width:"100%",padding:"12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:dpNewsSaving?0.5:1,marginTop:4}}>
-                      {dpNewsSaving?"Publicando...":"Publicar notícia"}
-                    </button>
-                  </>}
-                  {dpNewsCreating==="ai" && <>
-                    {/* AI creation flow */}
-                    <div style={{textAlign:"center",padding:"16px 0 12px"}}>
-                      <div style={{width:44,height:44,borderRadius:14,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px"}}>{IC.ai(B.accent)}</div>
-                      <p style={{fontSize:13,fontWeight:700,color:B.text}}>Cole o link da notícia</p>
-                      <p style={{fontSize:11,color:B.muted,marginTop:4}}>A Munique A.I vai reescrever no estilo Unique</p>
-                    </div>
-                    <input value={dpAiUrl} onChange={e=>setDpAiUrl(e.target.value)} placeholder="https://exemplo.com/noticia..." className="tinput" style={{width:"100%",boxSizing:"border-box"}}/>
-                    {dpNewsForm.title && <>
-                      <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Título</p><input value={dpNewsForm.title} onChange={e=>setDpNewsForm(p=>({...p,title:e.target.value}))} className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
-                      <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Conteúdo reescrito</p><textarea value={dpNewsForm.body} onChange={e=>setDpNewsForm(p=>({...p,body:e.target.value}))} className="tinput" rows={6} style={{width:"100%",boxSizing:"border-box",resize:"vertical"}}/></div>
-                      <button disabled={dpNewsSaving} onClick={async()=>{if(!dpNewsForm.title?.trim()||!dpNewsForm.body?.trim()){showToast("Título e conteúdo obrigatórios");return;}setDpNewsSaving(true);const ne={title:dpNewsForm.title.trim(),body:dpNewsForm.body.trim(),cat:dpNewsForm.cat||"tips",source:dpAiUrl||"",sourceUrl:dpAiUrl||"",readTime:`${Math.max(1,Math.ceil(dpNewsForm.body.split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),tags:[],summary:""};const saved=await supaCreateNews(ne);if(saved){setDpNews(p=>[{...ne,id:saved.id},...p]);setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});setDpAiUrl("");showToast("Publicado ✓");}else{showToast("Erro ao publicar");}setDpNewsSaving(false);}} style={{width:"100%",padding:"12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:dpNewsSaving?0.5:1}}>
-                        {dpNewsSaving?"Publicando...":"Publicar notícia"}
-                      </button>
-                    </>}
-                    {!dpNewsForm.title && <button disabled={dpAiLoading||!dpAiUrl.trim()} onClick={async()=>{if(!dpAiUrl.trim()){showToast("Cole um link");return;}setDpAiLoading(true);try{const prov=dAiProv||"openai";const keys=dAiKeys;if(!keys){showToast("Configure chaves de IA em Configurações");setDpAiLoading(false);return;}const key=prov==="openai"?keys.openai:prov==="gemini"?keys.gemini:keys.anthropic;const endpoint=prov==="openai"?"https://api.openai.com/v1/chat/completions":prov==="gemini"?`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`:"https://api.anthropic.com/v1/messages";const sysMsg="Você é a Munique A.I, assistente inteligente da Unique Marketing 360. Reescreva a notícia do link abaixo de forma original, envolvente e no estilo Unique. Responda APENAS em JSON: {\"title\":\"...\",\"body\":\"...\",\"summary\":\"...\"}";const userMsg=`Reescreva esta notícia: ${dpAiUrl}`;let result;if(prov==="openai"){const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"system",content:sysMsg},{role:"user",content:userMsg}],max_tokens:2000})});const d=await r.json();result=d.choices?.[0]?.message?.content||"";}else if(prov==="gemini"){const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:sysMsg+"\\n\\n"+userMsg}]}],generationConfig:{maxOutputTokens:2000}})});const d=await r.json();result=d.candidates?.[0]?.content?.parts?.[0]?.text||"";}else{const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,system:sysMsg,messages:[{role:"user",content:userMsg}]})});const d=await r.json();result=d.content?.[0]?.text||"";}const clean=result.replace(/```json|```/g,"").trim();try{const parsed=JSON.parse(clean);setDpNewsForm(p=>({...p,title:parsed.title||"",body:parsed.body||"",summary:parsed.summary||"",cat:"tips"}));}catch{setDpNewsForm(p=>({...p,title:"Notícia reescrita",body:clean,cat:"tips"}));}}catch(e){console.error("AI news error:",e);showToast("Erro ao processar — verifique o link e as chaves de IA");}setDpAiLoading(false);}} style={{width:"100%",padding:"12px",borderRadius:10,background:dpAiLoading?"#ddd":B.accent,border:"none",cursor:dpAiLoading?"default":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:(!dpAiUrl.trim()||dpAiLoading)?0.5:1}}>
-                      {dpAiLoading?"Munique A.I processando...":"Reescrever com A.I"}
-                    </button>}
-                  </>}
-                </div>
-              </div>
-            </>}
-          </div>, ()=>setDpNewsCreating(true));
-      }
+      if(pk==="news") return phoneFrame("Comunicados","news",()=>goSub("news"),<NewsPage onBack={null} user={user} forceMobile />);
       if(pk==="ai") {
         /* Mini AI Chat Widget — uses hoisted state */
         const handleAiDrop = (e) => {
@@ -14706,8 +14606,9 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 }
 
 
-function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView }) {
-  const isNewsDesktop = useIsDesktop();
+function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView, forceMobile }) {
+  const isNewsDesktop = forceMobile ? false : useIsDesktop();
+  const contained = !!forceMobile;
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
@@ -15409,8 +15310,8 @@ REGRAS:
 
   /* ── MAIN NEWS LIST ── */
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />
+    <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {!contained && <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
