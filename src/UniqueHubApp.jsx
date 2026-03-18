@@ -6838,11 +6838,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const canAccessFn = ca || (() => true);
   const isContentDesktop = forceMobile ? false : (typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop"));
   const contained = !!forceMobile;
-  /* ── Contained mini-app state ── */
-  const [cView, setCView] = useState("kanban");
-  const [cSel, setCSel] = useState(null);
-  const [cCreateType, setCCreateType] = useState(null);
-  const [cForm, setCForm] = useState({});
+  /* ── Contained mini-app: uses existing sel/creating states ── */
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
@@ -8171,7 +8167,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     if (!isContentDesktop) {
       return (
         <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-          <div className="pg" style={{ paddingTop: TOP }}>{detailInner}</div>
+          <div className="pg" style={{ paddingTop: contained?0:TOP }}>{detailInner}</div>
         </DemandDetailBoundary>
       );
     }
@@ -8186,9 +8182,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
-      {contained && canAccessFn("content.create") && cView==="kanban" && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
+      {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
         <span style={{fontSize:13,fontWeight:700,color:B.text}}>{totalCount} demanda{totalCount!==1?"s":""}</span>
-        <button onClick={()=>{setCView("create");setCCreateType(null);setCForm({});}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
+        <button onClick={()=>{setCreating(true);setCreateType(null);setForm({});}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
       </div>}
 
       {/* Quick Publish button (mobile only) */}
@@ -8453,7 +8449,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         );
       })()}
       {/* ── CONTAINED CONTENT MINI-APP (dashboard block) ── */}
-      {contained && !isContentDesktop && (() => {
+      {contained && !isContentDesktop && !sel && !creating && (() => {
         const K_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedK = new Set(filtered.map(d=>d.stage));
         const visK = K_STAGES.filter(s=>usedK.has(s)||["idea","briefing","design","review","client","published"].includes(s));
@@ -8464,242 +8460,6 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           showToast(`→ ${STAGE_CFG[ns]?.l||ns}`);
         };
         const stgList = (t) => t==="campaign"?CAMPAIGN_STAGES:t==="video"?VIDEO_STAGES:SOCIAL_STAGES;
-
-        /* ── DETAIL VIEW ── */
-        if (cView === "detail" && cSel) {
-          const d = demands.find(x=>x.id===cSel.id) || cSel;
-          const cfg = STAGE_CFG[d.stage]||{l:d.stage,c:"#888"};
-          const pC = d.priority==="alta"?"#EF4444":d.priority==="média"?"#F59E0B":"#10B981";
-          const stages = stgList(d.type);
-          const stIdx = stages.indexOf(d.stage);
-          const cUpdateStep = (stepKey, data) => {
-            const updated = { ...d, steps: { ...d.steps, [stepKey]: { ...(d.steps?.[stepKey]||{}), ...data } } };
-            setDemands(p=>p.map(x=>x.id===d.id?updated:x));
-            if(d.supaId) supaUpdateDemand(d.supaId, { steps: updated.steps });
-          };
-          const cUpdateField = (field, val) => {
-            setDemands(p=>p.map(x=>x.id===d.id?{...x,[field]:val}:x));
-            if(d.supaId) supaUpdateDemand(d.supaId, { [field]: val });
-          };
-          return (
-            <div style={{height:"100%",display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 4px"}}>
-              {/* Header */}
-              <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",flexShrink:0}}>
-                <button onClick={()=>{setCView("kanban");setCSel(null);}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontSize:13,fontWeight:700,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title}</p>
-                  <div style={{display:"flex",gap:4,marginTop:2}}>
-                    <span style={{fontSize:8,fontWeight:700,color:pC,background:`${pC}15`,padding:"1px 5px",borderRadius:4}}>{d.priority||"média"}</span>
-                    <span style={{fontSize:8,color:B.muted}}>{d.client} · {d.network||"Instagram"}</span>
-                  </div>
-                </div>
-                <button onClick={()=>goTab("content")} style={{fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Expandir ↗</button>
-              </div>
-              {/* Stage progress bar */}
-              <div style={{padding:"4px 10px",display:"flex",gap:3,flexShrink:0}}>
-                {stages.map((s,i)=>{const sc=STAGE_CFG[s]||{c:"#888"};const active=s===d.stage;const done=i<stIdx;return <div key={s} onClick={()=>{moveK(d.id,s);showToast("→ "+(STAGE_CFG[s]?.l||s));}} style={{flex:1,height:6,borderRadius:3,background:done?cfg.c:active?cfg.c:`${B.muted}15`,opacity:done?0.5:1,cursor:"pointer"}} title={STAGE_CFG[s]?.l||s}/>;
-                })}
-              </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"2px 10px 6px"}}>
-                <span style={{fontSize:10,fontWeight:700,color:cfg.c}}>{cfg.l}</span>
-                <div style={{display:"flex",gap:4}}>
-                  {stIdx>0&&<button onClick={()=>{moveK(d.id,stages[stIdx-1]);showToast("← "+(STAGE_CFG[stages[stIdx-1]]?.l));}} style={{fontSize:9,padding:"3px 8px",borderRadius:6,background:B.bg,border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",color:B.muted}}>← Voltar</button>}
-                  {stIdx<stages.length-1&&<button onClick={()=>{moveK(d.id,stages[stIdx+1]);showToast("→ "+(STAGE_CFG[stages[stIdx+1]]?.l));}} style={{fontSize:9,padding:"3px 8px",borderRadius:6,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700,color:"#0D0D0D"}}>Avançar →</button>}
-                </div>
-              </div>
-
-              {/* ── Stage-specific editable fields ── */}
-              <div style={{padding:"0 10px",flex:1}}>
-
-                {/* IDEIA */}
-                {d.stage==="idea"&&<>
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>💡 Descreva a ideia do conteúdo</p>
-                  <textarea value={d.steps?.idea?.text||""} onChange={e=>cUpdateStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Ex: Post sobre promoção de verão com foco em engajamento..." style={{width:"100%",minHeight:100,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
-                </>}
-
-                {/* BRIEFING */}
-                {d.stage==="briefing"&&<>
-                  {d.steps?.idea?.text&&<div style={{background:`${STAGE_CFG.idea?.c||"#8B5CF6"}08`,padding:8,borderRadius:8,marginBottom:8,border:`1px solid ${STAGE_CFG.idea?.c||"#8B5CF6"}15`}}>
-                    <p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea?.c||"#8B5CF6",marginBottom:2}}>💡 Ideia</p>
-                    <p style={{fontSize:10,lineHeight:1.4,color:B.text}}>{d.steps.idea.text}</p>
-                  </div>}
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>📋 Instruções para Designer</p>
-                  <textarea value={d.steps?.briefing?.text||""} onChange={e=>cUpdateStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Dimensões, cores, referências visuais, textos obrigatórios..." style={{width:"100%",minHeight:90,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
-                </>}
-
-                {/* DESIGN */}
-                {d.stage==="design"&&<>
-                  {d.steps?.briefing?.text&&<div style={{background:`${STAGE_CFG.briefing?.c||"#3B82F6"}08`,padding:8,borderRadius:8,marginBottom:8,border:`1px solid ${STAGE_CFG.briefing?.c||"#3B82F6"}15`}}>
-                    <p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing?.c||"#3B82F6",marginBottom:2}}>📋 Briefing</p>
-                    <p style={{fontSize:10,lineHeight:1.4,color:B.text,maxHeight:60,overflow:"auto"}}>{d.steps.briefing.text}</p>
-                  </div>}
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>🎨 Notas do Design</p>
-                  <textarea value={d.steps?.design?.text||""} onChange={e=>cUpdateStep("design",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Adicione notas, links de referência, versões..." style={{width:"100%",minHeight:70,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
-                  <p style={{fontSize:9,color:B.muted,marginTop:4}}>Arraste arquivos do Drive para esta demanda no kanban</p>
-                </>}
-
-                {/* LEGENDA */}
-                {d.stage==="caption"&&<>
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>✍️ Legenda do post</p>
-                  <textarea value={d.steps?.caption?.text||""} onChange={e=>cUpdateStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda do post..." style={{width:"100%",minHeight:100,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4,marginTop:8}}>Hashtags</p>
-                  <input value={d.steps?.caption?.hashtags||""} onChange={e=>cUpdateStep("caption",{hashtags:e.target.value})} placeholder="#marketing #socialmedia" style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box"}} />
-                </>}
-
-                {/* REVISÃO */}
-                {d.stage==="review"&&<>
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:6}}>🔍 Revisão interna</p>
-                  {d.steps?.caption?.text&&<div style={{background:B.bg,padding:8,borderRadius:8,marginBottom:8}}>
-                    <p style={{fontSize:8,color:B.muted,marginBottom:2}}>Legenda:</p>
-                    <p style={{fontSize:10,lineHeight:1.4,color:B.text,maxHeight:60,overflow:"auto",whiteSpace:"pre-line"}}>{d.steps.caption.text}</p>
-                  </div>}
-                  <textarea value={d.steps?.review?.text||""} onChange={e=>cUpdateStep("review",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Feedback da revisão..." style={{width:"100%",minHeight:60,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box",marginBottom:8}} />
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>{cUpdateStep("review",{status:"approved",by:user?.name||""});moveK(d.id,"client");showToast("Aprovado → Cliente");}} style={{flex:1,padding:"8px",borderRadius:8,background:B.green||"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>✓ Aprovar</button>
-                    <button onClick={()=>{cUpdateStep("review",{status:"rejected",by:user?.name||""});moveK(d.id,"design");showToast("Devolvido → Design");}} style={{flex:1,padding:"8px",borderRadius:8,background:"#EF4444",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>✕ Refazer</button>
-                  </div>
-                </>}
-
-                {/* CLIENTE */}
-                {d.stage==="client"&&<>
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:6}}>👤 Aguardando aprovação do cliente</p>
-                  <div style={{background:B.bg,padding:10,borderRadius:10,marginBottom:8,textAlign:"center"}}>
-                    <p style={{fontSize:11,color:B.text,marginBottom:4}}>{d.client}</p>
-                    <p style={{fontSize:9,color:B.muted}}>Envie para aprovação ou marque como aprovado</p>
-                  </div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>{cUpdateStep("client",{status:"approved",by:d.client});moveK(d.id,"scheduled");showToast("Cliente aprovou → Programar");}} style={{flex:1,padding:"8px",borderRadius:8,background:B.green||"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>✓ Aprovado</button>
-                    <button onClick={()=>{cUpdateStep("client",{status:"rejected",by:d.client});moveK(d.id,"review");showToast("Cliente pediu alteração → Revisão");}} style={{flex:1,padding:"8px",borderRadius:8,background:"#F59E0B",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>↺ Alteração</button>
-                  </div>
-                </>}
-
-                {/* PROGRAMADO */}
-                {d.stage==="scheduled"&&<>
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:6}}>📅 Agendar publicação</p>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-                    <div>
-                      <p style={{fontSize:8,color:B.muted,marginBottom:3}}>Data</p>
-                      <input type="date" value={d.scheduling?.date||""} onChange={e=>cUpdateField("scheduling",{...(d.scheduling||{}),date:e.target.value})} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box"}} />
-                    </div>
-                    <div>
-                      <p style={{fontSize:8,color:B.muted,marginBottom:3}}>Hora</p>
-                      <input type="time" value={d.scheduling?.time||""} onChange={e=>cUpdateField("scheduling",{...(d.scheduling||{}),time:e.target.value})} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box"}} />
-                    </div>
-                  </div>
-                  <button onClick={()=>{moveK(d.id,"published");showToast("Publicado ✓");}} style={{width:"100%",padding:"10px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>Marcar como Publicado</button>
-                </>}
-
-                {/* PUBLICADO */}
-                {d.stage==="published"&&<div style={{textAlign:"center",padding:20}}>
-                  <div style={{width:48,height:48,borderRadius:24,background:`${B.green||"#10B981"}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green||"#10B981"} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                  <p style={{fontSize:14,fontWeight:700,color:B.green||"#10B981"}}>Publicado!</p>
-                  <p style={{fontSize:10,color:B.muted,marginTop:4}}>{d.scheduling?.date||""} {d.scheduling?.time||""}</p>
-                </div>}
-
-                {/* Generic fallback for other stages */}
-                {!["idea","briefing","design","caption","review","client","scheduled","published"].includes(d.stage)&&<>
-                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Notas</p>
-                  <textarea value={d.steps?.[d.stage]?.text||""} onChange={e=>cUpdateStep(d.stage,{text:e.target.value,by:user?.name||""})} placeholder="Adicione notas..." style={{width:"100%",minHeight:80,padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
-                </>}
-
-              </div>
-
-              {/* Notes */}
-              {d.notes&&<div style={{padding:"8px 10px 10px"}}>
-                <div style={{background:B.bg,borderRadius:8,padding:"8px 10px"}}>
-                  <p style={{fontSize:8,color:B.muted,marginBottom:3}}>📎 Anexos</p>
-                  <p style={{fontSize:9,color:B.text,lineHeight:1.4,whiteSpace:"pre-wrap"}}>{d.notes}</p>
-                </div>
-              </div>}
-            </div>
-          );
-        }
-
-        /* ── CREATE VIEW ── */
-        if (cView === "create") {
-          const handleCCreate = async () => {
-            if(!cForm.title?.trim()) { showToast("Insira um título"); return; }
-            const newD = {
-              id: Date.now(), title:cForm.title.trim(), type:cCreateType||"social", stage:"idea",
-              priority:cForm.priority||"média", client:cForm.client||CDATA[0]?.name||"",
-              network:cForm.network||"Instagram", format:cForm.format||"Feed",
-              assignees:[user?.name||"Matheus"], createdAt:new Date().toLocaleDateString("pt-BR"),
-              steps:{idea:{by:user?.name||"",text:cForm.idea||"",date:new Date().toLocaleDateString("pt-BR")}},
-            };
-            const result = await supaCreateDemand(newD);
-            if(result?.data){newD.id=result.data.id;newD.supaId=result.data.id;}
-            setDemands(p=>[newD,...p]);
-            setCView("kanban");setCCreateType(null);setCForm({});
-            showToast("Demanda criada ✓");
-          };
-          return (
-            <div style={{height:"100%",display:"flex",flexDirection:"column",overflowY:"auto",padding:"0 4px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",flexShrink:0}}>
-                <button onClick={()=>{setCView("kanban");setCCreateType(null);setCForm({});}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <p style={{fontSize:14,fontWeight:700,color:B.text}}>Nova Demanda</p>
-              </div>
-              {/* Type picker */}
-              {!cCreateType ? (
-                <div style={{padding:"10px 10px",display:"flex",flexDirection:"column",gap:8}}>
-                  <p style={{fontSize:11,color:B.muted}}>Que tipo de demanda?</p>
-                  {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels",c:B.blue||"#3B82F6"},
-                    {k:"campaign",l:"Campanha",d:"Evento, ação, promoção",c:B.purple||"#8B5CF6"},
-                    {k:"video",l:"Vídeo",d:"Reels, TikTok, YouTube",c:B.orange||"#F59E0B"}
-                  ].map(t=>(
-                    <div key={t.k} onClick={()=>setCCreateType(t.k)} style={{padding:"12px 14px",borderRadius:12,border:`1.5px solid ${B.border}`,cursor:"pointer",background:B.bgCard,transition:"all .12s"}}
-                      onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>
-                      <p style={{fontSize:12,fontWeight:700,color:B.text}}>{t.l}</p>
-                      <p style={{fontSize:10,color:B.muted,marginTop:2}}>{t.d}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{padding:"6px 10px",display:"flex",flexDirection:"column",gap:8}}>
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Título *</p>
-                    <input value={cForm.title||""} onChange={e=>setCForm(p=>({...p,title:e.target.value}))} placeholder="Ex: Post sobre promoção de verão" style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:12,color:B.text,outline:"none",boxSizing:"border-box"}} />
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                    <div>
-                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Cliente</p>
-                      <select value={cForm.client||""} onChange={e=>setCForm(p=>({...p,client:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
-                        <option value="">Selecionar...</option>
-                        {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Prioridade</p>
-                      <select value={cForm.priority||"média"} onChange={e=>setCForm(p=>({...p,priority:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
-                        <option value="baixa">Baixa</option>
-                        <option value="média">Média</option>
-                        <option value="alta">Alta</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                    <div>
-                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Rede</p>
-                      <select value={cForm.network||"Instagram"} onChange={e=>setCForm(p=>({...p,network:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
-                        {["Instagram","Facebook","LinkedIn","TikTok","YouTube","Twitter/X"].map(n=><option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Formato</p>
-                      <select value={cForm.format||"Feed"} onChange={e=>setCForm(p=>({...p,format:e.target.value}))} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none"}}>
-                        {["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><option key={f} value={f}>{f}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Ideia / Briefing</p>
-                    <textarea value={cForm.idea||""} onChange={e=>setCForm(p=>({...p,idea:e.target.value}))} placeholder="Descreva a ideia do conteúdo..." rows={3} style={{width:"100%",padding:"8px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
-                  </div>
-                  <button onClick={handleCCreate} style={{width:"100%",padding:"10px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Criar Demanda</button>
-                </div>
-              )}
-            </div>
-          );
-        }
 
         /* ── KANBAN VIEW (default) ── */
         return (
@@ -8728,7 +8488,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
                           onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
                           onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+"\n📎 "+f.name+": "+f.webViewLink;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast("📎 "+f.name+" anexado")}catch{}}}}
-                          onClick={e=>{e.stopPropagation();setCSel(d);setCView("detail");}}
+                          onClick={e=>{e.stopPropagation();setSel(d);}}
                           style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
                           onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
                           onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
