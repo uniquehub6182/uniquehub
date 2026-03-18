@@ -9384,8 +9384,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
             return updated;
           }
           /* Truly new message from other user */
-          const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
-          try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
+          const mList = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
+          const convIsMuted = mList.includes(newMsg.conversation_id);
+          const mentionsMe = newMsg.content && user?.name && newMsg.content.includes(`@${user.name}`);
+          try { if (localStorage.getItem("uh_notif_sound") !== "off" && (!convIsMuted || mentionsMe)) { playChatNotifSound(); showBrowserNotif(mentionsMe ? `${newMsg.profiles?.name||"Alguém"} te mencionou` : "Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
           return [...prev, newMsg];
         });
         /* Debounce markRead — wait 500ms of no new messages before writing */
@@ -9415,8 +9417,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
         /* Robust dedup: check by id AND by content+sender to catch edge cases */
         if (prev.some(m => m.id === p.id)) return prev;
         if (prev.some(m => !m._optimistic && m.content === p.content && m.sender_id === p.sender_id && Math.abs(new Date(m.created_at) - new Date(p.created_at)) < 3000)) return prev;
-        /* Play notification sound */
-        { const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })(); try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv?.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", p.content || "Arquivo recebido"); } } catch {} }
+        /* Play notification sound — respect mute but @mention overrides */
+        { const mList = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })(); const convIsMuted = mList.includes(p.conversation_id); const mentionsMe = p.content && user?.name && p.content.includes(`@${user.name}`); try { if (localStorage.getItem("uh_notif_sound") !== "off" && (!convIsMuted || mentionsMe)) { playChatNotifSound(); showBrowserNotif(mentionsMe ? `${p.profiles?.name||"Alguém"} te mencionou` : "Nova mensagem", p.content || "Arquivo recebido"); } } catch {} }
         return [...prev, { ...p, _fromBroadcast: true }];
       });
       clearTimeout(markReadTimer.current);
@@ -20660,11 +20662,14 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     const chan = supabase.channel("nav-chat-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
       if (payload.new.sender_id !== user.id) {
         setChatUnread(c => c + 1);
-        /* Sound + Browser notification */
-        try { if (localStorage.getItem("uh_notif_sound") !== "off") playChatNotifSound(); } catch {}
-        if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        /* Sound + Browser notification — respect mute, @mention overrides */
+        const mList = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
+        const convIsMuted = mList.includes(payload.new.conversation_id);
+        const mentionsMe = payload.new.content && user?.name && payload.new.content.includes(`@${user.name}`);
+        try { if (localStorage.getItem("uh_notif_sound") !== "off" && (!convIsMuted || mentionsMe)) playChatNotifSound(); } catch {}
+        if ((!convIsMuted || mentionsMe) && "Notification" in window && Notification.permission === "granted" && document.hidden) {
           const senderName = payload.new.sender_name || "Alguém";
-          const content = payload.new.content?.substring(0, 80) || "Nova mensagem";
+          const content = mentionsMe ? `te mencionou: ${payload.new.content?.substring(0, 60)}` : (payload.new.content?.substring(0, 80) || "Nova mensagem");
           new Notification(`UniqueHub — ${senderName}`, { body: content, icon: "/favicon.ico", tag: "uh-chat-" + payload.new.conversation_id });
         }
       }
