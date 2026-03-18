@@ -8875,7 +8875,63 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </div>
           <DemandDetailBoundary onBack={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}}>
           <div style={{flex:1,overflowY:"auto",padding:0}}>
-            {sel && detailInner}
+            {sel && (() => {
+              const _stages = getStages(sel.type || "social");
+              const _stIdx = Math.max(0, _stages.indexOf(sel.stage || "idea"));
+              const _curCfg = STAGE_CFG[sel.stage] || { l:"Ideia", c:"#888" };
+              const _canNext = _stIdx < _stages.length - 1;
+              const _canPrev = _stIdx > 0;
+              const pColor = sel.priority === "alta" ? (B.red||"#EF4444") : sel.priority === "baixa" ? (B.blue||"#3B82F6") : (B.orange||"#F59E0B");
+              return <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+                {/* Stage progress */}
+                <div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:11,fontWeight:700,color:_curCfg.c,textTransform:"uppercase"}}>{_curCfg.l}</span>
+                    <span style={{fontSize:10,color:B.muted}}>{_stIdx+1}/{_stages.length}</span>
+                  </div>
+                  <div style={{display:"flex",gap:3}}>{_stages.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=_stIdx?(STAGE_CFG[s]?.c||B.accent):`${B.border}`}}/>)}</div>
+                </div>
+                {/* Info cards */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <div style={{padding:"8px 10px",borderRadius:10,background:B.bg,border:`1px solid ${B.border}`}}>
+                    <p style={{fontSize:9,fontWeight:600,color:B.muted}}>Cliente</p>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text,marginTop:2}}>{sel.client||"—"}</p>
+                  </div>
+                  <div style={{padding:"8px 10px",borderRadius:10,background:B.bg,border:`1px solid ${B.border}`}}>
+                    <p style={{fontSize:9,fontWeight:600,color:B.muted}}>Tipo</p>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text,marginTop:2}}>{sel.type==="campaign"?"Campanha":sel.type==="video"?"Vídeo":"Post"} · {sel.format||"Feed"}</p>
+                  </div>
+                  <div style={{padding:"8px 10px",borderRadius:10,background:B.bg,border:`1px solid ${B.border}`}}>
+                    <p style={{fontSize:9,fontWeight:600,color:B.muted}}>Rede</p>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text,marginTop:2}}>{sel.network||"Instagram"}</p>
+                  </div>
+                  <div style={{padding:"8px 10px",borderRadius:10,background:B.bg,border:`1px solid ${B.border}`}}>
+                    <p style={{fontSize:9,fontWeight:600,color:B.muted}}>Prioridade</p>
+                    <p style={{fontSize:12,fontWeight:700,color:pColor,marginTop:2}}>{sel.priority||"média"}</p>
+                  </div>
+                </div>
+                {/* Assignees */}
+                {sel.assignees?.length > 0 && <div style={{padding:"8px 10px",borderRadius:10,background:B.bg,border:`1px solid ${B.border}`}}>
+                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Responsáveis</p>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>{sel.assignees.map((a,i)=><span key={i} style={{fontSize:11,fontWeight:600,padding:"3px 8px",borderRadius:6,background:`${B.accent}12`,color:B.accent}}>{a}</span>)}</div>
+                </div>}
+                {/* Idea/Notes */}
+                {sel.idea && <div style={{padding:"8px 10px",borderRadius:10,background:B.bg,border:`1px solid ${B.border}`}}>
+                  <p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:4}}>Ideia</p>
+                  <p style={{fontSize:11,color:B.text,lineHeight:1.5}}>{sel.idea}</p>
+                </div>}
+                {/* Stage advance buttons */}
+                <div style={{display:"flex",gap:6,marginTop:4}}>
+                  {_canPrev && <button onClick={()=>{const prev=_stages[_stIdx-1];setDemands(p=>p.map(x=>x.id===sel.id?{...x,stage:prev}:x));setSel(s=>({...s,stage:prev}));if(sel.supaId)supaUpdateDemand(sel.supaId,{stage:prev});showToast(`← ${STAGE_CFG[prev]?.l}`);}} style={{padding:"10px 14px",borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>← {STAGE_CFG[_stages[_stIdx-1]]?.l}</button>}
+                  {_canNext && <button onClick={()=>advanceStage(sel)} style={{flex:1,padding:"10px 14px",borderRadius:10,border:"none",background:STAGE_CFG[_stages[_stIdx+1]]?.c||B.accent,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff"}}>Avançar → {STAGE_CFG[_stages[_stIdx+1]]?.l}</button>}
+                </div>
+                {/* Quick actions */}
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>{setSel(null);setCreating(false);goTab("content",sel.id);}} style={{flex:1,padding:"8px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.text}}>Abrir detalhes ↗</button>
+                  <button onClick={async()=>{if(!confirm(`Excluir "${sel.title}"?`))return;if(sel.supaId)try{await supaDeleteDemand(sel.supaId);}catch{}setDemands(p=>p.filter(d=>d.id!==sel.id));setSel(null);showToast("Excluída ✓");}} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${B.red||"#EF4444"}20`,background:`${B.red||"#EF4444"}05`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.red||"#EF4444"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                </div>
+              </div>;
+            })()}
             {creating && <div style={{padding:16}}>{!createType ? (
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 <p style={{fontSize:11,color:B.muted,marginBottom:4}}>Que tipo de demanda?</p>
