@@ -2971,7 +2971,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             {/* top bar — fixed */}
             <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("news",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Comunicados</span></div>
-              <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={()=>goSub("news")} style={{width:24,height:24,borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+              </div>
             </div>
             {/* CollapseHeader — fixed, compact */}
             <div style={{flexShrink:0,flexGrow:0,background:"#fff",padding:"14px 18px 16px",borderRadius:"0 0 26px 26px",boxShadow:"0 4px 20px rgba(0,0,0,0.08)"}}>
@@ -7148,14 +7151,14 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   /* ── DETAIL VIEW ── */
   let detailInner = null;
   if (sel) {
-    /* Safety: ensure sel has required properties */
-    if (!sel.type) sel.type = "social";
-    if (!sel.stage) sel.stage = "idea";
-    if (!sel.steps || typeof sel.steps !== "object") sel.steps = {};
-    if (!sel.assignees || !Array.isArray(sel.assignees)) sel.assignees = ["Equipe"];
-    const stages = getStages(sel.type);
-    const stageIdx = Math.max(0, stages.indexOf(sel.stage));
-    const curStageCfg = STAGE_CFG[sel.stage] || { l: sel.stage || "Pendente", c: "#888" };
+    /* Safety: ensure sel has required properties (use setSel to avoid direct mutation) */
+    if (!sel.type || !sel.stage || !sel.steps || !sel.assignees) {
+      const fixed = { ...sel, type: sel.type || "social", stage: sel.stage || "idea", steps: (sel.steps && typeof sel.steps === "object") ? sel.steps : {}, assignees: Array.isArray(sel.assignees) ? sel.assignees : ["Equipe"] };
+      setSel(fixed);
+    }
+    const stages = getStages(sel.type || "social");
+    const stageIdx = Math.max(0, stages.indexOf(sel.stage || "idea"));
+    const curStageCfg = STAGE_CFG[sel.stage || "idea"] || { l: "Pendente", c: "#888" };
     const isCampaign = sel.type === "campaign";
 
     /* helper: update a step field in sel and demands */
@@ -8916,6 +8919,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{creating?"Nova Demanda":sel?.title||""}</p></div>
             <button onClick={()=>{setSel(null);setCreating(false);goTab("content");}} style={{fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Expandir ↗</button>
           </div>
+          <DemandDetailBoundary onBack={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}}>
           <div style={{flex:1,overflowY:"auto",padding:0}}>
             {sel && detailInner}
             {creating && <div style={{padding:16}}>{!createType ? (
@@ -8945,6 +8949,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
               </div>
             )}</div>}
           </div>
+          </DemandDetailBoundary>
         </div>
       </>}
       {quickPub && isContentDesktop && (() => {
@@ -20523,6 +20528,25 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     try { const s = sessionStorage.getItem("uh_sub"); return s || null; } catch { return null; }
   });
   const [more, setMore] = useState(false);
+  /* ── Profile completion popup for collaborators ── */
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [ppForm, setPpForm] = useState({ name:"", phone:"", nick:"" });
+  const ppPhotoRef = useRef(null);
+  const [ppPhoto, setPpPhoto] = useState(null);
+  const [ppSaving, setPpSaving] = useState(false);
+  useEffect(() => {
+    if (!user?.id || user.role === "cliente") return;
+    /* Check after a small delay to let profile load */
+    const t = setTimeout(() => {
+      const missing = !user.name || user.name === user.email?.split("@")[0] || !user.phone || !user.photo;
+      if (missing && !sessionStorage.getItem("uh_profile_popup_dismissed")) {
+        setPpForm({ name: user.name || "", phone: user.phone || "", nick: user.nick || "" });
+        setPpPhoto(user.photo || null);
+        setShowProfilePopup(true);
+      }
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [user?.id, user?.name, user?.phone, user?.photo]);
   /* Sync state → hash + sessionStorage */
   useEffect(() => {
     try { sessionStorage.setItem("uh_tab", tab); if (sub) sessionStorage.setItem("uh_sub", sub); else sessionStorage.removeItem("uh_sub"); } catch {}
@@ -20830,6 +20854,33 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background: B.bg, color: B.text }}>
       {ToastEl}
+      {/* ── PROFILE COMPLETION POPUP ── */}
+      {showProfilePopup && <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",padding:20}}>
+        <div style={{background:B.bgCard,borderRadius:24,padding:"32px 28px",maxWidth:420,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{width:60,height:60,borderRadius:20,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+            <h2 style={{fontSize:20,fontWeight:900,color:B.text,margin:0}}>Complete seu perfil</h2>
+            <p style={{fontSize:13,color:B.muted,marginTop:6}}>Preencha as informações obrigatórias para começar a usar a plataforma</p>
+          </div>
+          {/* Photo */}
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div onClick={()=>ppPhotoRef.current?.click()} style={{width:90,height:90,borderRadius:"50%",border:`3px dashed ${ppPhoto?B.accent:B.border}`,background:ppPhoto?"transparent":`${B.accent}06`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",cursor:"pointer",overflow:"hidden",transition:"all .2s"}}>
+              {ppPhoto ? <img src={ppPhoto} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : <div style={{textAlign:"center"}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p style={{fontSize:9,color:B.muted,marginTop:4}}>Adicionar foto</p></div>}
+            </div>
+            <input ref={ppPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");const MAX=300;const ratio=Math.min(MAX/img.width,MAX/img.height,1);c.width=img.width*ratio;c.height=img.height*ratio;c.getContext("2d").drawImage(img,0,0,c.width,c.height);setPpPhoto(c.toDataURL("image/jpeg",0.8));};img.src=ev.target.result;};r.readAsDataURL(f);}}/>
+            {!ppPhoto && <p style={{fontSize:11,color:B.red||"#EF4444",fontWeight:600,marginTop:6}}>* Foto obrigatória</p>}
+          </div>
+          {/* Fields */}
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+            <div><p style={{fontSize:11,fontWeight:700,color:B.muted,marginBottom:4}}>Nome completo *</p><input value={ppForm.name} onChange={e=>setPpForm(p=>({...p,name:e.target.value}))} placeholder="Seu nome completo" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+            <div><p style={{fontSize:11,fontWeight:700,color:B.muted,marginBottom:4}}>Telefone/WhatsApp *</p><input value={ppForm.phone} onChange={e=>setPpForm(p=>({...p,phone:e.target.value}))} placeholder="(21) 99999-9999" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+            <div><p style={{fontSize:11,fontWeight:700,color:B.muted,marginBottom:4}}>Apelido</p><input value={ppForm.nick} onChange={e=>setPpForm(p=>({...p,nick:e.target.value}))} placeholder="Como prefere ser chamado" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+          </div>
+          <button onClick={async()=>{if(!ppForm.name?.trim()||!ppForm.phone?.trim()||!ppPhoto){mainToast(!ppPhoto?"Adicione uma foto de perfil":!ppForm.name?.trim()?"Preencha seu nome":"Preencha seu telefone");return;}setPpSaving(true);try{if(supabase&&user?.id){await supabase.from("profiles").update({name:ppForm.name.trim(),nick:ppForm.nick||"",phone:ppForm.phone.trim()}).eq("id",user.id);await supaSetSetting(`profile_photo_${user.id}`,ppPhoto);try{await supabase.from("profiles").update({photo_url:ppPhoto}).eq("id",user.id);}catch{}}setUser(prev=>({...prev,name:ppForm.name.trim(),nick:ppForm.nick||"",phone:ppForm.phone.trim(),photo:ppPhoto}));setShowProfilePopup(false);mainToast("Perfil completo ✓");}catch(e){console.error(e);mainToast("Erro ao salvar");}setPpSaving(false);}} disabled={ppSaving} style={{width:"100%",padding:"14px",borderRadius:14,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:15,fontWeight:800,color:"#0D0D0D",opacity:ppSaving?0.5:1}}>
+            {ppSaving ? "Salvando..." : "Salvar e continuar"}
+          </button>
+        </div>
+      </div>}
       <style dangerouslySetInnerHTML={{ __html: `
 :root{
 --uh-fs:${({small:"14px",normal:"15px",large:"17px",xlarge:"19px"})[uiPrefs.fontSize||"normal"]||"15px"};
