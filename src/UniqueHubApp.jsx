@@ -6838,7 +6838,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const canAccessFn = ca || (() => true);
   const isContentDesktop = forceMobile ? false : (typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop"));
   const contained = !!forceMobile;
-  /* ── Contained mini-app: uses existing sel/creating states ── */
+  /* ── Contained mini-app: uses existing sel/creating states + drawer overlay ── */
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
@@ -7049,7 +7049,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   }
 
   /* ── CREATE SHEET (mobile only — desktop uses side panel) ── */
-  if (creating && !isContentDesktop) return (
+  if (creating && !isContentDesktop && !contained) return (
     <div className="pg" style={{ paddingTop: TOP }}>
       {ToastEl}
       <Head title={createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"} onBack={() => { if (createType) setCreateType(null); else setCreating(false); }} />
@@ -8164,10 +8164,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     </>);
 
     /* Wrap in drawer (desktop) or full page (mobile) */
-    if (!isContentDesktop) {
+    if (!isContentDesktop && !contained) {
       return (
         <DemandDetailBoundary onBack={() => { setSel(null); setEditMode(false); }}>
-          <div className="pg" style={{ paddingTop: contained?0:TOP }}>{detailInner}</div>
+          <div className="pg" style={{ paddingTop: TOP }}>{detailInner}</div>
         </DemandDetailBoundary>
       );
     }
@@ -8178,7 +8178,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
   const totalCount = demands.length;
   return (
-    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column", position:contained?"relative":"static" }}>
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
@@ -8900,7 +8900,47 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>{/* end demands-grid */}
       </div>{/* end scrollable content */}
 
-      {/* ── DESKTOP QUICK PUBLISH DRAWER ── */}
+      {/* ── CONTAINED DETAIL DRAWER (dashboard block) ── */}
+      {contained && (sel || creating) && <>
+        <div onClick={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.3)",zIndex:20,borderRadius:"var(--uh-radius)"}} />
+        <div style={{position:"absolute",top:0,right:0,bottom:0,width:"100%",background:B.bgCard,zIndex:21,boxShadow:"-4px 0 20px rgba(0,0,0,0.15)",display:"flex",flexDirection:"column",animation:"slideInRight .2s ease both",borderRadius:"var(--uh-radius)",overflow:"hidden"}}>
+          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+          <div style={{padding:"8px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <button onClick={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{creating?"Nova Demanda":sel?.title||""}</p></div>
+            <button onClick={()=>{setSel(null);setCreating(false);goTab("content");}} style={{fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Expandir ↗</button>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:0}}>
+            {sel && detailInner}
+            {creating && <div style={{padding:16}}>{!createType ? (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <p style={{fontSize:11,color:B.muted,marginBottom:4}}>Que tipo de demanda?</p>
+                {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels",c:B.blue||"#3B82F6"},{k:"campaign",l:"Campanha",d:"Evento, ação, promoção",c:B.purple||"#8B5CF6"},{k:"video",l:"Vídeo",d:"Reels, TikTok, YouTube",c:B.orange||"#F59E0B"}].map(t=>(
+                  <div key={t.k} onClick={()=>setCreateType(t.k)} style={{padding:"12px 14px",borderRadius:12,border:`1.5px solid ${B.border}`,cursor:"pointer",background:B.bgCard}} onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text}}>{t.l}</p>
+                    <p style={{fontSize:10,color:B.muted,marginTop:2}}>{t.d}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <button onClick={()=>setCreateType(null)} style={{fontSize:10,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",padding:0}}>← Trocar tipo</button>
+                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Título *</p><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título da demanda" className="tinput" /></div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><select value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput"><option value="">Selecionar...</option>{CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
+                  <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Prioridade</p><select value={form.priority||"média"} onChange={e=>setForm(p=>({...p,priority:e.target.value}))} className="tinput"><option value="baixa">Baixa</option><option value="média">Média</option><option value="alta">Alta</option></select></div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Rede</p><select value={form.networks?.[0]||"Instagram"} onChange={e=>setForm(p=>({...p,networks:[e.target.value]}))} className="tinput">{["Instagram","Facebook","LinkedIn","TikTok","YouTube","Twitter/X"].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+                  <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Formato</p><select value={form.format||"Feed"} onChange={e=>setForm(p=>({...p,format:e.target.value}))} className="tinput">{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><option key={f} value={f}>{f}</option>)}</select></div>
+                </div>
+                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Ideia</p><textarea value={form.idea||""} onChange={e=>setForm(p=>({...p,idea:e.target.value}))} placeholder="Descreva a ideia..." className="tinput" rows={3} style={{resize:"vertical"}} /></div>
+                <button onClick={handleCreate} style={{width:"100%",padding:"10px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D",opacity:(form.title&&form.client)?1:0.4}}>Criar Demanda</button>
+              </div>
+            )}</div>}
+          </div>
+        </div>
+      </>}
       {quickPub && isContentDesktop && (() => {
         const connectedClients = CDATA.filter(c => c.socials?.facebook?.oauth || c.socials?.instagram?.oauth);
         const selClient = connectedClients.find(c => c.name === qpForm.client) || connectedClients[0];
