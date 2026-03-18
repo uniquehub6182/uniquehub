@@ -3094,7 +3094,76 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           </div>
         );
       }
-      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca} forceMobile />);
+      if(pk==="content") {
+        /* ── Mini Kanban Widget — dedicated dashboard block ── */
+        const MINI_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
+        const usedStages = new Set((demands||[]).map(d=>d.stage));
+        const visStages = MINI_STAGES.filter(s=>usedStages.has(s)||["idea","briefing","design","review","client","published"].includes(s));
+        const moveStage = (demandId, newStage) => {
+          const sd = setDemands || noop;
+          sd(p=>p.map(x=>x.id===demandId?{...x,stage:newStage}:x));
+          const d = (demands||[]).find(x=>x.id===demandId);
+          if(d?.supaId) supaUpdateDemand(d.supaId,{stage:newStage});
+        };
+        const totalD = (demands||[]).length;
+        const byStage = {};
+        visStages.forEach(s=>{byStage[s]=(demands||[]).filter(d=>d.stage===s);});
+        return (
+          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("content",13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>Demandas</span><span style={{fontSize:10,color:B.muted,marginLeft:4}}>{totalD}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {ca("content.create")&&<button onClick={()=>goTab("content")} style={{display:"flex",alignItems:"center",gap:3,padding:"4px 10px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>}
+                <span onClick={()=>goTab("content")} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+              </div>
+            </div>
+            <div style={{flex:1,overflowX:"auto",overflowY:"hidden",padding:"10px 10px 10px"}}>
+              <div style={{display:"flex",gap:8,height:"100%",minWidth:visStages.length*155}}>
+                {visStages.map(stg=>{
+                  const cfg = STAGE_CFG[stg]||{l:stg,c:"#888"};
+                  const items = byStage[stg]||[];
+                  return (
+                    <div key={stg} style={{flex:1,minWidth:145,maxWidth:200,display:"flex",flexDirection:"column",borderRadius:12,background:`${cfg.c}06`,padding:6}}
+                      onDragOver={e=>{e.preventDefault();e.currentTarget.style.background=`${cfg.c}15`;}}
+                      onDragLeave={e=>{e.currentTarget.style.background=`${cfg.c}06`;}}
+                      onDrop={e=>{e.preventDefault();e.currentTarget.style.background=`${cfg.c}06`;try{const dd=JSON.parse(e.dataTransfer.getData("text/plain"));if(dd.id)moveStage(dd.id,stg);}catch{}}}
+                    >
+                      <div style={{display:"flex",alignItems:"center",gap:5,padding:"5px 8px",marginBottom:6}}>
+                        <div style={{width:8,height:8,borderRadius:4,background:cfg.c,flexShrink:0}} />
+                        <span style={{fontSize:10,fontWeight:700,color:B.text}}>{cfg.l}</span>
+                        <span style={{fontSize:9,fontWeight:600,color:B.muted,marginLeft:"auto"}}>{items.length}</span>
+                      </div>
+                      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:5}}>
+                        {items.map(d=>{
+                          const pC = d.priority==="alta"?"#EF4444":d.priority==="média"?"#F59E0B":"#10B981";
+                          return (
+                            <div key={d.id} draggable
+                              onDragStart={e=>{e.dataTransfer.setData("text/plain",JSON.stringify({id:d.id}));e.currentTarget.style.opacity="0.5";}}
+                              onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
+                              onClick={()=>goTab("content")}
+                              style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
+                              onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
+                              onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
+                            >
+                              <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+                                <span style={{fontSize:7,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}15`,padding:"1px 5px",borderRadius:4}}>{d.priority||"média"}</span>
+                                <span style={{fontSize:7,color:B.muted}}>{d.type==="campaign"?"Camp.":d.type==="video"?"Vídeo":"Post"}</span>
+                              </div>
+                              <p style={{fontSize:10,fontWeight:700,color:B.text,lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",marginBottom:3}}>{d.title}</p>
+                              <p style={{fontSize:8,color:B.muted}}>{d.client}</p>
+                            </div>
+                          );
+                        })}
+                        {items.length===0&&<div style={{padding:"12px 6px",textAlign:"center"}}><p style={{fontSize:9,color:B.muted,opacity:0.5}}>Vazio</p></div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      }
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop} forceMobile />);
       if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={null} user={user} canAccess={ca} forceMobile />);
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
