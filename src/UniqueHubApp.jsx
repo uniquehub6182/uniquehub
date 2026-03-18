@@ -3092,15 +3092,18 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           setDriveError("");
           try {
             const fields = "files(id,name,mimeType,webViewLink,modifiedTime,size,iconLink,thumbnailLink)";
-            const q = encodeURIComponent("\'" + folderId + "\' in parents and trashed = false");
+            const q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
             const orderBy = encodeURIComponent("folder,name");
             const url = `https://www.googleapis.com/drive/v3/files?q=${q}&key=${driveApiKey}&fields=${fields}&orderBy=${orderBy}&pageSize=100`;
+            console.log("[Drive API] Loading folder:", folderId, "URL:", url);
             const res = await fetch(url);
             if (!res.ok) {
               const err = await res.json().catch(()=>({}));
+              console.error("[Drive API] Error:", res.status, err);
               throw new Error(err?.error?.message || `HTTP ${res.status}`);
             }
             const data = await res.json();
+            console.log("[Drive API] Loaded", data.files?.length, "files");
             setDriveFiles(data.files || []);
           } catch(e) {
             console.error("[Drive API]", e);
