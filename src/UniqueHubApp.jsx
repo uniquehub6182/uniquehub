@@ -2972,7 +2972,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("news",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Comunicados</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <button onClick={()=>goSub("news")} style={{width:24,height:24,borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                <button onClick={()=>{sessionStorage.setItem("uh_news_create","1");goSub("news");}} style={{width:24,height:24,borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}} title="Criar notícia"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                 <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
               </div>
             </div>
@@ -7231,7 +7231,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             </div>
             <button onClick={async () => { if (!confirm(`Excluir "${sel.title}"?`)) return; const delId = sel.supaId || sel.id; if (delId) try { await supaDeleteDemand(delId); } catch {} setDemands(p => p.filter(d => d.id !== sel.id)); setSel(null); showToast("Excluída ✓"); }} style={{ width:32, height:32, borderRadius:10, border:"1px solid #FEE2E2", background:"#FEF2F2", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
           </div>
-        ) : (
+        ) : contained ? null : (
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
             if (!confirm(`Excluir "${sel.title}"?`)) return;
@@ -14674,6 +14674,12 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   const newsPhotoRef = React.useRef(null);
   /* AI-assisted creation */
   const [showCreateChoice, setShowCreateChoice] = useState(false);
+  useEffect(() => {
+    if (sessionStorage.getItem("uh_news_create") === "1") {
+      sessionStorage.removeItem("uh_news_create");
+      if (!isClientView) setShowCreateChoice(true);
+    }
+  }, []);
   const [aiMode, setAiMode] = useState(false); /* true = AI flow */
   const [aiStep, setAiStep] = useState("url"); /* url → tone → loading → done */
   const [aiUrl, setAiUrl] = useState("");
