@@ -7221,8 +7221,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
     };
 
     detailInner = (<>
-        {/* Desktop compact header */}
-        {isContentDesktop ? (
+        {/* Desktop compact header — only on full desktop view */}
+        {isContentDesktop && (
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
             <button onClick={() => { setSel(null); setEditMode(false); }} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <div style={{ flex:1, minWidth:0 }}>
@@ -7231,7 +7231,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
             </div>
             <button onClick={async () => { if (!confirm(`Excluir "${sel.title}"?`)) return; const delId = sel.supaId || sel.id; if (delId) try { await supaDeleteDemand(delId); } catch {} setDemands(p => p.filter(d => d.id !== sel.id)); setSel(null); showToast("Excluída ✓"); }} style={{ width:32, height:32, borderRadius:10, border:"1px solid #FEE2E2", background:"#FEF2F2", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
           </div>
-        ) : contained ? null : (
+        )}
+        {/* Mobile header — NOT shown in contained/dashboard block (drawer provides its own header) */}
+        {!isContentDesktop && !contained && (
         <Head title="" onBack={() => { setSel(null); setEditMode(false); }} right={<div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={async ()=>{
             if (!confirm(`Excluir "${sel.title}"?`)) return;
