@@ -2911,10 +2911,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
 
     /* ── Phone frame: wraps a real mobile page inside a contained block ── */
     const phoneFrame = (title, iconKey, openFn, children) => (
-      <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
-        <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>{title}</span></div>
-          <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+      <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+        <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>{title}</span></div>
+          <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
         </div>
         <div className="phone-viewport" style={{flex:1,overflow:"auto",position:"relative",transform:"scale(1)"}}>{children}</div>
       </div>
@@ -2929,9 +2929,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const expanded = dpNewsExpanded;
         const expandedArt = expanded ? dpNews.find(a=>a.id===expanded) : null;
         return (
-          <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
             {/* top bar — fixed */}
-            <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
+            <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("news",13,"#1A1D23")}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>Comunicados</span></div>
               <span onClick={()=>goSub("news")} style={{fontSize:10,fontWeight:600,color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
             </div>
@@ -2971,13 +2971,103 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           </div>
         );
       }
-      if(pk==="ai") return phoneFrame("Assistente IA","ai",()=>goSub("ai"),<AIPage onBack={null} user={user} agencyIdentity={agencyIdentity}/>);
-      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca}/>);
-      if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop}/>);
-      if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={noop} user={user} canAccess={ca}/>);
-      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn}/>);
-      if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients}/>);
-      if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team}/>);
+      if(pk==="ai") {
+        /* Mini AI Chat Widget — works entirely within dashboard */
+        const [dAiMsgs, setDAiMsgs] = React.useState([]);
+        const [dAiInput, setDAiInput] = React.useState("");
+        const [dAiLoading, setDAiLoading] = React.useState(false);
+        const [dAiKeys, setDAiKeys] = React.useState(null);
+        const dAiScrollRef = React.useRef(null);
+        const dAiInputRef = React.useRef(null);
+
+        React.useEffect(() => { supaGetAIKeys().then(k => { setDAiKeys(k); setDAiProv(k.ai_provider||"openai"); }); }, []);
+        React.useEffect(() => { if(dAiScrollRef.current) dAiScrollRef.current.scrollTop = dAiScrollRef.current.scrollHeight; }, [dAiMsgs, dAiLoading]);
+
+        const dAiSend = async (text) => {
+          if(!text?.trim() || dAiLoading || !dAiKeys) return;
+          const prov = dAiProv||"openai";
+          const agName = agencyIdentity?.name||"UniqueHub";
+          const sysPr = "Você é o Assistente IA da "+agName+". Responda em português do Brasil, de forma prática e direta. Use emojis quando apropriado. Seja conciso.";
+          const userMsg = {role:"user",content:text.trim()};
+          const msgs = [...dAiMsgs, userMsg];
+          setDAiMsgs(msgs); setDAiInput(""); setDAiLoading(true);
+          try {
+            let aiText = "";
+            if(prov==="gemini" && dAiKeys.gemini_key) {
+              const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+dAiKeys.gemini_key,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system_instruction:{parts:[{text:sysPr}]},contents:msgs.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]})),generationConfig:{maxOutputTokens:1500}})});
+              const d = await r.json(); aiText = d.candidates?.[0]?.content?.parts?.[0]?.text||"Sem resposta.";
+            } else if(prov==="claude" && dAiKeys.claude_key) {
+              const r = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":dAiKeys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sysPr,messages:msgs.map(m=>({role:m.role,content:m.content}))})});
+              const d = await r.json(); aiText = d.content?.[0]?.text||"Sem resposta.";
+            } else if(dAiKeys.openai_key) {
+              const r = await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+dAiKeys.openai_key},body:JSON.stringify({model:"gpt-4o-mini",max_tokens:1500,messages:[{role:"system",content:sysPr},...msgs.map(m=>({role:m.role,content:m.content}))]})});
+              const d = await r.json(); aiText = d.choices?.[0]?.message?.content||"Sem resposta.";
+            } else { aiText = "Nenhuma chave API configurada. Configure em Configurações → Assistente IA."; }
+            setDAiMsgs([...msgs, {role:"assistant",content:aiText}]);
+          } catch(e) { setDAiMsgs([...msgs, {role:"assistant",content:"Erro: "+(e.message||"Falha na conexão")}]); }
+          setDAiLoading(false);
+          setTimeout(()=>dAiInputRef.current?.focus(),100);
+        };
+
+        const presets = [{l:"Criar legenda",p:"Crie uma legenda criativa para um post de Instagram sobre "},{l:"Ideia de post",p:"Me dê 5 ideias de conteúdo para redes sociais sobre "},{l:"Roteiro Reels",p:"Escreva um roteiro curto para um Reels de 30 segundos sobre "},{l:"Hashtags",p:"Sugira 20 hashtags relevantes para um post sobre "}];
+        const [dAiProv, setDAiProv] = React.useState(dAiKeys?.ai_provider||"openai");
+        const provName = {openai:"GPT-4o",gemini:"Gemini",claude:"Claude"}[dAiProv]||"GPT-4o";
+        const provColors = {openai:"#10A37F",gemini:"#4285F4",claude:"#D97706"};
+
+        return (
+          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("ai",13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>Assistente IA</span></div>
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                {dAiMsgs.length>0 && <button onClick={()=>setDAiMsgs([])} style={{fontSize:9,fontWeight:600,color:B.muted,background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}}>Limpar</button>}
+                <span onClick={()=>goSub("ai")} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Expandir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+              </div>
+            </div>
+            {/* Model selector bar */}
+            <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",gap:4,flexShrink:0}}>
+              {[{k:"openai",l:"GPT-4o"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(m=>(
+                <button key={m.k} onClick={()=>setDAiProv(m.k)} style={{flex:1,padding:"5px 4px",borderRadius:8,border:`1.5px solid ${dAiProv===m.k?provColors[m.k]:B.border}`,background:dAiProv===m.k?provColors[m.k]+"12":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:dAiProv===m.k?700:500,color:dAiProv===m.k?provColors[m.k]:B.muted,transition:"all .12s"}}>
+                  {m.l}
+                </button>
+              ))}
+            </div>
+            {/* Chat area */}
+            <div ref={dAiScrollRef} style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+              {dAiMsgs.length === 0 ? (
+                <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",gap:16,padding:"20px 0"}}>
+                  <div style={{width:48,height:48,borderRadius:14,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{dpIco("ai",24,LIME)}</div>
+                  <div style={{textAlign:"center"}}><p style={{fontSize:14,fontWeight:700,color:B.text}}>Como posso ajudar?</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>Escolha um atalho ou escreva sua pergunta</p></div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,width:"100%",maxWidth:280}}>
+                    {presets.map((pr,i) => (
+                      <button key={i} onClick={()=>{setDAiInput(pr.p);setTimeout(()=>dAiInputRef.current?.focus(),50);}} style={{padding:"10px 8px",borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted,textAlign:"center",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.color=B.text;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.color=B.muted;}}>{pr.l}</button>
+                    ))}
+                  </div>
+                </div>
+              ) : <>
+                {dAiMsgs.map((m,i) => (
+                  <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                    <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:m.role==="user"?LIME:`${B.muted}10`,color:m.role==="user"?"#0D0D0D":B.text,fontSize:12,lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-word",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="user"?14:4}}>{m.content}</div>
+                  </div>
+                ))}
+                {dAiLoading && <div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 14px",borderRadius:14,background:`${B.muted}10`,fontSize:12,color:B.muted,borderBottomLeftRadius:4}}>Pensando...</div></div>}
+              </>}
+            </div>
+            {/* Input */}
+            <div style={{padding:"10px 12px",borderTop:`1px solid ${B.border}`,display:"flex",gap:8,flexShrink:0,background:B.bg}}>
+              <input ref={dAiInputRef} value={dAiInput} onChange={e=>setDAiInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();dAiSend(dAiInput);}}} placeholder="Pergunte algo..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${B.border}`,background:B.bgCard,fontFamily:"inherit",fontSize:13,color:B.text,outline:"none"}} />
+              <button onClick={()=>dAiSend(dAiInput)} disabled={dAiLoading||!dAiInput.trim()} style={{width:40,height:40,borderRadius:12,background:LIME,border:"none",cursor:dAiLoading?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:dAiLoading||!dAiInput.trim()?0.4:1,flexShrink:0}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        );
+      }
+      if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca} forceMobile />);
+      if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop} forceMobile />);
+      if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={null} user={user} canAccess={ca} forceMobile />);
+      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
+      if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
+      if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
       if(pk==="drive") {
         const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
         const getOneDriveEmbed = (url) => { if(!url) return null; if(url.includes("<iframe")) { const m=url.match(/src="([^"]+)"/); return m?m[1]:null; } return url.trim(); };
@@ -2988,8 +3078,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const svcLabel = driveType==="gdrive"?"Google Drive":driveType==="onedrive"?"OneDrive":"Drive / Nuvem";
         const svcColor = driveType==="gdrive"?"#4285F4":"#0078D4";
         return (
-          <div className="phone-block" style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.06)",boxShadow:"0 2px 10px rgba(0,0,0,0.04)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
-            <div style={{padding:"6px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:"#FAFAFA"}}>
+          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,svcColor)}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>{svcLabel}</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 {isConnected&&<button onClick={()=>{setDriveUrl("");setDriveType("");localStorage.removeItem("uh_drive_url");localStorage.removeItem("uh_drive_type");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#EF4444"}}>Desconectar</button>}
@@ -3009,7 +3099,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                       <p style={{marginTop:4,color:"#0078D4"}}>💡 Se não funcionar, tente o link de Incorporar</p>
                     </div>
                   </> : <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o link da pasta compartilhada do Google Drive</p>}
-                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder={driveType==="onedrive"?"https://onedrive.live.com/embed?...":"https://drive.google.com/drive/folders/..."} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #ECEEF2",fontFamily:"inherit",fontSize:12,color:"#1A1D23",outline:"none",boxSizing:"border-box",marginBottom:8}} />
+                  <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder={driveType==="onedrive"?"https://onedrive.live.com/embed?...":"https://drive.google.com/drive/folders/..."} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid "+B.border,fontFamily:"inherit",fontSize:12,color:B.text,outline:"none",boxSizing:"border-box",marginBottom:8}} />
                   <div style={{display:"flex",gap:8}}>
                     <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);supaSetSetting("drive_config",JSON.stringify({url:driveTmp,type:t}));setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
                     <button onClick={()=>setDriveEditing(false)} style={{padding:"10px 16px",borderRadius:12,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666"}}>Cancelar</button>
@@ -3031,15 +3121,15 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 </div>
               ) : (
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
-                  <div style={{width:56,height:56,borderRadius:16,background:"#ECEEF2",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,"#9CA3AF")}</div>
+                  <div style={{width:56,height:56,borderRadius:16,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,"#9CA3AF")}</div>
                   <p style={{fontSize:15,fontWeight:800,color:"#1A1D23",marginBottom:6}}>Conectar Drive</p>
                   <p style={{fontSize:11,color:"#8B8F92",marginBottom:20,lineHeight:1.5}}>Acesse os arquivos da agência em tempo real</p>
                   <div style={{display:"flex",flexDirection:"column",gap:10,width:"100%",maxWidth:280}}>
-                    <button onClick={()=>{setDriveType("gdrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:"#fff",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",gap:10}}>
+                    <button onClick={()=>{setDriveType("gdrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:B.bgCard,border:"1.5px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.text,display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#4285F4 25%,#34A853 25%,#34A853 50%,#FBBC05 50%,#FBBC05 75%,#EA4335 75%)",flexShrink:0}} />
                       Google Drive
                     </button>
-                    <button onClick={()=>{setDriveType("onedrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:"#fff",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",gap:10}}>
+                    <button onClick={()=>{setDriveType("onedrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:B.bgCard,border:"1.5px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.text,display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:32,height:32,borderRadius:8,background:"#0078D4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2l-3.5 6h9L16 2h-2zM3 14l3.5-6h7L10 2H7L3 14zm5.5 0L5 14l3.5 6h9l3.5-6H8.5z" fill="#fff" opacity="0.9"/></svg>
                       </div>
@@ -3056,7 +3146,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       return phoneFrame(opt.l,opt.icon||"content",noop,<div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}><p style={{fontSize:13}}>{opt.l} — Em breve</p></div>);
     };
     return (
-      <div className="desktop-dash" style={{minHeight:"100vh",background:"#ECEEF2",paddingBottom:100,margin:0}}>
+      <div className="desktop-dash" style={{minHeight:"100vh",background:B.bg,paddingBottom:100,margin:0}}>
         {/* ── HEADER ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
@@ -3185,7 +3275,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 </div>
               </div>
             ))}
-            {dPanels.length<9&&<button onClick={()=>{const np=[...dPanels,"chat"];setDPanels(np);const nc={...cfg,desktopPanels:np};saveCfg(nc);}} style={{width:"100%",padding:"12px",borderRadius:10,border:`2px dashed ${LIME}`,background:`${LIME}08`,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#1A1D23",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:4}}>+ Adicionar painel</button>}
+            {dPanels.length<9&&<button onClick={()=>{const np=[...dPanels,"chat"];setDPanels(np);const nc={...cfg,desktopPanels:np};saveCfg(nc);}} style={{width:"100%",padding:"12px",borderRadius:10,border:`2px dashed ${LIME}`,background:`${LIME}08`,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.text,display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:4}}>+ Adicionar painel</button>}
           </div>
         </div>}
         {showPanelEditor&&<div onClick={()=>setShowPanelEditor(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",zIndex:199}}/>}
@@ -3411,17 +3501,17 @@ function CheckinPage({ onBack, user }) {
             </button>
             {/* Stats */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              <div style={{ padding:16, borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div style={{ padding:16, borderRadius:16, background:B.bgCard, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
                 <p style={{ fontSize:10, color:B.muted, textTransform:"uppercase", letterSpacing:1 }}>Esta semana</p>
                 <p style={{ fontSize:20, fontWeight:800, marginTop:4, color:B.text }}>{fmtMin(weekMin)}</p>
               </div>
-              <div style={{ padding:16, borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div style={{ padding:16, borderRadius:16, background:B.bgCard, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
                 <p style={{ fontSize:10, color:B.muted, textTransform:"uppercase", letterSpacing:1 }}>Este mês</p>
                 <p style={{ fontSize:20, fontWeight:800, marginTop:4, color:B.text }}>{fmtMin(monthMin)}</p>
               </div>
             </div>
             {/* History (compact, admin only — non-admin sees full history in right panel) */}
-            {isAdmin && history.length>0 && <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            {isAdmin && history.length>0 && <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}` }}>
                 <p style={{ fontSize:12, fontWeight:700, color:B.text, textTransform:"uppercase", letterSpacing:0.5 }}>Últimos registros</p>
               </div>
@@ -3440,7 +3530,7 @@ function CheckinPage({ onBack, user }) {
             </div>}
           </div>
           {/* ── RIGHT: Equipe (admin) or Info ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {isAdmin ? <>
               <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Equipe</p>
@@ -3645,8 +3735,10 @@ const SOCIAL_PLATFORMS = [
   { key:"rd_station", name:"RD Station", icon:null, c:"#00C4B3", urlBase:"rdstation.com", cat:"crm", soon:true },
 ];
 
-function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user, canAccess: ca }) {
-  const isClientsDesktop = useIsDesktop();
+function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: propSetClients, user, canAccess: ca, forceMobile }) {
+  const _isClientsDesktop = useIsDesktop();
+  const isClientsDesktop = forceMobile ? false : _isClientsDesktop;
+  const contained = !!forceMobile;
   const canAccessFn = ca || (() => true);
   const [localClients, localSetClients] = useState([]);
   const clients = propClients || localClients;
@@ -4831,7 +4923,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={false} />
         <div style={{ display:"flex", height:"calc(100vh - 230px)", gap:16, marginTop:12 }}>
           {/* ── LEFT: Client List ── */}
-          <div style={{ width:380, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexDirection:"column" }}>
+          <div style={{ width:380, flexShrink:0, background:B.bgCard, borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:14, flexShrink:0 }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -4845,8 +4937,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 <svg style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ width:"100%", background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:10, padding:"8px 12px 8px 32px", fontFamily:"inherit", fontSize:13, color:B.text, outline:"none", boxSizing:"border-box" }}/>
               </div>
-              <div style={{ display:"flex", gap:4 }}>
-                {[{k:"all",l:"Todos"},{k:"ativo",l:"Ativos"},{k:"trial",l:"Trial"},{k:"pausado",l:"Pausados"}].map(ft=>{
+              <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                {[{k:"all",l:"Todos"},{k:"ativo",l:"Ativos"},{k:"trial",l:"Trial"},{k:"pausado",l:"Pausados"},{k:"ranking",l:"🏆 Ranking"}].map(ft=>{
+                  if (ft.k === "ranking") return <button key="ranking" onClick={()=>setFilter("ranking")} style={{ padding:"4px 10px", borderRadius:100, border:filter==="ranking"?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, background:filter==="ranking"?B.accent:"transparent", color:filter==="ranking"?"#0D0D0D":B.muted }}>🏆 Ranking</button>;
                   const count = clients.filter(c=>ft.k==="all"||c.status===ft.k).length;
                   if(count===0&&ft.k!=="all"&&ft.k!=="ativo")return null;
                   return <button key={ft.k} onClick={()=>setFilter(ft.k)} style={{ padding:"4px 10px", borderRadius:100, border:filter===ft.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, background:filter===ft.k?B.accent:"transparent", color:filter===ft.k?"#0D0D0D":B.muted }}>{ft.l} ({count})</button>;
@@ -4854,7 +4947,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
             </div>
             <div style={{ flex:1, overflowY:"auto", padding:"0 10px 10px" }}>
-              {filtered.map((c,i) => {
+              {filter === "ranking" ? <>{ranked.map((c,i) => {
+                const z = c.zone; const isActive = sel?.id === c.id;
+                return (<div key={c.id} onClick={()=>{setSel(c);setProfileTab("info");}} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:12,cursor:"pointer",background:isActive?`${B.accent}08`:"transparent",border:isActive?`1.5px solid ${B.accent}30`:"1.5px solid transparent",marginBottom:3}}>
+                  <div style={{width:22,height:22,borderRadius:11,background:i<3?LIME:`${B.muted}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:10,fontWeight:900,color:i<3?"#0D0D0D":B.muted}}>{i+1}</span></div>
+                  <Av src={c.logo} name={c.name} sz={32} fs={12} />
+                  <div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:isActive?700:500,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p><span style={{fontSize:8,padding:"1px 5px",borderRadius:3,background:`${z.c}20`,color:z.c,fontWeight:700}}>{z.n}</span></div>
+                  <span style={{fontSize:14,fontWeight:900,color:i<3?LIME:B.text,flexShrink:0}}>{c.growthScore}</span>
+                </div>);
+              })}</> : <>{filtered.map((c,i) => {
                 const socialCount = Object.values(c.socials||{}).filter(s=>s.connected).length;
                 const isActive = sel?.id === c.id;
                 return (
@@ -4872,10 +4973,11 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   </div>
                 );
               })}
+              </>}
             </div>
           </div>
           {/* ── RIGHT: Detail or Placeholder ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", display:"flex", flexDirection:"column" }}>
             {sel ? <>
               {/* Profile Header */}
               <div style={{ padding:"20px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
@@ -5089,7 +5191,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     <p style={{ fontSize:13, color:B.muted }}>Nenhuma credencial cadastrada</p>
                   </div>}
                   {clientCreds.map((cred,ci)=>(
-                    <div key={cred.id||ci} style={{ padding:14, borderRadius:14, border:`1px solid ${B.border}`, marginBottom:8, background:B.bgCard||"#fff" }}>
+                    <div key={cred.id||ci} style={{ padding:14, borderRadius:14, border:`1px solid ${B.border}`, marginBottom:8, background:B.bgCard }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                         <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{cred.label}</p>
                         <button onClick={async()=>{if(!confirm(`Excluir credencial "${cred.label}"?`))return;const cid=sel.supaId||sel.id;const nc=clientCreds.filter((_,i)=>i!==ci);setClientCreds(nc);await supaSetSetting(`client_creds_${cid}`,JSON.stringify(nc));showToast("Excluído");}} style={{ width:24, height:24, borderRadius:6, border:"none", background:"#FEE2E2", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -5135,9 +5237,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   /* ── CLIENT LIST ── */
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={pgC} />
+      {!contained && <CollapseHeader icon={IC.clients} label="Carteira" title="Clientes" collapsed={pgC} />}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {/* Summary */}
       <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
@@ -5157,22 +5259,79 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente..." className="tinput" style={{ paddingLeft:40 }} />
       </div>
       {/* Filter tabs */}
-      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-        {[{k:"all",l:"Todos"},{k:"ativo",l:"Ativos"},{k:"trial",l:"Trial"},{k:"pausado",l:"Pausados"},{k:"cancelado",l:"Cancelados"}].map(ft=>{
+      <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:10, overflowX:"auto", paddingBottom:2 }}>
+        {[{k:"all",l:"Todos"},{k:"ativo",l:"Ativos"},{k:"trial",l:"Trial"},{k:"pausado",l:"Pausados"},{k:"cancelado",l:"Cancelados"},{k:"ranking",l:"🏆 Ranking"}].map(ft=>{
+          if (ft.k === "ranking") return <button key="ranking" onClick={()=>setFilter("ranking")} className={`htab${filter==="ranking"?" a":""}`} style={{whiteSpace:"nowrap",flexShrink:0}}>🏆 Ranking</button>;
           const count = clients.filter(c=>ft.k==="all"||c.status===ft.k).length;
           if (count === 0 && ft.k !== "all" && ft.k !== "ativo") return null;
-          return <button key={ft.k} onClick={()=>setFilter(ft.k)} className={`htab${filter===ft.k?" a":""}`}>{ft.l} <span style={{ fontSize:9, marginLeft:2 }}>({count})</span></button>;
+          return <button key={ft.k} onClick={()=>setFilter(ft.k)} className={`htab${filter===ft.k?" a":""}`} style={{whiteSpace:"nowrap",flexShrink:0}}>{ft.l} <span style={{ fontSize:9, marginLeft:2 }}>({count})</span></button>;
         })}
       </div>
+
+      {/* Ranking View */}
+      {filter === "ranking" && <>
+        {!rankLoaded ? <div style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando ranking...</p></div> : <>
+          {ranked.length >= 3 && <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:16,padding:"10px 0"}}>
+            {[ranked[1],ranked[0],ranked[2]].map((c,i) => {
+              const pos = [2,1,3][i]; const h = [80,100,65][i]; const sz = [38,48,34][i]; const medal = ["🥈","🥇","🥉"][i];
+              return <div key={c.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <Av src={c.logo} name={c.name} sz={sz} fs={sz*0.38} />
+                <p style={{fontSize:pos===1?13:11,fontWeight:700,color:B.text,textAlign:"center",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
+                <div style={{width:pos===1?80:65,height:h,borderRadius:"12px 12px 0 0",background:pos===1?LIME:pos===2?`${LIME}60`:`${LIME}30`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                  <span style={{fontSize:pos===1?20:16}}>{medal}</span>
+                  <span style={{fontSize:pos===1?18:14,fontWeight:900,color:"#0D0D0D"}}>{c.growthScore}</span>
+                </div>
+              </div>;
+            })}
+          </div>}
+          {ranked.map((c,i) => {
+            const z = c.zone;
+            return (
+              <Card key={c.id} delay={i*0.02} onClick={()=>setSel(c)} style={{marginTop:i?6:0,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:28,height:28,borderRadius:14,background:i<3?LIME:`${B.muted}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <span style={{fontSize:12,fontWeight:900,color:i<3?"#0D0D0D":B.muted}}>{i+1}</span>
+                  </div>
+                  <Av src={c.logo} name={c.name} sz={36} fs={14} />
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:13,fontWeight:600}}>{c.name}</p>
+                    <div style={{display:"flex",gap:4,marginTop:2,alignItems:"center"}}>
+                      <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:`${z.c}20`,color:z.c,fontWeight:700}}>{z.n}</span>
+                      <Tag color={B.accent}>{c.plan}</Tag>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <p style={{fontSize:18,fontWeight:900,color:i<3?LIME:B.text}}>{c.growthScore}</p>
+                    <p style={{fontSize:9,color:B.muted}}>pontos</p>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:3,marginTop:8}}>
+                  {[{k:"execucao",l:"Exec"},{k:"estrategia",l:"Estr"},{k:"educacao",l:"Educ"},{k:"ecossistema",l:"Eco"},{k:"crescimento",l:"Cresc"}].map(p => {
+                    const val = Math.min(100, Math.round(c.pillars[p.k]||0));
+                    return <div key={p.k} style={{flex:1}}>
+                      <div style={{height:4,borderRadius:2,background:`${B.muted}15`,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${val}%`,borderRadius:2,background:val>=8?B.green:val>=4?LIME:B.orange,transition:"width .3s"}} />
+                      </div>
+                      <p style={{fontSize:7,color:B.muted,textAlign:"center",marginTop:2}}>{p.l}</p>
+                    </div>;
+                  })}
+                </div>
+              </Card>
+            );
+          })}
+          {ranked.length === 0 && <Card style={{textAlign:"center",padding:20}}><p style={{fontSize:12,color:B.muted}}>Nenhum cliente com score registrado</p></Card>}
+        </>}
+      </>}
+
       {/* Client cards */}
-      {filtered.map((c,i) => {
+      {filter !== "ranking" && filtered.map((c,i) => {
         const socialCount = Object.values(c.socials||{}).filter(s=>s.connected).length;
         return (
         <Card key={c.id} delay={i*0.03} onClick={()=>setSel(c)} style={{ marginTop: i?6:0, cursor:"pointer" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <Av src={c.logo} name={c.name} sz={42} fs={16} />
             <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:14, fontWeight:600 }}>{c.name}{!c.email && <span title="Sem e-mail de contato" style={{ marginLeft:6, fontSize:10, color:B.orange||"#F59E0B" }}>⚠️</span>}</p>
+              <p style={{ fontSize:14, fontWeight:600 }}>{c.name}{!contained && !c.email && <span title="Sem e-mail de contato" style={{ marginLeft:6, fontSize:10, color:B.orange||"#F59E0B" }}>⚠️</span>}</p>
               <div style={{ display:"flex", gap:4, marginTop:3, alignItems:"center" }}>
                 <Tag color={B.accent}>{c.plan}</Tag>
                 <Tag color={c.status==="ativo"?B.green:B.orange}>{c.status==="ativo"?"Ativo":"Trial"}</Tag>
@@ -5187,7 +5346,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         </Card>
         );
       })}
-      {filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
+      {filter !== "ranking" && filtered.length === 0 && <Card style={{ textAlign:"center", padding:32 }}>
         <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Nenhum cliente encontrado</p>
         <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar a busca ou adicione um novo cliente.</p>
       </Card>}
@@ -5300,7 +5459,7 @@ function AcademyPage({ onBack, isClientView }) {
               {!isClientView && <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo Curso</button>}
             </div>
             {/* Course list */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
                 <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.text }}>Cursos</p>
               </div>
@@ -5329,7 +5488,7 @@ function AcademyPage({ onBack, isClientView }) {
             </div>
           </div>
           {/* ── RIGHT: Course detail / Lesson ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {lesson ? <>
               {/* Lesson view */}
               <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
@@ -5861,7 +6020,7 @@ function FinancialPage({ onBack, clients: propClients }) {
             <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>R$ {ticketMedio.toLocaleString("pt-BR")}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Ticket médio</p></div>
           </div>
         </div>
-        <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+        <div style={{ flex:1, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
           <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
             <p style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Menu</p>
           </div>
@@ -5875,7 +6034,7 @@ function FinancialPage({ onBack, clients: propClients }) {
         </div>
       </div>}
       {/* Content area */}
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={isFinDesktop?{flex:1,overflowY:"auto",background:B.bgCard||"#fff",borderRadius:20,border:`1px solid ${B.border}`,padding:"16px 20px"}:{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={isFinDesktop?{flex:1,overflowY:"auto",background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,padding:"16px 20px"}:{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Mobile tabs */}
       {!isFinDesktop && <div className="hscroll" style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4 }}>
@@ -6480,9 +6639,10 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   );
 }
 
-function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca }) {
+function ContentPage({ user, clients: propClients, demands, setDemands, team: propTeam, initialDemandId, onOpenIdConsumed, canAccess: ca, forceMobile }) {
   const canAccessFn = ca || (() => true);
-  const isContentDesktop = typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop");
+  const isContentDesktop = forceMobile ? false : (typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop"));
+  const contained = !!forceMobile;
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
@@ -7822,10 +7982,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
   const totalCount = demands.length;
   return (
-    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
 
-      <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />
+      {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
 
       {/* Quick Publish button (mobile only) */}
       {!isContentDesktop && <div style={{ padding:"8px 16px 0" }}>
@@ -8107,7 +8267,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         const [cA,cB] = clientColors[d.client] || [B.dark, B.accent];
 
         return (
-        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard||"#fff", boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", gridColumn:expandedId===d.id?"1 / -1":"auto", order:expandedId===d.id?-1:0, animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
+        <div key={d.id} onClick={() => setExpandedId(expandedId===d.id?null:d.id)} style={{ cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:16, background:B.bgCard, boxShadow:expandedId===d.id?"0 4px 20px rgba(0,0,0,0.12)":"0 1px 3px rgba(25,33,38,0.06)", border:expandedId===d.id?`2px solid ${B.accent}`:"1px solid rgba(0,0,0,0.04)", gridColumn:expandedId===d.id?"1 / -1":"auto", order:expandedId===d.id?-1:0, animation:`fadeUp .35s ease both`, animationDelay:`${i*0.03}s`, transition:"all .25s ease" }}>
           {isDone && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16, flexDirection:"column", gap:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 18px", borderRadius:20, background:B.green, color:"#fff" }}>
               {IC.check}<span style={{ fontSize:13, fontWeight:700 }}>Concluído</span>
@@ -8293,9 +8453,9 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           </div>}
                           {/* Active stage: FUNCTIONAL controls */}
                           {active&&<div style={{marginTop:8,paddingLeft:26}}>
-                            {textFields.includes(stageKey)&&d.format!=="Stories"&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:14,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {textFields.includes(stageKey)&&d.format!=="Stories"&&<textarea value={stepData.text||""} onChange={e=>inlineUpdate({text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder={stageKey==="idea"?"Descreva a ideia...":stageKey==="briefing"?"Briefing detalhado...":stageKey==="copy"||stageKey==="caption"?"Escreva a legenda...":stageKey==="script"?"Roteiro...":"Observações..."} style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:14,color:B.text,resize:"vertical",outline:"none",boxSizing:"border-box",background:B.bgCard}} onClick={e=>e.stopPropagation()}/>}
                             {textFields.includes(stageKey)&&d.format==="Stories"&&(stageKey==="caption"||stageKey==="copy")?<div style={{padding:"8px 10px",borderRadius:10,background:`${B.muted}06`,border:`1px solid ${B.border}`}}><p style={{fontSize:10,color:B.muted,textAlign:"center"}}>📲 Stories não suporta legenda</p></div>:null}
-                            {stageKey==="caption"&&d.format!=="Stories"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard||"#fff"}} onClick={e=>e.stopPropagation()}/>}
+                            {stageKey==="caption"&&d.format!=="Stories"&&<input value={stepData.hashtags||""} onChange={e=>inlineUpdate({hashtags:e.target.value})} placeholder="#hashtags" style={{width:"100%",marginTop:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${B.border}`,fontFamily:"inherit",fontSize:11,color:B.text,outline:"none",boxSizing:"border-box",background:B.bgCard}} onClick={e=>e.stopPropagation()}/>}
                             {fileFields.includes(stageKey)&&<div style={{marginTop:8}}>
                               {stepImgs.length>0&&<div style={{marginBottom:8}}>
                                 <img src={stepImgs[0].url} alt="" style={{width:"100%",maxHeight:280,borderRadius:10,objectFit:"cover",border:`1px solid ${B.border}`,marginBottom:stepImgs.length>1?6:0}}/>
@@ -8747,8 +8907,10 @@ const showBrowserNotif = (title, body) => {
   } catch {}
 };
 
-function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
-  const chatIsDesktop = useIsDesktop();
+function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
+  const _chatDesktop = useIsDesktop();
+  const chatIsDesktop = forceMobile ? false : _chatDesktop;
+  const contained = !!forceMobile; /* true when inside dashboard phone-block */
   /* Request browser notification permission on mount */
   const [notifDenied, setNotifDenied] = useState(false);
   useEffect(() => {
@@ -9304,25 +9466,25 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
       window.open(`https://meet.jit.si/${roomId}${params}`, '_blank', 'noopener');
     };
     return (
-      <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":vpTop, left:chatIsDesktop?"auto":0, right:chatIsDesktop?"auto":0, height:chatIsDesktop?"calc(100vh - 120px)":vpHeight, zIndex:chatIsDesktop?1:100, display:"flex", flexDirection:"column", background:chatIsDesktop?(B.bgCard||"#fff"):B.bg, overflow:"hidden", ...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",borderRadius:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}) }}>
+      <div className={contained?"chat-contained-conv":""} style={{ position:contained?"absolute":chatIsDesktop?"relative":"fixed", top:contained?0:chatIsDesktop?"auto":vpTop, left:contained?0:chatIsDesktop?"auto":0, right:contained?0:chatIsDesktop?"auto":0, bottom:contained?0:"auto", height:contained?"100%":chatIsDesktop?"calc(100vh - 120px)":vpHeight, zIndex:contained?10:chatIsDesktop?1:100, display:"flex", flexDirection:"column", background:contained?B.bgCard:chatIsDesktop?(B.bgCard):B.bg, overflow:"hidden", ...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",borderRadius:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}) }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
 
         {/* HEADER */}
-        <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:`calc(env(safe-area-inset-top,0px) + 12px) 16px 12px`, display:"flex", alignItems:"center", gap:12, flexShrink:0, boxShadow:"0 1px 8px rgba(0,0,0,0.06)" }}>
-          <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:36, height:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <div style={{ background:B.bgCard, borderBottom:`1px solid ${B.border}`, padding:contained?"8px 12px":`calc(env(safe-area-inset-top,0px) + 12px) 16px 12px`, display:"flex", alignItems:"center", gap:contained?8:12, flexShrink:0, boxShadow:"0 1px 8px rgba(0,0,0,0.06)" }}>
+          <button onClick={()=>{setView("list");setSelConv(null);setMsgs([]);}} style={{ width:contained?30:36, height:contained?30:36, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div style={{ position:"relative", flexShrink:0 }}>
             {isGroup
-              ? <div style={{ width:44, height:44, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
-              : <Av src={allProfiles.find(p=>p.id===selConv?.members?.find(m=>m.id!==user.id)?.id)?.photo_url} name={convName} sz={44} fs={16} />
+              ? <div style={{ width:contained?34:44, height:contained?34:44, borderRadius:"50%", background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width={contained?"16":"20"} height={contained?"16":"20"} viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+              : <Av src={allProfiles.find(p=>p.id===selConv?.members?.find(m=>m.id!==user.id)?.id)?.photo_url} name={convName} sz={contained?34:44} fs={contained?12:16} />
             }
-            {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:11, height:11, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
+            {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:contained?8:11, height:contained?8:11, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ fontSize:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
-            <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
+            <p style={{ fontSize:contained?13:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
+            <p style={{ fontSize:contained?10:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
               {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : (otherIsOnline ? "Online" : "Offline")}
             </p>
           </div>
@@ -9335,7 +9497,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         </div>
 
         {/* MESSAGES */}
-        <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
+        <div ref={msgsContainerRef} style={{ flex:1, overflowY:"auto", padding:contained?"8px 10px 4px":"16px 16px 8px", WebkitOverflowScrolling:"touch", display:"flex", flexDirection:"column", gap:4, background:B.bg }}>
           {pinnedOpen && msgs.filter(m=>m.pinned).length>0 && (
             <div style={{ background:`${B.accent}10`, border:`1px solid ${B.accent}30`, borderRadius:12, padding:"8px 12px", marginBottom:8, fontSize:12, color:B.accent, fontWeight:600 }}>
               📌 {msgs.find(m=>m.pinned)?.content}
@@ -9419,7 +9581,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
           <button onClick={()=>setReplyTo(null)} style={{ width:24, height:24, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>}
         {/* INPUT BAR */}
-        <div style={{ padding:`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:chatIsDesktop?100:80 }}>
+        <div style={{ padding:contained?"8px 10px":`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":contained?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:contained?0:chatIsDesktop?100:80 }}>
           {isRecording ? (
             <>
               <button onClick={cancelRecording} style={{ width:38, height:38, borderRadius:"50%", background:`${B.red}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -9464,10 +9626,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   /* ── NEW CHAT MODAL ── */
   const NewChatModal = showNewChat ? (
     <>
-      <div className="overlay" onClick={() => setShowNewChat(false)} style={chatIsDesktop?{zIndex:10000}:{}} />
-      <div style={{ position:"fixed", bottom:chatIsDesktop?"auto":0, top:chatIsDesktop?"50%":"auto", left:chatIsDesktop?"50%":0, right:chatIsDesktop?"auto":0, transform:chatIsDesktop?"translate(-50%,-50%)":"none", maxWidth:chatIsDesktop?480:430, width:chatIsDesktop?"90%":"auto", margin:chatIsDesktop?"0":"0 auto", zIndex:chatIsDesktop?10001:101, background:B.bgCard, borderRadius:chatIsDesktop?20:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:chatIsDesktop?"80vh":"85vh", overflowY:"auto", boxShadow:chatIsDesktop?"0 20px 60px rgba(0,0,0,0.2)":"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
-        <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
-        <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Nova conversa</h3>
+      {!contained && <div className="overlay" onClick={() => setShowNewChat(false)} style={chatIsDesktop?{zIndex:10000}:{}} />}
+      <div style={{ position:contained?"absolute":"fixed", bottom:contained?"auto":chatIsDesktop?"auto":0, top:contained?0:chatIsDesktop?"50%":"auto", left:contained?0:chatIsDesktop?"50%":0, right:contained?0:chatIsDesktop?"auto":0, transform:chatIsDesktop?"translate(-50%,-50%)":"none", maxWidth:chatIsDesktop?480:contained?"none":430, width:contained?"100%":chatIsDesktop?"90%":"auto", margin:"0", zIndex:contained?50:chatIsDesktop?10001:101, background:B.bgCard, borderRadius:contained?0:chatIsDesktop?20:"20px 20px 0 0", padding:contained?"12px 16px 20px":"16px 20px 28px", maxHeight:contained?"100%":chatIsDesktop?"80vh":"85vh", height:contained?"100%":"auto", overflowY:"auto", boxShadow:contained?"none":chatIsDesktop?"0 20px 60px rgba(0,0,0,0.2)":"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
+        {contained ? <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <h3 style={{fontSize:16,fontWeight:800}}>Nova conversa</h3>
+          <button onClick={()=>setShowNewChat(false)} style={{width:30,height:30,borderRadius:8,border:`1px solid ${B.border}`,background:B.bg,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div> : <>
+          <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
+          <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Nova conversa</h3>
+        </>}
         <button onClick={() => { setShowNewChat(false); setShowNewGroup(true); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit", borderBottom:`1px solid ${B.border}` }}>
           <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.accent }}>{IC.users}</span></div>
           <span style={{ fontSize:14, fontWeight:600 }}>Criar grupo</span>
@@ -9488,10 +9655,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   /* ── NEW GROUP MODAL ── */
   const NewGroupModal = showNewGroup ? (
     <>
-      <div className="overlay" onClick={() => setShowNewGroup(false)} style={chatIsDesktop?{zIndex:10000}:{}} />
-      <div style={{ position:"fixed", bottom:chatIsDesktop?"auto":0, top:chatIsDesktop?"50%":"auto", left:chatIsDesktop?"50%":0, right:chatIsDesktop?"auto":0, transform:chatIsDesktop?"translate(-50%,-50%)":"none", maxWidth:chatIsDesktop?480:430, width:chatIsDesktop?"90%":"auto", margin:chatIsDesktop?"0":"0 auto", zIndex:chatIsDesktop?10001:101, background:B.bgCard, borderRadius:chatIsDesktop?20:"20px 20px 0 0", padding:"16px 20px 28px", maxHeight:chatIsDesktop?"80vh":"85vh", overflowY:"auto", boxShadow:chatIsDesktop?"0 20px 60px rgba(0,0,0,0.2)":"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
-        <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
-        <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Novo grupo</h3>
+      {!contained && <div className="overlay" onClick={() => setShowNewGroup(false)} style={chatIsDesktop?{zIndex:10000}:{}} />}
+      <div style={{ position:contained?"absolute":"fixed", bottom:contained?"auto":chatIsDesktop?"auto":0, top:contained?0:chatIsDesktop?"50%":"auto", left:contained?0:chatIsDesktop?"50%":0, right:contained?0:chatIsDesktop?"auto":0, transform:chatIsDesktop?"translate(-50%,-50%)":"none", maxWidth:chatIsDesktop?480:contained?"none":430, width:contained?"100%":chatIsDesktop?"90%":"auto", margin:"0", zIndex:contained?50:chatIsDesktop?10001:101, background:B.bgCard, borderRadius:contained?0:chatIsDesktop?20:"20px 20px 0 0", padding:contained?"12px 16px 20px":"16px 20px 28px", maxHeight:contained?"100%":chatIsDesktop?"80vh":"85vh", height:contained?"100%":"auto", overflowY:"auto", boxShadow:contained?"none":chatIsDesktop?"0 20px 60px rgba(0,0,0,0.2)":"0 -4px 30px rgba(25,33,38,0.15)", WebkitOverflowScrolling:"touch" }}>
+        {contained ? <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <h3 style={{fontSize:16,fontWeight:800}}>Novo grupo</h3>
+          <button onClick={()=>setShowNewGroup(false)} style={{width:30,height:30,borderRadius:8,border:`1px solid ${B.border}`,background:B.bg,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div> : <>
+          <div style={{ width:36, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
+          <h3 style={{ fontSize:16, fontWeight:800, marginBottom:12 }}>Novo grupo</h3>
+        </>}
         <input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Nome do grupo" className="tinput" style={{ marginBottom:12 }} />
         <p className="sl" style={{ marginBottom:6 }}>Selecione os membros</p>
         {allProfiles.map(p => {
@@ -9523,7 +9695,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
         <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={false} />
         <div style={{ display:"flex", height:"calc(100vh - 230px)", borderRadius:20, overflow:"hidden", border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)", marginTop:12 }}>
           {/* Left panel — conversation list */}
-          <div style={{ width:340, flexShrink:0, borderRight:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, background:B.bgCard||"#fff", display:"flex", flexDirection:"column" }}>
+          <div style={{ width:340, flexShrink:0, borderRight:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, background:B.bgCard, display:"flex", flexDirection:"column" }}>
             <div style={{ padding:14, flexShrink:0 }}>
               <div style={{ display:"flex", gap:6, marginBottom:10, justifyContent:"flex-end" }}>
                 <button onClick={()=>setShowNewChat(true)} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="10" y1="11" x2="14" y2="11"/></svg></button>
@@ -9577,7 +9749,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
             const otherIsOnline = otherMember?.id ? onlineUserIds.has(otherMember.id) : false;
             const openCall = (type) => { const roomId = `uniquehub-${(selConv.id||"").replace(/-/g,"").slice(0,12)}`; window.open(`https://meet.jit.si/${roomId}${type==="voice"?"#config.startWithVideoMuted=true":""}`, "_blank", "noopener"); };
             return (
-              <div style={{ flex:1, display:"flex", flexDirection:"column", background:B.bgCard||"#fff" }}>
+              <div style={{ flex:1, display:"flex", flexDirection:"column", background:B.bgCard }}>
                 <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx" />
                 <div style={{ borderBottom:`1px solid ${B.border}`, padding:"12px 16px", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
                   <div onClick={isGroup?()=>setShowGroupInfo(!showGroupInfo):undefined} style={{ position:"relative", flexShrink:0, cursor:isGroup?"pointer":"default" }}>
@@ -9617,7 +9789,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                       const isCreator = m.id === selConv.created_by;
                       const prof = allProfiles.find(p=>p.id===m.id);
                       const isOn = onlineUserIds.has(m.id);
-                      return <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 8px", borderRadius:10, background:B.bgCard||"#fff" }}>
+                      return <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 8px", borderRadius:10, background:B.bgCard }}>
                         <div style={{ position:"relative" }}>
                           <Av src={prof?.photo_url} name={m.name||m.email||"?"} sz={32} fs={12} />
                           <div style={{ position:"absolute", bottom:-1, right:-1, width:8, height:8, borderRadius:"50%", background:isOn?"#22C55E":"#9CA3AF", border:"2px solid #fff" }}/>
@@ -9656,11 +9828,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                     return (
                       <div key={m.id||mi} style={{ display:"flex", justifyContent:isMine?"flex-end":"flex-start", marginBottom:2, position:"relative" }} onMouseEnter={()=>setHoverMsgId(m.id)} onMouseLeave={()=>setHoverMsgId(null)}>
                         {/* Hover actions */}
-                        {hoverMsgId===m.id && !m._optimistic && <div style={{ position:"absolute", top:-6, [isMine?"right":"left"]:"10%", display:"flex", gap:2, background:B.bgCard||"#fff", borderRadius:8, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", padding:"2px 4px", zIndex:5 }}>
+                        {hoverMsgId===m.id && !m._optimistic && <div style={{ position:"absolute", top:-6, [isMine?"right":"left"]:"10%", display:"flex", gap:2, background:B.bgCard, borderRadius:8, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", padding:"2px 4px", zIndex:5 }}>
                           {["👍","❤️","😂"].map(em=><button key={em} onClick={()=>addReaction(m.id,em)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, padding:"2px 3px", borderRadius:4 }} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="none"}>{em}</button>)}
                           <button onClick={()=>{setReplyTo(m);setTimeout(()=>document.querySelector("input[placeholder*='mensagem']")?.focus(),100);}} style={{ background:"none", border:"none", cursor:"pointer", padding:"2px 4px", borderRadius:4, display:"flex", alignItems:"center" }} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.background="none"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg></button>
                         </div>}
-                        <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard||"#fff"), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
+                        <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
                           {/* Reply quote in bubble */}
                           {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMine?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMine?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||rm.sender_name||"Membro"}</p><p style={{ fontSize:11, color:isMine?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
                           {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}</p>}
@@ -9691,9 +9863,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
                   </div>
                   <button onClick={()=>setReplyTo(null)} style={{ width:24, height:24, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>}
-                <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard||"#fff", flexShrink:0, position:"relative" }}>
+                <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, flexShrink:0, position:"relative" }}>
                   <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${showAttach?B.accent:B.border}`, background:showAttach?`${B.accent}10`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-                  {showAttach && <div style={{ position:"absolute", bottom:"100%", left:16, marginBottom:8, background:B.bgCard||"#fff", borderRadius:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:6, zIndex:10, minWidth:180 }}>
+                  {showAttach && <div style={{ position:"absolute", bottom:"100%", left:16, marginBottom:8, background:B.bgCard, borderRadius:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:6, zIndex:10, minWidth:180 }}>
                     {[{l:"Foto",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,accept:"image/*"},{l:"Vídeo",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,accept:"video/*"},{l:"Documento",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,accept:".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"},{l:"Arquivo",ic:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>,accept:"*/*"}].map(opt=>(
                       <button key={opt.l} onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept=opt.accept;inp.onchange=e=>{handleFileUpload(e);};inp.click();setShowAttach(false);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text, borderRadius:10 }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                         <span style={{ display:"flex" }}>{opt.ic}</span>{opt.l}
@@ -9716,7 +9888,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
               </div>
             );
           })() : (
-            <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:B.bgCard||"#fff" }}>
+            <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:B.bgCard }}>
               <div style={{ textAlign:"center" }}>
                 <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -9743,12 +9915,12 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk }) {
   const totalUnread = convs.reduce((a, c) => a + (c.unread || 0), 0);
 
   return (
-    <div style={{ position:chatIsDesktop?"relative":"fixed", top:chatIsDesktop?"auto":0, bottom:chatIsDesktop?"auto":0, left:chatIsDesktop?"auto":"0", right:chatIsDesktop?"auto":"0", zIndex:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:chatIsDesktop?"transparent":B.bgCard, minHeight:chatIsDesktop?"calc(100vh - 120px)":"auto" }}>
+    <div className={contained?"chat-contained-list":""} style={{ position:contained?"relative":chatIsDesktop?"relative":"fixed", top:contained?"auto":chatIsDesktop?"auto":0, bottom:contained?"auto":chatIsDesktop?"auto":0, left:contained?"auto":chatIsDesktop?"auto":"0", right:contained?"auto":chatIsDesktop?"auto":"0", zIndex:contained?1:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:contained?B.bgCard:chatIsDesktop?"transparent":B.bgCard, minHeight:contained?"auto":chatIsDesktop?"calc(100vh - 120px)":"auto", height:contained?"100%":"auto", overflow:contained?"auto":"visible" }}>
       {NewChatModal}{NewGroupModal}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",boxSizing:"border-box",padding:"0 16px 20px"}:{})}}>
         {ToastEl}
-        {!chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
-        <div style={chatIsDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
+        {!chatIsDesktop && !contained && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
+        <div style={chatIsDesktop?{background:B.bgCard,borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
         {chatIsDesktop && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
         {notifDenied && <div style={{ margin:chatIsDesktop?"0 0 10px":"14px 16px 0", padding:"10px 14px", borderRadius:12, background:"#FEF3C7", border:"1px solid #F59E0B30", display:"flex", alignItems:"center", gap:10 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -9870,7 +10042,7 @@ function NotifsPage({ onBack, user, navigate }) {
 
 /* ═══════════════════════ SETTINGS PAGE ═══════════════════════ */
 /* ═══════════════════════ APPROVALS PAGE ═══════════════════════ */
-function ApprovalsPage({ onBack }) {
+function ApprovalsPage({ onBack, noWrapper }) {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [pendingLoaded, setPendingLoaded] = useState(false);
   const { showToast, ToastEl } = useToast();
@@ -9899,10 +10071,8 @@ function ApprovalsPage({ onBack }) {
     setPendingMembers(p => p.filter(x => x.id !== m.id));
     showToast(`${m.name} recusado e removido`);
   };
-  return (
-    <div className="pg">
+  const inner = (<>
       {ToastEl}
-      <Head title="Aprovações de Cadastro" onBack={onBack} />
       <Card style={{ background: `${B.orange}06`, border: `1px solid ${B.orange}20`, marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ color: B.orange, display: "flex" }}>{IC.shield}</span>
@@ -9923,6 +10093,12 @@ function ApprovalsPage({ onBack }) {
           </div>
         </Card>
       ))}
+    </>);
+  if (noWrapper) return inner;
+  return (
+    <div className="pg">
+      <Head title="Aprovações de Cadastro" onBack={onBack} />
+      {inner}
     </div>
   );
 }
@@ -9945,7 +10121,7 @@ const profileFieldIcon = (k) => {
   if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
   return <span style={{fontSize:14}}>•</span>;
 };
-function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud }) {
   const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -10228,104 +10404,133 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     </button>
   );
 
+  const setIcon = (k, c) => {
+    const s = 18, p = {width:s,height:s,viewBox:"0 0 24 24",fill:"none",stroke:c||"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"};
+    const icons = {
+      profile: <svg {...p}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+      approvals: <svg {...p}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+      permissions: <svg {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+      aiconfig: <svg {...p}><path d="M12 2a4 4 0 014 4v1h1a3 3 0 013 3v1a3 3 0 01-3 3h-1v4a4 4 0 01-8 0v-4H7a3 3 0 01-3-3v-1a3 3 0 013-3h1V6a4 4 0 014-4z"/><circle cx="9.5" cy="10" r="1" fill={c||"currentColor"} stroke="none"/><circle cx="14.5" cy="10" r="1" fill={c||"currentColor"} stroke="none"/></svg>,
+      aparencia: <svg {...p}><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>,
+      notifs: <svg {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+      navmenu: <svg {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+      sec: <svg {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+      about: <svg {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+    };
+    return icons[k] || icons.about;
+  };
   const SET_ITEMS = [
     { k:"profile", l:"Perfil", desc:"Dados pessoais e contato" },
     ...(user?.supaRole==="admin"?[{ k:"approvals", l:"Aprovações", desc:"Aprovar cadastros", badge:pendingCount }]:[]),
     ...(user?.supaRole==="admin"?[{ k:"permissions", l:"Permissões", desc:"Acesso por cargo" }]:[]),
-    ...(user?.supaRole==="admin"?[{ k:"agencyid", l:"Identidade da Agência", desc:"Nome, logo, slogan" }]:[]),
+
     ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", desc:"Chaves API e provedor" }]:[]),
-    { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards, densidade" },
+    { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" },
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
   ];
 
-  /* ── Desktop Settings Sidebar (DOM injection — no sub-page changes needed) ── */
-  const sidebarRef = useRef(null);
-  const sidebarStyleRef = useRef(null);
-  useEffect(() => {
-    if (!isSetDesktop || !sub) {
-      if (sidebarRef.current) { sidebarRef.current.remove(); sidebarRef.current = null; }
-      if (sidebarStyleRef.current) { sidebarStyleRef.current.remove(); sidebarStyleRef.current = null; }
-      return;
+  /* ── Unified Settings wrapper — shell stays mounted, only panel content swaps ── */
+  const settingsScrollRef = React.useRef(0);
+  const settingsPanelRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    if (settingsPanelRef.current && settingsScrollRef.current > 0) {
+      settingsPanelRef.current.scrollTop = settingsScrollRef.current;
     }
-    /* Inject CSS to push .pg content right */
-    if (!sidebarStyleRef.current) {
-      const st = document.createElement("style");
-      st.textContent = `html.uh-desktop .pg { margin-left:276px!important; margin-right:16px!important; width:auto!important; max-width:calc(100% - 292px)!important; }`;
-      document.head.appendChild(st);
-      sidebarStyleRef.current = st;
-    }
-    /* Inject sidebar DOM */
-    if (!sidebarRef.current) {
-      const el = document.createElement("div");
-      el.id = "settings-sidebar";
-      el.style.cssText = `position:fixed;left:0;top:0;bottom:0;width:260px;background:${B.bgCard||"#fff"};border-right:1px solid ${B.border};z-index:51;display:flex;flex-direction:column;padding-top:70px;font-family:inherit;`;
-      document.body.appendChild(el);
-      sidebarRef.current = el;
-    }
-    /* Render sidebar content */
-    const el = sidebarRef.current;
+  });
+  const captureScroll = () => { if (settingsPanelRef.current) settingsScrollRef.current = settingsPanelRef.current.scrollTop; };
+
+  const SetPage = ({ title, onBackOverride, wide, children }) => {
+    if (!isSetDesktop) return (
+      <div className="pg">
+        {ToastEl}
+        <Head title={title} onBack={onBackOverride || (() => setSub(null))} />
+        {children}
+      </div>
+    );
     const accent = B.accent;
-    const items = SET_ITEMS;
-    el.innerHTML = `
-      <div style="padding:14px 16px;border-bottom:1px solid ${B.border}">
-        <div style="display:flex;align-items:center;gap:10">
-          <div style="width:36px;height:36px;border-radius:50%;background:${B.accent}20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:${B.accent}">${(user?.name||"U")[0]}</div>
-          <div><p style="font-size:13px;font-weight:700;margin:0">${user?.name||""}</p><p style="font-size:10px;color:${B.muted};margin:0">${user?.role||"Colaborador"}</p></div>
+    return (
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={false} />
+        <div style={{ display:"flex", height:"calc(100vh - 200px)", gap:14, marginTop:12 }}>
+          {/* ── Sidebar ── */}
+          <div style={{ width:260, flexShrink:0, background:B.bgCard, borderRadius:"var(--uh-radius)", overflow:"hidden", border:`1px solid ${B.border}`, display:"flex", flexDirection:"column" }}>
+            <div style={{ background:B.dark, padding:"18px 16px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+              <Av src={user?.photo} name={user?.name} sz={42} fs={16}/>
+              <div style={{minWidth:0}}><p style={{ fontSize:13, fontWeight:700, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.name}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", marginTop:1 }}>{user?.role||"Colaborador"}</p></div>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"6px" }}>
+              {SET_ITEMS.map(s => {
+                const isSel = sub === s.k;
+                return (
+                  <button key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
+                    onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${accent}06`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                    <span style={{ display:"flex", flexShrink:0, color:isSel?accent:B.muted }}>{setIcon(s.k, isSel?accent:B.muted)}</span>
+                    <span style={{ flex:1 }}>{s.l}</span>
+                    {s.badge>0 && <span style={{ background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"1px 6px", borderRadius:6, lineHeight:"16px" }}>{s.badge}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ padding:"6px", borderTop:`1px solid ${B.border}`, flexShrink:0 }}>
+              <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:500, color:B.red, background:"transparent", borderRadius:10, textAlign:"left", transition:"background .12s" }}
+                onMouseEnter={e=>{e.currentTarget.style.background=`${B.red}08`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+                <span style={{ display:"flex", flexShrink:0 }}>{IC.logout()}</span>
+                <span>Sair da Conta</span>
+              </button>
+            </div>
+          </div>
+          {/* ── Main Panel ── */}
+          <div style={{ flex:1, background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            {sub && <div style={{ padding:"14px 24px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+              <button onClick={() => setSub(null)} style={{ width:30, height:30, borderRadius:8, background:`${accent}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+                onMouseEnter={e=>{e.currentTarget.style.background=`${accent}15`;}} onMouseLeave={e=>{e.currentTarget.style.background=`${accent}08`;}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span style={{ display:"flex", color:accent }}>{setIcon(sub, accent)}</span>
+              <h3 style={{ fontSize:16, fontWeight:800, margin:0 }}>{title}</h3>
+            </div>}
+            <div ref={settingsPanelRef} onScroll={captureScroll} style={{ flex:1, overflowY:"auto", padding:sub?"20px 24px":"24px 28px" }}>
+              {sub ? <div style={{ maxWidth:wide?"none":600 }}>{children}</div> : children}
+            </div>
+          </div>
         </div>
       </div>
-      <div style="flex:1;overflow-y:auto;padding:6px 0" id="set-sidebar-items"></div>
-    `;
-    const container = el.querySelector("#set-sidebar-items");
-    items.forEach(s => {
-      const btn = document.createElement("button");
-      const isSel = sub === s.k;
-      btn.style.cssText = `display:flex;align-items:center;gap:8px;width:100%;padding:11px 16px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:${isSel?700:500};background:${isSel?accent+"10":"transparent"};color:${isSel?accent:B.text};border-left:${isSel?"3px solid "+accent:"3px solid transparent"};text-align:left;`;
-      btn.textContent = s.l;
-      if (s.badge > 0) { btn.innerHTML += ` <span style="background:${B.red};color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;margin-left:auto">${s.badge}</span>`; }
-      btn.onclick = () => { if (s.k === "navmenu") { onNavEdit && onNavEdit(); return; } setSub(sub === s.k ? null : s.k); };
-      container.appendChild(btn);
-    });
-    const sep = document.createElement("div");
-    sep.style.cssText = `border-top:1px solid ${B.border};margin:8px 16px 0`;
-    container.appendChild(sep);
-    const logout = document.createElement("button");
-    logout.style.cssText = `display:flex;align-items:center;width:100%;padding:11px 16px;border:none;cursor:pointer;font-family:inherit;font-size:13px;color:${B.red};background:transparent;border-left:3px solid transparent`;
-    logout.textContent = "Sair da Conta";
-    logout.onclick = onLogout;
-    container.appendChild(logout);
-    return () => {
-      if (sidebarRef.current) { sidebarRef.current.remove(); sidebarRef.current = null; }
-      if (sidebarStyleRef.current) { sidebarStyleRef.current.remove(); sidebarStyleRef.current = null; }
-    };
-  }, [isSetDesktop, sub, B.bgCard, B.border, B.accent, B.text, B.muted, B.red]);
+    );
+  };
 
   /* ═══ PROFILE ═══ */
   if (sub === "profile") return (
-    <div className="pg">
-      {ToastEl}
-      <Head title="Meu Perfil" onBack={() => { setSub(null); setEditProfile(false); }} />
+    <SetPage title="Meu Perfil" wide onBackOverride={() => { setSub(null); setEditProfile(false); }}>
 
-      <Card style={{ textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", marginBottom:14, padding:20 }}>
-        <div style={{ position:"relative", marginBottom:12 }}>
-          <Av src={user?.photo} name={user?.name} sz={80} fs={30} />
+      {/* Profile header — horizontal on desktop, centered on mobile */}
+      <div style={{ display:"flex", flexDirection:isSetDesktop?"row":"column", alignItems:isSetDesktop?"flex-start":"center", gap:isSetDesktop?20:0, marginBottom:isSetDesktop?20:14, padding:isSetDesktop?"20px 24px":20, background:B.bgCard, borderRadius:"var(--uh-radius)", border:isSetDesktop?`1px solid ${B.border}`:"none", boxShadow:isSetDesktop?"none":undefined, textAlign:isSetDesktop?"left":"center" }} className={isSetDesktop?"":"card"}>
+        <div style={{ position:"relative", marginBottom:isSetDesktop?0:12, flexShrink:0 }}>
+          <Av src={user?.photo} name={user?.name} sz={isSetDesktop?72:80} fs={isSetDesktop?26:30} />
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e => { if(e.target.files?.[0]) uploadPhoto(e.target.files[0]); e.target.value=""; }} />
-          <button onClick={() => fileInputRef.current?.click()} disabled={photoUploading} style={{ position:"absolute", bottom:-2, right:-2, width:30, height:30, borderRadius:15, background:B.accent, border:"3px solid "+B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#000" }}>
-            {photoUploading ? <span style={{fontSize:10}}>...</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+          <button onClick={() => fileInputRef.current?.click()} disabled={photoUploading} style={{ position:"absolute", bottom:-2, right:-2, width:28, height:28, borderRadius:14, background:B.accent, border:"3px solid "+(B.bgCard), display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#000" }}>
+            {photoUploading ? <span style={{fontSize:9}}>...</span> : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>}
           </button>
         </div>
-        <p style={{ fontSize:18, fontWeight:800 }}>{user?.name || "—"}</p>
-        <p style={{ fontSize:12, color:B.muted }}>{user?.email || ""}</p>
-        <div style={{ display:"flex", gap:6, marginTop:8 }}>
-          <Tag color={B.accent}>{user?.role || "Colaborador"}</Tag>
-          <Tag color={B.green}>Ativo</Tag>
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:isSetDesktop?20:18, fontWeight:800 }}>{user?.name || "—"}</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{user?.email || ""}</p>
+          <div style={{ display:"flex", gap:6, marginTop:8, justifyContent:isSetDesktop?"flex-start":"center" }}>
+            <Tag color={B.accent}>{user?.role || "Colaborador"}</Tag>
+            <Tag color={B.green}>Ativo</Tag>
+          </div>
+          {pf.bio && !editProfile && <p style={{ fontSize:12, color:B.muted, marginTop:10, lineHeight:1.5, fontStyle:"italic" }}>{pf.bio}</p>}
+          {!editProfile && isSetDesktop && <button onClick={() => setEditProfile(true)} style={{ display:"inline-flex", alignItems:"center", gap:6, marginTop:12, padding:"8px 18px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#000" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Editar perfil
+          </button>}
         </div>
-        {pf.bio && !editProfile && <p style={{ fontSize:12, color:B.muted, marginTop:10, lineHeight:1.5, fontStyle:"italic" }}>{pf.bio}</p>}
-      </Card>
+      </div>
 
-      {editProfile ? <div>
+      {editProfile ? <div style={isSetDesktop?{maxWidth:600}:{}}>
         <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Nome completo</label>
@@ -10407,7 +10612,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={() => setEditProfile(false)} style={{ flex:1, padding:14, borderRadius:14, background:B.bgCard, border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.dark }}>Cancelar</button>
           <button onClick={saveProfile} disabled={profileSaving} style={{ flex:1, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#000" }}>{profileSaving ? "Salvando..." : "Salvar"}</button>
         </div>
-      </div> : <div>
+      </div> : <div style={isSetDesktop?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}:{}}>
+        <div>
         <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
           {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",fmtBirth(pf.birth)||"—","calendar"],["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",fmtCpf(pf.cpf)||"—","id"]].map((f,i) => (
@@ -10428,7 +10634,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
           ))}
         </Card>
+        </div>{/* end col 1 */}
 
+        <div>{/* col 2 */}
         <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
         <Card style={{ marginBottom:10 }}>
           {[["Cargo",user?.role||"—","briefcase"],["Modelo",pf.work_pref||"—","refresh"],["Disponibilidade",pf.availability||"—","clock"]].map((f,i) => (
@@ -10466,20 +10674,21 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <div><p style={{ fontSize:10, color:B.muted }}>Camiseta</p><p style={{ fontSize:13, fontWeight:600 }}>{pf.shirt_size}</p></div>
           </div>
         </Card> : null}
+        </div>{/* end col 2 */}
 
-        <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:14, borderRadius:14, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent, marginBottom:10 }}>
+        {!isSetDesktop && <button onClick={() => setEditProfile(true)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:14, borderRadius:14, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.accent, marginBottom:10 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Editar meu perfil
-        </button>
+        </button>}
       </div>}
-    </div>
+    </SetPage>
   );
 
 
   /* ═══ APPEARANCE ═══ */
   if (sub === "aparencia") {
     const UP = uiPrefs || {};
-    const setP = (k, v) => { updateUiPrefs({ [k]: v }); showToast("Aplicado ✓"); };
+    const setP = (k, v) => { captureScroll(); updateUiPrefs({ [k]: v }); showToast("Aplicado ✓"); };
 
     /* ═══ PRESET THEMES ═══ */
     const PRESETS = [
@@ -10495,7 +10704,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     ];
 
     const applyPreset = (p) => {
-      /* Apply all three changes locally */
+      captureScroll();
       setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr);
       /* Force a single correct cloud save with all new values */
       if (typeof savePrefsToCloud === "function" && user?.id) {
@@ -10515,19 +10724,17 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const tabs = [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
 
     return (
-    <div className="pg">
-      {ToastEl}
-      <Head title="Aparência" onBack={() => setSub(null)} />
+    <SetPage title="Aparência" wide>
 
       {/* Tab bar */}
-      <div style={{ display:"flex", gap:4, marginBottom:16, background:dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)", borderRadius:12, padding:3 }}>
+      <div style={{ display:"flex", gap:4, marginBottom:16, background:dark?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)", borderRadius:12, padding:3, maxWidth:400 }}>
         {tabs.map(t => <button key={t.k} onClick={() => setAparTab(t.k)} style={{ flex:1, padding:"10px 6px", borderRadius:10, background:aparTab===t.k?B.accent:"transparent", color:aparTab===t.k?B.textOnAccent:B.muted, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aparTab===t.k?700:500 }}>{t.l}</button>)}
       </div>
 
       {/* ═══ TAB TEMAS ═══ */}
       {aparTab === "temas" && <>
         <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Escolha um tema e tudo muda: cores, fundo, fonte, ícones e layout.</p>
-        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        <div style={isSetDesktop?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}:{display:"flex",flexDirection:"column",gap:8}}>
           {PRESETS.map(p => {
             const pAccent = THEME_MAP[p.theme]||"#BBF246";
             const pBg = p.pr.customBg || (p.dark?"#0F1419":"#F7F7F8");
@@ -10539,7 +10746,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             const rad = ({sharp:"4px",round:"12px",pill:"20px"})[p.pr.cardRadius]||"12px";
             const isActive = themeColor===p.theme && dark===p.dark && (UP.bgTemplate||"solid")===p.pr.bgTemplate;
             return (
-              <button key={p.k} onClick={() => applyPreset(p)} style={{ position:"relative", overflow:"hidden", borderRadius:16, border:isActive?"2.5px solid "+pAccent:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left", padding:0, background:"none" }}>
+              <button key={p.k} onClick={() => applyPreset(p)} style={{ position:"relative", overflow:"hidden", borderRadius:16, border:isActive?"2.5px solid "+pAccent:"2px solid "+(dark?"rgba(255,255,255,0.12)":B.border), cursor:"pointer", fontFamily:"inherit", textAlign:"left", padding:0, background:pBg, transition:"all .2s" }}>
                 <div style={{ padding:14, background:bgT?.css||pBg, minHeight:90, display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative" }}>
                   {bgT?.overlay && <div style={{ position:"absolute", inset:0, backgroundImage:bgT.overlay, backgroundSize:bgT.overlaySize||"auto", opacity:0.5 }} />}
                   <div style={{ position:"relative", zIndex:1 }}>
@@ -10666,24 +10873,22 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           Restaurar padrão
         </button>
       </>}
-    </div>
+    </SetPage>
     );
   }
 
   /* ═══ NOTIFICATIONS ═══ */
   if (sub === "notifs") {
     const NotifSection = ({ icon, color, title, desc, master, onMaster, children }) => (
-      <div style={{ marginBottom: 14 }}>
-        <Card style={{ borderLeft: `4px solid ${color}`, marginBottom: children && master ? 4 : 0 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}12`, display: "flex", alignItems: "center", justifyContent: "center", color }}>{icon}</div>
-              <div><p style={{ fontSize: 14, fontWeight: 600 }}>{title}</p><p style={{ fontSize: 11, color: B.muted }}>{desc}</p></div>
-            </div>
-            <Toggle on={master} onToggle={() => { onMaster(); showToast(master ? `${title} desativado` : `${title} ativado ✓`); }} />
+      <div style={{ marginBottom: isSetDesktop?0:14, borderRadius:"var(--uh-radius)", border:`1.5px solid ${master?color+"30":B.border}`, overflow:"hidden", background:B.bgCard }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding:isSetDesktop?"12px 14px":"14px 16px", borderLeft:`4px solid ${color}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: `${color}12`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink:0 }}>{icon}</div>
+            <div><p style={{ fontSize: 13, fontWeight: 600 }}>{title}</p><p style={{ fontSize: 10, color: B.muted }}>{desc}</p></div>
           </div>
-        </Card>
-        {master && children && <div style={{ marginLeft: 16, borderLeft: `2px solid ${B.border}`, paddingLeft: 12 }}>{children}</div>}
+          <Toggle on={master} onToggle={() => { onMaster(); showToast(master ? `${title} desativado` : `${title} ativado ✓`); }} />
+        </div>
+        {master && children && <div style={{ borderTop:`1px solid ${B.border}`, padding:"2px 14px 2px 50px" }}>{children}</div>}
       </div>
     );
 
@@ -10695,12 +10900,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
 
     return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Notificações" onBack={() => setSub(null)} />
+      <SetPage title="Notificações" wide>
 
         {/* DND */}
-        <Card style={{ marginBottom: 14, background: dndActive ? `${B.purple}08` : B.bgCard, border: dndActive ? `1.5px solid ${B.purple}30` : "none" }}>
+        <div style={{ marginBottom: 16, borderRadius:"var(--uh-radius)", border: dndActive ? `1.5px solid ${B.purple}30` : `1.5px solid ${B.border}`, background: dndActive ? `${B.purple}08` : B.bgCard, padding:isSetDesktop?"14px 16px":"14px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: dndActive ? 12 : 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.purple}12`, display: "flex", alignItems: "center", justifyContent: "center", color: B.purple }}>
@@ -10722,9 +10925,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               </div>
             </div>
           )}
-        </Card>
+        </div>
 
-        <p className="sl" style={{ marginBottom: 8 }}>Canais de Notificação</p>
+        <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Canais de Notificação</p>
+        <div style={isSetDesktop?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}:{marginBottom:16}}>
 
         {/* Chat */}
         <NotifSection icon={IC.chat} color={B.blue} title="Chat & Mensagens" desc="Conversas e menções" master={notifChat} onMaster={() => setNotifChat(!notifChat)}>
@@ -10765,7 +10969,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <SubNotif label="Novo cadastro pendente" on={notifTeamRegister} toggle={() => setNotifTeamRegister(!notifTeamRegister)} />
         </NotifSection>
 
-        <p className="sl" style={{ marginTop: 4, marginBottom: 8 }}>Preferências</p>
+        </div>{/* end channels grid */}
+        <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Preferências</p>
 
         {/* Sound & Vibrate */}
         <Card style={{ marginBottom: 6 }}>
@@ -10820,7 +11025,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
           )}
         </Card>
-      </div>
+      </SetPage>
     );
   }
 
@@ -10828,9 +11033,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "sec") {
     /* Change password sub-view */
     if (changePw) return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Alterar Senha" onBack={() => { setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw(""); }} />
+      <SetPage title="Alterar Senha" onBackOverride={() => { setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw(""); }}>
         <Card style={{ marginBottom: 8 }}>
           <label style={{ fontSize: 11, color: B.muted, display: "block", marginBottom: 4 }}>Senha atual</label>
           <div style={{ position: "relative" }}>
@@ -10860,19 +11063,17 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <span style={{ display: "flex" }}>{newPw === confirmPw ? IC.check : IC.x}</span>{newPw === confirmPw ? "Senhas conferem" : "Senhas não conferem"}</p>}
         </Card>
         <button onClick={savePw} className="pill full accent" style={{ opacity: pwStrong(newPw) && newPw === confirmPw ? 1 : 0.4 }}>Salvar Nova Senha</button>
-      </div>
+      </SetPage>
     );
 
     /* 2FA setup view - QR code enrollment */
     if (twoFASetup === 'qr') {
       return (
-        <div className="pg">
-          {ToastEl}
-          <Head title="Ativar 2FA" onBack={() => setTwoFASetup(null)} />
+        <SetPage title="Ativar 2FA" onBackOverride={() => setTwoFASetup(null)}>
           <Card style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 24, minHeight: 120 }}>
             <p style={{ fontSize: 13, color: B.muted }}>Gerando QR code…</p>
           </Card>
-        </div>
+        </SetPage>
       );
     }
 
@@ -10894,9 +11095,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         setTwoFALoading(false);
       };
       return (
-        <div className="pg">
-          {ToastEl}
-          <Head title="Ativar 2FA" onBack={async () => { try { await supabase.auth.mfa.unenroll({ factorId: twoFAFactorId }); } catch(e){} setTwoFASetup(null); setTwoFAQR(""); setTwoFACode(""); }} />
+        <SetPage title="Ativar 2FA" onBackOverride={async () => { try { await supabase.auth.mfa.unenroll({ factorId: twoFAFactorId }); } catch(e){} setTwoFASetup(null); setTwoFAQR(""); setTwoFACode(""); }}>
           <Card style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>1. Escaneie com seu app autenticador</p>
             <p style={{ fontSize: 11, color: B.muted, marginBottom: 12 }}>Use Google Authenticator, Authy ou similar.</p>
@@ -10917,7 +11116,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={verifyEnroll} className="pill full accent" disabled={twoFALoading || twoFACode.length !== 6} style={{ opacity: twoFACode.length === 6 ? 1 : 0.4 }}>
             {twoFALoading ? "Verificando…" : "Confirmar e Ativar 2FA"}
           </button>
-        </div>
+        </SetPage>
       );
     }
 
@@ -10942,9 +11141,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         setTwoFALoading(false);
       };
       return (
-        <div className="pg">
-          {ToastEl}
-          <Head title="Desativar 2FA" onBack={() => { setTwoFASetup(null); setTwoFACode(""); }} />
+        <SetPage title="Desativar 2FA" onBackOverride={() => { setTwoFASetup(null); setTwoFACode(""); }}>
           <Card style={{ marginBottom: 8, background: `${B.red}08`, border: `1px solid ${B.red}20` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ color: B.red, fontSize: 20 }}>⚠️</span>
@@ -10967,7 +11164,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={doDisable} className="pill full" disabled={twoFALoading || twoFACode.length !== 6} style={{ opacity: twoFACode.length === 6 ? 1 : 0.4, background: B.red, color: "#fff", border: "none" }}>
             {twoFALoading ? "Verificando…" : "Desativar 2FA"}
           </button>
-        </div>
+        </SetPage>
       );
     }
 
@@ -10995,9 +11192,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       };
 
       return (
-        <div className="pg">
-          {ToastEl}
-          <Head title="Sessões Ativas" onBack={() => setSessions(false)} />
+        <SetPage title="Sessões Ativas" onBackOverride={() => setSessions(false)}>
           <Card delay={0} style={{ marginBottom: 8, borderLeft: `4px solid ${B.green}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: `${B.green}10`, display: "flex", alignItems: "center", justifyContent: "center", color: B.green }}>
@@ -11021,7 +11216,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={signOutOthers} className="pill full outline" style={{ marginTop: 8, color: B.red, borderColor: `${B.red}30` }}>
             🔐 Encerrar todas as outras sessões
           </button>
-        </div>
+        </SetPage>
       );
     }
 
@@ -11036,9 +11231,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     /* Security main */
     return (
-      <div className="pg" ref={el => el && check2FA()}>
-        {ToastEl}
-        <Head title="Segurança" onBack={() => setSub(null)} />
+      <SetPage title="Segurança">
+        <div ref={el => el && check2FA()} />
         <Card onClick={() => setChangePw(true)} style={{ cursor: "pointer", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ color: B.accent, display: "flex" }}>{IC.lock}</span>
@@ -11065,7 +11259,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             {IC.chev()}
           </div>
         </Card>
-      </div>
+      </SetPage>
     );
   }
 
@@ -11188,68 +11382,65 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   };
 
   if (sub === "permissions") {
-    if (!permLoaded) { loadPerms(); return <div className="pg"><Head title="Permissões" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
+    if (!permLoaded) { loadPerms(); return <SetPage title="Permissões"><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></SetPage>; }
     if (!permRole) return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Permissões" onBack={() => { setSub(null); setPermLoaded(false); }} />
-        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Selecione o cargo para configurar o acesso às áreas do app.</p>
-        <p className="sl" style={{ marginBottom:8, fontSize:10, color:B.muted }}>CEO / Proprietário tem acesso total (não editável)</p>
+      <SetPage title="Permissões" wide onBackOverride={() => { setSub(null); setPermLoaded(false); }}>
+        <p style={{ fontSize:13, color:B.muted, marginBottom:6 }}>Selecione o cargo para configurar o acesso às áreas do app.</p>
+        <p style={{ fontSize:10, color:B.muted, marginBottom:16 }}>CEO / Proprietário tem acesso total (não editável)</p>
+        <div style={isSetDesktop?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}:{}}>
         {PERM_ROLES.map((r, i) => {
           const perms = permMap[r] || {};
           const blockedCount = PERM_AREAS.filter(a => perms[a.k] === false).length;
           const subBlockedCount = PERM_AREAS.reduce((acc, a) => acc + (a.subs || []).filter(s => perms[s.k] === false).length, 0);
           const totalBlocked = blockedCount + subBlockedCount;
           return (
-            <Card key={r} delay={i * 0.03} onClick={() => setPermRole(r)} style={{ marginTop:i?6:0, cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <Av name={r} sz={38} fs={13} />
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:14, fontWeight:600 }}>{r}</p>
-                  <p style={{ fontSize:11, color:totalBlocked > 0 ? B.orange : B.green }}>{totalBlocked > 0 ? `${totalBlocked} restrição${totalBlocked>1?"ões":""}` : "Acesso total"}</p>
-                </div>
-                {IC.chev()}
+            <div key={r} onClick={() => setPermRole(r)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:"var(--uh-radius)", border:`1.5px solid ${B.border}`, cursor:"pointer", marginTop:isSetDesktop?0:(i?6:0), background:B.bgCard, transition:"all .15s" }}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=`${B.accent}40`;e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bgCard;}}>
+              <Av name={r} sz={36} fs={12} />
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:600 }}>{r}</p>
+                <p style={{ fontSize:11, color:totalBlocked > 0 ? B.orange : B.green }}>{totalBlocked > 0 ? `${totalBlocked} restrição${totalBlocked>1?"ões":""}` : "Acesso total"}</p>
               </div>
-            </Card>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
           );
         })}
-      </div>
+        </div>
+      </SetPage>
     );
     /* Role selected → show toggles with sub-options */
     const rolePerms = permMap[permRole] || {};
     return (
-      <div className="pg">
-        {ToastEl}
-        <Head title={permRole} onBack={() => { setPermRole(null); setExpandedPerm(null); }} right={
-          <button onClick={savePerms} disabled={permSaving} style={{ padding:"6px 14px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar"}</button>
-        } />
-        <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Configure o acesso detalhado para <strong>{permRole}</strong>. Clique em cada área para ver as sub-opções.</p>
+      <SetPage title={permRole} wide onBackOverride={() => { setPermRole(null); setExpandedPerm(null); }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+          <p style={{ fontSize:13, color:B.muted }}>Configure o acesso para <strong>{permRole}</strong></p>
+          <button onClick={savePerms} disabled={permSaving} style={{ padding:"8px 20px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar"}</button>
+        </div>
+        <div style={isSetDesktop?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"start"}:{}}>
         {PERM_AREAS.map((a, i) => {
           const masterAllowed = rolePerms[a.k] !== false;
           const isExpanded = expandedPerm === a.k;
           const subBlocked = (a.subs || []).filter(s => rolePerms[s.k] === false).length;
           return (
-            <div key={a.k} style={{ marginTop:i?6:0 }}>
-              <Card style={{ borderBottomLeftRadius: isExpanded?0:undefined, borderBottomRightRadius: isExpanded?0:undefined }}>
-                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <div style={{ width:36, height:36, borderRadius:10, background:masterAllowed?`${B.accent}10`:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", color:masterAllowed?B.accent:B.red }}>{typeof a.ic === "function" ? a.ic(masterAllowed?B.accent:B.red) : a.ic}</div>
-                  <div style={{ flex:1, cursor:"pointer" }} onClick={() => setExpandedPerm(isExpanded ? null : a.k)}>
-                    <p style={{ fontSize:13, fontWeight:600 }}>{a.l}</p>
-                    {subBlocked > 0 && masterAllowed && <p style={{ fontSize:10, color:B.orange }}>{subBlocked} sub-opção{subBlocked>1?"ões":""} restrita{subBlocked>1?"s":""}</p>}
-                  </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    {a.subs?.length > 0 && <button onClick={() => setExpandedPerm(isExpanded ? null : a.k)} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", transform:isExpanded?"rotate(90deg)":"none", transition:"transform .2s" }}>{IC.chev()}</button>}
-                    <Toggle on={masterAllowed} onToggle={() => toggleAreaMaster(a.k)} />
-                  </div>
+            <div key={a.k} style={{ marginTop:isSetDesktop?0:(i?6:0), borderRadius:"var(--uh-radius)", border:`1.5px solid ${isExpanded?B.accent+"40":B.border}`, overflow:"hidden", background:B.bgCard, transition:"border-color .15s" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px" }}>
+                <div style={{ width:32, height:32, borderRadius:9, background:masterAllowed?`${B.accent}10`:`${B.red}10`, display:"flex", alignItems:"center", justifyContent:"center", color:masterAllowed?B.accent:B.red, flexShrink:0 }}>{typeof a.ic === "function" ? a.ic(masterAllowed?B.accent:B.red) : a.ic}</div>
+                <div style={{ flex:1, cursor:"pointer", minWidth:0 }} onClick={() => setExpandedPerm(isExpanded ? null : a.k)}>
+                  <p style={{ fontSize:12.5, fontWeight:600 }}>{a.l}</p>
+                  {subBlocked > 0 && masterAllowed && <p style={{ fontSize:10, color:B.orange }}>{subBlocked} restrita{subBlocked>1?"s":""}</p>}
                 </div>
-              </Card>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                  {a.subs?.length > 0 && <button onClick={() => setExpandedPerm(isExpanded ? null : a.k)} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", transform:isExpanded?"rotate(90deg)":"none", transition:"transform .2s" }}>{IC.chev()}</button>}
+                  <Toggle on={masterAllowed} onToggle={() => toggleAreaMaster(a.k)} />
+                </div>
+              </div>
               {isExpanded && a.subs?.length > 0 && (
-                <div style={{ background:`${B.accent}04`, border:`1px solid ${B.border}`, borderTop:"none", borderBottomLeftRadius:16, borderBottomRightRadius:16, padding:"4px 0" }}>
+                <div style={{ borderTop:`1px solid ${B.border}`, padding:"4px 0", background:`${B.accent}03` }}>
                   {a.subs.map((s, j) => {
                     const subAllowed = rolePerms[s.k] !== false && masterAllowed;
                     return (
-                      <div key={s.k} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px 10px 60px", opacity: masterAllowed ? 1 : 0.35 }}>
-                        <div style={{ flex:1 }}><p style={{ fontSize:12, color: subAllowed ? B.text : B.muted }}>{s.l}</p></div>
+                      <div key={s.k} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 14px 8px 56px", opacity: masterAllowed ? 1 : 0.35 }}>
+                        <p style={{ flex:1, fontSize:12, color: subAllowed ? B.text : B.muted }}>{s.l}</p>
                         <Toggle on={subAllowed} onToggle={() => masterAllowed && togglePerm(s.k)} />
                       </div>
                     );
@@ -11259,69 +11450,14 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
           );
         })}
-        <button onClick={savePerms} disabled={permSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar Permissões"}</button>
-      </div>
-    );
-  }
-
-  /* ═══ AI CONFIG (admin only) ═══ */
-  /* ═══ IDENTIDADE DA AGÊNCIA (admin only) ═══ */
-  if (sub === "agencyid") {
-    if (!agLoaded) return <div className="pg"><Head title="Identidade" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>;
-
-    const saveAg = async () => {
-      setAgSaving(true);
-      const ok = await supaSetSetting("agency_identity", JSON.stringify(agCfg));
-      setAgSaving(false);
-      if (ok) { showToast("Identidade salva ✓"); if(onAgencyUpdate) onAgencyUpdate(agCfg); }
-      else showToast("Erro ao salvar");
-    };
-
-    return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Identidade da Agência" onBack={() => setSub(null)} />
-
-        {/* Preview card */}
-        <Card style={{ marginBottom:16, background:`${B.accent}08`, border:`1.5px solid ${B.accent}20` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            {agCfg.logo_url
-              ? <img src={agCfg.logo_url} style={{ width:48, height:48, borderRadius:12, objectFit:"contain", background:B.bg }} onError={e=>e.target.style.display="none"} />
-              : <div style={{ width:48, height:48, borderRadius:12, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🏢</div>
-            }
-            <div>
-              <p style={{ fontSize:15, fontWeight:800, color:B.text }}>{agCfg.name || "Nome da Agência"}</p>
-              <p style={{ fontSize:12, color:B.muted }}>{agCfg.slogan || "Slogan / descrição"}</p>
-              {agCfg.city && <p style={{ fontSize:11, color:B.accent, marginTop:2 }}>📍 {agCfg.city}</p>}
-            </div>
-          </div>
-        </Card>
-
-        <Card style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Nome da agência</p>
-          <input value={agCfg.name} onChange={e=>setAgCfg(p=>({...p,name:e.target.value}))} placeholder="Ex: Unique Marketing 360" className="tinput" />
-        </Card>
-        <Card style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Slogan / descrição curta</p>
-          <input value={agCfg.slogan} onChange={e=>setAgCfg(p=>({...p,slogan:e.target.value}))} placeholder="Ex: Agência de marketing 360" className="tinput" />
-        </Card>
-        <Card style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Cidade / localização</p>
-          <input value={agCfg.city} onChange={e=>setAgCfg(p=>({...p,city:e.target.value}))} placeholder="Ex: Petrópolis, RJ" className="tinput" />
-        </Card>
-        <Card style={{ marginBottom:16 }}>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>URL do logo (opcional)</p>
-          <input value={agCfg.logo_url} onChange={e=>setAgCfg(p=>({...p,logo_url:e.target.value}))} placeholder="https://..." className="tinput" />
-          <p style={{ fontSize:10, color:B.muted, marginTop:6 }}>Cole o link direto de uma imagem (PNG, SVG). Use imgur.com ou similar para hospedar.</p>
-        </Card>
-
-        <button onClick={saveAg} disabled={agSaving} className="pill full accent" style={{ padding:"14px 0", opacity:agSaving?0.5:1 }}>{agSaving?"Salvando...":"Salvar Identidade"}</button>
-      </div>
+        </div>
+        {!isSetDesktop && <button onClick={savePerms} disabled={permSaving} className="pill full accent" style={{ marginTop:16, padding:"14px 0", opacity:permSaving?0.5:1 }}>{permSaving ? "Salvando..." : "Salvar Permissões"}</button>}
+      </SetPage>
     );
   }
 
   if (sub === "aiconfig") {
-    if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <div className="pg"><Head title="Assistente IA" onBack={() => setSub(null)} /><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></div>; }
+    if (!aiCfgLoaded) { supaGetAIKeys().then(k => { setAiCfgKeys(prev => ({ ...prev, ...k })); setAiCfgLoaded(true); }); return <SetPage title="Assistente IA"><p style={{ textAlign:"center", color:B.muted, padding:30 }}>Carregando...</p></SetPage>; }
     const saveAI = async () => {
       setAiCfgSaving(true);
       await supaSetSetting("openai_key", aiCfgKeys.openai_key || "");
@@ -11333,73 +11469,103 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       else showToast("Erro ao salvar.");
     };
     const curProvider = aiCfgKeys.ai_provider || "openai";
+    const KeyField = ({ label, hint, placeholder, keyName, model }) => {
+      const val = aiCfgKeys[keyName] || "";
+      const show = showApiKey[keyName.replace("_key","")];
+      const toggle = () => setShowApiKey(p=>({...p,[keyName.replace("_key","")]:!show}));
+      return (
+        <div style={{ padding:"16px", borderRadius:"var(--uh-radius)", border:`1.5px solid ${val?`${B.green}30`:B.border}`, background:val?`${B.green}04`:"transparent", marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+            <p style={{ fontSize:12, fontWeight:700 }}>{label}</p>
+            {val && <span style={{ fontSize:10, color:B.green, fontWeight:600 }}>✓ {model}</span>}
+          </div>
+          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>{hint}</p>
+          <div style={{ display:"flex", gap:6 }}>
+            <input type={show?"text":"password"} value={val} onChange={e => setAiCfgKeys(prev => ({...prev, [keyName]:e.target.value}))} placeholder={placeholder} className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
+            <button onClick={toggle} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted, flexShrink:0 }}>
+              {show ? IC.eyeOff : IC.eye}
+            </button>
+          </div>
+        </div>
+      );
+    };
     return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Assistente IA" onBack={() => setSub(null)} />
+      <SetPage title="Assistente IA">
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+          <p style={{ fontSize:13, color:B.muted }}>Configure as chaves de API dos provedores de IA</p>
+          <button onClick={saveAI} disabled={aiCfgSaving} style={{ padding:"8px 20px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent, opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar"}</button>
+        </div>
 
         {/* Provider selector */}
-        <Card style={{ marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:8 }}>Provedor ativo</p>
-          <div style={{ display:"flex", gap:8 }}>
-            {[{k:"openai",l:"OpenAI"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p => (
-              <button key={p.k} onClick={() => setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"10px 8px", borderRadius:12, border:`1.5px solid ${curProvider===p.k?B.accent:B.border}`, background:curProvider===p.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontWeight:700, fontSize:13, color:curProvider===p.k?B.accent:B.muted }}>
-                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                  {p.k==="openai"
-                    ? <svg width="18" height="18" viewBox="0 0 41 41" fill="none"><path d="M37.5 18.6c.3 1 .5 2.2.5 3.4 0 4.3-1.6 8-4.3 10.8L37 36l-3.6 1.5-2.3-2.2C28.3 37 25.3 38 22 38c-4.4 0-8.3-1.7-11.2-4.5L7 36.8 4.5 33l2.7-2.3C5.7 28.2 4.5 25.2 4.5 22c0-4.4 1.7-8.3 4.5-11.2L6.8 7 10 4.5l2.3 2.7C14.2 5.7 17.2 4.5 20 4.5c1.2 0 2.4.2 3.4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M14 22l5 5 9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    : p.k==="claude"
-                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="currentColor" opacity="0.85"/><path d="M15.5 8.5L12 15.5 8.5 8.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="8" r="1.5" fill="white"/></svg>
-                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 2 7 2 12s4 10 10 10 10-4.5 10-10S18 2 12 2z" fill="currentColor" opacity="0.8"/><path d="M12 5.5c1.4 3.3 3.2 5.1 6.5 6.5-3.3 1.4-5.1 3.2-6.5 6.5-1.4-3.3-3.2-5.1-6.5-6.5 3.3-1.4 5.1-3.2 6.5-6.5z" fill="white"/></svg>
-                  }
-                  <span>{p.l}</span>
+        <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Provedor Ativo</p>
+        <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+          {[{k:"openai",l:"OpenAI"},{k:"gemini",l:"Gemini"},{k:"claude",l:"Claude"}].map(p => (
+            <button key={p.k} onClick={() => setAiCfgKeys(prev=>({...prev,ai_provider:p.k}))} style={{ flex:1, padding:"12px 8px", borderRadius:12, border:`1.5px solid ${curProvider===p.k?B.accent:B.border}`, background:curProvider===p.k?`${B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontWeight:curProvider===p.k?700:500, fontSize:13, color:curProvider===p.k?B.accent:B.muted, transition:"all .15s" }}>
+              {p.l}
+            </button>
+          ))}
+        </div>
+
+        {/* API Keys */}
+        <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Chaves de API</p>
+        <KeyField label="OpenAI" hint="platform.openai.com → API Keys" placeholder="sk-..." keyName="openai_key" model="GPT-4o-mini" />
+        <KeyField label="Gemini" hint="aistudio.google.com → API Keys" placeholder="AIza..." keyName="gemini_key" model="Gemini 2.0 Flash" />
+        <KeyField label="Claude (Anthropic)" hint="console.anthropic.com → API Keys" placeholder="sk-ant-..." keyName="claude_key" model="Claude Sonnet 4" />
+      </SetPage>
+    );
+  }
+
+  /* ═══ PERSONALIZAR MENU (desktop inline) ═══ */
+  if (sub === "navmenu" && isSetDesktop && navPicks) {
+    const avail = ALL_TABS.filter(t => t.k !== "more");
+    const toggleNav = k => { if (navPicks.includes(k)) { if (navPicks.length <= 3) return; setNavPicks(navPicks.filter(x => x !== k)); } else { if (navPicks.length >= 5) return; setNavPicks([...navPicks, k]); } };
+    const moveNav = (i, d) => { const n = [...navPicks]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; setNavPicks(n); };
+    const notPicked = avail.filter(t => !navPicks.includes(t.k));
+    return (
+      <SetPage title="Personalizar Menu" wide>
+        <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Escolha 3 a 5 itens. As mudanças aparecem na navbar em tempo real.</p>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24, alignItems:"start" }}>
+          {/* Left half: active navbar items */}
+          <div>
+            <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Na navbar ({navPicks.length}/5)</p>
+            {navPicks.map((k, i) => {
+              const t = ALL_TABS.find(x => x.k === k);
+              if (!t) return null;
+              return (
+                <div key={k} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:"var(--uh-radius-sm)", background:`${B.accent}06`, border:`1.5px solid ${B.accent}20`, marginTop:i?6:0 }}>
+                  <div style={{ width:32, height:32, borderRadius:8, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{t.i("#192126")}</div>
+                  <p style={{ fontSize:13, fontWeight:600, flex:1 }}>{t.l}</p>
+                  <div style={{ display:"flex", gap:3, flexShrink:0 }}>
+                    <button disabled={i===0} onClick={()=>moveNav(i,-1)} style={{ width:26, height:26, borderRadius:7, border:`1px solid ${B.border}`, background:"transparent", cursor:i===0?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===0?.25:1 }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg></button>
+                    <button disabled={i===navPicks.length-1} onClick={()=>moveNav(i,1)} style={{ width:26, height:26, borderRadius:7, border:`1px solid ${B.border}`, background:"transparent", cursor:i===navPicks.length-1?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===navPicks.length-1?.25:1 }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg></button>
+                    {navPicks.length > 3 && <button onClick={()=>toggleNav(k)} style={{ width:26, height:26, borderRadius:7, border:"none", background:"rgba(239,68,68,0.1)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Right half: available items */}
+          {notPicked.length > 0 && <div>
+            <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>Adicionar</p>
+            {notPicked.map((t, i) => (
+              <button key={t.k} onClick={()=>toggleNav(t.k)} disabled={navPicks.length>=5} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 14px", borderRadius:"var(--uh-radius-sm)", background:B.bgCard, border:`1.5px solid ${B.border}`, cursor:navPicks.length>=5?"default":"pointer", opacity:navPicks.length>=5?.35:1, fontFamily:"inherit", fontSize:13, fontWeight:500, color:B.muted, transition:"all .15s", textAlign:"left", marginTop:i?6:0, boxSizing:"border-box" }}
+                onMouseEnter={e=>{if(navPicks.length<5){e.currentTarget.style.borderColor=`${B.accent}50`;e.currentTarget.style.color=B.accent;e.currentTarget.style.background=`${B.accent}06`;}}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.color=B.muted;e.currentTarget.style.background=B.bgCard;}}>
+                <div style={{ width:32, height:32, borderRadius:8, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{t.i(B.muted)}</div>
+                <span style={{flex:1}}>{t.l}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" style={{flexShrink:0}}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </button>
             ))}
-          </div>
-        </Card>
-
-        {/* OpenAI key */}
-        <Card style={{ marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:4 }}>Chave OpenAI</p>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em platform.openai.com → API Keys</p>
-          <div style={{ display:"flex", gap:6 }}>
-            <input type={showApiKey.openai?"text":"password"} value={aiCfgKeys.openai_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, openai_key:e.target.value}))} placeholder="sk-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
-            <button onClick={() => setShowApiKey(p=>({...p,openai:!p.openai}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.openai?"🙈":"👁️"}</button>
-          </div>
-          {aiCfgKeys.openai_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — GPT-4o-mini</p>}
-        </Card>
-
-        {/* Gemini key */}
-        <Card style={{ marginBottom:12 }}>
-          <p className="sl" style={{ marginBottom:4 }}>Chave Gemini</p>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em aistudio.google.com → API Keys</p>
-          <div style={{ display:"flex", gap:6 }}>
-            <input type={showApiKey.gemini?"text":"password"} value={aiCfgKeys.gemini_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, gemini_key:e.target.value}))} placeholder="AIza..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
-            <button onClick={() => setShowApiKey(p=>({...p,gemini:!p.gemini}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.gemini?"🙈":"👁️"}</button>
-          </div>
-          {aiCfgKeys.gemini_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Gemini 2.0 Flash</p>}
-        </Card>
-
-        <Card style={{ marginBottom:10, padding:12 }}>
-          <p style={{ fontSize:12, fontWeight:700, marginBottom:6 }}>🟠 Claude (Anthropic)</p>
-          <p style={{ fontSize:10, color:B.muted, marginBottom:8 }}>Obtenha em console.anthropic.com → API Keys</p>
-          <div style={{ display:"flex", gap:6 }}>
-            <input type={showApiKey.claude?"text":"password"} value={aiCfgKeys.claude_key||""} onChange={e => setAiCfgKeys(prev => ({...prev, claude_key:e.target.value}))} placeholder="sk-ant-..." className="tinput" style={{ flex:1, fontFamily:"monospace", fontSize:12 }} />
-            <button onClick={() => setShowApiKey(p=>({...p,claude:!p.claude}))} className="ib" style={{ width:36, height:36 }}>{showApiKey.claude?"🙈":"👁️"}</button>
-          </div>
-          {aiCfgKeys.claude_key && <p style={{ fontSize:10, color:B.green, marginTop:4 }}>✓ Configurada — Claude Sonnet 4</p>}
-        </Card>
-
-        <button onClick={saveAI} disabled={aiCfgSaving} className="pill full accent" style={{ padding:"14px 0", opacity:aiCfgSaving?0.5:1 }}>{aiCfgSaving?"Salvando...":"Salvar Configuração"}</button>
-      </div>
+          </div>}
+        </div>
+      </SetPage>
     );
   }
 
   /* ═══ ABOUT ═══ */
   if (sub === "about") return (
-    <div className="pg">
-      {ToastEl}
-      <Head title="Sobre" onBack={() => setSub(null)} />
+    <SetPage title="Sobre">
       <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12 }}>
         <Logo size={48} />
         <p style={{ fontSize: 14, fontWeight: 700, marginTop: 8 }}>UniqueHub Agency</p>
@@ -11422,54 +11588,36 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       <Card>
         <p style={{ fontSize: 11, color: B.muted, lineHeight: 1.6 }}>© 2025-2026 Unique Marketing 360. Todos os direitos reservados. Este software é propriedade exclusiva da Unique Marketing 360 e não pode ser reproduzido sem autorização prévia.</p>
       </Card>
-    </div>
+    </SetPage>
   );
 
   /* ═══ APPROVALS ═══ */
-  if (sub === "approvals") return <ApprovalsPage onBack={() => setSub(null)} />;
+  if (sub === "approvals") {
+    if (!isSetDesktop) return <ApprovalsPage onBack={() => setSub(null)} />;
+    return (
+      <SetPage title="Aprovações de Cadastro">
+        <ApprovalsPage onBack={() => setSub(null)} noWrapper />
+      </SetPage>
+    );
+  }
 
   /* ═══ DESKTOP SETTINGS OVERVIEW ═══ */
   if (isSetDesktop && !sub) {
     return (
-      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-        {ToastEl}
-        <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={false} />
-        <div style={{ display:"flex", gap:16, marginTop:12, flex:1, minHeight:0 }}>
-          {/* Sidebar */}
-          <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ background:B.dark, borderRadius:16, padding:"20px", textAlign:"center" }}>
-              <Av src={user?.photo} name={user?.name} sz={56} fs={20}/>
-              <p style={{ fontSize:15, fontWeight:800, color:"#fff", marginTop:8 }}>{user?.name}</p>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{user?.role||"Colaborador"}</p>
+      <SetPage title="Configurações">
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:10 }}>
+          {SET_ITEMS.map(s => (
+            <div key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ padding:"18px 16px", borderRadius:"var(--uh-radius)", border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s", background:"transparent" }}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=`${B.accent}40`;e.currentTarget.style.background=`${B.accent}04`;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 6px 20px rgba(0,0,0,0.06)`;}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12, color:B.accent }}>{setIcon(s.k, B.accent)}</div>
+              <p style={{ fontSize:13, fontWeight:700, marginBottom:3 }}>{s.l}</p>
+              <p style={{ fontSize:11, color:B.muted, lineHeight:1.4 }}>{s.desc}</p>
+              {s.badge>0 && <span style={{ display:"inline-block", marginTop:6, background:B.red, color:"#fff", fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:6 }}>{s.badge}</span>}
             </div>
-            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", flex:1, overflowY:"auto" }}>
-              {SET_ITEMS.map(s => (
-                <button key={s.k} onClick={()=>{if(s.k==="navmenu"){onNavEdit&&onNavEdit();return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"13px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:500, background:"transparent", color:B.text, borderLeft:"3px solid transparent", textAlign:"left" }}>
-                  <span style={{ flex:1 }}>{s.l}</span>
-                  {s.badge>0 && <span style={{ background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"2px 7px", borderRadius:10 }}>{s.badge}</span>}
-                </button>
-              ))}
-              <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"13px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:500, color:B.red, background:"transparent", borderLeft:"3px solid transparent" }}>Sair da Conta</button>
-            </div>
-          </div>
-          {/* Grid overview */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
-            <div style={{ flex:1, overflowY:"auto", padding:"28px 32px" }}>
-              <h3 style={{ fontSize:24, fontWeight:900, marginBottom:8 }}>Configurações</h3>
-              <p style={{ fontSize:14, color:B.muted, marginBottom:24 }}>Gerencie seu perfil, aparência, segurança e integrações</p>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:14 }}>
-                {SET_ITEMS.map(s => (
-                  <div key={s.k} onClick={()=>{if(s.k==="navmenu"){onNavEdit&&onNavEdit();return;}setSub(s.k);}} style={{ padding:"22px 20px", borderRadius:18, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${B.accent}40`;e.currentTarget.style.background=`${B.accent}04`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";e.currentTarget.style.transform="none";}}>
-                    <p style={{ fontSize:16, fontWeight:800, marginBottom:4 }}>{s.l}</p>
-                    <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>{s.desc}</p>
-                    {s.badge>0 && <span style={{ display:"inline-block", marginTop:8, background:B.red, color:"#fff", fontSize:10, fontWeight:700, padding:"3px 12px", borderRadius:8 }}>{s.badge} pendentes</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-      </div>
+      </SetPage>
     );
   }
 
@@ -11493,7 +11641,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         { k: "profile", l: "Perfil", ic: IC.team(B.accent), desc: "Dados pessoais, contato, cargo" },
         ...(user?.supaRole === "admin" ? [{ k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
-        ...(user?.supaRole === "admin" ? [{ k: "agencyid", l: "Identidade da Agência", ic: IC.clients(B.accent), desc: "Nome, slogan, logo e localização" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
         { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema, fontes, cards, densidade e mais" },
         { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
@@ -11576,42 +11723,62 @@ function MoreSheet({ onClose, goSub }) {
 
 function NavEditSheet({ picks, setPicks, onClose }) {
   const avail = ALL_TABS.filter(t => t.k !== "more");
+  const isNavDesktop = useIsDesktop();
   const toggle = k => { if (picks.includes(k)) { if (picks.length <= 3) return; setPicks(p => p.filter(x => x !== k)); } else { if (picks.length >= 5) return; setPicks(p => [...p, k]); } };
   const moveNav = (i, d) => { setPicks(prev => { const n = [...prev]; const j = i + d; if (j < 0 || j >= n.length) return prev; [n[i], n[j]] = [n[j], n[i]]; return n; }); };
+
+  const SelItem = ({ k, i }) => {
+    const t = ALL_TABS.find(x => x.k === k);
+    if (!t) return null;
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:"var(--uh-radius-sm)", background:`${B.accent}08`, border:`1.5px solid ${B.accent}20`, marginTop:i?6:0 }}>
+        <div style={{ width:30, height:30, borderRadius:8, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{t.i("#192126")}</div>
+        <p style={{ fontSize:13, fontWeight:600, flex:1 }}>{t.l}</p>
+        <div style={{ display:"flex", gap:3 }}>
+          <button disabled={i===0} onClick={()=>moveNav(i,-1)} style={{ width:26, height:26, borderRadius:7, border:`1px solid ${B.border}`, background:i===0?"transparent":`${B.accent}08`, cursor:i===0?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===0?.3:1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg></button>
+          <button disabled={i===picks.length-1} onClick={()=>moveNav(i,1)} style={{ width:26, height:26, borderRadius:7, border:`1px solid ${B.border}`, background:i===picks.length-1?"transparent":`${B.accent}08`, cursor:i===picks.length-1?"default":"pointer", display:"flex", alignItems:"center", justifyContent:"center", opacity:i===picks.length-1?.3:1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <button onClick={()=>toggle(k)} style={{ width:26, height:26, borderRadius:7, border:"none", background:"rgba(239,68,68,0.1)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+      </div>
+    );
+  };
+
+  const AvailItem = ({ t, i }) => (
+    <div onClick={()=>toggle(t.k)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:"var(--uh-radius-sm)", background:B.bgCard, border:`1.5px solid ${B.border}`, marginTop:i?6:0, cursor:picks.length>=5?"default":"pointer", opacity:picks.length>=5?.4:1 }}>
+      <div style={{ width:30, height:30, borderRadius:8, background:`${B.muted}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{t.i(B.muted)}</div>
+      <p style={{ fontSize:13, fontWeight:500, flex:1, color:B.muted }}>{t.l}</p>
+      <div style={{ width:26, height:26, borderRadius:7, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.plus}</div>
+    </div>
+  );
 
   return (
     <>
       <div onClick={onClose} className="overlay" />
-      <div className="sheet" style={{ maxHeight: "80vh", overflowY: "auto" }}>
-        <div style={{ width: 32, height: 4, borderRadius: 2, background: B.border, margin: "0 auto 12px" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div><h3 style={{ fontSize: 16, fontWeight: 800 }}>Personalizar Menu</h3><p style={{ fontSize: 11, color: B.muted, marginTop: 2 }}>Escolha 3 a 5 itens</p></div>
-          <button onClick={onClose} style={{ background: B.accent, color: B.textOnAccent, border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Pronto</button>
+      <div className="sheet" style={{ maxHeight:"80vh", overflowY:"auto", maxWidth:isNavDesktop?600:480 }}>
+        <div style={{ width:32, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <div><h3 style={{ fontSize:16, fontWeight:800 }}>Personalizar Menu</h3><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Escolha 3 a 5 itens</p></div>
+          <button onClick={onClose} style={{ background:B.accent, color:B.textOnAccent, border:"none", borderRadius:10, padding:"7px 16px", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Pronto</button>
         </div>
-        <p style={{ fontSize: 11, fontWeight: 600, color: B.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Selecionados ({picks.length}/5)</p>
-        {picks.map((k, i) => {
-          const t = ALL_TABS.find(x => x.k === k);
-          if (!t) return null;
-          return (
-            <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: `${B.accent}08`, border: `1.5px solid ${B.accent}20`, marginTop: i ? 6 : 0 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: B.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.i("#192126")}</div>
-              <p style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{t.l}</p>
-              <div style={{ display: "flex", gap: 3 }}>
-                <button disabled={i === 0} onClick={() => moveNav(i, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${B.border}`, background: i === 0 ? "transparent" : `${B.accent}08`, cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: i === 0 ? .3 : 1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="18 15 12 9 6 15" /></svg></button>
-                <button disabled={i === picks.length - 1} onClick={() => moveNav(i, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${B.border}`, background: i === picks.length - 1 ? "transparent" : `${B.accent}08`, cursor: i === picks.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: i === picks.length - 1 ? .3 : 1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="3"><polyline points="6 9 12 15 18 9" /></svg></button>
-                <button onClick={() => toggle(k)} style={{ width: 28, height: 28, borderRadius: 8, border: "none", background: "rgba(239,68,68,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-              </div>
+        {isNavDesktop ? (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+            <div>
+              <p style={{ fontSize:11, fontWeight:600, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Selecionados ({picks.length}/5)</p>
+              {picks.map((k,i) => <SelItem key={k} k={k} i={i} />)}
             </div>
-          );
-        })}
-        <p style={{ fontSize: 11, fontWeight: 600, color: B.muted, textTransform: "uppercase", letterSpacing: 1, marginTop: 16, marginBottom: 8 }}>Disponíveis</p>
-        {avail.filter(t => !picks.includes(t.k)).map((t, i) => (
-          <div key={t.k} onClick={() => toggle(t.k)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: B.bgCard, border: `1.5px solid ${B.border}`, marginTop: i ? 6 : 0, cursor: picks.length >= 5 ? "default" : "pointer", opacity: picks.length >= 5 ? .4 : 1 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: `${B.muted}12`, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.i(B.muted)}</div>
-            <p style={{ fontSize: 13, fontWeight: 500, flex: 1, color: B.muted }}>{t.l}</p>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center" }}>{IC.plus}</div>
+            <div>
+              <p style={{ fontSize:11, fontWeight:600, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Disponíveis</p>
+              {avail.filter(t=>!picks.includes(t.k)).map((t,i) => <AvailItem key={t.k} t={t} i={i} />)}
+            </div>
           </div>
-        ))}
+        ) : (
+          <>
+            <p style={{ fontSize:11, fontWeight:600, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Selecionados ({picks.length}/5)</p>
+            {picks.map((k,i) => <SelItem key={k} k={k} i={i} />)}
+            <p style={{ fontSize:11, fontWeight:600, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginTop:16, marginBottom:8 }}>Disponíveis</p>
+            {avail.filter(t=>!picks.includes(t.k)).map((t,i) => <AvailItem key={t.k} t={t} i={i} />)}
+          </>
+        )}
       </div>
     </>
   );
@@ -11750,7 +11917,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
               {isAdmin && <button onClick={()=>{setForm({});setAdding(true);setSel(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo</button>}
             </div>
             {/* Member list */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
                 <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.text }}>Membros</p>
               </div>
@@ -11780,7 +11947,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
             </div>
           </div>
           {/* ── RIGHT: Detail / Add / Edit ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {adding ? <>
               {/* Add member form */}
               <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
@@ -12021,8 +12188,10 @@ function TeamPage({ onBack, user, onTeamChange }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca }) {
-  const isCalDesktop = useIsDesktop();
+function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca, forceMobile }) {
+  const _isCalDesktop = useIsDesktop();
+  const isCalDesktop = forceMobile ? false : _isCalDesktop;
+  const contained = !!forceMobile;
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const userName = propUser?.name || propUser?.email || "Equipe";
@@ -12434,7 +12603,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
           {/* ── LEFT: Calendar Grid ── */}
           <div style={{ width:380, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, padding:"18px 16px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+            <div style={{ background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, padding:"18px 16px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
                 <button onClick={prevMonth} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
                 <p style={{ fontSize:16, fontWeight:800 }}>{MONTHS[curMonth]} {curYear}</p>
@@ -12466,7 +12635,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
             </div>
           </div>
           {/* ── RIGHT: Day Events / View Event / Add Event ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {viewEvent ? (() => {
               const ev = viewEvent; const et = etCfg(ev.type);
               return <>
@@ -12589,9 +12758,9 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
 
   /* ── MAIN CALENDAR VIEW ── */
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.calendar} label="Agenda" title="Calendário" collapsed={pgC} stats={[]} />
+      {!contained && <CollapseHeader icon={IC.calendar} label="Agenda" title="Calendário" collapsed={pgC} stats={[]} />}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
@@ -12919,7 +13088,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
               </div>
             </div>
             {/* Client filter */}
-            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Cliente</p>
               </div>
@@ -12932,7 +13101,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
               </div>
             </div>
             {/* Category filter */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ flex:1, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Categoria</p>
               </div>
@@ -12952,7 +13121,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ flex:1, position:"relative" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cliente..." style={{ width:"100%", padding:"10px 12px 10px 38px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", fontFamily:"inherit", fontSize:13, outline:"none" }} />
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cliente..." style={{ width:"100%", padding:"10px 12px 10px 38px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, fontFamily:"inherit", fontSize:13, outline:"none" }} />
               </div>
               <div style={{ display:"flex", borderRadius:10, border:`1.5px solid ${B.border}`, overflow:"hidden" }}>
                 <button onClick={()=>setLibView("grid")} style={{ padding:"8px 10px", border:"none", cursor:"pointer", background:libView==="grid"?`${B.accent}12`:"transparent", color:libView==="grid"?B.accent:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
@@ -12963,7 +13132,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
             {/* Content split: files + detail */}
             <div style={{ flex:1, display:"flex", gap:12, minHeight:0 }}>
               {/* Files area with drag & drop */}
-              <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop} style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:dragOver?`2px dashed ${B.accent}`:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", transition:"border .2s", position:"relative", minWidth:0 }}>
+              <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop} style={{ flex:1, background:B.bgCard, borderRadius:16, border:dragOver?`2px dashed ${B.accent}`:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", transition:"border .2s", position:"relative", minWidth:0 }}>
                 {dragOver && <div style={{ position:"absolute", inset:0, background:`${B.accent}08`, zIndex:10, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}><div style={{ textAlign:"center" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:14, fontWeight:700, color:B.accent }}>Solte o arquivo aqui</p></div></div>}
                 <div style={{ flex:1, overflowY:"auto", padding:libView==="grid"?"12px":"6px 8px" }}>
                   {filtered.length===0 && <div style={{ textAlign:"center", padding:"50px 20px" }}>
@@ -12979,7 +13148,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                       const isImg = ["jpg","jpeg","png","gif","webp","svg"].includes(ffExt);
                       const isVid = ["mp4","mov","avi","mkv","webm"].includes(ffExt);
                       return (
-                        <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:B.bgCard||"#fff", transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+                        <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:B.bgCard, transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
                           <div style={{ width:"100%", height:110, background:isImg&&ff.url?`url(${ff.url}) center/cover`:`${ffi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
                             {!(isImg&&ff.url) && <div style={{ color:ffi.c, opacity:0.6, transform:"scale(1.5)" }}>{ffi.ic}</div>}
                             {isVid && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.3)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21"/></svg></div>}
@@ -13013,7 +13182,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                 </div>
               </div>
               {/* ── Right detail panel ── */}
-              {(f || addingFile) && <div style={{ width:320, flexShrink:0, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+              {(f || addingFile) && <div style={{ width:320, flexShrink:0, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
                 {addingFile ? <>
                   <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
                     <button onClick={()=>{setAddingFile(false);setFileForm({});}} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -13207,8 +13376,10 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   );
 }
 
-function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientView }) {
-  const isRepDesktop = useIsDesktop();
+function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientView, forceMobile }) {
+  const _isRepDesktop = useIsDesktop();
+  const isRepDesktop = forceMobile ? false : _isRepDesktop;
+  const contained = !!forceMobile;
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [tab, setTab] = useState("client");
@@ -13638,7 +13809,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
               </div>
               <p style={{ fontSize:8, color:"rgba(255,255,255,0.3)", marginTop:6 }}>{dateSince} → {dateUntil}</p>
             </div>
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ flex:1, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Clientes ({clientMetrics.length})</p>
                 <span style={{ fontSize:9, color:B.green, fontWeight:600 }}>{totals.connectedCount} conectados</span>
@@ -13661,7 +13832,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
             </div>
           </div>
           {/* MAIN CONTENT */}
-          <div id="uh-report-content" style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div id="uh-report-content" style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {loading ? <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <div style={{ textAlign:"center" }}><div style={{ width:40, height:40, border:`3px solid ${B.accent}30`, borderTop:`3px solid ${B.accent}`, borderRadius:"50%", animation:"skSpin 1s linear infinite", margin:"0 auto 12px" }}/><p style={{ fontSize:13, fontWeight:600 }}>Carregando métricas...</p></div>
             </div> : !selClient ? <>
@@ -13824,9 +13995,9 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
   ];
 
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       {ToastEl}
-      <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" collapsed={pgC} stats={[]} onBack={isClientView ? onBack : undefined} />
+      {!contained && <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" collapsed={pgC} stats={[]} onBack={isClientView ? onBack : undefined} />}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
       {/* Tab selector */}
@@ -14597,7 +14768,7 @@ REGRAS:
 
           {/* ── Article content (when selected) ── */}
           {a && <div style={{ flex:1, overflowY:"auto", minWidth:0, paddingRight:8 }}>
-            <div style={{ background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+            <div style={{ background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
               {/* Cover */}
               {a.photo && <img src={a.photo} alt="" style={{ width:"100%", height:320, objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";}}/>}
               <div style={{ padding:"32px 36px 40px" }}>
@@ -14664,7 +14835,7 @@ REGRAS:
               {/* Grid */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:18 }}>
                 {rest.map(art => (
-                  <div key={art.id} onClick={()=>setSelArticle(art)} style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", background:B.bgCard||"#fff", border:`1px solid ${B.border}`, transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                  <div key={art.id} onClick={()=>setSelArticle(art)} style={{ borderRadius:18, overflow:"hidden", cursor:"pointer", background:B.bgCard, border:`1px solid ${B.border}`, transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
                     {art.photo ? <div style={{ width:"100%", height:170, background:`url(${art.photo}) center/cover` }}/> : <div style={{ width:"100%", height:90, background:`linear-gradient(135deg, ${catColor(art.cat)}15, ${catColor(art.cat)}05)`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:28, opacity:0.3 }}>{art.cat==="ia"?"🤖":art.cat==="trends"?"📈":"📰"}</span></div>}
                     <div style={{ padding:"18px 20px" }}>
                       <h3 style={{ fontSize:17, fontWeight:800, lineHeight:1.3, marginBottom:8 }}>{art.title}</h3>
@@ -14703,7 +14874,7 @@ REGRAS:
           </div>
 
           {/* ── Create panel ── */}
-          {isCreating && <div style={{ width:400, flexShrink:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          {isCreating && <div style={{ width:400, flexShrink:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:"18px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <p style={{ fontSize:18, fontWeight:800 }}>{aiMode?"🤖 IA Reescrever":creating?"✍️ Novo Artigo":"Criar"}</p>
               <button onClick={()=>{setShowCreateChoice(false);setCreating(false);setAiMode(false);setForm({});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -14820,8 +14991,9 @@ REGRAS:
   );
 }
 
-function IdeasPage({ onBack, user, clients: propClients }) {
-  const isIdeasDesktop = useIsDesktop();
+function IdeasPage({ onBack, user, clients: propClients, forceMobile }) {
+  const _isIdeasDesktop = useIsDesktop();
+  const isIdeasDesktop = forceMobile ? false : _isIdeasDesktop;
   const IDEAS_MOCK = [];
   const [ideas, setIdeas] = useState([]);
   const [ideasLoaded, setIdeasLoaded] = useState(false);
@@ -15072,7 +15244,7 @@ function IdeasPage({ onBack, user, clients: propClients }) {
                 const s = statusCfg[idea_.status]||statusCfg.pending;
                 const isSel = selIdea === idea_.id;
                 return (
-                  <div key={idea_.id} onClick={()=>{setSelIdea(isSel?null:idea_.id);setAdding(false);}} style={{ background:B.bgCard||"#fff", borderRadius:16, border:isSel?`2px solid ${B.accent}`:`1px solid ${B.border}`, padding:hasRight?"14px 16px":"18px 20px", cursor:"pointer", transition:"all .2s", display:"flex", flexDirection:"column", gap:hasRight?8:10 }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+                  <div key={idea_.id} onClick={()=>{setSelIdea(isSel?null:idea_.id);setAdding(false);}} style={{ background:B.bgCard, borderRadius:16, border:isSel?`2px solid ${B.accent}`:`1px solid ${B.border}`, padding:hasRight?"14px 16px":"18px 20px", cursor:"pointer", transition:"all .2s", display:"flex", flexDirection:"column", gap:hasRight?8:10 }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
                     {/* Status + client */}
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:6, background:`${s.c}12`, color:s.c }}>{s.l}</span>
@@ -15102,7 +15274,7 @@ function IdeasPage({ onBack, user, clients: propClients }) {
             </div>
           </div>
           {/* Detail panel (visually LEFT) */}
-          {hasRight && <div style={{ flex:1, minWidth:0, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          {hasRight && <div style={{ flex:1, minWidth:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {adding ? <>
               <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <p style={{ fontSize:18, fontWeight:800 }}>💡 Nova Ideia</p>
@@ -15435,7 +15607,7 @@ function GamifyPage({ onBack, user, team }) {
               </div>
             </div>
             {/* Tab nav */}
-            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               {[...TABS_LIST, ...(isAdmin?[{k:"redemptions",l:"Resgates"}]:[])].map(t => {
                 const pendingCnt = t.k==="redemptions" ? redemptions.filter(r=>r.status==="pending").length : 0;
                 return (
@@ -15447,7 +15619,7 @@ function GamifyPage({ onBack, user, team }) {
               })}
             </div>
             {/* Admin: award XP */}
-            {isAdmin && <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
+            {isAdmin && <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
               <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Dar XP (Admin)</p>
               <select value={awardUser||""} onChange={e=>setAwardUser(e.target.value)} style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}>
                 <option value="">Selecionar membro</option>
@@ -15459,7 +15631,7 @@ function GamifyPage({ onBack, user, team }) {
             </div>}
           </div>
           {/* ── RIGHT: Content ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             <div style={{ flex:1, overflowY:"auto", padding:"20px 24px" }}>
 
               {/* ═══ RANKING TAB ═══ */}
@@ -15569,7 +15741,7 @@ function GamifyPage({ onBack, user, team }) {
                       else if(b.id==="xp10000") prog = Math.min(99,Math.round((me?.xp||0)/10000*100));
                     }
                     return (
-                      <div key={b.id} style={{ padding:"20px", borderRadius:18, border:earned?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:earned?`${B.accent}04`:(B.bgCard||"#fff"), transition:"all .25s", position:"relative", overflow:"hidden" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                      <div key={b.id} style={{ padding:"20px", borderRadius:18, border:earned?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:earned?`${B.accent}04`:(B.bgCard), transition:"all .25s", position:"relative", overflow:"hidden" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
                         {earned && <div style={{ position:"absolute", top:12, right:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={B.accent} stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="16 8 10 14 7 11" stroke="#fff" strokeWidth="2.5" fill="none"/></svg></div>}
                         <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:12 }}>
                           <div style={{ width:48, height:48, borderRadius:14, background:earned?`${B.accent}15`:`${rarityColor(b.rarity)}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{b.emoji}</div>
@@ -15603,7 +15775,7 @@ function GamifyPage({ onBack, user, team }) {
                     const canBuy = me.xp >= r.cost;
                     const pending = redemptions.some(rd=>rd.rewardId===r.id && rd.userId===user?.id && rd.status==="pending");
                     return (
-                      <div key={r.id} style={{ display:"flex", alignItems:"center", gap:16, padding:"20px 22px", borderRadius:18, border:`1.5px solid ${B.border}`, background:B.bgCard||"#fff", transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                      <div key={r.id} style={{ display:"flex", alignItems:"center", gap:16, padding:"20px 22px", borderRadius:18, border:`1.5px solid ${B.border}`, background:B.bgCard, transition:"all .25s" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
                         <div style={{ width:52, height:52, borderRadius:16, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{r.icon}</div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <p style={{ fontSize:15, fontWeight:800 }}>{r.name}</p>
@@ -15700,7 +15872,7 @@ function GamifyPage({ onBack, user, team }) {
         </div>
         {/* Redeem confirmation modal */}
         {redeemConfirm && selReward && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>{setRedeemConfirm(false);setSelReward(null);}}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard||"#fff", borderRadius:24, padding:"32px", maxWidth:400, width:"90%", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:24, padding:"32px", maxWidth:400, width:"90%", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ textAlign:"center", marginBottom:20 }}>
               <div style={{ width:56, height:56, borderRadius:16, background:B.bg, display:"inline-flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}>{selReward.icon}</div>
               <h3 style={{ fontSize:20, fontWeight:900 }}>{selReward.name}</h3>
@@ -16368,7 +16540,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
             <button onClick={()=>{startNewChat();}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Nova Conversa</button>
 
             {/* Model cards */}
-            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
+            <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
               <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:10 }}>Modelo de IA</p>
               {AI_MODELS.map(m => (
                 <div key={m.k} onClick={()=>{if(selModel===m.k)return;setSelModel(m.k);supaSetSetting("ai_keys",JSON.stringify({...aiKeys,ai_provider:m.k}));setAiKeys(p=>({...p,ai_provider:m.k}));setActiveChat(null);setMessages([]);setView("history");setInput("");}} style={{ display:"flex", alignItems:"flex-start", gap:12, padding:"12px", borderRadius:14, cursor:"pointer", background:selModel===m.k?`${m.c}08`:"transparent", border:selModel===m.k?`1.5px solid ${m.c}25`:"1.5px solid transparent", marginBottom:6, transition:"all .15s" }} onMouseEnter={e=>{if(selModel!==m.k)e.currentTarget.style.background=`${m.c}04`;}} onMouseLeave={e=>{if(selModel!==m.k)e.currentTarget.style.background="transparent";}}>
@@ -16384,7 +16556,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
               ))}
             </div>
             {/* History */}
-            <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+            <div style={{ flex:1, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted, flex:1 }}>Histórico</p>
                 <span style={{ fontSize:10, color:B.muted }}>{modelConvs.length}</span>
@@ -16411,7 +16583,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
             </div>
           </div>
           {/* ── RIGHT: Chat ── */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             {!hasMessages && !loading ? <>
               {/* ═══ WELCOME ═══ */}
               <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", padding:"0 48px", overflowY:"auto" }}>
@@ -16973,10 +17145,10 @@ function HelpPage({ onBack }) {
             {/* Search */}
             <div style={{ position:"relative" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar ajuda..." style={{ width:"100%", padding:"12px 14px 12px 40px", borderRadius:14, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, outline:"none", background:B.bgCard||"#fff" }}/>
+              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Buscar ajuda..." style={{ width:"100%", padding:"12px 14px 12px 40px", borderRadius:14, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, outline:"none", background:B.bgCard }}/>
             </div>
             {/* Tab nav */}
-            <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+            <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
               {[{k:"faq",l:"Perguntas Frequentes",ic:"❓"},{k:"guides",l:"Guias Passo a Passo",ic:"📖"},{k:"shortcuts",l:"Dicas & Atalhos",ic:"⚡"},{k:"videos",l:"Vídeo Tutoriais",ic:"🎬"},{k:"contact",l:"Falar com Suporte",ic:"📞"}].map(t => (
                 <button key={t.k} onClick={()=>{if(t.k==="contact"){setContactForm(true);}else{setHelpTab(t.k);setSelCat(null);setSelQ(null);}}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"13px 16px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:helpTab===t.k?700:500, background:helpTab===t.k?`${B.accent}10`:"transparent", color:helpTab===t.k?B.accent:B.text, borderLeft:helpTab===t.k?`3px solid ${B.accent}`:"3px solid transparent" }}>
                   <span style={{ fontSize:15 }}>{t.ic}</span> {t.l}
@@ -16984,7 +17156,7 @@ function HelpPage({ onBack }) {
               ))}
             </div>
             {/* FAQ Categories (when on FAQ tab) */}
-            {helpTab==="faq" && <div style={{ background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", flex:1, overflowY:"auto" }}>
+            {helpTab==="faq" && <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", flex:1, overflowY:"auto" }}>
               <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}` }}><p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Categorias ({FAQ.length})</p></div>
               {FAQ.map((cat, ci) => (
                 <button key={ci} onClick={()=>{setSelCat(ci);setSelQ(null);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"11px 14px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:selCat===ci?700:500, background:selCat===ci?`${cat.color}08`:"transparent", color:selCat===ci?cat.color:B.text, borderLeft:selCat===ci?`3px solid ${cat.color}`:"3px solid transparent" }}>
@@ -16996,7 +17168,7 @@ function HelpPage({ onBack }) {
             </div>}
           </div>
           {/* RIGHT: Content */}
-          <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
 
               {/* Search results */}
@@ -17082,7 +17254,7 @@ function HelpPage({ onBack }) {
                     <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                       {sec.items.map((item, ii) => (
                         <div key={ii} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 16px", borderRadius:12, background:B.bg }}>
-                          <span style={{ fontSize:13, fontWeight:700, padding:"4px 12px", borderRadius:8, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, color:B.accent, whiteSpace:"nowrap" }}>{item.keys}</span>
+                          <span style={{ fontSize:13, fontWeight:700, padding:"4px 12px", borderRadius:8, background:B.bgCard, border:`1px solid ${B.border}`, color:B.accent, whiteSpace:"nowrap" }}>{item.keys}</span>
                           <p style={{ fontSize:13, color:B.text }}>{item.desc}</p>
                         </div>
                       ))}
@@ -17679,7 +17851,7 @@ function Match4BizPage({ onBack, clients, user }) {
               const cb = getCD(match.client_b_id,match.client_b_name);
               const cCnt = [match.admin_confirmed,match.client_a_confirmed,match.client_b_confirmed].filter(Boolean).length;
               return (
-                <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ padding:"16px 18px", borderRadius:16, background:B.bgCard||"#fff", border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+                <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ padding:"16px 18px", borderRadius:16, background:B.bgCard, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
                   {/* Companies row */}
                   <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
@@ -17708,7 +17880,7 @@ function Match4BizPage({ onBack, clients, user }) {
           </div>
 
           {/* RIGHT panel */}
-          {hasRight && <div style={{ flex:1, background:B.bgCard||"#fff", borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+          {hasRight && <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             {creating ? <>
               <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                 <p style={{ fontSize:18, fontWeight:800 }}>Novo Match</p>
@@ -17740,7 +17912,7 @@ function Match4BizPage({ onBack, clients, user }) {
                 <div style={{ padding:"28px 32px", background:`linear-gradient(135deg, ${B.accent}06, ${B.accent}02)`, borderBottom:`1px solid ${B.border}` }}>
                   <div style={{ display:"flex", alignItems:"center", gap:0 }}>
                     {/* Company A */}
-                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
+                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard, border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
                       <Av src={cA.photo} name={cA.name} sz={52} fs={20}/>
                       <div>
                         <p style={{ fontSize:16, fontWeight:800 }}>{cA.name}</p>
@@ -17753,7 +17925,7 @@ function Match4BizPage({ onBack, clients, user }) {
                       <div style={{ width:44, height:44, borderRadius:14, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px rgba(200,255,0,0.3)" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
                     </div>
                     {/* Company B */}
-                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard||"#fff", border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
+                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard, border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
                       <Av src={cB.photo} name={cB.name} sz={52} fs={20}/>
                       <div>
                         <p style={{ fontSize:16, fontWeight:800 }}>{cB.name}</p>
@@ -19907,22 +20079,51 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud, cloudDash, cloudNav }) {
   const mainContentRef = useRef(null);
   const VALID_TABS = ["home","content","chat","clients"];
+  /* ── Hash-based routing: #/tab or #/tab/sub ── */
+  const parseHash = () => {
+    const h = window.location.hash.replace(/^#\/?/, "");
+    const parts = h.split("/").filter(Boolean);
+    return { tab: parts[0] || null, sub: parts[1] || null };
+  };
+  const pushHash = (t, s) => {
+    const h = s ? `#/${t}/${s}` : `#/${t}`;
+    if (window.location.hash !== h) window.history.pushState({ uhTab: t, uhSub: s || null }, "", h);
+  };
+  const replaceHash = (t, s) => {
+    const h = s ? `#/${t}/${s}` : `#/${t}`;
+    if (window.location.hash !== h) window.history.replaceState({ uhTab: t, uhSub: s || null }, "", h);
+  };
   const [tab, setTab] = useState(() => {
+    const fromHash = parseHash();
+    if (fromHash.tab && VALID_TABS.includes(fromHash.tab)) return fromHash.tab;
     try { const t = sessionStorage.getItem("uh_tab") || "home"; return VALID_TABS.includes(t) ? t : "home"; } catch { return "home"; }
   });
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
-  const [sub, setSub] = useState(null); /* Don't restore sub on refresh — prevents black screen crashes */
+  const [sub, setSub] = useState(() => {
+    const fromHash = parseHash();
+    if (fromHash.sub) return fromHash.sub;
+    try { const s = sessionStorage.getItem("uh_sub"); return s || null; } catch { return null; }
+  });
   const [more, setMore] = useState(false);
-  /* Sync tab/sub to sessionStorage for refresh persistence */
-  useEffect(() => { try { sessionStorage.setItem("uh_tab", tab); } catch {} }, [tab]);
-  useEffect(() => { try { if (sub) sessionStorage.setItem("uh_sub", sub); else sessionStorage.removeItem("uh_sub"); } catch {} 
-    /* Clear sub on page unload to prevent stale state on reload */
-    const clearSub = () => { try { sessionStorage.removeItem("uh_sub"); } catch {} };
-    window.addEventListener("beforeunload", clearSub);
-    return () => window.removeEventListener("beforeunload", clearSub);
-  }, [sub]);
+  /* Sync state → hash + sessionStorage */
+  useEffect(() => {
+    try { sessionStorage.setItem("uh_tab", tab); if (sub) sessionStorage.setItem("uh_sub", sub); else sessionStorage.removeItem("uh_sub"); } catch {}
+  }, [tab, sub]);
+  /* Set initial hash on mount */
+  useEffect(() => { replaceHash(tab, sub); }, []);
+  /* Listen for browser back/forward */
+  useEffect(() => {
+    const onPop = (e) => {
+      const st = e.state;
+      if (st && st.uhTab) { setTab(st.uhTab); setSub(st.uhSub || null); setMore(false); return; }
+      const h = parseHash();
+      if (h.tab && VALID_TABS.includes(h.tab)) { setTab(h.tab); setSub(h.sub || null); setMore(false); }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const [navPicks, setNavPicks] = useState(() => {
     if (cloudNav) return cloudNav;
     try { const s = localStorage.getItem("uh_nav_picks"); return s ? JSON.parse(s) : DEFAULT_NAV; } catch { return DEFAULT_NAV; }
@@ -20197,12 +20398,12 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [pendingOpenId, setPendingOpenId] = useState(null);
   /* ── Guard: redirect to home if current tab/sub is restricted ── */
   useEffect(() => {
-    if (!canAccess(tab)) { setTab("home"); try { sessionStorage.setItem("uh_tab", "home"); } catch {} }
-    if (sub && !canAccess(sub)) { setSub(null); try { sessionStorage.removeItem("uh_sub"); } catch {} }
+    if (!canAccess(tab)) { setTab("home"); replaceHash("home", null); }
+    if (sub && !canAccess(sub)) { setSub(null); replaceHash(tab, null); }
   }, [tab, sub, userJobTitle, rolePermsMap]);
-  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); try { sessionStorage.setItem("uh_tab", k); sessionStorage.removeItem("uh_sub"); } catch {} if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
+  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); pushHash(k, null); if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
   const [pendingSubId, setPendingSubId] = useState(null);
-  const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); try { sessionStorage.setItem("uh_sub", k); } catch {} if (initialId) setPendingSubId(initialId); };
+  const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); pushHash(tab, k); if (initialId) setPendingSubId(initialId); };
   const isDesktop = useIsDesktop();
 
   return (
@@ -20234,8 +20435,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 --uh-nav-rad:${({pill:"20px",rounded:"14px",bar:"0",minimal:"10px"})[uiPrefs.navStyle||"pill"]||"20px"};
 }
 body,*{font-family:var(--uh-font)!important}
-.app,.screen{background:${B.bg}!important;color:${B.text}!important${uiPrefs.highContrast?";filter:contrast(1.15)":""}}
-.card{background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border);border-radius:var(--uh-radius)!important;padding:var(--uh-pad)!important;${uiPrefs.cardStyle==="glass"&&!uiPrefs.reduceTransparency?"backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);":""}transition:all var(--uh-anim) ease}
+.app,.screen{background:${B.bg}!important;color:${B.text}!important;transition:background .25s,color .25s${uiPrefs.highContrast?";filter:contrast(1.15)":""}}
+.card{background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border);border-radius:var(--uh-radius)!important;padding:var(--uh-pad)!important;transition:background .25s,box-shadow .25s,border .25s,border-radius .25s;${uiPrefs.cardStyle==="glass"&&!uiPrefs.reduceTransparency?"backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);":""}transition:all var(--uh-anim) ease}
 .demands-grid>div{border-radius:var(--uh-radius)!important;overflow:hidden!important;background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border)}
 .phone-block{border-radius:var(--uh-radius)!important}
 .sheet{border-radius:var(--uh-radius) var(--uh-radius) 0 0!important}
@@ -20304,7 +20505,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","clients"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} />}
-        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={setDark} themeColor={themeColor} setThemeColor={setThemeColor} onNavEdit={() => setShowNavEdit(true)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
+        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={() => setShowNavEdit(true)} navPicks={navPicks} setNavPicks={p => setNavPicksAndSave(p, user?.id)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccessFn} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
@@ -20645,7 +20846,7 @@ export default function App() {
   };
 
   if (metaOAuthPending || metaOAuthResult || metaPagePicker) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#ECEEF2",padding:20}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:B.bg,padding:20}}>
       <div style={{textAlign:"center",padding:32,maxWidth:480,width:"100%",background:"#fff",borderRadius:24,boxShadow:"0 4px 24px rgba(0,0,0,0.08)",border:"1px solid rgba(0,0,0,0.04)"}}>
 
         {/* Loading */}
@@ -20653,14 +20854,14 @@ export default function App() {
           <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(135deg,#C6F135 0%,#A8D810 100%)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
           </div>
-          <div style={{width:36,height:36,border:"3px solid #ECEEF2",borderTopColor:"#C6F135",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 16px"}}/>
+          <div style={{width:36,height:36,border:"3px solid "+B.border,borderTopColor:B.accent,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 16px"}}/>
           <p style={{color:"#192126",fontSize:17,fontWeight:800}}>Conectando com Meta...</p>
           <p style={{color:"#8B8F92",fontSize:13,marginTop:6}}>Buscando suas páginas e perfis</p>
         </> : null}
 
         {/* Page Picker */}
         {metaPagePicker && !metaOAuthResult ? <>
-          <div style={{width:64,height:64,borderRadius:20,background:"#ECEEF2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+          <div style={{width:64,height:64,borderRadius:20,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </div>
           <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:4}}>Selecione a página do cliente</p>
@@ -20679,10 +20880,10 @@ export default function App() {
                 setMetaSavingPage(false);
               }} style={{
                 display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:16,
-                background:"#F7F8FA",border:"1.5px solid #ECEEF2",cursor:metaSavingPage?"wait":"pointer",
+                background:B.bgCard,border:"1.5px solid "+B.border,cursor:metaSavingPage?"wait":"pointer",
                 fontFamily:"inherit",textAlign:"left",transition:"all 0.2s",opacity:metaSavingPage?0.6:1
               }}>
-                {pg.page_picture ? <img src={pg.page_picture} style={{width:44,height:44,borderRadius:12,objectFit:"cover",border:"2px solid #ECEEF2"}} alt=""/> : <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#C6F135,#A8D810)",display:"flex",alignItems:"center",justifyContent:"center",color:"#192126",fontWeight:800,fontSize:18}}>{pg.page_name?.[0] || "?"}</div>}
+                {pg.page_picture ? <img src={pg.page_picture} style={{width:44,height:44,borderRadius:12,objectFit:"cover",border:"2px solid "+B.border}} alt=""/> : <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#C6F135,#A8D810)",display:"flex",alignItems:"center",justifyContent:"center",color:"#192126",fontWeight:800,fontSize:18}}>{pg.page_name?.[0] || "?"}</div>}
                 <div style={{flex:1,minWidth:0}}>
                   <p style={{color:"#192126",fontSize:14,fontWeight:700,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pg.page_name}</p>
                   {pg.page_category && <p style={{color:"#8B8F92",fontSize:11,margin:"2px 0 0"}}>{pg.page_category}</p>}
@@ -20695,7 +20896,7 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button onClick={() => { setMetaPagePicker(null); setMetaOAuthResult(null); setMetaOAuthPending(false); }} style={{marginTop:20,padding:"12px 28px",borderRadius:12,background:"transparent",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:"#8B8F92"}}>Cancelar</button>
+          <button onClick={() => { setMetaPagePicker(null); setMetaOAuthResult(null); setMetaOAuthPending(false); }} style={{marginTop:20,padding:"12px 28px",borderRadius:12,background:"transparent",border:"1.5px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
         </> : null}
 
         {/* Success */}
@@ -20720,7 +20921,7 @@ export default function App() {
           </div>
           <p style={{color:"#192126",fontSize:18,fontWeight:800,marginBottom:8}}>Erro na conexão</p>
           <p style={{color:"#EF4444",fontSize:12,marginTop:8,lineHeight:1.6,wordBreak:"break-word",padding:"10px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA"}}>{metaOAuthResult?.msg}</p>
-          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:"#F7F8FA",border:"1.5px solid #ECEEF2",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#192126"}}>Fechar</button>
+          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 32px",borderRadius:14,background:B.bgCard,border:"1.5px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:B.text}}>Fechar</button>
         </> : null}
 
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -20777,10 +20978,10 @@ input,textarea,select{font-size:16px !important}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
 /* ── Desktop Layout (class-based for maximum specificity) ── */
 .d-sidebar{display:none!important}
-html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:#ECEEF2!important}
-html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important;max-width:100%!important}
-html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:#ECEEF2!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:#ECEEF2!important;width:100%!important}
+html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:${B.bg}!important;transition:background .25s}
+html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:${B.bg}!important;width:100%!important;max-width:100%!important}
+html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:${B.bg}!important;width:100%!important;box-sizing:border-box!important;transition:background .25s}
+html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:${B.bg}!important;width:100%!important}
 html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:var(--uh-radius)!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
@@ -20791,7 +20992,18 @@ html.uh-desktop .sheet{bottom:auto!important;top:50%!important;left:50%!importan
 html.uh-desktop .overlay{z-index:10000!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 html.uh-desktop .d-dash-grid-3{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:20px!important;align-items:start!important}
-.phone-block{overflow:hidden!important;isolation:isolate;max-width:100%!important;width:100%!important}
+.phone-block{overflow:hidden!important;isolation:isolate;max-width:100%!important;width:100%!important;position:relative}
+.phone-block .bnav{display:none!important}
+.phone-block .overlay{position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important}
+.phone-block .sheet,.phone-block [style*="position: fixed"]{position:absolute!important}
+.phone-block [style*="z-index: 100"]{z-index:10!important}
+.phone-block [style*="z-index: 101"]{z-index:11!important}
+.phone-block [style*="bottom: 0"][style*="position: fixed"]{position:absolute!important;bottom:0!important;left:0!important;right:0!important;max-height:70%!important}
+.phone-block .pg{padding-top:8px!important}
+.chat-contained-conv{position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;inset:0!important}
+html.uh-desktop .phone-viewport .chat-contained-conv{position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;inset:0!important;padding:0!important;margin:0!important;width:100%!important}
+.chat-contained-list{position:relative!important;height:100%!important;overflow:auto!important}
+html.uh-desktop .phone-viewport .chat-contained-list{position:relative!important;height:100%!important;overflow:auto!important;min-height:0!important;max-height:100%!important;padding:0!important;margin:0!important;width:100%!important;inset:auto!important}
 .phone-viewport{transform:scale(1);-webkit-overflow-scrolling:touch;scrollbar-width:thin;max-width:100%!important;width:100%!important}
 .phone-viewport::-webkit-scrollbar{width:3px}
 .phone-viewport::-webkit-scrollbar-track{background:transparent}
