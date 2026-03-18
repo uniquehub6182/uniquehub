@@ -2597,6 +2597,35 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [driveType, setDriveType] = useState(() => { try { return localStorage.getItem("uh_drive_type")||""; } catch { return ""; } });
   const [driveEditing, setDriveEditing] = useState(false);
   const [driveTmp, setDriveTmp] = useState("");
+  /* ── AI Mini-Chat state (hoisted from renderDPanel for hook stability) ── */
+  const [dAiMsgs, setDAiMsgs] = useState([]);
+  const [dAiInput, setDAiInput] = useState("");
+  const [dAiLoading, setDAiLoading] = useState(false);
+  const [dAiKeys, setDAiKeys] = useState(null);
+  const dAiScrollRef = useRef(null);
+  const dAiInputRef = useRef(null);
+  const [dAiDragOver, setDAiDragOver] = useState(false);
+  const [dAiProv, setDAiProv] = useState("openai");
+  useEffect(() => { supaGetAIKeys().then(k => { if(k) { setDAiKeys(k); setDAiProv(k.ai_provider||"openai"); } }); }, []);
+  useEffect(() => { if(dAiScrollRef.current) dAiScrollRef.current.scrollTop = dAiScrollRef.current.scrollHeight; }, [dAiMsgs, dAiLoading]);
+
+  /* ── Drive API state (hoisted) ── */
+  const [driveFiles, setDriveFiles] = useState([]);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveError, setDriveError] = useState("");
+  const [drivePath, setDrivePath] = useState([]);
+  const [driveApiKey, setDriveApiKey] = useState(() => { try { return localStorage.getItem("uh_gdrive_apikey")||""; } catch { return ""; } });
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiKeyTmp, setApiKeyTmp] = useState("");
+  const [driveIframeErr, setDriveIframeErr] = useState(false);
+  const driveAutoLoadRef = useRef(null);
+  useEffect(() => {
+    if (!driveApiKey && supabase) {
+      supaGetSetting("google_drive_api_key").then(k => {
+        if (k) { setDriveApiKey(k); try { localStorage.setItem("uh_gdrive_apikey", k); } catch {} }
+      });
+    }
+  }, []);
   const [showPanelEditor, setShowPanelEditor] = useState(false);
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
@@ -2972,14 +3001,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         );
       }
       if(pk==="ai") {
-        /* Mini AI Chat Widget — works entirely within dashboard */
-        const [dAiMsgs, setDAiMsgs] = React.useState([]);
-        const [dAiInput, setDAiInput] = React.useState("");
-        const [dAiLoading, setDAiLoading] = React.useState(false);
-        const [dAiKeys, setDAiKeys] = React.useState(null);
-        const dAiScrollRef = React.useRef(null);
-        const dAiInputRef = React.useRef(null);
-        const [dAiDragOver, setDAiDragOver] = React.useState(false);
+        /* Mini AI Chat Widget — uses hoisted state */
         const handleAiDrop = (e) => {
           e.preventDefault(); setDAiDragOver(false);
           const raw = e.dataTransfer.getData("application/uh-drive-file");
@@ -2991,9 +3013,6 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             if(dAiInputRef.current) dAiInputRef.current.focus();
           } catch(ex) {}
         };
-
-        React.useEffect(() => { supaGetAIKeys().then(k => { setDAiKeys(k); setDAiProv(k.ai_provider||"openai"); }); }, []);
-        React.useEffect(() => { if(dAiScrollRef.current) dAiScrollRef.current.scrollTop = dAiScrollRef.current.scrollHeight; }, [dAiMsgs, dAiLoading]);
 
         const dAiSend = async (text) => {
           if(!text?.trim() || dAiLoading || !dAiKeys) return;
@@ -3022,7 +3041,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         };
 
         const presets = [{l:"Criar legenda",p:"Crie uma legenda criativa para um post de Instagram sobre "},{l:"Ideia de post",p:"Me dê 5 ideias de conteúdo para redes sociais sobre "},{l:"Roteiro Reels",p:"Escreva um roteiro curto para um Reels de 30 segundos sobre "},{l:"Hashtags",p:"Sugira 20 hashtags relevantes para um post sobre "}];
-        const [dAiProv, setDAiProv] = React.useState(dAiKeys?.ai_provider||"openai");
+        /* dAiProv hoisted */
         const provName = {openai:"GPT-4o",gemini:"Gemini",claude:"Claude"}[dAiProv]||"GPT-4o";
         const provColors = {openai:"#10A37F",gemini:"#4285F4",claude:"#D97706"};
 
@@ -3089,17 +3108,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const svcColor = driveType==="gdrive"?"#4285F4":"#0078D4";
 
         /* ── Google Drive API native file browser ── */
-        const [driveFiles, setDriveFiles] = React.useState([]);
-        const [driveLoading, setDriveLoading] = React.useState(false);
-        const [driveError, setDriveError] = React.useState("");
-        const [drivePath, setDrivePath] = React.useState([]); /* breadcrumb: [{id, name}] */
-        const [driveApiKey, setDriveApiKey] = React.useState(() => { try { return localStorage.getItem("uh_gdrive_apikey")||""; } catch { return ""; } });
-        const [showApiKeyInput, setShowApiKeyInput] = React.useState(false);
-        const [apiKeyTmp, setApiKeyTmp] = React.useState("");
+        /* Drive API state hoisted to top of HomePage */
 
         const currentFolderId = drivePath.length > 0 ? drivePath[drivePath.length-1].id : gId;
 
-        const loadDriveFiles = React.useCallback(async (folderId) => {
+        const loadDriveFiles = async (folderId) => {
           if (!folderId || !driveApiKey) return;
           setDriveLoading(true);
           setDriveError("");
@@ -3124,23 +3137,16 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             setDriveFiles([]);
           }
           setDriveLoading(false);
-        }, [driveApiKey]);
+        };
 
-        React.useEffect(() => {
-          if (isConnected && driveType==="gdrive" && gId && driveApiKey) {
-            const fid = drivePath.length > 0 ? drivePath[drivePath.length-1].id : gId;
-            loadDriveFiles(fid);
-          }
-        }, [isConnected, driveType, gId, driveApiKey, drivePath, loadDriveFiles]);
+        /* Auto-load on mount/path change */
+        const currentLoadKey = (isConnected && driveType==="gdrive" && gId && driveApiKey) ? (drivePath.length > 0 ? drivePath[drivePath.length-1].id : gId) : null;
+        if (currentLoadKey && currentLoadKey !== driveAutoLoadRef.current && !driveLoading) {
+          driveAutoLoadRef.current = currentLoadKey;
+          setTimeout(() => loadDriveFiles(currentLoadKey), 0);
+        }
 
-        /* Load API key from Supabase on mount */
-        React.useEffect(() => {
-          if (!driveApiKey && supabase) {
-            supaGetSetting("google_drive_api_key").then(k => {
-              if (k) { setDriveApiKey(k); try { localStorage.setItem("uh_gdrive_apikey", k); } catch {} }
-            });
-          }
-        }, []);
+        /* API key loaded at top-level useEffect via hoisted state */
 
         const saveApiKey = () => {
           const k = apiKeyTmp.trim();
