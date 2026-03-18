@@ -15316,7 +15316,7 @@ REGRAS:
                   </div>
                   {aiPhotoSuggestions?.keywords?.length > 0 && <div style={{ marginBottom:14 }}>
                     <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:6 }}>Termos sugeridos para buscar imagem no Google:</p>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{aiPhotoSuggestions.keywords.map((kw,i)=><span key={i} style={{ padding:"5px 12px", borderRadius:8, background:B.dark==="#fff"?"#F3F4F6":"#2A2D35", color:B.text, fontSize:11, fontWeight:600, border:`1px solid ${B.border}` }}>{kw}</span>)}</div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{aiPhotoSuggestions.keywords.map((kw,i)=><span key={i} style={{ padding:"5px 12px", borderRadius:8, background:B.accent, color:"#0D0D0D", fontSize:11, fontWeight:700 }}>{kw}</span>)}</div>
                   </div>}
                   <div style={{ marginBottom:10 }}>
                     <p style={{ fontSize:11, fontWeight:700, color:B.text, marginBottom:6 }}>Fazer upload da foto</p>
