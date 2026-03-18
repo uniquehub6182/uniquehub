@@ -10340,6 +10340,21 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                     </div>
                   ))}
                 </div>}
+                {/* Pending file preview */}
+                {pendingFile && <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", background:B.bgCard, display:"flex", alignItems:"center", gap:10 }}>
+                  <img src={pendingFile.preview} alt="" style={{ width:60, height:60, borderRadius:10, objectFit:"cover" }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:B.text }}>{pendingFile.name}</p>
+                    <p style={{ fontSize:10, color:B.muted }}>Enviar esta foto?</p>
+                  </div>
+                  <button onClick={sendPendingFile} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Enviar</button>
+                  <button onClick={()=>{setPendingFile(null);if(fileRef.current)fileRef.current.value="";}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                </div>}
+                {/* Fullscreen image viewer */}
+                {viewImage && <div onClick={()=>setViewImage(null)} style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(0,0,0,0.92)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out" }}>
+                  <button onClick={e=>{e.stopPropagation();setViewImage(null);}} style={{ position:"absolute", top:20, right:20, width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,0.15)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:10001 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                  <img src={viewImage} alt="" onClick={e=>e.stopPropagation()} style={{ maxWidth:"90vw", maxHeight:"90vh", objectFit:"contain", borderRadius:8, cursor:"default" }}/>
+                </div>}
                 <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, flexShrink:0, position:"relative" }}>
                   <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${showAttach?B.accent:B.border}`, background:showAttach?`${B.accent}10`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                   {showAttach && <div style={{ position:"absolute", bottom:"100%", left:16, marginBottom:8, background:B.bgCard, borderRadius:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:6, zIndex:10, minWidth:180 }}>
