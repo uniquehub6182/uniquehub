@@ -9240,6 +9240,14 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   const [loading, setLoading] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
+  /* @ mention state */
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionIdx, setMentionIdx] = useState(0);
+  const inputRef = useRef(null);
+  const getMuted = () => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } };
+  const isMuted = selConv ? getMuted().includes(selConv.id) : false;
+  const toggleMute = () => { if(!selConv) return; const list=getMuted(); const next=list.includes(selConv.id)?list.filter(x=>x!==selConv.id):[...list,selConv.id]; localStorage.setItem("uh_muted_convs",JSON.stringify(next)); showToast(next.includes(selConv.id)?"🔇 Silenciado":"🔔 Notificações ativadas"); };
   const typingTimeout = useRef(null);
   const typingChanRef = useRef(null);
   const chatListChanRef = useRef(null);
@@ -9373,7 +9381,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           }
           /* New message from other user via postgres_changes (broadcast may have missed) */
           if (newMsg.sender_id !== user.id) {
-            try { if (localStorage.getItem("uh_notif_sound") !== "off") { playChatNotifSound(); showBrowserNotif("Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
+            const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
+            try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
           }
           return [...prev, newMsg];
         });
@@ -9405,7 +9414,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
         if (prev.some(m => m.id === p.id)) return prev;
         if (p._broadcastId && prev.some(m => m._broadcastId === p._broadcastId)) return prev;
         /* Play notification sound */
-        try { if (localStorage.getItem("uh_notif_sound") !== "off") { playChatNotifSound(); showBrowserNotif("Nova mensagem", p.content || "Arquivo recebido"); } } catch {}
+        { const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })(); try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv?.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", p.content || "Arquivo recebido"); } } catch {} }
         return [...prev, { ...p, _fromBroadcast: true }];
       });
       clearTimeout(markReadTimer.current);
@@ -9602,8 +9611,48 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   };
 
   const handleInputChange = (e) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
     emitTyping();
+    /* Detect @ mention */
+    const cursor = e.target.selectionStart || val.length;
+    const before = val.slice(0, cursor);
+    const atMatch = before.match(/@(\w*)$/);
+    if (atMatch && selConv?.isGroup) {
+      setMentionQuery(atMatch[1].toLowerCase());
+      setShowMentions(true);
+      setMentionIdx(0);
+    } else {
+      setShowMentions(false);
+    }
+  };
+
+  const insertMention = (memberName) => {
+    const el = inputRef.current;
+    if (!el) return;
+    const cursor = el.selectionStart || input.length;
+    const before = input.slice(0, cursor);
+    const after = input.slice(cursor);
+    const atIdx = before.lastIndexOf("@");
+    const newVal = before.slice(0, atIdx) + `@${memberName} ` + after;
+    setInput(newVal);
+    setShowMentions(false);
+    setTimeout(() => { const pos = atIdx + memberName.length + 2; el.setSelectionRange(pos, pos); el.focus(); }, 10);
+  };
+
+  const mentionMembers = (selConv?.members || []).filter(m => m.id !== user.id && m.name?.toLowerCase().includes(mentionQuery));
+
+  const renderMsgContent = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(@\w+(?:\s\w+)?)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("@")) {
+        const name = part.slice(1);
+        const isMember = (selConv?.members || []).some(m => m.name?.toLowerCase() === name.toLowerCase() || m.name?.toLowerCase().startsWith(name.toLowerCase()));
+        if (isMember) return <span key={i} style={{ fontWeight:700, color:B.accent, background:`${B.accent}15`, padding:"0 3px", borderRadius:4 }}>{part}</span>;
+      }
+      return <span key={i}>{part}</span>;
+    });
   };
 
   /* Check if other user has read a message (for DMs only) */
@@ -9802,6 +9851,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
             </p>
           </div>
           <div style={{ display:"flex", gap:8 }}>
+            <button onClick={toggleMute} title={isMuted?"Ativar notificações":"Silenciar"} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              {isMuted ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M16.5 12A4.5 4.5 0 0012 7.5"/><path d="M18 8.5V3l-6 4.5"/><path d="M2 2l20 20"/><path d="M12 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-4a2 2 0 012-2h6z"/></svg>
+                : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>}
+            </button>
 
             {user?.supaRole==="admin" && <button onClick={async()=>{if(!confirm(`Excluir "${convName}"?`))return;const ok=await supaDeleteConversation(selConv.id);if(ok){setConvs(prev=>prev.filter(c=>c.id!==selConv.id));setSelConv(null);setMsgs([]);setView("list");showToast("Excluído ✓");}else showToast("Erro ao excluir");}} style={{ width:38, height:38, borderRadius:"50%", border:`1.5px solid ${B.red}30`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.red} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
@@ -9848,7 +9901,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                         )
                       ) : (
                         <>
-                          {m.content}
+                          {renderMsgContent(m.content)}
                           {m.reactions && Object.keys(m.reactions).length>0 && (
                             <div style={{ display:"flex", flexWrap:"wrap", gap:3, marginTop:4 }}>
                               {Object.entries(m.reactions).map(([emoji,users])=>users.length>0&&(
@@ -9893,6 +9946,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           </div>
           <button onClick={()=>setReplyTo(null)} style={{ width:24, height:24, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>}
+        {/* @ MENTION POPUP */}
+        {showMentions && mentionMembers.length > 0 && <div style={{ padding:"6px 14px", background:B.bgCard, borderTop:`1px solid ${B.border}`, maxHeight:160, overflowY:"auto" }}>
+          {mentionMembers.map((m, i) => (
+            <div key={m.id} onClick={() => insertMention(m.name)} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 8px", borderRadius:8, cursor:"pointer", background: i === mentionIdx ? `${B.accent}15` : "transparent" }}>
+              <Av src={m.photo} name={m.name} sz={28} fs={10} />
+              <div><p style={{ fontSize:12, fontWeight:600, color:B.text }}>{m.name}</p>{m.role && <p style={{ fontSize:9, color:B.muted }}>{m.role}</p>}</div>
+            </div>
+          ))}
+        </div>}
         {/* INPUT BAR */}
         <div style={{ padding:contained?"8px 10px":`10px 14px calc(14px + env(safe-area-inset-bottom,0px))`, background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, boxShadow:chatIsDesktop?"none":contained?"none":`0 0 0 100px ${B.bgCard}`, marginBottom:contained?0:chatIsDesktop?100:80 }}>
           {isRecording ? (
@@ -9918,7 +9980,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
               )}
-              <input value={input} onChange={handleInputChange} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none" }}/>
+              <input ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={e=>{if(showMentions&&mentionMembers.length){if(e.key==="ArrowDown"){e.preventDefault();setMentionIdx(p=>(p+1)%mentionMembers.length);}else if(e.key==="ArrowUp"){e.preventDefault();setMentionIdx(p=>(p-1+mentionMembers.length)%mentionMembers.length);}else if(e.key==="Enter"){e.preventDefault();insertMention(mentionMembers[mentionIdx]?.name);return;}else if(e.key==="Escape"){setShowMentions(false);return;}}if(e.key==="Enter")sendMsg();}} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none" }}/>
               {input.trim() ? (
                 <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -10176,6 +10238,15 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                   </div>
                   <button onClick={()=>setReplyTo(null)} style={{ width:24, height:24, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>}
+                {/* Desktop @ mention popup */}
+                {showMentions && mentionMembers.length > 0 && <div style={{ borderTop:`1px solid ${B.border}`, padding:"6px 16px", background:B.bgCard, maxHeight:140, overflowY:"auto" }}>
+                  {mentionMembers.map((m, i) => (
+                    <div key={m.id} onClick={() => insertMention(m.name)} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 8px", borderRadius:8, cursor:"pointer", background: i === mentionIdx ? `${B.accent}15` : "transparent" }}>
+                      <Av src={m.photo} name={m.name} sz={28} fs={10} />
+                      <div><p style={{ fontSize:12, fontWeight:600, color:B.text }}>{m.name}</p>{m.role && <p style={{ fontSize:9, color:B.muted }}>{m.role}</p>}</div>
+                    </div>
+                  ))}
+                </div>}
                 <div style={{ borderTop:`1px solid ${B.border}`, padding:"10px 16px", display:"flex", alignItems:"center", gap:8, background:B.bgCard, flexShrink:0, position:"relative" }}>
                   <button onClick={()=>setShowAttach(!showAttach)} style={{ width:36, height:36, borderRadius:"50%", border:`1.5px solid ${showAttach?B.accent:B.border}`, background:showAttach?`${B.accent}10`:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAttach?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                   {showAttach && <div style={{ position:"absolute", bottom:"100%", left:16, marginBottom:8, background:B.bgCard, borderRadius:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)", border:`1px solid ${B.border}`, padding:6, zIndex:10, minWidth:180 }}>
@@ -10193,7 +10264,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                     </div>
                     <button onClick={stopRecording} style={{ width:40, height:40, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
                   </> : <>
-                    <input value={input} onChange={handleInputChange} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
+                    <input ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={e=>{if(showMentions&&mentionMembers.length){if(e.key==="ArrowDown"){e.preventDefault();setMentionIdx(p=>(p+1)%mentionMembers.length);}else if(e.key==="ArrowUp"){e.preventDefault();setMentionIdx(p=>(p-1+mentionMembers.length)%mentionMembers.length);}else if(e.key==="Enter"){e.preventDefault();insertMention(mentionMembers[mentionIdx]?.name);return;}else if(e.key==="Escape"){setShowMentions(false);return;}}if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
                     {input.trim() ? <button onClick={sendMsg} style={{ width:40, height:40, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
                     : <button onClick={startRecording} style={{ width:40, height:40, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>}
                   </>}
