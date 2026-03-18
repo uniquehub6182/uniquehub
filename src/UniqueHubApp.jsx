@@ -2621,10 +2621,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const driveAutoLoadRef = useRef(null);
 
   /* ── Contained Content mini-app state (hoisted) ── */
-  const [cView, setCView] = useState("kanban"); /* kanban | detail | create */
-  const [cSel, setCSel] = useState(null);
-  const [cCreateType, setCCreateType] = useState(null);
-  const [cForm, setCForm] = useState({});
+  /* moved to ContentPage */
   useEffect(() => {
     if (!driveApiKey && supabase) {
       supaGetSetting("google_drive_api_key").then(k => {
@@ -6841,6 +6838,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const canAccessFn = ca || (() => true);
   const isContentDesktop = forceMobile ? false : (typeof document !== "undefined" && document.documentElement.classList.contains("uh-desktop"));
   const contained = !!forceMobile;
+  /* ── Contained mini-app state ── */
+  const [cView, setCView] = useState("kanban");
+  const [cSel, setCSel] = useState(null);
+  const [cCreateType, setCCreateType] = useState(null);
+  const [cForm, setCForm] = useState({});
   const CDATA = propClients || [];
   const TEAM = propTeam || [];
   const [filter, setFilter] = useState("all");
