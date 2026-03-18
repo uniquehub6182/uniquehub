@@ -9322,8 +9322,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     if (!selConv?.id || !supabase) return;
     let channel;
     const load = async () => {
-      const m = await supaLoadMessages(selConv.id, 100);
+      const m = await supaLoadMessages(selConv.id, 200);
       setMsgs(m);
+      isNearBottom.current = true; /* Reset on conversation change — always scroll to bottom on first load */
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom(false)));
       supaMarkRead(selConv.id, user.id, typingChanRef.current);
       channel = supabase.channel(`msgs-${selConv.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
         const newMsg = payload.new;
@@ -9401,7 +9403,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
   React.useEffect(() => {
     if (!selConv?.id || !supabase) return;
     const poll = setInterval(async () => {
-      const freshMsgs = await supaLoadMessages(selConv.id, 100);
+      const freshMsgs = await supaLoadMessages(selConv.id, 200);
       if (freshMsgs && freshMsgs.length > 0) {
         setMsgs(prev => {
           /* Only update if there are new messages we don't have */
