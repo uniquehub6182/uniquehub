@@ -9363,28 +9363,29 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
       channel = supabase.channel(`msgs-${selConv.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
         const newMsg = payload.new;
         setMsgs(prev => {
-          if (prev.find(m => m.id === newMsg.id)) return prev;
-          /* Replace oldest optimistic message from same sender (FIFO order) */
+          /* ROBUST DEDUP: skip if real ID already exists */
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          /* For own messages: sendMsg already replaced the optimistic msg — but if not yet, do it here */
           if (newMsg.sender_id === user.id) {
-            const optIdx = prev.findIndex(m => m._optimistic && !m._failed && m.sender_id === user.id);
+            const optIdx = prev.findIndex(m => m._optimistic && m.sender_id === user.id && m.content === newMsg.content);
             if (optIdx !== -1) {
               const updated = [...prev];
-              updated[optIdx] = { ...newMsg, profiles: prev[optIdx].profiles };
+              updated[optIdx] = { ...newMsg, profiles: prev[optIdx].profiles || newMsg.profiles };
               return updated;
             }
+            /* sendMsg already confirmed this — skip */
+            return prev;
           }
-          /* Replace broadcast message with DB-confirmed one */
+          /* Other user's message — check if broadcast already added it */
           const bcIdx = prev.findIndex(m => m._fromBroadcast && m.id === newMsg.id);
           if (bcIdx !== -1) {
             const updated = [...prev];
             updated[bcIdx] = { ...newMsg, profiles: prev[bcIdx].profiles || newMsg.profiles };
             return updated;
           }
-          /* New message from other user via postgres_changes (broadcast may have missed) */
-          if (newMsg.sender_id !== user.id) {
-            const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
-            try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
-          }
+          /* Truly new message from other user */
+          const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
+          try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", newMsg.content || "Arquivo recebido"); } } catch {}
           return [...prev, newMsg];
         });
         /* Debounce markRead — wait 500ms of no new messages before writing */
@@ -9411,9 +9412,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     }).on("broadcast", { event: "new_msg" }, ({ payload: p }) => {
       if (!p || p.sender_id === user.id) return;
       setMsgs(prev => {
-        /* Robust dedup: check by id */
+        /* Robust dedup: check by id AND by content+sender to catch edge cases */
         if (prev.some(m => m.id === p.id)) return prev;
-        if (p._broadcastId && prev.some(m => m._broadcastId === p._broadcastId)) return prev;
+        if (prev.some(m => !m._optimistic && m.content === p.content && m.sender_id === p.sender_id && Math.abs(new Date(m.created_at) - new Date(p.created_at)) < 3000)) return prev;
         /* Play notification sound */
         { const muted = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })(); try { if (localStorage.getItem("uh_notif_sound") !== "off" && !muted.includes(selConv?.id)) { playChatNotifSound(); showBrowserNotif("Nova mensagem", p.content || "Arquivo recebido"); } } catch {} }
         return [...prev, { ...p, _fromBroadcast: true }];
@@ -9573,23 +9574,35 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     const _replyToMsg = replyTo;
     setInput("");
     setReplyTo(null);
+    setShowMentions(false);
     /* Optimistic: show immediately */
-    const optimistic = { id: `opt-${Date.now()}-${Math.random().toString(36).slice(2,5)}`, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, reply_to: _replyToMsg?.id || null, _replyToMsg, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true, _optSeq: Date.now() };
+    const optId = `opt-${Date.now()}-${Math.random().toString(36).slice(2,5)}`;
+    const optimistic = { id: optId, conversation_id: selConv.id, sender_id: user.id, content: text, file_url: null, file_name: null, file_type: null, pinned: false, reactions: {}, reply_to: _replyToMsg?.id || null, _replyToMsg, created_at: new Date().toISOString(), profiles: { name: user.name, email: user.email }, _optimistic: true, _optContent: text };
     setMsgs(prev => [...prev, optimistic]);
     /* Send to DB + broadcast for instant delivery */
-    const _bcastId = `bc-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     try {
       const result = await supaSendMessage(selConv.id, user.id, text, null, null, null, _replyToMsg?.id);
       if (!result) {
-        console.error("Chat: sendMsg returned null — check RLS policies or Realtime config");
-        showToast("Erro ao enviar — verifique conexão");
-        setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+        console.error("Chat: sendMsg returned null");
+        showToast("Erro ao enviar");
+        setMsgs(prev => prev.map(m => m.id === optId ? { ...m, _failed: true } : m));
       } else {
-        /* Broadcast to other participants for instant delivery */
+        /* Replace optimistic with confirmed — use content match as fallback */
+        setMsgs(prev => {
+          const idx = prev.findIndex(m => m.id === optId);
+          if (idx !== -1) {
+            const updated = [...prev];
+            updated[idx] = { ...result, profiles: prev[idx].profiles || result.profiles };
+            return updated;
+          }
+          /* Already replaced by realtime — just ensure no dup */
+          if (prev.some(m => m.id === result.id)) return prev;
+          return [...prev, result];
+        });
+        /* Broadcast to other participants */
         if (typingChanRef.current) {
-          typingChanRef.current.send({ type: "broadcast", event: "new_msg", payload: { ...result, _broadcastId: _bcastId } });
+          typingChanRef.current.send({ type: "broadcast", event: "new_msg", payload: { ...result } });
         }
-        /* Broadcast to update conversation list for other users */
         if (chatListChanRef.current) {
           chatListChanRef.current.send({ type: "broadcast", event: "chat_update", payload: { ...result } });
         }
@@ -9597,7 +9610,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     } catch(err) {
       console.error("Chat: sendMsg error:", err);
       showToast("Erro ao enviar mensagem");
-      setMsgs(prev => prev.map(m => m.id === optimistic.id ? { ...m, _failed: true } : m));
+      setMsgs(prev => prev.map(m => m.id === optId ? { ...m, _failed: true } : m));
     }
   };
 
