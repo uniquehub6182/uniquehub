@@ -8480,7 +8480,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
                           onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
                           onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+`\n📎 ${f.name}: ${f.webViewLink}`;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast(`📎 ${f.name} anexado a "${d.title}"`)}catch{}}}}
-                          onClick={e=>{e.stopPropagation();setExpandedId(expandedId===d.id?null:d.id);setSel(d);}}
+                          onClick={e=>{e.stopPropagation();goTab("content");}}
                           style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
                           onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
                           onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
