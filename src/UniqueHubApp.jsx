@@ -2948,13 +2948,16 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     const noop = () => {};
 
     /* ── Phone frame: wraps a real mobile page inside a contained block ── */
-    const phoneFrame = (title, iconKey, openFn, children) => (
+    const phoneFrame = (title, iconKey, openFn, children, onAdd) => (
       <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
         <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>{title}</span></div>
-          <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            {onAdd && <button onClick={onAdd} style={{width:22,height:22,borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>}
+            <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+          </div>
         </div>
-        <div className="phone-viewport" style={{flex:1,overflow:"hidden",position:"relative",display:"flex",flexDirection:"column"}}>{children}</div>
+        <div className="phone-viewport" style={{flex:1,overflow:"auto",position:"relative",display:"flex",flexDirection:"column"}}>{children}</div>
       </div>
     );
 
@@ -2995,7 +2998,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 {dpNews.length===0 && <div style={{gridColumn:"1/-1",textAlign:"center",padding:30}}><p style={{fontSize:12,color:"#9CA3AF"}}>Nenhuma notícia publicada</p></div>}
               </div>}
             </div>
-          </div>);
+          </div>, ()=>{sessionStorage.setItem("uh_news_create","1");goSub("news");});
       }
       if(pk==="ai") {
         /* Mini AI Chat Widget — uses hoisted state */
