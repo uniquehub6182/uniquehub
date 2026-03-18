@@ -2953,7 +2953,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>{title}</span></div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            {onAdd && <button onClick={onAdd} style={{width:22,height:22,borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>}
+            {onAdd && <button onClick={onAdd} style={{padding:"3px 10px",borderRadius:8,border:"none",background:B.accent,display:"flex",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer",fontSize:10,fontWeight:700,color:"#0D0D0D",fontFamily:"inherit"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo</button>}
             <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
           </div>
         </div>
@@ -8177,13 +8177,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
   const totalCount = demands.length;
   return (
-    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?0:"100%", flex:contained?1:"initial", display:"flex", flexDirection:"column", position:"static", overflow:"visible" }}>
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?0:"100%", flex:contained?1:"initial", display:"flex", flexDirection:"column", position:contained?"relative":"static", overflow:contained?(sel||creating?"hidden":"visible"):"visible" }}>
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
       {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
         <span style={{fontSize:13,fontWeight:700,color:B.text}}>{totalCount} demanda{totalCount!==1?"s":""}</span>
-        <button onClick={()=>{ if(goTabProp) goTabProp("content"); else { setCreating(true);setCreateType(null);setForm({}); } }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
+        <button onClick={()=>{ setCreating(true);setCreateType(null);setForm({}); }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
       </div>}
 
       {/* Quick Publish button (mobile only) */}
@@ -8414,7 +8414,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           <div key={d.id} draggable
                             onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.5"; }}
                             onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
-                            onClick={() => contained && goTabProp ? goTabProp("content", d.id) : setSel(d)}
+                            onClick={() => setSel(d)}
                             style={{ background:"#fff", borderRadius:14, padding:"12px 14px", border:"1px solid rgba(0,0,0,0.06)", cursor:"grab", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", transition:"box-shadow .15s" }}
                             onMouseEnter={e => e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)"}
                             onMouseLeave={e => e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)"}
@@ -8487,7 +8487,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
                           onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
                           onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
                           onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+"\n📎 "+f.name+": "+f.webViewLink;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast("📎 "+f.name+" anexado")}catch{}}}}
-                          onClick={e=>{e.stopPropagation(); contained && goTabProp ? goTabProp("content", d.id) : setSel(d);}}
+                          onClick={e=>{e.stopPropagation();setSel(d);}}
                           style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
                           onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
                           onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
@@ -14980,7 +14980,7 @@ REGRAS:
       <Card onClick={()=>startCreation("ai")} style={{ cursor:"pointer", border:`1.5px solid ${B.accent}30`, background:`${B.accent}04` }}>
         <div style={{ display:"flex", alignItems:"center", gap:12 }}>
           <div style={{ width:44, height:44, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, flexShrink:0 }}>{IC.ai(B.accent)}</div>
-          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar com IA</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Cole o link de uma notícia e a IA reescreve no estilo Unique</p></div>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>Criar com Munique A.I</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Cole o link de uma notícia e a assistente inteligente reescreve no estilo Unique</p></div>
           {IC.chev()}
         </div>
       </Card>
@@ -14990,7 +14990,7 @@ REGRAS:
   /* ── AI CREATION FLOW ── */
   if (aiMode && !isNewsDesktop) return (
     <div className="pg">{ToastEl}
-      <Head title="Criar com IA" onBack={()=>{setAiMode(false);setAiStep("url");setAiLoading(false);}} />
+      <Head title="Escreva com Munique A.I" onBack={()=>{setAiMode(false);setAiStep("url");setAiLoading(false);}} />
       <Card style={{ textAlign:"center", padding:20, marginBottom:12 }}>
         <div style={{ width:48, height:48, borderRadius:14, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px", color:B.accent }}>{IC.ai(B.accent)}</div>
         <h3 style={{ fontSize:15, fontWeight:800 }}>{aiStep==="loading"?"Gerando notícia...":aiStep==="photo"?"Notícia gerada!":"Notícia com assistência de IA"}</h3>
@@ -15293,16 +15293,16 @@ REGRAS:
           {/* ── Create panel ── */}
           {isCreating && <div style={{ width:400, flexShrink:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:"18px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <p style={{ fontSize:18, fontWeight:800 }}>{aiMode?"🤖 IA Reescrever":creating?"✍️ Novo Artigo":"Criar"}</p>
+              <p style={{ fontSize:18, fontWeight:800 }}>{aiMode?"Munique A.I":creating?"Novo Artigo":"Criar"}</p>
               <button onClick={()=>{setShowCreateChoice(false);setCreating(false);setAiMode(false);setForm({});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div style={{ flex:1, overflowY:"auto", padding:"20px 22px" }}>
               {showCreateChoice && !creating && !aiMode && <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
                 <div onClick={()=>startCreation("manual")} style={{ padding:"28px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                  <p style={{ fontSize:28, marginBottom:8 }}>✍️</p><p style={{ fontSize:17, fontWeight:800 }}>Escrever</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Crie do zero</p>
+                  <p style={{ fontSize:28, marginBottom:8 }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></p><p style={{ fontSize:17, fontWeight:800 }}>Escrever</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Crie do zero</p>
                 </div>
                 <div onClick={()=>startCreation("ai")} style={{ padding:"28px 20px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", textAlign:"center", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#6366F1";e.currentTarget.style.background="#6366F106";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                  <p style={{ fontSize:28, marginBottom:8 }}>🤖</p><p style={{ fontSize:17, fontWeight:800 }}>IA Reescrever</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Cole um link</p>
+                  <p style={{ fontSize:28, marginBottom:8 }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a5 5 0 015 5v3H7V7a5 5 0 015-5z"/><rect x="3" y="10" width="18" height="12" rx="2"/><circle cx="12" cy="16" r="1"/></svg></p><p style={{ fontSize:17, fontWeight:800 }}>Munique A.I</p><p style={{ fontSize:13, color:B.muted, marginTop:6 }}>Cole um link</p>
                 </div>
               </div>}
               {aiMode && <>
