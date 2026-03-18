@@ -2979,6 +2979,18 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const [dAiKeys, setDAiKeys] = React.useState(null);
         const dAiScrollRef = React.useRef(null);
         const dAiInputRef = React.useRef(null);
+        const [dAiDragOver, setDAiDragOver] = React.useState(false);
+        const handleAiDrop = (e) => {
+          e.preventDefault(); setDAiDragOver(false);
+          const raw = e.dataTransfer.getData("application/uh-drive-file");
+          if (!raw) return;
+          try {
+            const f = JSON.parse(raw);
+            const msg = `Analise este arquivo do Drive: "${f.name}" — ${f.webViewLink}`;
+            setDAiInput(msg);
+            if(dAiInputRef.current) dAiInputRef.current.focus();
+          } catch(ex) {}
+        };
 
         React.useEffect(() => { supaGetAIKeys().then(k => { setDAiKeys(k); setDAiProv(k.ai_provider||"openai"); }); }, []);
         React.useEffect(() => { if(dAiScrollRef.current) dAiScrollRef.current.scrollTop = dAiScrollRef.current.scrollHeight; }, [dAiMsgs, dAiLoading]);
@@ -3015,7 +3027,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const provColors = {openai:"#10A37F",gemini:"#4285F4",claude:"#D97706"};
 
         return (
-          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+          <div className="phone-block" onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect="copy";setDAiDragOver(true);}} onDragLeave={()=>setDAiDragOver(false)} onDrop={handleAiDrop} style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:dAiDragOver?`2px solid ${B.accent}`:`1px solid ${B.border}`,boxShadow:dAiDragOver?`0 0 20px ${B.accent}30`:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column",transition:"border .15s, box-shadow .15s",position:"relative"}}>
+            {dAiDragOver && <div style={{position:"absolute",inset:0,background:`${B.accent}10`,zIndex:10,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--uh-radius)"}}><div style={{padding:"14px 24px",borderRadius:14,background:B.accent,color:"#0D0D0D",fontSize:13,fontWeight:700,boxShadow:`0 4px 20px ${B.accent}40`}}>📄 Soltar arquivo aqui</div></div>}
             <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("ai",13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>Assistente IA</span></div>
               <div style={{display:"flex",gap:4,alignItems:"center"}}>
@@ -3268,7 +3281,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                   {driveError && <div style={{padding:20,textAlign:"center"}}><p style={{fontSize:12,color:"#EF4444",marginBottom:8}}>{driveError}</p><button onClick={()=>loadDriveFiles(currentFolderId)} style={{fontSize:11,color:B.accent,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Tentar novamente</button></div>}
                   {!driveLoading && !driveError && driveFiles.length === 0 && <div style={{padding:30,textAlign:"center"}}><p style={{fontSize:12,color:B.muted}}>Pasta vazia</p></div>}
                   {!driveLoading && driveFiles.map(f => (
-                    <div key={f.id} onClick={()=>{ if(isFolder(f)) navigateToFolder(f); else if(f.webViewLink) window.open(f.webViewLink,"_blank"); }} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",borderBottom:`1px solid ${B.border}08`,transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}06`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div key={f.id} draggable={!isFolder(f)} onDragStart={e=>{if(isFolder(f)){e.preventDefault();return;}e.dataTransfer.setData("application/uh-drive-file",JSON.stringify({id:f.id,name:f.name,mimeType:f.mimeType,webViewLink:f.webViewLink||"",size:f.size||""}));e.dataTransfer.effectAllowed="copy";}} onClick={()=>{ if(isFolder(f)) navigateToFolder(f); else if(f.webViewLink) window.open(f.webViewLink,"_blank"); }} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:isFolder(f)?"pointer":"grab",borderBottom:`1px solid ${B.border}08`,transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}06`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                       <span style={{fontSize:18,flexShrink:0,width:24,textAlign:"center"}}>{getFileIcon(f)}</span>
                       <div style={{flex:1,minWidth:0}}>
                         <p style={{fontSize:12,fontWeight:isFolder(f)?600:500,color:isFolder(f)?B.accent:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</p>
@@ -3277,7 +3290,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                           {f.size && <span style={{fontSize:9,color:B.muted}}>{formatSize(f.size)}</span>}
                         </div>
                       </div>
-                      {isFolder(f) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
+                      {isFolder(f) ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" opacity="0.4"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>}
                     </div>
                   ))}
                 </div>
