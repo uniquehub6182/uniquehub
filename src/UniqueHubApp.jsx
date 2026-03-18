@@ -9324,9 +9324,14 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     const load = async () => {
       const m = await supaLoadMessages(selConv.id, 200);
       setMsgs(m);
-      isNearBottom.current = true; /* Reset on conversation change — always scroll to bottom on first load */
+      isNearBottom.current = true;
       requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom(false)));
-      supaMarkRead(selConv.id, user.id, typingChanRef.current);
+      /* Mark as read only after 1.5 seconds — gives time to actually see messages */
+      clearTimeout(markReadTimer.current);
+      markReadTimer.current = setTimeout(() => {
+        supaMarkRead(selConv.id, user.id, typingChanRef.current);
+        setConvs(p => p.map(c => c.id === selConv.id ? { ...c, unread: 0 } : c));
+      }, 1500);
       channel = supabase.channel(`msgs-${selConv.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selConv.id}` }, (payload) => {
         const newMsg = payload.new;
         setMsgs(prev => {
@@ -20916,7 +20921,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     if (!canAccess(tab)) { setTab("home"); replaceHash("home", null); }
     if (sub && !canAccess(sub)) { setSub(null); replaceHash(tab, null); }
   }, [tab, sub, userJobTitle, rolePermsMap]);
-  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); pushHash(k, null); if (initialId) setPendingOpenId(initialId); if (k === "chat") clearChatBadge(); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
+  const goTab = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setTab(k); setSub(null); setMore(false); pushHash(k, null); if (initialId) setPendingOpenId(initialId); if (k === "content") clearDemandBadge(); requestAnimationFrame(() => { if (mainContentRef.current) mainContentRef.current.scrollTop = 0; }); };
   const [pendingSubId, setPendingSubId] = useState(null);
   const goSub = (k, initialId) => { if (!canAccess(k)) { mainToast("Acesso restrito pelo administrador"); return; } setSub(k); setMore(false); pushHash(tab, k); if (initialId) setPendingSubId(initialId); };
   const isDesktop = useIsDesktop();
