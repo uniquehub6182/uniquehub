@@ -3077,10 +3077,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         const embedSrc = gId?`https://drive.google.com/embeddedfolderview?id=${gId}#list`:odEmbed;
         const svcLabel = driveType==="gdrive"?"Google Drive":driveType==="onedrive"?"OneDrive":"Drive / Nuvem";
         const svcColor = driveType==="gdrive"?"#4285F4":"#0078D4";
+        const [driveIframeErr, setDriveIframeErr] = React.useState(false);
         return (
           <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
             <div style={{padding:"6px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,svcColor)}<span style={{fontSize:12,fontWeight:700,color:"#1A1D23"}}>{svcLabel}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("drive",13,svcColor)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>{svcLabel}</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 {isConnected&&<button onClick={()=>{setDriveUrl("");setDriveType("");localStorage.removeItem("uh_drive_url");localStorage.removeItem("uh_drive_type");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#EF4444"}}>Desconectar</button>}
                 {isConnected&&<button onClick={()=>{setDriveTmp(driveUrl);setDriveEditing(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"#9CA3AF"}}>⚙️</button>}
@@ -3090,7 +3091,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <div style={{flex:1,overflow:"hidden",position:"relative"}}>
               {driveEditing ? (
                 <div style={{padding:20,textAlign:"center"}}>
-                  <p style={{fontSize:14,fontWeight:700,color:"#1A1D23",marginBottom:4}}>{driveType==="onedrive"?"Conectar OneDrive":"Conectar Google Drive"}</p>
+                  <p style={{fontSize:14,fontWeight:700,color:B.text,marginBottom:4}}>{driveType==="onedrive"?"Conectar OneDrive":"Conectar Google Drive"}</p>
                   {driveType==="onedrive" ? <>
                     <p style={{fontSize:11,color:"#8B8F92",marginBottom:6,lineHeight:1.5}}>Cole o link de compartilhamento da pasta:</p>
                     <div style={{textAlign:"left",fontSize:10,color:"#8B8F92",lineHeight:1.7,marginBottom:12,padding:"10px 14px",background:"#F7F8FA",borderRadius:10}}>
@@ -3101,29 +3102,29 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                   </> : <p style={{fontSize:11,color:"#8B8F92",marginBottom:12}}>Cole o link da pasta compartilhada do Google Drive</p>}
                   <input value={driveTmp} onChange={e=>setDriveTmp(e.target.value)} placeholder={driveType==="onedrive"?"https://onedrive.live.com/embed?...":"https://drive.google.com/drive/folders/..."} style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid "+B.border,fontFamily:"inherit",fontSize:12,color:B.text,outline:"none",boxSizing:"border-box",marginBottom:8}} />
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);supaSetSetting("drive_config",JSON.stringify({url:driveTmp,type:t}));setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:"#C6F135",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#1A1D23"}}>Salvar</button>
+                    <button onClick={()=>{const t=driveTmp.includes("onedrive")||driveTmp.includes("sharepoint")||driveTmp.includes("1drv.ms")?"onedrive":"gdrive";setDriveUrl(driveTmp);setDriveType(t);localStorage.setItem("uh_drive_url",driveTmp);localStorage.setItem("uh_drive_type",t);supaSetSetting("drive_config",JSON.stringify({url:driveTmp,type:t}));setDriveEditing(false);}} style={{flex:1,padding:"10px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Salvar</button>
                     <button onClick={()=>setDriveEditing(false)} style={{padding:"10px 16px",borderRadius:12,background:"#f1f1f1",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#666"}}>Cancelar</button>
                   </div>
                 </div>
-              ) : embedSrc && driveType==="gdrive" ? (
-                <iframe src={embedSrc} style={{width:"100%",height:"100%",border:"none"}} title={svcLabel} allow="fullscreen" onError={()=>{}} />
-              ) : isConnected && driveType==="onedrive" ? (
+              ) : embedSrc && !driveIframeErr ? (
+                <iframe src={embedSrc} style={{width:"100%",height:"100%",border:"none",background:"#fff"}} title={svcLabel} allow="fullscreen" referrerPolicy="no-referrer" onLoad={e=>{try{if(!e.target.contentDocument&&!e.target.contentWindow)setDriveIframeErr(true);}catch(x){}}} onError={()=>setDriveIframeErr(true)} />
+              ) : isConnected ? (
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:24,textAlign:"center"}}>
-                  <div style={{width:64,height:64,borderRadius:16,background:"#0078D4",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M14 2l-3.5 6h9L16 2h-2zM3 14l3.5-6h7L10 2H7L3 14zm5.5 0L5 14l3.5 6h9l3.5-6H8.5z" fill="#fff" opacity="0.9"/></svg>
+                  <div style={{width:64,height:64,borderRadius:16,background:svcColor,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
+                    {driveType==="gdrive"?<svg width="28" height="28" viewBox="0 0 24 24" fill="none"><polygon points="12,2 2,18 6,18 16,2" fill="#fff" opacity="0.7"/><polygon points="22,18 12,2 8,2 18,18" fill="#fff" opacity="0.9"/><polygon points="2,18 22,18 19,22 5,22" fill="#fff" opacity="0.8"/></svg>:<svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M14 2l-3.5 6h9L16 2h-2zM3 14l3.5-6h7L10 2H7L3 14zm5.5 0L5 14l3.5 6h9l3.5-6H8.5z" fill="#fff" opacity="0.9"/></svg>}
                   </div>
-                  <p style={{fontSize:15,fontWeight:800,color:"#1A1D23",marginBottom:4}}>OneDrive conectado</p>
-                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:20,lineHeight:1.5}}>O OneDrive não permite visualização incorporada.<br/>Acesse seus arquivos diretamente pelo botão abaixo.</p>
-                  <a href={driveUrl} target="_blank" rel="noopener" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"12px 24px",borderRadius:14,background:"#0078D4",color:"#fff",fontFamily:"inherit",fontSize:13,fontWeight:700,textDecoration:"none",boxShadow:"0 4px 16px rgba(0,120,212,0.3)"}}>
+                  <p style={{fontSize:15,fontWeight:800,color:B.text,marginBottom:4}}>{svcLabel} conectado</p>
+                  <p style={{fontSize:11,color:B.muted,marginBottom:20,lineHeight:1.5}}>{driveIframeErr?"O embed não carregou automaticamente.":"Acesse seus arquivos:"}</p>
+                  <a href={driveUrl} target="_blank" rel="noopener" style={{display:"inline-flex",alignItems:"center",gap:8,padding:"12px 24px",borderRadius:14,background:svcColor,color:"#fff",fontFamily:"inherit",fontSize:13,fontWeight:700,textDecoration:"none",boxShadow:`0 4px 16px ${svcColor}40`}}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-                    Abrir OneDrive
+                    Abrir {svcLabel}
                   </a>
                 </div>
               ) : (
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
                   <div style={{width:56,height:56,borderRadius:16,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,"#9CA3AF")}</div>
-                  <p style={{fontSize:15,fontWeight:800,color:"#1A1D23",marginBottom:6}}>Conectar Drive</p>
-                  <p style={{fontSize:11,color:"#8B8F92",marginBottom:20,lineHeight:1.5}}>Acesse os arquivos da agência em tempo real</p>
+                  <p style={{fontSize:15,fontWeight:800,color:B.text,marginBottom:6}}>Conectar Drive</p>
+                  <p style={{fontSize:11,color:B.muted,marginBottom:20,lineHeight:1.5}}>Acesse os arquivos da agência em tempo real</p>
                   <div style={{display:"flex",flexDirection:"column",gap:10,width:"100%",maxWidth:280}}>
                     <button onClick={()=>{setDriveType("gdrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"12px",borderRadius:14,background:B.bgCard,border:"1.5px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.text,display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#4285F4 25%,#34A853 25%,#34A853 50%,#FBBC05 50%,#FBBC05 75%,#EA4335 75%)",flexShrink:0}} />
@@ -4979,10 +4980,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               {filter === "ranking" ? <>{ranked.map((c,i) => {
                 const z = c.zone; const isActive = sel?.id === c.id;
                 return (<div key={c.id} onClick={()=>{setSel(c);setProfileTab("info");}} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:12,cursor:"pointer",background:isActive?`${B.accent}08`:"transparent",border:isActive?`1.5px solid ${B.accent}30`:"1.5px solid transparent",marginBottom:3}}>
-                  <div style={{width:22,height:22,borderRadius:11,background:i<3?LIME:`${B.muted}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:10,fontWeight:900,color:i<3?"#0D0D0D":B.muted}}>{i+1}</span></div>
+                  <div style={{width:22,height:22,borderRadius:11,background:i<3?B.accent:`${B.muted}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:10,fontWeight:900,color:i<3?"#0D0D0D":B.muted}}>{i+1}</span></div>
                   <Av src={c.logo} name={c.name} sz={32} fs={12} />
                   <div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:isActive?700:500,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p><span style={{fontSize:8,padding:"1px 5px",borderRadius:3,background:`${z.c}20`,color:z.c,fontWeight:700}}>{z.n}</span></div>
-                  <span style={{fontSize:14,fontWeight:900,color:i<3?LIME:B.text,flexShrink:0}}>{c.growthScore}</span>
+                  <span style={{fontSize:14,fontWeight:900,color:i<3?B.accent:B.text,flexShrink:0}}>{c.growthScore}</span>
                 </div>);
               })}</> : <>{filtered.map((c,i) => {
                 const socialCount = Object.values(c.socials||{}).filter(s=>s.connected).length;
@@ -5306,7 +5307,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               return <div key={c.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                 <Av src={c.logo} name={c.name} sz={sz} fs={sz*0.38} />
                 <p style={{fontSize:pos===1?13:11,fontWeight:700,color:B.text,textAlign:"center",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>
-                <div style={{width:pos===1?80:65,height:h,borderRadius:"12px 12px 0 0",background:pos===1?LIME:pos===2?`${LIME}60`:`${LIME}30`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                <div style={{width:pos===1?80:65,height:h,borderRadius:"12px 12px 0 0",background:pos===1?B.accent:pos===2?`${B.accent}60`:`${B.accent}30`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
                   <span style={{fontSize:pos===1?20:16}}>{medal}</span>
                   <span style={{fontSize:pos===1?18:14,fontWeight:900,color:"#0D0D0D"}}>{c.growthScore}</span>
                 </div>
@@ -5318,7 +5319,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             return (
               <Card key={c.id} delay={i*0.02} onClick={()=>setSel(c)} style={{marginTop:i?6:0,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:28,height:28,borderRadius:14,background:i<3?LIME:`${B.muted}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <div style={{width:28,height:28,borderRadius:14,background:i<3?B.accent:`${B.muted}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                     <span style={{fontSize:12,fontWeight:900,color:i<3?"#0D0D0D":B.muted}}>{i+1}</span>
                   </div>
                   <Av src={c.logo} name={c.name} sz={36} fs={14} />
@@ -5330,7 +5331,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     </div>
                   </div>
                   <div style={{textAlign:"right",flexShrink:0}}>
-                    <p style={{fontSize:18,fontWeight:900,color:i<3?LIME:B.text}}>{c.growthScore}</p>
+                    <p style={{fontSize:18,fontWeight:900,color:i<3?B.accent:B.text}}>{c.growthScore}</p>
                     <p style={{fontSize:9,color:B.muted}}>pontos</p>
                   </div>
                 </div>
@@ -5339,7 +5340,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     const val = Math.min(100, Math.round(c.pillars[p.k]||0));
                     return <div key={p.k} style={{flex:1}}>
                       <div style={{height:4,borderRadius:2,background:`${B.muted}15`,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${val}%`,borderRadius:2,background:val>=8?B.green:val>=4?LIME:B.orange,transition:"width .3s"}} />
+                        <div style={{height:"100%",width:`${val}%`,borderRadius:2,background:val>=8?B.green:val>=4?B.accent:B.orange,transition:"width .3s"}} />
                       </div>
                       <p style={{fontSize:7,color:B.muted,textAlign:"center",marginTop:2}}>{p.l}</p>
                     </div>;
