@@ -2954,7 +2954,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco(iconKey,13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>{title}</span></div>
           <span onClick={openFn} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
         </div>
-        <div className="phone-viewport" style={{flex:1,overflow:"auto",position:"relative",transform:"scale(1)"}}>{children}</div>
+        <div className="phone-viewport" style={{flex:1,overflow:"hidden",position:"relative",display:"flex",flexDirection:"column"}}>{children}</div>
       </div>
     );
 
@@ -8187,7 +8187,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const publishedCount = demands.filter(d => ["published","completed"].includes(d.stage)).length;
   const totalCount = demands.length;
   return (
-    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?"auto":"100%", height:contained?"100%":"auto", display:"flex", flexDirection:"column", position:contained?"relative":"static", overflow:contained?"hidden":"visible" }}>
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?0:"100%", flex:contained?1:"initial", display:"flex", flexDirection:"column", position:"static", overflow:"visible" }}>
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
@@ -8205,7 +8205,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       </div>}
 
       {/* ── SCROLLABLE CONTENT ── */}
-      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"hidden":"auto", overflowX:contained?"auto":"hidden", padding:contained?"0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column" }}>
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"auto":"auto", overflowX:contained?"auto":"hidden", padding:contained?"0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column", minHeight:0 }}>
 
       {/* ── Desktop toolbar: Data | Clientes | Publicação Rápida ── */}
       {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
