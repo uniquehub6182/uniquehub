@@ -3768,6 +3768,35 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [showCredPw, setShowCredPw] = useState({});
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef(null);
+
+  /* ── Ranking / Growth Score ── */
+  const [rankScores, setRankScores] = useState({});
+  const [rankLoaded, setRankLoaded] = useState(false);
+  useEffect(() => {
+    if (!supabase || rankLoaded) return;
+    (async () => {
+      try {
+        const { data: scores } = await supabase.from("client_scores").select("*").order("created_at", { ascending: false });
+        if (scores) {
+          const byClient = {};
+          scores.forEach(s => {
+            if (!byClient[s.client_id]) byClient[s.client_id] = { total:0, execucao:0, estrategia:0, educacao:0, ecossistema:0, crescimento:0 };
+            byClient[s.client_id].total += Number(s.points);
+            if (s.pillar) byClient[s.client_id][s.pillar] += Number(s.points);
+          });
+          setRankScores(byClient);
+        }
+      } catch(e) { console.error("Ranking load:", e); }
+      setRankLoaded(true);
+    })();
+  }, [rankLoaded]);
+  const getZone = (s) => s >= 96 ? {n:"Escala",c:"#8B5CF6"} : s >= 81 ? {n:"Crescimento",c:"#10B981"} : s >= 61 ? {n:"Estratégica",c:"#BBF246"} : s >= 41 ? {n:"Organização",c:"#F59E0B"} : {n:"Estruturação",c:"#EF4444"};
+  const ranked = React.useMemo(() => {
+    return clients.filter(c => c.status !== "inativo").map(c => {
+      const sc = Math.min(100, Math.round(rankScores[c.id]?.total || 0));
+      return { ...c, growthScore: sc, zone: getZone(sc), pillars: rankScores[c.id] || {} };
+    }).sort((a, b) => b.growthScore - a.growthScore);
+  }, [clients, rankScores]);
   const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !sel) return;
