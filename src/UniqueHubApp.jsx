@@ -15117,10 +15117,15 @@ REGRAS:
             </div>
           </Card>
         )}
-        {!isClientView && <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Editar artigo
-        </button>}
+        {!isClientView && <div style={{ display:"flex", gap:8 }}>
+          <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Editar
+          </button>
+          <button onClick={()=>deleteArticle(a)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4, padding:"12px 16px", borderRadius:12, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>}
       </div>
     );
   }
@@ -15190,9 +15195,10 @@ REGRAS:
                     ].map(s=><a key={s.l} href={s.href} target="_blank" rel="noopener" style={{ padding:"7px 14px", borderRadius:10, background:s.bg, color:"#fff", fontSize:11, fontWeight:700, textDecoration:"none" }}>{s.l}</a>)}
                     <button onClick={()=>{navigator.clipboard.writeText(a.sourceUrl||window.location.href);showToast("Link copiado ✓");}} style={{ padding:"7px 14px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>🔗 Copiar</button>
                   </div>
-                  {isAdmin && <div style={{ display:"flex", gap:6 }}>
-                    <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime});setPhotoPreview(a.photo);}} style={{ padding:"7px 14px", borderRadius:10, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>✏️ Editar</button>
-                    <button onClick={()=>togglePin(a)} style={{ padding:"7px 14px", borderRadius:10, background:a.pinned?`${B.accent}15`:"transparent", border:`1px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐ Fixado":"☆ Fixar"}</button>
+                  {!isClientView && <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                    <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime,photo:a.photo||null});setPhotoPreview(a.photo);}} style={{ flex:1, padding:"10px 16px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar artigo</button>
+                    <button onClick={()=>togglePin(a)} style={{ padding:"10px 16px", borderRadius:12, background:a.pinned?`${B.accent}15`:"transparent", border:`1.5px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐ Fixado":"☆ Fixar"}</button>
+                    <button onClick={()=>deleteArticle(a)} style={{ padding:"10px 16px", borderRadius:12, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Excluir</button>
                   </div>}
                 </div>
               </div>
@@ -15261,7 +15267,7 @@ REGRAS:
           </div>
 
           {/* ── Create panel ── */}
-          {isCreating && <div style={{ width:400, flexShrink:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          {isCreating && <div key={editingArticle?"edit":"create"} style={{ width:400, flexShrink:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", position:"sticky", top:0, alignSelf:"flex-start", maxHeight:"calc(100vh - 180px)" }}>
             <div style={{ padding:"18px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <p style={{ fontSize:18, fontWeight:800 }}>{editingArticle?"Editar Artigo":aiMode?"Munique A.I":creating?"Novo Artigo":"Criar"}</p>
               <button onClick={()=>{setShowCreateChoice(false);setCreating(false);setAiMode(false);setEditingArticle(false);setForm({});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -15295,9 +15301,9 @@ REGRAS:
                   {aiPhotoSuggestions?.keywords?.length > 0 && <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Termos sugeridos para foto</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{aiPhotoSuggestions.keywords.map((kw,i)=><span key={i} style={{ padding:"4px 10px", borderRadius:6, background:`${B.accent}10`, color:B.accent, fontSize:11, fontWeight:600 }}>{kw}</span>)}</div></div>}
                   <div style={{ marginBottom:14 }}>
                     <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Upload de foto</label>
-                    <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"16px", borderRadius:14, border:`2px dashed ${aiPhotoUrl&&!aiPhotoUrl.startsWith("http")?B.green:`${B.accent}30`}`, background:aiPhotoUrl&&!aiPhotoUrl.startsWith("http")?`${B.green}04`:`${B.accent}03`, cursor:"pointer", fontSize:13, fontWeight:600, color:aiPhotoUrl&&!aiPhotoUrl.startsWith("http")?B.green:B.accent }}>
-                      {aiPhotoUrl&&!aiPhotoUrl.startsWith("http")?"✓ Foto selecionada":"📷 Escolher foto do computador"}
-                      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(!f)return;const path=`news/${Date.now()}_${f.name}`;if(supabase){supabase.storage.from("demand-files").upload(path,f,{upsert:true}).then(({error})=>{if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);setAiPhotoUrl(u.publicUrl);}else{showToast("Erro no upload");}});}}}/>
+                    <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"16px", borderRadius:14, border:`2px dashed ${aiPhotoUrl?B.green:`${B.accent}30`}`, background:aiPhotoUrl?`${B.green}04`:`${B.accent}03`, cursor:"pointer", fontSize:13, fontWeight:600, color:aiPhotoUrl?B.green:B.accent }}>
+                      {aiPhotoUrl?"✓ Foto selecionada":"📷 Escolher foto do computador"}
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={async(e)=>{const f=e.target.files?.[0];if(!f||!supabase)return;showToast("Enviando foto...");try{const path=`news/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);setAiPhotoUrl(u.publicUrl);showToast("Foto enviada ✓");}else{console.error("Upload error:",error);showToast("Erro no upload: "+error.message);}}catch(err){console.error("Upload exception:",err);showToast("Erro no upload");}}}/>
                     </label>
                   </div>
                   <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Ou colar URL da foto</label><input value={aiPhotoUrl} onChange={e=>setAiPhotoUrl(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ fontSize:13 }}/></div>
