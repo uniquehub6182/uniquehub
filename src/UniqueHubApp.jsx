@@ -14836,6 +14836,12 @@ REGRAS:
     const na = { title: form.title.trim(), body: form.body || "", category: form.cat || "geral", summary: form.summary || "", source: sourceVal, read_time: form.readTime || "", pinned: form.pinned || false, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : [], photo: safePhoto };
     const row = await supaCreateNews(na);
     if (row) {
+      /* If this article is pinned, unpin all others */
+      if (na.pinned) {
+        const pinned = articles.filter(x => x.pinned);
+        for (const p of pinned) { if (p.supaId) await supaUpdateNews(p.supaId, { pinned: false }); }
+        setArticles(prev => prev.map(x => ({ ...x, pinned: false })));
+      }
       const parsed = parseNewsRow(row);
       /* Ensure photo is preserved from form even if DB doesn't return it */
       if (!parsed.photo && form.photo) parsed.photo = form.photo;
@@ -14855,9 +14861,14 @@ REGRAS:
     const safePhoto = (photoToSave && !photoToSave.startsWith("data:")) ? photoToSave : (selArticle.photo && !selArticle.photo.startsWith("data:") ? selArticle.photo : null);
     const cleanBody = (form.body ?? selArticle.body ?? "").replace(/^__PHOTO__:[^\n]*\n?/, "");
     const updates = { title: form.title || selArticle.title, body: cleanBody, category: form.cat || selArticle.cat, summary: form.summary ?? selArticle.summary, source: updSourceVal, read_time: form.readTime ?? selArticle.readTime, pinned: form.pinned ?? selArticle.pinned, tags: form.tags ? form.tags.split(",").map(t=>t.trim()).filter(Boolean) : selArticle.tags, photo: safePhoto };
+    /* If pinning, unpin all others first */
+    if (updates.pinned) {
+      const pinned = articles.filter(x => x.pinned && x.id !== selArticle.id);
+      for (const p of pinned) { if (p.supaId) await supaUpdateNews(p.supaId, { pinned: false }); }
+    }
     await supaUpdateNews(selArticle.supaId, updates);
     const parsedSrc = updSourceVal.includes("||") ? updSourceVal.split("||") : [updSourceVal, ""];
-    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto } : a));
+    setArticles(prev => prev.map(a => a.id === selArticle.id ? { ...a, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto } : (updates.pinned ? { ...a, pinned: false } : a)));
     const updated = { ...selArticle, title:updates.title, body:cleanBody, cat:updates.category, summary:updates.summary, source:parsedSrc[0], sourceUrl:parsedSrc[1]||"", readTime:updates.read_time, pinned:updates.pinned, tags:updates.tags, photo:safePhoto };
     setSelArticle(updated); setEditingArticle(false); setForm({}); showToast("Artigo atualizado ✓");
   };
@@ -14867,6 +14878,23 @@ REGRAS:
     if (a.supaId) await supaDeleteNews(a.supaId);
     setArticles(prev => prev.filter(x => x.id !== a.id));
     setSelArticle(null); showToast("Artigo excluído ✓");
+  };
+
+  const togglePin = async (a) => {
+    const willPin = !a.pinned;
+    if (willPin) {
+      /* Unpin all others first — only 1 destaque at a time */
+      const pinned = articles.filter(x => x.pinned && x.id !== a.id);
+      for (const p of pinned) {
+        if (p.supaId) await supaUpdateNews(p.supaId, { pinned: false });
+      }
+      setArticles(prev => prev.map(x => x.id === a.id ? { ...x, pinned: true } : { ...x, pinned: false }));
+    } else {
+      setArticles(prev => prev.map(x => x.id === a.id ? { ...x, pinned: false } : x));
+    }
+    if (a.supaId) await supaUpdateNews(a.supaId, { pinned: willPin });
+    if (selArticle?.id === a.id) setSelArticle(prev => prev ? { ...prev, pinned: willPin } : prev);
+    showToast(willPin ? "⭐ Notícia em destaque" : "Destaque removido");
   };
 
   const filtered = tab === "all" ? articles : tab === "saved" ? articles.filter(a=>saved.includes(a.id)) : articles.filter(a=>a.cat===tab);
