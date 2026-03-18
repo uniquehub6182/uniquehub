@@ -14734,9 +14734,9 @@ REGRAS:
         setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
         showToast("Notícia gerada com foto — revise e publique!");
       } else {
-        /* No photo — show photo suggestion step */
-        setAiPhotoSuggestions({ keywords: photoKeywords });
-        setAiStep("photo"); setAiLoading(false);
+        /* No photo — go directly to edit form (photo can be added there) */
+        setAiStep("done"); setAiLoading(false); setCreating(true); setAiMode(false);
+        showToast("Notícia gerada — adicione uma foto e publique!");
       }
     } catch(e) {
       console.error("AI news generation error:", e);
@@ -14969,9 +14969,12 @@ REGRAS:
 
       {aiStep === "loading" && (
         <Card style={{ textAlign:"center", padding:30 }}>
-          <div style={{ width:40, height:40, border:`3px solid ${B.border}`, borderTopColor:B.accent, borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 16px" }} />
-          <p style={{ fontSize:13, fontWeight:600 }}>Processando...</p>
-          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Isso pode levar 10-20 segundos</p>
+          <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"pulse 1.5s ease infinite" }}>{IC.ai(B.accent)}</div>
+          <style>{`@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.95)}}`}</style>
+          <p style={{ fontSize:15, fontWeight:800 }}>Munique A.I escrevendo...</p>
+          <p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Lendo o artigo e reescrevendo no tom escolhido</p>
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:16 }}>{[0,1,2].map(i=><div key={i} style={{ width:8, height:8, borderRadius:"50%", background:B.accent, animation:`bounce 1.4s ease infinite ${i*0.2}s` }}/>)}</div>
+          <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}`}</style>
         </Card>
       )}
 
@@ -15183,24 +15186,23 @@ REGRAS:
                 {a.tags?.length>0 && <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:28, paddingTop:20, borderTop:`1px solid ${B.border}` }}>
                   {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:13, fontWeight:600, padding:"6px 16px", borderRadius:10, background:`${B.accent}08`, color:B.accent }}>#{t}</span>)}
                 </div>}
-                {/* Share + Admin bar */}
-                <div style={{ marginTop:28, padding:"20px 24px", borderRadius:16, background:B.bg }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                    <span style={{ fontSize:13, fontWeight:600, color:B.muted, marginRight:4 }}>Compartilhar:</span>
-                    {[
-                      {href:`https://wa.me/?text=${shareText_(a.title)}%20${shareUrl_(a.sourceUrl)}`,bg:"#25D366",l:"WhatsApp"},
-                      {href:`https://www.facebook.com/sharer/sharer.php?u=${shareUrl_(a.sourceUrl)}`,bg:"#4267B2",l:"Facebook"},
-                      {href:`https://twitter.com/intent/tweet?text=${shareText_(a.title)}&url=${shareUrl_(a.sourceUrl)}`,bg:"#000",l:"X"},
-                      {href:`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl_(a.sourceUrl)}`,bg:"#0A66C2",l:"LinkedIn"},
-                    ].map(s=><a key={s.l} href={s.href} target="_blank" rel="noopener" style={{ padding:"7px 14px", borderRadius:10, background:s.bg, color:"#fff", fontSize:11, fontWeight:700, textDecoration:"none" }}>{s.l}</a>)}
-                    <button onClick={()=>{navigator.clipboard.writeText(a.sourceUrl||window.location.href);showToast("Link copiado ✓");}} style={{ padding:"7px 14px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>🔗 Copiar</button>
-                  </div>
-                  {!isClientView && <div style={{ display:"flex", gap:8, marginTop:12 }}>
-                    <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime,photo:a.photo||null});setPhotoPreview(a.photo);}} style={{ flex:1, padding:"10px 16px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar artigo</button>
-                    <button onClick={()=>togglePin(a)} style={{ padding:"10px 16px", borderRadius:12, background:a.pinned?`${B.accent}15`:"transparent", border:`1.5px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐ Fixado":"☆ Fixar"}</button>
-                    <button onClick={()=>deleteArticle(a)} style={{ padding:"10px 16px", borderRadius:12, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Excluir</button>
-                  </div>}
+                {/* Share bar */}
+                <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginTop:28, padding:"16px 20px", borderRadius:14, background:B.bg }}>
+                  <span style={{ fontSize:12, fontWeight:600, color:B.muted }}>Compartilhar:</span>
+                  {[
+                    {href:`https://wa.me/?text=${shareText_(a.title)}%20${shareUrl_(a.sourceUrl)}`,bg:"#25D366",l:"WhatsApp"},
+                    {href:`https://www.facebook.com/sharer/sharer.php?u=${shareUrl_(a.sourceUrl)}`,bg:"#4267B2",l:"Facebook"},
+                    {href:`https://twitter.com/intent/tweet?text=${shareText_(a.title)}&url=${shareUrl_(a.sourceUrl)}`,bg:"#000",l:"X"},
+                    {href:`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl_(a.sourceUrl)}`,bg:"#0A66C2",l:"LinkedIn"},
+                  ].map(s=><a key={s.l} href={s.href} target="_blank" rel="noopener" style={{ padding:"6px 12px", borderRadius:8, background:s.bg, color:"#fff", fontSize:10, fontWeight:700, textDecoration:"none" }}>{s.l}</a>)}
+                  <button onClick={()=>{navigator.clipboard.writeText(a.sourceUrl||window.location.href);showToast("Link copiado ✓");}} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.text }}>🔗 Copiar</button>
                 </div>
+                {/* Admin actions */}
+                {!isClientView && <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                  <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime,photo:a.photo||null});setPhotoPreview(a.photo);requestAnimationFrame(()=>{const el=document.querySelector('[data-news-sidebar]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});});}} style={{ flex:1, padding:"12px 16px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar</button>
+                  <button onClick={()=>togglePin(a)} style={{ padding:"12px 16px", borderRadius:12, background:a.pinned?`${B.accent}15`:"transparent", border:`1.5px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐":"☆"}</button>
+                  <button onClick={()=>deleteArticle(a)} style={{ padding:"12px 16px", borderRadius:12, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.red }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                </div>}
               </div>
             </div>
           </div>}
@@ -15267,7 +15269,7 @@ REGRAS:
           </div>
 
           {/* ── Create panel ── */}
-          {isCreating && <div key={editingArticle?"edit":"create"} style={{ width:400, flexShrink:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", position:"sticky", top:0, alignSelf:"flex-start", maxHeight:"calc(100vh - 180px)" }}>
+          {isCreating && <div data-news-sidebar key={editingArticle?"edit":"create"} style={{ width:400, flexShrink:0, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"auto", display:"flex", flexDirection:"column", position:"sticky", top:0, alignSelf:"flex-start", maxHeight:"calc(100vh - 120px)" }}>
             <div style={{ padding:"18px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <p style={{ fontSize:18, fontWeight:800 }}>{editingArticle?"Editar Artigo":aiMode?"Munique A.I":creating?"Novo Artigo":"Criar"}</p>
               <button onClick={()=>{setShowCreateChoice(false);setCreating(false);setAiMode(false);setEditingArticle(false);setForm({});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -15282,7 +15284,14 @@ REGRAS:
                 </div>
               </div>}
               {aiMode && <>
-                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"50px 0" }}><div style={{ width:44, height:44, border:`3px solid #6366F130`, borderTop:`3px solid #6366F1`, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 14px" }}/><p style={{ fontSize:15, fontWeight:700 }}>Gerando...</p></div>}
+                {aiStep==="loading" && <div style={{ textAlign:"center", padding:"40px 0" }}>
+                  <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"pulse 1.5s ease infinite" }}>{IC.ai(B.accent)}</div>
+                  <style>{`@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.95)}}`}</style>
+                  <p style={{ fontSize:16, fontWeight:800, color:B.text }}>Munique A.I escrevendo...</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Lendo o artigo e reescrevendo no tom escolhido</p>
+                  <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:16 }}>{[0,1,2].map(i=><div key={i} style={{ width:8, height:8, borderRadius:"50%", background:B.accent, animation:`bounce 1.4s ease infinite ${i*0.2}s` }}/>)}</div>
+                  <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}`}</style>
+                </div>}
                 {(aiStep==="url"||aiStep==="done") && <>
                   {aiError && <p style={{ fontSize:12, color:B.red, marginBottom:14, padding:"10px 14px", borderRadius:10, background:`${B.red}08` }}>{aiError}</p>}
                   <div style={{ marginBottom:16 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Link</label><input value={aiUrl} onChange={e=>setAiUrl(e.target.value)} placeholder="https://..." className="tinput" style={{ fontSize:14 }}/></div>
