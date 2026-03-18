@@ -3007,17 +3007,37 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               <div style={{position:"absolute",top:0,right:0,bottom:0,width:"100%",background:B.bgCard,zIndex:21,display:"flex",flexDirection:"column",animation:"slideInRight .2s ease both",borderRadius:"var(--uh-radius)",overflow:"hidden"}}>
                 <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
                 <div style={{padding:"8px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                  <button onClick={()=>{setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                  <p style={{flex:1,fontSize:13,fontWeight:700,color:B.text}}>Nova notícia</p>
+                  <button onClick={()=>{if(dpNewsCreating==="manual"){setDpNewsCreating(true);setDpNewsForm({title:"",body:"",cat:"tips",source:""});}else{setDpNewsCreating(false);}}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>{dpNewsCreating==="manual"?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}</button>
+                  <p style={{flex:1,fontSize:13,fontWeight:700,color:B.text}}>{dpNewsCreating==="manual"?"Escreva do seu jeito":"Nova notícia"}</p>
                 </div>
                 <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}}>
-                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Título *</p><input value={dpNewsForm.title} onChange={e=>setDpNewsForm(p=>({...p,title:e.target.value}))} placeholder="Título da notícia" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
-                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Categoria</p><select value={dpNewsForm.cat} onChange={e=>setDpNewsForm(p=>({...p,cat:e.target.value}))} className="tinput" style={{width:"100%",boxSizing:"border-box"}}>{Object.entries(catLabel2).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
-                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Conteúdo *</p><textarea value={dpNewsForm.body} onChange={e=>setDpNewsForm(p=>({...p,body:e.target.value}))} placeholder="Escreva o conteúdo da notícia..." className="tinput" rows={6} style={{width:"100%",boxSizing:"border-box",resize:"vertical"}}/></div>
-                  <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Fonte (opcional)</p><input value={dpNewsForm.source} onChange={e=>setDpNewsForm(p=>({...p,source:e.target.value}))} placeholder="Ex: Meio & Mensagem" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
-                  <button disabled={dpNewsSaving} onClick={async()=>{if(!dpNewsForm.title?.trim()||!dpNewsForm.body?.trim()){showToast("Título e conteúdo obrigatórios");return;}setDpNewsSaving(true);const ne={title:dpNewsForm.title.trim(),body:dpNewsForm.body.trim(),cat:dpNewsForm.cat||"tips",source:dpNewsForm.source||"",readTime:`${Math.max(1,Math.ceil(dpNewsForm.body.split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),tags:[],summary:""};const saved=await supaCreateNews(ne);if(saved){setDpNews(p=>[{...ne,id:saved.id},...p]);setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});showToast("Publicado ✓");}else{showToast("Erro ao publicar");}setDpNewsSaving(false);}} style={{width:"100%",padding:"12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:dpNewsSaving?0.5:1,marginTop:4}}>
-                    {dpNewsSaving?"Publicando...":"Publicar notícia"}
-                  </button>
+                  {dpNewsCreating===true && <>
+                    {/* Choice screen */}
+                    <div style={{textAlign:"center",padding:"12px 0 8px"}}>
+                      <div style={{width:44,height:44,borderRadius:14,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 8px"}}>{IC.news(B.accent)}</div>
+                      <p style={{fontSize:14,fontWeight:800,color:B.text}}>Como quer criar?</p>
+                    </div>
+                    <div onClick={()=>setDpNewsCreating("manual")} style={{padding:"14px",borderRadius:14,border:`1.5px solid ${B.border}`,cursor:"pointer",display:"flex",alignItems:"center",gap:10}} onMouseEnter={e=>e.currentTarget.style.borderColor=B.accent} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>
+                      <div style={{width:36,height:36,borderRadius:10,background:`${B.blue||"#3B82F6"}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+                      <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text}}>Escreva do seu jeito</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>Crie sua notícia manualmente</p></div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                    <div onClick={()=>{setDpNewsCreating(false);sessionStorage.setItem("uh_news_create_ai","1");goSub("news");}} style={{padding:"14px",borderRadius:14,border:`1.5px solid ${B.accent}30`,background:`${B.accent}04`,cursor:"pointer",display:"flex",alignItems:"center",gap:10}} onMouseEnter={e=>e.currentTarget.style.borderColor=B.accent} onMouseLeave={e=>e.currentTarget.style.borderColor=`${B.accent}30`}>
+                      <div style={{width:36,height:36,borderRadius:10,background:`${B.accent}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.ai(B.accent)}</div>
+                      <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text}}>Escreva com a Munique A.I</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>Sua assistente inteligente reescreve qualquer notícia</p></div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </>}
+                  {dpNewsCreating==="manual" && <>
+                    {/* Manual creation form */}
+                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Título *</p><input value={dpNewsForm.title} onChange={e=>setDpNewsForm(p=>({...p,title:e.target.value}))} placeholder="Título da notícia" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Categoria</p><select value={dpNewsForm.cat} onChange={e=>setDpNewsForm(p=>({...p,cat:e.target.value}))} className="tinput" style={{width:"100%",boxSizing:"border-box"}}>{Object.entries(catLabel2).map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
+                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Conteúdo *</p><textarea value={dpNewsForm.body} onChange={e=>setDpNewsForm(p=>({...p,body:e.target.value}))} placeholder="Escreva o conteúdo da notícia..." className="tinput" rows={6} style={{width:"100%",boxSizing:"border-box",resize:"vertical"}}/></div>
+                    <div><p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:3}}>Fonte (opcional)</p><input value={dpNewsForm.source} onChange={e=>setDpNewsForm(p=>({...p,source:e.target.value}))} placeholder="Ex: Meio & Mensagem" className="tinput" style={{width:"100%",boxSizing:"border-box"}}/></div>
+                    <button disabled={dpNewsSaving} onClick={async()=>{if(!dpNewsForm.title?.trim()||!dpNewsForm.body?.trim()){showToast("Título e conteúdo obrigatórios");return;}setDpNewsSaving(true);const ne={title:dpNewsForm.title.trim(),body:dpNewsForm.body.trim(),cat:dpNewsForm.cat||"tips",source:dpNewsForm.source||"",readTime:`${Math.max(1,Math.ceil(dpNewsForm.body.split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),tags:[],summary:""};const saved=await supaCreateNews(ne);if(saved){setDpNews(p=>[{...ne,id:saved.id},...p]);setDpNewsCreating(false);setDpNewsForm({title:"",body:"",cat:"tips",source:""});showToast("Publicado ✓");}else{showToast("Erro ao publicar");}setDpNewsSaving(false);}} style={{width:"100%",padding:"12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:dpNewsSaving?0.5:1,marginTop:4}}>
+                      {dpNewsSaving?"Publicando...":"Publicar notícia"}
+                    </button>
+                  </>}
                 </div>
               </div>
             </>}
@@ -14691,6 +14711,10 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
     if (sessionStorage.getItem("uh_news_create") === "1") {
       sessionStorage.removeItem("uh_news_create");
       if (!isClientView) setShowCreateChoice(true);
+    }
+    if (sessionStorage.getItem("uh_news_create_ai") === "1") {
+      sessionStorage.removeItem("uh_news_create_ai");
+      if (!isClientView) { setShowCreateChoice(true); setTimeout(()=>startCreation("ai"),100); }
     }
   }, []);
   const [aiMode, setAiMode] = useState(false); /* true = AI flow */
