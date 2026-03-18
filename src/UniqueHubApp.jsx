@@ -14607,7 +14607,8 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 
 
 function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView, forceMobile }) {
-  const isNewsDesktop = forceMobile ? false : useIsDesktop();
+  const _dsk = useIsDesktop();
+  const isNewsDesktop = forceMobile ? false : _dsk;
   const contained = !!forceMobile;
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -15311,6 +15312,7 @@ REGRAS:
   /* ── MAIN NEWS LIST ── */
   return (
     <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {contained && <CollapseHeader icon={IC.news} label="Mercado" title="News" collapsed={true} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />}
       {!contained && <CollapseHeader icon={IC.news} label="Mercado" title="News" onBack={onBack} collapsed={pgC} onAdd={isClientView ? undefined : () => setShowCreateChoice(true)} />}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       {ToastEl}
