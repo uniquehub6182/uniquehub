@@ -8178,6 +8178,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       {ToastEl}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
+      {contained && canAccessFn("content.create") && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
+        <span style={{fontSize:13,fontWeight:700,color:B.text}}>{totalCount} demanda{totalCount!==1?"s":""}</span>
+        <button onClick={()=>{setCreating(true);setCreateType(null);setForm({});}} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
+      </div>}
 
       {/* Quick Publish button (mobile only) */}
       {!isContentDesktop && <div style={{ padding:"8px 16px 0" }}>
