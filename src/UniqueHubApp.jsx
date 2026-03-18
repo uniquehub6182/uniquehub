@@ -15288,6 +15288,15 @@ REGRAS:
                   </div></div>
                   <button onClick={aiGenerateArticle} disabled={aiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
                 </>}
+                {aiStep==="photo" && <>
+                  <p style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>Notícia gerada!</p>
+                  <p style={{ fontSize:12, color:B.muted, marginBottom:16 }}>Escolha uma foto de capa ou continue sem foto.</p>
+                  <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título</label><p style={{ fontSize:14, fontWeight:700 }}>{form.title}</p></div>
+                  {aiPhotoSuggestions?.keywords?.length > 0 && <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Termos sugeridos para foto</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{aiPhotoSuggestions.keywords.map((kw,i)=><span key={i} style={{ padding:"4px 10px", borderRadius:6, background:`${B.accent}10`, color:B.accent, fontSize:11, fontWeight:600 }}>{kw}</span>)}</div></div>}
+                  <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Colar URL da foto</label><input value={aiPhotoUrl} onChange={e=>setAiPhotoUrl(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ fontSize:13 }}/></div>
+                  {aiPhotoUrl && <img src={aiPhotoUrl} alt="preview" style={{ width:"100%", height:140, objectFit:"cover", borderRadius:10, marginBottom:14 }} onError={e=>{e.target.style.display="none";}}/>}
+                  <button onClick={()=>{setForm(p=>({...p,photo:aiPhotoUrl||null}));setCreating(true);setAiMode(false);setAiStep("done");showToast(aiPhotoUrl?"Foto adicionada — revise e publique!":"Continue sem foto — edite depois");}} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>{aiPhotoUrl?"Usar esta foto":"Continuar sem foto"}</button>
+                </>}
               </>}
               {creating && <>
                 <div style={{ marginBottom:14 }}><label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:5 }}>Título *</label><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título" className="tinput" style={{ fontSize:15 }}/></div>
