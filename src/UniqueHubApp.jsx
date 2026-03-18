@@ -15200,7 +15200,7 @@ REGRAS:
                 {/* Admin actions */}
                 {!isClientView && <div style={{ display:"flex", gap:8, marginTop:10 }}>
                   <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime,photo:a.photo||null});setPhotoPreview(a.photo);requestAnimationFrame(()=>{const el=document.querySelector('[data-news-sidebar]');if(el)el.scrollIntoView({behavior:"smooth",block:"start"});});}} style={{ flex:1, padding:"12px 16px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar</button>
-                  <button onClick={()=>togglePin(a)} style={{ padding:"12px 16px", borderRadius:12, background:a.pinned?`${B.accent}15`:"transparent", border:`1.5px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐":"☆"}</button>
+                  <button onClick={()=>togglePin(a)} style={{ padding:"12px 16px", borderRadius:12, background:a.pinned?`${B.orange||"#F59E0B"}15`:"transparent", border:`1.5px solid ${a.pinned?(B.orange||"#F59E0B"):B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:a.pinned?(B.orange||"#F59E0B"):B.muted, display:"flex", alignItems:"center", gap:4 }}>{a.pinned?"⭐ Destaque":"☆ Destaque"}</button>
                   <button onClick={()=>deleteArticle(a)} style={{ padding:"12px 16px", borderRadius:12, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.red }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
                 </div>}
               </div>
@@ -15350,6 +15350,9 @@ REGRAS:
                     <input value={form.photoUrl||""} onChange={e=>{setForm(p=>({...p,photoUrl:e.target.value,photo:e.target.value}));setPhotoPreview(e.target.value);}} placeholder="Ou colar URL da foto" className="tinput" style={{ flex:2, fontSize:11 }}/>
                   </div>
                 </div>
+                <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
+                  <input type="checkbox" checked={form.pinned||false} onChange={e=>setForm(p=>({...p,pinned:e.target.checked}))} style={{ width:16, height:16, accentColor:B.accent }} /> ⭐ Destacar artigo no topo
+                </label>
                 <button onClick={async()=>{if(!form.title?.trim()||!form.body?.trim()){showToast("Título e corpo obrigatórios");return;}showToast("Publicando...");let photoUrl=form.photo||"";if(photoUrl&&photoUrl.startsWith("data:")&&newsPhotoRef.current?.files?.[0]&&supabase){const file=newsPhotoRef.current.files[0];const path=`news/${Date.now()}_${file.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,file,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);photoUrl=u.publicUrl;}else photoUrl="";}const body=photoUrl?`__PHOTO__:${photoUrl}\n${form.body}`:form.body;const ne={title:form.title.trim(),summary:form.summary||"",body,cat:form.cat||"tips",tags:form.tags?form.tags.split(",").map(s=>s.trim()).filter(Boolean):[],source:form.source||"",sourceUrl:form.sourceUrl||"",readTime:`${Math.max(1,Math.ceil((form.body||"").split(/\s+/).length/200))} min`,date:new Date().toLocaleDateString("pt-BR"),photo:photoUrl||null};const saved=await supaCreateNews(ne);if(saved){setArticles(p=>[{...ne,id:saved.id,supaId:saved.id},...p]);setCreating(false);setShowCreateChoice(false);setForm({});setPhotoPreview(null);showToast("Publicado ✓");}}} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark, marginTop:8 }}>Publicar</button>
               </>}
               {editingArticle && <>
@@ -15369,6 +15372,9 @@ REGRAS:
                     <input value={form.photoUrl||""} onChange={e=>{setForm(p=>({...p,photoUrl:e.target.value,photo:e.target.value}));setPhotoPreview(e.target.value);}} placeholder="Ou colar URL da foto" className="tinput" style={{ flex:2, fontSize:11 }}/>
                   </div>
                 </div>
+                <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:600, cursor:"pointer", marginBottom:10 }}>
+                  <input type="checkbox" checked={form.pinned||false} onChange={e=>setForm(p=>({...p,pinned:e.target.checked}))} style={{ width:16, height:16, accentColor:B.accent }} /> ⭐ Destacar artigo no topo
+                </label>
                 <button onClick={updateArticle} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>Salvar alterações</button>
               </>}
             </div>
