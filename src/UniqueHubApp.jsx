@@ -15184,8 +15184,8 @@ REGRAS:
                   {a.tags.map((t,ti)=><span key={ti} style={{ fontSize:13, fontWeight:600, padding:"6px 16px", borderRadius:10, background:`${B.accent}08`, color:B.accent }}>#{t}</span>)}
                 </div>}
                 {/* Share + Admin bar */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:28, padding:"20px 24px", borderRadius:16, background:B.bg }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ marginTop:28, padding:"20px 24px", borderRadius:16, background:B.bg }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                     <span style={{ fontSize:13, fontWeight:600, color:B.muted, marginRight:4 }}>Compartilhar:</span>
                     {[
                       {href:`https://wa.me/?text=${shareText_(a.title)}%20${shareUrl_(a.sourceUrl)}`,bg:"#25D366",l:"WhatsApp"},
@@ -15195,7 +15195,7 @@ REGRAS:
                     ].map(s=><a key={s.l} href={s.href} target="_blank" rel="noopener" style={{ padding:"7px 14px", borderRadius:10, background:s.bg, color:"#fff", fontSize:11, fontWeight:700, textDecoration:"none" }}>{s.l}</a>)}
                     <button onClick={()=>{navigator.clipboard.writeText(a.sourceUrl||window.location.href);showToast("Link copiado ✓");}} style={{ padding:"7px 14px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>🔗 Copiar</button>
                   </div>
-                  {!isClientView && <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                  {!isClientView && <div style={{ display:"flex", gap:8, marginTop:12 }}>
                     <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,""),cat:a.cat,tags:(a.tags||[]).join(", "),source:a.source,sourceUrl:a.sourceUrl,readTime:a.readTime,photo:a.photo||null});setPhotoPreview(a.photo);}} style={{ flex:1, padding:"10px 16px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar artigo</button>
                     <button onClick={()=>togglePin(a)} style={{ padding:"10px 16px", borderRadius:12, background:a.pinned?`${B.accent}15`:"transparent", border:`1.5px solid ${a.pinned?B.accent:B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:a.pinned?B.accent:B.muted }}>{a.pinned?"⭐ Fixado":"☆ Fixar"}</button>
                     <button onClick={()=>deleteArticle(a)} style={{ padding:"10px 16px", borderRadius:12, background:`${B.red}08`, border:`1.5px solid ${B.red}25`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red, display:"flex", alignItems:"center", gap:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Excluir</button>
