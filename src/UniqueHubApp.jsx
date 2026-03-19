@@ -19856,6 +19856,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const user = localUser;
   /* Force light theme for client portal */
   B = getB(false, "#BBF246");
+  const canAccessFn = () => true;
   /* Inject essential CSS globally for all sub-pages */
   React.useEffect(() => {
     const id = "uh-client-styles";
