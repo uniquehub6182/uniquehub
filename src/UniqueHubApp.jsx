@@ -19622,14 +19622,26 @@ function ClientOnboarding({ onComplete, onBack }) {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const [kbHeight, setKbHeight] = useState(0);
-  /* iOS keyboard resize handler */
+  /* iOS keyboard handler — multiple strategies */
   React.useEffect(() => {
+    /* Strategy 1: visualViewport */
     const vv = window.visualViewport;
-    if (!vv) return;
-    const handler = () => { const diff = window.innerHeight - vv.height; setKbHeight(diff > 50 ? diff : 0); scrollBottom(); };
-    vv.addEventListener("resize", handler);
-    vv.addEventListener("scroll", handler);
-    return () => { vv.removeEventListener("resize", handler); vv.removeEventListener("scroll", handler); };
+    if (vv) {
+      const handler = () => {
+        const diff = window.innerHeight - vv.height;
+        setKbHeight(diff > 80 ? diff : 0);
+        scrollBottom();
+      };
+      vv.addEventListener("resize", handler);
+      vv.addEventListener("scroll", handler);
+      return () => { vv.removeEventListener("resize", handler); vv.removeEventListener("scroll", handler); };
+    }
+    /* Strategy 2: focusin/focusout for older iOS */
+    const focusIn = () => { setTimeout(() => { setKbHeight(300); scrollBottom(); }, 300); };
+    const focusOut = () => { setKbHeight(0); };
+    document.addEventListener("focusin", focusIn);
+    document.addEventListener("focusout", focusOut);
+    return () => { document.removeEventListener("focusin", focusIn); document.removeEventListener("focusout", focusOut); };
   }, []);
 
   const scrollBottom = () => { setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50); setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 300); };
@@ -19768,7 +19780,7 @@ function ClientOnboarding({ onComplete, onBack }) {
   };
 
   return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, height: kbHeight > 0 ? `calc(100% - ${kbHeight}px)` : "100%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23" }}>
+    <div style={{ position:"fixed", top:0, left:0, right:0, bottom: kbHeight > 0 ? kbHeight+"px" : "0", display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23", zIndex:9999 }}>
       {/* Header */}
       <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
         <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}` }}>{IC.back()}</button>
@@ -19821,7 +19833,7 @@ function ClientOnboarding({ onComplete, onBack }) {
 
       {/* Input */}
       {!done && <div style={{ padding: kbHeight > 0 ? "10px 14px" : "10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8, alignItems:"center" }}>
-        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()} onFocus={()=>{scrollBottom();setTimeout(scrollBottom,500);setTimeout(scrollBottom,1000);}}
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()} onFocus={()=>{scrollBottom();setTimeout(()=>{scrollBottom();if(inputRef.current)inputRef.current.scrollIntoView({block:"nearest",behavior:"smooth"});},400);setTimeout(scrollBottom,800);}}
           placeholder={step===1?"Digite o código de acesso...":step===2?"Seu nome completo...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
           type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
           style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(0,0,0,0.1)", background:"#fff", color:"#1A1D23", fontFamily:"inherit", fontSize:15, outline:"none" }}
