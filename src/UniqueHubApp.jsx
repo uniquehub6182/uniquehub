@@ -20735,18 +20735,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <style dangerouslySetInnerHTML={{ __html: `
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
-      {/* ═══ SUB-PAGES rendered inside main JSX (no early returns) ═══ */}
+      {/* ═══ SUB-PAGES: rendered in a fixed overlay above the main content ═══ */}
+      {sub && sub !== "financial" && !sub.startsWith("demand_") && <div style={{position:"fixed",inset:0,zIndex:200,background:B.bg,color:B.text}}>
       {sub === "gamify" && <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />}
       {sub === "match4biz" && <ClientMatch4Biz onBack={() => setSub(null)} user={user} />}
       {sub === "academy" && <AcademyPage onBack={() => setSub(null)} isClientView />}
       {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} />}
       {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />}
-      {sub === "news" && !sub.startsWith("demand_") && <NewsPage onBack={() => setSub(null)} user={user} isClientView />}
+      {sub === "news" && <NewsPage onBack={() => setSub(null)} user={user} isClientView />}
       {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />}
       {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} isClientView />}
       {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
       {sub === "reports" && (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })()}
       {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />}
+      </div>}
       <div className="content" ref={scrollRef} onScroll={e=>setHeaderC(e.currentTarget.scrollTop>60)}>
         {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />}
         <div style={{ padding:"14px 16px 0" }}>
