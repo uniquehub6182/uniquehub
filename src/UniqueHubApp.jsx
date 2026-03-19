@@ -20457,7 +20457,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     { network:"Instagram", metrics:[{l:"Alcance",v:"—",d:""},{l:"Engajamento",v:"—",d:""},{l:"Seguidores",v:"—",d:""},{l:"Salvamentos",v:"—",d:""}] },
     { network:"Facebook", metrics:[{l:"Alcance",v:"—",d:""},{l:"Curtidas",v:"—",d:""},{l:"Compartilhamentos",v:"—",d:""},{l:"Cliques",v:"—",d:""}] },
   ];
-  const [metricsReal, setMetricsReal] = useState(false);
   /* TODO: Load real metrics from Meta API via social_tokens when connected */
 
   const renderDashSection = (key) => {
