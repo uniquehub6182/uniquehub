@@ -19865,7 +19865,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     s.textContent = `
 .app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:${B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
-.uh-sub-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain;background:${B.bg};color:${B.text}}.uh-sub-overlay .app,.uh-sub-overlay .screen,.uh-sub-overlay .pg{position:static!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;height:auto!important;min-height:auto!important;display:block!important;overflow:visible!important;background:transparent!important}.uh-sub-overlay .content{overflow:visible!important;height:auto!important;flex:none!important}.uh-sub-overlay div[style*="overflow-y"]{overflow-y:visible!important}.uh-sub-overlay div[style*="overflowY"]{overflow-y:visible!important}..card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
+.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}
@@ -20751,7 +20751,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
   return (<>
     {/* ═══ SUB-PAGES: rendered OUTSIDE .app to avoid nested position:fixed scroll issues ═══ */}
-    {hasSub && <div className="uh-sub-overlay">{
+    {hasSub && (
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
@@ -20766,7 +20766,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
       null
-    }</div>}
+    )}
     {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
     <div style={{ display: hasSub ? "none" : "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
