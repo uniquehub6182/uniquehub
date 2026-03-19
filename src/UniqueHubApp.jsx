@@ -19873,6 +19873,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 .ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${B.bgCard}!important;color:${B.text}!important;border:1px solid ${B.border}!important;cursor:pointer}
 .sl{font-size:11px;font-weight:700;color:${B.muted};text-transform:uppercase;letter-spacing:0.5px}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;background:${B.bg}!important}
+html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-active #root{overflow:visible!important;overscroll-behavior:auto!important}
 `;
     document.head.appendChild(s);
     return () => { const el = document.getElementById(id); if (el) el.remove(); };
@@ -20738,6 +20739,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   ];
 
   const hasSub = !!sub;
+
+  /* When sub-page is active, allow scrolling by removing body/html overflow:hidden */
+  React.useEffect(() => {
+    if (hasSub) {
+      document.documentElement.classList.add('uh-client-sub-active');
+    } else {
+      document.documentElement.classList.remove('uh-client-sub-active');
+    }
+    return () => document.documentElement.classList.remove('uh-client-sub-active');
+  }, [hasSub]);
 
   return (<>
     {/* ═══ SUB-PAGES: rendered OUTSIDE .app to avoid nested position:fixed scroll issues ═══ */}
