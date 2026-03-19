@@ -19622,26 +19622,22 @@ function ClientOnboarding({ onComplete, onBack }) {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const [kbHeight, setKbHeight] = useState(0);
-  /* iOS keyboard handler — multiple strategies */
+  /* iOS keyboard: add interactive-widget meta + visualViewport detection */
   React.useEffect(() => {
-    /* Strategy 1: visualViewport */
+    /* Set viewport meta to resize content when keyboard opens */
+    const meta = document.querySelector('meta[name="viewport"]');
+    const origContent = meta?.getAttribute("content") || "";
+    if (meta && !origContent.includes("interactive-widget")) {
+      meta.setAttribute("content", origContent + ", interactive-widget=resizes-content");
+    }
+    /* visualViewport listener */
     const vv = window.visualViewport;
     if (vv) {
-      const handler = () => {
-        const diff = window.innerHeight - vv.height;
-        setKbHeight(diff > 80 ? diff : 0);
-        scrollBottom();
-      };
+      const handler = () => { scrollBottom(); };
       vv.addEventListener("resize", handler);
-      vv.addEventListener("scroll", handler);
-      return () => { vv.removeEventListener("resize", handler); vv.removeEventListener("scroll", handler); };
+      return () => { vv.removeEventListener("resize", handler); if (meta) meta.setAttribute("content", origContent); };
     }
-    /* Strategy 2: focusin/focusout for older iOS */
-    const focusIn = () => { setTimeout(() => { setKbHeight(300); scrollBottom(); }, 300); };
-    const focusOut = () => { setKbHeight(0); };
-    document.addEventListener("focusin", focusIn);
-    document.addEventListener("focusout", focusOut);
-    return () => { document.removeEventListener("focusin", focusIn); document.removeEventListener("focusout", focusOut); };
+    return () => { if (meta) meta.setAttribute("content", origContent); };
   }, []);
 
   const scrollBottom = () => { setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50); setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 300); };
@@ -19780,7 +19776,7 @@ function ClientOnboarding({ onComplete, onBack }) {
   };
 
   return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, bottom: kbHeight > 0 ? kbHeight+"px" : "0", display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23", zIndex:9999 }}>
+    <div style={{ position:"fixed", inset:0, display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23", zIndex:9999 }}>
       {/* Header */}
       <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
         <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}` }}>{IC.back()}</button>
