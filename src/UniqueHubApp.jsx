@@ -19852,6 +19852,8 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
+  /* Force light theme for client portal */
+  B = getB(false, "#BBF246");
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
   const { showToast, ToastEl } = useToast();
@@ -20428,10 +20430,11 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   const growthScore = realScore, growthZone = getZoneLabel(realScore);
   const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
   const metricsData = [
-    { network:"Instagram", metrics:[{l:"Alcance",v:"847K",d:"+18%"},{l:"Engajamento",v:"12.4%",d:"+3.2%"},{l:"Seguidores",v:"15.2K",d:"+420"},{l:"Salvamentos",v:"1.8K",d:"+32%"}] },
-    { network:"Facebook", metrics:[{l:"Alcance",v:"324K",d:"+12%"},{l:"Curtidas",v:"8.4K",d:"+1.1K"},{l:"Compartilhamentos",v:"2.1K",d:"+15%"},{l:"Cliques",v:"3.2K",d:"+24%"}] },
-    { network:"Google Ads", metrics:[{l:"Impressões",v:"1.2M",d:"+22%"},{l:"Cliques",v:"18K",d:"+31%"},{l:"ROAS",v:"4.8x",d:"+0.6"},{l:"Conversões",v:"342",d:"+28%"}] },
+    { network:"Instagram", metrics:[{l:"Alcance",v:"—",d:""},{l:"Engajamento",v:"—",d:""},{l:"Seguidores",v:"—",d:""},{l:"Salvamentos",v:"—",d:""}] },
+    { network:"Facebook", metrics:[{l:"Alcance",v:"—",d:""},{l:"Curtidas",v:"—",d:""},{l:"Compartilhamentos",v:"—",d:""},{l:"Cliques",v:"—",d:""}] },
   ];
+  const [metricsReal, setMetricsReal] = useState(false);
+  /* TODO: Load real metrics from Meta API via social_tokens when connected */
 
   const renderDashSection = (key) => {
     const SH = ({title, action, onClick}) => <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt,margin:0}}>{title}</h3>{action&&<span onClick={onClick} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>{action}</span>}</div>;
