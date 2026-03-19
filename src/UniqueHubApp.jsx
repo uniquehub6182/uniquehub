@@ -6820,6 +6820,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [qpLoading, setQpLoading] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [cStage, setCStage] = useState("idea");
   const [fullExpandedId, setFullExpandedId] = useState(null);
   const [inlinePublishing, setInlinePublishing] = useState(false);
   const contentScrollRef = useRef(null);
@@ -8411,70 +8412,36 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
           </div>
         );
       })()}
-      {/* ── CONTAINED CONTENT MINI-APP (dashboard block) ── */}
+      {/* -- CONTAINED CONTENT BLOCK (dashboard) -- redesigned -- */}
       {contained && !isContentDesktop && !sel && !creating && (() => {
-        const K_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
-        const usedK = new Set(filtered.map(d=>d.stage));
-        const visK = K_STAGES.filter(s=>usedK.has(s)||["idea","briefing","design","review","client","published"].includes(s));
-        const moveK = (did, ns) => {
-          setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));
-          const dd = demands.find(x=>x.id===did);
-          if(dd?.supaId) supaUpdateDemand(dd.supaId,{stage:ns});
-          showToast(`→ ${STAGE_CFG[ns]?.l||ns}`);
-        };
-        const stgList = (t) => t==="campaign"?CAMPAIGN_STAGES:t==="video"?VIDEO_STAGES:SOCIAL_STAGES;
-
-        /* ── KANBAN VIEW (default) ── */
-        return (
-          <div style={{display:"flex",gap:8,flex:1,minHeight:0,minWidth:visK.length*150,padding:"8px 10px"}}>
-            {visK.map(stg=>{
-              const cfg = STAGE_CFG[stg]||{l:stg,c:"#888"};
-              const items = filtered.filter(d=>d.stage===stg);
-              return (
-                <div key={stg} style={{flex:1,minWidth:140,maxWidth:200,display:"flex",flexDirection:"column",borderRadius:12,background:`${cfg.c}06`,padding:6}}
-                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.background=`${cfg.c}15`;}}
-                  onDragLeave={e=>{e.currentTarget.style.background=`${cfg.c}06`;}}
-                  onDrop={e=>{e.preventDefault();e.currentTarget.style.background=`${cfg.c}06`;try{const dd=JSON.parse(e.dataTransfer.getData("text/plain"));if(dd.id)moveK(dd.id,stg);}catch{}}}
-                >
-                  <div style={{display:"flex",alignItems:"center",gap:5,padding:"5px 8px",marginBottom:6}}>
-                    <div style={{width:8,height:8,borderRadius:4,background:cfg.c,flexShrink:0}} />
-                    <span style={{fontSize:10,fontWeight:700,color:B.text}}>{cfg.l}</span>
-                    <span style={{fontSize:9,fontWeight:600,color:B.muted,marginLeft:"auto"}}>{items.length}</span>
-                  </div>
-                  <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:5}}>
-                    {items.map(d=>{
-                      const pC = d.priority==="alta"?"#EF4444":d.priority==="média"?"#F59E0B":"#10B981";
-                      return (
-                        <div key={d.id} draggable
-                          onDragStart={e=>{e.dataTransfer.setData("text/plain",JSON.stringify({id:d.id}));e.currentTarget.style.opacity="0.5";}}
-                          onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
-                          onDragOver={e=>{const hasFile=e.dataTransfer.types.includes("application/uh-drive-file");if(hasFile){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`2px solid ${B.accent}`;e.currentTarget.style.background=`${B.accent}08`;}}}
-                          onDragLeave={e=>{e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;}}
-                          onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(raw){e.preventDefault();e.stopPropagation();e.currentTarget.style.border=`1px solid ${B.border}`;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const note=(d.notes||"")+"\n📎 "+f.name+": "+f.webViewLink;setDemands(p=>p.map(x=>x.id===d.id?{...x,notes:note.trim()}:x));if(d.supaId)supaUpdateDemand(d.supaId,{notes:note.trim()});showToast("📎 "+f.name+" anexado")}catch{}}}}
-                          onClick={e=>{e.stopPropagation();setSel(d);}}
-                          style={{background:B.bgCard,borderRadius:10,padding:"8px 10px",border:`1px solid ${B.border}`,cursor:"grab",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"box-shadow .12s"}}
-                          onMouseEnter={e=>e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.1)"}
-                          onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"}
-                        >
-                          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
-                            <span style={{fontSize:7,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}15`,padding:"1px 5px",borderRadius:4}}>{d.priority||"média"}</span>
-                            <span style={{fontSize:7,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"}</span>
-                          </div>
-                          <p style={{fontSize:10,fontWeight:700,color:B.text,lineHeight:1.3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",marginBottom:3}}>{d.title}</p>
-                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:2}}>
-                            <p style={{fontSize:8,color:B.muted}}>{d.client}</p>
-                            {d.network&&<span style={{fontSize:7,color:B.muted}}>{d.network.split(", ")[0]}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {items.length===0&&<p style={{fontSize:9,color:B.muted,opacity:0.4,textAlign:"center",padding:10}}>—</p>}
-                  </div>
-                </div>
-              );
-            })}
+        const SO=["idea","briefing","design","caption","review","client","scheduled","published"];
+        const scc={};SO.forEach(s=>{scc[s]=filtered.filter(d=>d.stage===s).length;});
+        const stIt=filtered.filter(d=>d.stage===cStage);
+        const cCfg=STAGE_CFG[cStage]||{l:"Ideia",c:"#888"};
+        const mvK=(did,ns)=>{setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));const dd=demands.find(x=>x.id===did);if(dd?.supaId)supaUpdateDemand(dd.supaId,{stage:ns});showToast("\u2192 "+(STAGE_CFG[ns]?.l||ns));};
+        return (<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden"}}>
+          <div className="hscroll" style={{display:"flex",gap:4,padding:"6px 12px",overflowX:"auto",flexShrink:0,borderBottom:`1px solid ${B.border}`}}>
+            {SO.map(s=>{const c2=STAGE_CFG[s]||{l:s,c:"#888"};const cnt=scc[s]||0;const act=cStage===s;return <button key={s} onClick={()=>setCStage(s)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:act?`2px solid ${c2.c}`:`1.5px solid ${B.border}`,background:act?`${c2.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:act?700:500,color:act?c2.c:B.muted,whiteSpace:"nowrap",flexShrink:0}}><span style={{width:6,height:6,borderRadius:3,background:c2.c,flexShrink:0}}/>{c2.l}{cnt>0&&<span style={{fontSize:9,fontWeight:700,color:act?c2.c:B.muted,background:act?`${c2.c}20`:`${B.muted}10`,padding:"1px 6px",borderRadius:10}}>{cnt}</span>}</button>;})}
           </div>
-        );
+          <div style={{flex:1,overflowY:"auto",padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
+            {stIt.length===0&&<div style={{textAlign:"center",padding:"30px 0"}}><p style={{fontSize:12,fontWeight:600,color:B.muted,opacity:0.5}}>Nenhuma demanda em \"{cCfg.l}\"</p></div>}
+            {stIt.map(d=>{const pC=d.priority==="alta"?(B.red||"#EF4444"):d.priority==="m\u00e9dia"?(B.orange||"#F59E0B"):(B.green||"#10B981");const isExp=expandedId===d.id;const stgs=getStages(d.type||"social");const sIdx=stgs.indexOf(d.stage);const canN=sIdx<stgs.length-1;const canP=sIdx>0;return(<div key={d.id} style={{background:B.bgCard,borderRadius:14,border:`1px solid ${isExp?cCfg.c:B.border}`,overflow:"hidden",transition:"border .15s"}}>
+              <div onClick={()=>setExpandedId(isExp?null:d.id)} style={{padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10}}><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:8,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}12`,padding:"2px 6px",borderRadius:4}}>{d.priority||"m\u00e9dia"}</span><span style={{fontSize:8,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"V\u00eddeo":"Post"} \u00b7 {d.format||"Feed"}</span>{d.network&&<span style={{fontSize:8,color:B.muted}}>\u00b7 {d.network.split(", ")[0]}</span>}</div><p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{d.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{d.client||"Sem cliente"}</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,marginTop:4,transform:isExp?"rotate(180deg)":"none",transition:"transform .15s"}}><polyline points="6 9 12 15 18 9"/></svg></div>
+              {isExp&&<div style={{padding:"0 12px 12px",borderTop:`1px solid ${B.border}`}}>
+                <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
+                {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updateStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
+                {d.stage==="briefing"&&<div style={{marginBottom:8}}>{d.steps?.idea?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.idea.c}08`,border:`1px solid ${STAGE_CFG.idea.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea.c}}>{"\ud83d\udca1"} Ideia:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.idea.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>BRIEFING</p><textarea value={d.steps?.briefing?.text||""} onChange={e=>updateStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Instru\u00e7\u00f5es para o designer..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
+                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"\ud83d\udccb"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>DESIGN</p>{(d.steps?.design?.files||[]).map((f,fi)=><div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:`${B.pink||"#EC4899"}06`,border:`1px solid ${B.pink||"#EC4899"}15`,marginBottom:4}}>{f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")?<img src={f.url} style={{width:32,height:32,borderRadius:6,objectFit:"cover"}} alt=""/>:<span style={{fontSize:10}}>{"\ud83d\udcce"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>)}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"\ud83d\udcf7"} Enviar arquivo<input type="file" accept="image/*,video/*,.pdf" style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Enviando...");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+file.name;const{error:er}=await supabase.storage.from("demand-files").upload(path,file,{upsert:true,cacheControl:"3600"});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updateStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado \u2713");}else showToast("Erro");}}/></label></div>}
+                {d.stage==="caption"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updateStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updateStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
+                {d.stage==="review"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>REVIS\u00c3O</p><p style={{fontSize:10,color:B.text}}>Verifique legenda, arte e informa\u00e7\u00f5es.</p></div>}
+                {d.stage==="client"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>APROVA\u00c7\u00c3O DO CLIENTE</p><p style={{fontSize:10,color:B.text}}>Aguardando aprova\u00e7\u00e3o.</p></div>}
+                {d.stage==="scheduled"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>AGENDAMENTO</p><div style={{display:"flex",gap:6}}><input value={d.scheduling?.date||""} onChange={e=>updateField("scheduling",{...d.scheduling,date:e.target.value})} placeholder="DD/MM" className="tinput" style={{fontSize:10,flex:1}}/><input value={d.scheduling?.time||""} onChange={e=>updateField("scheduling",{...d.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" style={{fontSize:10,flex:1}}/></div></div>}
+                <div style={{display:"flex",gap:6}}>{canP&&<button onClick={()=>mvK(d.id,stgs[sIdx-1])} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.muted}}>{"\u2190"} {STAGE_CFG[stgs[sIdx-1]]?.l}</button>}{canN&&<button onClick={()=>mvK(d.id,stgs[sIdx+1])} style={{flex:1,padding:"8px 12px",borderRadius:8,border:"none",background:STAGE_CFG[stgs[sIdx+1]]?.c||B.accent,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Avan\u00e7ar {"\u2192"} {STAGE_CFG[stgs[sIdx+1]]?.l}</button>}</div>
+                <div style={{display:"flex",gap:6,marginTop:6}}><button onClick={()=>{setSel(d);}} style={{flex:1,padding:"7px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.text}}>Ver completo</button><button onClick={()=>{setSel(null);setCreating(false);goTab("content",d.id);}} style={{padding:"7px 10px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.muted}}>Expandir {"\u2197"}</button><button onClick={async()=>{if(!confirm('Excluir "'+d.title+'"?'))return;if(d.supaId)try{await supaDeleteDemand(d.supaId);}catch{}setDemands(p=>p.filter(x=>x.id!==d.id));showToast("Exclu\u00edda \u2713");}} style={{padding:"7px 10px",borderRadius:8,border:`1px solid ${B.red||"#EF4444"}20`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.red||"#EF4444"}}>{"\ud83d\uddd1"}</button></div>
+              </div>}
+            </div>);})}
+          </div>
+        </div>);
       })()}
       <div className="demands-grid" style={isContentDesktop ? { display:"none" } : contained ? { display:"none" } : undefined}>
       {filtered.map((d,i) => {
