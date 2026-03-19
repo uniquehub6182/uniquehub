@@ -15990,6 +15990,9 @@ function GamifyPage({ onBack, user, team }) {
   const [awardForm, setAwardForm] = useState({ xp:"", desc:"" });
   const [resetConfirm, setResetConfirm] = useState(null);
   const [redemptions, setRedemptions] = useState([]);
+  const [customRewards, setCustomRewards] = useState(null);
+  const [editingRewards, setEditingRewards] = useState(false);
+  const [rewardForm, setRewardForm] = useState({});
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
 
@@ -15999,6 +16002,7 @@ function GamifyPage({ onBack, user, team }) {
     supaLoadAllXp().then(rows => { setXpEvents(rows); setXpLoaded(true); });
     /* Load redemptions */
     supaGetSetting("gamify_redemptions").then(r => { if(r) try { setRedemptions(typeof r==="string"?JSON.parse(r):r); } catch(e){} });
+    supaGetSetting("gamify_custom_rewards").then(r => { if(r) try { setCustomRewards(typeof r==="string"?JSON.parse(r):r); } catch(e){} });
   }, [xpLoaded]);
 
   const redeemReward = async (reward) => {
@@ -16040,7 +16044,7 @@ function GamifyPage({ onBack, user, team }) {
       const checkins = monthXp.filter(e => e.action === "checkin").length;
       const tasks = monthXp.filter(e => e.action === "task_done").length;
       const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
-      return { id: m.id, user_id: m.user_id, name: m.name, role: m.role || m.job_title || "—", photo: m.photo || m.avatar || null, xp: totalXp, events: userXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: userXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 };
+      return { id: m.id, user_id: m.user_id, name: m.name, role: m.job_title || (m.role==="admin"?"CEO / Proprietário":m.role==="member"?"Colaborador":m.role) || "Colaborador", photo: m.photo || m.avatar || null, xp: totalXp, events: userXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: userXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 };
     });
     /* Include current user if not already in team list */
     if (user?.id && !members.find(m => m.user_id === user.id)) {
@@ -16050,7 +16054,7 @@ function GamifyPage({ onBack, user, team }) {
       const checkins = monthXp.filter(e => e.action === "checkin").length;
       const tasks = monthXp.filter(e => e.action === "task_done").length;
       const posts = monthXp.filter(e => e.action === "post_published" || e.action === "reels").length;
-      members.unshift({ id: "me", user_id: user.id, name: user.name || user.nick || "Eu", role: "Admin", photo: user.photo || user.avatar || null, xp: totalXp, events: myXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: myXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 });
+      members.unshift({ id: "me", user_id: user.id, name: user.name || user.nick || "Eu", role: "CEO / Proprietário", photo: user.photo || user.avatar || null, xp: totalXp, events: myXp, streak: checkins, tasksMonth: tasks, postsMonth: posts, badgeCount: myXp.filter(e => e.action === "badge").length, onTimeRate: totalXp > 0 ? Math.min(100, 70 + Math.round(totalXp / 50)) : 0 });
     }
     return members;
   }, [team, xpEvents, user]);
@@ -16119,7 +16123,7 @@ function GamifyPage({ onBack, user, team }) {
 
   /* ── REWARDS SHOP ── */
   const RwdIcon = ({d,c="#666"}) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
-  const REWARDS = [
+  const DEFAULT_REWARDS = [
     { id:1, name:"Day Off Extra", desc:"Um dia de folga adicional no mês", cost:3000, icon:<RwdIcon d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" c={B.blue}/>, cat:"Benefício", stock:2 },
     { id:2, name:"Almoço Especial", desc:"Almoço especial com a liderança", cost:1500, icon:<RwdIcon d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" c={B.orange}/>, cat:"Experiência", stock:4 },
     { id:3, name:"Gift Card R$100", desc:"Cartão presente de R$100 à escolha", cost:2000, icon:<RwdIcon d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 110-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 100-5C13 2 12 7 12 7z" c={B.accent}/>, cat:"Prêmio", stock:5 },
@@ -16129,6 +16133,7 @@ function GamifyPage({ onBack, user, team }) {
     { id:7, name:"Setup Upgrade", desc:"Upgrade de equipamento do escritório", cost:6000, icon:<RwdIcon d="M20 7h-9M14 17H5M17 17a3 3 0 100-6 3 3 0 000 6zM7 7a3 3 0 100-6 3 3 0 000 6z" c={B.cyan}/>, cat:"Escritório", stock:1 },
     { id:8, name:"Horário Flexível", desc:"1 mês de horário flexível", cost:3500, icon:<RwdIcon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2" c={B.blue}/>, cat:"Benefício", stock:2 },
   ];
+  const REWARDS = customRewards && customRewards.length > 0 ? customRewards.map((cr,i) => ({...DEFAULT_REWARDS[i]||DEFAULT_REWARDS[0], ...cr, id:cr.id||i+1, icon:DEFAULT_REWARDS.find(d=>d.id===cr.id)?.icon || DEFAULT_REWARDS[i%DEFAULT_REWARDS.length]?.icon})) : DEFAULT_REWARDS;
 
   /* ── XP HISTORY (real from Supabase) ── */
   const fmtXpTime = (d) => { const dt = new Date(d); const now = new Date(); const diff = now - dt; if (diff < 86400000) return `Hoje, ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`; if (diff < 172800000) return `Ontem, ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`; return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}); };
@@ -16194,6 +16199,10 @@ function GamifyPage({ onBack, user, team }) {
               <input value={awardForm.xp} onChange={e=>setAwardForm(p=>({...p,xp:e.target.value}))} placeholder="XP (ex: 100)" style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}/>
               <input value={awardForm.desc} onChange={e=>setAwardForm(p=>({...p,desc:e.target.value}))} placeholder="Motivo" style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}/>
               <button onClick={async()=>{if(!awardUser||!awardForm.xp)return showToast("Selecione membro e XP");const xp=parseInt(awardForm.xp);if(isNaN(xp)||xp<=0)return showToast("XP inválido");await supaAwardXp(awardUser,"bonus",xp,awardForm.desc||"Bônus admin");setAwardUser(null);setAwardForm({xp:"",desc:""});setXpLoaded(false);showToast(`+${xp} XP concedido ✓`);}} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Conceder XP</button>
+              <div style={{ marginTop:10, display:"flex", flexDirection:"column", gap:4 }}>
+                <button onClick={async()=>{if(!confirm("ZERAR todo o XP e histórico de TODOS os membros? Esta ação não pode ser desfeita."))return;await supaResetXp(null);setXpLoaded(false);showToast("XP de todos zerado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.red||"#EF4444")+"08", border:"1px solid "+(B.red||"#EF4444")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.red||"#EF4444" }}>🗑 Zerar XP de todos</button>
+                <button onClick={async()=>{if(!confirm("Limpar todo o histórico de XP? O XP atual será mantido mas o log de atividades será apagado."))return;await supaResetXp(null);setXpLoaded(false);showToast("Histórico zerado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.orange||"#F59E0B")+"08", border:"1px solid "+(B.orange||"#F59E0B")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.orange||"#F59E0B" }}>📋 Limpar histórico</button>
+              </div>
             </div>}
           </div>
           {/* ── RIGHT: Content ── */}
@@ -16331,11 +16340,32 @@ function GamifyPage({ onBack, user, team }) {
               {tab==="rewards" && <>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
                   <div><h3 style={{ fontSize:20, fontWeight:900 }}>Recompensas</h3><p style={{ fontSize:12, color:B.muted, marginTop:2 }}>Troque seu XP por benefícios reais</p></div>
-                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 20px", borderRadius:14, background:B.dark }}>
-                    <span style={{ fontSize:20, fontWeight:900, color:B.accent }}>{me.xp.toLocaleString()}</span>
-                    <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>XP disponíveis</span>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    {isAdmin && <button onClick={()=>setEditingRewards(!editingRewards)} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${editingRewards?B.accent:B.border}`, background:editingRewards?B.accent+"12":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:editingRewards?B.accent:B.muted }}>{editingRewards?"✓ Fechar edição":"⚙ Editar Loja"}</button>}
+                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 20px", borderRadius:14, background:B.dark }}>
+                      <span style={{ fontSize:20, fontWeight:900, color:B.accent }}>{me.xp.toLocaleString()}</span>
+                      <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>XP disponíveis</span>
+                    </div>
                   </div>
                 </div>
+                {editingRewards && isAdmin && <div style={{ marginBottom:20, padding:16, borderRadius:14, border:"1.5px solid "+B.accent+"30", background:B.accent+"04" }}>
+                  <p style={{ fontSize:13, fontWeight:700, marginBottom:12 }}>Personalizar Recompensas</p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {REWARDS.map((r,i)=><div key={r.id} style={{ display:"flex", gap:8, alignItems:"center", padding:"10px 12px", borderRadius:10, background:B.bgCard, border:"1px solid "+B.border }}>
+                      <span style={{ fontSize:10, fontWeight:700, color:B.muted, width:20 }}>#{i+1}</span>
+                      <input defaultValue={r.name} onBlur={e=>{const nw=[...(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})))];nw[i]={...nw[i],name:e.target.value};setCustomRewards(nw);}} placeholder="Nome" style={{ flex:2, padding:"6px 10px", borderRadius:8, border:"1px solid "+B.border, fontFamily:"inherit", fontSize:11, fontWeight:600 }}/>
+                      <input defaultValue={r.cost} onBlur={e=>{const nw=[...(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})))];nw[i]={...nw[i],cost:parseInt(e.target.value)||0};setCustomRewards(nw);}} placeholder="XP" type="number" style={{ width:80, padding:"6px 10px", borderRadius:8, border:"1px solid "+B.border, fontFamily:"inherit", fontSize:11, fontWeight:700, textAlign:"center" }}/>
+                      <input defaultValue={r.stock} onBlur={e=>{const nw=[...(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})))];nw[i]={...nw[i],stock:parseInt(e.target.value)||0};setCustomRewards(nw);}} placeholder="Qtd" type="number" style={{ width:50, padding:"6px 10px", borderRadius:8, border:"1px solid "+B.border, fontFamily:"inherit", fontSize:11, textAlign:"center" }}/>
+                      <input defaultValue={r.desc} onBlur={e=>{const nw=[...(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})))];nw[i]={...nw[i],desc:e.target.value};setCustomRewards(nw);}} placeholder="Descrição" style={{ flex:3, padding:"6px 10px", borderRadius:8, border:"1px solid "+B.border, fontFamily:"inherit", fontSize:11 }}/>
+                      <button onClick={()=>{const nw=[...(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})))];nw.splice(i,1);setCustomRewards(nw);}} style={{ width:28, height:28, borderRadius:8, border:"1px solid "+(B.red||"#EF4444")+"20", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.red||"#EF4444", fontSize:12 }}>✕</button>
+                    </div>)}
+                  </div>
+                  <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                    <button onClick={()=>{const nw=[...(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})))];nw.push({id:Date.now(),name:"Nova recompensa",desc:"Descrição",cost:1000,stock:5,cat:"Benefício"});setCustomRewards(nw);}} style={{ padding:"8px 16px", borderRadius:8, border:"1.5px dashed "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>+ Adicionar recompensa</button>
+                    <button onClick={async()=>{const data=(customRewards||DEFAULT_REWARDS.map(d=>({id:d.id,name:d.name,desc:d.desc,cost:d.cost,stock:d.stock,cat:d.cat})));await supaSetSetting("gamify_custom_rewards",JSON.stringify(data));showToast("Loja salva ✓");setEditingRewards(false);}} style={{ padding:"8px 20px", borderRadius:8, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>Salvar alterações</button>
+                    <button onClick={async()=>{if(!confirm("Restaurar recompensas padrão?"))return;setCustomRewards(null);await supaSetSetting("gamify_custom_rewards","");showToast("Loja restaurada ✓");}} style={{ padding:"8px 16px", borderRadius:8, border:"1px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>Restaurar padrão</button>
+                  </div>
+                </div>}
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:16 }}>
                   {REWARDS.map(r => {
                     const canBuy = me.xp >= r.cost;
