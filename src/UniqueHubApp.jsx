@@ -13755,7 +13755,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
       {/* Search */}
       <div style={{ position:"relative", marginBottom:10 }}>
         <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</div>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo, cliente, categoria..." className="tinput" style={{ paddingLeft:40 }} />
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo, cliente, categoria..." className="tinput" style={{ paddingLeft:"40px" }} />
       </div>
 
       {/* Client filter — hidden for client view */}
@@ -19002,14 +19002,7 @@ function ClientMatch4Biz({ onBack, user }) {
   const [swipeAnim, setSwipeAnim] = useState(null);
   const { showToast, ToastEl } = useToast();
 
-  const PROFILES = [
-    { id:1, name:"Studio Criativo RJ", initials:"SC", city:"Rio de Janeiro", tags:["Vídeo","Foto","Reels"], desc:"Produtora audiovisual premium com 8 anos de mercado. Especializada em vídeos institucionais, reels e cobertura de eventos.", match:94, rating:4.8, clients:47, ticket:"R$5-15K", color:"#10B981" },
-    { id:2, name:"Café Artesanal SP", initials:"CA", city:"São Paulo", tags:["Food","Lifestyle"], desc:"Cafeteria artesanal com 3 unidades. Fornecemos grãos selecionados e temos programa de parceria para empresas.", match:87, rating:4.5, clients:120, ticket:"R$2-8K", color:"#F59E0B" },
-    { id:3, name:"TechSmart Solutions", initials:"TS", city:"Belo Horizonte", tags:["Tech","SaaS","B2B"], desc:"Desenvolvedora de soluções em automação comercial. Integrações com ERPs e CRMs para PMEs.", match:91, rating:4.7, clients:85, ticket:"R$10-50K", color:"#3B82F6" },
-    { id:4, name:"Bella Estética Premium", initials:"BE", city:"Curitiba", tags:["Beleza","Saúde","Bem-estar"], desc:"Rede de estética com 5 unidades. Especializada em tratamentos faciais e corporais de alto padrão.", match:78, rating:4.3, clients:200, ticket:"R$1-5K", color:"#EC4899" },
-    { id:5, name:"Distribuidora Nova Era", initials:"DN", city:"Campinas", tags:["Logística","Distribuição"], desc:"Distribuidora regional com frota própria. Atendemos todo interior de SP com entregas em 24h.", match:82, rating:4.1, clients:340, ticket:"R$5-20K", color:"#8B5CF6" },
-    { id:6, name:"Fit Arena Gym", initials:"FA", city:"Niterói", tags:["Fitness","Saúde","Esporte"], desc:"Academia completa com crossfit, musculação e pilates. Programa de parcerias corporativas.", match:75, rating:4.6, clients:500, ticket:"R$3-10K", color:"#EF4444" },
-  ];
+  const PROFILES = [];
 
   const available = PROFILES.filter(p => !matches.some(m => m.id === p.id) && !connections.some(c => c.id === p.id));
   const currentProfile = available[currentIdx % Math.max(available.length, 1)];
@@ -19173,7 +19166,15 @@ function ClientMatch4Biz({ onBack, user }) {
 
         {/* DISCOVER */}
         {tab === "discover" && <>
-          {available.length > 0 && currentProfile ? (
+          {PROFILES.length === 0 ? (
+            <Card style={{ textAlign:"center", padding:32, marginTop:8 }}>
+              <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              </div>
+              <p style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Em breve!</p>
+              <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>A agência está preparando as conexões do Match4Biz. Quando disponível, você poderá se conectar com outros clientes e parceiros.</p>
+            </Card>
+          ) : available.length > 0 && currentProfile ? (
             <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)", position:"relative" }}>
               {/* Locked overlay when no credits */}
               {credits < 10 && <div style={{ position:"absolute", inset:0, zIndex:5, background:`${B.bg}90`, backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:20 }}>
@@ -19407,16 +19408,15 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </div>
 
         {tab === "score" && <>
-          <Card style={{ padding:0, overflow:"hidden" }}>
-            <div style={{ background:B.dark||"#111", padding:"20px 20px 16px", color:"#fff" }}>
-              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Growth Score</p>
+          <Card style={{ padding:20, overflow:"hidden", borderRadius:20 }}>
+              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase" }}>Growth Score</p>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
                 <div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
                     <span style={{ fontSize:48, fontWeight:900, color:scoreColor }}>{score}</span>
                     <span style={{ fontSize:14, fontWeight:700, color:score > 0 ? B.green : B.muted }}>{score > 0 ? `${score} pts` : "Comece agora!"}</span>
                   </div>
-                  <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:2 }}>#{rank} de {totalClients} · Zona {zone}</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>#{rank} de {totalClients} · Zona {zone}</p>
                 </div>
                 <div style={{ width:64, height:64, borderRadius:"50%", border:`3px solid ${scoreColor}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <span style={{ fontSize:22, fontWeight:900, color:scoreColor }}>{score}</span>
@@ -19424,15 +19424,14 @@ function ClientGamification({ onBack, user, clients, demands }) {
               </div>
               <div style={{ display:"flex", gap:4, marginTop:14 }}>
                 {PILLARS.map((p,i) => <div key={i} style={{ flex:1 }}>
-                  <div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.color, width:`${p.score}%` }} /></div>
-                  <p style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:4, textAlign:"center" }}>{p.name.substring(0,4)}</p>
+                  <div style={{ height:4, borderRadius:2, background:`${B.border}` }}><div style={{ height:4, borderRadius:2, background:p.color, width:`${p.score}%` }} /></div>
+                  <p style={{ fontSize:8, color:B.muted, marginTop:4, textAlign:"center" }}>{p.name.substring(0,4)}</p>
                 </div>)}
               </div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
-                <span style={{ fontSize:11, color:"rgba(255,255,255,0.5)" }}>{IC.gamify("rgba(255,255,255,0.4)")} {mPending} missões pendentes</span>
+                <span style={{ fontSize:11, color:B.muted }}>{IC.gamify(B.muted)} {mPending} missões pendentes</span>
                 <span onClick={()=>setTab("missions")} style={{ fontSize:11, color:B.accent, fontWeight:600, cursor:"pointer" }}>Ver detalhes →</span>
               </div>
-            </div>
           </Card>
           {PILLARS.map((p,i) => <Card key={i} style={{ marginTop:8 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -19866,7 +19865,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     s.textContent = `
 .app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:${B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
-.uh-sub-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain;background:${B.bg};color:${B.text}}.uh-sub-overlay .app,.uh-sub-overlay .screen,.uh-sub-overlay .pg{position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;min-height:100%!important;display:flex!important;flex-direction:column!important;overflow:visible!important;background:${B.bg}!important;color:${B.text}!important}.uh-sub-overlay .content{overflow:visible!important}..card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
+.uh-sub-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain;background:${B.bg};color:${B.text}}.uh-sub-overlay .app,.uh-sub-overlay .screen,.uh-sub-overlay .pg{position:static!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;height:auto!important;min-height:auto!important;display:block!important;overflow:visible!important;background:transparent!important}.uh-sub-overlay .content{overflow:visible!important;height:auto!important;flex:none!important}.uh-sub-overlay div[style*="overflow-y"]{overflow-y:visible!important}.uh-sub-overlay div[style*="overflowY"]{overflow-y:visible!important}..card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}
@@ -20782,7 +20781,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile /></div>}
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
