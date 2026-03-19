@@ -19863,7 +19863,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
     if (document.getElementById(id)) return;
     const s = document.createElement("style");
     s.id = id;
-    s.textContent = `.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}!important;color:${B.text}!important}.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}.tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding:10px 14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}.pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}.htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}.ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${B.bgCard}!important;color:${B.text}!important;border:1px solid ${B.border}!important;cursor:pointer}.sl{font-size:11px;font-weight:700;color:${B.muted};text-transform:uppercase;letter-spacing:0.5px}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;background:${B.bg}!important}`;
+    s.textContent = `.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}!important;color:${B.text}!important}.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}.tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}.pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}.htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}.ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${B.bgCard}!important;color:${B.text}!important;border:1px solid ${B.border}!important;cursor:pointer}.sl{font-size:11px;font-weight:700;color:${B.muted};text-transform:uppercase;letter-spacing:0.5px}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;background:${B.bg}!important}`;
     document.head.appendChild(s);
     return () => { const el = document.getElementById(id); if (el) el.remove(); };
   }, []);
@@ -20105,7 +20105,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
 .app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}!important;color:${B.text}!important}
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
-.tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding:10px 14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
+.tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}
 .ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${B.bgCard}!important;color:${B.text}!important;border:1px solid ${B.border}!important;cursor:pointer}
@@ -20120,7 +20120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
     </div>
   );
-  if (sub === "financial") {
+  const renderFinancialSub = () => {
     const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
     const PLAN_INFO = {
       free:{ name:"Free", desc:"Plano gratuito de entrada", features:["Acesso ao Hub do cliente","Aprovação de conteúdos","Chat com a agência","Relatórios básicos"] },
@@ -20321,10 +20321,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
   );
-  }
+  };
 
   /* DEMAND DETAIL */
-  if (sub && sub.startsWith("demand_")) {
+  const renderDemandSub = () => {
     const demandId = sub.replace("demand_","");
     const d = demands.find(x => x.id === demandId);
     if (!d) { setSub(null); return null; }
@@ -20429,7 +20429,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
     );
-  }
+  };
 
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })();
   const isDark = B.bg === "#0D0D0D" || dark;
@@ -20727,28 +20727,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     { k:"settings", l:"Configurações", i:IC.settings, isSub:true },
   ];
 
-  return (
-    <div style={{ display:"flex" }}>
+  const hasSub = !!sub;
+
+  return (<>
+    {/* ═══ SUB-PAGES: rendered OUTSIDE .app to avoid nested position:fixed scroll issues ═══ */}
+    {hasSub && (
+      sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
+      sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} /> :
+      sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
+      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile /> :
+      sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /> :
+      sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView /> :
+      sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /> :
+      sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
+      sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
+      sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
+      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /> :
+      sub === "financial" ? renderFinancialSub() :
+      sub?.startsWith("demand_") ? renderDemandSub() :
+      null
+    )}
+    {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
+    <div style={{ display: hasSub ? "none" : "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
-      {/* ═══ SUB-PAGES: rendered in a fixed overlay above the main content ═══ */}
-      {sub && sub !== "financial" && !sub.startsWith("demand_") && <div style={{position:"fixed",inset:0,zIndex:200,background:B.bg,color:B.text}}>
-      {sub === "gamify" && <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />}
-      {sub === "match4biz" && <ClientMatch4Biz onBack={() => setSub(null)} user={user} />}
-      {sub === "academy" && <AcademyPage onBack={() => setSub(null)} isClientView />}
-      {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} />}
-      {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />}
-      {sub === "news" && <NewsPage onBack={() => setSub(null)} user={user} isClientView />}
-      {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />}
-      {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} isClientView />}
-      {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
-      {sub === "reports" && (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })()}
-      {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />}
-      </div>}
+
       <div className="content" ref={scrollRef} onScroll={e=>setHeaderC(e.currentTarget.scrollTop>60)}>
         {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />}
         <div style={{ padding:"14px 16px 0" }}>
@@ -20806,7 +20813,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     </div>
-  );
+    </>);
 }
 
 function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, uiPrefs, updateUiPrefs, replaceUiPrefs, savePrefsToCloud, cloudDash, cloudNav }) {
