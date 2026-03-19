@@ -198,10 +198,15 @@ const supaCreateDemand = async (d, clientId) => {
       type: d.type || "social",
       stage: d.stage || "idea",
       priority: d.priority || "média",
+      format: d.format || "Feed",
+      networks: d.network ? d.network.split(", ") : ["Instagram"],
+      sponsored: d.sponsored || false,
     };
     if (clientId) payload.client_id = clientId;
     /* Save steps with creator info */
     if (d.steps) payload.steps = d.steps;
+    if (d.scheduling) payload.scheduling = d.scheduling;
+    if (d.traffic) payload.traffic = d.traffic;
     const { data, error } = await supabase.from("demands").insert(payload).select().single();
     if (error) { return { data: null, err: JSON.stringify(error) }; }
     return { data, err: null };
