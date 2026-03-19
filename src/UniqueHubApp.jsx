@@ -19621,23 +19621,25 @@ function ClientOnboarding({ onComplete, onBack }) {
   const [error, setError] = useState("");
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
-  const [kbHeight, setKbHeight] = useState(0);
-  /* iOS keyboard: add interactive-widget meta + visualViewport detection */
+  const containerRef = useRef(null);
+  /* iOS Chrome keyboard: directly set container height from visualViewport */
   React.useEffect(() => {
-    /* Set viewport meta to resize content when keyboard opens */
-    const meta = document.querySelector('meta[name="viewport"]');
-    const origContent = meta?.getAttribute("content") || "";
-    if (meta && !origContent.includes("interactive-widget")) {
-      meta.setAttribute("content", origContent + ", interactive-widget=resizes-content");
-    }
-    /* visualViewport listener */
     const vv = window.visualViewport;
+    const update = () => {
+      if (containerRef.current) {
+        const h = vv ? vv.height : window.innerHeight;
+        containerRef.current.style.height = h + "px";
+        containerRef.current.style.top = (vv ? vv.offsetTop : 0) + "px";
+      }
+      scrollBottom();
+    };
     if (vv) {
-      const handler = () => { scrollBottom(); };
-      vv.addEventListener("resize", handler);
-      return () => { vv.removeEventListener("resize", handler); if (meta) meta.setAttribute("content", origContent); };
+      vv.addEventListener("resize", update);
+      vv.addEventListener("scroll", update);
     }
-    return () => { if (meta) meta.setAttribute("content", origContent); };
+    window.addEventListener("resize", update);
+    update();
+    return () => { if (vv) { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); } window.removeEventListener("resize", update); };
   }, []);
 
   const scrollBottom = () => { setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50); setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 300); };
@@ -19776,7 +19778,7 @@ function ClientOnboarding({ onComplete, onBack }) {
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23", zIndex:9999 }}>
+    <div ref={containerRef} style={{ position:"fixed", top:0, left:0, width:"100%", height:"100%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23", zIndex:9999 }}>
       {/* Header */}
       <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
         <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}` }}>{IC.back()}</button>
@@ -19828,7 +19830,7 @@ function ClientOnboarding({ onComplete, onBack }) {
       </div>
 
       {/* Input */}
-      {!done && <div style={{ padding: kbHeight > 0 ? "10px 14px" : "10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8, alignItems:"center" }}>
+      {!done && <div style={{ padding:"10px 14px", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8, alignItems:"center", flexShrink:0 }}>
         <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()} onFocus={()=>{scrollBottom();setTimeout(()=>{scrollBottom();if(inputRef.current)inputRef.current.scrollIntoView({block:"nearest",behavior:"smooth"});},400);setTimeout(scrollBottom,800);}}
           placeholder={step===1?"Digite o código de acesso...":step===2?"Seu nome completo...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
           type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
