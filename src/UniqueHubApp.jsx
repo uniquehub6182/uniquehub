@@ -19848,6 +19848,8 @@ function ClientOnboarding({ onComplete, onBack }) {
   );
 }
 
+class ClientEB extends React.Component{constructor(p){super(p);this.state={err:null};}static getDerivedStateFromError(e){return{err:e};}render(){if(this.state.err)return React.createElement("div",{className:"app",style:{position:"fixed",inset:0,background:"#F5F5F5",color:"#0D0D0D",padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},React.createElement("h2",{style:{color:"#EF4444",marginBottom:10,fontSize:18}},"Erro na pagina"),React.createElement("pre",{style:{fontSize:11,color:"#666",maxWidth:320,textAlign:"center",lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-all"}},String(this.state.err?.message||this.state.err)),React.createElement("button",{onClick:()=>{this.setState({err:null});},style:{marginTop:16,padding:"10px 20px",borderRadius:10,background:"#BBF246",border:"none",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}},"Voltar"));return this.props.children;}}
+
 function MainClientApp({ user: userProp, onLogout, dark }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
@@ -20117,17 +20119,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
     </div>
   );
-  if (sub === "gamify") return <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />;
-  if (sub === "match4biz") return <ClientMatch4Biz onBack={() => setSub(null)} user={user} />;
-  if (sub === "academy") return <AcademyPage onBack={() => setSub(null)} isClientView />;
-  if (sub === "calendar") return <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} />;
-  if (sub === "library") return <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />;
-  if (sub === "news") return <NewsPage onBack={() => setSub(null)} user={user} isClientView />;
-  if (sub === "ideas") return <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />;
-  if (sub === "ai") return <AIPage onBack={() => setSub(null)} user={user} isClientView />;
-  if (sub === "help") return <HelpPage onBack={() => setSub(null)} />;
-  if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; }
-  if (sub === "settings") return <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />;
+  if (sub === "gamify") return <ClientEB><ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /></ClientEB>;
+  if (sub === "match4biz") return <ClientEB><ClientMatch4Biz onBack={() => setSub(null)} user={user} /></ClientEB>;
+  if (sub === "academy") return <ClientEB><AcademyPage onBack={() => setSub(null)} isClientView /></ClientEB>;
+  if (sub === "calendar") return <ClientEB><CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} /></ClientEB>;
+  if (sub === "library") return <ClientEB><LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /></ClientEB>;
+  if (sub === "news") return <ClientEB><NewsPage onBack={() => setSub(null)} user={user} isClientView /></ClientEB>;
+  if (sub === "ideas") return <ClientEB><IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /></ClientEB>;
+  if (sub === "ai") return <ClientEB><AIPage onBack={() => setSub(null)} user={user} isClientView /></ClientEB>;
+  if (sub === "help") return <ClientEB><HelpPage onBack={() => setSub(null)} /></ClientEB>;
+  if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ClientEB><ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView /></ClientEB>; }
+  if (sub === "settings") return <ClientEB><SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /></ClientEB>;
   if (sub === "financial") {
     const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
     const PLAN_INFO = {
