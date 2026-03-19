@@ -1520,7 +1520,7 @@ const Head = ({ title, onBack, right }) => (
 
 const Av = ({ src, name, sz = 40, fs = 16 }) => (
   <div style={{ width: sz, height: sz, borderRadius: sz * 0.35, background: src ? "transparent" : `${B.accent}20`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-    {src ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontWeight: 800, fontSize: fs, color: B.accent }}>{(name || "U")[0].toUpperCase()}</span>}
+    {src ? <img src={src} alt="" loading="eager" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontWeight: 800, fontSize: fs, color: B.accent }}>{(name || "U")[0].toUpperCase()}</span>}
   </div>
 );
 /* ── CollapseHeader: reusable collapsible page header ── */
@@ -9284,7 +9284,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
       /* Show cached data instantly */
       try {
         const cached = sessionStorage.getItem("uh_chat_convs_" + user.id);
-        if (cached) { const parsed = JSON.parse(cached); if (parsed?.length) { setConvs(parsed); setLoading(false); } }
+        if (cached) { const parsed = JSON.parse(cached); if (parsed?.length) { setConvs(parsed); setLoading(false); parsed.forEach(conv => (conv.members||[]).forEach(m => { if(m.photo_url){const img=new Image();img.src=m.photo_url;} })); } }
       } catch {}
       /* Then refresh from DB in background */
       const [c, membersRes] = await Promise.all([
@@ -9293,6 +9293,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
       ]);
       setConvs(c);
       try { sessionStorage.setItem("uh_chat_convs_" + user.id, JSON.stringify(c)); } catch {}
+      /* Preload member photos for instant rendering */
+      const photoUrls = new Set();
+      (c||[]).forEach(conv => (conv.members||[]).forEach(m => { if(m.photo_url) photoUrls.add(m.photo_url); }));
+      photoUrls.forEach(url => { const img = new Image(); img.src = url; });
       const memberIds = (membersRes.data || []).map(m => m.user_id).filter(id => id !== user.id);
       if (memberIds.length > 0) {
         const { data: profs } = await supabase.from("profiles").select("id, name, email, role, photo_url").in("id", memberIds);
@@ -19824,7 +19828,7 @@ function MainClientApp({ user: userProp, onLogout, dark }) {
   useEffect(() => {
     if (!supabase) return;
     supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly: c.monthly, status: c.status || "ativo", logo: c.logo_url || c.logo }))); });
-    supaLoadTeam().then(rows => { if (rows) setTeam(rows); });
+    supaLoadTeam().then(rows => { if (rows) { setTeam(rows); rows.forEach(m => { if(m.photo){const img=new Image();img.src=m.photo;} }); } });
   }, []);
 
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
