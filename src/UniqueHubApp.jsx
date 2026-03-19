@@ -20120,17 +20120,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
     </div>
   );
-  if (sub === "gamify") return <ClientEB><ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /></ClientEB>;
-  if (sub === "match4biz") return <ClientEB><ClientMatch4Biz onBack={() => setSub(null)} user={user} /></ClientEB>;
-  if (sub === "academy") return <ClientEB><AcademyPage onBack={() => setSub(null)} isClientView /></ClientEB>;
-  if (sub === "calendar") return <ClientEB><CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} /></ClientEB>;
-  if (sub === "library") return <ClientEB><LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /></ClientEB>;
-  if (sub === "news") return <ClientEB><NewsPage onBack={() => setSub(null)} user={user} isClientView /></ClientEB>;
-  if (sub === "ideas") return <ClientEB><IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /></ClientEB>;
-  if (sub === "ai") return <ClientEB><AIPage onBack={() => setSub(null)} user={user} isClientView /></ClientEB>;
-  if (sub === "help") return <ClientEB><HelpPage onBack={() => setSub(null)} /></ClientEB>;
-  if (sub === "reports") { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ClientEB><ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView /></ClientEB>; }
-  if (sub === "settings") return <ClientEB><SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /></ClientEB>;
   if (sub === "financial") {
     const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
     const PLAN_INFO = {
@@ -20746,6 +20735,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <style dangerouslySetInnerHTML={{ __html: `
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
+      {/* ═══ SUB-PAGES rendered inside main JSX (no early returns) ═══ */}
+      {sub === "gamify" && <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} />}
+      {sub === "match4biz" && <ClientMatch4Biz onBack={() => setSub(null)} user={user} />}
+      {sub === "academy" && <AcademyPage onBack={() => setSub(null)} isClientView />}
+      {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} />}
+      {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} />}
+      {sub === "news" && !sub.startsWith("demand_") && <NewsPage onBack={() => setSub(null)} user={user} isClientView />}
+      {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} />}
+      {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} isClientView />}
+      {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
+      {sub === "reports" && (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })()}
+      {sub === "settings" && <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} />}
       <div className="content" ref={scrollRef} onScroll={e=>setHeaderC(e.currentTarget.scrollTop>60)}>
         {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />}
         <div style={{ padding:"14px 16px 0" }}>
@@ -20785,7 +20786,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           </>}
         </div>
       </div>
-      <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
+      {(!sub || sub === "financial" || sub.startsWith("demand_")) && <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           return (
@@ -20798,7 +20799,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </button>
           );
         })}
-      </nav>
+      </nav>}
       <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />
     </div>
     </div>
