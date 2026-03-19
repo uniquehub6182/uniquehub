@@ -16915,6 +16915,14 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   const { showToast, ToastEl } = useToast();
 
   const AI_HISTORY_KEY = `ai_history_${user?.id || "anon"}`;
+  /* Image generation states */
+  const [imgMode, setImgMode] = useState(false);
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgResult, setImgResult] = useState(null);
+  const [imgHistory, setImgHistory] = useState([]);
+  const [imgSize, setImgSize] = useState("1024x1024");
+  const [imgStyle, setImgStyle] = useState("vivid");
 
   const PRESETS = isClientView ? [
     { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>, label: "Ideias para meu negócio", prompt: "Me dê ideias criativas de marketing e conteúdo para minha empresa " },
@@ -17104,6 +17112,24 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
     setMessages([]);
   };
 
+  /* ═══ IMAGE GENERATION (DALL-E 3) ═══ */
+  const generateImage = async () => {
+    if (!imgPrompt.trim() || imgLoading) return;
+    const openaiKey = aiKeys.openai_key;
+    if (!openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
+    setImgLoading(true); setImgResult(null);
+    try {
+      const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openaiKey }, body: JSON.stringify({ model: "dall-e-3", prompt: imgPrompt, n: 1, size: imgSize, style: imgStyle, response_format: "url" }) });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error.message || "Erro na API");
+      const url = d.data?.[0]?.url;
+      const revised = d.data?.[0]?.revised_prompt || imgPrompt;
+      if (url) { setImgResult({ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }); setImgHistory(p => [{ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }, ...p].slice(0, 20)); }
+      else throw new Error("Nenhuma imagem retornada");
+    } catch (e) { showToast("Erro: " + e.message); }
+    setImgLoading(false);
+  };
+
   /* ═══ HISTORY VIEW ═══ */
   /* ── DESKTOP AI v4 ── */
   const AI_MODELS = [
@@ -17133,7 +17159,8 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
 
           {/* ── LEFT ── */}
           <div style={{ width:280, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            <button onClick={()=>{startNewChat();}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark }}>+ Nova Conversa</button>
+            <button onClick={()=>{startNewChat();setImgMode(false);}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"14px 0", borderRadius:14, background:imgMode?"transparent":B.accent, border:imgMode?`1.5px solid ${B.accent}`:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:imgMode?B.accent:B.dark }}>+ Nova Conversa</button>
+            <button onClick={()=>{setImgMode(true);setView("history");}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"12px 0", borderRadius:14, background:imgMode?"linear-gradient(135deg, #6366F1, #EC4899)":"transparent", border:imgMode?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:imgMode?"#fff":B.muted }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Gerar Imagem com IA</button>
 
             {/* Model cards */}
             <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, padding:"14px" }}>
@@ -17180,6 +17207,59 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
           </div>
           {/* ── RIGHT: Chat ── */}
           <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
+            {imgMode ? <>
+              {/* ═══ IMAGE GENERATION PANEL ═══ */}
+              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:"linear-gradient(135deg, #6366F1, #EC4899)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+                <div><p style={{ fontSize:16, fontWeight:800 }}>Gerador de Imagens</p><p style={{ fontSize:11, color:B.muted }}>DALL·E 3 — OpenAI</p></div>
+              </div>
+              <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
+                {imgResult && <div style={{ marginBottom:24 }}>
+                  <div style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${B.border}`, boxShadow:"0 4px 20px rgba(0,0,0,0.08)" }}>
+                    <img src={imgResult.url} alt="Generated" style={{ width:"100%", maxHeight:480, objectFit:"contain", display:"block", background:"#000" }}/>
+                  </div>
+                  <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                    <button onClick={()=>{const a=document.createElement("a");a.href=imgResult.url;a.download="uniquehub_ai_"+Date.now()+".png";a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download iniciado ✓");}} style={{ flex:1, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Baixar imagem</button>
+                    <button onClick={()=>{navigator.clipboard.writeText(imgResult.url);showToast("Link copiado ✓");}} style={{ padding:"10px 16px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>Copiar link</button>
+                    <button onClick={()=>setImgResult(null)} style={{ padding:"10px 16px", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>Nova</button>
+                  </div>
+                  {imgResult.revised !== imgResult.prompt && <div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:`${B.blue||"#3B82F6"}06`, border:`1px solid ${B.blue||"#3B82F6"}15` }}><p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", marginBottom:4 }}>PROMPT REVISADO PELA IA:</p><p style={{ fontSize:11, color:B.text, lineHeight:1.4 }}>{imgResult.revised}</p></div>}
+                </div>}
+                {!imgResult && !imgLoading && <>
+                  <div style={{ textAlign:"center", marginBottom:24 }}>
+                    <div style={{ width:64, height:64, borderRadius:20, background:"linear-gradient(135deg, #6366F120, #EC489920)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+                    <h3 style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>Crie imagens com IA</h3>
+                    <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>Descreva a imagem que você quer e o DALL·E 3 vai gerar.<br/>Ideal para referências visuais, mockups e inspiração.</p>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:20 }}>
+                    {["Post minimalista sobre produtividade com tons pastéis","Mockup de smartphone mostrando feed do Instagram profissional","Banner moderno para promoção de Black Friday, cores vibrantes","Flat illustration de equipe de marketing trabalhando em escritório"].map((s,i)=><button key={i} onClick={()=>setImgPrompt(s)} style={{ padding:"12px 14px", borderRadius:12, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:500, color:B.text, textAlign:"left", lineHeight:1.4, transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.background="#6366F106";e.currentTarget.style.borderColor="#6366F130";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor=B.border;}}>{s}</button>)}
+                  </div>
+                </>}
+                {imgLoading && <div style={{ textAlign:"center", padding:"60px 0" }}>
+                  <div style={{ width:56, height:56, borderRadius:20, background:"linear-gradient(135deg, #6366F1, #EC4899)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"spin 2s linear infinite" }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+                  <p style={{ fontSize:16, fontWeight:800, color:B.text }}>Gerando sua imagem...</p>
+                  <p style={{ fontSize:12, color:B.muted, marginTop:6 }}>Isso pode levar de 10 a 30 segundos</p>
+                  <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:16 }}>{[0,1,2].map(i=><div key={i} style={{ width:8, height:8, borderRadius:4, background:"#8B5CF6", animation:`bounce 1.4s ease infinite ${i*0.2}s` }}/>)}</div>
+                </div>}
+                {imgHistory.length > 0 && !imgResult && !imgLoading && <div style={{ marginTop:16 }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:10 }}>Imagens recentes</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))", gap:8 }}>
+                    {imgHistory.map((h,i)=><div key={i} onClick={()=>setImgResult(h)} style={{ cursor:"pointer", borderRadius:12, overflow:"hidden", border:`1px solid ${B.border}`, transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.03)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}><img src={h.url} alt="" style={{ width:"100%", height:100, objectFit:"cover" }}/><p style={{ fontSize:9, padding:"6px 8px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.muted }}>{h.prompt}</p></div>)}
+                  </div>
+                </div>}
+              </div>
+              {/* Input bar */}
+              <div style={{ padding:"16px 20px", borderTop:`1px solid ${B.border}` }}>
+                <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                  <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:4 }}>TAMANHO</p><div style={{ display:"flex", gap:4 }}>{[{k:"1024x1024",l:"1:1"},{k:"1792x1024",l:"16:9"},{k:"1024x1792",l:"9:16"}].map(s=><button key={s.k} onClick={()=>setImgSize(s.k)} style={{ padding:"4px 10px", borderRadius:6, border:`1.5px solid ${imgSize===s.k?"#8B5CF6":B.border}`, background:imgSize===s.k?"#8B5CF610":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:imgSize===s.k?700:500, color:imgSize===s.k?"#8B5CF6":B.muted }}>{s.l}</button>)}</div></div>
+                  <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:4 }}>ESTILO</p><div style={{ display:"flex", gap:4 }}>{[{k:"vivid",l:"Vibrante"},{k:"natural",l:"Natural"}].map(s=><button key={s.k} onClick={()=>setImgStyle(s.k)} style={{ padding:"4px 10px", borderRadius:6, border:`1.5px solid ${imgStyle===s.k?"#EC4899":B.border}`, background:imgStyle===s.k?"#EC489910":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:imgStyle===s.k?700:500, color:imgStyle===s.k?"#EC4899":B.muted }}>{s.l}</button>)}</div></div>
+                </div>
+                <div style={{ display:"flex", gap:10, alignItems:"flex-end" }}>
+                  <textarea value={imgPrompt} onChange={e=>setImgPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();generateImage();}}} placeholder="Descreva a imagem que você quer gerar..." rows={2} style={{ flex:1, minHeight:46, maxHeight:120, resize:"none", padding:"12px 16px", fontFamily:"inherit", fontSize:14, lineHeight:1.5, border:`1.5px solid ${B.border}`, borderRadius:14, background:B.bg, outline:"none", color:B.text }}/>
+                  <button onClick={generateImage} disabled={imgLoading||!imgPrompt.trim()} style={{ width:46, height:46, borderRadius:14, background:imgPrompt.trim()?"linear-gradient(135deg, #6366F1, #EC4899)":"#6366F125", border:"none", cursor:imgPrompt.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                </div>
+              </div>
+            </> : <>
             {!hasMessages && !loading ? <>
               {/* ═══ WELCOME ═══ */}
               <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", padding:"0 48px", overflowY:"auto" }}>
@@ -17246,6 +17326,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
                 <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:6 }}>{curModel.l} · Enter envia · Shift+Enter nova linha</p>
               </div>
             </div>
+          </>}
           </div>
         </div>
       </div>
