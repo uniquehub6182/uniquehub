@@ -883,7 +883,8 @@ const supaLoadConversations = async (userId) => {
     const [convRes, memRes, msgsRes] = await Promise.all([
       supabase.from("conversations").select("*").in("id", convIds),
       supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds),
-      supabase.from("messages").select("*").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(convIds.length * 2),
+      /* Fetch last message per conversation — one query per conv for reliability */
+      Promise.all(convIds.map(cid => supabase.from("messages").select("id,conversation_id,content,file_url,file_name,sender_id,created_at").eq("conversation_id", cid).order("created_at", { ascending: false }).limit(1).maybeSingle())).then(results => results.map(r => r.data).filter(Boolean)),
     ]);
     const convs = convRes.data || [];
     const allMembers = memRes.data || [];
@@ -895,7 +896,7 @@ const supaLoadConversations = async (userId) => {
     const profileMap = {};
     allProfiles.forEach(p => { profileMap[p.id] = p; });
     const lastMsgMap = {};
-    (msgsRes.data || []).forEach(m => { if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
+    (msgsRes || []).forEach(m => { if (m && !lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
     const result = [];
     for (const c of convs) {
       const members = allMembers.filter(m => m.conversation_id === c.id);
@@ -10118,7 +10119,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                 const isGrp = c.type==="group";
                 const other = !isGrp ? (c.members||[]).find(m=>m.id!==user.id) : null;
                 const nm = isGrp ? (c.name||"Grupo") : (other?.name||"Usuário");
-                const lastTxt = c.lastMsg?.content || "Sem mensagens";
+                const lastTxt = c.lastMsg ? (c.lastMsg.file_url ? "📎 Arquivo" : (c.lastMsg.content || "...")) : "Sem mensagens";
+                const lastSender = c.lastMsg?.sender_id === user.id ? "Você" : (c.type==="group" ? (c.members?.find(m=>m.id===c.lastMsg?.sender_id)?.name?.split(" ")[0]||"") : "");
+                const lastPreview = lastSender ? `${lastSender}: ${lastTxt}` : lastTxt;
                 const lastTime = c.lastMsg?.created_at ? new Date(c.lastMsg.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "";
                 const isActive = selConv?.id === c.id;
                 const otherUid = other?.id;
@@ -10135,7 +10138,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                         <p style={{ fontSize:13, fontWeight:c.unread?800:600, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{nm}</p>
                         <span style={{ fontSize:10, color:B.muted, flexShrink:0 }}>{lastTime}</span>
                       </div>
-                      <p style={{ fontSize:11, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:1 }}>{lastTxt}</p>
+                      <p style={{ fontSize:11, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:1 }}>{lastPreview}</p>
                     </div>
                     {c.unread>0 && <div style={{ width:20, height:20, borderRadius:10, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:9, fontWeight:800, color:"#0D0D0D" }}>{c.unread}</span></div>}
                   </div>
@@ -10389,8 +10392,10 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
           const isGroup = c.type==="group";
           const other = !isGroup ? (c.members||[]).find(m=>m.id!==user.id) : null;
           const name = isGroup ? (c.name||"Grupo") : (other?.name||"Usuário");
-          const lastText = c.lastMsg?.file_url ? "📎 Arquivo" : (c.lastMsg?.content||"Sem mensagens");
+          const lastText = c.lastMsg ? (c.lastMsg.file_url ? "📎 Arquivo" : (c.lastMsg.content || "...")) : "Sem mensagens";
           const lastIsMe = c.lastMsg?.sender_id===user.id;
+          const lastSenderM = lastIsMe ? "Você" : (isGroup ? (c.members?.find(m=>m.id===c.lastMsg?.sender_id)?.name?.split(" ")[0]||"") : "");
+          const lastPreviewM = c.lastMsg ? (lastSenderM ? `${lastSenderM}: ${lastText}` : lastText) : "Sem mensagens";
           const initials = name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
           const bgPal = ["#6366F1","#EC4899","#F59E0B","#10B981","#3B82F6","#8B5CF6","#EF4444","#0EA5E9"];
           const avBg = bgPal[name.charCodeAt(0)%bgPal.length];
@@ -10415,7 +10420,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
                   <span style={{ fontSize:11, color:c.unread?B.accent:B.muted, flexShrink:0 }}>{fmtTime(c.lastMsg?.created_at)}</span>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
-                  <p style={{ fontSize:13, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0, flex:1 }}>{lastIsMe?"Você: ":""}{lastText}</p>
+                  <p style={{ fontSize:13, color:c.unread?B.text:B.muted, fontWeight:c.unread?600:400, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0, flex:1 }}>{lastPreviewM}</p>
                   {c.unread>0 && (
                     <div style={{ width:22, height:22, borderRadius:"50%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       <span style={{fontSize:10,fontWeight:900,color:"#0D0D0D"}}>{c.unread>9?"9+":c.unread}</span>
