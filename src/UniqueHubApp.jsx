@@ -21025,29 +21025,71 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const isDesktop = useIsDesktop();
 
   /* Create a content demand from a news article */
+  const [newsToPostLoading, setNewsToPostLoading] = useState(false);
   const handleCreatePostFromNews = async (article) => {
     if (!article) return;
+    setNewsToPostLoading(true);
     const body = (article.body || "").replace(/^__PHOTO__:[^\n]*\n/, "");
-    const ideaText = `📰 Baseado na notícia: "${article.title}"\n\n${article.summary || body.substring(0, 200)}...\n\nFonte: ${article.source || ""}${article.sourceUrl ? " — " + article.sourceUrl : ""}\n\nTags: ${(article.tags || []).join(", ")}`;
+    const title = article.title || "";
+    const summary = article.summary || body.substring(0, 500);
+    const tags = (article.tags || []).join(", ");
+    const source = article.source || "";
+    /* Try AI generation */
+    let caption = "", hashtags = "", ideaText = "";
+    try {
+      const keys = await supaGetAIKeys();
+      const prompt = `Você é um social media expert brasileiro. Com base nesta notícia, crie um post completo para Instagram/Facebook.
+
+NOTÍCIA: "${title}"
+RESUMO: ${summary}
+TAGS: ${tags}
+FONTE: ${source}
+
+Responda EXATAMENTE neste formato (sem markdown, sem explicação):
+LEGENDA: [legenda do post, tom informativo e engajador, 3-5 parágrafos curtos, use emojis relevantes, termine com CTA]
+HASHTAGS: [10-15 hashtags relevantes separadas por espaço, começando com #]
+IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos visuais, cores e estilo]`;
+      let aiText = "";
+      if (keys?.claude_key) {
+        const r = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":keys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})});
+        const d = await r.json(); aiText = d?.content?.[0]?.text || "";
+      } else if (keys?.openai_key) {
+        const r = await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys.openai_key},body:JSON.stringify({model:"gpt-4o-mini",max_tokens:1500,messages:[{role:"user",content:prompt}]})});
+        const d = await r.json(); aiText = d?.choices?.[0]?.message?.content || "";
+      } else if (keys?.gemini_key) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+keys.gemini_key,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500}})});
+        const d = await r.json(); aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      }
+      if (aiText) {
+        const legMatch = aiText.match(/LEGENDA:\s*([\s\S]*?)(?=HASHTAGS:|$)/i);
+        const hashMatch = aiText.match(/HASHTAGS:\s*([\s\S]*?)(?=IDEIA:|$)/i);
+        const ideaMatch = aiText.match(/IDEIA:\s*([\s\S]*?)$/i);
+        caption = (legMatch?.[1]||"").trim();
+        hashtags = (hashMatch?.[1]||"").trim();
+        ideaText = (ideaMatch?.[1]||"").trim();
+      }
+    } catch(e) { console.error("AI generation error:", e); }
+    /* Fallback if AI failed */
+    if (!ideaText) ideaText = `📰 Baseado na notícia: "${title}"\n\n${summary.substring(0, 200)}...\n\nFonte: ${source}${article.sourceUrl ? " — " + article.sourceUrl : ""}`;
+    if (!caption) caption = `${title}\n\n${summary.substring(0, 300)}...\n\nFonte: ${source}`;
+    if (!hashtags) hashtags = tags ? tags.split(", ").map(t => "#" + t.replace(/\s+/g, "")).join(" ") : "#marketing #digital";
     const newDemand = {
-      title: article.title,
-      type: "social",
-      stage: "idea",
-      format: "Feed",
-      network: "Instagram",
-      client: "",
-      priority: "média",
-      assignees: [],
+      title: title.length > 60 ? title.substring(0, 57) + "..." : title,
+      type: "social", stage: "idea", format: "Feed", network: "Instagram, Facebook",
+      client: "", priority: "média", assignees: [],
       createdAt: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-      steps: { idea: { text: ideaText, by: user?.name || "Equipe", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) } },
+      steps: {
+        idea: { text: ideaText, by: user?.name || "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
+        briefing: { text: `Arte para post sobre: ${title}\n\nEstilo: informativo, profissional\nReferência visual: usar cores da marca\nFonte da notícia: ${source}`, by: "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
+        caption: { text: caption, hashtags: hashtags, by: "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
+      },
     };
     const result = await supaCreateDemand(newDemand, null);
+    setNewsToPostLoading(false);
     if (result?.data) {
-      mainToast("Post criado a partir da notícia ✓");
+      mainToast("Post completo gerado a partir da notícia ✓");
       goTab("content", result.data.id);
-    } else {
-      mainToast("Erro ao criar demanda");
-    }
+    } else { mainToast("Erro ao criar demanda"); }
   };
 
   return (
@@ -21055,6 +21097,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background: B.bg, color: B.text }}>
       {ToastEl}
+      {/* ── NEWS TO POST LOADING OVERLAY ── */}
+      {newsToPostLoading && <div style={{position:"fixed",inset:0,zIndex:99998,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(6px)"}}><div style={{background:B.bgCard,borderRadius:20,padding:"36px 40px",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",maxWidth:340}}><div style={{width:48,height:48,borderRadius:24,background:"linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",animation:"spin 2s linear infinite"}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div><p style={{fontSize:16,fontWeight:800,color:B.text}}>Transformando notícia em post</p><p style={{fontSize:12,color:B.muted,marginTop:8,lineHeight:1.5}}>Munique A.I está gerando legenda, hashtags e briefing para o designer...</p><div style={{display:"flex",justifyContent:"center",gap:6,marginTop:16}}><span style={{width:8,height:8,borderRadius:4,background:"#6366F1",animation:"bounce 1.4s ease-in-out infinite"}}></span><span style={{width:8,height:8,borderRadius:4,background:"#8B5CF6",animation:"bounce 1.4s ease-in-out .2s infinite"}}></span><span style={{width:8,height:8,borderRadius:4,background:"#A78BFA",animation:"bounce 1.4s ease-in-out .4s infinite"}}></span></div></div></div>}
       {/* ── PROFILE COMPLETION POPUP ── */}
       {showProfilePopup && <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",padding:20}}>
         <div style={{background:B.bgCard,borderRadius:24,padding:"32px 28px",maxWidth:420,width:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
