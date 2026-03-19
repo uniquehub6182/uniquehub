@@ -19621,8 +19621,16 @@ function ClientOnboarding({ onComplete, onBack }) {
   const [error, setError] = useState("");
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  /* iOS keyboard resize handler */
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handler = () => scrollBottom();
+    vv.addEventListener("resize", handler);
+    return () => vv.removeEventListener("resize", handler);
+  }, []);
 
-  const scrollBottom = () => setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50);
+  const scrollBottom = () => { setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 50); setTimeout(() => { if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 300); };
 
   const addBot = (text, delay = 600) => {
     setTyping(true);
@@ -19811,7 +19819,7 @@ function ClientOnboarding({ onComplete, onBack }) {
 
       {/* Input */}
       {!done && <div style={{ padding:"10px 14px calc(14px + env(safe-area-inset-bottom,0px))", borderTop:"1px solid rgba(0,0,0,0.06)", background:"#fff", display:"flex", gap:8, alignItems:"center" }}>
-        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()}
+        <input ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSend()} onFocus={()=>{scrollBottom();setTimeout(scrollBottom,500);setTimeout(scrollBottom,1000);}}
           placeholder={step===1?"Digite o código de acesso...":step===2?"Seu nome completo...":step===3?"seu@email.com":step===4?"(00) 00000-0000":step===5?"Crie uma senha...":"..."}
           type={step===5?"password":step===3?"email":"text"} autoComplete="off" autoCapitalize={step<=2?"words":"off"}
           style={{ flex:1, padding:"12px 16px", borderRadius:22, border:"1.5px solid rgba(0,0,0,0.1)", background:"#fff", color:"#1A1D23", fontFamily:"inherit", fontSize:15, outline:"none" }}
