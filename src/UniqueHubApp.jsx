@@ -12280,7 +12280,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
           const { data: profs } = await supabase.from("profiles").select("id, photo_url").in("id", uids);
           (profs||[]).forEach(p => { pm[p.id] = p.photo_url; });
         }
-        setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.role||r.job_title||"", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", user_id:r.user_id||null, supaId:r.id, photo_url:pm[r.user_id]||null })));
+        setMembers(rows.map(r => ({ id:r.id, name:r.name||"", role:r.job_title||(r.role==="admin"?"CEO / Proprietário":r.role==="member"?"Colaborador":r.role)||"Colaborador", email:r.email||"", phone:r.phone||"", since:r.since||"", skills:r.skills||[], status:r.status||"offline", user_id:r.user_id||null, supaId:r.id, photo_url:pm[r.user_id]||null })));
       }
       setLoaded(true);
     });
@@ -12374,7 +12374,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.text }}>{mm.name}</p>
                         <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:2 }}>
-                          <span style={{ fontSize:10, color:B.accent, fontWeight:500 }}>{mm.role}</span>
+                          <span style={{ fontSize:9, color:"#fff", fontWeight:600, background:"#1A1D23", padding:"3px 8px", borderRadius:6, border:`1px solid ${B.accent}` }}>{mm.role}</span>
                           {mm.status==="pendente" && <span style={{ fontSize:8, fontWeight:700, color:B.orange, background:`${B.orange}12`, padding:"1px 5px", borderRadius:4 }}>Pendente</span>}
                         </div>
                       </div>
@@ -12416,7 +12416,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
                 </div>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{m.name}</p>
-                  <p style={{ fontSize:12, color:B.accent, fontWeight:600 }}>{m.role}</p>
+                  <span style={{ fontSize:11, color:"#fff", fontWeight:600, background:"#1A1D23", padding:"4px 12px", borderRadius:8, border:`1px solid ${B.accent}`, display:"inline-block" }}>{m.role}</span>
                 </div>
                 {isAdmin && <div style={{ display:"flex", gap:6 }}>
                   <button onClick={()=>{setEditMember(true);setForm({name:m.name,role:m.role,email:m.email,phone:m.phone,since:m.since,skills:(m.skills||[]).join(", ")});}} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
