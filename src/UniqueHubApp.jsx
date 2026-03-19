@@ -13281,17 +13281,18 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
 
   const LIB_CATS = [
-    { key:"brand", label:"Manual de Marca", icon:"📕", c:B.red },
-    { key:"feed", label:"Posts Feed", icon:"📱", c:B.blue },
-    { key:"stories", label:"Stories", icon:"📲", c:B.pink },
-    { key:"reels", label:"Capas de Reels", icon:"🎬", c:B.purple },
-    { key:"videos", label:"Vídeos", icon:"🎥", c:B.orange },
-    { key:"digital", label:"Artes Digitais", icon:"🖥️", c:B.cyan },
-    { key:"print", label:"Material Impresso", icon:"🖨️", c:B.green },
-    { key:"docs", label:"Documentos", icon:"📄", c:B.muted },
-    { key:"ref", label:"Referências", icon:"💡", c:B.yellow },
-    { key:"other", label:"Outros", icon:"📁", c:B.muted },
+    { key:"brand", label:"Manual de Marca", c:B.red },
+    { key:"feed", label:"Posts Feed", c:B.blue },
+    { key:"stories", label:"Stories", c:B.pink },
+    { key:"reels", label:"Capas de Reels", c:B.purple },
+    { key:"videos", label:"Vídeos", c:B.orange },
+    { key:"digital", label:"Artes Digitais", c:B.cyan },
+    { key:"print", label:"Material Impresso", c:B.green },
+    { key:"docs", label:"Documentos", c:B.muted },
+    { key:"ref", label:"Referências", c:B.yellow },
+    { key:"other", label:"Outros", c:B.muted },
   ];
+  const LIB_CAT_IC = {brand:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>,feed:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,stories:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,reels:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>,videos:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,digital:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,print:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,docs:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,ref:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,other:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>};
   const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
   const getFileCat = (f) => catMap[f.category] || "other";
 
@@ -13401,7 +13402,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
           <h3 style={{ fontSize:15, fontWeight:800, marginTop: (hasUrl && (isImage||isVideo)) ? 0 : 16, wordBreak:"break-all" }}>{f.name}</h3>
           <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
             <Tag color={fi.c}>{ext?.toUpperCase()}</Tag>
-            <Tag color={cat?.c || B.muted}>{cat?.icon} {cat?.label || "Outros"}</Tag>
+            <Tag color={cat?.c || B.muted}>{cat?.label || "Outros"}</Tag>
           </div>
         </Card>
 
@@ -13549,7 +13550,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                 {LIB_CATS.map(cat => {
                   const cnt = catCounts[cat.key]||0;
                   if (!cnt) return null;
-                  return <button key={cat.key} onClick={()=>setFilterCat(filterCat===cat.key?"all":cat.key)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterCat===cat.key?700:500, background:filterCat===cat.key?`${cat.c}10`:"transparent", color:filterCat===cat.key?cat.c:B.text, marginBottom:1 }}><span>{cat.icon}</span><span style={{ flex:1, textAlign:"left" }}>{cat.label}</span><span style={{ fontSize:9, color:B.muted }}>{cnt}</span></button>;
+                  return <button key={cat.key} onClick={()=>setFilterCat(filterCat===cat.key?"all":cat.key)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterCat===cat.key?700:500, background:filterCat===cat.key?`${cat.c}10`:"transparent", color:filterCat===cat.key?cat.c:B.text, marginBottom:1 }}><span style={{display:"flex",color:filterCat===cat.key?cat.c:B.muted}}>{LIB_CAT_IC[cat.key]}</span><span style={{ flex:1, textAlign:"left" }}>{cat.label}</span><span style={{ fontSize:9, color:B.muted }}>{cnt}</span></button>;
                 })}
               </div>
             </div>
@@ -13635,7 +13636,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                     </label>
                     {!isClientView && <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput" style={{ fontSize:12 }}>{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
                     <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Nome</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" style={{ fontSize:12 }} /></div>
-                    <div style={{ marginBottom:14 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{LIB_CATS.filter(c=>c.k!=="all").map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${fileForm.category===c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600 }}>{c.icon} {c.label}</button>)}</div></div>
+                    <div style={{ marginBottom:14 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{LIB_CATS.filter(c=>c.k!=="all").map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${fileForm.category===c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fileForm.category===c.label?c.c:B.text, display:"flex", alignItems:"center", gap:5 }}><span style={{display:"flex",color:fileForm.category===c.label?c.c:B.muted}}>{LIB_CAT_IC[c.key]}</span>{c.label}</button>)}</div></div>
                     <button onClick={uploadLibFile} disabled={uploading} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:uploading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, opacity:uploading?0.6:1 }}>{uploading?"Enviando...":"Enviar Arquivo"}</button>
                   </div>
                 </> : f ? <>
@@ -13660,6 +13661,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                         {f.url && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ padding:"8px 0", borderRadius:8, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Abrir</button>}
                       </div>
                       {f.url && <button onClick={()=>{navigator.clipboard.writeText(f.url);showToast("Link copiado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.blue, marginTop:6 }}>Copiar link</button>}
+                      {!isClientView && <button onClick={async()=>{if(!confirm('Apagar "'+f.name+'"?'))return;const client=CDATA.find(c=>c.id===f.clientId);if(client){const nf=(client.files||[]).filter(x=>x.id!==f.id);const sk="client_files_"+(client.supaId||client.id);await supaSetSetting(sk,JSON.stringify(nf));if(onUpdateClients)onUpdateClients(CDATA.map(c=>c.id===f.clientId?{...c,files:nf}:c));if(f.storagePath&&supabase){await supabase.storage.from("client-files").remove([f.storagePath]).catch(()=>{});}setViewFile(null);showToast("Arquivo apagado ✓");}}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.red||"#EF4444")+"08", border:"1px solid "+(B.red||"#EF4444")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.red||"#EF4444", marginTop:6, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Apagar</button>}
                     </div>
                   </div>
                 </> : null}
@@ -13770,7 +13772,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         {LIB_CATS.map(cat => {
           const count = allFiles.filter(f=>getFileCat(f)===cat.key).length;
           if (count === 0) return null;
-          return <button key={cat.key} onClick={()=>setFilterCat(cat.key)} className={`htab${filterCat===cat.key?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{cat.icon} {cat.label} ({count})</button>;
+          return <button key={cat.key} onClick={()=>setFilterCat(cat.key)} className={`htab${filterCat===cat.key?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{cat.label} ({count})</button>;
         })}
       </div>
 
