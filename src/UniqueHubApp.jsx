@@ -19737,34 +19737,38 @@ function ClientOnboarding({ onComplete, onBack }) {
       if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
       /* Save client profile extras + sync with existing client record */
       if (authData?.user?.id) {
-        await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })).catch(() => {});
+        try { await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })); } catch(e) { console.warn("Extras save:", e); }
         /* Use validated client from access code — exact match, no searching needed */
         if (validatedClient?.id) {
-          await supabase.from("clients").update({
-            contact_email: data.email,
-            contact_name: data.name,
-            contact_phone: data.phone,
-            status: "ativo",
-          }).eq("id", validatedClient.id).catch(e => console.warn("Client sync:", e));
+          try {
+            await supabase.from("clients").update({
+              contact_email: data.email,
+              contact_name: data.name,
+              contact_phone: data.phone,
+              status: "ativo",
+            }).eq("id", validatedClient.id);
+          } catch(e) { console.warn("Client sync:", e); }
           console.log("[Onboarding] Synced with validated client:", validatedClient.id, validatedClient.name);
         } else {
           /* Fallback: search by email or name */
-          const { data: existingByEmail } = await supabase.from("clients").select("id").eq("contact_email", data.email).maybeSingle();
-          const { data: existingByName } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).maybeSingle() : { data: null };
-          const existingClient = existingByEmail || existingByName;
-          if (existingClient) {
-            await supabase.from("clients").update({ contact_email: data.email, contact_name: data.name, contact_phone: data.phone, status: "ativo" }).eq("id", existingClient.id).catch(e => console.warn("Client sync:", e));
-          } else {
-            await supabase.from("clients").insert({ name: data.company || data.name, contact_name: data.name, contact_email: data.email, contact_phone: data.phone, status: "ativo", plan: "free", start_date: new Date().toISOString().split("T")[0], notes: `Cadastro via UniqueHub por ${data.name}` }).catch(e => console.warn("Client insert:", e));
-          }
+          try {
+            const { data: existingByEmail } = await supabase.from("clients").select("id").eq("contact_email", data.email).maybeSingle();
+            const { data: existingByName } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).maybeSingle() : { data: null };
+            const existingClient = existingByEmail || existingByName;
+            if (existingClient) {
+              await supabase.from("clients").update({ contact_email: data.email, contact_name: data.name, contact_phone: data.phone, status: "ativo" }).eq("id", existingClient.id);
+            } else {
+              await supabase.from("clients").insert({ name: data.company || data.name, contact_name: data.name, contact_email: data.email, contact_phone: data.phone, status: "ativo", plan: "free", start_date: new Date().toISOString().split("T")[0], notes: `Cadastro via UniqueHub por ${data.name}` });
+            }
+          } catch(e) { console.warn("Client fallback sync:", e); }
         }
         /* Create profile with role=cliente */
-        await supabase.from("profiles").upsert({
+        try { await supabase.from("profiles").upsert({
           id: authData.user.id,
           email: data.email,
           name: data.name,
           role: "cliente",
-        }, { onConflict: "id" }).catch(e => console.warn("Profile upsert:", e));
+        }, { onConflict: "id" }); } catch(e) { console.warn("Profile upsert:", e); }
       }
       await addBot(`Conta criada com sucesso, ${data.name}! 🎉`, 600);
       await addBot("Você já pode fazer login com seu e-mail e senha.", 800);
