@@ -460,6 +460,23 @@ const supaDeleteNews = async (id) => {
 
 /* ── Normalize category text → key (handles DB values like "Marketing Digital" → "mktdigital") ── */
 const CAT_TEXT_TO_KEY = { "marketing digital":"mktdigital", "branding":"branding", "estratégia":"estrategia", "estrategia":"estrategia", "publicidade":"publicidade", "carreira":"carreira", "novidade":"novidade", "tendências":"trends", "tendencia":"trends", "tendência":"trends", "atualização":"updates", "atualizacao":"updates", "dica":"tips", "dicas":"tips", "case":"cases", "ferramenta":"tools", "ferramentas":"tools", "inteligência artificial":"ia", "inteligencia artificial":"ia", "ia":"ia" };
+/* Simple markdown → HTML renderer for AI responses */
+const renderMd = (text) => {
+  if (!text) return "";
+  let h = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/^### (.+)$/gm, '<h4 style="font-size:15px;font-weight:800;margin:16px 0 8px">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="font-size:17px;font-weight:800;margin:18px 0 8px">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 style="font-size:19px;font-weight:800;margin:20px 0 10px">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:4px;font-size:13px">$1</code>')
+    .replace(/^- (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0"><span style="color:#9CA3AF">•</span><span>$1</span></div>')
+    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:8px;margin:3px 0"><span style="color:#9CA3AF;font-weight:600;min-width:18px">$1.</span><span>$2</span></div>')
+    .replace(/\n{2,}/g, '<div style="height:12px"></div>')
+    .replace(/\n/g, '<br/>');
+  return h;
+};
 const normalizeCat = (cat) => {
   if (!cat) return "geral";
   const lower = cat.toLowerCase().trim();
@@ -3047,7 +3064,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               ) : <>
                 {dAiMsgs.map((m,i) => (
                   <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                    <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:m.role==="user"?LIME:`${B.muted}10`,color:m.role==="user"?"#0D0D0D":B.text,fontSize:12,lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-word",borderBottomRightRadius:m.role==="user"?4:14,borderBottomLeftRadius:m.role==="user"?14:4}}>{m.content}</div>
+                    {m.role==="user"?<div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:LIME,color:"#0D0D0D",fontSize:12,lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-word",borderBottomRightRadius:4,borderBottomLeftRadius:14}}>{m.content}</div>:<div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:`${B.muted}10`,color:B.text,fontSize:12,lineHeight:1.5,wordBreak:"break-word",borderBottomRightRadius:14,borderBottomLeftRadius:4}} dangerouslySetInnerHTML={{__html:renderMd(m.content)}}/>}
                   </div>
                 ))}
                 {dAiLoading && <div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"10px 14px",borderRadius:14,background:`${B.muted}10`,fontSize:12,color:B.muted,borderBottomLeftRadius:4}}>Pensando...</div></div>}
@@ -17161,7 +17178,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
                       : <div style={{ width:36, height:36, borderRadius:10, overflow:"hidden", flexShrink:0 }}><Av name={user?.name||"U"} sz={36} fs={13}/></div>}
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ fontSize:12, fontWeight:700, color:m.role==="assistant"?curModel.c:B.text, marginBottom:6 }}>{m.role==="assistant"?curModel.l:(user?.name?.split(" ")[0]||"Você")}</p>
-                        <div style={{ fontSize:15, lineHeight:1.85, color:B.text, whiteSpace:"pre-wrap", wordBreak:"break-word", ...(m.role==="assistant"?{padding:"16px 20px",background:B.bg,borderRadius:16}:{}) }}>{m.content}</div>
+                        {m.role==="assistant" ? <div style={{ fontSize:15, lineHeight:1.85, color:B.text, wordBreak:"break-word", padding:"16px 20px", background:B.bg, borderRadius:16 }} dangerouslySetInnerHTML={{__html:renderMd(m.content)}}/> : <div style={{ fontSize:15, lineHeight:1.85, color:B.text, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{m.content}</div>}
                         {m.role==="assistant" && <div style={{ display:"flex", gap:6, marginTop:8 }}>
                           <button onClick={()=>{navigator.clipboard.writeText(m.content);showToast("Copiado ✓");}} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.muted }}>📋 Copiar</button>
                         </div>}
