@@ -296,6 +296,20 @@ const supaUploadClientLogo = async (clientId, file) => {
     return url;
   } catch(e) { console.error("Logo upload catch:", e); return null; }
 };
+/* ═══ CLIENT MATCH4BIZ COVER UPLOAD ═══ */
+const supaUploadM4BCover = async (clientId, file) => {
+  if (!supabase || !file) return null;
+  try {
+    const compressed = await compressImage(file, 800, 0.85);
+    const path = `m4b-covers/${clientId}_${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600", contentType: "image/jpeg" });
+    if (error) { console.error("M4B cover upload error:", error); return null; }
+    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+    const url = pub?.publicUrl || null;
+    if (url) await supaSetSetting(`client_m4b_cover_${clientId}`, url);
+    return url;
+  } catch(e) { console.error("M4B cover upload catch:", e); return null; }
+};
 const mergeSupaDemand = (row) => {
   /* Ensure steps is always a valid object */
   let steps;
@@ -4026,6 +4040,26 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     setLogoUploading(false);
     if (logoInputRef.current) logoInputRef.current.value = "";
   };
+  /* ── M4B Cover upload ── */
+  const coverInputRef = useRef(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [m4bCover, setM4bCover] = useState(null);
+  useEffect(() => {
+    if (!sel || !supabase) { setM4bCover(null); return; }
+    const cid = sel.supaId || sel.id;
+    supaGetSetting(`client_m4b_cover_${cid}`).then(v => setM4bCover(v || null));
+  }, [sel?.id]);
+  const handleCoverUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !sel) return;
+    const cid = sel.supaId || sel.id;
+    setCoverUploading(true);
+    const url = await supaUploadM4BCover(cid, file);
+    if (url) { setM4bCover(url); showToast("Capa Match4Biz atualizada ✓"); }
+    else showToast("Erro ao enviar capa");
+    setCoverUploading(false);
+    if (coverInputRef.current) coverInputRef.current.value = "";
+  };
   /* Load ideas for selected client when ideas tab is opened */
   useEffect(() => {
     if (profileTab !== "ideas" || !sel || !supabase) return;
@@ -4761,6 +4795,26 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Observações</label>
             <textarea value={sel.notes||""} onChange={e=>updateClient(sel.id,{notes:e.target.value})} placeholder="Anotações internas sobre o cliente..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+          </Card>
+
+          {/* ── M4B COVER ── */}
+          <Card style={{ marginBottom:10 }}>
+            <input ref={coverInputRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleCoverUpload} />
+            <p style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Capa Match4Biz</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.4 }}>Imagem de capa que aparece no perfil deste cliente no Match4Biz. Tamanho ideal: 800x300px.</p>
+            {m4bCover ? (
+              <div style={{ position:"relative", borderRadius:14, overflow:"hidden", marginBottom:8 }}>
+                <img src={m4bCover} style={{ width:"100%", height:140, objectFit:"cover", display:"block" }} />
+                <div style={{ position:"absolute", inset:0, background:"linear-gradient(0deg, rgba(0,0,0,0.4) 0%, transparent 60%)", display:"flex", alignItems:"flex-end", justifyContent:"flex-end", padding:8 }}>
+                  <button onClick={() => coverInputRef.current?.click()} style={{ padding:"6px 12px", borderRadius:8, background:"rgba(255,255,255,0.9)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#192126" }}>{coverUploading ? "Enviando..." : "Trocar"}</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => coverInputRef.current?.click()} style={{ width:"100%", padding:"20px 0", borderRadius:14, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+                {coverUploading ? <div style={{ width:20, height:20, border:"2px solid "+B.accent, borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}
+                <span style={{ fontSize:12, color:B.muted, fontWeight:600 }}>{coverUploading ? "Enviando..." : "Adicionar capa"}</span>
+              </button>
+            )}
           </Card>
         </>)}
       </>}
@@ -18800,6 +18854,7 @@ function ClientMatch4Biz({ onBack, user }) {
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [clientScores, setClientScores] = useState({});
   const [clientRanks, setClientRanks] = useState({});
+  const [clientCovers, setClientCovers] = useState({});
   const { showToast, ToastEl } = useToast();
 
   /* ── Plan-based credits ── */
@@ -18837,6 +18892,15 @@ function ClientMatch4Biz({ onBack, user }) {
             const ranks = {};
             sorted.forEach(([id], i) => { ranks[id] = i + 1; });
             setClientRanks(ranks);
+          }
+        } catch {}
+        /* Load M4B covers for all clients */
+        try {
+          const { data: coverRows } = await supabase.from("app_settings").select("key, value").like("key", "client_m4b_cover_%");
+          if (coverRows) {
+            const byClient = {};
+            coverRows.forEach(c => { const id = c.key.replace("client_m4b_cover_", ""); byClient[id] = c.value; });
+            setClientCovers(byClient);
           }
         } catch {}
       } catch(e) { console.warn("[M4B]", e); }
@@ -19256,8 +19320,10 @@ function ClientMatch4Biz({ onBack, user }) {
                 {dragX > 40 && <div style={{ position:"absolute", top:20, left:20, background:B.accent+"20", border:"2px solid "+B.accent, borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(-12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:B.accent }}>MATCH 💚</span></div>}
                 {dragX < -40 && <div style={{ position:"absolute", top:20, right:20, background:"#EF444420", border:"2px solid #EF4444", borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:"#EF4444" }}>PULAR ✕</span></div>}
 
-                {/* Top gradient */}
-                <div style={{ height:100, background:"linear-gradient(180deg, "+getColor(current.name)+"12, "+B.bgCard+")", flexShrink:0 }} />
+                {/* Top cover/gradient */}
+                <div style={{ height:clientCovers[current.id]?180:100, background:clientCovers[current.id]?"none":"linear-gradient(180deg, "+getColor(current.name)+"12, "+B.bgCard+")", flexShrink:0, overflow:"hidden", position:"relative" }}>
+                  {clientCovers[current.id] && <img src={clientCovers[current.id]} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
+                </div>
 
                 {/* Profile photo */}
                 <div style={{ display:"flex", justifyContent:"center", marginTop:-50, position:"relative", zIndex:2 }}>
