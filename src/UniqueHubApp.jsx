@@ -19718,10 +19718,10 @@ function ClientMatch4Biz({ onBack, user }) {
           </div>
         ) : tab === "discover" ? (<>
           {available.length > 0 && current ? (
-            <div style={{ position:"relative", overflow:"hidden", borderRadius:24, minHeight:"calc(100vh - 180px)" }}>
+            <div style={{ position:"relative", overflow:"hidden", borderRadius:24 }}>
               {/* ═══ THE CARD ═══ */}
               <div className="m4b-card" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{
-                background:B.bgCard, border:"1px solid "+B.border, minHeight:"calc(100vh - 180px)", display:"flex", flexDirection:"column",
+                background:B.bgCard, border:"1px solid "+B.border, display:"flex", flexDirection:"column",
                 transform: swipeAnim==="like" ? "translateX(110%) rotate(6deg)" : swipeAnim==="pass" ? "translateX(-110%) rotate(-6deg)" : dragX ? `translateX(${dragX}px) rotate(${dragX*0.03}deg)` : "none",
                 opacity: swipeAnim ? 0 : 1,
                 transition: swipeAnim ? "all .35s ease-in" : !dragX ? "all .3s ease" : "none",
@@ -19731,59 +19731,58 @@ function ClientMatch4Biz({ onBack, user }) {
                 {dragX < -40 && <div style={{ position:"absolute", top:20, right:20, background:"#EF444420", border:"2px solid #EF4444", borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:"#EF4444" }}>PULAR ✕</span></div>}
 
                 {/* Top cover/gradient */}
-                <div style={{ height:clientCovers[current.id]?180:100, background:clientCovers[current.id]?"none":"linear-gradient(180deg, "+getColor(current.name)+"12, "+B.bgCard+")", flexShrink:0, overflow:"hidden", position:"relative" }}>
+                <div style={{ height:clientCovers[current.id]?140:70, background:clientCovers[current.id]?"none":"linear-gradient(180deg, "+getColor(current.name)+"12, "+B.bgCard+")", flexShrink:0, overflow:"hidden", position:"relative" }}>
                   {clientCovers[current.id] && <img src={clientCovers[current.id]} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
                 </div>
 
                 {/* Profile photo */}
-                <div style={{ display:"flex", justifyContent:"center", marginTop:-50, position:"relative", zIndex:2 }}>
+                <div style={{ display:"flex", justifyContent:"center", marginTop:-40, position:"relative", zIndex:2 }}>
                   <div style={{ position:"relative" }}>
-                    <div style={{ width:110, height:110, borderRadius:30, overflow:"hidden", background:B.bg, border:"4px solid "+B.bgCard, boxShadow:"0 4px 20px rgba(0,0,0,0.08)" }}>
-                      {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
+                    <div style={{ width:80, height:80, borderRadius:24, overflow:"hidden", background:B.bg, border:"3px solid "+B.bgCard, boxShadow:"0 4px 16px rgba(0,0,0,0.08)" }}>
+                      {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
                     </div>
-                    {/* Score badge */}
-                    <div style={{ position:"absolute", bottom:-6, right:-6, background:B.accent, color:"#0D0D0D", fontSize:12, fontWeight:900, padding:"4px 10px", borderRadius:12, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", minWidth:28, textAlign:"center" }}>{getScore(current.id)}</div>
+                    <div style={{ position:"absolute", bottom:-4, right:-4, background:B.accent, color:"#0D0D0D", fontSize:10, fontWeight:900, padding:"3px 8px", borderRadius:10, boxShadow:"0 2px 6px rgba(0,0,0,0.12)", minWidth:22, textAlign:"center" }}>{getScore(current.id)}</div>
                   </div>
                 </div>
 
                 {/* Name + info */}
-                <div style={{ textAlign:"center", padding:"16px 24px 8px", flex:1, display:"flex", flexDirection:"column" }}>
-                  <h3 style={{ fontSize:24, fontWeight:900, marginBottom:2, color:B.text, letterSpacing:"-0.3px" }}>{current.name}</h3>
-                  <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:4 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
+                <div style={{ textAlign:"center", padding:"12px 20px 6px", display:"flex", flexDirection:"column" }}>
+                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:1, color:B.text, letterSpacing:"-0.3px" }}>{current.name}</h3>
+                  <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:3 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
 
                   {/* Stats pills */}
-                  <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:14 }}>
-                    <div style={{ padding:"6px 14px", borderRadius:20, background:B.accent+"12", display:"flex", alignItems:"center", gap:5 }}>
-                      <span style={{ fontSize:13, fontWeight:800, color:B.accent }}>{getScore(current.id)}</span>
-                      <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Score</span>
+                  <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:10 }}>
+                    <div style={{ padding:"4px 12px", borderRadius:16, background:B.accent+"12", display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ fontSize:12, fontWeight:800, color:B.accent }}>{getScore(current.id)}</span>
+                      <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Score</span>
                     </div>
-                    <div style={{ padding:"6px 14px", borderRadius:20, background:B.bg, display:"flex", alignItems:"center", gap:5 }}>
-                      <span style={{ fontSize:13, fontWeight:800, color:B.text }}>{getRank(current.id)}º</span>
-                      <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Rank</span>
+                    <div style={{ padding:"4px 12px", borderRadius:16, background:B.bg, display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ fontSize:12, fontWeight:800, color:B.text }}>{getRank(current.id)}º</span>
+                      <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Rank</span>
                     </div>
-                    {current.contact_name && <div style={{ padding:"6px 14px", borderRadius:20, background:B.bg, display:"flex", alignItems:"center", gap:5 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{current.contact_name.split(" ")[0]}</span>
+                    {current.contact_name && <div style={{ padding:"4px 12px", borderRadius:16, background:B.bg, display:"flex", alignItems:"center", gap:4 }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>{current.contact_name.split(" ")[0]}</span>
                     </div>}
                   </div>
 
                   {/* Bio */}
-                  <div style={{ marginTop:16, flex:1 }}>
+                  <div style={{ marginTop:10 }}>
                     {current.notes ? <>
-                      <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>Sobre</p>
-                      <p style={{ fontSize:13, color:B.text, lineHeight:1.7, opacity:0.75 }}>{current.notes.length > 300 ? current.notes.substring(0,300)+"..." : current.notes}</p>
-                    </> : <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, fontStyle:"italic", marginTop:8 }}>Sem descrição disponível</p>}
+                      <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:4 }}>Sobre</p>
+                      <p style={{ fontSize:12, color:B.text, lineHeight:1.6, opacity:0.75 }}>{current.notes.length > 200 ? current.notes.substring(0,200)+"..." : current.notes}</p>
+                    </> : <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, fontStyle:"italic", marginTop:4 }}>Sem descrição disponível</p>}
                   </div>
                 </div>
 
                 {/* Action buttons - at bottom */}
-                <div style={{ padding:"12px 24px 10px", flexShrink:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:24 }}>
-                    <button onClick={handlePass} className="m4b-action-btn" style={{ width:58, height:58, borderRadius:"50%", background:B.bg, border:"2px solid "+(B.red||"#EF4444")+"25", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <div style={{ padding:"8px 20px 8px", flexShrink:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20 }}>
+                    <button onClick={handlePass} className="m4b-action-btn" style={{ width:50, height:50, borderRadius:"50%", background:B.bg, border:"2px solid "+(B.red||"#EF4444")+"25", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
-                    <button onClick={handleLike} className="m4b-action-btn" style={{ width:66, height:66, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px "+B.accent+"40" }}>
-                      <svg width="30" height="30" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                    <button onClick={handleLike} className="m4b-action-btn" style={{ width:56, height:56, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px "+B.accent+"40" }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
                     </button>
                   </div>
                   <p style={{ textAlign:"center", fontSize:10, color:B.muted, marginTop:8 }}>{available.length} empresa{available.length > 1 ? "s" : ""} · {isUnlimited ? "∞" : credits} créditos</p>
