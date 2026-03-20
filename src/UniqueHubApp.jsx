@@ -1807,18 +1807,25 @@ function LoginPage({ onAuth, onClientAuth }) {
           nick: profile?.nick || profile?.name || email.split("@")[0],
           phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember,
         };
-        /* Check if member is approved (admin bypass) — ONLY allow status === "ativo" */
-        if (!profile || profile.role !== "admin") {
+        /* Check if member is approved — ALWAYS check agency_members for non-admin users */
+        const isAdmin = profile?.role === "admin";
+        if (!isAdmin) {
           try {
-            const { data: memberRow, error: memberErr } = await supabase.from("agency_members").select("status").eq("user_id", data.user.id).maybeSingle();
-            if (memberErr) { console.warn("[Login] agency_members query error:", memberErr); }
+            /* Check by user_id first, then by email as fallback */
+            let memberRow = null;
+            const { data: byId } = await supabase.from("agency_members").select("status").eq("user_id", data.user.id).maybeSingle();
+            if (byId) { memberRow = byId; }
+            else {
+              const { data: byEmail } = await supabase.from("agency_members").select("status").eq("email", email).maybeSingle();
+              if (byEmail) memberRow = byEmail;
+            }
             const memberStatus = memberRow?.status?.toLowerCase?.() || "";
             const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
             if (!isApproved) {
               clearTimeout(loginTimeout); setLoginLoading(false);
               const msg = !memberRow ? "Cadastro não encontrado. Solicite acesso ao administrador."
                 : memberStatus === "pendente" ? "Seu cadastro está aguardando aprovação do administrador."
-                : `Status do cadastro: "${memberRow.status}". Entre em contato com o administrador.`;
+                : `Status: "${memberRow.status}". Contate o administrador.`;
               setError(msg);
               await supabase.auth.signOut();
               return;
@@ -1835,11 +1842,8 @@ function LoginPage({ onAuth, onClientAuth }) {
       } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
       return;
     }
-    /* Fallback: mock login */
-    if (!emailValid) { setError("Use um e-mail @uniquemkt.com.br"); return; }
-    if (!pwStrong(pw)) { setError("Senha não atende os critérios"); return; }
-    const member = AGENCY_TEAM.find(m => m.name.toLowerCase() === emailLocal.toLowerCase());
-    onAuth({ name: member?.name || emailLocal, email, role: member?.role || "Colaborador", photo: member?.photo || null, phone: member?.phone || "", nick: member?.name || emailLocal, birth: "", social: "", blood: "", bio: "", remember });
+    /* No fallback: Supabase required */
+    setError("Servidor indisponível. Tente novamente.");
   };
 
   const handleRegister = async () => {
@@ -1871,14 +1875,16 @@ function LoginPage({ onAuth, onClientAuth }) {
         if (inviteData?.id && data?.user?.id) {
           await supaLinkInvite(inviteData.id, data.user.id);
         }
+        /* CRITICAL: Sign out immediately after registration to prevent session access before approval */
+        await supabase.auth.signOut();
         setLoginLoading(false);
         setRegSuccess("Cadastro enviado! Aguarde a aprovação do administrador para acessar o app.");
         setMode("pending"); setStep(0); setInviteData(null);
       } catch (e) { setError("Erro de conexão"); setLoginLoading(false); }
       return;
     }
-    /* Fallback mock */
-    onAuth({ name: rName, nick: rNick, email: rEmail, role: rCargo, photo: null, phone: rPhone, cpf: rCpf, birth: rBirth, social: rSocial, blood: rBlood, remember: false });
+    /* No fallback: Supabase required for registration */
+    setError("Servidor indisponível. Tente novamente mais tarde.");
   };
 
   const nextStep = async () => {
@@ -21469,8 +21475,13 @@ export default function App() {
           /* ── Block non-approved members (approval check on session restore) ── */
           if (!profile || (profile.role !== "admin" && profile.role !== "cliente")) {
             try {
-              const { data: memberRow, error: memberErr } = await supabase.from("agency_members").select("status").eq("user_id", session.user.id).maybeSingle();
-              if (memberErr) console.warn("[Auth] agency_members query error:", memberErr);
+              let memberRow = null;
+              const { data: byId } = await supabase.from("agency_members").select("status").eq("user_id", session.user.id).maybeSingle();
+              if (byId) { memberRow = byId; }
+              else {
+                const { data: byEmail } = await supabase.from("agency_members").select("status").eq("email", session.user.email).maybeSingle();
+                if (byEmail) memberRow = byEmail;
+              }
               const memberStatus = memberRow?.status?.toLowerCase?.() || "";
               const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
               if (!isApproved) {
