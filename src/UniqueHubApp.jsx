@@ -19006,7 +19006,18 @@ function ClientMatch4Biz({ onBack, user }) {
   const [touchStartX, setTouchStartX] = useState(null);
   const [dragX, setDragX] = useState(0);
   const chatEndRef = useRef(null);
+  const [chatVpH, setChatVpH] = useState(window.innerHeight);
   const { showToast, ToastEl } = useToast();
+
+  /* Track visual viewport for keyboard handling */
+  useEffect(() => {
+    if (!chatMatch) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => { setChatVpH(vv.height); setTimeout(() => chatEndRef.current?.scrollIntoView({behavior:"smooth"}), 50); };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, [chatMatch]);
 
   const getCreditsForPlan = (v) => { v = parseFloat(v) || 0; if (v >= 4480) return 9999; if (v >= 3480) return 30; if (v >= 2480) return 20; if (v >= 1480) return 10; return 10; };
   const isUnlimited = credits >= 9999;
@@ -19135,7 +19146,7 @@ function ClientMatch4Biz({ onBack, user }) {
     const msgs = chatMatch.messages || [];
     const isClosed = chatMatch.status === "deal_closed" || chatMatch.status === "deal_rejected";
     return (
-      <div className="app" style={{ background:B.bg, color:B.text }}>
+      <div style={{ position:"fixed", top:0, left:0, right:0, height:chatVpH, display:"flex", flexDirection:"column", background:B.bg, color:B.text, zIndex:50 }}>
         {ToastEl}
         <input ref={chatFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" style={{display:"none"}} onChange={handleChatFile} />
         <Head title="" onBack={()=>setChatMatch(null)} right={
@@ -19154,7 +19165,7 @@ function ClientMatch4Biz({ onBack, user }) {
         </div>}
 
         {/* Messages */}
-        <div className="content" style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
+        <div style={{flex:1,minHeight:0,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"12px 16px"}}>
           {msgs.length === 0 && <div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:14,fontWeight:700}}>Vocês deram Match! 🎉</p><p style={{fontSize:12,color:B.muted,marginTop:6,lineHeight:1.5}}>Iniciem a conversa sobre a parceria. Enviem propostas, arquivos e definam os próximos passos.</p></div>}
           {msgs.map((msg,i) => {
             const isMe = msg.from === myClient?.id;
@@ -19175,8 +19186,7 @@ function ClientMatch4Biz({ onBack, user }) {
           <div ref={chatEndRef} />
         </div>
         {/* Input bar */}
-        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderTop:"1px solid "+B.border,background:B.bgCard,paddingBottom:"calc(10px + env(safe-area-inset-bottom,0px))"}}>
-          <button onClick={()=>chatFileRef.current?.click()} style={{width:38,height:38,borderRadius:12,border:"1px solid "+B.border,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px 12px",borderTop:"1px solid "+B.border,background:B.bgCard,flexShrink:0}}>          <button onClick={()=>chatFileRef.current?.click()} style={{width:38,height:38,borderRadius:12,border:"1px solid "+B.border,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
           </button>
           <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendChatMsg(chatInput);}}} placeholder="Escreva sua mensagem..." className="tinput" style={{flex:1,padding:"10px 14px",fontSize:14}} />
@@ -19351,7 +19361,7 @@ function ClientMatch4Biz({ onBack, user }) {
               {/* Gradient header */}
               <div style={{ height:130, background:`linear-gradient(135deg, ${getColor(current.name)}30, ${getColor(current.name)}08, transparent)`, display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative" }}>
                 <div style={{ transform:"translateY(44px)" }}>
-                  {current.logo_url && !current.logo_url.startsWith("data:") ? <img src={current.logo_url} alt="" style={{ width:88, height:88, borderRadius:24, objectFit:"cover", border:"4px solid "+B.bgCard, boxShadow:"0 6px 24px rgba(0,0,0,0.12)" }} /> : <div style={{ width:88, height:88, borderRadius:24, background:`linear-gradient(135deg, ${getColor(current.name)}, ${getColor(current.name)}90)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32, fontWeight:900, color:"#fff", border:"4px solid "+B.bgCard, boxShadow:"0 6px 24px rgba(0,0,0,0.12)" }}>{getInitials(current.name)}</div>}
+                  {current.logo_url  ? <img src={current.logo_url} alt="" style={{ width:88, height:88, borderRadius:24, objectFit:"cover", border:"4px solid "+B.bgCard, boxShadow:"0 6px 24px rgba(0,0,0,0.12)" }} /> : <div style={{ width:88, height:88, borderRadius:24, background:`linear-gradient(135deg, ${getColor(current.name)}, ${getColor(current.name)}90)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:32, fontWeight:900, color:"#fff", border:"4px solid "+B.bgCard, boxShadow:"0 6px 24px rgba(0,0,0,0.12)" }}>{getInitials(current.name)}</div>}
                 </div>
               </div>
 
@@ -19417,7 +19427,7 @@ function ClientMatch4Biz({ onBack, user }) {
                   return (
                     <Card key={m.id} style={{ marginBottom:8, cursor:"pointer", padding:"12px 14px" }} onClick={()=>setChatMatch(m)}>
                       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                        {p.logo_url && !p.logo_url.startsWith("data:") ? <img src={p.logo_url} alt="" style={{ width:48, height:48, borderRadius:14, objectFit:"cover" }} /> : <div style={{ width:48, height:48, borderRadius:14, background:col+"20", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:800, color:col, flexShrink:0 }}>{getInitials(p.name)}</div>}
+                        {p.logo_url  ? <img src={p.logo_url} alt="" style={{ width:48, height:48, borderRadius:14, objectFit:"cover" }} /> : <div style={{ width:48, height:48, borderRadius:14, background:col+"20", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:800, color:col, flexShrink:0 }}>{getInitials(p.name)}</div>}
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                             <p style={{ fontSize:14, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
