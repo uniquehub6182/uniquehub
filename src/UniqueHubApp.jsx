@@ -4846,19 +4846,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             )}
           </Card>
 
-          {/* ── M4B PROFILE FIELDS ── */}
+          {/* ── M4B PROFILE FIELDS (Agency: only links) ── */}
           <Card style={{ marginBottom:10 }}>
-            <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Perfil Match4Biz</p>
-            <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.4 }}>Informações exibidas no perfil da empresa no Match4Biz.</p>
-
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>Missão da empresa</label>
-            <textarea value={m4bProfile.mission} onChange={e => saveM4bProfile("mission", e.target.value)} placeholder="Ex: Transformar a logística do Brasil através da tecnologia..." className="tinput" style={{ minHeight:50, resize:"vertical", marginBottom:10, fontSize:12 }} />
-
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>Valores</label>
-            <textarea value={m4bProfile.values} onChange={e => saveM4bProfile("values", e.target.value)} placeholder="Ex: Inovação, Transparência, Resultado..." className="tinput" style={{ minHeight:40, resize:"vertical", marginBottom:10, fontSize:12 }} />
-
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>O que busca (Match Ideal)</label>
-            <textarea value={m4bProfile.matchIdeal} onChange={e => saveM4bProfile("matchIdeal", e.target.value)} placeholder="Ex: Parceiros de logística, fornecedores de embalagem, clientes B2B do setor alimentício..." className="tinput" style={{ minHeight:50, resize:"vertical", marginBottom:10, fontSize:12 }} />
+            <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Links Match4Biz</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.4 }}>Links exibidos no perfil da empresa no Match4Biz. Missão, valores e "o que busca" são preenchidos pelo próprio cliente.</p>
 
             <div style={{ display:"flex", gap:8, marginBottom:10 }}>
               <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Site</label><input value={m4bProfile.website} onChange={e => saveM4bProfile("website", e.target.value)} placeholder="https://..." className="tinput" style={{ fontSize:12 }} /></div>
@@ -19508,6 +19499,31 @@ function ClientMatch4Biz({ onBack, user }) {
     showToast("Parabéns! +5 créditos de bônus 🎉");
   };
 
+  /* ═══ MY PROFILE EDITING (client-side) ═══ */
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [myM4bProfile, setMyM4bProfile] = useState({ mission:"", values:"", matchIdeal:"" });
+  const [myM4bProfileLoaded, setMyM4bProfileLoaded] = useState(false);
+  useEffect(() => {
+    if (!myClient || !supabase) return;
+    supaGetSetting(`client_m4b_profile_${myClient.id}`).then(v => {
+      try { if (v) { const p = JSON.parse(v); setMyM4bProfile({ mission: p.mission||"", values: p.values||"", matchIdeal: p.matchIdeal||"" }); } } catch {}
+      setMyM4bProfileLoaded(true);
+    });
+  }, [myClient?.id]);
+  const saveMyM4bField = (field, val) => {
+    const updated = { ...myM4bProfile, [field]: val };
+    setMyM4bProfile(updated);
+    if (myClient) {
+      supaGetSetting(`client_m4b_profile_${myClient.id}`).then(existing => {
+        let full = {};
+        try { if (existing) full = JSON.parse(existing); } catch {}
+        full[field] = val;
+        supaSetSetting(`client_m4b_profile_${myClient.id}`, JSON.stringify(full));
+      });
+    }
+  };
+  const profileComplete = myM4bProfile.mission && myM4bProfile.matchIdeal;
+
   /* ═══ M4B STYLES ═══ */
   const m4bCSS = `
     @keyframes m4b-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
@@ -19608,6 +19624,32 @@ function ClientMatch4Biz({ onBack, user }) {
       </div>}
     </div>
   ); }
+
+  /* ═══ EDIT MY PROFILE ═══ */
+  if (showEditProfile) return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      <CollapseHeader label="Seu perfil" title="Match4Biz" onBack={() => setShowEditProfile(false)} collapsed={false} />
+      <div className="content" style={{ padding:"0 16px" }}>
+        <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+            {myClient?.logo_url ? <img src={myClient.logo_url} style={{ width:44, height:44, borderRadius:14, objectFit:"cover" }} /> : <Av name={myClient?.name} sz={44} fs={16} />}
+            <div><p style={{ fontSize:16, fontWeight:800 }}>{myClient?.name}</p>{myClient?.segment && <p style={{ fontSize:11, color:B.muted }}>{myClient.segment}</p>}</div>
+          </div>
+          <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>Complete seu perfil para que outras empresas te encontrem com mais facilidade e tenham mais confiança na parceria.</p>
+        </div>
+        <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Missão da empresa *</label>
+          <textarea value={myM4bProfile.mission} onChange={e => saveMyM4bField("mission", e.target.value)} placeholder="O que sua empresa faz e qual problema resolve? Ex: Transformar a logística do Brasil com tecnologia acessível..." className="tinput" style={{ minHeight:70, resize:"vertical", fontSize:13, lineHeight:1.5, marginBottom:14 }} />
+          <label style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Valores</label>
+          <textarea value={myM4bProfile.values} onChange={e => saveMyM4bField("values", e.target.value)} placeholder="Ex: Inovação, Transparência, Resultado, Parceria..." className="tinput" style={{ minHeight:50, resize:"vertical", fontSize:13, lineHeight:1.5, marginBottom:14 }} />
+          <label style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>O que você busca (Match Ideal) *</label>
+          <textarea value={myM4bProfile.matchIdeal} onChange={e => saveMyM4bField("matchIdeal", e.target.value)} placeholder="Descreva que tipo de parceria, fornecedor ou cliente você está buscando. Ex: Parceiros de distribuição no RJ, fornecedores de embalagem sustentável, clientes B2B do setor alimentício..." className="tinput" style={{ minHeight:80, resize:"vertical", fontSize:13, lineHeight:1.5 }} />
+        </div>
+        <button onClick={() => { setShowEditProfile(false); showToast("Perfil atualizado ✓"); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:profileComplete ? B.accent : B.border, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:profileComplete ? "#0D0D0D" : B.muted }}>{profileComplete ? "Salvar e voltar" : "Preencha missão e match ideal"}</button>
+        <div style={{ height:30 }} />
+      </div>
+    </div>
+  );
 
   /* ═══ TERMS SCREEN ═══ */
   if (!accepted) return (
@@ -19845,8 +19887,12 @@ function ClientMatch4Biz({ onBack, user }) {
       {BuyOverlay}
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
-        {/* Credits pill */}
-        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
+        {/* Credits pill + Profile edit */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+          <button onClick={() => setShowEditProfile(true)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:12, background:profileComplete?B.accent+"08":"#F59E0B10", border:"1.5px solid "+(profileComplete?B.accent+"20":"#F59E0B30"), cursor:"pointer", fontFamily:"inherit" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={profileComplete?B.accent:"#F59E0B"} strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span style={{ fontSize:11, fontWeight:600, color:profileComplete?B.accent:"#F59E0B" }}>{profileComplete?"Meu perfil":"Completar perfil"}</span>
+          </button>
           <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 14px", borderRadius:12, background:noCredits?"#EF444420":B.bg, border:"1.5px solid "+(noCredits?"#EF444440":B.border), cursor:"pointer", fontFamily:"inherit" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             <span style={{ fontSize:12, fontWeight:800, color:noCredits?"#EF4444":B.accent }}>{isUnlimited ? "∞" : credits}</span>
