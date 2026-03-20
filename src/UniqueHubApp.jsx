@@ -4044,11 +4044,18 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const coverInputRef = useRef(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [m4bCover, setM4bCover] = useState(null);
+  const [m4bProfile, setM4bProfile] = useState({ mission:"", values:"", website:"", instagram:"", linkedin:"", matchIdeal:"" });
   useEffect(() => {
-    if (!sel || !supabase) { setM4bCover(null); return; }
+    if (!sel || !supabase) { setM4bCover(null); setM4bProfile({ mission:"", values:"", website:"", instagram:"", linkedin:"", matchIdeal:"" }); return; }
     const cid = sel.supaId || sel.id;
     supaGetSetting(`client_m4b_cover_${cid}`).then(v => setM4bCover(v || null));
+    supaGetSetting(`client_m4b_profile_${cid}`).then(v => { try { if (v) setM4bProfile(JSON.parse(v)); else setM4bProfile({ mission:"", values:"", website:"", instagram:"", linkedin:"", matchIdeal:"" }); } catch { setM4bProfile({ mission:"", values:"", website:"", instagram:"", linkedin:"", matchIdeal:"" }); } });
   }, [sel?.id]);
+  const saveM4bProfile = (field, val) => {
+    const updated = { ...m4bProfile, [field]: val };
+    setM4bProfile(updated);
+    if (sel) { const cid = sel.supaId || sel.id; supaSetSetting(`client_m4b_profile_${cid}`, JSON.stringify(updated)); }
+  };
   const handleCoverUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !sel) return;
@@ -4059,6 +4066,28 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     else showToast("Erro ao enviar capa");
     setCoverUploading(false);
     if (coverInputRef.current) coverInputRef.current.value = "";
+  };
+  /* ── M4B Profile fields ── */
+  const [m4bMission, setM4bMission] = useState("");
+  const [m4bLinks, setM4bLinks] = useState({ site:"", instagram:"", facebook:"", linkedin:"" });
+  const [m4bIdeal, setM4bIdeal] = useState("");
+  useEffect(() => {
+    if (!sel || !supabase) { setM4bMission(""); setM4bLinks({ site:"", instagram:"", facebook:"", linkedin:"" }); setM4bIdeal(""); return; }
+    const cid = sel.supaId || sel.id;
+    Promise.all([
+      supaGetSetting(`client_m4b_mission_${cid}`),
+      supaGetSetting(`client_m4b_links_${cid}`),
+      supaGetSetting(`client_m4b_ideal_${cid}`),
+    ]).then(([mis, lnk, idl]) => {
+      setM4bMission(mis || "");
+      try { setM4bLinks(lnk ? JSON.parse(lnk) : { site:"", instagram:"", facebook:"", linkedin:"" }); } catch { setM4bLinks({ site:"", instagram:"", facebook:"", linkedin:"" }); }
+      setM4bIdeal(idl || "");
+    });
+  }, [sel?.id]);
+  const saveM4bField = async (key, value) => {
+    if (!sel || !supabase) return;
+    const cid = sel.supaId || sel.id;
+    await supaSetSetting(`client_m4b_${key}_${cid}`, typeof value === "string" ? value : JSON.stringify(value));
   };
   /* Load ideas for selected client when ideas tab is opened */
   useEffect(() => {
@@ -4815,6 +4844,29 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 <span style={{ fontSize:12, color:B.muted, fontWeight:600 }}>{coverUploading ? "Enviando..." : "Adicionar capa"}</span>
               </button>
             )}
+          </Card>
+
+          {/* ── M4B PROFILE FIELDS ── */}
+          <Card style={{ marginBottom:10 }}>
+            <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Perfil Match4Biz</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.4 }}>Informações exibidas no perfil da empresa no Match4Biz.</p>
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Missão da empresa</label>
+            <textarea value={m4bProfile.mission} onChange={e => saveM4bProfile("mission", e.target.value)} placeholder="Ex: Transformar a logística do Brasil através da tecnologia..." className="tinput" style={{ minHeight:50, resize:"vertical", marginBottom:10, fontSize:12 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Valores</label>
+            <textarea value={m4bProfile.values} onChange={e => saveM4bProfile("values", e.target.value)} placeholder="Ex: Inovação, Transparência, Resultado..." className="tinput" style={{ minHeight:40, resize:"vertical", marginBottom:10, fontSize:12 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>O que busca (Match Ideal)</label>
+            <textarea value={m4bProfile.matchIdeal} onChange={e => saveM4bProfile("matchIdeal", e.target.value)} placeholder="Ex: Parceiros de logística, fornecedores de embalagem, clientes B2B do setor alimentício..." className="tinput" style={{ minHeight:50, resize:"vertical", marginBottom:10, fontSize:12 }} />
+
+            <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Site</label><input value={m4bProfile.website} onChange={e => saveM4bProfile("website", e.target.value)} placeholder="https://..." className="tinput" style={{ fontSize:12 }} /></div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Instagram</label><input value={m4bProfile.instagram} onChange={e => saveM4bProfile("instagram", e.target.value)} placeholder="@empresa" className="tinput" style={{ fontSize:12 }} /></div>
+              <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>LinkedIn</label><input value={m4bProfile.linkedin} onChange={e => saveM4bProfile("linkedin", e.target.value)} placeholder="linkedin.com/company/..." className="tinput" style={{ fontSize:12 }} /></div>
+            </div>
           </Card>
         </>)}
       </>}
@@ -19268,6 +19320,7 @@ function ClientMatch4Biz({ onBack, user }) {
   const [clientScores, setClientScores] = useState({});
   const [clientRanks, setClientRanks] = useState({});
   const [clientCovers, setClientCovers] = useState({});
+  const [clientM4bProfiles, setClientM4bProfiles] = useState({});
   const { showToast, ToastEl } = useToast();
 
   /* ── Plan-based credits ── */
@@ -19314,6 +19367,15 @@ function ClientMatch4Biz({ onBack, user }) {
             const byClient = {};
             coverRows.forEach(c => { const id = c.key.replace("client_m4b_cover_", ""); byClient[id] = c.value; });
             setClientCovers(byClient);
+          }
+        } catch {}
+        /* Load M4B profiles for all clients */
+        try {
+          const { data: profRows } = await supabase.from("app_settings").select("key, value").like("key", "client_m4b_profile_%");
+          if (profRows) {
+            const byClient = {};
+            profRows.forEach(r => { const id = r.key.replace("client_m4b_profile_", ""); try { byClient[id] = JSON.parse(r.value); } catch {} });
+            setClientM4bProfiles(byClient);
           }
         } catch {}
       } catch(e) { console.warn("[M4B]", e); }
@@ -19852,13 +19914,33 @@ function ClientMatch4Biz({ onBack, user }) {
                     </div>}
                   </div>
 
-                  {/* Bio */}
+                  {/* Bio + M4B Profile */}
+                  {(() => { const prof = clientM4bProfiles[current.id] || {}; const hasBio = current.notes || prof.mission; return (
                   <div style={{ marginTop:10 }}>
-                    {current.notes ? <>
+                    {current.notes && <>
                       <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:4 }}>Sobre</p>
-                      <p style={{ fontSize:12, color:B.text, lineHeight:1.6, opacity:0.75 }}>{current.notes.length > 200 ? current.notes.substring(0,200)+"..." : current.notes}</p>
-                    </> : <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, fontStyle:"italic", marginTop:4 }}>Sem descrição disponível</p>}
+                      <p style={{ fontSize:12, color:B.text, lineHeight:1.6, opacity:0.75, marginBottom:8 }}>{current.notes.length > 150 ? current.notes.substring(0,150)+"..." : current.notes}</p>
+                    </>}
+                    {current.segment && <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:6 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                      <span style={{ fontSize:11, color:B.muted }}><strong style={{ color:B.text, fontWeight:600 }}>Segmento:</strong> {current.segment}</span>
+                    </div>}
+                    {prof.mission && <div style={{ display:"flex", alignItems:"flex-start", gap:5, marginBottom:6 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" style={{ marginTop:2, flexShrink:0 }}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                      <span style={{ fontSize:11, color:B.muted }}><strong style={{ color:B.text, fontWeight:600 }}>Missão:</strong> {prof.mission.length > 80 ? prof.mission.substring(0,80)+"..." : prof.mission}</span>
+                    </div>}
+                    {prof.matchIdeal && <div style={{ background:B.accent+"08", border:"1px solid "+B.accent+"15", borderRadius:10, padding:"8px 10px", marginBottom:6 }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1, marginBottom:3 }}>Busca</p>
+                      <p style={{ fontSize:11, color:B.text, lineHeight:1.5 }}>{prof.matchIdeal.length > 100 ? prof.matchIdeal.substring(0,100)+"..." : prof.matchIdeal}</p>
+                    </div>}
+                    {(prof.website || prof.instagram || prof.linkedin) && <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                      {prof.website && <a href={prof.website.startsWith("http")?prof.website:"https://"+prof.website} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:B.muted, display:"flex", alignItems:"center", gap:3, textDecoration:"none" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg> Site</a>}
+                      {prof.instagram && <a href={"https://instagram.com/"+(prof.instagram.replace("@",""))} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#E1306C", display:"flex", alignItems:"center", gap:3, textDecoration:"none" }}>📷 {prof.instagram}</a>}
+                      {prof.linkedin && <a href={prof.linkedin.startsWith("http")?prof.linkedin:"https://"+prof.linkedin} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#0A66C2", display:"flex", alignItems:"center", gap:3, textDecoration:"none" }}>💼 LinkedIn</a>}
+                    </div>}
+                    {!hasBio && <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, fontStyle:"italic", marginTop:4 }}>Sem descrição disponível</p>}
                   </div>
+                  ); })()}
                 </div>
 
                 {/* Action buttons - at bottom */}
