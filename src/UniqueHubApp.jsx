@@ -18938,20 +18938,20 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ CELEBRATION ═══ */
   if (celebration) { const p = celebration; const cc = getColor(p.name); return (
-    <div style={{ position:"fixed", inset:0, zIndex:999, background:"#000", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:"#fff" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:999, background:B.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS + `
         .m4b-confetti-piece { position:absolute; width:8px; height:8px; border-radius:2px; animation:m4b-confetti 2.5s ease-out forwards; }
       `}} />
       {Array.from({length:30}).map((_,i) => <div key={i} className="m4b-confetti-piece" style={{ left:Math.random()*100+"%", top:-10, background:["#C8FF00","#10B981","#3B82F6","#EC4899","#F59E0B","#8B5CF6"][i%6], animationDelay:Math.random()*1.5+"s", animationDuration:(2+Math.random()*2)+"s", width:4+Math.random()*8, height:4+Math.random()*8 }} />)}
       <div style={{ display:"flex", alignItems:"center", marginBottom:32 }}>
-        <div style={{ width:88, height:88, borderRadius:26, overflow:"hidden", border:"3px solid "+B.accent, zIndex:2, background:"#1A1D23" }}>{myClient?.logo_url ? <img src={myClient.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#0D0D0D" }}>{getInitials(myClient?.name)}</div>}</div>
-        <div style={{ width:88, height:88, borderRadius:26, overflow:"hidden", border:"3px solid "+cc, marginLeft:-18, background:"#1A1D23" }}>{p.logo_url ? <img src={p.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:cc, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#fff" }}>{getInitials(p.name)}</div>}</div>
+        <div style={{ width:88, height:88, borderRadius:26, overflow:"hidden", border:"3px solid "+B.accent, zIndex:2, background:B.bgCard }}>{myClient?.logo_url ? <img src={myClient.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#0D0D0D" }}>{getInitials(myClient?.name)}</div>}</div>
+        <div style={{ width:88, height:88, borderRadius:26, overflow:"hidden", border:"3px solid "+cc, marginLeft:-18, background:B.bgCard }}>{p.logo_url ? <img src={p.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:cc, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#fff" }}>{getInitials(p.name)}</div>}</div>
       </div>
-      <p style={{ fontSize:12, fontWeight:700, color:"#888", textTransform:"uppercase", letterSpacing:6, marginBottom:4 }}>É um</p>
+      <p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:6, marginBottom:4 }}>É um</p>
       <h1 style={{ fontSize:52, fontWeight:900, margin:"0 0 8px", background:"linear-gradient(135deg, "+B.accent+", #10B981)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Match!</h1>
-      <p style={{ fontSize:14, color:"#999", marginTop:8, textAlign:"center", padding:"0 30px" }}>Você e <strong style={{ color:"#fff" }}>{p.name}</strong> demonstraram interesse mútuo</p>
+      <p style={{ fontSize:14, color:B.muted, marginTop:8, textAlign:"center", padding:"0 30px" }}>Você e <strong style={{ color:B.text }}>{p.name}</strong> demonstraram interesse mútuo</p>
       <button onClick={() => { setCelebration(null); setTab("matches"); }} style={{ marginTop:32, padding:"16px 48px", borderRadius:50, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D" }}>Conversar agora</button>
-      <button onClick={() => setCelebration(null)} style={{ marginTop:14, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:"#666", textDecoration:"underline" }}>Continuar descobrindo</button>
+      <button onClick={() => setCelebration(null)} style={{ marginTop:14, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:B.muted, textDecoration:"underline" }}>Continuar descobrindo</button>
     </div>
   ); }
 
@@ -18991,7 +18991,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ TERMS SCREEN ═══ */
   if (!accepted) return (
-    <div className="app" style={{ background:"#000", color:"#fff" }}>
+    <div className="app" style={{ background:B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <Head title="Match4Biz" onBack={onBack} />
       <div className="content" style={{ padding:"0 16px" }}>
@@ -19000,10 +19000,10 @@ function ClientMatch4Biz({ onBack, user }) {
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           </div>
           <h2 style={{ fontSize:24, fontWeight:900, marginBottom:6, letterSpacing:"-0.5px" }}>Match4Biz</h2>
-          <p style={{ fontSize:13, color:"#888", lineHeight:1.5, maxWidth:280, margin:"0 auto" }}>Conecte-se com outros negócios e crie parcerias que geram resultados reais</p>
+          <p style={{ fontSize:13, color:B.muted, lineHeight:1.5, maxWidth:280, margin:"0 auto" }}>Conecte-se com outros negócios e crie parcerias que geram resultados reais</p>
         </div>
 
-        <div style={{ background:"#111", borderRadius:20, padding:"20px", marginBottom:12, border:"1px solid #222" }}>
+        <div style={{ background:B.bgCard, borderRadius:20, padding:"20px", marginBottom:12, border:"1px solid "+B.border }}>
           <p style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>Como funciona</p>
           {[
             { ic:"🔍", t:"Descubra", d:"Veja perfis reais de empresas parceiras" },
@@ -19011,14 +19011,14 @@ function ClientMatch4Biz({ onBack, user }) {
             { ic:"🤝", t:"Conecte-se", d:"Match mútuo = chat liberado" },
             { ic:"💰", t:"Negocie", d:"Toda parceria acontece dentro da plataforma" },
           ].map((s,i) => (
-            <div key={i} style={{ display:"flex", gap:14, padding:"12px 0", borderBottom:i<3?"1px solid #222":"none" }}>
-              <span style={{ fontSize:20, flexShrink:0, width:32, height:32, borderRadius:10, background:"#1a1a1a", display:"flex", alignItems:"center", justifyContent:"center" }}>{s.ic}</span>
-              <div><p style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{s.t}</p><p style={{ fontSize:11, color:"#777", lineHeight:1.4 }}>{s.d}</p></div>
+            <div key={i} style={{ display:"flex", gap:14, padding:"12px 0", borderBottom:i<3?"1px solid "+B.border:"none" }}>
+              <span style={{ fontSize:20, flexShrink:0, width:32, height:32, borderRadius:10, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>{s.ic}</span>
+              <div><p style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{s.t}</p><p style={{ fontSize:11, color:B.muted, lineHeight:1.4 }}>{s.d}</p></div>
             </div>
           ))}
         </div>
 
-        <div style={{ background:"#111", borderRadius:20, padding:"20px", marginBottom:12, border:"1px solid "+B.accent+"25" }}>
+        <div style={{ background:B.bgCard, borderRadius:20, padding:"20px", marginBottom:12, border:"1px solid "+B.accent+"25" }}>
           <p style={{ fontSize:13, fontWeight:700, color:B.accent, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             Créditos por Plano
@@ -19029,21 +19029,21 @@ function ClientMatch4Biz({ onBack, user }) {
             { plan:"Scale", credits:"30", matches:"3 matches" },
             { plan:"Enterprise", credits:"∞", matches:"Ilimitado" },
           ].map((p,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<3?"1px solid #222":"none" }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#ccc" }}>{p.plan}</span>
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<3?"1px solid "+B.border:"none" }}>
+              <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{p.plan}</span>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                 <span style={{ fontSize:13, fontWeight:800, color:B.accent }}>{p.credits}</span>
-                <span style={{ fontSize:10, color:"#666", background:"#1a1a1a", padding:"2px 8px", borderRadius:6 }}>{p.matches}</span>
+                <span style={{ fontSize:10, color:B.muted, background:B.bg, padding:"2px 8px", borderRadius:6 }}>{p.matches}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ background:"#111", borderRadius:20, padding:"20px", marginBottom:16, border:"1px solid #F59E0B25" }}>
+        <div style={{ background:B.bgCard, borderRadius:20, padding:"20px", marginBottom:16, border:"1px solid #F59E0B25" }}>
           <p style={{ fontSize:13, fontWeight:700, color:"#F59E0B", marginBottom:8 }}>⚠️ Termos de Uso</p>
-          <ul style={{ fontSize:11, color:"#888", lineHeight:1.8, paddingLeft:16, margin:0 }}>
-            <li>Toda negociação deve acontecer <strong style={{color:"#fff"}}>dentro da plataforma</strong></li>
-            <li>Taxa de <strong style={{color:"#fff"}}>5% a 10%</strong> sobre parcerias fechadas</li>
+          <ul style={{ fontSize:11, color:B.muted, lineHeight:1.8, paddingLeft:16, margin:0 }}>
+            <li>Toda negociação deve acontecer <strong style={{color:B.text}}>dentro da plataforma</strong></li>
+            <li>Taxa de <strong style={{color:B.text}}>5% a 10%</strong> sobre parcerias fechadas</li>
             <li>A Unique Marketing atua como facilitadora</li>
             <li>Informações são confidenciais</li>
           </ul>
@@ -19063,7 +19063,7 @@ function ClientMatch4Biz({ onBack, user }) {
     const circumference = 2 * Math.PI * 42;
     const offset = circumference - (sc / 100) * circumference;
     return (
-      <div className="app" style={{ background:"#000", color:"#fff" }}>
+      <div className="app" style={{ background:B.bg, color:B.text }}>
         <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
         <Head title="" onBack={() => setShowProfile(null)} />
         <div className="content" style={{ padding:"0 16px" }}>
@@ -19072,10 +19072,10 @@ function ClientMatch4Biz({ onBack, user }) {
             {/* Score ring around avatar */}
             <div style={{ position:"relative", width:110, height:110, margin:"0 auto 14px" }}>
               <svg width="110" height="110" viewBox="0 0 110 110" style={{ position:"absolute", top:0, left:0, transform:"rotate(-90deg)" }}>
-                <circle cx="55" cy="55" r="42" fill="none" stroke="#222" strokeWidth="4" />
+                <circle cx="55" cy="55" r="42" fill="none" stroke={B.border} strokeWidth="4" />
                 <circle cx="55" cy="55" r="42" fill="none" stroke={B.accent} strokeWidth="4" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" style={{ transition:"stroke-dashoffset 1s ease" }} />
               </svg>
-              <div style={{ position:"absolute", top:9, left:9, width:92, height:92, borderRadius:28, overflow:"hidden", background:"#111" }}>
+              <div style={{ position:"absolute", top:9, left:9, width:92, height:92, borderRadius:28, overflow:"hidden", background:B.bgCard }}>
                 {p.logo_url ? <img src={p.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+col+", "+col+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:34, fontWeight:900, color:"#fff" }}>{getInitials(p.name)}</div>}
               </div>
               {/* Score badge */}
@@ -19088,36 +19088,36 @@ function ClientMatch4Biz({ onBack, user }) {
             <div style={{ display:"flex", justifyContent:"center", gap:20, marginTop:16 }}>
               <div style={{ textAlign:"center" }}>
                 <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{rk}º</p>
-                <p style={{ fontSize:10, color:"#666", fontWeight:600 }}>Ranking</p>
+                <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Ranking</p>
               </div>
-              <div style={{ width:1, height:36, background:"#222" }} />
+              <div style={{ width:1, height:36, background:B.accent+"15" }} />
               <div style={{ textAlign:"center" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{sc}</p>
-                <p style={{ fontSize:10, color:"#666", fontWeight:600 }}>Growth Score</p>
+                <p style={{ fontSize:22, fontWeight:900, color:B.text }}>{sc}</p>
+                <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Growth Score</p>
               </div>
-              <div style={{ width:1, height:36, background:"#222" }} />
+              <div style={{ width:1, height:36, background:B.accent+"15" }} />
               <div style={{ textAlign:"center" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{getSince(p.start_date).replace("Desde ","")}</p>
-                <p style={{ fontSize:10, color:"#666", fontWeight:600 }}>Membro desde</p>
+                <p style={{ fontSize:22, fontWeight:900, color:B.text }}>{getSince(p.start_date).replace("Desde ","")}</p>
+                <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Membro desde</p>
               </div>
             </div>
           </div>
 
           {/* About */}
-          {p.notes && <div style={{ background:"#111", borderRadius:18, padding:"16px 18px", marginBottom:12, border:"1px solid #222" }}>
-            <p style={{ fontSize:11, fontWeight:700, color:"#666", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Sobre a empresa</p>
-            <p style={{ fontSize:13, lineHeight:1.7, color:"#ccc" }}>{p.notes}</p>
+          {p.notes && <div style={{ background:B.bgCard, borderRadius:18, padding:"16px 18px", marginBottom:12, border:"1px solid "+B.border }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Sobre a empresa</p>
+            <p style={{ fontSize:13, lineHeight:1.7, color:B.text }}>{p.notes}</p>
           </div>}
 
           {/* Contact */}
-          {p.contact_name && <div style={{ background:"#111", borderRadius:18, padding:"16px 18px", marginBottom:16, border:"1px solid #222" }}>
-            <p style={{ fontSize:11, fontWeight:700, color:"#666", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Responsável</p>
-            <p style={{ fontSize:14, fontWeight:600, color:"#fff" }}>{p.contact_name}</p>
+          {p.contact_name && <div style={{ background:B.bgCard, borderRadius:18, padding:"16px 18px", marginBottom:16, border:"1px solid "+B.border }}>
+            <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Responsável</p>
+            <p style={{ fontSize:14, fontWeight:600, color:B.text }}>{p.contact_name}</p>
           </div>}
 
           {/* Actions */}
           <div style={{ display:"flex", gap:10, marginBottom:30 }}>
-            <button onClick={() => { setShowProfile(null); handlePass(); }} style={{ flex:1, padding:"15px 0", borderRadius:16, border:"2px solid #333", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#999" }}>Pular</button>
+            <button onClick={() => { setShowProfile(null); handlePass(); }} style={{ flex:1, padding:"15px 0", borderRadius:16, border:"2px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.muted }}>Pular</button>
             <button onClick={() => { setShowProfile(null); handleLike(); }} style={{ flex:1.2, padding:"15px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>💚 Dar Match</button>
           </div>
         </div>
@@ -19134,54 +19134,54 @@ function ClientMatch4Biz({ onBack, user }) {
 
   const BuyOverlay = showBuy ? (
     <div className="m4b-overlay-enter" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(12px)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={() => { setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }}>
-      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:"#111", borderRadius:"28px 28px 0 0", padding:"20px 20px calc(24px + env(safe-area-inset-bottom,0px))", maxHeight:"85vh", overflowY:"auto" }}>
-        <div style={{ width:40, height:4, borderRadius:2, background:"#333", margin:"0 auto 18px" }} />
+      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:B.bgCard, borderRadius:"28px 28px 0 0", padding:"20px 20px calc(24px + env(safe-area-inset-bottom,0px))", maxHeight:"85vh", overflowY:"auto" }}>
+        <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 18px" }} />
 
         {buyStep === "packages" ? (<>
-          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:4, color:"#fff" }}>Comprar Créditos</h3>
-          <p style={{ fontSize:12, color:"#666", marginBottom:20 }}>Cada 10 créditos = 1 match com outra empresa</p>
+          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:4, color:B.text }}>Comprar Créditos</h3>
+          <p style={{ fontSize:12, color:B.muted, marginBottom:20 }}>Cada 10 créditos = 1 match com outra empresa</p>
 
           <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:20 }}>
             {PACKAGES.map(pkg => (
-              <button key={pkg.id} className="m4b-pkg-card" data-sel={selectedPkg?.id === pkg.id ? "true" : "false"} onClick={() => setSelectedPkg(pkg)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"16px 18px", borderRadius:18, background:selectedPkg?.id===pkg.id ? B.accent+"0A" : "#1a1a1a", border:selectedPkg?.id===pkg.id ? "2px solid "+B.accent : "2px solid #222", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <button key={pkg.id} className="m4b-pkg-card" data-sel={selectedPkg?.id === pkg.id ? "true" : "false"} onClick={() => setSelectedPkg(pkg)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"16px 18px", borderRadius:18, background:selectedPkg?.id===pkg.id ? B.accent+"0A" : B.bg, border:selectedPkg?.id===pkg.id ? "2px solid "+B.accent : "2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <p style={{ fontSize:16, fontWeight:800, color:"#fff" }}>{pkg.n} créditos</p>
+                    <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{pkg.n} créditos</p>
                     {pkg.popular && <span style={{ fontSize:9, fontWeight:700, background:B.accent, color:"#0D0D0D", padding:"2px 8px", borderRadius:8, textTransform:"uppercase" }}>Popular</span>}
                   </div>
-                  <p style={{ fontSize:11, color:"#666", marginTop:2 }}>{pkg.desc}{pkg.save ? " · Economize "+pkg.save : ""}</p>
+                  <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{pkg.desc}{pkg.save ? " · Economize "+pkg.save : ""}</p>
                 </div>
                 <p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{pkg.price}</p>
               </button>
             ))}
           </div>
 
-          <button disabled={!selectedPkg} onClick={() => setBuyStep("payment")} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:selectedPkg ? B.accent : "#222", border:"none", cursor:selectedPkg?"pointer":"default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:selectedPkg?"#0D0D0D":"#555" }}>Continuar</button>
-          <button onClick={() => { setShowBuy(false); setBuyStep("packages"); }} style={{ width:"100%", padding:"12px 0", marginTop:8, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:"#666" }}>Aguardar próximo ciclo</button>
+          <button disabled={!selectedPkg} onClick={() => setBuyStep("payment")} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:selectedPkg ? B.accent : B.border, border:"none", cursor:selectedPkg?"pointer":"default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:selectedPkg?"#0D0D0D":B.muted }}>Continuar</button>
+          <button onClick={() => { setShowBuy(false); setBuyStep("packages"); }} style={{ width:"100%", padding:"12px 0", marginTop:8, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:B.muted }}>Aguardar próximo ciclo</button>
         </>) : (<>
 
           {/* Payment step */}
-          <button onClick={() => setBuyStep("packages")} style={{ display:"flex", alignItems:"center", gap:6, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", color:"#888", fontSize:13, marginBottom:16, padding:0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg> Voltar
+          <button onClick={() => setBuyStep("packages")} style={{ display:"flex", alignItems:"center", gap:6, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", color:B.muted, fontSize:13, marginBottom:16, padding:0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg> Voltar
           </button>
-          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:4, color:"#fff" }}>Método de Pagamento</h3>
-          <p style={{ fontSize:12, color:"#666", marginBottom:6 }}>{selectedPkg?.n} créditos · <strong style={{ color:B.accent }}>{selectedPkg?.price}</strong></p>
-          <div style={{ background:"#1a1a1a", borderRadius:14, padding:"12px 16px", marginBottom:20, border:"1px solid #222" }}>
+          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:4, color:B.text }}>Método de Pagamento</h3>
+          <p style={{ fontSize:12, color:B.muted, marginBottom:6 }}>{selectedPkg?.n} créditos · <strong style={{ color:B.accent }}>{selectedPkg?.price}</strong></p>
+          <div style={{ background:B.bg, borderRadius:14, padding:"12px 16px", marginBottom:20, border:"1px solid "+B.border }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontSize:12, color:"#888" }}>{selectedPkg?.desc}</span>
-              <span style={{ fontSize:14, fontWeight:800, color:"#fff" }}>{selectedPkg?.price}</span>
+              <span style={{ fontSize:12, color:B.muted }}>{selectedPkg?.desc}</span>
+              <span style={{ fontSize:14, fontWeight:800, color:B.text }}>{selectedPkg?.price}</span>
             </div>
           </div>
 
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {/* PIX */}
-            <button onClick={() => { showToast("Gerando QR Code PIX..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:"#1a1a1a", border:"2px solid #222", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+            <button onClick={() => { showToast("Gerando QR Code PIX..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:B.bg, border:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
               <div style={{ width:44, height:44, borderRadius:14, background:"#00B88620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00B886" strokeWidth="2"><path d="M13.17 6l-3.63 3.63a1 1 0 000 1.41l3.63 3.63"/><path d="M10.83 18l3.63-3.63a1 1 0 000-1.41L10.83 9.33"/><rect x="2" y="2" width="20" height="20" rx="2"/></svg>
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:"#fff" }}>PIX</p>
-                <p style={{ fontSize:11, color:"#666" }}>Aprovação instantânea</p>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>PIX</p>
+                <p style={{ fontSize:11, color:B.muted }}>Aprovação instantânea</p>
               </div>
               <div style={{ background:"#00B88615", padding:"3px 10px", borderRadius:8 }}>
                 <span style={{ fontSize:10, fontWeight:700, color:"#00B886" }}>Recomendado</span>
@@ -19189,29 +19189,29 @@ function ClientMatch4Biz({ onBack, user }) {
             </button>
 
             {/* Boleto */}
-            <button onClick={() => { showToast("Gerando boleto bancário..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:"#1a1a1a", border:"2px solid #222", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+            <button onClick={() => { showToast("Gerando boleto bancário..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:B.bg, border:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
               <div style={{ width:44, height:44, borderRadius:14, background:"#3B82F620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="15" x2="7" y2="15.01"/><line x1="11" y1="15" x2="17" y2="15"/></svg>
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:"#fff" }}>Boleto Bancário</p>
-                <p style={{ fontSize:11, color:"#666" }}>Compensação em 1-3 dias úteis</p>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Boleto Bancário</p>
+                <p style={{ fontSize:11, color:B.muted }}>Compensação em 1-3 dias úteis</p>
               </div>
             </button>
 
             {/* Cartão */}
-            <button onClick={() => { showToast("Redirecionando para pagamento..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:"#1a1a1a", border:"2px solid #222", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+            <button onClick={() => { showToast("Redirecionando para pagamento..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:B.bg, border:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
               <div style={{ width:44, height:44, borderRadius:14, background:"#8B5CF620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:"#fff" }}>Cartão de Crédito</p>
-                <p style={{ fontSize:11, color:"#666" }}>Visa, Mastercard, Elo</p>
+                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Cartão de Crédito</p>
+                <p style={{ fontSize:11, color:B.muted }}>Visa, Mastercard, Elo</p>
               </div>
             </button>
           </div>
 
-          <p style={{ fontSize:10, color:"#555", textAlign:"center", marginTop:16, lineHeight:1.5 }}>Pagamento processado com segurança pela Asaas.<br/>Seus dados estão protegidos.</p>
+          <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:16, lineHeight:1.5 }}>Pagamento processado com segurança pela Asaas.<br/>Seus dados estão protegidos.</p>
         </>)}
       </div>
     </div>
@@ -19219,35 +19219,35 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ MAIN VIEW ═══ */
   return (
-    <div className="app" style={{ background:"#000", color:"#fff" }}>
+    <div className="app" style={{ background:B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       {ToastEl}
       {BuyOverlay}
       <Head title="Match4Biz" onBack={onBack} right={
-        <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 14px", borderRadius:12, background:noCredits?"#EF444420":"#1a1a1a", border:"1.5px solid "+(noCredits?"#EF444440":"#333"), cursor:"pointer", fontFamily:"inherit" }}>
+        <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 14px", borderRadius:12, background:noCredits?"#EF444420":B.bg, border:"1.5px solid "+(noCredits?"#EF444440":B.border), cursor:"pointer", fontFamily:"inherit" }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           <span style={{ fontSize:12, fontWeight:800, color:noCredits?"#EF4444":B.accent }}>{isUnlimited ? "∞" : credits}</span>
         </button>
       } />
       <div className="content" style={{ padding:"0 16px" }}>
         {/* Tabs */}
-        <div style={{ display:"flex", gap:0, marginBottom:16, background:"#111", borderRadius:14, padding:3 }}>
+        <div style={{ display:"flex", gap:0, marginBottom:16, background:B.bgCard, borderRadius:14, padding:3 }}>
           {[{k:"discover",l:"Descobrir"},{k:"matches",l:"Conexões ("+mutualMatches.length+")"}].map(t => (
-            <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"11px 0", borderRadius:11, border:"none", background:tab===t.k?"#222":"transparent", color:tab===t.k?"#fff":"#666", fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
+            <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"11px 0", borderRadius:11, border:"none", background:tab===t.k?B.accent+"15":"transparent", color:tab===t.k?B.text:B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
           ))}
         </div>
 
         {loading ? (
           <div style={{ textAlign:"center", padding:60 }}>
             <div style={{ width:40, height:40, border:"3px solid #222", borderTopColor:B.accent, borderRadius:"50%", animation:"spin .8s linear infinite", margin:"0 auto 14px" }} />
-            <p style={{ fontSize:13, color:"#666" }}>Buscando empresas...</p>
+            <p style={{ fontSize:13, color:B.muted }}>Buscando empresas...</p>
           </div>
         ) : tab === "discover" ? (<>
           {available.length > 0 && current ? (
             <div style={{ position:"relative" }}>
               {/* ═══ THE CARD ═══ */}
               <div className="m4b-card" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{
-                background:"#111", border:"1px solid #222",
+                background:B.bgCard, border:"1px solid "+B.border,
                 transform: swipeAnim==="like" ? "translateX(120px) rotate(10deg) scale(0.92)" : swipeAnim==="pass" ? "translateX(-120px) rotate(-10deg) scale(0.92)" : dragX ? `translateX(${dragX}px) rotate(${dragX*0.05}deg)` : "none",
                 opacity: swipeAnim ? 0.3 : 1,
                 transition: swipeAnim || !dragX ? "all .4s cubic-bezier(0.34,1.56,0.64,1)" : "none",
@@ -19263,10 +19263,10 @@ function ClientMatch4Biz({ onBack, user }) {
                     <div style={{ position:"relative", width:88, height:88 }}>
                       {/* Mini score ring */}
                       <svg width="88" height="88" viewBox="0 0 88 88" style={{ position:"absolute", top:0, left:0, transform:"rotate(-90deg)" }}>
-                        <circle cx="44" cy="44" r="36" fill="none" stroke="#222" strokeWidth="3" />
+                        <circle cx="44" cy="44" r="36" fill="none" stroke={B.border} strokeWidth="3" />
                         <circle cx="44" cy="44" r="36" fill="none" stroke={B.accent} strokeWidth="3" strokeDasharray={2*Math.PI*36} strokeDashoffset={2*Math.PI*36 - (getScore(current.id)/100)*2*Math.PI*36} strokeLinecap="round" />
                       </svg>
-                      <div style={{ position:"absolute", top:6, left:6, width:76, height:76, borderRadius:24, overflow:"hidden", background:"#1a1a1a" }}>
+                      <div style={{ position:"absolute", top:6, left:6, width:76, height:76, borderRadius:24, overflow:"hidden", background:B.bg }}>
                         {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
                       </div>
                     </div>
@@ -19275,8 +19275,8 @@ function ClientMatch4Biz({ onBack, user }) {
 
                 {/* Info section */}
                 <div style={{ textAlign:"center", padding:"48px 20px 10px" }}>
-                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:2, color:"#fff" }}>{current.name}</h3>
-                  {current.contact_name && <p style={{ fontSize:12, color:"#777" }}>{current.contact_name}</p>}
+                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:2, color:B.text }}>{current.name}</h3>
+                  {current.contact_name && <p style={{ fontSize:12, color:B.muted }}>{current.contact_name}</p>}
                   <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:4 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
                 </div>
 
@@ -19284,55 +19284,55 @@ function ClientMatch4Biz({ onBack, user }) {
                 <div style={{ display:"flex", justifyContent:"center", gap:24, padding:"12px 20px", marginBottom:4 }}>
                   <div style={{ textAlign:"center" }}>
                     <p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{getScore(current.id)}</p>
-                    <p style={{ fontSize:9, color:"#555", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Score</p>
+                    <p style={{ fontSize:9, color:B.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Score</p>
                   </div>
-                  <div style={{ width:1, height:28, background:"#222", alignSelf:"center" }} />
+                  <div style={{ width:1, height:28, background:B.accent+"15", alignSelf:"center" }} />
                   <div style={{ textAlign:"center" }}>
-                    <p style={{ fontSize:18, fontWeight:900, color:"#fff" }}>{getRank(current.id)}º</p>
-                    <p style={{ fontSize:9, color:"#555", fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Rank</p>
+                    <p style={{ fontSize:18, fontWeight:900, color:B.text }}>{getRank(current.id)}º</p>
+                    <p style={{ fontSize:9, color:B.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Rank</p>
                   </div>
                 </div>
 
                 {/* Description */}
                 {current.notes && <div style={{ padding:"0 20px 12px" }}>
-                  <p style={{ fontSize:12, color:"#888", lineHeight:1.6, textAlign:"center" }}>{current.notes.length > 180 ? current.notes.substring(0,180)+"..." : current.notes}</p>
+                  <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, textAlign:"center" }}>{current.notes.length > 180 ? current.notes.substring(0,180)+"..." : current.notes}</p>
                 </div>}
 
                 {/* Action buttons */}
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:14, padding:"10px 20px 6px" }}>
-                  <button onClick={handlePass} className="m4b-action-btn" style={{ width:52, height:52, borderRadius:"50%", background:"#1a1a1a", border:"2px solid #333", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <button onClick={handlePass} className="m4b-action-btn" style={{ width:52, height:52, borderRadius:"50%", background:B.bg, border:"2px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
-                  <button onClick={() => setShowProfile(current)} className="m4b-action-btn" style={{ width:44, height:44, borderRadius:"50%", background:"#1a1a1a", border:"2px solid #333", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <button onClick={() => setShowProfile(current)} className="m4b-action-btn" style={{ width:44, height:44, borderRadius:"50%", background:B.bg, border:"2px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   </button>
                   <button onClick={handleLike} className="m4b-action-btn m4b-score-ring" style={{ width:62, height:62, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
                   </button>
                 </div>
-                <p style={{ textAlign:"center", fontSize:10, color:"#555", padding:"6px 0 14px" }}>{available.length} empresa{available.length > 1 ? "s" : ""} disponíve{available.length > 1 ? "is" : "l"} · {isUnlimited ? "∞ créditos" : credits + " créditos"}</p>
+                <p style={{ textAlign:"center", fontSize:10, color:B.muted, padding:"6px 0 14px" }}>{available.length} empresa{available.length > 1 ? "s" : ""} disponíve{available.length > 1 ? "is" : "l"} · {isUnlimited ? "∞ créditos" : credits + " créditos"}</p>
               </div>
 
               {/* ═══ NO CREDITS FULL OVERLAY ═══ */}
               {noCredits && (
                 <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(8px)", borderRadius:28, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:10, padding:24 }}>
-                  <div style={{ width:56, height:56, borderRadius:18, background:"#1a1a1a", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, border:"2px solid #333" }}>
+                  <div style={{ width:56, height:56, borderRadius:18, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, border:"2px solid "+B.border }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                   </div>
-                  <h4 style={{ fontSize:18, fontWeight:900, color:"#fff", marginBottom:4 }}>Créditos esgotados</h4>
-                  <p style={{ fontSize:12, color:"#888", textAlign:"center", lineHeight:1.5, marginBottom:20, maxWidth:240 }}>Compre mais créditos ou aguarde o próximo ciclo de pagamento para renovar</p>
+                  <h4 style={{ fontSize:18, fontWeight:900, color:B.text, marginBottom:4 }}>Créditos esgotados</h4>
+                  <p style={{ fontSize:12, color:B.muted, textAlign:"center", lineHeight:1.5, marginBottom:20, maxWidth:240 }}>Compre mais créditos ou aguarde o próximo ciclo de pagamento para renovar</p>
                   <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"14px 36px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:10 }}>Comprar créditos</button>
-                  <button onClick={() => showToast("Créditos renovam no próximo ciclo")} style={{ padding:"10px 20px", background:"transparent", border:"1.5px solid #333", borderRadius:12, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:"#888" }}>Aguardar renovação</button>
+                  <button onClick={() => showToast("Créditos renovam no próximo ciclo")} style={{ padding:"10px 20px", background:"transparent", border:"1.5px solid "+B.border, borderRadius:12, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>Aguardar renovação</button>
                 </div>
               )}
             </div>
           ) : (
             <div style={{ textAlign:"center", padding:40 }}>
-              <div style={{ width:64, height:64, borderRadius:20, background:"#111", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:"1px solid #222" }}>
+              <div style={{ width:64, height:64, borderRadius:20, background:B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:"1px solid "+B.border }}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
               </div>
-              <p style={{ fontSize:17, fontWeight:800, marginBottom:6, color:"#fff" }}>{allClients.length === 0 ? "Nenhuma empresa" : "Você já viu todos!"}</p>
-              <p style={{ fontSize:13, color:"#777", lineHeight:1.5 }}>{allClients.length === 0 ? "Novas empresas aparecerão em breve." : "Confira seus matches ou aguarde novas empresas."}</p>
+              <p style={{ fontSize:17, fontWeight:800, marginBottom:6, color:B.text }}>{allClients.length === 0 ? "Nenhuma empresa" : "Você já viu todos!"}</p>
+              <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>{allClients.length === 0 ? "Novas empresas aparecerão em breve." : "Confira seus matches ou aguarde novas empresas."}</p>
             </div>
           )}
         </>) : (<>
@@ -19341,29 +19341,29 @@ function ClientMatch4Biz({ onBack, user }) {
           {matches.length === 0 ? (
             <div style={{ textAlign:"center", padding:40 }}>
               <p style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>Nenhum match ainda</p>
-              <p style={{ fontSize:12, color:"#777" }}>Explore perfis na aba Descobrir!</p>
+              <p style={{ fontSize:12, color:B.muted }}>Explore perfis na aba Descobrir!</p>
             </div>
           ) : (<>
             {mutualMatches.length > 0 && <>
-              <p style={{ fontSize:10, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:1.5, marginBottom:10 }}>Chat disponível</p>
+              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10 }}>Chat disponível</p>
               {mutualMatches.map(m => { const p = getPartner(m); const cc = getColor(p.name); const last = (m.messages||[]).filter(x=>x.type!=="system").slice(-1)[0]; return (
-                <div key={m.id} onClick={() => setChatMatch(m)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:18, background:"#111", border:"1px solid #222", marginBottom:8, cursor:"pointer" }}>
-                  {p.logo_url ? <img src={p.logo_url} style={{ width:48, height:48, borderRadius:16, objectFit:"cover" }} /> : <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, "+cc+", "+cc+"70)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:"#fff", flexShrink:0 }}>{getInitials(p.name)}</div>}
+                <div key={m.id} onClick={() => setChatMatch(m)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:18, background:B.bgCard, border:"1px solid "+B.border, marginBottom:8, cursor:"pointer" }}>
+                  {p.logo_url ? <img src={p.logo_url} style={{ width:48, height:48, borderRadius:16, objectFit:"cover" }} /> : <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, "+cc+", "+cc+"70)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:B.text, flexShrink:0 }}>{getInitials(p.name)}</div>}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:3 }}>
                       <p style={{ fontSize:14, fontWeight:700 }}>{p.name}</p>
                       <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:8, background:m.status==="deal_closed"?B.green+"15":m.status==="agency_help"?"#6366F115":B.accent+"15", color:m.status==="deal_closed"?B.green:m.status==="agency_help"?"#6366F1":B.accent }}>{m.status==="deal_closed"?"Fechado ✅":m.status==="agency_help"?"Agência":"Ativo"}</span>
                     </div>
-                    <p style={{ fontSize:11, color:"#666", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{last?(last.from===myClient?.id?"Você: ":"")+last.text.substring(0,40):"Toque para conversar"}</p>
+                    <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{last?(last.from===myClient?.id?"Você: ":"")+last.text.substring(0,40):"Toque para conversar"}</p>
                   </div>
                 </div>); })}
             </>}
             {matches.filter(m=>!m.client_a_confirmed||!m.client_b_confirmed).length > 0 && <>
-              <p style={{ fontSize:10, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:1.5, marginBottom:10, marginTop:mutualMatches.length>0?18:0 }}>Aguardando match</p>
+              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10, marginTop:mutualMatches.length>0?18:0 }}>Aguardando match</p>
               {matches.filter(m=>!m.client_a_confirmed||!m.client_b_confirmed).map(m => { const p = getPartner(m); const cc = getColor(p.name); return (
-                <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:18, background:"#111", border:"1px solid #1a1a1a", marginBottom:8, opacity:0.5 }}>
+                <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:18, background:B.bgCard, border:"1px solid "+B.border, marginBottom:8, opacity:0.5 }}>
                   <div style={{ width:44, height:44, borderRadius:14, background:cc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:900, color:cc }}>{getInitials(p.name)}</div>
-                  <div><p style={{ fontSize:13, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:10, color:"#555" }}>Aguardando resposta...</p></div>
+                  <div><p style={{ fontSize:13, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:10, color:B.muted }}>Aguardando resposta...</p></div>
                 </div>); })}
             </>}
           </>)}
