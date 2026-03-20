@@ -19004,13 +19004,13 @@ function ClientMatch4Biz({ onBack, user }) {
   const { showToast, ToastEl } = useToast();
 
   /* ── Plan-based credits ── */
-  const getCreditsForPlan = (monthly) => {
-    const v = parseFloat(monthly) || 0;
+  const getCreditsForPlan = (monthlyVal) => {
+    const v = parseFloat(monthlyVal) || 0;
     if (v >= 4480) return 9999; /* unlimited */
     if (v >= 3480) return 30;
     if (v >= 2480) return 20;
     if (v >= 1480) return 10;
-    return 0;
+    return 10; /* Free tier: 1 match gratis para experimentar */
   };
 
   /* ── Load clients + matches from Supabase ── */
@@ -19095,7 +19095,7 @@ function ClientMatch4Biz({ onBack, user }) {
             { ic:"\uD83E\uDD1D", t:"Conecte-se", d:"Quando ambos demonstram interesse, a conexão é feita" },
             { ic:"\uD83D\uDCB0", t:"Negocie", d:"Toda negociação deve acontecer dentro da plataforma" },
           ].map((s,i) => (
-            <div key={i} style={{ display:"flex", gap:12, padding:"10px 0", borderBottom:i<3?"1px solid "+B.border:"none" }}>
+            <div key={i} style={{ display:"flex", gap:12, padding:"10px 0", borderBottom:i<4?"1px solid "+B.border:"none" }}>
               <span style={{ fontSize:20, flexShrink:0 }}>{s.ic}</span>
               <div><p style={{ fontSize:13, fontWeight:700 }}>{s.t}</p><p style={{ fontSize:11, color:B.muted, lineHeight:1.4 }}>{s.d}</p></div>
             </div>
@@ -19104,6 +19104,7 @@ function ClientMatch4Biz({ onBack, user }) {
         <Card style={{ marginBottom:12, background:B.accent+"08", border:"1.5px solid "+B.accent+"20" }}>
           <p style={{ fontSize:12, fontWeight:700, color:B.accent, marginBottom:6 }}>Créditos por Plano</p>
           {[
+            { plan:"Free", credits:"10 créditos", matches:"1 match grátis" },
             { plan:"R$ 1.480/mês", credits:"10 créditos", matches:"1 match" },
             { plan:"R$ 2.480/mês", credits:"20 créditos", matches:"2 matches" },
             { plan:"R$ 3.480/mês", credits:"30 créditos", matches:"3 matches" },
@@ -19201,17 +19202,19 @@ function ClientMatch4Biz({ onBack, user }) {
           <Card style={{ textAlign:"center", padding:40 }}><div style={{ width:36, height:36, border:"3px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .8s linear infinite", margin:"0 auto 12px" }} /><p style={{ fontSize:13, color:B.muted }}>Buscando empresas...</p></Card>
         ) : tab === "discover" ? (<>
           {available.length > 0 && current ? (
-            <div style={{ borderRadius:24, overflow:"hidden", background:B.bgCard, border:"1px solid "+B.border, boxShadow:"0 4px 24px rgba(0,0,0,0.06)", transform:swipeAnim==="like"?"translateX(100px) rotate(8deg) scale(0.95)":swipeAnim==="pass"?"translateX(-100px) rotate(-8deg) scale(0.95)":"none", opacity:swipeAnim?0.5:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)" }}>
+            <div style={{ borderRadius:24, overflow:"hidden", background:B.bgCard, border:"1px solid "+B.border, boxShadow:"0 4px 24px rgba(0,0,0,0.06)", transform:swipeAnim==="like"?"translateX(100px) rotate(8deg) scale(0.95)":swipeAnim==="pass"?"translateX(-100px) rotate(-8deg) scale(0.95)":"none", opacity:swipeAnim?0.5:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)", position:"relative" }}>
+              {/* Locked overlay - covers ENTIRE card */}
+              {!isUnlimited && credits < 10 && <div style={{ position:"absolute", inset:0, zIndex:10, background:B.bg+"DD", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:24 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <p style={{ fontSize:15, fontWeight:800, marginTop:10 }}>Créditos esgotados</p>
+                <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Compre créditos para dar match</p>
+                <button onClick={() => setShowBuy(true)} style={{ marginTop:12, padding:"10px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Comprar créditos</button>
+              </div>}
               {/* Header gradient */}
-              <div style={{ height:120, background:"linear-gradient(135deg, "+getColor(current.name)+"25, "+getColor(current.name)+"08, transparent)", position:"relative", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div style={{ height:120, background:"linear-gradient(135deg, "+getColor(current.name)+"25, "+getColor(current.name)+"08, transparent)", display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
                 <div style={{ transform:"translateY(40px)" }}>
                   {current.logo_url ? <img src={current.logo_url} alt="" style={{ width:80, height:80, borderRadius:22, objectFit:"cover", border:"3px solid "+B.bgCard, boxShadow:"0 4px 16px rgba(0,0,0,0.1)" }} /> : <div style={{ width:80, height:80, borderRadius:22, background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"90)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#fff", border:"3px solid "+B.bgCard, boxShadow:"0 4px 16px rgba(0,0,0,0.1)" }}>{getInitials(current.name)}</div>}
                 </div>
-                {!isUnlimited && credits < 10 && <div style={{ position:"absolute", inset:0, background:B.bg+"CC", backdropFilter:"blur(4px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:"24px 24px 0 0" }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                  <p style={{ fontSize:13, fontWeight:700, marginTop:8 }}>Créditos esgotados</p>
-                  <button onClick={() => setShowBuy(true)} style={{ marginTop:8, padding:"8px 20px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Comprar créditos</button>
-                </div>}
               </div>
               {/* Profile info */}
               <div style={{ textAlign:"center", padding:"48px 20px 16px" }}>
