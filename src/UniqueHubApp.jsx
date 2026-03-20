@@ -19959,31 +19959,33 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </div>
 
         {tab === "score" && <>
-          <Card style={{ padding:20, overflow:"hidden", borderRadius:20 }}>
-              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase" }}>Growth Score</p>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
-                <div>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
-                    <span style={{ fontSize:48, fontWeight:900, color:scoreColor }}>{score}</span>
-                    <span style={{ fontSize:14, fontWeight:700, color:score > 0 ? B.green : B.muted }}>{score > 0 ? `${score} pts` : "Comece agora!"}</span>
-                  </div>
-                  <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>#{rank} de {totalClients} · Zona {zone}</p>
+          <div style={{ borderRadius:20, overflow:"hidden", background:"#0D0D0D", padding:"20px 20px 18px", color:"#fff", marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <p style={{ fontSize:18, fontWeight:800, margin:0, color:"#fff" }}>Growth Score</p>
+              <span onClick={()=>setTab("missions")} style={{ fontSize:13, color:"rgba(255,255,255,0.35)", fontWeight:600, cursor:"pointer" }}>Ver detalhes →</span>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div>
+                <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                  <span style={{ fontSize:44, fontWeight:900, color:B.accent }}>{score}</span>
+                  <span style={{ fontSize:13, color:"rgba(255,255,255,0.5)" }}>/100 pts</span>
                 </div>
-                <div style={{ width:64, height:64, borderRadius:"50%", border:`3px solid ${scoreColor}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{ fontSize:22, fontWeight:900, color:scoreColor }}>{score}</span>
-                </div>
+                <p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4 }}>#{rank} de {totalClients} · Zona {zone}</p>
               </div>
-              <div style={{ display:"flex", gap:4, marginTop:14 }}>
-                {PILLARS.map((p,i) => <div key={i} style={{ flex:1 }}>
-                  <div style={{ height:4, borderRadius:2, background:`${B.border}` }}><div style={{ height:4, borderRadius:2, background:p.color, width:`${p.score}%` }} /></div>
-                  <p style={{ fontSize:8, color:B.muted, marginTop:4, textAlign:"center" }}>{p.name.substring(0,4)}</p>
-                </div>)}
+              <div style={{ width:60, height:60, borderRadius:"50%", border:"3px solid "+B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:22, fontWeight:900, color:B.accent }}>{score}</span>
               </div>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10 }}>
-                <span style={{ fontSize:11, color:B.muted }}>{IC.gamify(B.muted)} {mPending} missões pendentes</span>
-                <span onClick={()=>setTab("missions")} style={{ fontSize:11, color:B.accent, fontWeight:600, cursor:"pointer" }}>Ver detalhes →</span>
-              </div>
-          </Card>
+            </div>
+            <div style={{ display:"flex", gap:5, marginTop:16 }}>
+              {PILLARS.map((p,i) => <div key={i} style={{ flex:1 }}>
+                <div style={{ height:5, borderRadius:3, background:"rgba(255,255,255,0.08)" }}><div style={{ height:5, borderRadius:3, background:p.color, width:`${Math.max(p.score, 2)}%` }} /></div>
+                <span style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:4, display:"block", textAlign:"center" }}>{p.name.substring(0,4)}</span>
+              </div>)}
+            </div>
+            {mPending > 0 && <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{IC.gamify("rgba(255,255,255,0.3)")} {mPending} missões pendentes</span>
+            </div>}
+          </div>
           {PILLARS.map((p,i) => <Card key={i} style={{ marginTop:8 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <p style={{ fontSize:14, fontWeight:700 }}>{p.name}</p>
