@@ -10881,7 +10881,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   });
   const captureScroll = () => { if (settingsPanelRef.current) settingsScrollRef.current = settingsPanelRef.current.scrollTop; };
 
-  const SetPage = ({ title, onBackOverride, wide, children }) => {
+  const SetPage = React.useCallback(({ title, onBackOverride, wide, children }) => {
     if (!isSetDesktop) return (
       <div className="pg">
         {ToastEl}
@@ -10939,7 +10939,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         </div>
       </div>
     );
-  };
+  }, [isSetDesktop, sub, onBack]);
 
   /* ═══ PROFILE ═══ */
   if (sub === "profile") return (
