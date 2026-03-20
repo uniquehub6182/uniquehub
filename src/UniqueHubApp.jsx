@@ -20640,22 +20640,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{metricsData[metricsSlide]?.metrics.map((m,i) => <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer", borderRadius:18 }}><span style={{ fontSize:10, fontWeight:600, letterSpacing:0.5, color:C.mut, textTransform:"uppercase" }}>{m.l}</span><div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:6 }}><span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.v}</span><span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 7px", borderRadius:6 }}>{m.d}</span></div></Card>)}</div>
     </div>;
 
-    if (key === "growth") return <div key="growth">
-      <SH title="Growth Score" action="Ver detalhes" onClick={()=>setSub("gamify")} />
-      <Card onClick={()=>setSub("gamify")} style={{ cursor:"pointer", borderRadius:20, padding:0, overflow:"hidden" }}>
-        <div style={{ background:isDark?"#111":"#0D0D0D", padding:"18px 20px", color:"#fff" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <div>
-              <div style={{ display:"flex", alignItems:"baseline", gap:8 }}><span style={{ fontSize:36, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>/100 pts</span></div>
-              <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Zona {growthZone}</p>
-            </div>
-            <div style={{ width:52, height:52, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:18, fontWeight:900, color:LIME }}>{growthScore}</span></div>
-          </div>
-          <div style={{ display:"flex", gap:5, marginTop:14 }}>
-            {[{n:"Exec",c:"#10B981",f:1},{n:"Estr",c:"#BBF246",f:0.9},{n:"Educ",c:"#F59E0B",f:0.7},{n:"Ecos",c:"#EF4444",f:0.5},{n:"Cres",c:"#10B981",f:0.8}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:4, borderRadius:2, background:"rgba(255,255,255,0.1)" }}><div style={{ height:4, borderRadius:2, background:p.c, width:`${Math.min(100, growthScore * p.f)}%` }} /></div><span style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:3, display:"block", textAlign:"center" }}>{p.n}</span></div>)}
-          </div>
+    if (key === "growth") return <div key="growth" style={{ paddingTop:24 }}>
+      <div onClick={()=>setSub("gamify")} style={{ cursor:"pointer", borderRadius:20, overflow:"hidden", background:isDark?"#111":"#0D0D0D", padding:"20px 20px 18px", color:"#fff" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <h3 style={{ fontSize:18, fontWeight:800, margin:0, color:"#fff" }}>Growth Score</h3>
+          <span style={{ fontSize:13, color:"rgba(255,255,255,0.35)", fontWeight:600 }}>Ver detalhes</span>
         </div>
-      </Card>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:8 }}><span style={{ fontSize:40, fontWeight:900, color:LIME }}>{growthScore}</span><span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>/100 pts</span></div>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Zona {growthZone}</p>
+          </div>
+          <div style={{ width:56, height:56, borderRadius:"50%", border:`3px solid ${LIME}`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:20, fontWeight:900, color:LIME }}>{growthScore}</span></div>
+        </div>
+        <div style={{ display:"flex", gap:5, marginTop:16 }}>
+          {[{n:"Exec",c:"#10B981",f:1},{n:"Estr",c:"#BBF246",f:0.9},{n:"Educ",c:"#F59E0B",f:0.7},{n:"Ecos",c:"#EF4444",f:0.5},{n:"Cres",c:"#10B981",f:0.8}].map((p,i) => <div key={i} style={{ flex:1 }}><div style={{ height:5, borderRadius:3, background:"rgba(255,255,255,0.08)" }}><div style={{ height:5, borderRadius:3, background:p.c, width:`${Math.min(100, growthScore * p.f)}%` }} /></div><span style={{ fontSize:8, color:"rgba(255,255,255,0.4)", marginTop:4, display:"block", textAlign:"center" }}>{p.n}</span></div>)}
+        </div>
+      </div>
     </div>;
 
     if (key === "match") return <div key="match">
