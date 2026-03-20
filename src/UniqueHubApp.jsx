@@ -19391,6 +19391,61 @@ function ClientMatch4Biz({ onBack, user }) {
   const dealAction = async (a) => { if (!chatMatch) return; const sm = { close: "deal_closed", noclose: "deal_rejected", help: "agency_help" }; const mm = { close: "\u{1F91D} Negócio fechado!", noclose: "\u274C Negócio não fechado", help: "\u{1F3E2} Pediu ajuda da agência" }; await sendChatMsg(mm[a], "system"); try { await supabase.from("match4biz").update({ status: sm[a] }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: sm[a] } : m)); setChatMatch(p => ({ ...p, status: sm[a] })); showToast(a === "close" ? "Parabéns! \u{1F389}" : a === "help" ? "Agência notificada" : "Atualizado"); };
   const getPartner = (m) => { const pid = m.client_a_id === myClient?.id ? m.client_b_id : m.client_a_id; const pn = m.client_a_id === myClient?.id ? m.client_b_name : m.client_a_name; return { id: pid, name: pn, ...(allClients.find(c => c.id === pid) || {}) }; };
 
+  /* ═══ CONVERSION OVERLAY (Interrupção Estratégica) ═══ */
+  const [convOverlay, setConvOverlay] = useState(false);
+  const [convForm, setConvForm] = useState(false);
+  const [convDesc, setConvDesc] = useState("");
+  const [convValue, setConvValue] = useState("");
+  const [convSubmitting, setConvSubmitting] = useState(false);
+  const CONV_MSG_THRESHOLD = 10;
+  const CONV_HOURS_THRESHOLD = 48;
+  const CONV_DISMISS_KEY = "uh_m4b_conv_dismiss_";
+
+  const shouldShowConvOverlay = (match) => {
+    if (!match || !myClient) return false;
+    const st = match.status;
+    if (st === "deal_closed" || st === "deal_rejected") return false;
+    const msgs = (match.messages || []).filter(m => m.type !== "system");
+    const realMsgs = msgs.filter(m => m.from === myClient.id).length > 0 && msgs.filter(m => m.from !== myClient.id).length > 0;
+    const enoughMsgs = msgs.length >= CONV_MSG_THRESHOLD && realMsgs;
+    const firstMsg = msgs[0]?.ts;
+    const enoughTime = firstMsg && (Date.now() - new Date(firstMsg).getTime()) > CONV_HOURS_THRESHOLD * 3600000;
+    if (!enoughMsgs && !enoughTime) return false;
+    try { const dismissed = localStorage.getItem(CONV_DISMISS_KEY + match.id); if (dismissed && (Date.now() - parseInt(dismissed)) < 48 * 3600000) return false; } catch {}
+    return true;
+  };
+
+  useEffect(() => {
+    if (chatMatch && shouldShowConvOverlay(chatMatch)) {
+      const timer = setTimeout(() => setConvOverlay(true), 2000);
+      return () => clearTimeout(timer);
+    } else { setConvOverlay(false); }
+  }, [chatMatch?.id, chatMatch?.messages?.length]);
+
+  const dismissConvOverlay = () => {
+    setConvOverlay(false);
+    if (chatMatch) try { localStorage.setItem(CONV_DISMISS_KEY + chatMatch.id, String(Date.now())); } catch {}
+    showToast("Lembraremos novamente em 48h");
+  };
+
+  const submitDealProof = async () => {
+    if (!chatMatch || !convDesc.trim()) return;
+    setConvSubmitting(true);
+    await sendChatMsg("🤝 Negócio fechado! " + convDesc.trim() + (convValue ? " — Valor: " + convValue : ""), "system");
+    try {
+      await supabase.from("match4biz").update({ status: "deal_closed", deal_value: convValue || null, deal_description: convDesc.trim() }).eq("id", chatMatch.id);
+    } catch {}
+    setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: "deal_closed" } : m));
+    setChatMatch(p => ({ ...p, status: "deal_closed" }));
+    if (!isUnlimited) {
+      const newCredits = credits + 5;
+      setCredits(newCredits);
+      try { localStorage.setItem("uh_m4b_credits_" + myClient.id, String(Math.max(0, newCredits - getCreditsForPlan(myClient.monthly_value)))); } catch {}
+    }
+    setConvSubmitting(false); setConvOverlay(false); setConvForm(false); setConvDesc(""); setConvValue("");
+    showToast("Parabéns! +5 créditos de bônus 🎉");
+  };
+
   /* ═══ M4B STYLES ═══ */
   const m4bCSS = `
     @keyframes m4b-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
@@ -19463,6 +19518,32 @@ function ClientMatch4Biz({ onBack, user }) {
         <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMsg(chatInput); } }} placeholder="Mensagem..." className="tinput" style={{ flex:1, padding:"10px 14px", fontSize:14 }} />
         <button onClick={() => sendChatMsg(chatInput)} disabled={!chatInput.trim()} style={{ width:36, height:36, borderRadius:12, background:chatInput.trim()?B.accent:B.border, border:"none", cursor:chatInput.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim()?"#0D0D0D":B.muted} strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg></button>
       </div>
+      {/* ═══ CONVERSION OVERLAY ═══ */}
+      {convOverlay && <div style={{ position:"absolute", inset:0, zIndex:60, display:"flex", alignItems:"center", justifyContent:"center", background:B.bg+"E6", backdropFilter:"blur(12px)" }}>
+        <div style={{ width:"90%", maxWidth:340, textAlign:"center" }}>
+          {!convForm ? (<>
+            <div style={{ width:64, height:64, borderRadius:20, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+            </div>
+            <h3 style={{ fontSize:20, fontWeight:900, color:B.text, marginBottom:6 }}>Como vai a parceria?</h3>
+            <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Vocês já fecharam algum negócio? Comprove e ganhe <strong style={{ color:B.accent }}>+5 créditos</strong> de bônus!</p>
+            <button onClick={() => setConvForm(true)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Sim, fechamos negócio!
+            </button>
+            <button onClick={dismissConvOverlay} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Ainda não · Perguntar depois</button>
+          </>) : (<>
+            <h3 style={{ fontSize:18, fontWeight:900, color:B.text, marginBottom:4 }}>Comprove o negócio</h3>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.5, marginBottom:16 }}>Descreva brevemente a parceria fechada para liberar seus créditos</p>
+            <input value={convDesc} onChange={e => setConvDesc(e.target.value)} placeholder="O que foi fechado? Ex: Contrato de fornecimento..." className="tinput" style={{ marginBottom:8, fontSize:13, textAlign:"left" }} />
+            <input value={convValue} onChange={e => setConvValue(e.target.value)} placeholder="Valor aproximado (opcional) Ex: R$ 5.000" className="tinput" style={{ marginBottom:16, fontSize:13, textAlign:"left" }} />
+            <button disabled={!convDesc.trim() || convSubmitting} onClick={submitDealProof} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:convDesc.trim() ? B.accent : B.border, border:"none", cursor:convDesc.trim()?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:convDesc.trim()?"#0D0D0D":B.muted, marginBottom:10 }}>
+              {convSubmitting ? "Enviando..." : "Confirmar e ganhar +5 créditos"}
+            </button>
+            <button onClick={() => setConvForm(false)} style={{ background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, color:B.muted }}>← Voltar</button>
+          </>)}
+        </div>
+      </div>}
     </div>
   ); }
 
