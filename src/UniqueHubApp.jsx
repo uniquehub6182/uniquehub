@@ -16538,7 +16538,7 @@ function GamifyPage({ onBack, user, team }) {
     setRedemptions(updated);
     await supaSetSetting("gamify_redemptions", JSON.stringify(updated));
     /* Deduct XP */
-    await supaAwardXp(user?.id, "redeem", -reward.cost, `Resgate: ${reward.name}`);
+    await supaAddXp(user?.id, "redeem", `Resgate: ${reward.name}`, -reward.cost);
     setXpLoaded(false);
     setRedeemConfirm(false);
     setSelReward(null);
@@ -16724,7 +16724,7 @@ function GamifyPage({ onBack, user, team }) {
               </select>
               <input value={awardForm.xp} onChange={e=>setAwardForm(p=>({...p,xp:e.target.value}))} placeholder="XP (ex: 100)" style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}/>
               <input value={awardForm.desc} onChange={e=>setAwardForm(p=>({...p,desc:e.target.value}))} placeholder="Motivo" style={{ width:"100%", padding:"8px 12px", borderRadius:8, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:12, marginBottom:6 }}/>
-              <button onClick={async()=>{if(!awardUser||!awardForm.xp)return showToast("Selecione membro e XP");const xp=parseInt(awardForm.xp);if(isNaN(xp)||xp<=0)return showToast("XP inválido");await supaAwardXp(awardUser,"bonus",xp,awardForm.desc||"Bônus admin");setAwardUser(null);setAwardForm({xp:"",desc:""});setXpLoaded(false);showToast(`+${xp} XP concedido ✓`);}} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Conceder XP</button>
+              <button onClick={async()=>{if(!awardUser||!awardForm.xp)return showToast("Selecione membro e XP");const xp=parseInt(awardForm.xp);if(isNaN(xp)||xp<=0)return showToast("XP inválido");await supaAddXp(awardUser,"bonus",awardForm.desc||"Bônus admin",xp);setAwardUser(null);setAwardForm({xp:"",desc:""});setXpLoaded(false);showToast(`+${xp} XP concedido ✓`);}} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Conceder XP</button>
               <div style={{ marginTop:10, display:"flex", flexDirection:"column", gap:4 }}>
                 <button onClick={async()=>{if(!confirm("ZERAR todo o XP e histórico de TODOS os membros? Esta ação não pode ser desfeita."))return;await supaResetXp(null);setXpLoaded(false);showToast("XP de todos zerado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.red||"#EF4444")+"08", border:"1px solid "+(B.red||"#EF4444")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.red||"#EF4444" }}>🗑 Zerar XP de todos</button>
                 <button onClick={async()=>{if(!confirm("Limpar todo o histórico de XP? O XP atual será mantido mas o log de atividades será apagado."))return;await supaResetXp(null);setXpLoaded(false);showToast("Histórico zerado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.orange||"#F59E0B")+"08", border:"1px solid "+(B.orange||"#F59E0B")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.orange||"#F59E0B" }}>📋 Limpar histórico</button>
@@ -16927,7 +16927,7 @@ function GamifyPage({ onBack, user, team }) {
                         <p style={{ fontSize:11, color:B.muted }}>{new Date(rd.date).toLocaleDateString("pt-BR")} · {rd.cost.toLocaleString()} XP</p>
                       </div>
                       <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"approved"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));showToast("Aprovado ✓");}} style={{ padding:"8px 16px", borderRadius:10, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>Aprovar</button>
-                      <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"rejected"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));await supaAwardXp(rd.userId,"refund",rd.cost,`Reembolso: ${rd.rewardName}`);setXpLoaded(false);showToast("Rejeitado + XP devolvido ✓");}} style={{ padding:"8px 16px", borderRadius:10, background:`${B.red}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Rejeitar</button>
+                      <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"rejected"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));await supaAddXp(rd.userId,"refund",`Reembolso: ${rd.rewardName}`,rd.cost);setXpLoaded(false);showToast("Rejeitado + XP devolvido ✓");}} style={{ padding:"8px 16px", borderRadius:10, background:`${B.red}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Rejeitar</button>
                     </div>
                   ))}
                 </div>}
@@ -16973,7 +16973,7 @@ function GamifyPage({ onBack, user, team }) {
                       </div>
                       <div style={{ display:"flex", gap:8 }}>
                         <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"approved"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));showToast("Aprovado ✓");}} style={{ padding:"10px 20px", borderRadius:12, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Aprovar</button>
-                        <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"rejected"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));await supaAwardXp(rd.userId,"refund",rd.cost,`Reembolso: ${rd.rewardName}`);setXpLoaded(false);showToast("Rejeitado + XP devolvido ✓");}} style={{ padding:"10px 20px", borderRadius:12, background:`${B.red}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Rejeitar</button>
+                        <button onClick={async()=>{const upd=redemptions.map(r=>r.id===rd.id?{...r,status:"rejected"}:r);setRedemptions(upd);await supaSetSetting("gamify_redemptions",JSON.stringify(upd));await supaAddXp(rd.userId,"refund",`Reembolso: ${rd.rewardName}`,rd.cost);setXpLoaded(false);showToast("Rejeitado + XP devolvido ✓");}} style={{ padding:"10px 20px", borderRadius:12, background:`${B.red}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Rejeitar</button>
                       </div>
                     </div>
                   ))}
