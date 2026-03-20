@@ -19244,7 +19244,7 @@ function ClientMatch4Biz({ onBack, user }) {
           </div>
         ) : tab === "discover" ? (<>
           {available.length > 0 && current ? (
-            <div style={{ position:"relative" }}>
+            <div style={{ position:"relative", display:"flex", flexDirection:"column", justifyContent:"center", minHeight:"calc(100vh - 160px)" }}>
               {/* ═══ THE CARD ═══ */}
               <div className="m4b-card" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{
                 background:B.bgCard, border:"1px solid "+B.border,
@@ -19253,30 +19253,30 @@ function ClientMatch4Biz({ onBack, user }) {
                 transition: swipeAnim || !dragX ? "all .4s cubic-bezier(0.34,1.56,0.64,1)" : "none",
               }}>
                 {/* Top section with gradient bg */}
-                <div style={{ height:140, background:"linear-gradient(135deg, "+getColor(current.name)+"15, "+getColor(current.name)+"05, #111)", position:"relative" }}>
+                <div style={{ height:140, background:"linear-gradient(135deg, "+getColor(current.name)+"15, "+getColor(current.name)+"05, "+B.bgCard+")", position:"relative" }}>
                   {/* Swipe indicator overlays */}
                   {dragX > 40 && <div style={{ position:"absolute", top:16, left:16, background:B.accent+"20", border:"2px solid "+B.accent, borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(-15deg)" }}><span style={{ fontSize:14, fontWeight:900, color:B.accent }}>MATCH 💚</span></div>}
                   {dragX < -40 && <div style={{ position:"absolute", top:16, right:16, background:"#EF444420", border:"2px solid #EF4444", borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(15deg)" }}><span style={{ fontSize:14, fontWeight:900, color:"#EF4444" }}>PULAR ✕</span></div>}
 
                   {/* Avatar centered at bottom of gradient */}
-                  <div style={{ position:"absolute", bottom:-40, left:"50%", transform:"translateX(-50%)" }}>
-                    <div style={{ position:"relative", width:88, height:88 }}>
+                  <div style={{ position:"absolute", bottom:-44, left:"50%", transform:"translateX(-50%)" }}>
+                    <div style={{ position:"relative", width:100, height:100 }}>
                       {/* Mini score ring */}
-                      <svg width="88" height="88" viewBox="0 0 88 88" style={{ position:"absolute", top:0, left:0, transform:"rotate(-90deg)" }}>
-                        <circle cx="44" cy="44" r="36" fill="none" stroke={B.border} strokeWidth="3" />
-                        <circle cx="44" cy="44" r="36" fill="none" stroke={B.accent} strokeWidth="3" strokeDasharray={2*Math.PI*36} strokeDashoffset={2*Math.PI*36 - (getScore(current.id)/100)*2*Math.PI*36} strokeLinecap="round" />
+                      <svg width="100" height="100" viewBox="0 0 100 100" style={{ position:"absolute", top:0, left:0, transform:"rotate(-90deg)" }}>
+                        <circle cx="50" cy="50" r="42" fill="none" stroke={B.border} strokeWidth="3" />
+                        <circle cx="50" cy="50" r="42" fill="none" stroke={B.accent} strokeWidth="3" strokeDasharray={2*Math.PI*42} strokeDashoffset={2*Math.PI*42 - (getScore(current.id)/100)*2*Math.PI*42} strokeLinecap="round" />
                       </svg>
-                      <div style={{ position:"absolute", top:6, left:6, width:76, height:76, borderRadius:24, overflow:"hidden", background:B.bg }}>
-                        {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
+                      <div style={{ position:"absolute", top:8, left:8, width:84, height:84, borderRadius:26, overflow:"hidden", background:B.bg }}>
+                        {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Info section */}
-                <div style={{ textAlign:"center", padding:"48px 20px 10px" }}>
-                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:2, color:B.text }}>{current.name}</h3>
-                  {current.contact_name && <p style={{ fontSize:12, color:B.muted }}>{current.contact_name}</p>}
+                <div style={{ textAlign:"center", padding:"52px 20px 10px" }}>
+                  <h3 style={{ fontSize:22, fontWeight:900, marginBottom:2, color:B.text }}>{current.name}</h3>
+                  {current.contact_name && <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{current.contact_name}</p>}
                   <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:4 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
                 </div>
 
@@ -19293,24 +19293,25 @@ function ClientMatch4Biz({ onBack, user }) {
                   </div>
                 </div>
 
-                {/* Description */}
-                {current.notes && <div style={{ padding:"0 20px 12px" }}>
-                  <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, textAlign:"center" }}>{current.notes.length > 180 ? current.notes.substring(0,180)+"..." : current.notes}</p>
+                {/* Description / Bio */}
+                {current.notes ? <div style={{ padding:"4px 20px 12px" }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:6, textAlign:"center" }}>Sobre a empresa</p>
+                  <p style={{ fontSize:13, color:B.text, lineHeight:1.6, textAlign:"center", opacity:0.8 }}>{current.notes.length > 250 ? current.notes.substring(0,250)+"..." : current.notes}</p>
+                </div> : <div style={{ padding:"4px 20px 12px" }}>
+                  <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, textAlign:"center", fontStyle:"italic" }}>Esta empresa ainda não adicionou uma descrição</p>
                 </div>}
 
                 {/* Action buttons */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:14, padding:"10px 20px 6px" }}>
-                  <button onClick={handlePass} className="m4b-action-btn" style={{ width:52, height:52, borderRadius:"50%", background:B.bg, border:"2px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20, padding:"10px 20px 6px" }}>
+                  <button onClick={handlePass} className="m4b-action-btn" style={{ width:56, height:56, borderRadius:"50%", background:B.bg, border:"2px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
-                  <button onClick={() => setShowProfile(current)} className="m4b-action-btn" style={{ width:44, height:44, borderRadius:"50%", background:B.bg, border:"2px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  </button>
-                  <button onClick={handleLike} className="m4b-action-btn m4b-score-ring" style={{ width:62, height:62, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                  <button onClick={handleLike} className="m4b-action-btn m4b-score-ring" style={{ width:64, height:64, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
                   </button>
                 </div>
-                <p style={{ textAlign:"center", fontSize:10, color:B.muted, padding:"6px 0 14px" }}>{available.length} empresa{available.length > 1 ? "s" : ""} disponíve{available.length > 1 ? "is" : "l"} · {isUnlimited ? "∞ créditos" : credits + " créditos"}</p>
+                <p style={{ textAlign:"center", fontSize:10, color:B.muted, padding:"6px 0 10px" }}>{available.length} empresa{available.length > 1 ? "s" : ""} disponíve{available.length > 1 ? "is" : "l"} · {isUnlimited ? "∞ créditos" : credits + " créditos"}</p>
+                <p style={{ textAlign:"center", fontSize:9, color:B.muted, paddingBottom:14, opacity:0.5 }}>← Arraste para pular · Arraste para match →</p>
               </div>
 
               {/* ═══ NO CREDITS FULL OVERLAY ═══ */}
