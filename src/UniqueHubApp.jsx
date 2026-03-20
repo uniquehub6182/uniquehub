@@ -6992,34 +6992,39 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       const clientName = selClient?.name || "Cliente";
       const currentYear = new Date().getFullYear();
 
-      const prompt = `Você é um assistente de social media brasileiro expert. Analise este documento de planejamento/cronograma de conteúdo e extraia TODOS os posts e vídeos planejados.
+      const prompt = `Você é um social media brasileiro de verdade — não um robô. Sua função é pegar o planejamento abaixo e transformar em legendas que pareçam escritas por uma pessoa real, não por IA.
 
 CLIENTE: ${clientName}
 ANO ATUAL: ${currentYear}
-TOM DAS LEGENDAS: ${ipTone} (use este tom em todas as legendas geradas)
-EMOJIS: ${ipEmojis ? `Sim, usar emojis de forma ${ipEmojiQty === "pouco" ? "sutil (1-2 por parágrafo)" : ipEmojiQty === "moderado" ? "moderada (2-4 por parágrafo)" : "abundante (4-6 por parágrafo)"}` : "NÃO usar emojis nas legendas"}
+TOM: ${ipTone}
+EMOJIS: ${ipEmojis ? `Sim, de forma ${ipEmojiQty === "pouco" ? "sutil (máx 1-2 por parágrafo)" : ipEmojiQty === "moderado" ? "moderada (2-3 por parágrafo, variados)" : "generosa (4-5 por parágrafo)"}` : "NÃO usar emojis"}
 
-Para CADA item encontrado no documento, gere um objeto JSON com os campos:
-- title: título curto do post/vídeo (max 60 chars)
-- type: "social" para posts estáticos/carrossel ou "video" para vídeos/reels
-- format: "Feed", "Stories", "Reels", "Carrossel" (detecte pelo contexto - "estático"=Feed, "carrossel"=Carrossel, "vídeo"=Reels)
-- networks: ["Instagram"] ou ["Instagram","Facebook"] (padrão ambas)
-- schedDate: data no formato YYYY-MM-DD (use o ano ${currentYear}, deduza o mês do contexto)
-- schedTime: horário sugerido "10:00" para posts, "18:00" para vídeos (padrão)
-- caption: legenda completa para o post com CTA, 3-5 parágrafos, no tom "${ipTone}". ${ipEmojis ? `Use emojis de forma ${ipEmojiQty}.` : "NÃO inclua emojis."} Inclua hashtags no final.
-- designBrief: briefing detalhado para o designer criar a arte. Descreva: formato visual, elementos, cores, estilo, textos que devem aparecer na arte, referências visuais. Extraia do documento tudo que descreve como a peça deve parecer visualmente.
-- scriptOrRoteiro: para vídeos, inclua o roteiro completo (gancho, desenvolvimento, CTA). Para posts, deixe vazio "".
+REGRAS OBRIGATÓRIAS DE HUMANIZAÇÃO:
+1. PROIBIDO usar frases clichê de IA: "você sabia que", "não perca", "confira já", "fique ligado", "vem comigo", "bora lá", "arrasta pra cima". Se sentir vontade de usar, reescreva.
+2. VARIE a estrutura: nem todo post começa com pergunta, nem todo post termina com CTA direto. Alterne entre: abrir com afirmação forte, contar uma história curta, provocar com dado/estatística, usar analogia do cotidiano.
+3. Escreva como brasileiro real fala: use contrações naturais ("tá", "pra", "né"), frases curtas misturadas com longas, ritmo de conversa.
+4. Cada legenda deve ter PERSONALIDADE DIFERENTE — se uma é direta e provocativa, a próxima pode ser reflexiva e leve. NÃO repita o mesmo padrão.
+5. CTAs devem ser variados e naturais: às vezes é uma pergunta genuína, às vezes um convite sutil, às vezes nem tem CTA explícito (e tá tudo bem).
+6. Hashtags: máximo 8-12, misture populares com nichadas, sem hashtags genéricas como #marketing #sucesso.
+7. Parágrafos curtos (1-3 linhas). Quebre o texto pra facilitar leitura no celular.
+8. O briefing do designer deve ser prático e visual — descreva EXATAMENTE o que o designer precisa criar, com referências de estilo, cores, elementos, textos na arte.
 
-REGRAS:
+Para CADA item do documento, gere um JSON com:
+- title: título curto (max 60 chars)
+- type: "social" ou "video"
+- format: "Feed", "Stories", "Reels", "Carrossel" (detecte pelo contexto)
+- networks: ["Instagram"] ou ["Instagram","Facebook"]
+- schedDate: "${currentYear}-MM-DD"
+- schedTime: "10:00" (posts) ou "18:00" (vídeos)
+- caption: legenda humanizada seguindo TODAS as regras acima
+- designBrief: briefing completo pro designer (formato, elementos visuais, textos na arte, cores, estilo, referências)
+- scriptOrRoteiro: roteiro completo pra vídeos (gancho, desenvolvimento, CTA) ou "" pra posts
+
+REGRAS TÉCNICAS:
 - Extraia TODOS os itens, não pule nenhum
-- Use o texto do documento como base para as legendas, não invente informações
-- O briefing do designer deve ser muito detalhado e prático
-- Datas que aparecem como "DD/MM" devem virar "${currentYear}-MM-DD"
-- Se não houver data específica, distribua uniformemente no período mencionado
-- Responda APENAS com um array JSON válido, sem markdown, sem explicação, sem backticks
-
-Exemplo de um item:
-{"title":"Cookies de Internet","type":"social","format":"Feed","networks":["Instagram","Facebook"],"schedDate":"${currentYear}-04-06","schedTime":"10:00","caption":"🍪 Você sabe o que são cookies...","designBrief":"Post estático estilo quadrinhos...","scriptOrRoteiro":""}`;
+- Use o conteúdo do documento como base, não invente fatos
+- Datas "DD/MM" viram "${currentYear}-MM-DD"
+- Responda APENAS com array JSON válido, sem markdown, sem explicação, sem backticks`;
 
       let aiText = "";
       const isPdf = ipFile.type === "application/pdf";
