@@ -1820,7 +1820,7 @@ function LoginPage({ onAuth, onClientAuth }) {
               if (byEmail) memberRow = byEmail;
             }
             const memberStatus = memberRow?.status?.toLowerCase?.() || "";
-            const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
+            const isApproved = memberStatus === "ativo";
             if (!isApproved) {
               clearTimeout(loginTimeout); setLoginLoading(false);
               const msg = !memberRow ? "Cadastro não encontrado. Solicite acesso ao administrador."
@@ -1855,6 +1855,44 @@ function LoginPage({ onAuth, onClientAuth }) {
     if (supabase) {
       setLoginLoading(true); setError(""); setRegSuccess("");
       try {
+        /* ── Check for duplicate CPF ── */
+        if (rCpf && rCpf.replace(/\D/g,"").length >= 11) {
+          const cleanCpf = rCpf.replace(/\D/g,"");
+          const { data: existing } = await supabase.from("agency_members").select("id, name").filter("email", "neq", rEmail);
+          if (existing) {
+            for (const m of existing) {
+              try {
+                const extras = await supaGetSetting(`profile_extras_${m.user_id}`);
+                const parsed = typeof extras === "string" ? JSON.parse(extras) : extras;
+                if (parsed?.cpf?.replace(/\D/g,"") === cleanCpf) {
+                  setError("Este CPF já está cadastrado no sistema. Cada pessoa pode ter apenas um cadastro.");
+                  setLoginLoading(false); return;
+                }
+              } catch {}
+            }
+          }
+          /* Also check user_metadata via profiles */
+          const { data: profiles } = await supabase.from("profiles").select("id").neq("email", rEmail);
+          if (profiles) {
+            const settingKeys = profiles.map(p => `profile_extras_${p.id}`);
+            const bulk = await supaGetSettingsBulk(settingKeys);
+            for (const [k, v] of Object.entries(bulk || {})) {
+              try {
+                const parsed = typeof v === "string" ? JSON.parse(v) : v;
+                if (parsed?.cpf?.replace(/\D/g,"") === cleanCpf) {
+                  setError("Este CPF já está cadastrado no sistema. Cada pessoa pode ter apenas um cadastro.");
+                  setLoginLoading(false); return;
+                }
+              } catch {}
+            }
+          }
+        }
+        /* ── Check for duplicate email in agency_members ── */
+        const { data: existingMember } = await supabase.from("agency_members").select("id, status").eq("email", rEmail).maybeSingle();
+        if (existingMember) {
+          if (existingMember.status === "pendente") { setError("Já existe um cadastro pendente com este e-mail. Aguarde a aprovação."); setLoginLoading(false); return; }
+          if (existingMember.status === "ativo") { setError("Este e-mail já está cadastrado. Faça login."); setLoginLoading(false); return; }
+        }
         const { data, error: authErr } = await supabase.auth.signUp({
           email: rEmail, password: rPw,
           options: { data: { name: rName, nick: rNick, phone: rPhone, role: "member", job_title: rCargo, cpf: rCpf, birth: rBirth, social: rSocial, blood: rBlood } }
@@ -21483,7 +21521,7 @@ export default function App() {
                 if (byEmail) memberRow = byEmail;
               }
               const memberStatus = memberRow?.status?.toLowerCase?.() || "";
-              const isApproved = memberStatus === "ativo" || memberStatus === "offline" || memberStatus === "online";
+              const isApproved = memberStatus === "ativo";
               if (!isApproved) {
                 console.warn("[Auth] Blocked: member not approved, status:", memberRow?.status, session.user.email);
                 await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return;
