@@ -15504,10 +15504,10 @@ REGRAS:
 
       {/* Pinned article */}
       {tab === "all" && articles.filter(a=>a.pinned).map(a => (
-        <Card key={a.id} onClick={()=>setSelArticle(a)} style={{ marginBottom:12, cursor:"pointer", padding:0, overflow:"hidden", border:`1.5px solid ${B.accent}20` }}>
+        <Card key={a.id} onClick={()=>setSelArticle(a)} style={{ marginBottom:12, cursor:"pointer", padding:0, overflow:"hidden", borderRadius:16, border:`1.5px solid ${B.accent}20` }}>
           {a.photo
-            ? <div style={{ position:"relative", height:140 }}>
-                <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            ? <div style={{ position:"relative", height:140, borderRadius:"16px 16px 0 0", overflow:"hidden" }}>
+                <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"16px 16px 0 0" }} />
                 <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.02) 0%,rgba(0,0,0,0.6) 100%)" }} />
                 <span style={{ position:"absolute", top:10, left:10, background:B.red, color:"#fff", fontSize:9, fontWeight:800, padding:"3px 10px", borderRadius:100, textTransform:"uppercase", letterSpacing:0.8 }}>⭐ Destaque</span>
               </div>
@@ -19234,74 +19234,7 @@ function ClientMatch4Biz({ onBack, user }) {
               <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>Quando houver oportunidades de conexão com outros negócios, elas aparecerão aqui.</p>
             </Card>
           )}
-            <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)", position:"relative" }}>
-              {/* Locked overlay when no credits */}
-              {credits < 10 && <div style={{ position:"absolute", inset:0, zIndex:5, background:`${B.bg}90`, backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:20 }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                <p style={{ fontSize:13, fontWeight:700, color:B.text, marginTop:8 }}>Perfil bloqueado</p>
-                <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>Compre créditos para continuar</p>
-              </div>}
-              {/* Gradient header */}
-              <div style={{ height:100, background:`linear-gradient(135deg, ${currentProfile.color}30, ${currentProfile.color}10, transparent)`, position:"relative", display:"flex", alignItems:"flex-end", justifyContent:"center", paddingBottom:0 }}>
-                <div style={{ position:"absolute", top:12, right:16, display:"flex", alignItems:"center", gap:4, background:"rgba(0,0,0,0.2)", borderRadius:8, padding:"4px 10px" }}>
-                  {IC.financial("#fff")} <span style={{ fontSize:11, fontWeight:700, color:"#fff" }}>10</span>
-                </div>
-                <div style={{ transform:"translateY(36px)" }}>
-                  <Av name={currentProfile.name} sz={72} fs={26} />
-                </div>
-              </div>
-              {/* Content */}
-              <div style={{ textAlign:"center", padding:"44px 20px 20px" }}>
-                <p style={{ fontSize:18, fontWeight:800 }}>{currentProfile.name}</p>
-                <p style={{ fontSize:12, color:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:4, marginTop:4 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  {currentProfile.city}
-                </p>
-                <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:10, flexWrap:"wrap" }}>{currentProfile.tags.map((t,i) => <Tag key={i} color={currentProfile.color}>{t}</Tag>)}</div>
-                <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginTop:14, padding:"0 4px" }}>{currentProfile.desc}</p>
-                {/* Stats */}
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginTop:16, padding:"14px 0", borderTop:`1px solid ${B.border}`, borderBottom:`1px solid ${B.border}` }}>
-                  <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{currentProfile.match}%</p><p style={{ fontSize:10, color:B.muted }}>Match</p></div>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}><div style={{ display:"flex", alignItems:"center", gap:3 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span style={{ fontSize:18, fontWeight:900 }}>{currentProfile.rating}</span></div><p style={{ fontSize:10, color:B.muted }}>Rating</p></div>
-                  <div><p style={{ fontSize:22, fontWeight:900 }}>{currentProfile.clients}</p><p style={{ fontSize:10, color:B.muted }}>Clientes</p></div>
-                </div>
-                <div style={{ marginTop:12, padding:"10px 14px", borderRadius:12, background:`${B.muted}06`, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>{IC.financial(B.muted)} <span style={{ fontSize:13, fontWeight:600 }}>Ticket médio: {currentProfile.ticket}</span></div>
-              </div>
-            </div>
-          ) : <Card style={{ textAlign:"center", padding:40 }}>
-            <div style={{ width:64, height:64, borderRadius:"50%", background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-            <p style={{ fontSize:14, fontWeight:700 }}>Todos os perfis vistos!</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Novos parceiros em breve. Enquanto isso, confira seus matches!</p>
-          </Card>}
-          {/* Action buttons */}
-          {available.length > 0 && currentProfile && <>
-            {credits < 10 ? (
-              <div style={{ marginTop:16, textAlign:"center" }}>
-                <Card style={{ background:`${B.muted}06`, border:`1.5px solid ${B.border}` }}>
-                  <div style={{ width:48, height:48, borderRadius:"50%", background:`${(B.red||"#FF6B6B")}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                  </div>
-                  <p style={{ fontSize:14, fontWeight:700 }}>Créditos insuficientes</p>
-                  <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>Você precisa de pelo menos <b style={{ color:B.text }}>10 créditos</b> para dar match.</p>
-                  <p style={{ fontSize:12, color:B.red||"#FF6B6B", fontWeight:600, marginTop:6 }}>Saldo atual: {credits} créditos</p>
-                  <button onClick={()=>setShowBuy(true)} style={{ marginTop:12, padding:"12px 32px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Comprar Créditos</button>
-                </Card>
-              </div>
-            ) : (
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:24, marginTop:20 }}>
-                <button onClick={handlePass} style={{ width:56, height:56, borderRadius:"50%", background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 2px 12px ${B.red||"#FF6B6B"}15`, transition:"transform .15s" }} onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-                <button onClick={handleLike} style={{ width:62, height:62, borderRadius:"50%", background:B.green, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 4px 20px ${B.green}40`, transition:"transform .15s" }} onMouseDown={e=>e.currentTarget.style.transform="scale(0.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                </button>
-              </div>
-            )}
-            <p style={{ textAlign:"center", fontSize:11, color:B.muted, marginTop:12 }}>{credits >= 10 ? `${available.length} conexões restantes` : ""}</p>
-          </>}
         </>}
-
-        {/* MATCHES */}
         {tab === "matches" && <>
           {matches.length === 0 && <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:14, fontWeight:600 }}>Nenhum match ainda</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Explore perfis na aba Descobrir!</p></Card>}
           {matches.map((m,i) => (
