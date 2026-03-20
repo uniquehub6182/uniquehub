@@ -447,9 +447,11 @@ const supaCreateNews = async (article) => {
 const supaUpdateNews = async (id, updates) => {
   if (!supabase) return;
   try {
-    /* Strip any legacy __PHOTO__ prefix from body */
-    const cleanBody = (updates.body || "").replace(/^__PHOTO__:[^\n]*\n?/, "");
-    const payload = { ...updates, body: cleanBody };
+    const payload = { ...updates };
+    /* Strip any legacy __PHOTO__ prefix from body — only if body is being updated */
+    if (payload.body !== undefined) {
+      payload.body = (payload.body || "").replace(/^__PHOTO__:[^\n]*\n?/, "");
+    }
     await supabase.from("news").update(payload).eq("id", id);
   } catch(e) {}
 };
@@ -15534,7 +15536,7 @@ REGRAS:
         </Card>
       ) : filtered.filter(a=> tab!=="all" || !a.pinned).map((a,i) => (
         <Card key={a.id} delay={i*0.03} onClick={()=>setSelArticle(a)} style={{ marginTop:i?6:0, cursor:"pointer", padding:0, overflow:"hidden" }}>
-          {a.photo && <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:120, objectFit:"cover" }} />}
+          {a.photo && <img src={a.photo} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none";}} style={{ width:"100%", height:120, objectFit:"cover", borderRadius:"12px 12px 0 0" }} />}
           <div style={{ display:"flex", gap:10, padding:12 }}>
             <div style={{ width:6, borderRadius:3, background:catColor(a.cat), flexShrink:0 }} />
             <div style={{ flex:1, minWidth:0 }}>
@@ -19193,32 +19195,45 @@ function ClientMatch4Biz({ onBack, user }) {
         {/* DISCOVER */}
         {tab === "discover" && <>
           {loadingMatches ? (
-            <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:13, color:B.muted }}>Carregando matches...</p></Card>
-          ) : realMatches.length > 0 ? (
-            <div>
-              <p style={{ fontSize:13, fontWeight:600, marginBottom:10 }}>{realMatches.length} match{realMatches.length > 1 ? "es" : ""} da agência</p>
-              {realMatches.map((m,i) => (
-                <Card key={m.id} style={{ marginBottom:8 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <Av name={m.partnerName} sz={48} fs={18} />
-                    <div style={{ flex:1 }}>
-                      <p style={{ fontSize:14, fontWeight:700 }}>{m.partnerName}</p>
-                      <p style={{ fontSize:11, color:B.muted }}>Status: {m.status === "new" ? "Novo" : m.status === "connected" ? "Conectado" : m.status}</p>
-                    </div>
-                    <Tag color={m.status === "connected" ? B.green : B.accent}>{m.status === "connected" ? "Ativo" : "Novo"}</Tag>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : PROFILES.length === 0 ? (
+            <Card style={{ textAlign:"center", padding:32 }}><div style={{ width:36, height:36, border:`3px solid ${B.border}`, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .8s linear infinite", margin:"0 auto 12px" }} /><p style={{ fontSize:13, color:B.muted }}>Buscando conexões...</p></Card>
+          ) : realMatches.length > 0 ? (() => {
+            const pending = realMatches.filter(m => m.status !== "connected" && m.status !== "rejected");
+            const current = pending[currentIdx % Math.max(pending.length, 1)];
+            if (!current) return <Card style={{ textAlign:"center", padding:32 }}>
+              <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+              </div>
+              <p style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Tudo visto!</p>
+              <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>Você já viu todas as sugestões de conexão. Novas oportunidades aparecerão em breve!</p>
+            </Card>;
+            return <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)" }}>
+              <div style={{ height:100, background:`linear-gradient(135deg, ${B.accent}30, ${B.accent}10, transparent)`, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+                <div style={{ transform:"translateY(36px)" }}><Av name={current.partnerName} sz={72} fs={26} /></div>
+              </div>
+              <div style={{ padding:"44px 16px 20px", textAlign:"center" }}>
+                <p style={{ fontSize:18, fontWeight:800 }}>{current.partnerName}</p>
+                <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Sugestão de parceria</p>
+                <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginTop:14 }}>Uma empresa com potencial de parceria que pode gerar valor para ambos os lados.</p>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:24, padding:"0 16px 20px" }}>
+                <button onClick={()=>{setSwipeAnim("pass");setTimeout(()=>{setCurrentIdx(i=>i+1);setSwipeAnim(null);},300);}} style={{ width:56, height:56, borderRadius:"50%", background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button onClick={()=>{setSwipeAnim("like");setTimeout(()=>{setMatches(prev=>[...prev,current]);setCurrentIdx(i=>i+1);setSwipeAnim(null);showToast("Match! Conexão enviada");},300);}} style={{ width:62, height:62, borderRadius:"50%", background:B.green||"#10B981", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 4px 20px ${B.green||"#10B981"}40` }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="1"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                </button>
+              </div>
+              <p style={{ textAlign:"center", fontSize:11, color:B.muted, paddingBottom:12 }}>{pending.length} sugestão{pending.length > 1 ? "ões" : ""} disponível{pending.length > 1 ? "is" : ""}</p>
+            </div>;
+          })() : (
             <Card style={{ textAlign:"center", padding:32, marginTop:8 }}>
               <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
               </div>
-              <p style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Em breve!</p>
-              <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>A agência está preparando as conexões do Match4Biz. Quando disponível, você poderá se conectar com outros clientes e parceiros.</p>
+              <p style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Nenhuma sugestão ainda</p>
+              <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>Quando houver oportunidades de conexão com outros negócios, elas aparecerão aqui.</p>
             </Card>
-          ) : available.length > 0 && currentProfile ? (
+          )}
             <div style={{ borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, transform:swipeAnim==="like"?"translateX(120px) rotate(12deg) scale(0.95)":swipeAnim==="pass"?"translateX(-120px) rotate(-12deg) scale(0.95)":"none", opacity:swipeAnim?0:1, transition:"all .35s cubic-bezier(0.34,1.56,0.64,1)", position:"relative" }}>
               {/* Locked overlay when no credits */}
               {credits < 10 && <div style={{ position:"absolute", inset:0, zIndex:5, background:`${B.bg}90`, backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:20 }}>
