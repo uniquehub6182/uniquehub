@@ -10552,7 +10552,7 @@ function ApprovalsPage({ onBack, noWrapper }) {
   useEffect(() => {
     if (pendingLoaded) return;
     supaLoadTeam().then(rows => {
-      setPendingMembers((rows || []).filter(r => r.status === "pendente"));
+      setPendingMembers((rows || []).filter(r => r.status !== "ativo"));
       setPendingLoaded(true);
     });
   }, [pendingLoaded]);
@@ -10644,7 +10644,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [pendingCount, setPendingCount] = useState(0);
   useEffect(() => {
     supaLoadTeam().then(rows => {
-      setPendingCount((rows || []).filter(r => r.status === "pendente").length);
+      setPendingCount((rows || []).filter(r => r.status !== "ativo").length);
     });
   }, [sub]);
 
