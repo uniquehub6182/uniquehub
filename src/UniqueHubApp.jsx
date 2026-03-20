@@ -18427,7 +18427,7 @@ function Match4BizPage({ onBack, clients, user }) {
   /* ── Helpers ── */
   const getClient = (id, name) => { const c = CDATA.find(x=>(x.supaId||x.id)===id)||CDATA.find(x=>x.name===name); return { name:c?.name||name||"?", logo:c?.photo||c?.avatar||c?.logo||c?.logo_url||null, segment:c?.segment||"", plan:c?.plan||"" }; };
   const getPartnerNames = (m) => ({ a: getClient(m.client_a_id, m.client_a_name), b: getClient(m.client_b_id, m.client_b_name) });
-  const lastMsg = (m) => { const msgs = m.messages||[]; return msgs.length > 0 ? msgs[msgs.length-1] : null; };
+  const lastMsg = (m) => { const msgs = (m.messages||[]).filter(x => x.from === "agency" || x.type === "system"); return msgs.length > 0 ? msgs[msgs.length-1] : null; };
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) : "";
 
   /* ── Send agency message (visible to clients) ── */
@@ -18463,7 +18463,7 @@ function Match4BizPage({ onBack, clients, user }) {
     const m = matches.find(x=>x.id===selMatch.id)||selMatch;
     const p = getPartnerNames(m);
     const st = getSt(m.status);
-    const msgs = m.messages || [];
+    const msgs = (m.messages || []).filter(msg => msg.from === "agency" || msg.type === "system");
     return (
       <div className="app" style={{background:B.bg,color:B.text}}>
         {ToastEl}
@@ -18493,7 +18493,7 @@ function Match4BizPage({ onBack, clients, user }) {
         </div>
         {/* Messages */}
         <div className="content" style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
-          {msgs.length === 0 && <p style={{textAlign:"center",color:B.muted,fontSize:12,padding:20}}>Nenhuma mensagem ainda</p>}
+          {msgs.length === 0 && <p style={{textAlign:"center",color:B.muted,fontSize:12,padding:20}}>Nenhuma interação da agência. Conversas entre clientes são privadas (LGPD).</p>}
           {msgs.map((msg,i) => {
             const isAgency = msg.from === "agency";
             const isSys = msg.type === "system";
@@ -18533,7 +18533,7 @@ function Match4BizPage({ onBack, clients, user }) {
     const m = selMatch ? (matches.find(x=>x.id===selMatch.id)||selMatch) : null;
     const mSt = m ? getSt(m.status) : null;
     const mP = m ? getPartnerNames(m) : null;
-    const mMsgs = m ? (m.messages||[]) : [];
+    const mMsgs = m ? (m.messages||[]).filter(msg => msg.from === "agency" || msg.type === "system") : [];
 
     return (
       <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%",display:"flex",flexDirection:"column"}}>
@@ -18628,7 +18628,7 @@ function Match4BizPage({ onBack, clients, user }) {
               </div>
               {/* Messages area */}
               <div style={{flex:1,overflowY:"auto",padding:"16px 20px",minHeight:0}}>
-                {mMsgs.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:13,color:B.muted}}>Nenhuma mensagem entre os clientes ainda.</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>Quando os clientes conversarem, as mensagens aparecerão aqui.</p></div>}
+                {mMsgs.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:13,color:B.muted}}>Nenhuma interação da agência ainda.</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>As conversas entre clientes são privadas (LGPD). Envie uma mensagem quando necessário.</p></div>}
                 {mMsgs.map((msg,i) => {
                   const isAgency = msg.from === "agency";
                   const isSys = msg.type === "system";
