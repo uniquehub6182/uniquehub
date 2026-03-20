@@ -8639,8 +8639,8 @@ Exemplo de um item:
         </button>
       </div>}
       {!isContentDesktop && !contained && canAccessFn("content.create") && <div style={{ padding:"6px 16px 0" }}>
-        <button onClick={() => setImportPlan(true)} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <button onClick={() => setImportPlan(true)} style={{ width:"100%", padding:"12px 16px", borderRadius:14, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 3px 16px "+B.accent+"35" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
           Importe com a Munique A.I
         </button>
       </div>}
@@ -8669,14 +8669,14 @@ Exemplo de um item:
           ))}
         </div>
         {/* Quick Publish + Import */}
-        <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+        <div style={{ display:"flex", gap:8, flexShrink:0 }}>
         <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", flexShrink:0 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Publicação Rápida
         </button>
-        <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent+"15", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent, flexShrink:0 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          Munique A.I
+        <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 16px", borderRadius:12, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:800, color:"#0D0D0D", flexShrink:0, boxShadow:"0 2px 12px "+B.accent+"40" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+          Importe com a Munique A.I
         </button>
         </div>
       </div>}
