@@ -6968,9 +6968,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [ipAutoCreate, setIpAutoCreate] = useState(false);
   const [ipCreating, setIpCreating] = useState(false);
   const [ipCreated, setIpCreated] = useState(0);
+  const [ipTone, setIpTone] = useState("informativo");
+  const [ipEmojis, setIpEmojis] = useState(true);
+  const [ipEmojiQty, setIpEmojiQty] = useState("moderado");
   const ipFileRef = useRef(null);
 
-  const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); };
+  const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); setIpTone("informativo"); setIpEmojis(true); setIpEmojiQty("moderado"); };
 
   const processImportPlan = async () => {
     if (!ipFile || !ipClient) return;
@@ -6993,6 +6996,8 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
 CLIENTE: ${clientName}
 ANO ATUAL: ${currentYear}
+TOM DAS LEGENDAS: ${ipTone} (use este tom em todas as legendas geradas)
+EMOJIS: ${ipEmojis ? `Sim, usar emojis de forma ${ipEmojiQty === "pouco" ? "sutil (1-2 por parágrafo)" : ipEmojiQty === "moderado" ? "moderada (2-4 por parágrafo)" : "abundante (4-6 por parágrafo)"}` : "NÃO usar emojis nas legendas"}
 
 Para CADA item encontrado no documento, gere um objeto JSON com os campos:
 - title: título curto do post/vídeo (max 60 chars)
@@ -7001,7 +7006,7 @@ Para CADA item encontrado no documento, gere um objeto JSON com os campos:
 - networks: ["Instagram"] ou ["Instagram","Facebook"] (padrão ambas)
 - schedDate: data no formato YYYY-MM-DD (use o ano ${currentYear}, deduza o mês do contexto)
 - schedTime: horário sugerido "10:00" para posts, "18:00" para vídeos (padrão)
-- caption: legenda completa para o post com emojis, CTA, 3-5 parágrafos. Se o documento tiver texto/roteiro, adapte para legenda de rede social. Inclua hashtags no final.
+- caption: legenda completa para o post com CTA, 3-5 parágrafos, no tom "${ipTone}". ${ipEmojis ? `Use emojis de forma ${ipEmojiQty}.` : "NÃO inclua emojis."} Inclua hashtags no final.
 - designBrief: briefing detalhado para o designer criar a arte. Descreva: formato visual, elementos, cores, estilo, textos que devem aparecer na arte, referências visuais. Extraia do documento tudo que descreve como a peça deve parecer visualmente.
 - scriptOrRoteiro: para vídeos, inclua o roteiro completo (gancho, desenvolvimento, CTA). Para posts, deixe vazio "".
 
@@ -7181,6 +7186,28 @@ Exemplo de um item:
               <span style={{ fontSize:11, color:B.muted }}>PDF, TXT ou DOC • Cronograma de conteúdo</span>
             </button>
           )}
+
+          {/* Tone selector */}
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:10, marginTop:20 }}>Tom das legendas</p>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+            {[{k:"informativo",l:"📰 Informativo"},{k:"inspirador",l:"✨ Inspirador"},{k:"comico",l:"😂 Cômico"},{k:"serio",l:"🎯 Sério"},{k:"informal",l:"💬 Informal"},{k:"educativo",l:"📚 Educativo"},{k:"provocativo",l:"🔥 Provocativo"}].map(t => (
+              <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"8px 14px", borderRadius:12, border:ipTone===t.k?"2px solid "+B.accent:"1.5px solid "+B.border, background:ipTone===t.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted }}>{t.l}</button>
+            ))}
+          </div>
+
+          {/* Emoji settings */}
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:10 }}>Emojis</p>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:ipEmojis?10:0 }}>
+            <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:48, height:28, borderRadius:14, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
+              <div style={{ width:22, height:22, borderRadius:11, background:"#fff", position:"absolute", top:3, left:ipEmojis?23:3, transition:"left .2s", boxShadow:"0 1px 4px rgba(0,0,0,0.2)" }} />
+            </button>
+            <span style={{ fontSize:13, color:ipEmojis?B.text:B.muted }}>{ipEmojis?"Usar emojis nas legendas":"Sem emojis"}</span>
+          </div>
+          {ipEmojis && <div style={{ display:"flex", gap:6, marginBottom:4 }}>
+            {[{k:"pouco",l:"Pouco (1-2)"},{k:"moderado",l:"Moderado (2-4)"},{k:"muito",l:"Muito (4-6)"}].map(q => (
+              <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1.5px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted }}>{q.l}</button>
+            ))}
+          </div>}
 
           <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:ipClient && ipFile ? "#0D0D0D" : B.muted, marginTop:20 }}>
             Processar com IA
@@ -8639,15 +8666,17 @@ Exemplo de um item:
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
-        {/* Quick Publish */}
-        <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", flexShrink:0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Publicação Rápida
-        <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:12, background:B.accent+"15", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent, flexShrink:0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-          Importar Planejamento
+        {/* Quick Publish + Import */}
+        <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+        <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", flexShrink:0 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Publicar
         </button>
+        <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent+"15", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent, flexShrink:0 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          Importar
         </button>
+        </div>
       </div>}
 
       {/* Client selector (mobile only) */}
