@@ -18395,83 +18395,61 @@ function PlaceholderPage({ title, onBack, icon }) {
 /* ═══════════════════════ MATCH4BIZ (AGENCY PANEL) ═══════════════════════ */
 function Match4BizPage({ onBack, clients, user }) {
   const isM4bDesktop = useIsDesktop();
-  const [view, setView] = useState("dashboard");
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  const [view, setView] = useState("list");
   const [selMatch, setSelMatch] = useState(null);
-  const [filter, setFilter] = useState("all");
   const [msgInput, setMsgInput] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createForm, setCreateForm] = useState({ a:"", b:"", fee:"150" });
+  const [filter, setFilter] = useState("all");
   const { showToast, ToastEl } = useToast();
-  const isAdmin = user?.supaRole === "admin";
   const CDATA = clients || [];
 
-  /* Real matches from Supabase */
   const [matches, setMatches] = useState([]);
   const [matchesLoaded, setMatchesLoaded] = useState(false);
-  useEffect(() => {
-    if (!matchesLoaded) { supaLoadMatches().then(d => { setMatches(d || []); setMatchesLoaded(true); }); }
-  }, [matchesLoaded]);
+  useEffect(() => { if (!matchesLoaded) { supaLoadMatches().then(d => { setMatches(d||[]); setMatchesLoaded(true); }); } }, [matchesLoaded]);
 
-  const statusMap = {
-    new:{ l:"Novo", c:B.blue, bg:`${B.blue}15` },
-    talking:{ l:"Conversando", c:B.cyan||B.blue, bg:`${B.cyan||B.blue}15` },
-    negotiating:{ l:"Negociando", c:B.orange, bg:`${B.orange}15` },
-    closed_won:{ l:"Fechado ✓", c:B.green, bg:`${B.green}15` },
-    closed_lost:{ l:"Não rolou", c:B.red, bg:`${B.red}15` },
+  /* ── Unified status config ── */
+  const ST = {
+    pending:  { l:"Aguardando Match", c:"#F59E0B", ic:"⏳" },
+    mutual:   { l:"Match Mútuo", c:"#10B981", ic:"🤝" },
+    deal_closed:  { l:"Negócio Fechado", c:"#10B981", ic:"✅" },
+    deal_rejected:{ l:"Não Fechou", c:"#EF4444", ic:"❌" },
+    agency_help:  { l:"Ajuda Solicitada", c:"#6366F1", ic:"🏢" },
+  };
+  const getSt = (s) => ST[s] || ST.pending;
+
+  /* ── Stats ── */
+  const total = matches.length;
+  const mutual = matches.filter(m => m.status === "mutual" || m.status === "agency_help").length;
+  const closed = matches.filter(m => m.status === "deal_closed").length;
+  const needsHelp = matches.filter(m => m.status === "agency_help").length;
+  const pending = matches.filter(m => m.status === "pending").length;
+  const filtered = filter === "all" ? matches : matches.filter(m => m.status === filter);
+
+  /* ── Helpers ── */
+  const getClient = (id, name) => { const c = CDATA.find(x=>(x.supaId||x.id)===id)||CDATA.find(x=>x.name===name); return { name:c?.name||name||"?", logo:c?.photo||c?.avatar||c?.logo||c?.logo_url||null, segment:c?.segment||"", plan:c?.plan||"" }; };
+  const getPartnerNames = (m) => ({ a: getClient(m.client_a_id, m.client_a_name), b: getClient(m.client_b_id, m.client_b_name) });
+  const lastMsg = (m) => { const msgs = m.messages||[]; return msgs.length > 0 ? msgs[msgs.length-1] : null; };
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) : "";
+
+  /* ── Send agency message (visible to clients) ── */
+  const sendMsg = () => {
+    if (!msgInput.trim() || !selMatch) return;
+    const msg = { from:"agency", fromName:"Unique Marketing", text:msgInput.trim(), type:"text", ts:new Date().toISOString(), by:user?.name||"Admin" };
+    const msgs = [...(selMatch.messages||[]), msg];
+    setMatches(prev => prev.map(x => x.id === selMatch.id ? {...x, messages:msgs} : x));
+    setSelMatch(prev => ({...prev, messages:msgs}));
+    supaUpdateMatch(selMatch.id, { messages: msgs });
+    setMsgInput("");
   };
 
-  const filtered = filter === "all" ? matches : matches.filter(m => m.status === filter);
-  const totalMatches = matches.length;
-  const wonDeals = matches.filter(m => m.status === "closed_won");
-  const totalRevenue = wonDeals.reduce((s,m) => s + (m.value||0), 0);
-  const totalFees = matches.reduce((s,m) => s + (parseFloat(m.match_fee)||0) * 2, 0);
-  const confirmedMatches = matches.filter(m => m.admin_confirmed || m.client_a_confirmed || m.client_b_confirmed).length;
-  const conversionRate = totalMatches > 0 ? Math.round((wonDeals.length / totalMatches) * 100) : 0;
-  const activeDeals = matches.filter(m => ["new","talking","negotiating"].includes(m.status)).length;
-
+  /* ── Update status ── */
   const updateStatus = (id, newStatus) => {
-    setMatches(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
-    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, status: newStatus }));
+    setMatches(prev => prev.map(m => m.id === id ? {...m, status:newStatus} : m));
+    if (selMatch?.id === id) setSelMatch(prev => ({...prev, status:newStatus}));
     supaUpdateMatch(id, { status: newStatus });
     showToast("Status atualizado ✓");
   };
 
-  const updateValue = (id, val) => {
-    const numVal = parseFloat(val) || 0;
-    setMatches(prev => prev.map(m => m.id === id ? { ...m, value: numVal } : m));
-    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, value: numVal }));
-    supaUpdateMatch(id, { value: numVal });
-  };
-
-  const sendMsg = (id) => {
-    if (!msgInput.trim()) return;
-    const msg = { from:"agency", text:msgInput.trim(), ts:new Date().toISOString(), by:user?.name||"Admin" };
-    const m = matches.find(x => x.id === id);
-    const newMsgs = [...(m?.messages||m?.msgs||[]), msg];
-    setMatches(prev => prev.map(x => x.id === id ? { ...x, messages: newMsgs } : x));
-    if (selMatch?.id === id) setSelMatch(prev => ({ ...prev, messages: newMsgs }));
-    supaUpdateMatch(id, { messages: newMsgs });
-    setMsgInput("");
-  };
-
-  const handleCreateMatch = async () => {
-    if (!createForm.a || !createForm.b || createForm.a === createForm.b) { showToast("Selecione dois clientes diferentes"); return; }
-    const cA = CDATA.find(c => (c.supaId||c.id) === createForm.a);
-    const cB = CDATA.find(c => (c.supaId||c.id) === createForm.b);
-    if (!cA || !cB) { showToast("Clientes não encontrados"); return; }
-    const newMatch = {
-      client_a_id: createForm.a, client_a_name: cA.name,
-      client_b_id: createForm.b, client_b_name: cB.name,
-      status: "new", messages: [], created_by: user?.name || "Admin",
-      match_fee: parseFloat(createForm.fee) || 0,
-      client_a_confirmed: false, client_b_confirmed: false, admin_confirmed: false,
-    };
-    const created = await supaCreateMatch(newMatch);
-    if (created) { setMatches(prev => [created, ...prev]); setCreating(false); setCreateForm({ a:"", b:"", fee:"150" }); showToast("Match criado ✓"); }
-    else showToast("Erro ao criar match");
-  };
-
+  /* ── Delete match ── */
   const deleteMatch = async (id) => {
     if (!confirm("Excluir este match?")) return;
     await supaDeleteMatch(id);
@@ -18480,497 +18458,255 @@ function Match4BizPage({ onBack, clients, user }) {
     showToast("Match excluído ✓");
   };
 
-  /* ── DESKTOP MATCH4BIZ v3 ── */
-  const getCD = (id, name) => { const c = CDATA.find(x=>(x.supaId||x.id)===id)||CDATA.find(x=>x.name===name); return { name:c?.name||name, photo:c?.photo||c?.avatar||c?.logo||null, segment:c?.segment||c?.niche||"" }; };
+  /* ═══ MATCH DETAIL VIEW (mobile) ═══ */
+  if (selMatch && !isM4bDesktop) {
+    const m = matches.find(x=>x.id===selMatch.id)||selMatch;
+    const p = getPartnerNames(m);
+    const st = getSt(m.status);
+    const msgs = m.messages || [];
+    return (
+      <div className="app" style={{background:B.bg,color:B.text}}>
+        {ToastEl}
+        <Head title="" onBack={()=>{setSelMatch(null);setView("list");}} right={
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <Av name={p.a.name} sz={24} fs={9}/><span style={{fontSize:10,color:B.muted}}>×</span><Av name={p.b.name} sz={24} fs={9}/>
+          </div>
+        }/>
+        {/* Status bar */}
+        <div style={{padding:"8px 16px",background:st.c+"08",borderBottom:"1px solid "+st.c+"20",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div><span style={{fontSize:11,fontWeight:700,color:st.c}}>{st.ic} {st.l}</span></div>
+          <select value={m.status} onChange={e=>updateStatus(m.id,e.target.value)} style={{fontSize:11,padding:"4px 8px",borderRadius:8,border:"1px solid "+B.border,background:B.bgCard,color:B.text,fontFamily:"inherit",cursor:"pointer"}}>
+            {Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.ic} {v.l}</option>)}
+          </select>
+        </div>
+        {/* Participants */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",borderBottom:"1px solid "+B.border}}>
+          <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
+            <Av name={p.a.name} src={p.a.logo} sz={36} fs={13}/>
+            <div><p style={{fontSize:12,fontWeight:700}}>{p.a.name}</p><p style={{fontSize:9,color:B.muted}}>{m.client_a_confirmed?"✓ Deu match":"Pendente"}</p></div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <div style={{flex:1,display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
+            <div style={{textAlign:"right"}}><p style={{fontSize:12,fontWeight:700}}>{p.b.name}</p><p style={{fontSize:9,color:B.muted}}>{m.client_b_confirmed?"✓ Deu match":"Pendente"}</p></div>
+            <Av name={p.b.name} src={p.b.logo} sz={36} fs={13}/>
+          </div>
+        </div>
+        {/* Messages */}
+        <div className="content" style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
+          {msgs.length === 0 && <p style={{textAlign:"center",color:B.muted,fontSize:12,padding:20}}>Nenhuma mensagem ainda</p>}
+          {msgs.map((msg,i) => {
+            const isAgency = msg.from === "agency";
+            const isSys = msg.type === "system";
+            const senderName = isAgency ? (msg.by||"Agência") : msg.fromName || "Cliente";
+            if (isSys) return <div key={i} style={{textAlign:"center",margin:"10px 0"}}><span style={{fontSize:10,color:B.muted,background:B.bg,padding:"3px 12px",borderRadius:20,border:"1px solid "+B.border}}>{msg.text}</span></div>;
+            return (
+              <div key={i} style={{marginBottom:8}}>
+                <p style={{fontSize:9,color:isAgency?"#6366F1":B.muted,fontWeight:600,marginBottom:2,textAlign:isAgency?"right":"left"}}>{senderName}</p>
+                <div style={{display:"flex",justifyContent:isAgency?"flex-end":"flex-start"}}>
+                  <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:14,background:isAgency?"#6366F115":B.bgCard,border:"1px solid "+(isAgency?"#6366F130":B.border)}}>
+                    {msg.type==="image"?<img src={msg.text} alt="" style={{maxWidth:"100%",maxHeight:180,borderRadius:10}}/>:null}
+                    {(msg.type==="text"||!msg.type)&&<p style={{fontSize:13,lineHeight:1.5,margin:0,wordBreak:"break-word"}}>{msg.text}</p>}
+                    <p style={{fontSize:8,color:B.muted,marginTop:3,textAlign:"right"}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Agency input */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderTop:"1px solid "+B.border,background:B.bgCard}}>
+          <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();sendMsg();}}} placeholder="Mensagem como agência..." className="tinput" style={{flex:1,padding:"10px 14px",fontSize:14}} />
+          <button onClick={sendMsg} disabled={!msgInput.trim()} style={{width:38,height:38,borderRadius:12,background:msgInput.trim()?"#6366F1":B.border,border:"none",cursor:msgInput.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={msgInput.trim()?"#fff":B.muted} strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        {/* Actions */}
+        <div style={{display:"flex",gap:6,padding:"8px 16px 16px",background:B.bgCard,borderTop:"1px solid "+B.border}}>
+          <button onClick={()=>deleteMatch(m.id)} style={{flex:1,padding:"10px",borderRadius:10,border:"1.5px solid "+(B.red||"#EF4444")+"30",background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.red||"#EF4444"}}>Excluir</button>
+        </div>
+      </div>
+    );
+  }
 
+  /* ═══ DESKTOP TWO-PANEL LAYOUT ═══ */
   if (isM4bDesktop) {
     const m = selMatch ? (matches.find(x=>x.id===selMatch.id)||selMatch) : null;
-    const mSt = m ? (statusMap[m.status]||statusMap.new) : null;
-    const cA = m ? getCD(m.client_a_id,m.client_a_name) : null;
-    const cB = m ? getCD(m.client_b_id,m.client_b_name) : null;
-    const hasRight = !!(m || creating);
+    const mSt = m ? getSt(m.status) : null;
+    const mP = m ? getPartnerNames(m) : null;
+    const mMsgs = m ? (m.messages||[]) : [];
 
     return (
-      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%",display:"flex",flexDirection:"column"}}>
         {ToastEl}
         <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={false} />
 
-        {/* Stats + actions bar */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginTop:12, marginBottom:14 }}>
-          <div style={{ display:"flex", gap:8, flex:1 }}>
-            {[
-              { l:"Matches", v:totalMatches, c:B.accent },
-              { l:"Ativos", v:activeDeals, c:B.orange },
-              { l:"Fechados", v:wonDeals.length, c:B.green },
-              { l:"Receita", v:`R$${totalRevenue.toLocaleString("pt-BR")}`, c:B.green },
-            ].map((s,i) => (
-              <div key={i} style={{ padding:"10px 18px", borderRadius:12, background:`${s.c}08`, display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:20, fontWeight:900, color:s.c }}>{s.v}</span>
-                <span style={{ fontSize:11, color:B.muted, fontWeight:500 }}>{s.l}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ display:"flex", gap:6 }}>
-            {[{k:"all",l:"Todos"},...Object.entries(statusMap).map(([k,v])=>({k,l:v.l}))].map(f=>(
-              <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"7px 14px", borderRadius:10, border:`1.5px solid ${filter===f.k?B.accent:B.border}`, background:filter===f.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted }}>{f.l}</button>
-            ))}
-          </div>
-          {isAdmin && <button onClick={()=>{setCreating(true);setSelMatch(null);setCreateForm({a:"",b:"",fee:"150"});}} style={{ padding:"10px 22px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>+ Novo Match</button>}
-        </div>
-
-        <div style={{ display:"flex", gap:16, flex:1, minHeight:0 }}>
-          {/* Match cards */}
-          <div style={{ width:hasRight?380:undefined, flex:hasRight?undefined:1, flexShrink:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
-            {!matchesLoaded && <p style={{ textAlign:"center", color:B.muted, padding:40, fontSize:13 }}>Carregando...</p>}
-            {matchesLoaded && filtered.length===0 && <div style={{ textAlign:"center", padding:"80px 0" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" style={{ opacity:0.3, margin:"0 auto 12px", display:"block" }}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><p style={{ fontSize:16, fontWeight:700, color:B.muted }}>Nenhum match encontrado</p><p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Conecte dois clientes para iniciar</p></div>}
-            {filtered.map(match => {
-              const isSel = selMatch?.id===match.id;
-              const ms = statusMap[match.status]||statusMap.new;
-              const ca = getCD(match.client_a_id,match.client_a_name);
-              const cb = getCD(match.client_b_id,match.client_b_name);
-              const cCnt = [match.admin_confirmed,match.client_a_confirmed,match.client_b_confirmed].filter(Boolean).length;
-              return (
-                <div key={match.id} onClick={()=>{setSelMatch(match);setCreating(false);}} style={{ padding:"16px 18px", borderRadius:16, background:B.bgCard, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
-                  {/* Companies row */}
-                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
-                      <Av src={ca.photo} name={ca.name} sz={40} fs={15}/>
-                      <div style={{ minWidth:0, flex:1 }}><p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ca.name}</p>{!hasRight && ca.segment && <p style={{ fontSize:10, color:B.muted }}>{ca.segment}</p>}</div>
-                    </div>
-                    <div style={{ width:28, height:28, borderRadius:8, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, justifyContent:"flex-end" }}>
-                      <div style={{ minWidth:0, flex:1, textAlign:"right" }}><p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cb.name}</p>{!hasRight && cb.segment && <p style={{ fontSize:10, color:B.muted }}>{cb.segment}</p>}</div>
-                      <Av src={cb.photo} name={cb.name} sz={40} fs={15}/>
-                    </div>
-                  </div>
-                  {/* Bottom meta */}
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
-                    <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:6, background:ms.bg, color:ms.c }}>{ms.l}</span>
-                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                      {cCnt>0 && <span style={{ fontSize:10, color:B.green, fontWeight:600 }}>✓ {cCnt}/3</span>}
-                      {(match.messages||[]).length>0 && <span style={{ fontSize:10, color:B.muted }}>💬 {(match.messages||[]).length}</span>}
-                      {match.value>0 && <span style={{ fontSize:12, fontWeight:800, color:B.green }}>R$ {match.value.toLocaleString("pt-BR")}</span>}
-                      <span style={{ fontSize:10, color:B.muted }}>{new Date(match.created_at).toLocaleDateString("pt-BR")}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* RIGHT panel */}
-          {hasRight && <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
-            {creating ? <>
-              <div style={{ padding:"16px 20px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <p style={{ fontSize:18, fontWeight:800 }}>Novo Match</p>
-                <button onClick={()=>setCreating(false)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-              </div>
-              <div style={{ flex:1, overflowY:"auto", padding:"24px 28px" }}>
-                <p style={{ fontSize:13, color:B.muted, marginBottom:20, lineHeight:1.6 }}>Conecte dois clientes que podem fazer negócios juntos. Cada empresa paga uma taxa pela conexão.</p>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:24 }}>
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Empresa A</label>
-                    <select value={createForm.a} onChange={e=>setCreateForm(p=>({...p,a:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, background:"transparent" }}><option value="">Selecione...</option>{CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}</select>
-                    {createForm.a && (()=>{const cd=getCD(createForm.a,"");return cd.name?<div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, padding:"10px 12px", borderRadius:12, background:B.bg }}><Av src={cd.photo} name={cd.name} sz={32} fs={12}/><div><p style={{ fontSize:13, fontWeight:700 }}>{cd.name}</p>{cd.segment&&<p style={{ fontSize:10, color:B.muted }}>{cd.segment}</p>}</div></div>:null;})()}
-                  </div>
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Empresa B</label>
-                    <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:14, background:"transparent" }}><option value="">Selecione...</option>{CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}</select>
-                    {createForm.b && (()=>{const cd=getCD(createForm.b,"");return cd.name?<div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, padding:"10px 12px", borderRadius:12, background:B.bg }}><Av src={cd.photo} name={cd.name} sz={32} fs={12}/><div><p style={{ fontSize:13, fontWeight:700 }}>{cd.name}</p>{cd.segment&&<p style={{ fontSize:10, color:B.muted }}>{cd.segment}</p>}</div></div>:null;})()}
-                  </div>
-                </div>
-                <label style={{ fontSize:12, fontWeight:700, color:B.muted, display:"block", marginBottom:6 }}>Taxa por empresa (R$)</label>
-                <input type="number" value={createForm.fee} onChange={e=>setCreateForm(p=>({...p,fee:e.target.value}))} style={{ width:200, padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:18, fontWeight:700 }}/>
-                <p style={{ fontSize:12, color:B.muted, marginTop:6, marginBottom:20 }}>Receita total: <strong style={{color:B.green}}>R$ {((parseFloat(createForm.fee)||0)*2).toLocaleString("pt-BR")}</strong></p>
-                <button onClick={handleCreateMatch} style={{ padding:"14px 40px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.dark }}>Criar Match</button>
-              </div>
-
-            </> : m ? <>
-              <div style={{ flex:1, overflowY:"auto" }}>
-                {/* Hero: company cards side by side */}
-                <div style={{ padding:"28px 32px", background:`linear-gradient(135deg, ${B.accent}06, ${B.accent}02)`, borderBottom:`1px solid ${B.border}` }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:0 }}>
-                    {/* Company A */}
-                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard, border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
-                      <Av src={cA.photo} name={cA.name} sz={52} fs={20}/>
-                      <div>
-                        <p style={{ fontSize:16, fontWeight:800 }}>{cA.name}</p>
-                        {cA.segment && <p style={{ fontSize:11, color:B.muted }}>{cA.segment}</p>}
-                        <span style={{ display:"inline-block", marginTop:4, fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:6, background:m.client_a_confirmed?`${B.green}12`:`${B.orange}12`, color:m.client_a_confirmed?B.green:B.orange }}>{m.client_a_confirmed?"✓ Confirmado":"Pendente"}</span>
-                      </div>
-                    </div>
-                    {/* Heart connector */}
-                    <div style={{ width:56, display:"flex", flexDirection:"column", alignItems:"center", gap:2, flexShrink:0, margin:"0 -8px", zIndex:1 }}>
-                      <div style={{ width:44, height:44, borderRadius:14, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px rgba(200,255,0,0.3)" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-                    </div>
-                    {/* Company B */}
-                    <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 18px", borderRadius:16, background:B.bgCard, border:`1px solid ${B.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.04)" }}>
-                      <Av src={cB.photo} name={cB.name} sz={52} fs={20}/>
-                      <div>
-                        <p style={{ fontSize:16, fontWeight:800 }}>{cB.name}</p>
-                        {cB.segment && <p style={{ fontSize:11, color:B.muted }}>{cB.segment}</p>}
-                        <span style={{ display:"inline-block", marginTop:4, fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:6, background:m.client_b_confirmed?`${B.green}12`:`${B.orange}12`, color:m.client_b_confirmed?B.green:B.orange }}>{m.client_b_confirmed?"✓ Confirmado":"Pendente"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Content */}
-                <div style={{ padding:"24px 32px" }}>
-                  {/* Status + Financial grid */}
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:24 }}>
-                    <div>
-                      <p style={{ fontSize:12, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Status do Negócio</p>
-                      <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                        {Object.entries(statusMap).map(([k,v])=>(
-                          <button key={k} onClick={()=>updateStatus(m.id,k)} style={{ padding:"8px 16px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:12, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
-                        ))}
-                      </div>
-                      {m.status==="closed_won" && <div style={{ marginTop:12 }}><label style={{ fontSize:11, fontWeight:600, color:B.muted }}>Valor do negócio</label><input value={m.value||""} onChange={e=>updateValue(m.id,e.target.value)} type="number" placeholder="0,00" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:18, fontWeight:700, marginTop:4 }}/></div>}
-                      <p style={{ fontSize:10, color:B.muted, marginTop:10 }}>Criado em {new Date(m.created_at).toLocaleDateString("pt-BR")}{m.created_by?` por ${m.created_by}`:""}</p>
-                    </div>
-                    <div>
-                      <p style={{ fontSize:12, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Financeiro</p>
-                      <div style={{ display:"flex", gap:10 }}>
-                        <div style={{ flex:1, padding:"16px", borderRadius:14, background:`${B.green}06`, border:`1px solid ${B.green}15`, textAlign:"center" }}>
-                          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Taxa por empresa</p>
-                          <p style={{ fontSize:22, fontWeight:900, color:B.green }}>R$ {(parseFloat(m.match_fee)||0).toLocaleString("pt-BR")}</p>
-                        </div>
-                        <div style={{ flex:1, padding:"16px", borderRadius:14, background:`${B.accent}06`, border:`1px solid ${B.accent}15`, textAlign:"center" }}>
-                          <p style={{ fontSize:10, color:B.muted, marginBottom:4 }}>Receita total</p>
-                          <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>R$ {((parseFloat(m.match_fee)||0)*2).toLocaleString("pt-BR")}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Confirmations */}
-                  <div style={{ marginBottom:24 }}>
-                    <p style={{ fontSize:12, fontWeight:700, color:B.muted, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Confirmações</p>
-                    <div style={{ display:"flex", gap:10 }}>
-                      {[{key:"admin_confirmed",name:"Admin",photo:null},{key:"client_a_confirmed",name:cA.name,photo:cA.photo},{key:"client_b_confirmed",name:cB.name,photo:cB.photo}].map(cf=>(
-                        <div key={cf.key} style={{ flex:1, padding:"16px", borderRadius:14, background:m[cf.key]?`${B.green}04`:B.bg, border:`1.5px solid ${m[cf.key]?B.green+"20":B.border}`, textAlign:"center" }}>
-                          <Av src={cf.photo} name={cf.name} sz={40} fs={15}/>
-                          <p style={{ fontSize:13, fontWeight:700, marginTop:8 }}>{cf.name?.split(" ")[0]}</p>
-                          {m[cf.key] ? <p style={{ fontSize:11, color:B.green, fontWeight:600, marginTop:6 }}>✓ Confirmado</p>
-                          : isAdmin ? <button onClick={()=>{const upd={[cf.key]:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast("Confirmado ✓");}} style={{ marginTop:6, padding:"6px 16px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>Confirmar</button>
-                          : <p style={{ fontSize:11, color:B.orange, marginTop:6 }}>Pendente</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Chat */}
-                  <div style={{ borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden" }}>
-                    <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, background:B.bg, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                      <p style={{ fontSize:12, fontWeight:700, color:B.muted }}>Conversa</p>
-                      <span style={{ fontSize:11, color:B.muted }}>{(m.messages||[]).length} mensagens</span>
-                    </div>
-                    <div style={{ maxHeight:200, overflowY:"auto", padding:"10px 14px" }}>
-                      {(m.messages||[]).length===0 && <p style={{ textAlign:"center", color:B.muted, padding:16, fontSize:12 }}>Nenhuma mensagem</p>}
-                      {(m.messages||[]).map((msg,i) => {
-                        const isAg = msg.from==="agency";
-                        return (
-                          <div key={i} style={{ padding:"8px 12px", borderRadius:10, background:isAg?`${B.accent}06`:`${B.bg}`, marginBottom:4 }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:isAg?B.accent:B.text }}>{msg.from==="a"?cA?.name:msg.from==="b"?cB?.name:"Unique Marketing"}</span>
-                              <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
-                            </div>
-                            <p style={{ fontSize:13, lineHeight:1.5 }}>{msg.text}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ padding:"10px 14px", borderTop:`1px solid ${B.border}`, display:"flex", gap:8 }}>
-                      <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg(m.id)} placeholder="Intervir na conversa..." style={{ flex:1, padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, outline:"none" }}/>
-                      <button onClick={()=>sendMsg(m.id)} disabled={!msgInput.trim()} style={{ padding:"10px 18px", borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}15`, border:"none", cursor:msgInput.trim()?"pointer":"default", fontFamily:"inherit", fontSize:12, fontWeight:700, color:msgInput.trim()?B.dark:B.muted }}>Enviar</button>
-                    </div>
-                  </div>
-                  {isAdmin && <button onClick={()=>deleteMatch(m.id)} style={{ marginTop:20, width:"100%", padding:"10px 0", borderRadius:12, background:`${B.red}04`, border:`1px solid ${B.red}15`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red }}>Excluir este match</button>}
-                </div>
-              </div>
-            </> : null}
-          </div>}
-        </div>
-      </div>
-    );
-  }
-
-  /* ── MATCH DETAIL ── */
-  if (view === "detail" && selMatch && !isM4bDesktop) {
-    const m = matches.find(x => x.id === selMatch.id) || selMatch;
-    const st = statusMap[m.status] || statusMap.new;
-    return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Detalhe do Match" onBack={() => { setView("list"); setSelMatch(null); }} />
-
-        {/* Companies */}
-        <Card>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.client_a_name?.[0]||"A"}</div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:700 }}>{m.client_a_name}</p>
-              <p style={{ fontSize:10, color:B.muted }}>{""}</p>
+        {/* Stats row */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginTop:12,marginBottom:16}}>
+          {[
+            {l:"Total",v:total,c:B.accent,bg:B.accent+"10"},
+            {l:"Matches Mútuos",v:mutual,c:"#10B981",bg:"#10B98110"},
+            {l:"Fechados",v:closed,c:"#10B981",bg:"#10B98110"},
+            {l:"Pendentes",v:pending,c:"#F59E0B",bg:"#F59E0B10"},
+            {l:"Pedem Ajuda",v:needsHelp,c:"#6366F1",bg:"#6366F110"},
+          ].map((s,i) => (
+            <div key={i} style={{background:B.bgCard,borderRadius:16,border:"1px solid "+B.border,padding:"14px 16px",textAlign:"center"}}>
+              <p style={{fontSize:9,fontWeight:600,color:B.muted,textTransform:"uppercase",letterSpacing:0.8}}>{s.l}</p>
+              <p style={{fontSize:28,fontWeight:900,color:s.c,marginTop:4}}>{s.v}</p>
             </div>
-          </div>
-          <div style={{ textAlign:"center", margin:"10px 0", color:B.accent }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-            <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginTop:2 }}>MATCH</p>
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:44, height:44, borderRadius:12, background:`${B.purple}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>{m.client_b_name?.[0]||"B"}</div>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:13, fontWeight:700 }}>{m.client_b_name}</p>
-              <p style={{ fontSize:10, color:B.muted }}>{""}</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Status + Value */}
-        <Card style={{ marginTop:8 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>STATUS DO NEGÓCIO</p>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-            {Object.entries(statusMap).map(([k,v]) => (
-              <button key={k} onClick={() => updateStatus(m.id, k)} style={{ padding:"6px 12px", borderRadius:10, border:m.status===k?`2px solid ${v.c}`:`1.5px solid ${B.border}`, background:m.status===k?v.bg:"transparent", fontSize:11, fontWeight:m.status===k?700:500, color:m.status===k?v.c:B.muted, cursor:"pointer", fontFamily:"inherit" }}>{v.l}</button>
-            ))}
-          </div>
-          {m.status === "closed_won" && (
-            <div style={{ marginTop:12 }}>
-              <p style={{ fontSize:11, fontWeight:600, color:B.muted, marginBottom:4 }}>Valor do negócio (R$)</p>
-              <input value={m.value||""} onChange={e => updateValue(m.id, e.target.value)} placeholder="0,00" className="tinput" type="number" style={{ fontSize:16, fontWeight:700 }} />
-            </div>
-          )}
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:10, padding:"8px 0", borderTop:`1px solid ${B.border}` }}>
-            <span style={{ fontSize:11, color:B.muted }}>Data do match</span>
-            <span style={{ fontSize:11, fontWeight:600 }}>{new Date(m.created_at).toLocaleDateString("pt-BR")}</span>
-          </div>
-        </Card>
-
-        {/* Fee + Confirmation */}
-        <Card style={{ marginTop:8 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:8 }}>💰 TAXA E CONFIRMAÇÃO</p>
-          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-            <div style={{ flex:1, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
-              <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Taxa por empresa</p>
-              <p style={{ fontSize:18, fontWeight:800, color:B.green }}>R$ {(parseFloat(m.match_fee)||0).toLocaleString("pt-BR")}</p>
-            </div>
-            <div style={{ flex:1, padding:"10px 12px", borderRadius:12, background:`${B.accent}08`, border:`1px solid ${B.accent}20`, textAlign:"center" }}>
-              <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Receita total</p>
-              <p style={{ fontSize:18, fontWeight:800, color:B.accent }}>R$ {((parseFloat(m.match_fee)||0)*2).toLocaleString("pt-BR")}</p>
-            </div>
-          </div>
-          <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginBottom:6 }}>Confirmações</p>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:m.admin_confirmed?`${B.green}08`:`${B.muted}04`, border:`1px solid ${m.admin_confirmed?B.green+"25":B.border}` }}>
-              <div style={{ width:20, height:20, borderRadius:6, background:m.admin_confirmed?B.green:`${B.muted}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {m.admin_confirmed?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{ fontSize:8, color:B.muted }}>—</span>}
-              </div>
-              <span style={{ fontSize:11, fontWeight:600, flex:1, color:m.admin_confirmed?B.green:B.text }}>Admin (Agência)</span>
-              {isAdmin && !m.admin_confirmed && <button onClick={()=>{const upd={admin_confirmed:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast("Confirmado pelo admin ✓");}} style={{ padding:"4px 10px", borderRadius:6, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.dark }}>Confirmar</button>}
-              {m.admin_confirmed && <span style={{ fontSize:9, color:B.green }}>✓ Confirmado</span>}
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:m.client_a_confirmed?`${B.green}08`:`${B.muted}04`, border:`1px solid ${m.client_a_confirmed?B.green+"25":B.border}` }}>
-              <div style={{ width:20, height:20, borderRadius:6, background:m.client_a_confirmed?B.green:`${B.muted}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {m.client_a_confirmed?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{ fontSize:8, color:B.muted }}>—</span>}
-              </div>
-              <span style={{ fontSize:11, fontWeight:600, flex:1, color:m.client_a_confirmed?B.green:B.text }}>{m.client_a_name}</span>
-              {isAdmin && !m.client_a_confirmed && <button onClick={()=>{const upd={client_a_confirmed:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast(`${m.client_a_name} confirmou ✓`);}} style={{ padding:"4px 10px", borderRadius:6, background:`${B.blue}15`, border:`1px solid ${B.blue}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:B.blue }}>Marcar confirmado</button>}
-              {m.client_a_confirmed && <span style={{ fontSize:9, color:B.green }}>✓</span>}
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:m.client_b_confirmed?`${B.green}08`:`${B.muted}04`, border:`1px solid ${m.client_b_confirmed?B.green+"25":B.border}` }}>
-              <div style={{ width:20, height:20, borderRadius:6, background:m.client_b_confirmed?B.green:`${B.muted}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                {m.client_b_confirmed?<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:<span style={{ fontSize:8, color:B.muted }}>—</span>}
-              </div>
-              <span style={{ fontSize:11, fontWeight:600, flex:1, color:m.client_b_confirmed?B.green:B.text }}>{m.client_b_name}</span>
-              {isAdmin && !m.client_b_confirmed && <button onClick={()=>{const upd={client_b_confirmed:true};setMatches(p=>p.map(x=>x.id===m.id?{...x,...upd}:x));setSelMatch(p=>({...p,...upd}));supaUpdateMatch(m.id,upd);showToast(`${m.client_b_name} confirmou ✓`);}} style={{ padding:"4px 10px", borderRadius:6, background:`${B.purple}15`, border:`1px solid ${B.purple}30`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:B.purple }}>Marcar confirmado</button>}
-              {m.client_b_confirmed && <span style={{ fontSize:9, color:B.green }}>✓</span>}
-            </div>
-          </div>
-          {m.admin_confirmed && (m.client_a_confirmed || m.client_b_confirmed) && <div style={{ marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1px solid ${B.green}20`, textAlign:"center" }}>
-            <p style={{ fontSize:11, fontWeight:700, color:B.green }}>✅ Match confirmado por admin + cliente</p>
-          </div>}
-          {isAdmin && <button onClick={()=>deleteMatch(m.id)} style={{ marginTop:10, width:"100%", padding:"8px 0", borderRadius:10, background:`${B.red}08`, border:`1px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red }}>🗑️ Excluir match</button>}
-        </Card>
-
-        {/* Chat History */}
-        <Card style={{ marginTop:8 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>HISTÓRICO DE CONVERSA</p>
-          {(m.messages||[]).length === 0 && <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma mensagem ainda</p>}
-          <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:300, overflowY:"auto" }}>
-            {(m.messages||[]).map((msg, i) => {
-              const isAgency = msg.from === "agency";
-              const sender = msg.from === "a" ? m.client_a_name : msg.from === "b" ? m.client_b_name : "Unique Marketing";
-              const senderIcon = msg.from === "a" ? m.client_a_name?.[0]||"A" : msg.from === "b" ? m.client_b_name?.[0]||"B" : "🏢";
-              return (
-                <div key={i} style={{ padding:"8px 10px", borderRadius:12, background:isAgency?`${B.accent}08`:`${B.muted}08`, border:isAgency?`1px solid ${B.accent}15`:"none" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                    <span style={{ fontSize:12 }}>{senderIcon}</span>
-                    <span style={{ fontSize:10, fontWeight:700, color:isAgency?B.accent:B.text }}>{sender}</span>
-                    <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{new Date(msg.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</span>
-                  </div>
-                  <p style={{ fontSize:12, lineHeight:1.5, color:B.text }}>{msg.text}</p>
-                </div>
-              );
-            })}
-          </div>
-          {/* Agency intervention input */}
-          <div style={{ display:"flex", gap:8, marginTop:10, paddingTop:10, borderTop:`1px solid ${B.border}` }}>
-            <input value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key==="Enter" && sendMsg(m.id)} placeholder="Intervir na conversa..." className="tinput" style={{ flex:1, fontSize:12 }} />
-            <button onClick={() => sendMsg(m.id)} disabled={!msgInput.trim()} style={{ width:36, height:36, borderRadius:10, background:msgInput.trim()?B.accent:`${B.muted}20`, border:"none", cursor:msgInput.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={msgInput.trim()?B.textOnAccent:B.muted} strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  /* ── MATCHES LIST ── */
-  if (view === "list" && !isM4bDesktop) {
-    return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="Todos os Matches" onBack={() => setView("dashboard")} />
-        {/* Filters */}
-        <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8, marginBottom:4 }}>
-          {[{ k:"all", l:"Todos" }, ...Object.entries(statusMap).map(([k,v]) => ({ k, l:v.l }))].map(f => (
-            <button key={f.k} onClick={() => setFilter(f.k)} style={{ padding:"6px 14px", borderRadius:10, border:filter===f.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:filter===f.k?`${B.accent}10`:"transparent", fontSize:11, fontWeight:filter===f.k?700:500, color:filter===f.k?B.accent:B.muted, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{f.l} {f.k==="all"?`(${totalMatches})`:`(${matches.filter(m=>m.status===f.k).length})`}</button>
           ))}
         </div>
-        {/* Match cards */}
-        {filtered.length === 0 && <Card><p style={{ textAlign:"center", color:B.muted, fontSize:13 }}>Nenhum match encontrado</p></Card>}
-        {filtered.map((m,i) => {
-          const st = statusMap[m.status];
-          return (
-            <Card key={m.id} delay={i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?8:0 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <span style={{ fontSize:20 }}>{m.client_a_name?.[0]||"A"}</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                  <span style={{ fontSize:20 }}>{m.client_b_name?.[0]||"B"}</span>
+        {/* Two panels */}
+        <div style={{display:"flex",gap:14,flex:1,minHeight:0,height:"calc(100vh - 280px)"}}>
+          {/* LEFT: Match list */}
+          <div style={{width:360,flexShrink:0,background:B.bgCard,borderRadius:20,border:"1px solid "+B.border,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            {/* Filter tabs */}
+            <div style={{display:"flex",gap:4,padding:"12px 12px 8px",overflowX:"auto",scrollbarWidth:"none",flexShrink:0}}>
+              {[{k:"all",l:"Todos ("+total+")"},{k:"agency_help",l:"🏢 Ajuda ("+needsHelp+")"},{k:"mutual",l:"🤝 Mútuos"},{k:"pending",l:"⏳ Pendentes"},{k:"deal_closed",l:"✅ Fechados"},{k:"deal_rejected",l:"❌ Não fechou"}].map(f=>(
+                <button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:"6px 12px",borderRadius:8,border:filter===f.k?"none":"1px solid "+B.border,background:filter===f.k?B.accent:"transparent",color:filter===f.k?"#0D0D0D":B.muted,fontSize:10,fontWeight:filter===f.k?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>{f.l}</button>
+              ))}
+            </div>
+            {/* List */}
+            <div style={{flex:1,overflowY:"auto",padding:"0 8px 8px"}}>
+              {filtered.length === 0 && <p style={{textAlign:"center",color:B.muted,fontSize:12,padding:30}}>Nenhum match neste filtro</p>}
+              {filtered.map(match => {
+                const p = getPartnerNames(match);
+                const st = getSt(match.status);
+                const last = lastMsg(match);
+                const isSel = selMatch?.id === match.id;
+                return (
+                  <div key={match.id} onClick={()=>setSelMatch(match)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:14,cursor:"pointer",background:isSel?B.accent+"10":"transparent",border:isSel?"1.5px solid "+B.accent+"30":"1.5px solid transparent",marginBottom:4,transition:"all .12s"}}
+                    onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=B.accent+"06";}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                    <div style={{position:"relative",flexShrink:0}}>
+                      <Av name={p.a.name} src={p.a.logo} sz={38} fs={13}/>
+                      <div style={{position:"absolute",bottom:-2,right:-8}}><Av name={p.b.name} src={p.b.logo} sz={22} fs={8}/></div>
+                    </div>
+                    <div style={{flex:1,minWidth:0,marginLeft:6}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <p style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140}}>{p.a.name} × {p.b.name}</p>
+                        <span style={{fontSize:8,color:st.c,fontWeight:700,flexShrink:0}}>{st.ic}</span>
+                      </div>
+                      <p style={{fontSize:10,color:B.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1}}>{last?((last.from==="agency"?"Agência: ":"")+last.text.substring(0,40)):"Sem mensagens"}</p>
+                    </div>
+                    {match.status==="agency_help"&&<div style={{width:8,height:8,borderRadius:4,background:"#6366F1",flexShrink:0}}/>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* RIGHT: Detail panel */}
+          <div style={{flex:1,background:B.bgCard,borderRadius:20,border:"1px solid "+B.border,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+            {!m ? (
+              <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}>
+                <div style={{width:64,height:64,borderRadius:20,background:B.accent+"10",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+                <p style={{fontSize:15,fontWeight:700}}>Selecione um match</p>
+                <p style={{fontSize:12,color:B.muted}}>Clique em uma conexão para ver detalhes e conversa</p>
+              </div>
+            ) : (<>
+              {/* Header with participants & status */}
+              <div style={{padding:"14px 20px",borderBottom:"1px solid "+B.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{display:"flex",alignItems:"center"}}>
+                    <Av name={mP.a.name} src={mP.a.logo} sz={36} fs={13}/>
+                    <div style={{marginLeft:-8}}><Av name={mP.b.name} src={mP.b.logo} sz={36} fs={13}/></div>
+                  </div>
+                  <div>
+                    <p style={{fontSize:14,fontWeight:800}}>{mP.a.name} × {mP.b.name}</p>
+                    <div style={{display:"flex",gap:6,marginTop:2}}>
+                      <span style={{fontSize:9,color:m.client_a_confirmed?B.green:B.muted}}>{m.client_a_confirmed?"✓ "+mP.a.name:"⏳ "+mP.a.name}</span>
+                      <span style={{fontSize:9,color:m.client_b_confirmed?B.green:B.muted}}>{m.client_b_confirmed?"✓ "+mP.b.name:"⏳ "+mP.b.name}</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ flex:1 }}>
-                  <p style={{ fontSize:12, fontWeight:700 }}>{m.client_a_name.split(" ").slice(0,2).join(" ")} × {m.client_b_name.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:10, color:B.muted }}>{""} + {""}</p>
-                </div>
-                <div style={{ textAlign:"right" }}>
-                  <span style={{ fontSize:10, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6, display:"inline-block" }}>{st.l}</span>
-                  {m.value && <p style={{ fontSize:11, fontWeight:700, color:B.green, marginTop:4 }}>R$ {m.value.toLocaleString("pt-BR")}</p>}
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <select value={m.status} onChange={e=>updateStatus(m.id,e.target.value)} style={{fontSize:11,padding:"6px 10px",borderRadius:10,border:"1px solid "+mSt.c+"40",background:mSt.c+"08",color:mSt.c,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
+                    {Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.ic} {v.l}</option>)}
+                  </select>
+                  <button onClick={()=>deleteMatch(m.id)} style={{width:32,height:32,borderRadius:8,border:"1px solid "+(B.red||"#EF4444")+"30",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  </button>
                 </div>
               </div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginTop:8, paddingTop:6, borderTop:`1px solid ${B.border}` }}>
-                <span style={{ fontSize:10, color:B.muted }}>{new Date(m.created_at).toLocaleDateString("pt-BR")}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{(m.messages||[]).length} msg{(m.messages||[]).length!==1?"s":""}</span>
+              {/* Messages area */}
+              <div style={{flex:1,overflowY:"auto",padding:"16px 20px",minHeight:0}}>
+                {mMsgs.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:13,color:B.muted}}>Nenhuma mensagem entre os clientes ainda.</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>Quando os clientes conversarem, as mensagens aparecerão aqui.</p></div>}
+                {mMsgs.map((msg,i) => {
+                  const isAgency = msg.from === "agency";
+                  const isSys = msg.type === "system";
+                  const senderName = isAgency ? "🏢 "+(msg.by||"Agência") : (msg.fromName||"Cliente");
+                  if (isSys) return <div key={i} style={{textAlign:"center",margin:"10px 0"}}><span style={{fontSize:10,color:B.muted,background:B.bg,padding:"3px 12px",borderRadius:20,border:"1px solid "+B.border}}>{msg.text}</span></div>;
+                  return (
+                    <div key={i} style={{marginBottom:10}}>
+                      <p style={{fontSize:9,fontWeight:700,color:isAgency?"#6366F1":B.muted,marginBottom:2}}>{senderName}</p>
+                      <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:isAgency?"#6366F110":B.bg,border:"1px solid "+(isAgency?"#6366F125":B.border)}}>
+                        {msg.type==="image"?<img src={msg.text} alt="" style={{maxWidth:"100%",maxHeight:180,borderRadius:10}}/>:null}
+                        {(msg.type==="text"||!msg.type)&&<p style={{fontSize:13,lineHeight:1.5,margin:0}}>{msg.text}</p>}
+                        <p style={{fontSize:8,color:B.muted,marginTop:3}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Agency input */}
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 20px",borderTop:"1px solid "+B.border,flexShrink:0}}>
+                <input value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();sendMsg();}}} placeholder="Intervir na conversa como agência..." className="tinput" style={{flex:1,padding:"10px 14px",fontSize:13}} />
+                <button onClick={sendMsg} disabled={!msgInput.trim()} style={{padding:"10px 20px",borderRadius:12,background:msgInput.trim()?"#6366F1":B.border,border:"none",cursor:msgInput.trim()?"pointer":"default",fontFamily:"inherit",fontSize:12,fontWeight:700,color:msgInput.trim()?"#fff":B.muted}}>Enviar</button>
+              </div>
+            </>)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══ MOBILE LIST VIEW ═══ */
+  return (
+    <div className="app" style={{background:B.bg,color:B.text}}>
+      {ToastEl}
+      <Head title="Match4Biz" onBack={onBack} />
+      <div className="content" style={{padding:"0 16px"}}>
+        {/* Stats */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+          {[{l:"Total",v:total,c:B.accent},{l:"Mútuos",v:mutual,c:"#10B981"},{l:"Ajuda",v:needsHelp,c:"#6366F1"}].map((s,i)=>(
+            <div key={i} style={{background:B.bgCard,borderRadius:14,border:"1px solid "+B.border,padding:"12px",textAlign:"center"}}>
+              <p style={{fontSize:8,color:B.muted,fontWeight:600,textTransform:"uppercase",letterSpacing:0.5}}>{s.l}</p>
+              <p style={{fontSize:24,fontWeight:900,color:s.c}}>{s.v}</p>
+            </div>
+          ))}
+        </div>
+        {/* Filters */}
+        <div style={{display:"flex",gap:4,marginBottom:12,overflowX:"auto",scrollbarWidth:"none"}}>
+          {[{k:"all",l:"Todos"},{k:"agency_help",l:"🏢 Ajuda"},{k:"mutual",l:"🤝 Mútuos"},{k:"pending",l:"⏳ Pendentes"},{k:"deal_closed",l:"✅ Fechados"}].map(f=>(
+            <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{fontSize:10,whiteSpace:"nowrap",flexShrink:0}}>{f.l}</button>
+          ))}
+        </div>
+        {/* Match list */}
+        {filtered.length === 0 && <Card style={{textAlign:"center",padding:24}}><p style={{fontSize:13,fontWeight:600}}>Nenhum match encontrado</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>Os matches dos clientes aparecerão aqui automaticamente.</p></Card>}
+        {filtered.map((match,i) => {
+          const p = getPartnerNames(match);
+          const st = getSt(match.status);
+          const last = lastMsg(match);
+          return (
+            <Card key={match.id} style={{marginBottom:8,cursor:"pointer"}} onClick={()=>{setSelMatch(match);setView("detail");}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{position:"relative",flexShrink:0}}>
+                  <Av name={p.a.name} src={p.a.logo} sz={40} fs={14}/>
+                  <div style={{position:"absolute",bottom:-2,right:-10}}><Av name={p.b.name} src={p.b.logo} sz={24} fs={9}/></div>
+                </div>
+                <div style={{flex:1,minWidth:0,marginLeft:6}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <p style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.a.name} × {p.b.name}</p>
+                  </div>
+                  <p style={{fontSize:10,color:B.muted,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?last.text.substring(0,50):"Sem mensagens"}</p>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <span style={{fontSize:9,fontWeight:700,color:st.c,background:st.c+"12",padding:"3px 8px",borderRadius:6}}>{st.ic} {st.l}</span>
+                  <p style={{fontSize:8,color:B.muted,marginTop:4}}>{fmtDate(match.created_at)}</p>
+                </div>
               </div>
             </Card>
           );
         })}
-      </div>
-    );
-  }
-
-  /* ── DASHBOARD (default) ── */
-  return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      <CollapseHeader icon={IC.match4biz} label="Parcerias" title="Match4Biz" onBack={onBack} collapsed={pgC} />
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
-      {ToastEl}
-
-      {/* Create Match Button + Form */}
-      {isAdmin && !creating && <button onClick={()=>setCreating(true)} style={{width:"100%",padding:"12px",borderRadius:14,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.dark,marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>+ Criar novo Match</button>}
-      {creating && <Card style={{marginBottom:12,border:`2px solid ${B.accent}`}}>
-        <p style={{fontSize:14,fontWeight:700,marginBottom:10}}>Novo Match</p>
-        <p className="sl" style={{marginBottom:4}}>Empresa A</p>
-        <select value={createForm.a} onChange={e=>setCreateForm(p=>({...p,a:e.target.value}))} className="tinput" style={{marginBottom:8}}>
-          <option value="">Selecione...</option>
-          {CDATA.map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
-        </select>
-        <p className="sl" style={{marginBottom:4}}>Empresa B</p>
-        <select value={createForm.b} onChange={e=>setCreateForm(p=>({...p,b:e.target.value}))} className="tinput" style={{marginBottom:8}}>
-          <option value="">Selecione...</option>
-          {CDATA.filter(c=>(c.supaId||c.id)!==createForm.a).map(c=><option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
-        </select>
-        <p className="sl" style={{marginBottom:4}}>Taxa do Match (R$)</p>
-        <input type="number" value={createForm.fee} onChange={e=>setCreateForm(p=>({...p,fee:e.target.value}))} className="tinput" placeholder="150" style={{marginBottom:10}} />
-        <p style={{fontSize:9,color:B.muted,marginBottom:10,lineHeight:1.5}}>💡 Cada empresa paga esta taxa pela conexão. Ex: R$ 150 = R$ 300 total para a agência.</p>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={handleCreateMatch} className="pill accent" style={{flex:1,padding:"12px 0"}}>🤝 Criar Match</button>
-          <button onClick={()=>setCreating(false)} className="pill" style={{padding:"12px 16px",background:B.bgCard,border:`1px solid ${B.border}`,color:B.muted}}>Cancelar</button>
-        </div>
-      </Card>}
-
-      {!matchesLoaded && <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando matches...</p></Card>}
-
-      {/* Metrics */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
-        {[
-          { label:"Total Matches", value:totalMatches, icon:"🤝", color:B.accent },
-          { label:"Receita Taxas", value:`R$ ${totalFees.toLocaleString("pt-BR")}`, icon:"💰", color:B.green },
-          { label:"Em andamento", value:activeDeals, icon:"⏳", color:B.orange },
-          { label:"Conversão", value:`${conversionRate}%`, icon:"📈", color:B.purple },
-        ].map((m,i) => (
-          <Card key={i} delay={i*0.04} style={{ padding:14, textAlign:"center" }}>
-            <span style={{ fontSize:22, display:"block", marginBottom:4 }}>{m.icon}</span>
-            <p style={{ fontSize:20, fontWeight:800, color:m.color }}>{m.value}</p>
-            <p style={{ fontSize:10, fontWeight:600, color:B.muted, marginTop:2 }}>{m.label}</p>
-          </Card>
-        ))}
-      </div>
-
-      {/* Revenue */}
-      <Card delay={0.15} style={{ marginTop:8 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div>
-            <p style={{ fontSize:11, fontWeight:600, color:B.muted }}>Receita gerada por matches</p>
-            <p style={{ fontSize:24, fontWeight:800, color:B.green, marginTop:4 }}>R$ {totalRevenue.toLocaleString("pt-BR")}</p>
-          </div>
-          <div style={{ width:48, height:48, borderRadius:14, background:`${B.green}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>💰</div>
-        </div>
-        {wonDeals.length > 0 && (
-          <div style={{ marginTop:10, paddingTop:8, borderTop:`1px solid ${B.border}` }}>
-            <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Negócios fechados</p>
-            {wonDeals.map((d,i) => (
-              <div key={d.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderTop:i?`1px solid ${B.border}05`:"none" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:14 }}>{d.client_a_name?.[0]||"🤝"}</span>
-                  <span style={{ fontSize:11, fontWeight:600 }}>{d.client_a_name.split(" ").slice(0,2).join(" ")} × {d.client_b_name.split(" ").slice(0,2).join(" ")}</span>
-                </div>
-                <span style={{ fontSize:12, fontWeight:700, color:B.green }}>R$ {(d.value||0).toLocaleString("pt-BR")}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Recent matches */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:12, marginBottom:8 }}>
-        <p className="sl">Matches recentes</p>
-        <button onClick={() => setView("list")} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent }}>Ver todos →</button>
-      </div>
-      {matches.slice(0, 4).map((m,i) => {
-        const st = statusMap[m.status];
-        return (
-          <Card key={m.id} delay={0.2+i*0.03} onClick={() => { setSelMatch(m); setView("detail"); }} style={{ cursor:"pointer", marginTop:i?6:0 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ display:"flex", alignItems:"center" }}>
-                <span style={{ fontSize:18 }}>{m.client_a_name?.[0]||"A"}</span>
-                <span style={{ fontSize:10, margin:"0 4px", color:B.accent }}>♥</span>
-                <span style={{ fontSize:18 }}>{m.client_b_name?.[0]||"B"}</span>
-              </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:12, fontWeight:600 }}>{m.client_a_name.split(" ").slice(0,2).join(" ")} × {m.client_b_name.split(" ").slice(0,2).join(" ")}</p>
-                <p style={{ fontSize:10, color:B.muted }}>{new Date(m.created_at).toLocaleDateString("pt-BR")} · {(m.messages||[]).length} msgs</p>
-              </div>
-              <span style={{ fontSize:9, fontWeight:700, color:st.c, background:st.bg, padding:"3px 8px", borderRadius:6 }}>{st.l}</span>
-            </div>
-          </Card>
-        );
-      })}
-
-      {/* CTA */}
-      <Card delay={0.35} style={{ marginTop:12, textAlign:"center", background:`${B.accent}06`, border:`1.5px dashed ${B.accent}25` }}>
-        <span style={{ fontSize:28, display:"block", marginBottom:6 }}>💡</span>
-        <p style={{ fontSize:13, fontWeight:700, color:B.text }}>Como funciona</p>
-        <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, marginTop:4 }}>Os clientes da agência fazem match entre si no app. Aqui você acompanha cada conexão, intervém quando necessário e registra os negócios fechados.</p>
-      </Card>
+        <div style={{height:30}}/>
       </div>
     </div>
   );
@@ -19169,17 +18905,21 @@ function ClientMatch4Biz({ onBack, user }) {
           {msgs.length === 0 && <div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:14,fontWeight:700}}>Vocês deram Match! 🎉</p><p style={{fontSize:12,color:B.muted,marginTop:6,lineHeight:1.5}}>Iniciem a conversa sobre a parceria. Enviem propostas, arquivos e definam os próximos passos.</p></div>}
           {msgs.map((msg,i) => {
             const isMe = msg.from === myClient?.id;
+            const isAgency = msg.from === "agency";
             const isSys = msg.type === "system";
             if (isSys) return <div key={i} style={{textAlign:"center",margin:"12px 0"}}><span style={{fontSize:11,color:B.muted,background:B.bg,padding:"4px 14px",borderRadius:20,border:"1px solid "+B.border}}>{msg.text}</span></div>;
             return (
-              <div key={i} style={{display:"flex",justifyContent:isMe?"flex-end":"flex-start",marginBottom:8}}>
-                <div style={{maxWidth:"78%",padding:msg.type==="image"?"4px":"10px 14px",borderRadius:16,background:isMe?B.accent+"18":B.bgCard,border:"1px solid "+(isMe?B.accent+"30":B.border),borderBottomRightRadius:isMe?4:16,borderBottomLeftRadius:isMe?16:4}}>
+              <div key={i} style={{marginBottom:8}}>
+                {isAgency && <p style={{fontSize:9,fontWeight:700,color:"#6366F1",marginBottom:2}}>🏢 {msg.by||"Unique Marketing"}</p>}
+                <div style={{display:"flex",justifyContent:isMe?"flex-end":"flex-start"}}>
+                <div style={{maxWidth:"78%",padding:msg.type==="image"?"4px":"10px 14px",borderRadius:16,background:isAgency?"#6366F112":isMe?B.accent+"18":B.bgCard,border:"1px solid "+(isAgency?"#6366F125":isMe?B.accent+"30":B.border),borderBottomRightRadius:isMe?4:16,borderBottomLeftRadius:isMe?16:4}}>
                   {msg.type==="image" && <img src={msg.text} alt="" style={{maxWidth:"100%",maxHeight:200,borderRadius:12,display:"block"}} />}
                   {msg.type==="video" && <video src={msg.text} controls style={{maxWidth:"100%",maxHeight:200,borderRadius:12}} />}
                   {msg.type==="file" && <a href={msg.text} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:8,color:B.accent,fontSize:12,fontWeight:600,textDecoration:"none"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Arquivo anexado</a>}
-                  {msg.type==="text" && <p style={{fontSize:13,lineHeight:1.5,margin:0,wordBreak:"break-word"}}>{msg.text}</p>}
+                  {(msg.type==="text"||!msg.type) && <p style={{fontSize:13,lineHeight:1.5,margin:0,wordBreak:"break-word"}}>{msg.text}</p>}
                   <p style={{fontSize:9,color:B.muted,marginTop:4,textAlign:"right"}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
                 </div>
+              </div>
               </div>
             );
           })}
