@@ -19312,6 +19312,7 @@ function ClientMatch4Biz({ onBack, user }) {
   const [clientRanks, setClientRanks] = useState({});
   const [clientCovers, setClientCovers] = useState({});
   const [clientM4bProfiles, setClientM4bProfiles] = useState({});
+  const [clientSeals, setClientSeals] = useState({});
   const { showToast, ToastEl } = useToast();
 
   /* ── Plan-based credits ── */
@@ -19369,13 +19370,26 @@ function ClientMatch4Biz({ onBack, user }) {
             setClientM4bProfiles(byClient);
           }
         } catch {}
+        /* Load M4B seals */
+        try {
+          const { data: sealRows } = await supabase.from("app_settings").select("key, value").like("key", "client_m4b_seal_%");
+          if (sealRows) {
+            const byClient = {};
+            sealRows.forEach(r => { byClient[r.key.replace("client_m4b_seal_", "")] = r.value; });
+            setClientSeals(byClient);
+          }
+        } catch {}
       } catch(e) { console.warn("[M4B]", e); }
       setLoading(false);
     })();
   }, [user?.email]);
 
   const matchedIds = matches.map(m => m.client_a_id === myClient?.id ? m.client_b_id : m.client_a_id);
-  const available = allClients.filter(c => !matchedIds.includes(c.id));
+  const available = allClients.filter(c => !matchedIds.includes(c.id)).sort((a, b) => {
+    const sealA = clientSeals[a.id] ? 1 : 0;
+    const sealB = clientSeals[b.id] ? 1 : 0;
+    return sealB - sealA;
+  });
   const current = available[currentIdx % Math.max(available.length, 1)];
   const isUnlimited = credits >= 9999;
   const noCredits = !isUnlimited && credits < 10;
@@ -19441,7 +19455,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   const sendChatMsg = async (text, type = "text") => { if (!chatMatch || (!text?.trim() && type === "text")) return; const msg = { from: myClient?.id, fromName: myClient?.name, text: text?.trim() || "", type, ts: new Date().toISOString() }; const msgs = [...(chatMatch.messages || []), msg]; try { await supabase.from("match4biz").update({ messages: msgs }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, messages: msgs } : m)); setChatMatch(p => ({ ...p, messages: msgs })); setChatInput(""); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100); };
   const handleChatFile = async (e) => { const f = e.target.files?.[0]; if (!f || !supabase) return; const path = `m4b/${Date.now()}_${f.name}`; const { error } = await supabase.storage.from("demand-files").upload(path, f, { upsert: true }); if (error) { showToast("Erro no upload"); return; } const { data: u } = supabase.storage.from("demand-files").getPublicUrl(path); const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name); sendChatMsg(u.publicUrl, isImg ? "image" : "file"); e.target.value = ""; };
-  const dealAction = async (a) => { if (!chatMatch) return; const sm = { close: "deal_closed", noclose: "deal_rejected", help: "agency_help" }; const mm = { close: "\u{1F91D} Negócio fechado!", noclose: "\u274C Negócio não fechado", help: "\u{1F3E2} Pediu ajuda da agência" }; await sendChatMsg(mm[a], "system"); try { await supabase.from("match4biz").update({ status: sm[a] }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: sm[a] } : m)); setChatMatch(p => ({ ...p, status: sm[a] })); showToast(a === "close" ? "Parabéns! \u{1F389}" : a === "help" ? "Agência notificada" : "Atualizado"); };
+  const dealAction = async (a) => { if (!chatMatch) return; const sm = { close: "deal_closed", noclose: "deal_rejected", help: "agency_help" }; const mm = { close: "\u{1F91D} Negócio fechado!", noclose: "\u274C Negócio não fechado", help: "\u{1F3E2} Pediu ajuda da agência" }; await sendChatMsg(mm[a], "system"); try { await supabase.from("match4biz").update({ status: sm[a] }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: sm[a] } : m)); setChatMatch(p => ({ ...p, status: sm[a] })); if (a === "close" && myClient) { try { await supaSetSetting(`client_m4b_seal_${myClient.id}`, "deal_maker"); } catch {} } showToast(a === "close" ? "Parabéns! \u{1F389}" : a === "help" ? "Agência notificada" : "Atualizado"); };
   const getPartner = (m) => { const pid = m.client_a_id === myClient?.id ? m.client_b_id : m.client_a_id; const pn = m.client_a_id === myClient?.id ? m.client_b_name : m.client_a_name; return { id: pid, name: pn, ...(allClients.find(c => c.id === pid) || {}) }; };
 
   /* ═══ CONVERSION OVERLAY (Interrupção Estratégica) ═══ */
@@ -19490,6 +19504,8 @@ function ClientMatch4Biz({ onBack, user }) {
     } catch {}
     setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: "deal_closed" } : m));
     setChatMatch(p => ({ ...p, status: "deal_closed" }));
+    /* Award seal + credits */
+    try { await supaSetSetting(`client_m4b_seal_${myClient.id}`, "deal_maker"); } catch {}
     if (!isUnlimited) {
       const newCredits = credits + 5;
       setCredits(newCredits);
@@ -19887,23 +19903,22 @@ function ClientMatch4Biz({ onBack, user }) {
       {BuyOverlay}
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
-        {/* Credits pill + Profile edit */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <button onClick={() => setShowEditProfile(true)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:12, background:profileComplete?B.accent+"08":"#F59E0B10", border:"1.5px solid "+(profileComplete?B.accent+"20":"#F59E0B30"), cursor:"pointer", fontFamily:"inherit" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={profileComplete?B.accent:"#F59E0B"} strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span style={{ fontSize:11, fontWeight:600, color:profileComplete?B.accent:"#F59E0B" }}>{profileComplete?"Meu perfil":"Completar perfil"}</span>
+        {/* Tabs + actions row */}
+        <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
+          <div style={{ flex:1, display:"flex", gap:0, background:B.bgCard, borderRadius:14, padding:3, border:"1px solid "+B.border }}>
+            {[{k:"discover",l:"Descobrir"},{k:"matches",l:"Conexões ("+mutualMatches.length+")"}].map(t => (
+              <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", background:tab===t.k?B.accent+"15":"transparent", color:tab===t.k?B.text:B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
+            ))}
+          </div>
+          <button onClick={() => setShowEditProfile(true)} style={{ width:36, height:36, borderRadius:12, background:profileComplete?B.accent+"08":"#F59E0B10", border:"1.5px solid "+(profileComplete?B.accent+"20":"#F59E0B30"), cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={profileComplete?B.accent:"#F59E0B"} strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </button>
-          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 14px", borderRadius:12, background:noCredits?"#EF444420":B.bg, border:"1.5px solid "+(noCredits?"#EF444440":B.border), cursor:"pointer", fontFamily:"inherit" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"6px 12px", borderRadius:12, background:noCredits?"#EF444410":B.bg, border:"1.5px solid "+(noCredits?"#EF444430":B.border), cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             <span style={{ fontSize:12, fontWeight:800, color:noCredits?"#EF4444":B.accent }}>{isUnlimited ? "∞" : credits}</span>
           </button>
         </div>
-        {/* Tabs */}
-        <div style={{ display:"flex", gap:0, marginBottom:16, background:B.bgCard, borderRadius:14, padding:3 }}>
-          {[{k:"discover",l:"Descobrir"},{k:"matches",l:"Conexões ("+mutualMatches.length+")"}].map(t => (
-            <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"11px 0", borderRadius:11, border:"none", background:tab===t.k?B.accent+"15":"transparent", color:tab===t.k?B.text:B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
-          ))}
-        </div>
+
 
         {loading ? (
           <div style={{ textAlign:"center", padding:60 }}>
@@ -19941,7 +19956,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
                 {/* Name + info */}
                 <div style={{ textAlign:"center", padding:"12px 20px 6px", display:"flex", flexDirection:"column" }}>
-                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:1, color:B.text, letterSpacing:"-0.3px" }}>{current.name}</h3>
+                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:1, color:B.text, letterSpacing:"-0.3px" }}>{current.name} {clientSeals[current.id] && <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, fontWeight:700, background:B.accent+"15", color:B.accent, padding:"2px 8px", borderRadius:8, verticalAlign:"middle", marginLeft:4 }}>🤝 Gerador de Negócio</span>}</h3>
                   <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:3 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
 
                   {/* Stats pills */}
@@ -20042,7 +20057,7 @@ function ClientMatch4Biz({ onBack, user }) {
                   {p.logo_url ? <img src={p.logo_url} style={{ width:48, height:48, borderRadius:16, objectFit:"cover" }} /> : <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, "+cc+", "+cc+"70)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:B.text, flexShrink:0 }}>{getInitials(p.name)}</div>}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:3 }}>
-                      <p style={{ fontSize:14, fontWeight:700 }}>{p.name}</p>
+                      <p style={{ fontSize:14, fontWeight:700 }}>{p.name}{clientSeals[p.id] && <span style={{ fontSize:8, color:B.accent, marginLeft:4 }}>🤝</span>}</p>
                       <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:8, background:m.status==="deal_closed"?B.green+"15":m.status==="agency_help"?"#6366F115":B.accent+"15", color:m.status==="deal_closed"?B.green:m.status==="agency_help"?"#6366F1":B.accent }}>{m.status==="deal_closed"?"Fechado ✅":m.status==="agency_help"?"Agência":"Ativo"}</span>
                     </div>
                     <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{last?(last.from===myClient?.id?"Você: ":"")+last.text.substring(0,40):"Toque para conversar"}</p>
