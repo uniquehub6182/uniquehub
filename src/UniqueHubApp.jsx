@@ -6957,6 +6957,314 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [form, setForm] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [quickPub, setQuickPub] = useState(false);
+  /* ═══ IMPORT PLANNING (AI) ═══ */
+  const [importPlan, setImportPlan] = useState(false);
+  const [ipStep, setIpStep] = useState(1); /* 1=upload, 2=processing, 3=preview */
+  const [ipClient, setIpClient] = useState(null);
+  const [ipFile, setIpFile] = useState(null);
+  const [ipPosts, setIpPosts] = useState([]);
+  const [ipLoading, setIpLoading] = useState(false);
+  const [ipProgress, setIpProgress] = useState("");
+  const [ipAutoCreate, setIpAutoCreate] = useState(false);
+  const [ipCreating, setIpCreating] = useState(false);
+  const [ipCreated, setIpCreated] = useState(0);
+  const ipFileRef = useRef(null);
+
+  const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); };
+
+  const processImportPlan = async () => {
+    if (!ipFile || !ipClient) return;
+    setIpStep(2); setIpLoading(true); setIpProgress("Lendo documento...");
+    try {
+      /* Convert PDF to base64 */
+      const base64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = () => rej(new Error("Erro ao ler arquivo"));
+        r.readAsDataURL(ipFile);
+      });
+      setIpProgress("Analisando planejamento com IA...");
+      const keys = await supaGetAIKeys();
+      const selClient = CDATA.find(c => (c.supaId||c.id) === ipClient);
+      const clientName = selClient?.name || "Cliente";
+      const currentYear = new Date().getFullYear();
+
+      const prompt = `Você é um assistente de social media brasileiro expert. Analise este documento de planejamento/cronograma de conteúdo e extraia TODOS os posts e vídeos planejados.
+
+CLIENTE: ${clientName}
+ANO ATUAL: ${currentYear}
+
+Para CADA item encontrado no documento, gere um objeto JSON com os campos:
+- title: título curto do post/vídeo (max 60 chars)
+- type: "social" para posts estáticos/carrossel ou "video" para vídeos/reels
+- format: "Feed", "Stories", "Reels", "Carrossel" (detecte pelo contexto - "estático"=Feed, "carrossel"=Carrossel, "vídeo"=Reels)
+- networks: ["Instagram"] ou ["Instagram","Facebook"] (padrão ambas)
+- schedDate: data no formato YYYY-MM-DD (use o ano ${currentYear}, deduza o mês do contexto)
+- schedTime: horário sugerido "10:00" para posts, "18:00" para vídeos (padrão)
+- caption: legenda completa para o post com emojis, CTA, 3-5 parágrafos. Se o documento tiver texto/roteiro, adapte para legenda de rede social. Inclua hashtags no final.
+- designBrief: briefing detalhado para o designer criar a arte. Descreva: formato visual, elementos, cores, estilo, textos que devem aparecer na arte, referências visuais. Extraia do documento tudo que descreve como a peça deve parecer visualmente.
+- scriptOrRoteiro: para vídeos, inclua o roteiro completo (gancho, desenvolvimento, CTA). Para posts, deixe vazio "".
+
+REGRAS:
+- Extraia TODOS os itens, não pule nenhum
+- Use o texto do documento como base para as legendas, não invente informações
+- O briefing do designer deve ser muito detalhado e prático
+- Datas que aparecem como "DD/MM" devem virar "${currentYear}-MM-DD"
+- Se não houver data específica, distribua uniformemente no período mencionado
+- Responda APENAS com um array JSON válido, sem markdown, sem explicação, sem backticks
+
+Exemplo de um item:
+{"title":"Cookies de Internet","type":"social","format":"Feed","networks":["Instagram","Facebook"],"schedDate":"${currentYear}-04-06","schedTime":"10:00","caption":"🍪 Você sabe o que são cookies...","designBrief":"Post estático estilo quadrinhos...","scriptOrRoteiro":""}`;
+
+      let aiText = "";
+      const isPdf = ipFile.type === "application/pdf";
+      if (keys?.claude_key) {
+        setIpProgress("Processando com Claude...");
+        const messages = [{ role: "user", content: isPdf ? [
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+          { type: "text", text: prompt }
+        ] : [{ type: "text", text: prompt + "\n\nCONTEÚDO DO DOCUMENTO:\n" + await ipFile.text() }] }];
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages })
+        });
+        const d = await r.json();
+        aiText = d?.content?.[0]?.text || "";
+      } else if (keys?.openai_key) {
+        setIpProgress("Processando com OpenAI...");
+        const textContent = isPdf ? "(PDF enviado - extraindo texto)" : await ipFile.text();
+        const r = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + keys.openai_key },
+          body: JSON.stringify({ model: "gpt-4o", max_tokens: 8000, messages: [{ role: "user", content: prompt + "\n\nCONTEÚDO:\n" + textContent }] })
+        });
+        const d = await r.json();
+        aiText = d?.choices?.[0]?.message?.content || "";
+      } else if (keys?.gemini_key) {
+        setIpProgress("Processando com Gemini...");
+        const textContent = isPdf ? "(PDF enviado)" : await ipFile.text();
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + keys.gemini_key, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: isPdf ? [{ inlineData: { mimeType: "application/pdf", data: base64 } }, { text: prompt }] : [{ text: prompt + "\n\n" + textContent }] }], generationConfig: { maxOutputTokens: 8000 } })
+        });
+        const d = await r.json();
+        aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else {
+        setIpProgress(""); setIpLoading(false);
+        showToast("Configure uma chave de IA em Configurações");
+        setIpStep(1); return;
+      }
+
+      /* Parse AI response */
+      setIpProgress("Organizando posts...");
+      let posts = [];
+      try {
+        const clean = aiText.replace(/```json|```/g, "").trim();
+        const startBracket = clean.indexOf("[");
+        const endBracket = clean.lastIndexOf("]");
+        if (startBracket !== -1 && endBracket !== -1) {
+          posts = JSON.parse(clean.substring(startBracket, endBracket + 1));
+        } else { posts = JSON.parse(clean); }
+      } catch(e) {
+        console.error("Parse error:", e, aiText.substring(0, 200));
+        showToast("Erro ao processar resposta da IA. Tente novamente.");
+        setIpStep(1); setIpLoading(false); setIpProgress(""); return;
+      }
+      if (!Array.isArray(posts) || posts.length === 0) {
+        showToast("Nenhum post encontrado no documento.");
+        setIpStep(1); setIpLoading(false); setIpProgress(""); return;
+      }
+      /* Add IDs and defaults */
+      posts = posts.map((p, i) => ({
+        ...p, _id: Date.now() + i, _enabled: true,
+        title: p.title || "Post " + (i + 1),
+        type: p.type || "social",
+        format: p.format || "Feed",
+        networks: p.networks || ["Instagram"],
+        schedDate: p.schedDate || "",
+        schedTime: p.schedTime || "10:00",
+        caption: p.caption || "",
+        designBrief: p.designBrief || "",
+        scriptOrRoteiro: p.scriptOrRoteiro || "",
+      }));
+      setIpPosts(posts);
+      setIpLoading(false); setIpProgress("");
+      setIpStep(3);
+    } catch(e) {
+      console.error("Import plan error:", e);
+      showToast("Erro: " + e.message);
+      setIpStep(1); setIpLoading(false); setIpProgress("");
+    }
+  };
+
+  /* Create demands from imported posts */
+  const executeImportPlan = async () => {
+    const enabled = ipPosts.filter(p => p._enabled);
+    if (enabled.length === 0) { showToast("Nenhum post selecionado"); return; }
+    setIpCreating(true); setIpCreated(0);
+    const selClient = CDATA.find(c => (c.supaId||c.id) === ipClient);
+    const clientId = selClient?.supaId || selClient?.id || null;
+    const today = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" });
+    let created = 0;
+    for (const p of enabled) {
+      const newD = {
+        title: p.title, type: p.type || "social", stage: "design",
+        format: p.format || "Feed", priority: "média",
+        network: (p.networks || ["Instagram"]).join(", "),
+        client: selClient?.name || "", client_id: clientId,
+        steps: {
+          idea: { text: p.scriptOrRoteiro || p.caption || "", by: "Planejamento IA", date: today },
+          briefing: { text: p.designBrief || "", by: "Planejamento IA", date: today },
+          caption: { text: p.caption || "", hashtags: "", by: "Planejamento IA", date: today },
+        },
+        scheduling: { date: p.schedDate || "", time: p.schedTime || "" },
+      };
+      const result = await supaCreateDemand(newD, clientId);
+      if (result?.data) {
+        created++;
+        setIpCreated(created);
+        setDemands(prev => [{ ...newD, id: result.data.id, supaId: result.data.id, createdAt: today, assignees: [] }, ...prev]);
+      }
+    }
+    setIpCreating(false);
+    showToast(`${created} demanda${created > 1 ? "s" : ""} criada${created > 1 ? "s" : ""} com sucesso! ✓`);
+    resetImportPlan();
+  };
+
+  /* ═══ IMPORT PLAN MODAL ═══ */
+  const ImportPlanModal = importPlan ? (
+    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+B.border, flexShrink:0 }}>
+        <button onClick={resetImportPlan} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Importar Planejamento</p><p style={{ fontSize:11, color:B.muted }}>Passo {ipStep} de 3</p></div>
+        {ipStep === 3 && <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 18px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>{ipCreating ? `Criando ${ipCreated}/${ipPosts.filter(p=>p._enabled).length}...` : `Criar ${ipPosts.filter(p=>p._enabled).length} posts`}</button>}
+      </div>
+      {/* Progress bar */}
+      <div style={{ height:3, background:B.border, flexShrink:0 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
+
+      <div style={{ flex:1, overflowY:"auto", padding:"16px" }}>
+        {/* ═══ STEP 1: SELECT CLIENT + UPLOAD ═══ */}
+        {ipStep === 1 && <>
+          <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
+
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Selecione o cliente</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:20 }}>
+            {(CDATA||[]).filter(c => c.status === "ativo" || !c.status).map(c => {
+              const cid = c.supaId || c.id;
+              const sel = ipClient === cid;
+              return <button key={cid} onClick={() => setIpClient(cid)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 14px", borderRadius:14, border:sel ? "2px solid "+B.accent : "1.5px solid "+B.border, background:sel ? B.accent+"08" : "transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <Av name={c.name} src={c.logo||c.logo_url} sz={36} fs={14} />
+                <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:13, fontWeight:sel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</p>{c.plan && <p style={{ fontSize:10, color:B.muted }}>Plano {c.plan}</p>}</div>
+                {sel && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>;
+            })}
+          </div>
+
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Upload do planejamento</p>
+          {ipFile ? (
+            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:16, background:B.accent+"08", border:"1.5px solid "+B.accent+"30" }}>
+              <div style={{ width:44, height:44, borderRadius:14, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ipFile.name}</p>
+                <p style={{ fontSize:11, color:B.muted }}>{(ipFile.size / 1024).toFixed(0)} KB</p>
+              </div>
+              <button onClick={() => setIpFile(null)} style={{ width:32, height:32, borderRadius:10, background:B.bg, border:"1px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"28px 20px", borderRadius:18, border:"2px dashed "+B.border, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+              <span style={{ fontSize:13, fontWeight:600, color:B.text }}>Arraste ou toque para enviar</span>
+              <span style={{ fontSize:11, color:B.muted }}>PDF, TXT ou DOC • Cronograma de conteúdo</span>
+            </button>
+          )}
+
+          <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:ipClient && ipFile ? "#0D0D0D" : B.muted, marginTop:20 }}>
+            Processar com IA
+          </button>
+        </>}
+
+        {/* ═══ STEP 2: PROCESSING ═══ */}
+        {ipStep === 2 && (
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"50vh", gap:16 }}>
+            <div style={{ width:56, height:56, borderRadius:18, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", animation:"spin 2s linear infinite" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </div>
+            <p style={{ fontSize:16, fontWeight:700, textAlign:"center" }}>Processando planejamento...</p>
+            <p style={{ fontSize:13, color:B.muted, textAlign:"center" }}>{ipProgress}</p>
+            <p style={{ fontSize:11, color:B.muted, textAlign:"center", maxWidth:280, lineHeight:1.5 }}>A IA está analisando o documento e gerando legendas, briefings e programação para cada post</p>
+          </div>
+        )}
+
+        {/* ═══ STEP 3: PREVIEW ═══ */}
+        {ipStep === 3 && <>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+            <div>
+              <p style={{ fontSize:16, fontWeight:800 }}>{ipPosts.length} posts gerados</p>
+              <p style={{ fontSize:11, color:B.muted }}>{ipPosts.filter(p=>p._enabled).length} selecionados para criar</p>
+            </div>
+            <button onClick={() => setIpPosts(p => p.map(x => ({ ...x, _enabled: !p.every(y => y._enabled) })))} style={{ padding:"6px 14px", borderRadius:10, border:"1.5px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>
+              {ipPosts.every(p => p._enabled) ? "Desmarcar todos" : "Selecionar todos"}
+            </button>
+          </div>
+
+          {ipPosts.map((post, idx) => {
+            const updatePost = (field, val) => setIpPosts(p => p.map((x, i) => i === idx ? { ...x, [field]: val } : x));
+            const typeColor = post.type === "video" ? (B.orange||"#F59E0B") : (B.blue||"#3B82F6");
+            const formatIcon = { Feed:"📷", Stories:"📱", Reels:"🎬", Carrossel:"🔄", Vídeo:"🎥" }[post.format] || "📝";
+            return (
+              <div key={post._id} style={{ marginBottom:12, borderRadius:18, border:"1px solid "+(post._enabled ? B.accent+"30" : B.border), background:B.bgCard, overflow:"hidden", opacity:post._enabled ? 1 : 0.5 }}>
+
+                {/* Post header */}
+                <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", borderBottom:"1px solid "+B.border }}>
+                  <button onClick={() => updatePost("_enabled", !post._enabled)} style={{ width:24, height:24, borderRadius:8, border:post._enabled ? "none" : "2px solid "+B.border, background:post._enabled ? B.accent : "transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    {post._enabled && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </button>
+                  <span style={{ fontSize:16 }}>{formatIcon}</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <input value={post.title} onChange={e => updatePost("title", e.target.value)} style={{ width:"100%", fontSize:14, fontWeight:700, color:B.text, background:"transparent", border:"none", outline:"none", fontFamily:"inherit", padding:0 }} />
+                    <div style={{ display:"flex", gap:6, marginTop:2 }}>
+                      <span style={{ fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:6, background:typeColor+"15", color:typeColor }}>{post.type === "video" ? "Vídeo" : "Post"}</span>
+                      <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:B.bg, color:B.muted }}>{post.format}</span>
+                      {post.schedDate && <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:B.bg, color:B.muted }}>{new Date(post.schedDate+"T12:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} {post.schedTime}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Editable fields */}
+                {post._enabled && <div style={{ padding:"12px 14px" }}>
+                  {/* Schedule row */}
+                  <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                    <div style={{ flex:1 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>DATA</label><input type="date" value={post.schedDate} onChange={e => updatePost("schedDate", e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+                    <div style={{ width:90 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>HORA</label><input type="time" value={post.schedTime} onChange={e => updatePost("schedTime", e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
+                    <div style={{ width:100 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>FORMATO</label><select value={post.format} onChange={e => updatePost("format", e.target.value)} className="tinput" style={{ fontSize:12 }}><option>Feed</option><option>Stories</option><option>Reels</option><option>Carrossel</option></select></div>
+                  </div>
+
+                  <label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>LEGENDA</label>
+                  <textarea value={post.caption} onChange={e => updatePost("caption", e.target.value)} className="tinput" style={{ minHeight:80, resize:"vertical", fontSize:12, lineHeight:1.5, marginBottom:10 }} />
+
+                  <label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>BRIEFING DO DESIGNER</label>
+                  <textarea value={post.designBrief} onChange={e => updatePost("designBrief", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.5, marginBottom:post.scriptOrRoteiro ? 10 : 0 }} />
+
+                  {post.scriptOrRoteiro && <>
+                    <label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>ROTEIRO</label>
+                    <textarea value={post.scriptOrRoteiro} onChange={e => updatePost("scriptOrRoteiro", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.5 }} />
+                  </>}
+                </div>}
+
+              </div>
+            );
+          })}
+          <div style={{ height:80 }} />
+        </>}
+      </div>
+    </div>
+  ) : null;
+
+
   const [pubLoading, setPubLoading] = useState(false);
   const [qpForm, setQpForm] = useState({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
   const [qpLoading, setQpLoading] = useState(false);
@@ -8286,6 +8594,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   return (
     <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?0:"100%", flex:contained?1:"initial", display:"flex", flexDirection:"column", position:contained?"relative":"static", overflow:contained?(sel||creating?"hidden":"visible"):"visible" }}>
       {ToastEl}
+      {ImportPlanModal}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
       {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
@@ -8298,6 +8607,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Publicação Rápida (FB / IG)
+        </button>
+      </div>}
+      {!isContentDesktop && !contained && canAccessFn("content.create") && <div style={{ padding:"6px 16px 0" }}>
+        <button onClick={() => setImportPlan(true)} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          Importar Planejamento (IA)
         </button>
       </div>}
 
@@ -8328,6 +8643,10 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
         <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", flexShrink:0 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Publicação Rápida
+        <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:12, background:B.accent+"15", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent, flexShrink:0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          Importar Planejamento
+        </button>
         </button>
       </div>}
 
