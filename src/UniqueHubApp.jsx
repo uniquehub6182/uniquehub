@@ -7143,7 +7143,7 @@ Exemplo de um item:
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+B.border, flexShrink:0 }}>
         <button onClick={resetImportPlan} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Importe com a Munique A.I</p><p style={{ fontSize:11, color:B.muted }}>Passo {ipStep} de 3</p></div>
-        {ipStep === 3 && <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 18px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>{ipCreating ? `Criando ${ipCreated}/${ipPosts.filter(p=>p._enabled).length}...` : `Criar ${ipPosts.filter(p=>p._enabled).length} posts`}</button>}
+        {ipStep === 3 && <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 18px", borderRadius:12, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#0D0D0D", boxShadow:"0 2px 10px "+B.accent+"30", display:"flex", alignItems:"center", gap:6 }}>{ipCreating ? <><div style={{ width:14, height:14, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {ipCreated}/{ipPosts.filter(p=>p._enabled).length}</> : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg> Criar {ipPosts.filter(p=>p._enabled).length} posts</>}</button>}
       </div>
       {/* Progress bar */}
       <div style={{ height:3, background:B.border, flexShrink:0 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
@@ -7261,58 +7261,84 @@ Exemplo de um item:
 
         {/* ═══ STEP 3: PREVIEW ═══ */}
         {ipStep === 3 && <>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-            <div>
-              <p style={{ fontSize:16, fontWeight:800 }}>{ipPosts.length} posts gerados</p>
-              <p style={{ fontSize:11, color:B.muted }}>{ipPosts.filter(p=>p._enabled).length} selecionados para criar</p>
+          {/* Summary hero */}
+          <div style={{ background:B.bgCard, borderRadius:20, border:"1px solid "+B.border, padding:"20px", marginBottom:16, display:"flex", alignItems:"center", gap:16 }}>
+            <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
-            <button onClick={() => setIpPosts(p => p.map(x => ({ ...x, _enabled: !p.every(y => y._enabled) })))} style={{ padding:"6px 14px", borderRadius:10, border:"1.5px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>
-              {ipPosts.every(p => p._enabled) ? "Desmarcar todos" : "Selecionar todos"}
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:18, fontWeight:900 }}>{ipPosts.length} posts gerados</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{ipPosts.filter(p=>p._enabled).length} selecionados · {ipPosts.filter(p=>p.type==="video").length} vídeos · {ipPosts.filter(p=>p.type!=="video").length} posts</p>
+            </div>
+            <button onClick={() => setIpPosts(p => p.map(x => ({ ...x, _enabled: !p.every(y => y._enabled) })))} style={{ padding:"8px 14px", borderRadius:10, border:"1.5px solid "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>
+              {ipPosts.every(p => p._enabled) ? "Desmarcar" : "Selecionar"}
             </button>
           </div>
 
           {ipPosts.map((post, idx) => {
             const updatePost = (field, val) => setIpPosts(p => p.map((x, i) => i === idx ? { ...x, [field]: val } : x));
-            const typeColor = post.type === "video" ? (B.orange||"#F59E0B") : (B.blue||"#3B82F6");
-            const formatIcon = { Feed:"📷", Stories:"📱", Reels:"🎬", Carrossel:"🔄", Vídeo:"🎥" }[post.format] || "📝";
+            const isVideo = post.type === "video";
+            const typeColor = isVideo ? (B.orange||"#F59E0B") : (B.blue||"#3B82F6");
+            const formatIcon = { Feed:"📷", Stories:"📱", Reels:"🎬", Carrossel:"🔄" }[post.format] || (isVideo?"🎥":"📝");
+            const dateStr = post.schedDate ? new Date(post.schedDate+"T12:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).replace(".","") : "";
             return (
-              <div key={post._id} style={{ marginBottom:12, borderRadius:18, border:"1px solid "+(post._enabled ? B.accent+"30" : B.border), background:B.bgCard, overflow:"hidden", opacity:post._enabled ? 1 : 0.5 }}>
+              <div key={post._id} style={{ marginBottom:14, borderRadius:20, border:"1px solid "+(post._enabled ? B.accent+"25" : B.border), background:B.bgCard, overflow:"hidden", opacity:post._enabled ? 1 : 0.45, transition:"all .2s" }}>
 
-                {/* Post header */}
-                <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", borderBottom:"1px solid "+B.border }}>
-                  <button onClick={() => updatePost("_enabled", !post._enabled)} style={{ width:24, height:24, borderRadius:8, border:post._enabled ? "none" : "2px solid "+B.border, background:post._enabled ? B.accent : "transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                {/* ── Card header with colored accent bar ── */}
+                <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", background:post._enabled ? typeColor+"06" : "transparent", borderBottom:"1px solid "+B.border }}>
+                  <button onClick={() => updatePost("_enabled", !post._enabled)} style={{ width:26, height:26, borderRadius:9, border:post._enabled ? "none" : "2px solid "+B.border, background:post._enabled ? B.accent : "transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
                     {post._enabled && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </button>
-                  <span style={{ fontSize:16 }}>{formatIcon}</span>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <input value={post.title} onChange={e => updatePost("title", e.target.value)} style={{ width:"100%", fontSize:14, fontWeight:700, color:B.text, background:"transparent", border:"none", outline:"none", fontFamily:"inherit", padding:0 }} />
-                    <div style={{ display:"flex", gap:6, marginTop:2 }}>
-                      <span style={{ fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:6, background:typeColor+"15", color:typeColor }}>{post.type === "video" ? "Vídeo" : "Post"}</span>
-                      <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:B.bg, color:B.muted }}>{post.format}</span>
-                      {post.schedDate && <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:B.bg, color:B.muted }}>{new Date(post.schedDate+"T12:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} {post.schedTime}</span>}
-                    </div>
+                    <input value={post.title} onChange={e => updatePost("title", e.target.value)} style={{ width:"100%", fontSize:15, fontWeight:800, color:B.text, background:"transparent", border:"none", outline:"none", fontFamily:"inherit", padding:0, letterSpacing:"-0.2px" }} />
                   </div>
+                  {/* Number badge */}
+                  <span style={{ fontSize:10, fontWeight:700, color:B.muted, background:B.bg, padding:"4px 10px", borderRadius:8, flexShrink:0 }}>{idx+1}/{ipPosts.length}</span>
                 </div>
 
-                {/* Editable fields */}
-                {post._enabled && <div style={{ padding:"12px 14px" }}>
+                {/* ── Meta pills row ── */}
+                <div style={{ display:"flex", gap:6, padding:"10px 16px", flexWrap:"wrap", alignItems:"center" }}>
+                  <span style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8, background:typeColor+"12", color:typeColor, display:"flex", alignItems:"center", gap:4 }}>{formatIcon} {isVideo ? "Vídeo" : "Post"}</span>
+                  <span style={{ fontSize:10, fontWeight:600, padding:"4px 10px", borderRadius:8, background:B.bg, color:B.muted }}>{post.format}</span>
+                  {(post.networks||[]).map(n => <span key={n} style={{ fontSize:10, fontWeight:600, padding:"4px 10px", borderRadius:8, background:n==="Instagram"?"#E1306C10":n==="Facebook"?"#1877F210":B.bg, color:n==="Instagram"?"#E1306C":n==="Facebook"?"#1877F2":B.muted }}>{n}</span>)}
+                  {dateStr && <span style={{ fontSize:10, fontWeight:600, padding:"4px 10px", borderRadius:8, background:B.accent+"10", color:B.accent, marginLeft:"auto" }}>📅 {dateStr} · {post.schedTime}</span>}
+                </div>
+
+                {/* ── Editable fields ── */}
+                {post._enabled && <div style={{ padding:"4px 16px 16px" }}>
                   {/* Schedule row */}
-                  <div style={{ display:"flex", gap:8, marginBottom:10 }}>
-                    <div style={{ flex:1 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>DATA</label><input type="date" value={post.schedDate} onChange={e => updatePost("schedDate", e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
-                    <div style={{ width:90 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>HORA</label><input type="time" value={post.schedTime} onChange={e => updatePost("schedTime", e.target.value)} className="tinput" style={{ fontSize:12 }} /></div>
-                    <div style={{ width:100 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>FORMATO</label><select value={post.format} onChange={e => updatePost("format", e.target.value)} className="tinput" style={{ fontSize:12 }}><option>Feed</option><option>Stories</option><option>Reels</option><option>Carrossel</option></select></div>
+                  <div style={{ display:"flex", gap:8, marginBottom:12, background:B.bg, borderRadius:14, padding:"10px 12px" }}>
+                    <div style={{ flex:1 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>Data</label><input type="date" value={post.schedDate} onChange={e => updatePost("schedDate", e.target.value)} className="tinput" style={{ fontSize:12, background:B.bgCard }} /></div>
+                    <div style={{ width:85 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>Hora</label><input type="time" value={post.schedTime} onChange={e => updatePost("schedTime", e.target.value)} className="tinput" style={{ fontSize:12, background:B.bgCard }} /></div>
+                    <div style={{ width:95 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>Formato</label><select value={post.format} onChange={e => updatePost("format", e.target.value)} className="tinput" style={{ fontSize:12, background:B.bgCard }}><option>Feed</option><option>Stories</option><option>Reels</option><option>Carrossel</option></select></div>
                   </div>
 
-                  <label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>LEGENDA</label>
-                  <textarea value={post.caption} onChange={e => updatePost("caption", e.target.value)} className="tinput" style={{ minHeight:80, resize:"vertical", fontSize:12, lineHeight:1.5, marginBottom:10 }} />
+                  {/* Legenda */}
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Legenda</label>
+                    </div>
+                    <textarea value={post.caption} onChange={e => updatePost("caption", e.target.value)} className="tinput" style={{ minHeight:80, resize:"vertical", fontSize:12, lineHeight:1.6, background:B.bg, borderRadius:12 }} />
+                  </div>
 
-                  <label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>BRIEFING DO DESIGNER</label>
-                  <textarea value={post.designBrief} onChange={e => updatePost("designBrief", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.5, marginBottom:post.scriptOrRoteiro ? 10 : 0 }} />
+                  {/* Briefing */}
+                  <div style={{ marginBottom:post.scriptOrRoteiro ? 12 : 0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.purple||"#8B5CF6"} strokeWidth="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
+                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Briefing do designer</label>
+                    </div>
+                    <textarea value={post.designBrief} onChange={e => updatePost("designBrief", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.6, background:B.bg, borderRadius:12 }} />
+                  </div>
 
-                  {post.scriptOrRoteiro && <>
-                    <label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3 }}>ROTEIRO</label>
-                    <textarea value={post.scriptOrRoteiro} onChange={e => updatePost("scriptOrRoteiro", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.5 }} />
-                  </>}
+                  {/* Roteiro (video only) */}
+                  {post.scriptOrRoteiro && <div>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Roteiro</label>
+                    </div>
+                    <textarea value={post.scriptOrRoteiro} onChange={e => updatePost("scriptOrRoteiro", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.6, background:B.bg, borderRadius:12 }} />
+                  </div>}
                 </div>}
 
               </div>
