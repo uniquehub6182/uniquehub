@@ -18988,7 +18988,8 @@ function Match4BizPage({ onBack, clients, user }) {
    CLIENT GAMIFICATION — Sistema de XP, níveis, missões e conquistas
    ═══════════════════════════════════════════════════════════════════ */
 function ClientMatch4Biz({ onBack, user }) {
-  const [accepted, setAccepted] = useState(false);
+  const [accepted, setAccepted] = useState(() => { try { return localStorage.getItem("uh_m4b_accepted") === "1"; } catch { return false; } });
+  const doAccept = () => { setAccepted(true); try { localStorage.setItem("uh_m4b_accepted", "1"); } catch {} };
   const [tab, setTab] = useState("discover");
   const [credits, setCredits] = useState(10);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -19001,6 +19002,31 @@ function ClientMatch4Biz({ onBack, user }) {
   const [showPayment, setShowPayment] = useState(false);
   const [swipeAnim, setSwipeAnim] = useState(null);
   const { showToast, ToastEl } = useToast();
+  const [realMatches, setRealMatches] = useState([]);
+  const [loadingMatches, setLoadingMatches] = useState(true);
+
+  /* Load real matches from Supabase created by agency */
+  useEffect(() => {
+    if (!supabase || !user?.email) { setLoadingMatches(false); return; }
+    (async () => {
+      try {
+        /* Find this user's client record */
+        const { data: cl } = await supabase.from("clients").select("id, name").eq("contact_email", user.email).maybeSingle();
+        if (!cl) { setLoadingMatches(false); return; }
+        /* Load matches where this client is involved */
+        const { data: m4b } = await supabase.from("match4biz").select("*").or(`client_a_id.eq.${cl.id},client_b_id.eq.${cl.id}`).order("created_at", { ascending: false });
+        if (m4b) {
+          setRealMatches(m4b.map(m => ({
+            ...m,
+            partnerName: m.client_a_id === cl.id ? m.client_b_name : m.client_a_name,
+            partnerId: m.client_a_id === cl.id ? m.client_b_id : m.client_a_id,
+            myRole: m.client_a_id === cl.id ? "a" : "b",
+          })));
+        }
+      } catch(e) { console.warn("[M4B] Load error:", e); }
+      setLoadingMatches(false);
+    })();
+  }, [user?.email]);
 
   const PROFILES = [];
 
@@ -19096,7 +19122,7 @@ function ClientMatch4Biz({ onBack, user }) {
               <p key={i} style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginBottom:6 }}>{i+1}. {t}</p>
             ))}
           </Card>
-          <button onClick={()=>setAccepted(true)} style={{ width:"100%", marginTop:14, marginBottom:20, padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Aceitar e Começar</button>
+          <button onClick={doAccept} style={{ width:"100%", marginTop:14, marginBottom:20, padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Aceitar e Começar</button>
         </div>
       </div>
     );
@@ -19166,7 +19192,25 @@ function ClientMatch4Biz({ onBack, user }) {
 
         {/* DISCOVER */}
         {tab === "discover" && <>
-          {PROFILES.length === 0 ? (
+          {loadingMatches ? (
+            <Card style={{ textAlign:"center", padding:32 }}><p style={{ fontSize:13, color:B.muted }}>Carregando matches...</p></Card>
+          ) : realMatches.length > 0 ? (
+            <div>
+              <p style={{ fontSize:13, fontWeight:600, marginBottom:10 }}>{realMatches.length} match{realMatches.length > 1 ? "es" : ""} da agência</p>
+              {realMatches.map((m,i) => (
+                <Card key={m.id} style={{ marginBottom:8 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <Av name={m.partnerName} sz={48} fs={18} />
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontSize:14, fontWeight:700 }}>{m.partnerName}</p>
+                      <p style={{ fontSize:11, color:B.muted }}>Status: {m.status === "new" ? "Novo" : m.status === "connected" ? "Conectado" : m.status}</p>
+                    </div>
+                    <Tag color={m.status === "connected" ? B.green : B.accent}>{m.status === "connected" ? "Ativo" : "Novo"}</Tag>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : PROFILES.length === 0 ? (
             <Card style={{ textAlign:"center", padding:32, marginTop:8 }}>
               <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -19879,6 +19923,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   }, []);
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
+  const [openArticleId, setOpenArticleId] = useState(null);
   const { showToast, ToastEl } = useToast();
   const [demands, setDemands] = useState([]);
   const [demandsLoaded, setDemandsLoaded] = useState(false);
@@ -20470,8 +20515,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       if (!items.length) return null;
       return <div key="news">
         <SH title="Comunicados" action="Ver todos" onClick={()=>setSub("news")} />
-        {items[0] && <div onClick={()=>setSub("news")} style={{ borderRadius:20, overflow:"hidden", marginBottom:10, position:"relative", height:190, cursor:"pointer" }}><img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)" }} /><span style={{ position:"absolute", top:14, left:14, background:catColor[items[0].cat]||"#6366F1", color:"#fff", fontSize:9, fontWeight:800, padding:"4px 12px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[items[0].cat]||"Geral"}</span><div style={{ position:"absolute", bottom:14, left:14, right:14 }}><p style={{ fontSize:15, fontWeight:800, color:"#fff", lineHeight:1.3 }}>{items[0].title}</p>{items[0].summary&&<p style={{ fontSize:11, color:"rgba(255,255,255,0.7)", marginTop:4, lineHeight:1.4 }}>{items[0].summary}</p>}</div></div>}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>setSub("news")} style={{ borderRadius:16, overflow:"hidden", position:"relative", height:100, cursor:"pointer" }}><img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)" }} /><span style={{ position:"absolute", top:8, left:8, background:catColor[a.cat]||"#6366F1", color:"#fff", fontSize:7, fontWeight:800, padding:"2px 8px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[a.cat]||"Geral"}</span><p style={{ position:"absolute", bottom:8, left:8, right:8, fontSize:11, fontWeight:700, color:"#fff", lineHeight:1.2, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{a.title}</p></div>)}</div>
+        {items[0] && <div onClick={()=>{setOpenArticleId(items[0].id);setSub("news");}} style={{ borderRadius:20, overflow:"hidden", marginBottom:10, position:"relative", height:190, cursor:"pointer" }}><img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.75) 100%)" }} /><span style={{ position:"absolute", top:14, left:14, background:catColor[items[0].cat]||"#6366F1", color:"#fff", fontSize:9, fontWeight:800, padding:"4px 12px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[items[0].cat]||"Geral"}</span><div style={{ position:"absolute", bottom:14, left:14, right:14 }}><p style={{ fontSize:15, fontWeight:800, color:"#fff", lineHeight:1.3 }}>{items[0].title}</p>{items[0].summary&&<p style={{ fontSize:11, color:"rgba(255,255,255,0.7)", marginTop:4, lineHeight:1.4 }}>{items[0].summary}</p>}</div></div>}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{items.slice(1,3).map((a,i) => <div key={a.id||i} onClick={()=>{setOpenArticleId(a.id);setSub("news");}} style={{ borderRadius:16, overflow:"hidden", position:"relative", height:100, cursor:"pointer" }}><img src={a.photo||catPhoto(a.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.7) 100%)" }} /><span style={{ position:"absolute", top:8, left:8, background:catColor[a.cat]||"#6366F1", color:"#fff", fontSize:7, fontWeight:800, padding:"2px 8px", borderRadius:100, textTransform:"uppercase" }}>{catLabel[a.cat]||"Geral"}</span><p style={{ position:"absolute", bottom:8, left:8, right:8, fontSize:11, fontWeight:700, color:"#fff", lineHeight:1.2, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{a.title}</p></div>)}</div>
       </div>;
     }
 
@@ -20757,7 +20802,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
       sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile /> :
       sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /> :
-      sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView /> :
+      sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
