@@ -1902,12 +1902,30 @@ function LoginPage({ onAuth, onClientAuth }) {
         if (data?.user?.id) {
           const extras = { cpf: rCpf, birth: rBirth, social: rSocial, blood: rBlood };
           await supaSetSetting(`profile_extras_${data.user.id}`, JSON.stringify(extras)).catch(() => {});
-          /* Create pending team member for admin approval */
-          await supaCreateMember({
-            name: rName, role: rCargo || "member", email: rEmail, phone: rPhone,
-            since: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),
-            status: "pendente", user_id: data.user.id,
-          }).catch(() => {});
+          /* FORCE status to pendente — trigger may have already created with "offline" */
+          try {
+            /* Try update first (trigger may have auto-created the row) */
+            const { data: updated } = await supabase.from("agency_members").update({ 
+              status: "pendente", name: rName, role: rCargo || "member", email: rEmail, 
+              phone: rPhone, user_id: data.user.id 
+            }).eq("user_id", data.user.id).select();
+            if (!updated?.length) {
+              /* Also try by email */
+              await supabase.from("agency_members").update({ 
+                status: "pendente", name: rName, role: rCargo || "member", 
+                phone: rPhone, user_id: data.user.id 
+              }).eq("email", rEmail).select();
+            }
+            /* If no row exists at all, create one */
+            const { data: check } = await supabase.from("agency_members").select("id").eq("user_id", data.user.id).maybeSingle();
+            if (!check) {
+              await supaCreateMember({
+                name: rName, role: rCargo || "member", email: rEmail, phone: rPhone,
+                since: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),
+                status: "pendente", user_id: data.user.id,
+              });
+            }
+          } catch(e) { console.warn("[Register] agency_members update:", e); }
         }
         /* Link pending invite if exists */
         if (inviteData?.id && data?.user?.id) {
