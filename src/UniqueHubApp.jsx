@@ -19022,11 +19022,11 @@ function ClientMatch4Biz({ onBack, user }) {
         if (!cl) { setLoading(false); return; }
         setMyClient(cl);
         /* Credits from plan */
-        const planCredits = getCreditsForPlan(cl.monthly);
+        const planCredits = getCreditsForPlan(cl.monthly_value);
         /* Check purchased credits */
         try { const extra = parseInt(localStorage.getItem("uh_m4b_credits_" + cl.id) || "0"); setCredits(planCredits + extra); } catch { setCredits(planCredits); }
         /* Load all other active clients */
-        const { data: clients } = await supabase.from("clients").select("id, name, plan, monthly, status, logo_url, contact_name, contact_email, notes, start_date").neq("id", cl.id).eq("status", "ativo");
+        const { data: clients } = await supabase.from("clients").select("*").neq("id", cl.id).eq("status", "ativo");
         if (clients) setAllClients(clients);
         /* Load existing matches */
         const { data: m4b } = await supabase.from("match4biz").select("*").or("client_a_id.eq." + cl.id + ",client_b_id.eq." + cl.id);
@@ -19057,7 +19057,7 @@ function ClientMatch4Biz({ onBack, user }) {
       if (!isUnlimited) {
         const newCredits = credits - 10;
         setCredits(newCredits);
-        try { localStorage.setItem("uh_m4b_credits_" + myClient.id, String(Math.max(0, newCredits - getCreditsForPlan(myClient.monthly)))); } catch {}
+        try { localStorage.setItem("uh_m4b_credits_" + myClient.id, String(Math.max(0, newCredits - getCreditsForPlan(myClient.monthly_value)))); } catch {}
       }
       setCurrentIdx(i => i + 1);
       setSwipeAnim(null);
