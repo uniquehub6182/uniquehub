@@ -19465,7 +19465,7 @@ function ClientMatch4Biz({ onBack, user }) {
   if (!accepted) return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
-      <Head title="Match4Biz" onBack={onBack} />
+      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
         <div style={{ textAlign:"center", padding:"24px 0 20px" }}>
           <div style={{ width:72, height:72, borderRadius:22, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"m4b-float 3s ease-in-out infinite" }}>
@@ -19695,13 +19695,15 @@ function ClientMatch4Biz({ onBack, user }) {
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       {ToastEl}
       {BuyOverlay}
-      <Head title="Match4Biz" onBack={onBack} right={
-        <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 14px", borderRadius:12, background:noCredits?"#EF444420":B.bg, border:"1.5px solid "+(noCredits?"#EF444440":B.border), cursor:"pointer", fontFamily:"inherit" }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          <span style={{ fontSize:12, fontWeight:800, color:noCredits?"#EF4444":B.accent }}>{isUnlimited ? "∞" : credits}</span>
-        </button>
-      } />
+      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
+        {/* Credits pill */}
+        <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:8 }}>
+          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 14px", borderRadius:12, background:noCredits?"#EF444420":B.bg, border:"1.5px solid "+(noCredits?"#EF444440":B.border), cursor:"pointer", fontFamily:"inherit" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span style={{ fontSize:12, fontWeight:800, color:noCredits?"#EF4444":B.accent }}>{isUnlimited ? "∞" : credits}</span>
+          </button>
+        </div>
         {/* Tabs */}
         <div style={{ display:"flex", gap:0, marginBottom:16, background:B.bgCard, borderRadius:14, padding:3 }}>
           {[{k:"discover",l:"Descobrir"},{k:"matches",l:"Conexões ("+mutualMatches.length+")"}].map(t => (
@@ -19952,7 +19954,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
   return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
-      <Head title="Growth Score" onBack={onBack} />
+      <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
         <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
           {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
@@ -20806,7 +20808,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
-      <Head title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} />
+      <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
         <Card style={{ padding:0, overflow:"hidden" }}>
           <div style={{ background:B.dark||"#111", padding:"20px", color:"#fff" }}>
