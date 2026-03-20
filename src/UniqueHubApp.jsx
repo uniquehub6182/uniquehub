@@ -7137,11 +7137,12 @@ Exemplo de um item:
 
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
-    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, display:"flex", flexDirection:"column", overflow:"hidden", alignItems:"center" }}>
+      <div style={{ width:"100%", maxWidth:860, display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+B.border, flexShrink:0 }}>
         <button onClick={resetImportPlan} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-        <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Importar Planejamento</p><p style={{ fontSize:11, color:B.muted }}>Passo {ipStep} de 3</p></div>
+        <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Importe com a Munique A.I</p><p style={{ fontSize:11, color:B.muted }}>Passo {ipStep} de 3</p></div>
         {ipStep === 3 && <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 18px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>{ipCreating ? `Criando ${ipCreated}/${ipPosts.filter(p=>p._enabled).length}...` : `Criar ${ipPosts.filter(p=>p._enabled).length} posts`}</button>}
       </div>
       {/* Progress bar */}
@@ -7287,6 +7288,7 @@ Exemplo de um item:
           })}
           <div style={{ height:80 }} />
         </>}
+      </div>
       </div>
     </div>
   ) : null;
@@ -8638,8 +8640,8 @@ Exemplo de um item:
       </div>}
       {!isContentDesktop && !contained && canAccessFn("content.create") && <div style={{ padding:"6px 16px 0" }}>
         <button onClick={() => setImportPlan(true)} style={{ width:"100%", padding:"10px 16px", borderRadius:12, background:B.accent+"10", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-          Importar Planejamento (IA)
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Importe com a Munique A.I
         </button>
       </div>}
 
@@ -8670,11 +8672,11 @@ Exemplo de um item:
         <div style={{ display:"flex", gap:6, flexShrink:0 }}>
         <button onClick={() => { setQuickPub(true); const cc = CDATA.filter(c=>c.socials?.facebook?.oauth||c.socials?.instagram?.oauth); if(cc.length) setQpForm(p=>({...p,client:cc[0].name})); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", flexShrink:0 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Publicar
+          Publicação Rápida
         </button>
         <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent+"15", border:"1.5px solid "+B.accent+"30", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent, flexShrink:0 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-          Importar
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Munique A.I
         </button>
         </div>
       </div>}
