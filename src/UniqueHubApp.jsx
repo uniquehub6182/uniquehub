@@ -21174,7 +21174,13 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
 
   /* Create a content demand from a news article */
   const [newsToPostLoading, setNewsToPostLoading] = useState(false);
+  const [newsToPostArticle, setNewsToPostArticle] = useState(null); /* article pending client selection */
+  const [newsToPostClient, setNewsToPostClient] = useState(null);
   const handleCreatePostFromNews = async (article) => {
+    /* Step 1: Show client picker */
+    setNewsToPostArticle(article);
+  };
+  const executeCreatePostFromNews = async (article, clientId) => {
     if (!article) return;
     setNewsToPostLoading(true);
     const body = (article.body || "").replace(/^__PHOTO__:[^\n]*\n/, "");
@@ -21221,10 +21227,11 @@ IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos vi
     if (!ideaText) ideaText = `📰 Baseado na notícia: "${title}"\n\n${summary.substring(0, 200)}...\n\nFonte: ${source}${article.sourceUrl ? " — " + article.sourceUrl : ""}`;
     if (!caption) caption = `${title}\n\n${summary.substring(0, 300)}...\n\nFonte: ${source}`;
     if (!hashtags) hashtags = tags ? tags.split(", ").map(t => "#" + t.replace(/\s+/g, "")).join(" ") : "#marketing #digital";
+    const selClient = sharedClients.find(c => (c.supaId || c.id) === clientId);
     const newDemand = {
       title: title.length > 60 ? title.substring(0, 57) + "..." : title,
       type: "social", stage: "idea", format: "Feed", network: "Instagram, Facebook",
-      client: "", priority: "média", assignees: [],
+      client: selClient?.name || "", client_id: clientId, priority: "média", assignees: [],
       createdAt: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
       steps: {
         idea: { text: ideaText, by: user?.name || "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
@@ -21235,7 +21242,8 @@ IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos vi
     const result = await supaCreateDemand(newDemand, null);
     setNewsToPostLoading(false);
     if (result?.data) {
-      mainToast("Post completo gerado a partir da notícia ✓");
+      setNewsToPostArticle(null); setNewsToPostClient(null);
+      mainToast("Post criado para " + (selClient?.name || "cliente") + " ✓");
       goTab("content", result.data.id);
     } else { mainToast("Erro ao criar demanda"); }
   };
@@ -21245,6 +21253,27 @@ IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos vi
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background: B.bg, color: B.text }}>
       {ToastEl}
+      {/* ── NEWS TO POST: CLIENT PICKER ── */}
+      {newsToPostArticle && !newsToPostLoading && <div style={{position:"fixed",inset:0,zIndex:99997,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)"}} onClick={()=>{setNewsToPostArticle(null);setNewsToPostClient(null);}}>
+        <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:B.bgCard,borderRadius:"24px 24px 0 0",padding:"20px 20px calc(20px + env(safe-area-inset-bottom,0px))",maxHeight:"70vh",display:"flex",flexDirection:"column"}}>
+          <div style={{width:40,height:4,borderRadius:2,background:B.border,margin:"0 auto 16px"}} />
+          <h3 style={{fontSize:18,fontWeight:800,marginBottom:4}}>Criar post a partir da notícia</h3>
+          <p style={{fontSize:12,color:B.muted,marginBottom:4}}>"{newsToPostArticle.title?.substring(0,60)}{newsToPostArticle.title?.length>60?"...":""}"</p>
+          <p style={{fontSize:13,fontWeight:600,marginBottom:10,marginTop:10}}>Para qual cliente?</p>
+          <div style={{flex:1,overflowY:"auto",marginBottom:12}}>
+            {(sharedClients||[]).filter(c=>c.status==="ativo"||!c.status).map(c=>{
+              const sel = newsToPostClient === (c.supaId||c.id);
+              return <button key={c.supaId||c.id} onClick={()=>setNewsToPostClient(c.supaId||c.id)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 14px",borderRadius:14,border:sel?"2px solid "+B.accent:"1.5px solid "+B.border,background:sel?B.accent+"08":"transparent",cursor:"pointer",fontFamily:"inherit",textAlign:"left",marginBottom:6}}>
+                <Av name={c.name} src={c.logo||c.logo_url} sz={36} fs={14} />
+                <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:sel?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</p>{c.plan&&<p style={{fontSize:10,color:B.muted}}>Plano {c.plan}</p>}</div>
+                {sel && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>;
+            })}
+            {(sharedClients||[]).length===0 && <p style={{textAlign:"center",color:B.muted,padding:20,fontSize:12}}>Nenhum cliente cadastrado</p>}
+          </div>
+          <button disabled={!newsToPostClient} onClick={()=>{if(newsToPostClient)executeCreatePostFromNews(newsToPostArticle,newsToPostClient);}} style={{width:"100%",padding:"14px 0",borderRadius:14,background:newsToPostClient?B.accent:B.border,border:"none",cursor:newsToPostClient?"pointer":"not-allowed",fontFamily:"inherit",fontSize:15,fontWeight:700,color:newsToPostClient?"#0D0D0D":B.muted}}>Gerar Post com IA</button>
+        </div>
+      </div>}
       {/* ── NEWS TO POST LOADING OVERLAY ── */}
       {newsToPostLoading && <div style={{position:"fixed",inset:0,zIndex:99998,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(6px)"}}><div style={{background:B.bgCard,borderRadius:20,padding:"36px 40px",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",maxWidth:340}}><div style={{width:48,height:48,borderRadius:24,background:"linear-gradient(135deg, #6366F1, #8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",animation:"spin 2s linear infinite"}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div><p style={{fontSize:16,fontWeight:800,color:B.text}}>Transformando notícia em post</p><p style={{fontSize:12,color:B.muted,marginTop:8,lineHeight:1.5}}>Munique A.I está gerando legenda, hashtags e briefing para o designer...</p><div style={{display:"flex",justifyContent:"center",gap:6,marginTop:16}}><span style={{width:8,height:8,borderRadius:4,background:"#6366F1",animation:"bounce 1.4s ease-in-out infinite"}}></span><span style={{width:8,height:8,borderRadius:4,background:"#8B5CF6",animation:"bounce 1.4s ease-in-out .2s infinite"}}></span><span style={{width:8,height:8,borderRadius:4,background:"#A78BFA",animation:"bounce 1.4s ease-in-out .4s infinite"}}></span></div></div></div>}
       {/* ── PROFILE COMPLETION POPUP ── */}
