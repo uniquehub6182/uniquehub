@@ -19244,86 +19244,87 @@ function ClientMatch4Biz({ onBack, user }) {
           </div>
         ) : tab === "discover" ? (<>
           {available.length > 0 && current ? (
-            <div style={{ position:"relative", display:"flex", flexDirection:"column", justifyContent:"center", minHeight:"calc(100vh - 160px)" }}>
+            <div style={{ position:"relative", overflow:"hidden", borderRadius:24, minHeight:"calc(100vh - 180px)" }}>
               {/* ═══ THE CARD ═══ */}
               <div className="m4b-card" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{
-                background:B.bgCard, border:"1px solid "+B.border,
-                transform: swipeAnim==="like" ? "translateX(120px) rotate(10deg) scale(0.92)" : swipeAnim==="pass" ? "translateX(-120px) rotate(-10deg) scale(0.92)" : dragX ? `translateX(${dragX}px) rotate(${dragX*0.05}deg)` : "none",
-                opacity: swipeAnim ? 0.3 : 1,
-                transition: swipeAnim || !dragX ? "all .4s cubic-bezier(0.34,1.56,0.64,1)" : "none",
+                background:B.bgCard, border:"1px solid "+B.border, minHeight:"calc(100vh - 180px)", display:"flex", flexDirection:"column",
+                transform: swipeAnim==="like" ? "translateX(110%) rotate(6deg)" : swipeAnim==="pass" ? "translateX(-110%) rotate(-6deg)" : dragX ? `translateX(${dragX}px) rotate(${dragX*0.03}deg)` : "none",
+                opacity: swipeAnim ? 0 : 1,
+                transition: swipeAnim ? "all .35s ease-in" : !dragX ? "all .3s ease" : "none",
               }}>
-                {/* Top section with gradient bg */}
-                <div style={{ height:140, background:"linear-gradient(135deg, "+getColor(current.name)+"15, "+getColor(current.name)+"05, "+B.bgCard+")", position:"relative" }}>
-                  {/* Swipe indicator overlays */}
-                  {dragX > 40 && <div style={{ position:"absolute", top:16, left:16, background:B.accent+"20", border:"2px solid "+B.accent, borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(-15deg)" }}><span style={{ fontSize:14, fontWeight:900, color:B.accent }}>MATCH 💚</span></div>}
-                  {dragX < -40 && <div style={{ position:"absolute", top:16, right:16, background:"#EF444420", border:"2px solid #EF4444", borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(15deg)" }}><span style={{ fontSize:14, fontWeight:900, color:"#EF4444" }}>PULAR ✕</span></div>}
+                {/* Swipe indicator overlays */}
+                {dragX > 40 && <div style={{ position:"absolute", top:20, left:20, background:B.accent+"20", border:"2px solid "+B.accent, borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(-12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:B.accent }}>MATCH 💚</span></div>}
+                {dragX < -40 && <div style={{ position:"absolute", top:20, right:20, background:"#EF444420", border:"2px solid #EF4444", borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:"#EF4444" }}>PULAR ✕</span></div>}
 
-                  {/* Avatar centered at bottom of gradient */}
-                  <div style={{ position:"absolute", bottom:-44, left:"50%", transform:"translateX(-50%)" }}>
-                    <div style={{ position:"relative", width:100, height:100 }}>
-                      {/* Mini score ring */}
-                      <svg width="100" height="100" viewBox="0 0 100 100" style={{ position:"absolute", top:0, left:0, transform:"rotate(-90deg)" }}>
-                        <circle cx="50" cy="50" r="42" fill="none" stroke={B.border} strokeWidth="3" />
-                        <circle cx="50" cy="50" r="42" fill="none" stroke={B.accent} strokeWidth="3" strokeDasharray={2*Math.PI*42} strokeDashoffset={2*Math.PI*42 - (getScore(current.id)/100)*2*Math.PI*42} strokeLinecap="round" />
-                      </svg>
-                      <div style={{ position:"absolute", top:8, left:8, width:84, height:84, borderRadius:26, overflow:"hidden", background:B.bg }}>
-                        {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
-                      </div>
+                {/* Top gradient */}
+                <div style={{ height:100, background:"linear-gradient(180deg, "+getColor(current.name)+"12, "+B.bgCard+")", flexShrink:0 }} />
+
+                {/* Profile photo */}
+                <div style={{ display:"flex", justifyContent:"center", marginTop:-50, position:"relative", zIndex:2 }}>
+                  <div style={{ position:"relative" }}>
+                    <div style={{ width:110, height:110, borderRadius:30, overflow:"hidden", background:B.bg, border:"4px solid "+B.bgCard, boxShadow:"0 4px 20px rgba(0,0,0,0.08)" }}>
+                      {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
                     </div>
+                    {/* Score badge */}
+                    <div style={{ position:"absolute", bottom:-6, right:-6, background:B.accent, color:"#0D0D0D", fontSize:12, fontWeight:900, padding:"4px 10px", borderRadius:12, boxShadow:"0 2px 8px rgba(0,0,0,0.12)", minWidth:28, textAlign:"center" }}>{getScore(current.id)}</div>
                   </div>
                 </div>
 
-                {/* Info section */}
-                <div style={{ textAlign:"center", padding:"52px 20px 10px" }}>
-                  <h3 style={{ fontSize:22, fontWeight:900, marginBottom:2, color:B.text }}>{current.name}</h3>
-                  {current.contact_name && <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{current.contact_name}</p>}
+                {/* Name + info */}
+                <div style={{ textAlign:"center", padding:"16px 24px 8px", flex:1, display:"flex", flexDirection:"column" }}>
+                  <h3 style={{ fontSize:24, fontWeight:900, marginBottom:2, color:B.text, letterSpacing:"-0.3px" }}>{current.name}</h3>
                   <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:4 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
-                </div>
 
-                {/* Stats row */}
-                <div style={{ display:"flex", justifyContent:"center", gap:24, padding:"12px 20px", marginBottom:4 }}>
-                  <div style={{ textAlign:"center" }}>
-                    <p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{getScore(current.id)}</p>
-                    <p style={{ fontSize:9, color:B.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Score</p>
+                  {/* Stats pills */}
+                  <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:14 }}>
+                    <div style={{ padding:"6px 14px", borderRadius:20, background:B.accent+"12", display:"flex", alignItems:"center", gap:5 }}>
+                      <span style={{ fontSize:13, fontWeight:800, color:B.accent }}>{getScore(current.id)}</span>
+                      <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Score</span>
+                    </div>
+                    <div style={{ padding:"6px 14px", borderRadius:20, background:B.bg, display:"flex", alignItems:"center", gap:5 }}>
+                      <span style={{ fontSize:13, fontWeight:800, color:B.text }}>{getRank(current.id)}º</span>
+                      <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Rank</span>
+                    </div>
+                    {current.contact_name && <div style={{ padding:"6px 14px", borderRadius:20, background:B.bg, display:"flex", alignItems:"center", gap:5 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{current.contact_name.split(" ")[0]}</span>
+                    </div>}
                   </div>
-                  <div style={{ width:1, height:28, background:B.accent+"15", alignSelf:"center" }} />
-                  <div style={{ textAlign:"center" }}>
-                    <p style={{ fontSize:18, fontWeight:900, color:B.text }}>{getRank(current.id)}º</p>
-                    <p style={{ fontSize:9, color:B.muted, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Rank</p>
+
+                  {/* Bio */}
+                  <div style={{ marginTop:16, flex:1 }}>
+                    {current.notes ? <>
+                      <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8 }}>Sobre</p>
+                      <p style={{ fontSize:13, color:B.text, lineHeight:1.7, opacity:0.75 }}>{current.notes.length > 300 ? current.notes.substring(0,300)+"..." : current.notes}</p>
+                    </> : <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, fontStyle:"italic", marginTop:8 }}>Sem descrição disponível</p>}
                   </div>
                 </div>
 
-                {/* Description / Bio */}
-                {current.notes ? <div style={{ padding:"4px 20px 12px" }}>
-                  <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:6, textAlign:"center" }}>Sobre a empresa</p>
-                  <p style={{ fontSize:13, color:B.text, lineHeight:1.6, textAlign:"center", opacity:0.8 }}>{current.notes.length > 250 ? current.notes.substring(0,250)+"..." : current.notes}</p>
-                </div> : <div style={{ padding:"4px 20px 12px" }}>
-                  <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, textAlign:"center", fontStyle:"italic" }}>Esta empresa ainda não adicionou uma descrição</p>
-                </div>}
-
-                {/* Action buttons */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20, padding:"10px 20px 6px" }}>
-                  <button onClick={handlePass} className="m4b-action-btn" style={{ width:56, height:56, borderRadius:"50%", background:B.bg, border:"2px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                  <button onClick={handleLike} className="m4b-action-btn m4b-score-ring" style={{ width:64, height:64, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                  </button>
+                {/* Action buttons - at bottom */}
+                <div style={{ padding:"12px 24px 10px", flexShrink:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:24 }}>
+                    <button onClick={handlePass} className="m4b-action-btn" style={{ width:58, height:58, borderRadius:"50%", background:B.bg, border:"2px solid "+(B.red||"#EF4444")+"25", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    <button onClick={handleLike} className="m4b-action-btn" style={{ width:66, height:66, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 20px "+B.accent+"40" }}>
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                    </button>
+                  </div>
+                  <p style={{ textAlign:"center", fontSize:10, color:B.muted, marginTop:8 }}>{available.length} empresa{available.length > 1 ? "s" : ""} · {isUnlimited ? "∞" : credits} créditos</p>
+                  <p style={{ textAlign:"center", fontSize:9, color:B.muted, paddingBottom:6, opacity:0.4, marginTop:4 }}>← pular · match →</p>
                 </div>
-                <p style={{ textAlign:"center", fontSize:10, color:B.muted, padding:"6px 0 10px" }}>{available.length} empresa{available.length > 1 ? "s" : ""} disponíve{available.length > 1 ? "is" : "l"} · {isUnlimited ? "∞ créditos" : credits + " créditos"}</p>
-                <p style={{ textAlign:"center", fontSize:9, color:B.muted, paddingBottom:14, opacity:0.5 }}>← Arraste para pular · Arraste para match →</p>
               </div>
 
               {/* ═══ NO CREDITS FULL OVERLAY ═══ */}
               {noCredits && (
-                <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(8px)", borderRadius:28, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:10, padding:24 }}>
-                  <div style={{ width:56, height:56, borderRadius:18, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16, border:"2px solid "+B.border }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <div style={{ position:"absolute", inset:0, background:B.bg+"E8", backdropFilter:"blur(10px)", borderRadius:24, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:10, padding:24 }}>
+                  <div style={{ width:60, height:60, borderRadius:20, background:B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18, border:"2px solid "+B.border, boxShadow:"0 4px 16px rgba(0,0,0,0.06)" }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                   </div>
-                  <h4 style={{ fontSize:18, fontWeight:900, color:B.text, marginBottom:4 }}>Créditos esgotados</h4>
-                  <p style={{ fontSize:12, color:B.muted, textAlign:"center", lineHeight:1.5, marginBottom:20, maxWidth:240 }}>Compre mais créditos ou aguarde o próximo ciclo de pagamento para renovar</p>
-                  <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"14px 36px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:10 }}>Comprar créditos</button>
-                  <button onClick={() => showToast("Créditos renovam no próximo ciclo")} style={{ padding:"10px 20px", background:"transparent", border:"1.5px solid "+B.border, borderRadius:12, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>Aguardar renovação</button>
+                  <h4 style={{ fontSize:20, fontWeight:900, color:B.text, marginBottom:6 }}>Créditos esgotados</h4>
+                  <p style={{ fontSize:13, color:B.muted, textAlign:"center", lineHeight:1.6, marginBottom:24, maxWidth:260 }}>Compre mais créditos ou aguarde o próximo ciclo de pagamento para renovar</p>
+                  <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"15px 44px", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", boxShadow:"0 4px 16px "+B.accent+"40" }}>Comprar créditos</button>
+                  <button onClick={() => showToast("Créditos renovam no próximo ciclo")} style={{ padding:"12px 24px", marginTop:12, background:"transparent", border:"1.5px solid "+B.border, borderRadius:14, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Aguardar renovação</button>
                 </div>
               )}
             </div>
