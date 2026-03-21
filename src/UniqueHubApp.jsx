@@ -2638,6 +2638,173 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     if (!user?.id) return;
     supaGetActiveCheckin(user.id).then(c => { if (c) setActiveCheckin(c); });
   }, [user?.id]);
+
+  /* ═══ RADAR DE TENDÊNCIAS ═══ */
+  const [radarTrends, setRadarTrends] = useState([]);
+  const [radarLoading, setRadarLoading] = useState(false);
+  const [radarLoaded, setRadarLoaded] = useState(false);
+  const [radarLastFetch, setRadarLastFetch] = useState(null);
+
+  /* Load cached trends on mount */
+  useEffect(() => {
+    supaGetSetting("agency_radar_trends").then(v => {
+      if (v) try {
+        const d = JSON.parse(v);
+        setRadarTrends(d.trends || []);
+        setRadarLastFetch(d.ts || null);
+        setRadarLoaded(true);
+      } catch {}
+    });
+  }, []);
+
+  /* Fetch fresh trends via AI + web search */
+  const fetchRadarTrends = async () => {
+    setRadarLoading(true);
+    try {
+      const keys = await supaGetAIKeys();
+      const clientSegments = [...new Set(CDATA.filter(c => c.segment).map(c => c.segment))];
+      const clientNames = CDATA.slice(0, 15).map(c => `${c.name}${c.segment ? " ("+c.segment+")" : ""}`).join(", ");
+
+      const prompt = `Você é um analista de tendências digitais brasileiro. Busque na web as tendências, memes virais, e notícias mais relevantes que estão acontecendo AGORA no Brasil e no mundo.
+
+CLIENTES DA AGÊNCIA (para personalizar sugestões):
+${clientNames}
+
+SEGMENTOS DOS CLIENTES: ${clientSegments.join(", ") || "Diversos"}
+
+BUSQUE E RETORNE EXATAMENTE 8-12 tendências, divididas em:
+- 3-4 MEMES/VIRAIS: O que está viralizando nas redes sociais brasileiras agora (TikTok, Instagram, Twitter/X). Memes, challenges, áudios, trends.
+- 3-4 NOTÍCIAS: Notícias relevantes para marketing digital, negócios, tecnologia, ou para os segmentos dos clientes.
+- 2-4 OPORTUNIDADES: Datas comemorativas próximas, eventos, ou momentos culturais que podem ser aproveitados para conteúdo.
+
+Para CADA item, retorne um JSON com:
+- id: número sequencial
+- type: "meme", "news" ou "opportunity"
+- title: título curto e chamativo (max 60 chars)
+- description: descrição de 2-3 linhas explicando a trend
+- relevance: por que isso é relevante para marketing/social media (1-2 linhas)
+- suggestedClients: array com nomes dos clientes da lista acima que mais se beneficiariam (1-3 nomes)
+- postIdea: ideia concreta de como transformar isso em post (1-2 linhas)
+- urgency: "alta" (vai passar rápido), "média" (1-2 semanas) ou "baixa" (tema duradouro)
+- source: de onde veio a informação (rede social, portal, etc)
+
+RESPONDA APENAS com array JSON válido, sem markdown, sem backticks, sem explicação.`;
+
+      let aiText = "";
+      if (keys?.claude_key) {
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, tools: [{ type: "web_search_20250305", name: "web_search" }], messages: [{ role: "user", content: prompt }] })
+        });
+        const d = await r.json();
+        aiText = (d?.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+      } else if (keys?.openai_key) {
+        const r = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + keys.openai_key },
+          body: JSON.stringify({ model: "gpt-4o", max_tokens: 4000, messages: [{ role: "system", content: "Você tem acesso à web. Busque informações atuais." }, { role: "user", content: prompt }] })
+        });
+        const d = await r.json();
+        aiText = d?.choices?.[0]?.message?.content || "";
+      } else if (keys?.gemini_key) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + keys.gemini_key, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 4000 }, tools: [{ google_search: {} }] })
+        });
+        const d = await r.json();
+        aiText = d?.candidates?.[0]?.content?.parts?.filter(p => p.text).map(p => p.text).join("\n") || "";
+      } else { setRadarLoading(false); return; }
+
+      /* Parse */
+      let trends = [];
+      try {
+        const clean = aiText.replace(/```json|```/g, "").trim();
+        const s = clean.indexOf("["), e = clean.lastIndexOf("]");
+        if (s !== -1 && e !== -1) trends = JSON.parse(clean.substring(s, e + 1));
+        else trends = JSON.parse(clean);
+      } catch(e) { console.error("Radar parse:", e); }
+
+      if (trends.length > 0) {
+        const ts = new Date().toISOString();
+        setRadarTrends(trends);
+        setRadarLastFetch(ts);
+        setRadarLoaded(true);
+        await supaSetSetting("agency_radar_trends", JSON.stringify({ trends, ts }));
+      }
+    } catch(e) { console.error("Radar fetch:", e); }
+    setRadarLoading(false);
+  };
+
+  /* Auto-refresh if last fetch > 6 hours ago */
+  useEffect(() => {
+    if (radarLoaded && radarLastFetch) {
+      const age = Date.now() - new Date(radarLastFetch).getTime();
+      if (age > 6 * 3600000) fetchRadarTrends();
+    }
+  }, [radarLoaded]);
+
+  /* Radar UI component */
+  const typeEmoji = { meme:"🔥", news:"📰", opportunity:"📅" };
+  const typeLabel = { meme:"Viral", news:"Notícia", opportunity:"Oportunidade" };
+  const typeColor = { meme:"#EC4899", news:"#3B82F6", opportunity:"#10B981" };
+  const urgencyLabel = { alta:"⚡ Urgente", media:"📌 Médio prazo", baixa:"🗓️ Duradouro", "média":"📌 Médio prazo" };
+
+  const RadarSection = ({ compact }) => (
+    <div>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:compact?8:14 }}>
+        {!compact && <div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:32, height:32, borderRadius:10, background:"linear-gradient(135deg, #EC4899, #8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
+            </div>
+            <div><p style={{ fontSize:16, fontWeight:800, color:B.text }}>Radar de Tendências</p><p style={{ fontSize:11, color:B.muted }}>{radarLastFetch ? "Atualizado " + new Date(radarLastFetch).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "Não carregado ainda"}</p></div>
+          </div>
+        </div>}
+        <button onClick={fetchRadarTrends} disabled={radarLoading} style={{ display:"flex", alignItems:"center", gap:5, padding:compact?"5px 10px":"7px 14px", borderRadius:10, background:radarLoading?B.border:"linear-gradient(135deg, #EC4899, #8B5CF6)", border:"none", cursor:radarLoading?"wait":"pointer", fontFamily:"inherit", fontSize:compact?10:11, fontWeight:700, color:"#fff" }}>
+          {radarLoading ? <><div style={{ width:12, height:12, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> Buscando...</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> {radarTrends.length > 0 ? "Atualizar" : "Buscar tendências"}</>}
+        </button>
+      </div>
+
+      {/* Trend cards */}
+      {radarTrends.length === 0 && !radarLoading && (
+        <div style={{ textAlign:"center", padding:compact?16:30, background:B.bgCard, borderRadius:16, border:"1px solid "+B.border }}>
+          <p style={{ fontSize:28, marginBottom:8 }}>🌐</p>
+          <p style={{ fontSize:13, fontWeight:700, color:B.text }}>Nenhuma tendência carregada</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em "Buscar tendências" para a IA rastrear o que está em alta</p>
+        </div>
+      )}
+      {radarTrends.map((t, i) => {
+        const tc = typeColor[t.type] || "#8B5CF6";
+        return (
+          <div key={t.id || i} style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:compact?"10px 12px":"14px 16px", marginBottom:compact?6:10, borderLeft:"3px solid "+tc }}>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:6 }}>
+              <span style={{ fontSize:compact?14:18 }}>{typeEmoji[t.type] || "📌"}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:2 }}>
+                  <span style={{ fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:6, background:tc+"15", color:tc }}>{typeLabel[t.type]||"Trend"}</span>
+                  <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:B.bg, color:B.muted }}>{urgencyLabel[t.urgency]||"📌"}</span>
+                </div>
+                <p style={{ fontSize:compact?12:14, fontWeight:800, color:B.text, lineHeight:1.3 }}>{t.title}</p>
+              </div>
+            </div>
+            {!compact && <>
+              <p style={{ fontSize:12, color:B.muted, lineHeight:1.5, marginBottom:6 }}>{t.description}</p>
+              {t.postIdea && <div style={{ background:B.accent+"08", borderRadius:10, padding:"8px 10px", marginBottom:6 }}>
+                <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:0.5, marginBottom:2 }}>💡 Ideia de post</p>
+                <p style={{ fontSize:11, color:B.text, lineHeight:1.4 }}>{t.postIdea}</p>
+              </div>}
+              {t.suggestedClients?.length > 0 && <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:4 }}>
+                <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Para:</span>
+                {t.suggestedClients.map((c,j) => <span key={j} style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:"#8B5CF610", color:"#8B5CF6" }}>{c}</span>)}
+              </div>}
+            </>}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+
   useEffect(() => {
     if (!activeCheckin?.check_in_at) { setCheckinElapsed(0); return; }
     const calc = () => Math.floor((Date.now() - new Date(activeCheckin.check_in_at).getTime()) / 1000);
@@ -3032,6 +3199,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       ideas:{l:"Ideias",icon:"ideas"},
       social:{l:"Redes Sociais",icon:"social"},
       drive:{l:"Drive / Nuvem",icon:"drive"},
+      radar:{l:"Radar de Tendências",icon:"radar"},
     };
     const dpIco = (k,sz=16,clr="#1A1D23") => {
       const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
@@ -3043,6 +3211,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         ai:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
         content:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
         drive:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M22 12h-6l-2 3H8l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>,
+        radar:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>,
       };
       return p[k]||p.content;
     };
@@ -3165,6 +3334,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
+      if(pk==="radar") return phoneFrame("Radar de Tendências","radar",noop,<RadarSection compact />);
       if(pk==="drive") {
         const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
         const isConnected = driveUrl && (driveType==="gdrive"||driveType==="onedrive");
