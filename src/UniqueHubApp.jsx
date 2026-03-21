@@ -3429,7 +3429,37 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
-      if(pk==="radar") return phoneFrame("Radar","radar",()=>goSub("radar"),<RadarPage onBack={null} clients={CDATA} user={user} demands={demands} setDemands={setDemands||noop} forceMobile />);
+      if(pk==="radar") {
+        /* Mini radar inside phoneFrame — no modals, just compact trend list */
+        const _tc = {meme:"#EC4899",news:"#3B82F6",opportunity:"#10B981"};
+        const _te = {meme:"🔥",news:"📰",opportunity:"📅"};
+        const _tl = {meme:"Viral",news:"Notícia",opportunity:"Oportunidade"};
+        const radarCache = useRef([]);
+        const [radarMiniLoaded, setRadarMiniLoaded] = useState(false);
+        if (!radarMiniLoaded) { supaGetSetting("agency_radar_v3").then(v => { try { if(v){radarCache.current=JSON.parse(v).trends||[];} } catch {} setRadarMiniLoaded(true); }); }
+        const items = radarCache.current.slice(0,6);
+        return phoneFrame("Radar","radar",()=>goSub("radar"),
+          <div style={{padding:"12px",height:"100%",overflowY:"auto"}}>
+            {items.length === 0 ? (
+              <div style={{textAlign:"center",padding:"40px 20px"}}>
+                <p style={{fontSize:28,marginBottom:8}}>🌐</p>
+                <p style={{fontSize:13,fontWeight:700}}>Radar vazio</p>
+                <p style={{fontSize:11,color:B.muted,marginTop:4}}>Abra a página completa para buscar tendências</p>
+                <button onClick={()=>goSub("radar")} style={{marginTop:12,padding:"10px 20px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Abrir Radar</button>
+              </div>
+            ) : items.map((t,i) => (
+              <div key={i} onClick={()=>goSub("radar")} style={{padding:"10px 12px",borderRadius:12,border:"1px solid "+B.border,borderLeft:"3px solid "+(_tc[t.type]||"#8B5CF6"),marginBottom:6,cursor:"pointer",background:B.bgCard}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                  <span style={{fontSize:12}}>{_te[t.type]||"📌"}</span>
+                  <span style={{fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:6,background:(_tc[t.type]||"#8B5CF6")+"15",color:_tc[t.type]||"#8B5CF6"}}>{_tl[t.type]||"Trend"}</span>
+                  {t.platforms?.slice(0,2).map((p,j)=><span key={j} style={{fontSize:8,color:B.muted}}>{p}</span>)}
+                </div>
+                <p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{t.title}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
       if(pk==="drive") {
         const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
         const isConnected = driveUrl && (driveType==="gdrive"||driveType==="onedrive");
