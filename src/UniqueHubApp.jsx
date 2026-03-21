@@ -22356,17 +22356,25 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     let caption = "", hashtags = "", ideaText = "";
     try {
       const keys = await supaGetAIKeys();
-      const prompt = `Você é um social media expert brasileiro. Com base nesta notícia, crie um post completo para Instagram/Facebook.
+      const prompt = `Você é um social media brasileiro de verdade. Transforme esta notícia em um post para Instagram/Facebook que pareça escrito por uma pessoa real, NÃO por IA.
 
 NOTÍCIA: "${title}"
-RESUMO: ${summary}
-TAGS: ${tags}
+CONTEÚDO: ${summary}
 FONTE: ${source}
 
-Responda EXATAMENTE neste formato (sem markdown, sem explicação):
-LEGENDA: [legenda do post, tom informativo e engajador, 3-5 parágrafos curtos, use emojis relevantes, termine com CTA]
-HASHTAGS: [10-15 hashtags relevantes separadas por espaço, começando com #]
-IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos visuais, cores e estilo]`;
+REGRAS DA LEGENDA:
+- Escreva como social media brasileiro fala: "tá", "pra", "né", frases curtas
+- PROIBIDO: "você sabia que", "não perca", "confira já", "fique ligado", "vem comigo", "bora lá"
+- Comece com um GANCHO forte: afirmação impactante, dado surpreendente ou pergunta provocativa
+- 3-4 parágrafos CURTOS (1-3 linhas cada), formatados pra leitura no celular
+- Use emojis com moderação (2-3 no total, não no início de cada parágrafo)
+- CTA natural no final (pergunta genuína ou convite sutil, não imperativo)
+- A legenda deve fazer sentido SOZINHA, sem precisar ler a notícia original
+- Máximo 8-10 hashtags relevantes no final, misture populares com nichadas
+
+Responda EXATAMENTE neste formato (sem markdown, sem backticks):
+LEGENDA: [a legenda completa incluindo hashtags no final]
+BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reels), elementos visuais, cores, textos que devem aparecer na arte, estilo de referência]`;
       let aiText = "";
       if (keys?.claude_key) {
         const r = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":keys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})});
@@ -22379,12 +22387,13 @@ IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos vi
         const d = await r.json(); aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
       }
       if (aiText) {
-        const legMatch = aiText.match(/LEGENDA:\s*([\s\S]*?)(?=HASHTAGS:|$)/i);
-        const hashMatch = aiText.match(/HASHTAGS:\s*([\s\S]*?)(?=IDEIA:|$)/i);
-        const ideaMatch = aiText.match(/IDEIA:\s*([\s\S]*?)$/i);
+        const legMatch = aiText.match(/LEGENDA:\s*([\s\S]*?)(?=BRIEFING:|$)/i);
+        const briefMatch = aiText.match(/BRIEFING:\s*([\s\S]*?)$/i);
         caption = (legMatch?.[1]||"").trim();
-        hashtags = (hashMatch?.[1]||"").trim();
-        ideaText = (ideaMatch?.[1]||"").trim();
+        ideaText = (briefMatch?.[1]||"").trim();
+        /* Extract hashtags from caption */
+        const hashInCaption = caption.match(/#\w+/g);
+        if (hashInCaption) hashtags = hashInCaption.join(" ");
       }
     } catch(e) { console.error("AI generation error:", e); }
     /* Fallback if AI failed */
@@ -22394,12 +22403,12 @@ IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos vi
     const selClient = sharedClients.find(c => (c.supaId || c.id) === clientId);
     const newDemand = {
       title: title.length > 60 ? title.substring(0, 57) + "..." : title,
-      type: "social", stage: "idea", format: "Feed", network: "Instagram, Facebook",
+      type: "social", stage: "design", format: "Feed", network: "Instagram, Facebook",
       client: selClient?.name || "", client_id: clientId, priority: "média", assignees: [],
       createdAt: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
       steps: {
-        idea: { text: ideaText, by: user?.name || "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
-        briefing: { text: `Arte para post sobre: ${title}\n\nEstilo: informativo, profissional\nReferência visual: usar cores da marca\nFonte da notícia: ${source}`, by: "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
+        idea: { text: `📰 Baseado na notícia: "${title}"\n\nFonte: ${source}${article.sourceUrl ? " — " + article.sourceUrl : ""}\n\n${summary.substring(0, 300)}`, by: user?.name || "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
+        briefing: { text: ideaText || `Arte para post sobre: ${title}\nEstilo: informativo, profissional\nFonte: ${source}`, by: "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
         caption: { text: caption, hashtags: hashtags, by: "Munique A.I", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) },
       },
     };
