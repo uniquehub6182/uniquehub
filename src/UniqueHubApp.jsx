@@ -9053,9 +9053,9 @@ REGRAS TÉCNICAS:
       {ImportPlanModal}
       {NewsAutoGenModal}
 
-      {/* ── AI Creating Overlay (shows on content page while posts are being generated) ── */}
-      {(naCreating || ipCreating) && !newsAutoGen && !importPlan && <div style={{ position:"absolute", inset:0, zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", background:B.bg+"F0", backdropFilter:"blur(8px)", borderRadius:20 }}>
-        <div style={{ textAlign:"center", padding:"40px 30px" }}>
+      {/* ── AI Creating Overlay ── */}
+      {(naCreating || ipCreating) && !newsAutoGen && !importPlan && <div style={{ position:"fixed", inset:0, zIndex:99990, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(8px)" }}>
+        <div style={{ textAlign:"center", padding:"40px 30px", background:B.bgCard, borderRadius:24, boxShadow:"0 20px 60px rgba(0,0,0,0.3)", maxWidth:340 }}>
           <div style={{ position:"relative", width:72, height:72, margin:"0 auto 16px" }}>
             <svg width="72" height="72" viewBox="0 0 72 72">
               <circle cx="36" cy="36" r="30" fill="none" stroke={B.border} strokeWidth="3" />
@@ -9072,9 +9072,9 @@ REGRAS TÉCNICAS:
           </div>
         </div>
       </div>}
-      {/* ── AI Just Created overlay (brief success feedback) ── */}
-      {aiJustCreated && <div style={{ position:"absolute", inset:0, zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", background:B.bg+"E8", backdropFilter:"blur(6px)", borderRadius:20, animation:"fadeIn .3s ease" }} onClick={() => setAiJustCreated(null)}>
-        <div style={{ textAlign:"center", padding:"40px 30px" }}>
+      {/* ── AI Just Created overlay ── */}
+      {aiJustCreated && <div style={{ position:"fixed", inset:0, zIndex:99990, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(6px)" }} onClick={() => setAiJustCreated(null)}>
+        <div style={{ textAlign:"center", padding:"40px 30px", background:B.bgCard, borderRadius:24, boxShadow:"0 20px 60px rgba(0,0,0,0.3)", maxWidth:340 }}>
           <div style={{ width:64, height:64, borderRadius:"50%", background:B.green+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green||"#10B981"} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
@@ -22406,9 +22406,12 @@ IDEIA: [briefing resumido para o designer criar a arte, descrevendo elementos vi
     const result = await supaCreateDemand(newDemand, null);
     setNewsToPostLoading(false);
     if (result?.data) {
+      const fullDemand = { ...newDemand, id: result.data.id, supaId: result.data.id };
+      setSharedDemands(prev => [fullDemand, ...prev]);
       setNewsToPostArticle(null); setNewsToPostClient(null);
       mainToast("Post criado para " + (selClient?.name || "cliente") + " ✓");
-      goTab("content", result.data.id);
+      setSub(null);
+      setTimeout(() => setTab("content"), 100);
     } else { mainToast("Erro ao criar demanda"); }
   };
 
