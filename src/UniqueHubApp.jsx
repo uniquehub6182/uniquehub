@@ -5408,6 +5408,26 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       </div>
                     ))}
                   </div>}
+
+                  {/* ── NEWS SOURCES (always visible, desktop) ── */}
+                  <div style={{ marginTop:16, padding:16, borderRadius:14, background:B.bg, border:"1px solid "+B.border }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
+                      <p style={{ fontSize:13, fontWeight:700 }}>Fontes de Notícias</p>
+                    </div>
+                    <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.4 }}>Sites de referência para gerar posts com IA. A Munique A.I acessa esses sites e cria conteúdo.</p>
+                    {newsSources.map((url, i) => (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:B.bgCard, border:"1px solid "+B.border, marginBottom:4 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                        <span style={{ flex:1, fontSize:11, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{url}</span>
+                        <button onClick={() => removeNewsSource(i)} style={{ background:"none", border:"none", cursor:"pointer", padding:2 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                      </div>
+                    ))}
+                    <div style={{ display:"flex", gap:6, marginTop:6 }}>
+                      <input value={newsSourceInput} onChange={e => setNewsSourceInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addNewsSource(); }} placeholder="https://meioememensagem.com.br" className="tinput" style={{ flex:1, fontSize:12 }} />
+                      <button onClick={addNewsSource} disabled={!newsSourceInput.trim()} style={{ padding:"8px 14px", borderRadius:10, background:newsSourceInput.trim()?B.accent:B.border, border:"none", cursor:newsSourceInput.trim()?"pointer":"default", fontFamily:"inherit", fontSize:11, fontWeight:700, color:newsSourceInput.trim()?"#0D0D0D":B.muted, flexShrink:0 }}>+ Adicionar</button>
+                    </div>
+                  </div>
                 </div>}
                 {!confirmAction && profileTab==="socials" && <div>
                   {editingSocial ? (() => {
