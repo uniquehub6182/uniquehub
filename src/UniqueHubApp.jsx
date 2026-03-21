@@ -2709,7 +2709,7 @@ RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
   const filtered = filter==="all" ? trends : trends.filter(t=>t.type===filter);
 
   return (
-    <div className="app" style={{ background:B.bg, color:B.text }}>
+    <div className="app" style={{ background:B.bg, color:B.text, position:"relative", inset:"auto", minHeight:"100%" }}>
       {ToastEl}
       <CollapseHeader label="Inteligência em tempo real" title="Radar de Tendências" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
