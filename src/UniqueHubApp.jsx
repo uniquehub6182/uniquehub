@@ -672,21 +672,16 @@ const META_APP_ID = "1557196698688426";
 const META_CONFIG_ID = "1251666086415367";
 const META_REDIRECT_URI = "https://uniquehub-beta.vercel.app/";
 const META_SCOPES = [
-  /* Pages */
+  /* Pages — already approved */
   "pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_read_user_content",
-  /* Insights */
+  /* Insights — already approved */
   "read_insights",
-  /* Instagram */
-  "instagram_basic", "instagram_manage_insights", "instagram_content_publish", "instagram_manage_comments",
-  /* Messaging */
-  "pages_messaging", "instagram_manage_messages",
   /* Business */
   "business_management"
 ].join(",");
 
 const startMetaOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_meta_oauth_client", clientId); } catch {}
-  /* Use explicit scopes instead of config_id to ensure all permissions are requested */
   const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(META_SCOPES)}&state=meta_connect_${clientId}`;
   console.log("[Meta OAuth] Starting with scopes:", META_SCOPES);
   window.location.href = url;
