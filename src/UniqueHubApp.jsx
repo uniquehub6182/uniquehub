@@ -2582,6 +2582,265 @@ function PWAInstallPopup({ onDismiss }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
+function RadarPage({ onBack, clients, user, demands, setDemands }) {
+  const [trends, setTrends] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [lastFetch, setLastFetch] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [expanded, setExpanded] = useState(null);
+  const [createTrend, setCreateTrend] = useState(null);
+  const [createClient, setCreateClient] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const { showToast, ToastEl } = useToast();
+  const CDATA = clients || [];
+
+  useEffect(() => {
+    supaGetSetting("agency_radar_v3").then(v => {
+      if (v) try { const d = JSON.parse(v); setTrends(d.trends||[]); setLastFetch(d.ts||null); } catch {}
+    });
+  }, []);
+
+  /* Auto-refresh if >6h */
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (autoRef.current || !lastFetch) return;
+    if (Date.now() - new Date(lastFetch).getTime() > 6*3600000) { autoRef.current=true; fetchTrends(); }
+  }, [lastFetch]);
+
+  const fetchTrends = async () => {
+    setLoading(true);
+    try {
+      const keys = await supaGetAIKeys();
+      const segs = [...new Set(CDATA.filter(c=>c.segment).map(c=>c.segment))];
+      const cList = CDATA.slice(0,20).map(c=>`${c.name}${c.segment?" ("+c.segment+")":""}`).join(", ");
+      const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+
+      const prompt = `Hoje é ${today}. Você é um analista de tendências digitais brasileiro. Use web search para buscar o que está REALMENTE acontecendo AGORA nas redes sociais e notícias do Brasil.
+
+CLIENTES: ${cList}
+SEGMENTOS: ${segs.join(", ")||"Diversos"}
+
+BUSQUE NA WEB e retorne 10-15 itens REAIS e ATUAIS:
+
+🔥 VIRAIS (4-5): Memes, trends, challenges, áudios viralizando AGORA no Brasil. Busque no X/Twitter, TikTok, Instagram.
+📰 NOTÍCIAS (3-5): Notícias quentes de marketing digital, tecnologia, mudanças de algoritmo, novidades de plataformas.
+📅 OPORTUNIDADES (3-5): Datas comemorativas dos próximos 15 dias, eventos, momentos sazonais.
+
+CADA item deve ter:
+- id: número
+- type: "meme"|"news"|"opportunity"
+- title: título chamativo (max 60 chars)
+- description: 2-3 frases sobre a trend
+- platforms: array das plataformas onde está rolando, ex: ["instagram","tiktok","x"] ou ["todas"]. Use EXATAMENTE: "instagram", "tiktok", "x", "youtube", "facebook", "linkedin", "threads"
+- whyItMatters: 1-2 frases de por que é relevante pra social media
+- suggestedClients: [1-3 nomes de clientes da lista que combinariam]
+- postIdea: ideia CONCRETA (formato + gancho da legenda em 2-3 frases)
+- urgency: "alta"|"media"|"baixa"
+- source: fonte real (ex: "Trending no X", "Portal G1", "Instagram Reels")
+- hashtags: ["#tag1","#tag2","#tag3"]
+
+IMPORTANTE: Só inclua trends REAIS que você encontrou na web. Não invente.
+RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
+
+      let aiText = "";
+      if (keys?.claude_key) {
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json","x-api-key":keys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+          body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:6000, tools:[{type:"web_search_20250305",name:"web_search"}], messages:[{role:"user",content:prompt}] }) });
+        const d = await r.json(); aiText = (d?.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+      } else if (keys?.openai_key) {
+        const r = await fetch("https://api.openai.com/v1/chat/completions", { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys.openai_key},
+          body: JSON.stringify({ model:"gpt-4o", max_tokens:6000, messages:[{role:"system",content:"Busque na web informações atuais."},{role:"user",content:prompt}] }) });
+        const d = await r.json(); aiText = d?.choices?.[0]?.message?.content||"";
+      } else if (keys?.gemini_key) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+keys.gemini_key, { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ contents:[{role:"user",parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:6000}, tools:[{google_search:{}}] }) });
+        const d = await r.json(); aiText = d?.candidates?.[0]?.content?.parts?.filter(p=>p.text).map(p=>p.text).join("\n")||"";
+      } else { setLoading(false); showToast("Configure uma chave de IA"); return; }
+
+      let parsed = [];
+      try { const c=aiText.replace(/```json|```/g,"").trim(); const s=c.indexOf("["),e=c.lastIndexOf("]"); if(s!==-1&&e!==-1) parsed=JSON.parse(c.substring(s,e+1)); else parsed=JSON.parse(c); } catch(e) { console.error("Radar parse:",e); showToast("Erro ao processar trends"); }
+
+      if (parsed.length > 0) {
+        const ts = new Date().toISOString();
+        setTrends(parsed); setLastFetch(ts);
+        await supaSetSetting("agency_radar_v3", JSON.stringify({trends:parsed,ts}));
+        showToast(parsed.length+" tendências encontradas ✓");
+      }
+    } catch(e) { console.error("Radar:",e); showToast("Erro: "+e.message); }
+    setLoading(false);
+  };
+
+  const doCreatePost = async () => {
+    if (!createTrend || !createClient) return;
+    setCreating(true);
+    const cl = CDATA.find(c=>(c.supaId||c.id)===createClient);
+    const t = createTrend;
+    const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    const fmt = t.type==="meme"?"Reels":"Feed";
+    const newD = {
+      title:(t.title||"Trend").substring(0,57), type:"social", stage:"idea", format:fmt,
+      priority:t.urgency==="alta"?"alta":"média", network:"Instagram, Facebook",
+      client:cl?.name||"", client_id:createClient,
+      steps:{
+        idea:{text:`📡 Do Radar de Tendências\n\n${t.title}\n\n${t.description||""}\n\n💡 ${t.postIdea||""}\n\nPlataformas: ${(t.platforms||[]).join(", ")}\nFonte: ${t.source||"Radar IA"}`,by:"Munique A.I · Radar",date:today},
+        briefing:{text:`Criar ${fmt==="Reels"?"vídeo curto/reels":"arte"} sobre: "${t.title}"\n\nContexto: ${t.description||""}\nFormato: ${fmt}\nTom: ${t.type==="meme"?"Humor/viral":"Informativo"}\nRef: ${t.source||""}\n${t.hashtags?(Array.isArray(t.hashtags)?t.hashtags.join(" "):t.hashtags):""}`,by:"Munique A.I · Radar",date:today},
+        caption:{text:t.postIdea||t.description||"", hashtags:Array.isArray(t.hashtags)?t.hashtags.join(" "):(t.hashtags||""), by:"Munique A.I · Radar",date:today},
+      },
+    };
+    const result = await supaCreateDemand(newD, createClient);
+    if (result?.data && setDemands) setDemands(prev=>[{...newD,id:result.data.id,supaId:result.data.id,createdAt:today,assignees:[]},...prev]);
+    setCreating(false); setCreateTrend(null); setCreateClient(null);
+    showToast(result?.data ? "Post criado para "+(cl?.name||"cliente")+" ✓" : "Erro ao criar post");
+  };
+
+  const platIcons = {
+    instagram:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg>,
+    tiktok:<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V9.49a8.27 8.27 0 004.76 1.51V7.55a4.83 4.83 0 01-1-.86z" fill="#000"/></svg>,
+    x:<svg width="14" height="14" viewBox="0 0 24 24" fill="#000"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
+    youtube:<svg width="14" height="14" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>,
+    facebook:<svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
+    linkedin:<svg width="14" height="14" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
+    threads:<svg width="14" height="14" viewBox="0 0 24 24" fill="#000"><circle cx="12" cy="12" r="10" fill="none" stroke="#000" strokeWidth="2"/><path d="M12 6c-2 0-4 1.5-4 4s2 3 4 3 4-1 4-3.5C16 7.5 14 6 12 6z" fill="none" stroke="#000" strokeWidth="1.5"/></svg>,
+  };
+  const typeColor = {meme:"#EC4899",news:"#3B82F6",opportunity:"#10B981"};
+  const typeEmoji = {meme:"🔥",news:"📰",opportunity:"📅"};
+  const typeLabel = {meme:"Viral",news:"Notícia",opportunity:"Oportunidade"};
+  const urgLabel = {alta:"⚡ Urgente",media:"📌 Esta semana",baixa:"🗓️ Duradouro","média":"📌 Esta semana"};
+  const filtered = filter==="all" ? trends : trends.filter(t=>t.type===filter);
+
+  return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      {ToastEl}
+      <CollapseHeader label="Inteligência em tempo real" title="Radar de Tendências" onBack={onBack} collapsed={false} />
+      <div className="content" style={{ padding:"0 16px" }}>
+
+        {/* ── Stats bar ── */}
+        <div style={{ display:"flex", gap:8, marginBottom:14, overflowX:"auto", scrollbarWidth:"none" }}>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:14, border:"1px solid "+B.border, padding:"12px 14px", minWidth:80 }}>
+            <p style={{ fontSize:22, fontWeight:900, color:"#EC4899" }}>{trends.filter(t=>t.type==="meme").length}</p>
+            <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>🔥 Virais</p>
+          </div>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:14, border:"1px solid "+B.border, padding:"12px 14px", minWidth:80 }}>
+            <p style={{ fontSize:22, fontWeight:900, color:"#3B82F6" }}>{trends.filter(t=>t.type==="news").length}</p>
+            <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>📰 Notícias</p>
+          </div>
+          <div style={{ flex:1, background:B.bgCard, borderRadius:14, border:"1px solid "+B.border, padding:"12px 14px", minWidth:80 }}>
+            <p style={{ fontSize:22, fontWeight:900, color:"#10B981" }}>{trends.filter(t=>t.type==="opportunity").length}</p>
+            <p style={{ fontSize:9, color:B.muted, fontWeight:600 }}>📅 Datas</p>
+          </div>
+        </div>
+
+        {/* ── Fetch button ── */}
+        <button onClick={fetchTrends} disabled={loading} style={{ width:"100%", padding:"14px 0", borderRadius:16, background:loading?B.border:"linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%)", border:"none", cursor:loading?"wait":"pointer", fontFamily:"inherit", fontSize:14, fontWeight:800, color:"#fff", marginBottom:14, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:loading?"none":"0 4px 20px rgba(139,92,246,0.3)" }}>
+          {loading ? <><div style={{ width:16, height:16, border:"2.5px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .7s linear infinite" }} /> Buscando tendências na web...</> : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg> {trends.length>0?"Atualizar Radar":"Buscar Tendências Agora"}</>}
+        </button>
+        {lastFetch && <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:-8, marginBottom:12 }}>Última busca: {new Date(lastFetch).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} · Auto-refresh a cada 6h</p>}
+
+        {/* ── Filter tabs ── */}
+        {trends.length > 0 && <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", scrollbarWidth:"none" }}>
+          {[{k:"all",l:"Todos"},{k:"meme",l:"🔥 Virais"},{k:"news",l:"📰 Notícias"},{k:"opportunity",l:"📅 Datas"}].map(f => (
+            <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"8px 16px", borderRadius:12, border:filter===f.k?"none":"1.5px solid "+B.border, background:filter===f.k?(typeColor[f.k]||B.accent):"transparent", color:filter===f.k?"#fff":B.muted, fontSize:12, fontWeight:filter===f.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{f.l} ({f.k==="all"?trends.length:trends.filter(t=>t.type===f.k).length})</button>
+          ))}
+        </div>}
+
+        {/* ── Empty ── */}
+        {trends.length === 0 && !loading && <div style={{ textAlign:"center", padding:"50px 20px" }}>
+          <div style={{ width:64, height:64, borderRadius:20, background:"linear-gradient(135deg, #EC489920, #8B5CF620)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:28 }}>🌐</div>
+          <p style={{ fontSize:16, fontWeight:800 }}>Radar vazio</p>
+          <p style={{ fontSize:13, color:B.muted, marginTop:4, lineHeight:1.5 }}>Clique no botão acima para a IA buscar tendências, memes e notícias em tempo real</p>
+        </div>}
+
+        {/* ── Trend cards ── */}
+        {filtered.map((t,i) => {
+          const tc = typeColor[t.type]||"#8B5CF6";
+          const isOpen = expanded === (t.id||i);
+          return (
+            <div key={t.id||i} style={{ background:B.bgCard, borderRadius:20, border:"1px solid "+B.border, marginBottom:12, overflow:"hidden" }}>
+              {/* Header bar */}
+              <div onClick={()=>setExpanded(isOpen?null:(t.id||i))} style={{ padding:"14px 16px", cursor:"pointer", borderLeft:"4px solid "+tc }}>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                  <div style={{ width:38, height:38, borderRadius:12, background:tc+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{typeEmoji[t.type]||"📌"}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:4 }}>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:8, background:tc+"15", color:tc }}>{typeLabel[t.type]}</span>
+                      <span style={{ fontSize:10, fontWeight:600, padding:"2px 10px", borderRadius:8, background:B.bg, color:B.muted }}>{urgLabel[t.urgency]||"📌"}</span>
+                      <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{t.source||""}</span>
+                    </div>
+                    <p style={{ fontSize:15, fontWeight:800, color:B.text, lineHeight:1.3 }}>{t.title}</p>
+                    {/* Platform icons */}
+                    {t.platforms?.length > 0 && <div style={{ display:"flex", gap:6, marginTop:6, alignItems:"center" }}>
+                      {t.platforms.map((p,j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:3 }}>{platIcons[p.toLowerCase()]||<span style={{fontSize:10}}>🌐</span>}<span style={{ fontSize:9, color:B.muted, fontWeight:500 }}>{p.charAt(0).toUpperCase()+p.slice(1)}</span></div>)}
+                    </div>}
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink:0, marginTop:4, transform:isOpen?"rotate(180deg)":"none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+
+              {/* ── Expanded details ── */}
+              {isOpen && <div style={{ padding:"0 14px 14px", borderTop:"1px solid "+B.border, marginTop:8, paddingTop:12 }}>
+                <p style={{ fontSize:13, color:B.text, lineHeight:1.6, marginBottom:10 }}>{t.description}</p>
+                {t.whyItMatters && <div style={{ background:"#8B5CF608", borderRadius:12, padding:"10px 12px", marginBottom:10, borderLeft:"3px solid #8B5CF6" }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:"#8B5CF6", marginBottom:2 }}>Por que importa</p>
+                  <p style={{ fontSize:12, color:B.text, lineHeight:1.5 }}>{t.whyItMatters}</p>
+                </div>}
+                {t.postIdea && <div style={{ background:B.accent+"08", borderRadius:12, padding:"10px 12px", marginBottom:10, borderLeft:"3px solid "+B.accent }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:2 }}>💡 Ideia de post</p>
+                  <p style={{ fontSize:12, color:B.text, lineHeight:1.5 }}>{t.postIdea}</p>
+                </div>}
+                {t.suggestedClients?.length > 0 && <div style={{ marginBottom:10 }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Clientes sugeridos</p>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {t.suggestedClients.map((c,j) => <span key={j} style={{ fontSize:11, fontWeight:600, padding:"4px 12px", borderRadius:10, background:"#8B5CF610", color:"#8B5CF6", border:"1px solid #8B5CF620" }}>{c}</span>)}
+                  </div>
+                </div>}
+                {t.hashtags && <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:12 }}>
+                  {(Array.isArray(t.hashtags)?t.hashtags:String(t.hashtags).split(" ")).map((h,j) => <span key={j} style={{ fontSize:10, color:B.muted, background:B.bg, padding:"3px 10px", borderRadius:8, border:"1px solid "+B.border }}>{h.startsWith("#")?h:"#"+h}</span>)}
+                </div>}
+                <button onClick={()=>{setCreateTrend(t);setCreateClient(null);}} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Criar post a partir desta trend
+                </button>
+              </div>}
+            </div>
+        );
+      })}
+
+        <div style={{ height:40 }} />
+      </div>
+
+      {/* ── Create Post Modal ── */}
+      {createTrend && <div style={{ position:"fixed", inset:0, zIndex:99997, display:"flex", alignItems:"flex-end", justifyContent:"center", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(4px)" }} onClick={()=>{setCreateTrend(null);setCreateClient(null);}}>
+        <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:B.bgCard, borderRadius:"24px 24px 0 0", padding:"20px 20px calc(20px + env(safe-area-inset-bottom,0px))", maxHeight:"70vh", display:"flex", flexDirection:"column" }}>
+          <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 14px" }} />
+          <h3 style={{ fontSize:16, fontWeight:800, marginBottom:4 }}>Criar post a partir da trend</h3>
+          <div style={{ background:(typeColor[createTrend.type]||"#8B5CF6")+"08", borderRadius:12, padding:"10px 12px", marginBottom:12, borderLeft:"3px solid "+(typeColor[createTrend.type]||"#8B5CF6") }}>
+            <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{createTrend.title}</p>
+            {createTrend.postIdea && <p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.4 }}>💡 {createTrend.postIdea}</p>}
+            {createTrend.platforms?.length > 0 && <div style={{ display:"flex", gap:4, marginTop:6 }}>{createTrend.platforms.map((p,j)=><span key={j} style={{ fontSize:9, padding:"2px 8px", borderRadius:6, background:B.bg, color:B.muted, fontWeight:600 }}>{p}</span>)}</div>}
+          </div>
+          <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>Para qual cliente?</p>
+          {createTrend.suggestedClients?.length > 0 && <p style={{ fontSize:10, color:"#8B5CF6", fontWeight:600, marginBottom:8 }}>⭐ Sugeridos pela IA: {createTrend.suggestedClients.join(", ")}</p>}
+          <div style={{ flex:1, overflowY:"auto", marginBottom:12 }}>
+            {CDATA.filter(c=>c.status==="ativo"||!c.status).map(c => {
+              const cid = c.supaId||c.id; const sel = createClient===cid;
+              const suggested = (createTrend.suggestedClients||[]).some(s => c.name.toLowerCase().includes(s.toLowerCase())||s.toLowerCase().includes(c.name.toLowerCase()));
+              return <button key={cid} onClick={()=>setCreateClient(cid)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"10px 12px", borderRadius:12, border:sel?"2px solid "+B.accent:suggested?"1.5px solid "+B.accent+"40":"1.5px solid "+B.border, background:sel?B.accent+"08":suggested?B.accent+"04":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left", marginBottom:4 }}>
+                <Av name={c.name} src={c.logo||c.logo_url} sz={32} fs={12} />
+                <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:sel?700:500 }}>{c.name}</p>{c.segment&&<p style={{ fontSize:9, color:B.muted }}>{c.segment}</p>}</div>
+                {suggested && <span style={{ fontSize:8, fontWeight:700, color:"#8B5CF6", background:"#8B5CF610", padding:"2px 6px", borderRadius:6 }}>Sugerido</span>}
+                {sel && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>;
+            })}
+          </div>
+          <button disabled={!createClient||creating} onClick={doCreatePost} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:createClient?B.accent:B.border, border:"none", cursor:createClient?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:createClient?"#0D0D0D":B.muted }}>
+            {creating?"Criando...":"Criar post para este cliente"}
+          </button>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setDemands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
   const canAccessFn = ca || (() => true);
   const CDATA = (clients && clients.length > 0) ? clients : [];
@@ -2640,281 +2899,6 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   }, [user?.id]);
 
 
-  /* ═══ RADAR DE TENDÊNCIAS (Completo: on-demand + auto + híbrido) ═══ */
-  const [radarTrends, setRadarTrends] = useState([]);
-  const [radarLoading, setRadarLoading] = useState(false);
-  const [radarLoaded, setRadarLoaded] = useState(false);
-  const [radarLastFetch, setRadarLastFetch] = useState(null);
-  const [radarFilter, setRadarFilter] = useState("all");
-  const [radarCreatePost, setRadarCreatePost] = useState(null);
-  const [radarCreateClient, setRadarCreateClient] = useState(null);
-  const [radarCreating, setRadarCreating] = useState(false);
-
-  /* Load cached trends on mount */
-  useEffect(() => {
-    supaGetSetting("agency_radar_trends").then(v => {
-      if (v) try {
-        const d = JSON.parse(v);
-        setRadarTrends(d.trends || []);
-        setRadarLastFetch(d.ts || null);
-        setRadarLoaded(true);
-      } catch {}
-    });
-  }, []);
-
-  /* Auto-refresh if > 6h old */
-  const radarAutoRef = useRef(false);
-  useEffect(() => {
-    if (radarAutoRef.current) return;
-    if (radarLoaded && radarLastFetch) {
-      const age = Date.now() - new Date(radarLastFetch).getTime();
-      if (age > 6 * 3600000) { radarAutoRef.current = true; fetchRadarTrends(); }
-    }
-  }, [radarLoaded]);
-
-  /* Fetch trends via AI with web search */
-  const fetchRadarTrends = async () => {
-    setRadarLoading(true);
-    try {
-      const keys = await supaGetAIKeys();
-      const clientSegments = [...new Set(CDATA.filter(c => c.segment).map(c => c.segment))];
-      const clientList = CDATA.slice(0, 20).map(c => `${c.name}${c.segment ? " ("+c.segment+")" : ""}`).join(", ");
-
-      const prompt = `Você é um analista de tendências digitais brasileiro com acesso à web. BUSQUE NA WEB as tendências, memes virais e notícias que estão acontecendo AGORA (${new Date().toLocaleDateString("pt-BR")}).
-
-CLIENTES DA AGÊNCIA: ${clientList}
-SEGMENTOS: ${clientSegments.join(", ") || "Diversos"}
-
-BUSQUE E RETORNE 10-15 itens divididos em 3 categorias:
-
-🔥 VIRAIS/MEMES (4-5 itens):
-- Memes e trends viralizando no TikTok, Instagram Reels, X/Twitter no Brasil AGORA
-- Challenges, áudios virais, formatos de vídeo em alta
-- Referências culturais e piadas do momento
-
-📰 NOTÍCIAS (3-5 itens):
-- Notícias quentes de marketing digital, redes sociais, tecnologia
-- Mudanças de algoritmo, novas features de plataformas
-- Notícias relevantes para os segmentos dos clientes listados
-
-📅 OPORTUNIDADES (3-5 itens):
-- Datas comemorativas dos próximos 15 dias
-- Eventos culturais, esportivos, premiações
-- Momentos sazonais para conteúdo
-
-Para CADA item retorne JSON com:
-- id: número sequencial
-- type: "meme", "news" ou "opportunity"
-- title: título chamativo (max 60 chars)
-- description: 2-3 frases explicando a trend/notícia
-- whyItMatters: por que é relevante para social media (1-2 frases)
-- suggestedClients: [array com 1-3 nomes de clientes da lista que mais se beneficiariam]
-- postIdea: ideia CONCRETA e PRONTA de como transformar em post (título do post + formato sugerido + gancho da legenda em 1-2 frases)
-- urgency: "alta" (24-48h), "media" (1-2 semanas) ou "baixa" (duradouro)
-- source: fonte (nome da rede/portal)
-- hashtags: 3-5 hashtags relevantes
-
-IMPORTANTE: Busque informações REAIS e ATUAIS da web. Não invente trends.
-RESPONDA APENAS com array JSON válido, sem markdown, sem backticks.`;
-
-      let aiText = "";
-      if (keys?.claude_key) {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 6000, tools: [{ type: "web_search_20250305", name: "web_search" }], messages: [{ role: "user", content: prompt }] })
-        });
-        const d = await r.json();
-        aiText = (d?.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-      } else if (keys?.openai_key) {
-        const r = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + keys.openai_key },
-          body: JSON.stringify({ model: "gpt-4o", max_tokens: 6000, messages: [{ role: "system", content: "Busque na web informações atuais do Brasil." }, { role: "user", content: prompt }] })
-        });
-        const d = await r.json(); aiText = d?.choices?.[0]?.message?.content || "";
-      } else if (keys?.gemini_key) {
-        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + keys.gemini_key, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 6000 }, tools: [{ google_search: {} }] })
-        });
-        const d = await r.json(); aiText = d?.candidates?.[0]?.content?.parts?.filter(p => p.text).map(p => p.text).join("\n") || "";
-      } else { setRadarLoading(false); return; }
-
-      let trends = [];
-      try {
-        const clean = aiText.replace(/```json|```/g, "").trim();
-        const s = clean.indexOf("["), e = clean.lastIndexOf("]");
-        if (s !== -1 && e !== -1) trends = JSON.parse(clean.substring(s, e + 1));
-        else trends = JSON.parse(clean);
-      } catch(e) { console.error("Radar parse:", e); }
-
-      if (trends.length > 0) {
-        const ts = new Date().toISOString();
-        setRadarTrends(trends); setRadarLastFetch(ts); setRadarLoaded(true);
-        await supaSetSetting("agency_radar_trends", JSON.stringify({ trends, ts }));
-      }
-    } catch(e) { console.error("Radar:", e); }
-    setRadarLoading(false);
-  };
-
-  /* Create post from trend */
-  const createPostFromTrend = async (trend, clientId) => {
-    setRadarCreating(true);
-    const selClient = CDATA.find(c => (c.supaId||c.id) === clientId);
-    const today = new Date().toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" });
-    const newD = {
-      title: (trend.title || "Trend").substring(0, 57) + (trend.title?.length > 57 ? "..." : ""),
-      type: "social", stage: "idea", format: trend.type === "meme" ? "Reels" : "Feed",
-      priority: trend.urgency === "alta" ? "alta" : "média",
-      network: "Instagram, Facebook", client: selClient?.name || "", client_id: clientId,
-      steps: {
-        idea: { text: `📡 Baseado no Radar de Tendências\n\n${trend.title}\n\n${trend.description || ""}\n\n💡 Ideia: ${trend.postIdea || ""}\n\nFonte: ${trend.source || "Radar IA"}`, by: "Munique A.I · Radar", date: today },
-        briefing: { text: `Criar arte/vídeo baseado na trend: "${trend.title}"\n\nContexto: ${trend.description || ""}\n\nFormato sugerido: ${trend.type === "meme" ? "Reels/Vídeo curto" : "Feed estático ou carrossel"}\nTom: ${trend.type === "meme" ? "Humor/viral" : "Informativo/engajador"}\nReferência: ${trend.source || "Redes sociais"}\n${trend.hashtags ? "\nHashtags: " + (Array.isArray(trend.hashtags) ? trend.hashtags.join(" ") : trend.hashtags) : ""}`, by: "Munique A.I · Radar", date: today },
-        caption: { text: trend.postIdea || trend.description || "", hashtags: Array.isArray(trend.hashtags) ? trend.hashtags.join(" ") : (trend.hashtags || ""), by: "Munique A.I · Radar", date: today },
-      },
-    };
-    const result = await supaCreateDemand(newD, clientId);
-    if (result?.data) {
-      setDemands(prev => [{ ...newD, id: result.data.id, supaId: result.data.id, createdAt: today, assignees: [] }, ...prev]);
-      showToast("Post criado para " + (selClient?.name || "cliente") + " a partir da trend! ✓");
-    } else { showToast("Erro ao criar post"); }
-    setRadarCreating(false); setRadarCreatePost(null); setRadarCreateClient(null);
-  };
-
-  /* ── Radar constants ── */
-  const _typeEmoji = { meme:"\uD83D\uDD25", news:"\uD83D\uDCF0", opportunity:"\uD83D\uDCC5" };
-  const _typeLabel = { meme:"Viral", news:"Notícia", opportunity:"Oportunidade" };
-  const _typeColor = { meme:"#EC4899", news:"#3B82F6", opportunity:"#10B981" };
-  const _urgLabel = { alta:"\u26A1 Urgente", media:"\uD83D\uDCCC Médio prazo", baixa:"\uD83D\uDDD3\uFE0F Duradouro", "média":"\uD83D\uDCCC Médio prazo" };
-  const filteredTrends = radarFilter === "all" ? radarTrends : radarTrends.filter(t => t.type === radarFilter);
-  const trendCounts = { all: radarTrends.length, meme: radarTrends.filter(t=>t.type==="meme").length, news: radarTrends.filter(t=>t.type==="news").length, opportunity: radarTrends.filter(t=>t.type==="opportunity").length };
-
-  /* ── RadarSection component ── */
-  const RadarSection = ({ compact }) => (
-    <div style={{ padding:compact?"10px 12px":"0" }}>
-      {/* ── Client picker modal for creating post ── */}
-      {radarCreatePost && !radarCreating && <div style={{ position:"fixed", inset:0, zIndex:99997, display:"flex", alignItems:"flex-end", justifyContent:"center", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(4px)" }} onClick={() => { setRadarCreatePost(null); setRadarCreateClient(null); }}>
-        <div onClick={e=>e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:B.bgCard, borderRadius:"24px 24px 0 0", padding:"20px 20px calc(20px + env(safe-area-inset-bottom,0px))", maxHeight:"70vh", display:"flex", flexDirection:"column" }}>
-          <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 14px" }} />
-          <h3 style={{ fontSize:16, fontWeight:800, marginBottom:4 }}>Criar post a partir da trend</h3>
-          <p style={{ fontSize:12, color:B.muted, marginBottom:4 }}>"{radarCreatePost?.title}"</p>
-          {radarCreatePost?.postIdea && <div style={{ background:B.accent+"08", borderRadius:10, padding:"8px 10px", marginBottom:10 }}>
-            <p style={{ fontSize:10, fontWeight:700, color:B.accent }}>💡 Ideia pré-gerada:</p>
-            <p style={{ fontSize:11, color:B.text, lineHeight:1.4 }}>{radarCreatePost.postIdea}</p>
-          </div>}
-          <p style={{ fontSize:13, fontWeight:600, marginBottom:8 }}>Para qual cliente?</p>
-          {radarCreatePost?.suggestedClients?.length > 0 && <p style={{ fontSize:10, color:B.accent, fontWeight:600, marginBottom:6 }}>⭐ Sugeridos pela IA: {radarCreatePost.suggestedClients.join(", ")}</p>}
-          <div style={{ flex:1, overflowY:"auto", marginBottom:10 }}>
-            {(CDATA||[]).filter(c=>c.status==="ativo"||!c.status).map(c => {
-              const cid = c.supaId||c.id; const sel = radarCreateClient === cid;
-              const suggested = (radarCreatePost?.suggestedClients||[]).some(s => c.name.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(c.name.toLowerCase()));
-              return <button key={cid} onClick={() => setRadarCreateClient(cid)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"10px 12px", borderRadius:12, border:sel?"2px solid "+B.accent:suggested?"1.5px solid "+B.accent+"40":"1.5px solid "+B.border, background:sel?B.accent+"08":suggested?B.accent+"04":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left", marginBottom:4 }}>
-                <Av name={c.name} src={c.logo||c.logo_url} sz={32} fs={12} />
-                <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:sel?700:500 }}>{c.name}</p></div>
-                {suggested && <span style={{ fontSize:8, fontWeight:700, color:B.accent, background:B.accent+"12", padding:"2px 6px", borderRadius:6 }}>Sugerido</span>}
-                {sel && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-              </button>;
-            })}
-          </div>
-          <button disabled={!radarCreateClient} onClick={() => radarCreateClient && createPostFromTrend(radarCreatePost, radarCreateClient)} style={{ width:"100%", padding:"13px 0", borderRadius:14, background:radarCreateClient?B.accent:B.border, border:"none", cursor:radarCreateClient?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:radarCreateClient?"#0D0D0D":B.muted }}>Criar Post</button>
-        </div>
-      </div>}
-
-      {/* ── Header ── */}
-      {!compact && <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:32, height:32, borderRadius:10, background:"linear-gradient(135deg, #EC4899, #8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
-          </div>
-          <div><p style={{ fontSize:15, fontWeight:800 }}>Radar de Tendências</p>
-          <p style={{ fontSize:10, color:B.muted }}>{radarLastFetch ? "Atualizado "+new Date(radarLastFetch).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "Não carregado"} · Auto-refresh 6h</p></div>
-        </div>
-        <button onClick={fetchRadarTrends} disabled={radarLoading} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 14px", borderRadius:10, background:radarLoading?B.border:"linear-gradient(135deg, #EC4899, #8B5CF6)", border:"none", cursor:radarLoading?"wait":"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff" }}>
-          {radarLoading ? <><div style={{ width:12, height:12, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> Buscando...</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Atualizar</>}
-        </button>
-      </div>}
-
-      {/* Compact header */}
-      {compact && <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-        <p style={{ fontSize:12, fontWeight:700, color:B.text }}>🌐 Tendências</p>
-        <button onClick={fetchRadarTrends} disabled={radarLoading} style={{ padding:"4px 10px", borderRadius:8, background:radarLoading?B.border:"linear-gradient(135deg, #EC4899, #8B5CF6)", border:"none", cursor:radarLoading?"wait":"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:"#fff" }}>
-          {radarLoading ? "..." : "↻ Buscar"}
-        </button>
-      </div>}
-
-      {/* ── Filter tabs ── */}
-      {radarTrends.length > 0 && <div style={{ display:"flex", gap:4, marginBottom:compact?6:12, overflowX:"auto", scrollbarWidth:"none" }}>
-        {[{k:"all",l:"Todos",e:"📡"},{k:"meme",l:"Virais",e:"🔥"},{k:"news",l:"Notícias",e:"📰"},{k:"opportunity",l:"Datas",e:"📅"}].map(f => (
-          <button key={f.k} onClick={() => setRadarFilter(f.k)} style={{ padding:compact?"4px 10px":"6px 14px", borderRadius:10, border:radarFilter===f.k?"1.5px solid "+(_typeColor[f.k]||"#8B5CF6"):"1.5px solid "+B.border, background:radarFilter===f.k?(_typeColor[f.k]||"#8B5CF6")+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:compact?9:11, fontWeight:radarFilter===f.k?700:500, color:radarFilter===f.k?(_typeColor[f.k]||"#8B5CF6"):B.muted, whiteSpace:"nowrap", flexShrink:0 }}>{f.e} {f.l} ({trendCounts[f.k]})</button>
-        ))}
-      </div>}
-
-      {/* ── Empty state ── */}
-      {radarTrends.length === 0 && !radarLoading && <div style={{ textAlign:"center", padding:compact?16:30, background:B.bgCard, borderRadius:16, border:"1px solid "+B.border }}>
-        <p style={{ fontSize:28, marginBottom:8 }}>🌐</p>
-        <p style={{ fontSize:13, fontWeight:700 }}>Nenhuma tendência carregada</p>
-        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em "Buscar" para a IA rastrear trends, memes e notícias do momento</p>
-      </div>}
-
-      {/* ── Loading state ── */}
-      {radarLoading && radarTrends.length === 0 && <div style={{ textAlign:"center", padding:compact?16:30 }}>
-        <div style={{ width:36, height:36, border:"3px solid "+B.border, borderTopColor:"#8B5CF6", borderRadius:"50%", animation:"spin .8s linear infinite", margin:"0 auto 12px" }} />
-        <p style={{ fontSize:12, color:B.muted }}>Buscando tendências na web...</p>
-      </div>}
-
-      {/* ── Trend cards ── */}
-      {filteredTrends.map((t, i) => {
-        const tc = _typeColor[t.type] || "#8B5CF6";
-        return (
-          <div key={t.id||i} style={{ background:B.bgCard, borderRadius:compact?12:16, border:"1px solid "+B.border, marginBottom:compact?4:10, borderLeft:"3px solid "+tc, overflow:"hidden" }}>
-            {/* Card header */}
-            <div style={{ padding:compact?"8px 10px":"12px 14px" }}>
-              <div style={{ display:"flex", alignItems:"flex-start", gap:6, marginBottom:compact?2:6 }}>
-                <span style={{ fontSize:compact?12:16 }}>{_typeEmoji[t.type]||"📌"}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap", marginBottom:2 }}>
-                    <span style={{ fontSize:compact?8:9, fontWeight:700, padding:"2px 6px", borderRadius:6, background:tc+"15", color:tc }}>{_typeLabel[t.type]||"Trend"}</span>
-                    <span style={{ fontSize:compact?8:9, fontWeight:600, padding:"2px 6px", borderRadius:6, background:B.bg, color:B.muted }}>{_urgLabel[t.urgency]||"📌"}</span>
-                    {t.source && !compact && <span style={{ fontSize:8, color:B.muted, marginLeft:"auto" }}>{t.source}</span>}
-                  </div>
-                  <p style={{ fontSize:compact?11:14, fontWeight:800, color:B.text, lineHeight:1.3 }}>{t.title}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {!compact && <p style={{ fontSize:12, color:B.muted, lineHeight:1.5, marginBottom:8 }}>{t.description}</p>}
-              {!compact && t.whyItMatters && <p style={{ fontSize:11, color:B.text, lineHeight:1.4, opacity:0.7, marginBottom:8, fontStyle:"italic" }}>↳ {t.whyItMatters}</p>}
-
-              {/* Post idea */}
-              {t.postIdea && <div style={{ background:B.accent+"06", border:"1px solid "+B.accent+"12", borderRadius:compact?8:10, padding:compact?"6px 8px":"8px 10px", marginBottom:compact?4:8 }}>
-                <p style={{ fontSize:compact?8:9, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:0.5, marginBottom:1 }}>💡 Ideia de post</p>
-                <p style={{ fontSize:compact?10:12, color:B.text, lineHeight:1.4 }}>{compact && t.postIdea.length > 80 ? t.postIdea.substring(0,80)+"..." : t.postIdea}</p>
-              </div>}
-
-              {/* Suggested clients + hashtags */}
-              {!compact && <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                {t.suggestedClients?.length > 0 && <>
-                  <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Clientes:</span>
-                  {t.suggestedClients.map((c,j) => <span key={j} style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:"#8B5CF610", color:"#8B5CF6" }}>{c}</span>)}
-                </>}
-                {t.hashtags && <div style={{ display:"flex", gap:3, marginLeft:"auto", flexWrap:"wrap" }}>
-                  {(Array.isArray(t.hashtags) ? t.hashtags : t.hashtags.split(/\s+/)).slice(0,4).map((h,j) => <span key={j} style={{ fontSize:8, color:B.muted, background:B.bg, padding:"2px 6px", borderRadius:4 }}>{h.startsWith("#")?h:"#"+h}</span>)}
-                </div>}
-              </div>}
-
-              {/* Create post button */}
-              <div style={{ display:"flex", justifyContent:compact?"center":"flex-end", marginTop:compact?4:8 }}>
-                <button onClick={() => { setRadarCreatePost(t); setRadarCreateClient(null); }} style={{ display:"flex", alignItems:"center", gap:4, padding:compact?"4px 10px":"6px 14px", borderRadius:compact?8:10, background:B.accent+"10", border:"1px solid "+B.accent+"20", cursor:"pointer", fontFamily:"inherit", fontSize:compact?9:11, fontWeight:700, color:B.accent }}>
-                  <svg width={compact?10:12} height={compact?10:12} viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Criar post
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-
   useEffect(() => {
     if (!activeCheckin?.check_in_at) { setCheckinElapsed(0); return; }
     const calc = () => Math.floor((Date.now() - new Date(activeCheckin.check_in_at).getTime()) / 1000);
@@ -2936,6 +2920,7 @@ RESPONDA APENAS com array JSON válido, sem markdown, sem backticks.`;
     equipe:    {l:"Equipe",      k:"team"},
     checkin:   {l:"Check-in",    k:"checkin"},
     ia:        {l:"IA",          k:"ai"},
+    radar:     {l:"Radar",       k:"radar"},
     academy:   {l:"Academy",     k:"academy"},
     biblioteca:{l:"Biblioteca",  k:"library"},
     noticias:  {l:"Notícias",    k:"news"},
@@ -3444,7 +3429,7 @@ RESPONDA APENAS com array JSON válido, sem markdown, sem backticks.`;
       if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
-      if(pk==="radar") return phoneFrame("Radar de Tendências","radar",noop,<RadarSection compact />);
+      if(pk==="radar") return phoneFrame("Radar","radar",()=>goSub("radar"),<RadarPage onBack={null} clients={CDATA} user={user} demands={demands} setDemands={setDemands||noop} forceMobile />);
       if(pk==="drive") {
         const extractGDriveId = (url) => { if(!url) return null; const m1=url.match(/\/folders\/([a-zA-Z0-9_-]+)/); if(m1) return m1[1]; const m2=url.match(/id=([a-zA-Z0-9_-]+)/); if(m2) return m2[1]; if(/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) return url.trim(); return null; };
         const isConnected = driveUrl && (driveType==="gdrive"||driveType==="onedrive");
@@ -22484,6 +22469,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} onCreatePost={handleCreatePostFromNews} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={sharedClients} />}
+        {sub === "radar" && <RadarPage onBack={() => setSub(null)} clients={sharedClients} user={user} demands={demands} setDemands={setDemands} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
