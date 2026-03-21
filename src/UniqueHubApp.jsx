@@ -7165,20 +7165,23 @@ RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
   };
 
   const executeNewsAutoGen = async () => {
-    setNaCreating(true); setNaCreated(0);
+    setNaCreating(true); setNaCreated(0); setNaStep(4);
     const enabled = naPosts.filter(p => p._enabled);
     const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
     for (let i = 0; i < enabled.length; i++) {
       const p = enabled[i];
+      const captionText = p.caption || "";
+      const hashtagsText = Array.isArray(p.hashtags) ? p.hashtags.join(" ") : (p.hashtags || "");
+      const fullCaption = hashtagsText ? captionText + (captionText.includes("#") ? "" : "\n\n" + hashtagsText) : captionText;
       const newD = {
         title: (p.title||"Notícia").substring(0,57), type: p.type||"social", stage: "design",
         format: p.format||"Feed", priority: "média", network: (p.networks||["Instagram","Facebook"]).join(", "),
         client: (clients||[]).find(c=>(c.supaId||c.id)===naClient)?.name||"", client_id: naClient,
         scheduling: p.schedDate ? { date: p.schedDate, time: p.schedTime||"10:00" } : null,
         steps: {
-          idea: { text: `📰 Gerado a partir de: ${p.sourceName||"Fonte de notícias"}\n${p.sourceUrl||""}\n\n${p.title}`, by: "Munique A.I · News", date: today },
-          briefing: { text: p.designBrief || "", by: "Munique A.I · News", date: today },
-          caption: { text: p.caption || "", by: "Munique A.I · News", date: today },
+          idea: { text: `📰 Gerado a partir de: ${p.sourceName||"Fonte de notícias"}\n${p.sourceUrl||""}\n\n${p.title}\n\n${p.description||""}`, by: "Munique A.I · News", date: today },
+          briefing: { text: p.designBrief || "Criar arte para: " + (p.title||""), by: "Munique A.I · News", date: today },
+          caption: { text: fullCaption, hashtags: hashtagsText, by: "Munique A.I · News", date: today },
         },
       };
       if (p.scriptOrRoteiro) newD.steps.idea.text += "\n\nRoteiro:\n" + p.scriptOrRoteiro;
@@ -7187,10 +7190,9 @@ RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
         setDemands(prev => [{ ...newD, id: result.data.id, supaId: result.data.id, createdAt: today, assignees: [] }, ...prev]);
       }
       setNaCreated(i + 1);
+      await new Promise(r => setTimeout(r, 300));
     }
     setNaCreating(false);
-    showToast(`${enabled.length} posts criados a partir das notícias ✓`);
-    setTimeout(() => resetNewsAutoGen(), 1500);
   };
 
 
@@ -7584,13 +7586,13 @@ REGRAS TÉCNICAS:
           <div style={{ width:36, height:36, borderRadius:12, background:"linear-gradient(135deg, #3B82F6, #8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
           </div>
-          <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Gerar Posts de Notícias</p><p style={{ fontSize:11, color:B.muted }}>Passo {naStep} de 3</p></div>
-          {naStep === 3 && <button onClick={executeNewsAutoGen} disabled={naCreating} style={{ padding:"8px 18px", borderRadius:12, background:"linear-gradient(135deg, #3B82F6, #8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", gap:6 }}>
-            {naCreating ? <><div style={{ width:14, height:14, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {naCreated}/{naPosts.filter(p=>p._enabled).length}</> : <>Criar {naPosts.filter(p=>p._enabled).length} posts</>}
+          <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Gerar Posts de Notícias</p><p style={{ fontSize:11, color:B.muted }}>{naStep <= 3 ? `Passo ${naStep} de 3` : "Criando..."}</p></div>
+          {naStep === 3 && !naCreating && <button onClick={executeNewsAutoGen} style={{ padding:"8px 18px", borderRadius:12, background:"linear-gradient(135deg, #3B82F6, #8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", gap:6 }}>
+            Criar {naPosts.filter(p=>p._enabled).length} posts
           </button>}
-          <button onClick={resetNewsAutoGen} style={{ width:32, height:32, borderRadius:10, background:B.bg, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {naStep < 4 && <button onClick={resetNewsAutoGen} style={{ width:32, height:32, borderRadius:10, background:B.bg, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          </button>}
         </div>
 
         {/* Step 1: Select client */}
@@ -7657,9 +7659,50 @@ REGRAS TÉCNICAS:
               </div>
             ))}
           </>}
-        </div>
 
-        {/* Footer */}
+          {/* Step 4: Creating animation */}
+          {naStep === 4 && (() => {
+            const enabled = naPosts.filter(p => p._enabled);
+            const total = enabled.length;
+            const pct = total > 0 ? Math.round((naCreated / total) * 100) : 0;
+            const done = !naCreating && naCreated >= total;
+            return (
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"40vh", padding:"20px", textAlign:"center" }}>
+                {!done ? (<>
+                  <div style={{ position:"relative", width:80, height:80, marginBottom:16 }}>
+                    <svg width="80" height="80" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="35" fill="none" stroke={B.border} strokeWidth="4" />
+                      <circle cx="40" cy="40" r="35" fill="none" stroke="url(#naGrad)" strokeWidth="4" strokeLinecap="round" strokeDasharray={`${pct * 2.2} 220`} transform="rotate(-90 40 40)" style={{ transition:"stroke-dasharray .4s ease" }} />
+                      <defs><linearGradient id="naGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#3B82F6"/><stop offset="100%" stopColor="#8B5CF6"/></linearGradient></defs>
+                    </svg>
+                    <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <span style={{ fontSize:18, fontWeight:900, color:B.text }}>{pct}%</span>
+                    </div>
+                  </div>
+                  <p style={{ fontSize:16, fontWeight:800, marginBottom:4 }}>Munique A.I criando posts...</p>
+                  <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>{naCreated} de {total} posts criados</p>
+                  <div style={{ width:"100%", maxWidth:280 }}>
+                    {enabled.map((p, i) => (
+                      <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0", opacity:i < naCreated ? 1 : i === naCreated ? 0.7 : 0.3, transition:"opacity .3s" }}>
+                        {i < naCreated ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          : i === naCreated ? <div style={{ width:14, height:14, border:"2px solid #8B5CF6", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .7s linear infinite" }} />
+                          : <div style={{ width:14, height:14, borderRadius:"50%", border:"2px solid "+B.border }} />}
+                        <span style={{ fontSize:11, fontWeight:i <= naCreated ? 600 : 400, color:i < naCreated ? B.text : B.muted }}>{p.title?.substring(0,40)}{p.title?.length>40?"...":""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>) : (<>
+                  <div style={{ width:64, height:64, borderRadius:"50%", background:"#10B98115", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <p style={{ fontSize:18, fontWeight:800, marginBottom:4 }}>Tudo pronto! 🎉</p>
+                  <p style={{ fontSize:13, color:B.muted, marginBottom:20 }}>{total} posts criados com sucesso</p>
+                  <button onClick={resetNewsAutoGen} style={{ padding:"12px 32px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Ver demandas</button>
+                </>)}
+              </div>
+            );
+          })()}
+        </div>
         {naStep === 1 && <div style={{ padding:"12px 20px", borderTop:"1px solid "+B.border, flexShrink:0 }}>
           {naClient && naSources.length > 0 && <p style={{ fontSize:10, color:B.accent, fontWeight:600, marginBottom:8 }}>✓ {naSources.length} fonte{naSources.length>1?"s":""} configurada{naSources.length>1?"s":""}</p>}
           {naClient && naSources.length === 0 && <p style={{ fontSize:10, color:"#F59E0B", fontWeight:600, marginBottom:8 }}>⚠ Nenhuma fonte configurada. Vá em Clientes → Editar → Fontes de Notícias</p>}
