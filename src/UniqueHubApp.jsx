@@ -4052,7 +4052,12 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     const cid = sel.supaId || sel.id;
     supaGetSetting(`client_m4b_cover_${cid}`).then(v => setM4bCover(v || null));
     supaGetSetting(`client_m4b_profile_${cid}`).then(v => { try { if (v) setM4bProfile(JSON.parse(v)); else setM4bProfile({ mission:"", values:"", website:"", instagram:"", linkedin:"", matchIdeal:"" }); } catch { setM4bProfile({ mission:"", values:"", website:"", instagram:"", linkedin:"", matchIdeal:"" }); } });
+    supaGetSetting(`client_news_sources_${cid}`).then(v => { try { setNewsSources(v ? JSON.parse(v) : []); } catch { setNewsSources([]); } });
   }, [sel?.id]);
+  const [newsSources, setNewsSources] = useState([]);
+  const [newsSourceInput, setNewsSourceInput] = useState("");
+  const addNewsSource = () => { if (!newsSourceInput.trim() || !sel) return; const url = newsSourceInput.trim(); const updated = [...newsSources, url]; setNewsSources(updated); setNewsSourceInput(""); const cid = sel.supaId||sel.id; supaSetSetting(`client_news_sources_${cid}`, JSON.stringify(updated)); };
+  const removeNewsSource = (idx) => { if (!sel) return; const updated = newsSources.filter((_,i) => i !== idx); setNewsSources(updated); const cid = sel.supaId||sel.id; supaSetSetting(`client_news_sources_${cid}`, JSON.stringify(updated)); };
   const saveM4bProfile = (field, val) => {
     const updated = { ...m4bProfile, [field]: val };
     setM4bProfile(updated);
@@ -4859,6 +4864,26 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             <div style={{ display:"flex", gap:8 }}>
               <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Instagram</label><input value={m4bProfile.instagram} onChange={e => saveM4bProfile("instagram", e.target.value)} placeholder="@empresa" className="tinput" style={{ fontSize:12 }} /></div>
               <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>LinkedIn</label><input value={m4bProfile.linkedin} onChange={e => saveM4bProfile("linkedin", e.target.value)} placeholder="linkedin.com/company/..." className="tinput" style={{ fontSize:12 }} /></div>
+            </div>
+          </Card>
+
+          {/* ── NEWS SOURCES ── */}
+          <Card style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
+              <p style={{ fontSize:13, fontWeight:700 }}>Fontes de Notícias</p>
+            </div>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10, lineHeight:1.4 }}>Sites de referência para gerar posts automaticamente com IA. A Munique A.I acessa esses sites e cria conteúdo relevante.</p>
+            {newsSources.map((url, i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:B.bg, border:"1px solid "+B.border, marginBottom:4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                <span style={{ flex:1, fontSize:11, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{url}</span>
+                <button onClick={() => removeNewsSource(i)} style={{ background:"none", border:"none", cursor:"pointer", padding:2 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>
+            ))}
+            <div style={{ display:"flex", gap:6, marginTop:6 }}>
+              <input value={newsSourceInput} onChange={e => setNewsSourceInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addNewsSource(); }} placeholder="https://meioememensagem.com.br" className="tinput" style={{ flex:1, fontSize:12 }} />
+              <button onClick={addNewsSource} disabled={!newsSourceInput.trim()} style={{ padding:"8px 14px", borderRadius:10, background:newsSourceInput.trim()?B.accent:B.border, border:"none", cursor:newsSourceInput.trim()?"pointer":"default", fontFamily:"inherit", fontSize:11, fontWeight:700, color:newsSourceInput.trim()?"#0D0D0D":B.muted, flexShrink:0 }}>+ Adicionar</button>
             </div>
           </Card>
         </>)}
@@ -7020,6 +7045,135 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
 
   const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); setIpTone("informativo"); setIpEmojis(true); setIpEmojiQty("moderado"); };
 
+  /* ═══ NEWS AUTO-GEN: Generate posts from client's reference sites ═══ */
+  const [newsAutoGen, setNewsAutoGen] = useState(false);
+  const [naClient, setNaClient] = useState(null);
+  const [naStep, setNaStep] = useState(1);
+  const [naLoading, setNaLoading] = useState(false);
+  const [naProgress, setNaProgress] = useState("");
+  const [naPosts, setNaPosts] = useState([]);
+  const [naCreating, setNaCreating] = useState(false);
+  const [naCreated, setNaCreated] = useState(0);
+  const [naSources, setNaSources] = useState([]);
+  const resetNewsAutoGen = () => { setNewsAutoGen(false); setNaClient(null); setNaStep(1); setNaLoading(false); setNaProgress(""); setNaPosts([]); setNaCreating(false); setNaCreated(0); setNaSources([]); };
+
+  const loadClientSources = async (clientId) => {
+    const v = await supaGetSetting(`client_news_sources_${clientId}`);
+    try { return v ? JSON.parse(v) : []; } catch { return []; }
+  };
+
+  const processNewsAutoGen = async () => {
+    if (!naClient) return;
+    setNaStep(2); setNaLoading(true); setNaProgress("Carregando fontes...");
+    try {
+      const sources = await loadClientSources(naClient);
+      if (!sources || sources.length === 0) {
+        setNaProgress("Nenhuma fonte configurada para este cliente. Vá em Clientes > Editar > Fontes de Notícias.");
+        setNaLoading(false); return;
+      }
+      setNaSources(sources);
+      setNaProgress("Buscando notícias recentes dos sites...");
+      const keys = await supaGetAIKeys();
+      const clientObj = (clients||[]).find(c=>(c.supaId||c.id)===naClient);
+      const clientName = clientObj?.name || "Cliente";
+      const clientSegment = clientObj?.segment || "";
+      const currentYear = new Date().getFullYear();
+      const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+
+      const sitesText = sources.map((url,i) => `${i+1}. ${url}`).join("\n");
+
+      const prompt = `Hoje é ${today}. Você é um social media brasileiro de uma agência de marketing digital.
+
+TAREFA: Acesse CADA um dos sites abaixo, leia as notícias e artigos mais recentes, e gere posts para redes sociais baseados nesse conteúdo.
+
+SITES DE REFERÊNCIA DO CLIENTE "${clientName}"${clientSegment?" (segmento: "+clientSegment+")":""}:
+${sitesText}
+
+INSTRUÇÕES:
+1. Para CADA site, busque na web a URL exata e leia o conteúdo mais recente
+2. Selecione 3-6 artigos/notícias RELEVANTES e RECENTES (últimos 7 dias)
+3. Para cada artigo, crie um post adaptado para redes sociais
+
+Para CADA post, retorne JSON com:
+- title: título do post (max 60 chars)
+- type: "social" ou "video"
+- format: "Feed", "Carrossel" ou "Reels"
+- networks: ["Instagram","Facebook"]
+- schedDate: "${currentYear}-${String(new Date().getMonth()+1).padStart(2,"0")}-${String(new Date().getDate()+1).padStart(2,"0")}"
+- schedTime: horário sugerido entre "09:00" e "18:00"
+- caption: legenda completa e humanizada, sem clichês, com CTA natural. Máx 5 parágrafos curtos.
+- designBrief: briefing pro designer (formato visual, cores, textos na arte, estilo)
+- scriptOrRoteiro: roteiro se for vídeo, "" se for post
+- sourceUrl: URL do artigo original
+- sourceName: nome do site de onde veio
+
+REGRAS:
+- Use APENAS conteúdo real encontrado nos sites
+- Legendas devem ser humanizadas (sem "você sabia", "não perca", "confira")
+- Varie estruturas: nem tudo começa com pergunta
+- Hashtags relevantes no final (8-12)
+- Se um site estiver inacessível, pule e use os outros
+
+RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
+
+      setNaProgress("Processando com IA...");
+      let aiText = "";
+      if (keys?.claude_key) {
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json","x-api-key":keys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+          body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:6000, tools:[{type:"web_search_20250305",name:"web_search"}], messages:[{role:"user",content:prompt}] }) });
+        const d = await r.json(); aiText = (d?.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+      } else if (keys?.openai_key) {
+        const r = await fetch("https://api.openai.com/v1/chat/completions", { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys.openai_key},
+          body: JSON.stringify({ model:"gpt-4o", max_tokens:6000, messages:[{role:"system",content:"Acesse os sites fornecidos e extraia notícias recentes."},{role:"user",content:prompt}] }) });
+        const d = await r.json(); aiText = d?.choices?.[0]?.message?.content||"";
+      } else if (keys?.gemini_key) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+keys.gemini_key, { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ contents:[{role:"user",parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:6000}, tools:[{google_search:{}}] }) });
+        const d = await r.json(); aiText = d?.candidates?.[0]?.content?.parts?.filter(p=>p.text).map(p=>p.text).join("\n")||"";
+      } else { setNaProgress("Nenhuma chave de IA configurada."); setNaLoading(false); return; }
+
+      setNaProgress("Organizando posts...");
+      let posts = [];
+      try { const c=aiText.replace(/```json|```/g,"").trim(); const s=c.indexOf("["),e=c.lastIndexOf("]"); if(s!==-1&&e!==-1) posts=JSON.parse(c.substring(s,e+1)); else posts=JSON.parse(c); } catch(e) { console.error("NewsAutoGen parse:",e); }
+
+      if (posts.length > 0) {
+        setNaPosts(posts.map(p=>({...p,_enabled:true})));
+        setNaStep(3);
+      } else { setNaProgress("Nenhum post gerado. Verifique se os sites estão acessíveis."); }
+    } catch(e) { console.error("NewsAutoGen:",e); setNaProgress("Erro: "+e.message); }
+    setNaLoading(false);
+  };
+
+  const executeNewsAutoGen = async () => {
+    setNaCreating(true); setNaCreated(0);
+    const enabled = naPosts.filter(p => p._enabled);
+    const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    for (let i = 0; i < enabled.length; i++) {
+      const p = enabled[i];
+      const newD = {
+        title: (p.title||"Notícia").substring(0,57), type: p.type||"social", stage: "design",
+        format: p.format||"Feed", priority: "média", network: (p.networks||["Instagram","Facebook"]).join(", "),
+        client: (clients||[]).find(c=>(c.supaId||c.id)===naClient)?.name||"", client_id: naClient,
+        scheduling: p.schedDate ? { date: p.schedDate, time: p.schedTime||"10:00" } : null,
+        steps: {
+          idea: { text: `📰 Gerado a partir de: ${p.sourceName||"Fonte de notícias"}\n${p.sourceUrl||""}\n\n${p.title}`, by: "Munique A.I · News", date: today },
+          briefing: { text: p.designBrief || "", by: "Munique A.I · News", date: today },
+          caption: { text: p.caption || "", by: "Munique A.I · News", date: today },
+        },
+      };
+      if (p.scriptOrRoteiro) newD.steps.idea.text += "\n\nRoteiro:\n" + p.scriptOrRoteiro;
+      const result = await supaCreateDemand(newD, naClient);
+      if (result?.data) {
+        setDemands(prev => [{ ...newD, id: result.data.id, supaId: result.data.id, createdAt: today, assignees: [] }, ...prev]);
+      }
+      setNaCreated(i + 1);
+    }
+    setNaCreating(false);
+    showToast(`${enabled.length} posts criados a partir das notícias ✓`);
+    setTimeout(() => resetNewsAutoGen(), 1500);
+  };
+
+
   const processImportPlan = async () => {
     if (!ipFile || !ipClient) return;
     setIpStep(2); setIpLoading(true); setIpProgress("Lendo documento...");
@@ -7400,6 +7554,103 @@ REGRAS TÉCNICAS:
       </div>
     </div>
   ) : null;
+
+  /* ═══ NEWS AUTO-GEN MODAL ═══ */
+  const NewsAutoGenModal = newsAutoGen ? (
+    <div style={{ position:"fixed", inset:0, zIndex:99998, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(6px)" }}>
+      <div style={{ width:"100%", maxWidth:500, maxHeight:"90vh", background:B.bgCard, borderRadius:24, display:"flex", flexDirection:"column", overflow:"hidden", margin:16, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}>
+        {/* Header */}
+        <div style={{ padding:"16px 20px", borderBottom:"1px solid "+B.border, display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+          <div style={{ width:36, height:36, borderRadius:12, background:"linear-gradient(135deg, #3B82F6, #8B5CF6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
+          </div>
+          <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Gerar Posts de Notícias</p><p style={{ fontSize:11, color:B.muted }}>Passo {naStep} de 3</p></div>
+          {naStep === 3 && <button onClick={executeNewsAutoGen} disabled={naCreating} style={{ padding:"8px 18px", borderRadius:12, background:"linear-gradient(135deg, #3B82F6, #8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", gap:6 }}>
+            {naCreating ? <><div style={{ width:14, height:14, border:"2px solid #fff", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {naCreated}/{naPosts.filter(p=>p._enabled).length}</> : <>Criar {naPosts.filter(p=>p._enabled).length} posts</>}
+          </button>}
+          <button onClick={resetNewsAutoGen} style={{ width:32, height:32, borderRadius:10, background:B.bg, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        {/* Step 1: Select client */}
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+          {naStep === 1 && <>
+            <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Selecione o cliente</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.4 }}>A IA vai acessar os sites de referência configurados e gerar posts automaticamente.</p>
+            {(clients||[]).filter(c => c.status === "ativo" || !c.status).map(c => {
+              const cid = c.supaId || c.id;
+              const sel = naClient === cid;
+              return <button key={cid} onClick={async () => { setNaClient(cid); const srcs = await loadClientSources(cid); setNaSources(srcs); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 14px", borderRadius:14, border:sel?"2px solid "+B.accent:"1.5px solid "+B.border, background:sel?B.accent+"08":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left", marginBottom:6 }}>
+                <Av name={c.name} src={c.logo||c.logo_url} sz={36} fs={13} />
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:13, fontWeight:sel?700:500 }}>{c.name}</p>
+                  {c.segment && <p style={{ fontSize:10, color:B.muted }}>{c.segment}</p>}
+                </div>
+                {sel && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>;
+            })}
+          </>}
+
+          {/* Step 2: Processing */}
+          {naStep === 2 && (
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"40vh", gap:16 }}>
+              {naLoading ? <>
+                <div style={{ width:48, height:48, border:"4px solid "+B.border, borderTopColor:"#8B5CF6", borderRadius:"50%", animation:"spin .8s linear infinite" }} />
+                <p style={{ fontSize:14, fontWeight:700 }}>{naProgress}</p>
+                <p style={{ fontSize:11, color:B.muted }}>Isso pode levar alguns segundos...</p>
+              </> : <>
+                <div style={{ width:48, height:48, borderRadius:14, background:"#EF444420", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </div>
+                <p style={{ fontSize:13, fontWeight:700, textAlign:"center" }}>{naProgress}</p>
+                <button onClick={() => setNaStep(1)} style={{ padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Voltar</button>
+              </>}
+            </div>
+          )}
+
+          {/* Step 3: Preview */}
+          {naStep === 3 && <>
+            <div style={{ background:"linear-gradient(135deg, #3B82F608, #8B5CF608)", borderRadius:14, padding:"12px 14px", marginBottom:14, border:"1px solid #8B5CF615" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <p style={{ fontSize:13, fontWeight:700 }}>{naPosts.length} posts gerados</p>
+              </div>
+              <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>De {naSources.length} fonte{naSources.length>1?"s":""} · Revise e desative os que não quiser</p>
+            </div>
+            {naPosts.map((p, i) => (
+              <div key={i} style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"12px 14px", marginBottom:8, opacity:p._enabled?1:0.4 }}>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                  <button onClick={() => setNaPosts(prev => prev.map((pp,j) => j===i ? {...pp, _enabled:!pp._enabled} : pp))} style={{ width:22, height:22, borderRadius:7, border:"2px solid "+(p._enabled?B.accent:B.border), background:p._enabled?B.accent:"transparent", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginTop:2 }}>
+                    {p._enabled && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </button>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                      <span style={{ fontSize:11, fontWeight:700 }}>{i+1}.</span>
+                      <span style={{ fontSize:9, fontWeight:600, padding:"2px 8px", borderRadius:6, background:p.format==="Reels"?"#EC489915":p.format==="Carrossel"?"#F59E0B15":"#3B82F615", color:p.format==="Reels"?"#EC4899":p.format==="Carrossel"?"#F59E0B":"#3B82F6" }}>{p.format||"Feed"}</span>
+                      {p.sourceName && <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{p.sourceName}</span>}
+                    </div>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, lineHeight:1.3 }}>{p.title}</p>
+                    {p.caption && <p style={{ fontSize:11, color:B.muted, lineHeight:1.4, marginTop:4 }}>{p.caption.substring(0,120)}{p.caption.length>120?"...":""}</p>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </>}
+        </div>
+
+        {/* Footer */}
+        {naStep === 1 && <div style={{ padding:"12px 20px", borderTop:"1px solid "+B.border, flexShrink:0 }}>
+          {naClient && naSources.length > 0 && <p style={{ fontSize:10, color:B.accent, fontWeight:600, marginBottom:8 }}>✓ {naSources.length} fonte{naSources.length>1?"s":""} configurada{naSources.length>1?"s":""}</p>}
+          {naClient && naSources.length === 0 && <p style={{ fontSize:10, color:"#F59E0B", fontWeight:600, marginBottom:8 }}>⚠ Nenhuma fonte configurada. Vá em Clientes → Editar → Fontes de Notícias</p>}
+          <button disabled={!naClient || naSources.length === 0} onClick={processNewsAutoGen} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:naClient && naSources.length > 0 ? "linear-gradient(135deg, #3B82F6, #8B5CF6)" : B.border, border:"none", cursor:naClient && naSources.length > 0?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:naClient && naSources.length > 0?"#fff":B.muted }}>
+            {naClient && naSources.length > 0 ? "Buscar e Gerar Posts" : "Selecione um cliente com fontes"}
+          </button>
+        </div>}
+      </div>
+    </div>
+  ) : null;
+
 
 
   const [pubLoading, setPubLoading] = useState(false);
@@ -8732,6 +8983,7 @@ REGRAS TÉCNICAS:
     <div className={isContentDesktop ? "content-wide" : ""} style={{ paddingTop: contained?0:TOP, minHeight:contained?0:"100%", flex:contained?1:"initial", display:"flex", flexDirection:"column", position:contained?"relative":"static", overflow:contained?(sel||creating?"hidden":"visible"):"visible" }}>
       {ToastEl}
       {ImportPlanModal}
+      {NewsAutoGenModal}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
       {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
@@ -8750,6 +9002,12 @@ REGRAS TÉCNICAS:
         <button onClick={() => setImportPlan(true)} style={{ width:"100%", padding:"12px 16px", borderRadius:14, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 3px 16px "+B.accent+"35" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
           Importe com a Munique A.I
+        </button>
+      </div>}
+      {!isContentDesktop && !contained && canAccessFn("content.create") && <div style={{ padding:"6px 16px 0" }}>
+        <button onClick={() => setNewsAutoGen(true)} style={{ width:"100%", padding:"12px 16px", borderRadius:14, background:"linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 3px 16px #3B82F630" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
+          Gerar Posts de Notícias
         </button>
       </div>}
 
@@ -8785,6 +9043,10 @@ REGRAS TÉCNICAS:
         <button onClick={() => setImportPlan(true)} style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 16px", borderRadius:12, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:800, color:"#0D0D0D", flexShrink:0, boxShadow:"0 2px 12px "+B.accent+"40" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
           Importe com a Munique A.I
+        </button>
+        <button onClick={() => setNewsAutoGen(true)} style={{ display:"flex", alignItems:"center", gap:7, padding:"8px 16px", borderRadius:12, background:"linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:800, color:"#fff", flexShrink:0, boxShadow:"0 2px 12px #3B82F630" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
+          Gerar Posts de Notícias
         </button>
         </div>
       </div>}
