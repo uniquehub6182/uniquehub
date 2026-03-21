@@ -21916,7 +21916,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       null
     )}
     {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
-    <div style={{ display: hasSub ? "none" : "flex" }}>
+    <div style={{ display: "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
@@ -21963,11 +21963,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           </>}
         </div>
       </div>
-      {(!sub || sub === "financial" || sub.startsWith("demand_")) && <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
+      {true && <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           return (
-            <button key={t.k} onClick={()=>goTab(t.k)} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
+            <button key={t.k} onClick={()=>{if(sub)setSub(null);goTab(t.k);}} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               <div style={{ width:a?54:36, height:a?54:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-22px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none" }}>
                 {t.i(a ? circleIcon : inactiveColor)}
               </div>
