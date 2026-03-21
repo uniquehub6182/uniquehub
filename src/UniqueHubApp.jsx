@@ -21967,7 +21967,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     {/* Navbar always visible - outside hidden div */}
-    <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
+    <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           return (
