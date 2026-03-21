@@ -3430,33 +3430,42 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
       if(pk==="radar") {
-        /* Mini radar inside phoneFrame — no modals, just compact trend list */
+        /* Mini radar inside phoneFrame — compact trend list + open full page */
         const _tc = {meme:"#EC4899",news:"#3B82F6",opportunity:"#10B981"};
         const _te = {meme:"🔥",news:"📰",opportunity:"📅"};
         const _tl = {meme:"Viral",news:"Notícia",opportunity:"Oportunidade"};
+        const _pi = {instagram:"📷",tiktok:"🎵",x:"𝕏",youtube:"▶️",facebook:"📘",linkedin:"💼",threads:"🔗",todas:"🌐"};
         const radarCache = useRef([]);
         const [radarMiniLoaded, setRadarMiniLoaded] = useState(false);
         if (!radarMiniLoaded) { supaGetSetting("agency_radar_v3").then(v => { try { if(v){radarCache.current=JSON.parse(v).trends||[];} } catch {} setRadarMiniLoaded(true); }); }
-        const items = radarCache.current.slice(0,6);
+        const items = radarCache.current.slice(0,8);
         return phoneFrame("Radar","radar",()=>goSub("radar"),
-          <div style={{padding:"12px",height:"100%",overflowY:"auto"}}>
+          <div style={{padding:"10px",height:"100%",overflowY:"auto"}}>
             {items.length === 0 ? (
-              <div style={{textAlign:"center",padding:"40px 20px"}}>
-                <p style={{fontSize:28,marginBottom:8}}>🌐</p>
-                <p style={{fontSize:13,fontWeight:700}}>Radar vazio</p>
-                <p style={{fontSize:11,color:B.muted,marginTop:4}}>Abra a página completa para buscar tendências</p>
-                <button onClick={()=>goSub("radar")} style={{marginTop:12,padding:"10px 20px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Abrir Radar</button>
+              <div style={{textAlign:"center",padding:"30px 16px"}}>
+                <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#EC489920,#8B5CF620)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:22}}>🌐</div>
+                <p style={{fontSize:13,fontWeight:700}}>Radar de Tendências</p>
+                <p style={{fontSize:11,color:B.muted,marginTop:4,lineHeight:1.4}}>Busque memes virais, notícias e oportunidades em tempo real</p>
+                <button onClick={()=>goSub("radar")} style={{marginTop:12,padding:"10px 24px",borderRadius:12,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Abrir Radar</button>
               </div>
-            ) : items.map((t,i) => (
-              <div key={i} onClick={()=>goSub("radar")} style={{padding:"10px 12px",borderRadius:12,border:"1px solid "+B.border,borderLeft:"3px solid "+(_tc[t.type]||"#8B5CF6"),marginBottom:6,cursor:"pointer",background:B.bgCard}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                  <span style={{fontSize:12}}>{_te[t.type]||"📌"}</span>
-                  <span style={{fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:6,background:(_tc[t.type]||"#8B5CF6")+"15",color:_tc[t.type]||"#8B5CF6"}}>{_tl[t.type]||"Trend"}</span>
-                  {t.platforms?.slice(0,2).map((p,j)=><span key={j} style={{fontSize:8,color:B.muted}}>{p}</span>)}
+            ) : (<>
+              {/* Stats mini */}
+              <div style={{display:"flex",gap:4,marginBottom:8}}>
+                {[{t:"meme",e:"🔥"},{t:"news",e:"📰"},{t:"opportunity",e:"📅"}].map(s=>{const c=items.filter(i=>i.type===s.t).length;return c>0?<span key={s.t} style={{fontSize:9,fontWeight:700,padding:"3px 8px",borderRadius:8,background:_tc[s.t]+"12",color:_tc[s.t]}}>{s.e} {c}</span>:null;})}
+              </div>
+              {items.map((t,i) => (
+                <div key={i} onClick={()=>goSub("radar")} style={{padding:"8px 10px",borderRadius:10,border:"1px solid "+B.border,borderLeft:"3px solid "+(_tc[t.type]||"#8B5CF6"),marginBottom:5,cursor:"pointer",background:B.bgCard,transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background=B.bg} onMouseLeave={e=>e.currentTarget.style.background=B.bgCard}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2}}>
+                    <span style={{fontSize:10}}>{_te[t.type]||"📌"}</span>
+                    <span style={{fontSize:7,fontWeight:700,padding:"1px 5px",borderRadius:4,background:(_tc[t.type]||"#8B5CF6")+"15",color:_tc[t.type]||"#8B5CF6",textTransform:"uppercase"}}>{_tl[t.type]}</span>
+                    {t.platforms?.slice(0,3).map((p,j)=><span key={j} style={{fontSize:8}} title={p}>{_pi[p.toLowerCase()]||"🌐"}</span>)}
+                    {t.urgency==="alta"&&<span style={{fontSize:7,fontWeight:700,color:"#EF4444",marginLeft:"auto"}}>⚡</span>}
+                  </div>
+                  <p style={{fontSize:11,fontWeight:700,color:B.text,lineHeight:1.25}}>{t.title}</p>
                 </div>
-                <p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{t.title}</p>
-              </div>
-            ))}
+              ))}
+              <button onClick={()=>goSub("radar")} style={{width:"100%",padding:"8px 0",borderRadius:10,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff",marginTop:4}}>Ver tudo + Criar posts →</button>
+            </>)}
           </div>
         );
       }
@@ -22499,7 +22508,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} onCreatePost={handleCreatePostFromNews} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={sharedClients} />}
-        {sub === "radar" && <RadarPage onBack={() => setSub(null)} clients={sharedClients} user={user} demands={demands} setDemands={setDemands} />}
+        {sub === "radar" && <RadarPage onBack={() => setSub(null)} clients={sharedClients} user={user} demands={sharedDemands} setDemands={setSharedDemands} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
