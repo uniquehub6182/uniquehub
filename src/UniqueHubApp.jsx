@@ -22397,9 +22397,11 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
       }
     } catch(e) { console.error("AI generation error:", e); }
     /* Fallback if AI failed */
-    if (!ideaText) ideaText = `📰 Baseado na notícia: "${title}"\n\n${summary.substring(0, 200)}...\n\nFonte: ${source}${article.sourceUrl ? " — " + article.sourceUrl : ""}`;
-    if (!caption) caption = `${title}\n\n${summary.substring(0, 300)}...\n\nFonte: ${source}`;
+    const aiFailed = !caption;
+    if (!ideaText) ideaText = `📰 Baseado na notícia: "${title}"\n\nFonte: ${source}${article.sourceUrl ? " — " + article.sourceUrl : ""}\n\n${summary.substring(0, 200)}`;
+    if (!caption) caption = `${title}\n\n${summary.substring(0, 200)}...\n\nFonte: ${source}\n\n#marketing #digital`;
     if (!hashtags) hashtags = tags ? tags.split(", ").map(t => "#" + t.replace(/\s+/g, "")).join(" ") : "#marketing #digital";
+    if (aiFailed) mainToast("⚠️ IA não conseguiu gerar legenda (verifique créditos). Usando texto básico.");
     const selClient = sharedClients.find(c => (c.supaId || c.id) === clientId);
     const newDemand = {
       title: title.length > 60 ? title.substring(0, 57) + "..." : title,
