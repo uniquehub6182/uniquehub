@@ -7076,6 +7076,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [naCreated, setNaCreated] = useState(0);
   const [naSources, setNaSources] = useState([]);
   const resetNewsAutoGen = () => { setNewsAutoGen(false); setNaClient(null); setNaStep(1); setNaLoading(false); setNaProgress(""); setNaPosts([]); setNaCreating(false); setNaCreated(0); setNaSources([]); };
+  const [aiJustCreated, setAiJustCreated] = useState(null);
 
   const loadClientSources = async (clientId) => {
     const v = await supaGetSetting(`client_news_sources_${clientId}`);
@@ -7193,6 +7194,8 @@ RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
       await new Promise(r => setTimeout(r, 300));
     }
     setNaCreating(false);
+    setAiJustCreated(enabled.length);
+    setTimeout(() => setAiJustCreated(null), 5000);
   };
 
 
@@ -7357,6 +7360,8 @@ REGRAS TÉCNICAS:
       }
     }
     setIpCreating(false);
+    setAiJustCreated(created);
+    setTimeout(() => setAiJustCreated(null), 5000);
     showToast(`${created} demanda${created > 1 ? "s" : ""} criada${created > 1 ? "s" : ""} com sucesso! ✓`);
     resetImportPlan();
   };
@@ -9047,6 +9052,37 @@ REGRAS TÉCNICAS:
       {ToastEl}
       {ImportPlanModal}
       {NewsAutoGenModal}
+
+      {/* ── AI Creating Overlay (shows on content page while posts are being generated) ── */}
+      {(naCreating || ipCreating) && !newsAutoGen && !importPlan && <div style={{ position:"absolute", inset:0, zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", background:B.bg+"F0", backdropFilter:"blur(8px)", borderRadius:20 }}>
+        <div style={{ textAlign:"center", padding:"40px 30px" }}>
+          <div style={{ position:"relative", width:72, height:72, margin:"0 auto 16px" }}>
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="30" fill="none" stroke={B.border} strokeWidth="3" />
+              <circle cx="36" cy="36" r="30" fill="none" stroke={B.accent} strokeWidth="3" strokeLinecap="round" strokeDasharray="50 140" style={{ animation:"spin 1.2s linear infinite", transformOrigin:"center" }} />
+            </svg>
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+            </div>
+          </div>
+          <p style={{ fontSize:17, fontWeight:800, color:B.text, marginBottom:6 }}>Munique A.I está trabalhando</p>
+          <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>Criando posts... aguarde um momento</p>
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:16 }}>
+            {[0,1,2].map(i => <div key={i} style={{ width:8, height:8, borderRadius:4, background:B.accent, animation:`m4b-pulse 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+          </div>
+        </div>
+      </div>}
+      {/* ── AI Just Created overlay (brief success feedback) ── */}
+      {aiJustCreated && <div style={{ position:"absolute", inset:0, zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", background:B.bg+"E8", backdropFilter:"blur(6px)", borderRadius:20, animation:"fadeIn .3s ease" }} onClick={() => setAiJustCreated(null)}>
+        <div style={{ textAlign:"center", padding:"40px 30px" }}>
+          <div style={{ width:64, height:64, borderRadius:"50%", background:B.green+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green||"#10B981"} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <p style={{ fontSize:18, fontWeight:800, color:B.text, marginBottom:4 }}>Posts criados! 🎉</p>
+          <p style={{ fontSize:13, color:B.muted }}>{aiJustCreated} post{aiJustCreated > 1 ? "s" : ""} criado{aiJustCreated > 1 ? "s" : ""} pela Munique A.I</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:10 }}>Toque para ver as demandas</p>
+        </div>
+      </div>}
 
       {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
       {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
