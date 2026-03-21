@@ -21916,7 +21916,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       null
     )}
     {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
-    <div style={{ display: "flex" }}>
+    <div style={{ display: hasSub ? "none" : "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
@@ -21963,7 +21963,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           </>}
         </div>
       </div>
-      {true && <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
+    </div>
+    </div>
+    </div>
+    {/* Navbar always visible - outside hidden div */}
+    <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           return (
@@ -21976,11 +21980,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </button>
           );
         })}
-      </nav>}
-      <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />
-    </div>
-    </div>
-    </div>
+    </nav>
+    <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />
     </>);
 }
 
