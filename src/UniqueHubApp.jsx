@@ -2615,32 +2615,27 @@ function RadarPage({ onBack, clients, user, demands, setDemands }) {
       const cList = CDATA.slice(0,20).map(c=>`${c.name}${c.segment?" ("+c.segment+")":""}`).join(", ");
       const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
 
-      const prompt = `Hoje é ${today}. Você é um analista de tendências digitais brasileiro. Use web search para buscar o que está REALMENTE acontecendo AGORA nas redes sociais e notícias do Brasil.
+      const prompt = `Hoje é ${today}. Faça MÚLTIPLAS buscas na web para encontrar o que está acontecendo AGORA no Brasil. Siga estas instruções EXATAMENTE:
 
-CLIENTES: ${cList}
-SEGMENTOS: ${segs.join(", ")||"Diversos"}
+PASSO 1: Busque na web "trending topics Brasil ${today}" e "viral TikTok Brasil março 2026"
+PASSO 2: Busque na web "memes virais Instagram Brasil esta semana" e "trends Twitter X Brasil hoje"  
+PASSO 3: Busque na web "novidades marketing digital 2026" e "mudanças algoritmo Instagram TikTok 2026"
+PASSO 4: Busque na web "datas comemorativas março abril 2026 Brasil"
 
-BUSQUE NA WEB e retorne 10-15 itens REAIS e ATUAIS:
+CLIENTES DA AGÊNCIA (para sugerir qual cliente combina com cada trend): ${cList}
 
-🔥 VIRAIS (4-5): Memes, trends, challenges, áudios viralizando AGORA no Brasil. Busque no X/Twitter, TikTok, Instagram.
-📰 NOTÍCIAS (3-5): Notícias quentes de marketing digital, tecnologia, mudanças de algoritmo, novidades de plataformas.
-📅 OPORTUNIDADES (3-5): Datas comemorativas dos próximos 15 dias, eventos, momentos sazonais.
+Baseado EXCLUSIVAMENTE nos resultados da web, retorne 10-15 itens divididos em:
+- 4-5 itens type "meme" (trends virais, memes, challenges, áudios)
+- 3-5 itens type "news" (notícias de marketing, tecnologia, redes sociais)
+- 3-5 itens type "opportunity" (datas comemorativas, eventos próximos)
 
-CADA item deve ter:
-- id: número
-- type: "meme"|"news"|"opportunity"
-- title: título chamativo (max 60 chars)
-- description: 2-3 frases sobre a trend
-- platforms: array das plataformas onde está rolando, ex: ["instagram","tiktok","x"] ou ["todas"]. Use EXATAMENTE: "instagram", "tiktok", "x", "youtube", "facebook", "linkedin", "threads"
-- whyItMatters: 1-2 frases de por que é relevante pra social media
-- suggestedClients: [1-3 nomes de clientes da lista que combinariam]
-- postIdea: ideia CONCRETA (formato + gancho da legenda em 2-3 frases)
-- urgency: "alta"|"media"|"baixa"
-- source: fonte real (ex: "Trending no X", "Portal G1", "Instagram Reels")
-- hashtags: ["#tag1","#tag2","#tag3"]
+REGRA CRÍTICA: Se um resultado da busca for de 2024 ou anterior, DESCARTE. Só use informações de 2025-2026.
+Se não encontrar dados recentes reais para uma categoria, retorne MENOS itens nessa categoria em vez de inventar.
 
-IMPORTANTE: Só inclua trends REAIS que você encontrou na web. Não invente.
-RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
+Formato JSON para CADA item:
+{"id":1,"type":"meme|news|opportunity","title":"Título curto max 60 chars","description":"2-3 frases explicando","platforms":["instagram","tiktok","x","youtube","facebook"],"whyItMatters":"Por que social media deve usar isso","suggestedClients":["Nome Cliente 1","Nome Cliente 2"],"postIdea":"Formato: Reels/Feed/Carrossel. Gancho: frase de abertura da legenda sugerida","urgency":"alta|media|baixa","source":"Fonte real ex: TikTok Trending, X/Twitter, G1","hashtags":["#tag1","#tag2","#tag3"]}
+
+RESPONDA APENAS com array JSON válido. Sem markdown, sem backticks, sem explicação.`;
 
       let aiText = "";
       if (keys?.claude_key) {
@@ -3430,41 +3425,62 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
       if(pk==="radar") {
-        /* Mini radar inside phoneFrame — compact trend list + open full page */
+        /* Radar compact dashboard panel */
         const _tc = {meme:"#EC4899",news:"#3B82F6",opportunity:"#10B981"};
-        const _te = {meme:"🔥",news:"📰",opportunity:"📅"};
-        const _tl = {meme:"Viral",news:"Notícia",opportunity:"Oportunidade"};
-        const _pi = {instagram:"📷",tiktok:"🎵",x:"𝕏",youtube:"▶️",facebook:"📘",linkedin:"💼",threads:"🔗",todas:"🌐"};
         const radarCache = useRef([]);
         const [radarMiniLoaded, setRadarMiniLoaded] = useState(false);
         if (!radarMiniLoaded) { supaGetSetting("agency_radar_v3").then(v => { try { if(v){radarCache.current=JSON.parse(v).trends||[];} } catch {} setRadarMiniLoaded(true); }); }
-        const items = radarCache.current.slice(0,8);
+        const items = radarCache.current;
+        const memes = items.filter(t=>t.type==="meme").slice(0,3);
+        const news = items.filter(t=>t.type==="news").slice(0,3);
+        const opps = items.filter(t=>t.type==="opportunity").slice(0,2);
         return phoneFrame("Radar","radar",()=>goSub("radar"),
-          <div style={{padding:"10px",height:"100%",overflowY:"auto"}}>
+          <div style={{height:"100%",overflowY:"auto",background:B.bg}}>
             {items.length === 0 ? (
-              <div style={{textAlign:"center",padding:"30px 16px"}}>
-                <div style={{width:48,height:48,borderRadius:14,background:"linear-gradient(135deg,#EC489920,#8B5CF620)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px",fontSize:22}}>🌐</div>
-                <p style={{fontSize:13,fontWeight:700}}>Radar de Tendências</p>
-                <p style={{fontSize:11,color:B.muted,marginTop:4,lineHeight:1.4}}>Busque memes virais, notícias e oportunidades em tempo real</p>
-                <button onClick={()=>goSub("radar")} style={{marginTop:12,padding:"10px 24px",borderRadius:12,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Abrir Radar</button>
+              <div style={{textAlign:"center",padding:"40px 16px"}}>
+                <div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px"}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg></div>
+                <p style={{fontSize:15,fontWeight:800}}>Radar de Tendências</p>
+                <p style={{fontSize:11,color:B.muted,marginTop:4,lineHeight:1.5}}>A IA busca memes, notícias e datas em tempo real para criar posts</p>
+                <button onClick={()=>goSub("radar")} style={{marginTop:14,padding:"12px 28px",borderRadius:14,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",boxShadow:"0 4px 14px rgba(139,92,246,0.3)"}}>Buscar Tendências</button>
               </div>
             ) : (<>
-              {/* Stats mini */}
-              <div style={{display:"flex",gap:4,marginBottom:8}}>
-                {[{t:"meme",e:"🔥"},{t:"news",e:"📰"},{t:"opportunity",e:"📅"}].map(s=>{const c=items.filter(i=>i.type===s.t).length;return c>0?<span key={s.t} style={{fontSize:9,fontWeight:700,padding:"3px 8px",borderRadius:8,background:_tc[s.t]+"12",color:_tc[s.t]}}>{s.e} {c}</span>:null;})}
-              </div>
-              {items.map((t,i) => (
-                <div key={i} onClick={()=>goSub("radar")} style={{padding:"8px 10px",borderRadius:10,border:"1px solid "+B.border,borderLeft:"3px solid "+(_tc[t.type]||"#8B5CF6"),marginBottom:5,cursor:"pointer",background:B.bgCard,transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background=B.bg} onMouseLeave={e=>e.currentTarget.style.background=B.bgCard}>
-                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2}}>
-                    <span style={{fontSize:10}}>{_te[t.type]||"📌"}</span>
-                    <span style={{fontSize:7,fontWeight:700,padding:"1px 5px",borderRadius:4,background:(_tc[t.type]||"#8B5CF6")+"15",color:_tc[t.type]||"#8B5CF6",textTransform:"uppercase"}}>{_tl[t.type]}</span>
-                    {t.platforms?.slice(0,3).map((p,j)=><span key={j} style={{fontSize:8}} title={p}>{_pi[p.toLowerCase()]||"🌐"}</span>)}
-                    {t.urgency==="alta"&&<span style={{fontSize:7,fontWeight:700,color:"#EF4444",marginLeft:"auto"}}>⚡</span>}
-                  </div>
-                  <p style={{fontSize:11,fontWeight:700,color:B.text,lineHeight:1.25}}>{t.title}</p>
+              {/* Hero stats */}
+              <div style={{background:"linear-gradient(135deg,#0D0D0D 0%,#1a1025 100%)",padding:"14px 14px 10px",margin:0}}>
+                <div style={{display:"flex",gap:8}}>
+                  {[{n:memes.length,l:"Virais",e:"🔥",c:"#EC4899"},{n:news.length,l:"Notícias",e:"📰",c:"#3B82F6"},{n:opps.length,l:"Datas",e:"📅",c:"#10B981"}].map((s,i)=>
+                    <div key={i} style={{flex:1,background:"rgba(255,255,255,0.06)",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
+                      <p style={{fontSize:16,fontWeight:900,color:s.c}}>{s.n}</p>
+                      <p style={{fontSize:8,color:"rgba(255,255,255,0.5)",fontWeight:600}}>{s.e} {s.l}</p>
+                    </div>)}
                 </div>
-              ))}
-              <button onClick={()=>goSub("radar")} style={{width:"100%",padding:"8px 0",borderRadius:10,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff",marginTop:4}}>Ver tudo + Criar posts →</button>
+              </div>
+              {/* Sections */}
+              <div style={{padding:"10px 10px 6px"}}>
+                {memes.length > 0 && <>
+                  <p style={{fontSize:9,fontWeight:700,color:"#EC4899",textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>🔥 Em alta agora</p>
+                  {memes.map((t,i) => <div key={i} onClick={()=>goSub("radar")} style={{background:B.bgCard,borderRadius:12,padding:"10px 12px",marginBottom:6,cursor:"pointer",border:"1px solid "+B.border,borderLeft:"3px solid #EC4899"}}>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3,marginBottom:3}}>{t.title}</p>
+                    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                      {t.platforms?.slice(0,3).map((p,j)=><span key={j} style={{fontSize:8,fontWeight:600,padding:"1px 6px",borderRadius:4,background:"#EC489910",color:"#EC4899"}}>{p}</span>)}
+                      {t.urgency==="alta"&&<span style={{fontSize:8,fontWeight:700,color:"#EF4444",marginLeft:"auto"}}>⚡ Urgente</span>}
+                    </div>
+                  </div>)}
+                </>}
+                {news.length > 0 && <>
+                  <p style={{fontSize:9,fontWeight:700,color:"#3B82F6",textTransform:"uppercase",letterSpacing:1,margin:"8px 0 6px"}}>📰 Notícias</p>
+                  {news.map((t,i) => <div key={i} onClick={()=>goSub("radar")} style={{background:B.bgCard,borderRadius:12,padding:"10px 12px",marginBottom:6,cursor:"pointer",border:"1px solid "+B.border,borderLeft:"3px solid #3B82F6"}}>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3,marginBottom:3}}>{t.title}</p>
+                    <p style={{fontSize:9,color:B.muted}}>{t.source||""}</p>
+                  </div>)}
+                </>}
+                {opps.length > 0 && <>
+                  <p style={{fontSize:9,fontWeight:700,color:"#10B981",textTransform:"uppercase",letterSpacing:1,margin:"8px 0 6px"}}>📅 Oportunidades</p>
+                  {opps.map((t,i) => <div key={i} onClick={()=>goSub("radar")} style={{background:B.bgCard,borderRadius:12,padding:"10px 12px",marginBottom:6,cursor:"pointer",border:"1px solid "+B.border,borderLeft:"3px solid #10B981"}}>
+                    <p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{t.title}</p>
+                  </div>)}
+                </>}
+              </div>
+              <div style={{padding:"0 10px 10px"}}><button onClick={()=>goSub("radar")} style={{width:"100%",padding:"10px 0",borderRadius:12,background:"linear-gradient(135deg,#EC4899,#8B5CF6)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Abrir Radar completo →</button></div>
             </>)}
           </div>
         );
