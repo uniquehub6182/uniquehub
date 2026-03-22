@@ -5872,6 +5872,46 @@ function AcademyPage({ onBack, isClientView }) {
   const isAcadDesktop = useIsDesktop();
   const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
+  /* ── Paid course access management ── */
+  const [purchasedIds, setPurchasedIds] = useState(() => { try { const s = localStorage.getItem("uh_academy_purchased"); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [courseAccessMap, setCourseAccessMap] = useState({});
+  const markPurchased = (courseId) => { const upd = [...new Set([...purchasedIds, courseId])]; setPurchasedIds(upd); try { localStorage.setItem("uh_academy_purchased", JSON.stringify(upd)); } catch {} };
+  const isPaid = (c) => c?.accessLevel === "paid" && parseFloat(c.price) > 0;
+  const hasAccess = (c) => {
+    if (!isPaid(c)) return true;
+    if (purchasedIds.includes(c?.id)) return true;
+    const allowed = courseAccessMap[c?.id] || [];
+    if (allowed.includes("all")) return true;
+    return false;
+  };
+  /* Load course access from Supabase (admin sets who can access paid courses) */
+  useEffect(() => {
+    if (!supabase) return;
+    (async () => {
+      try {
+        const { data } = await supabase.from("app_settings").select("key, value").like("key", "academy_access_%");
+        if (data) {
+          const map = {};
+          data.forEach(r => { const cid = r.key.replace("academy_access_", ""); try { map[cid] = JSON.parse(r.value); } catch { map[cid] = []; } });
+          setCourseAccessMap(map);
+        }
+      } catch {}
+    })();
+  }, []);
+  const grantCourseAccess = async (courseId, mode) => {
+    const current = courseAccessMap[courseId] || [];
+    let updated;
+    if (mode === "all") { updated = ["all"]; }
+    else if (mode === "remove_all") { updated = []; }
+    else { updated = current.filter(x => x !== "all"); if (!updated.includes(mode)) updated.push(mode); }
+    setCourseAccessMap(p => ({ ...p, [courseId]: updated }));
+    await supaSetSetting(`academy_access_${courseId}`, JSON.stringify(updated));
+  };
+  const revokeCourseAccess = async (courseId, clientId) => {
+    const updated = (courseAccessMap[courseId] || []).filter(x => x !== clientId);
+    setCourseAccessMap(p => ({ ...p, [courseId]: updated }));
+    await supaSetSetting(`academy_access_${courseId}`, JSON.stringify(updated));
+  };
   const [selCourse, setSelCourse] = useState(null);
   const [selLesson, setSelLesson] = useState(null); /* must be at top — cannot be inside if block */
   const [creating, setCreating] = useState(false);
@@ -5927,7 +5967,7 @@ function AcademyPage({ onBack, isClientView }) {
       saveCourses(updated);
       setEditing(null);
     } else {
-      const nc = { id: Date.now(), title: form.title.trim(), category: form.category || "Outro", desc: form.desc || "", thumb: form.thumb || null, lessons: form.lessons || [], createdAt: new Date().toLocaleDateString("pt-BR") };
+      const nc = { id: Date.now(), title: form.title.trim(), category: form.category || "Outro", desc: form.desc || "", thumb: form.thumb || null, lessons: form.lessons || [], createdAt: new Date().toLocaleDateString("pt-BR"), accessLevel: form.accessLevel || "free", price: form.price || "" };
       saveCourses([nc, ...courses]);
       setCreating(false);
     }
@@ -5992,6 +6032,7 @@ function AcademyPage({ onBack, isClientView }) {
                         <div style={{ display:"flex", gap:6, marginTop:3, alignItems:"center" }}>
                           <span style={{ fontSize:9, fontWeight:600, padding:"2px 6px", borderRadius:4, background:`${catC}12`, color:catC }}>{cc.category}</span>
                           <span style={{ fontSize:10, color:B.muted }}>{(cc.lessons||[]).length} aula{(cc.lessons||[]).length!==1?"s":""}</span>
+                          {isPaid(cc) && <span style={{ fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:"#F59E0B15", color:"#F59E0B" }}>R$ {cc.price}</span>}
                         </div>
                       </div>
                     </div>
@@ -6003,6 +6044,20 @@ function AcademyPage({ onBack, isClientView }) {
           {/* ── RIGHT: Course detail / Lesson ── */}
           <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
             {lesson ? <>
+              {isClientView && isPaid(course) && !hasAccess(course) ? <>
+                {/* Paywall desktop */}
+                <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:40, textAlign:"center" }}>
+                  <div style={{ width:72, height:72, borderRadius:22, background:"#F59E0B12", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20, fontSize:32 }}>🔒</div>
+                  <h3 style={{ fontSize:20, fontWeight:800, marginBottom:8 }}>Conteúdo Premium</h3>
+                  <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:16, maxWidth:320 }}>Este curso requer acesso premium. Todas as {(course.lessons||[]).length} aulas serão liberadas após a compra.</p>
+                  <div style={{ background:"#F59E0B08", border:"1.5px solid #F59E0B25", borderRadius:16, padding:"14px 24px", marginBottom:20 }}>
+                    <p style={{ fontSize:26, fontWeight:900, color:"#F59E0B" }}>R$ {course.price}</p>
+                    <p style={{ fontSize:10, color:B.muted }}>pagamento único</p>
+                  </div>
+                  <button onClick={()=>{ markPurchased(course.id); showToast("Acesso liberado! ✓"); }} style={{ padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D", marginBottom:8 }}>Solicitar Acesso</button>
+                  <button onClick={()=>setSelLesson(null)} style={{ padding:"10px 28px", borderRadius:12, background:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted }}>Voltar</button>
+                </div>
+              </> : <>
               {/* Lesson view */}
               <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
                 <button onClick={()=>setSelLesson(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -6032,7 +6087,7 @@ function AcademyPage({ onBack, isClientView }) {
                   {selLesson < (course.lessons||[]).length-1 && <button onClick={()=>setSelLesson(selLesson+1)} style={{ flex:1, padding:"10px 0", borderRadius:10, background:c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>Próxima aula →</button>}
                 </div>
               </div>
-            </> : course ? <>
+            </>}</>  : course ? <>
               {/* Course detail */}
               <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
                 <div style={{ flex:1 }}>
@@ -6067,6 +6122,23 @@ function AcademyPage({ onBack, isClientView }) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
                 ))}
+                {/* ── Admin: Access control for paid courses ── */}
+                {!isClientView && isPaid(course) && <>
+                  <div style={{ marginTop:20, padding:"14px 16px", borderRadius:14, border:`1.5px solid #F59E0B25`, background:"#F59E0B06" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                      <p style={{ fontSize:12, fontWeight:700, color:"#F59E0B" }}>💰 Curso Pago — R$ {course.price}</p>
+                      <button onClick={()=>{ grantCourseAccess(course.id, "all"); showToast("Acesso liberado para todos ✓"); }} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${B.accent}40`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.accent }}>Liberar p/ todos</button>
+                    </div>
+                    {(courseAccessMap[course.id]||[]).includes("all") ? (
+                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                        <span style={{ fontSize:11, color:B.green, fontWeight:600 }}>✅ Liberado para todos os clientes</span>
+                        <button onClick={()=>{ revokeCourseAccess(course.id, "all"); showToast("Acesso revogado"); }} style={{ fontSize:9, color:"#EF4444", cursor:"pointer", background:"none", border:"none", fontFamily:"inherit", fontWeight:600 }}>Revogar</button>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize:11, color:B.muted }}>Acesso restrito. Clientes precisam solicitar.</p>
+                    )}
+                  </div>
+                </>}
               </div>
             </> : (addingLesson || editLessonIdx !== null) ? <>
               {/* Lesson form inside right panel */}
@@ -6121,6 +6193,14 @@ function AcademyPage({ onBack, isClientView }) {
                 <div style={{ marginBottom:14 }}>
                   <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Descrição</label>
                   <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva o conteúdo do curso..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
+                </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:6, textTransform:"uppercase" }}>Acesso</label>
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <button onClick={()=>setForm(p=>({...p,accessLevel:"free",price:""}))} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${(form.accessLevel||"free")==="free"?B.green:B.border}`, background:(form.accessLevel||"free")==="free"?`${B.green}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:(form.accessLevel||"free")==="free"?B.green:B.muted }}>🆓 Gratuito</button>
+                    <button onClick={()=>setForm(p=>({...p,accessLevel:"paid"}))} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${form.accessLevel==="paid"?"#F59E0B":B.border}`, background:form.accessLevel==="paid"?"#F59E0B12":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:form.accessLevel==="paid"?"#F59E0B":B.muted }}>💰 Pago</button>
+                  </div>
+                  {form.accessLevel==="paid" && <input value={form.price||""} onChange={e=>setForm(p=>({...p,price:e.target.value.replace(/[^0-9.,]/g,"")}))} placeholder="Valor (ex: 97.00)" className="tinput" style={{ marginTop:8, fontSize:13 }} inputMode="decimal" />}
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:6, textTransform:"uppercase" }}>Capa do curso</label>
@@ -6226,6 +6306,14 @@ function AcademyPage({ onBack, isClientView }) {
         <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva o conteúdo do curso, objetivos e o que o aluno vai aprender..." className="tinput" style={{ minHeight:90, resize:"vertical" }} />
       </Card>
       <Card style={{ marginBottom:8 }}>
+        <label className="sl" style={{ display:"block", marginBottom:8 }}>Acesso</label>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={()=>setForm(p=>({...p,accessLevel:"free",price:""}))} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${(form.accessLevel||"free")==="free"?B.green:B.border}`, background:(form.accessLevel||"free")==="free"?`${B.green}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:(form.accessLevel||"free")==="free"?B.green:B.muted }}>🆓 Gratuito</button>
+          <button onClick={()=>setForm(p=>({...p,accessLevel:"paid"}))} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${form.accessLevel==="paid"?"#F59E0B":B.border}`, background:form.accessLevel==="paid"?"#F59E0B12":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:form.accessLevel==="paid"?"#F59E0B":B.muted }}>💰 Pago</button>
+        </div>
+        {form.accessLevel==="paid" && <input value={form.price||""} onChange={e=>setForm(p=>({...p,price:e.target.value.replace(/[^0-9.,]/g,"")}))} placeholder="Valor (ex: 97.00)" className="tinput" style={{ marginTop:10, fontSize:14 }} inputMode="decimal" />}
+      </Card>
+      <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:8 }}>Capa do curso (foto)</label>
         <div style={{ position:"relative", border:`2px dashed ${form.thumb?B.green:B.accent}30`, borderRadius:12, overflow:"hidden", background:form.thumb?undefined:`${B.accent}04`, cursor:"pointer", minHeight:120, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>document.getElementById("acad-thumb-input")?.click()}>
           <input id="acad-thumb-input" type="file" accept="image/*" style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} onChange={handleThumb} />
@@ -6294,6 +6382,29 @@ function AcademyPage({ onBack, isClientView }) {
     if (selLesson !== null) {
       const lesson = (course.lessons||[])[selLesson];
       if (!lesson) { setSelLesson(null); return null; }
+      /* ── Paywall for client view ── */
+      if (isClientView && isPaid(course) && !hasAccess(course)) {
+        return (
+          <div className="pg">{ToastEl}
+            <Head title="" onBack={()=>setSelLesson(null)} />
+            <div style={{ textAlign:"center", padding:"40px 20px" }}>
+              <div style={{ width:80, height:80, borderRadius:24, background:"#F59E0B12", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px", fontSize:36 }}>🔒</div>
+              <h3 style={{ fontSize:20, fontWeight:800, marginBottom:8 }}>Conteúdo Premium</h3>
+              <p style={{ fontSize:14, color:B.muted, lineHeight:1.6, marginBottom:6 }}>Este curso requer acesso premium para assistir às aulas.</p>
+              <div style={{ background:"#F59E0B08", border:"1.5px solid #F59E0B25", borderRadius:16, padding:"16px 20px", marginBottom:20, display:"inline-block" }}>
+                <p style={{ fontSize:28, fontWeight:900, color:"#F59E0B" }}>R$ {course.price}</p>
+                <p style={{ fontSize:11, color:B.muted }}>pagamento único</p>
+              </div>
+              <p style={{ fontSize:12, color:B.muted, lineHeight:1.5, marginBottom:20, maxWidth:300, margin:"0 auto 20px" }}>
+                Inclui acesso a todas as {(course.lessons||[]).length} aulas deste curso.
+                Entre em contato com a agência para liberar seu acesso.
+              </p>
+              <button onClick={()=>{ markPurchased(course.id); showToast("Acesso liberado! ✓"); }} style={{ padding:"14px 32px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:10, width:"100%" }}>Solicitar Acesso</button>
+              <button onClick={()=>setSelLesson(null)} style={{ padding:"12px 32px", borderRadius:14, background:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, width:"100%" }}>Voltar</button>
+            </div>
+          </div>
+        );
+      }
       const embed = getYTEmbed(lesson.videoUrl);
       return (
         <div className="pg">{ToastEl}
@@ -6360,7 +6471,38 @@ function AcademyPage({ onBack, isClientView }) {
             {(course.lessons||[]).filter(l=>l.videoUrl).length > 0 && <div style={{ textAlign:"center" }}><p style={{ fontSize:16, fontWeight:800, color:B.blue }}>{(course.lessons||[]).filter(l=>l.videoUrl).length}</p><p style={{ fontSize:9, color:B.muted }}>Com vídeo</p></div>}
           </div>
         </Card>
-        {(course.lessons||[]).length > 0 ? <>
+        {/* ── Paid course access panel (admin mobile) ── */}
+        {!isClientView && isPaid(course) && (
+          <Card style={{ marginBottom:10, border:"1.5px solid #F59E0B25", background:"#F59E0B06" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <p style={{ fontSize:12, fontWeight:700, color:"#F59E0B" }}>💰 Curso Pago — R$ {course.price}</p>
+            </div>
+            {(courseAccessMap[course.id]||[]).includes("all") ? (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span style={{ fontSize:11, color:B.green, fontWeight:600 }}>✅ Liberado para todos</span>
+                <button onClick={()=>{ revokeCourseAccess(course.id, "all"); showToast("Acesso revogado"); }} style={{ fontSize:10, color:"#EF4444", cursor:"pointer", background:"none", border:"none", fontFamily:"inherit", fontWeight:600, padding:"4px 8px" }}>Revogar</button>
+              </div>
+            ) : (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <span style={{ fontSize:11, color:B.muted }}>Acesso restrito</span>
+                <button onClick={()=>{ grantCourseAccess(course.id, "all"); showToast("Liberado para todos ✓"); }} style={{ padding:"5px 12px", borderRadius:8, border:`1px solid ${B.accent}40`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent }}>Liberar p/ todos</button>
+              </div>
+            )}
+          </Card>
+        )}
+        {/* ── Paywall for client mobile ── */}
+        {isClientView && isPaid(course) && !hasAccess(course) && (
+          <Card style={{ marginBottom:10, textAlign:"center", padding:"24px 16px" }}>
+            <div style={{ fontSize:32, marginBottom:12 }}>🔒</div>
+            <p style={{ fontSize:15, fontWeight:700, marginBottom:6 }}>Conteúdo Premium</p>
+            <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Solicite acesso à agência para assistir as aulas deste curso.</p>
+            <div style={{ background:"#F59E0B08", border:"1.5px solid #F59E0B25", borderRadius:12, padding:"12px", marginBottom:16, display:"inline-block" }}>
+              <p style={{ fontSize:24, fontWeight:900, color:"#F59E0B" }}>R$ {course.price}</p>
+            </div>
+            <button onClick={()=>{ markPurchased(course.id); showToast("Solicitação enviada! A agência vai liberar seu acesso. ✓"); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Solicitar Acesso</button>
+          </Card>
+        )}
+        {(!(isClientView && isPaid(course) && !hasAccess(course))) && (course.lessons||[]).length > 0 ? <>
           <p className="sl" style={{ marginBottom:8 }}>Aulas do curso</p>
           {(course.lessons||[]).map((lesson, i) => (
             <Card key={lesson.id||i} delay={i*0.03} style={{ marginTop:i?6:0, cursor:"pointer" }} onClick={()=>setSelLesson(i)}>
@@ -6420,9 +6562,11 @@ function AcademyPage({ onBack, isClientView }) {
                 <Tag color={c} style={{ marginBottom:4, fontSize:9 }}>{course.category}</Tag>
                 <p style={{ fontSize:14, fontWeight:700, lineHeight:1.3 }}>{course.title}</p>
                 {course.desc && <p style={{ fontSize:11, color:B.muted, marginTop:3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{course.desc}</p>}
-                <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                <div style={{ display:"flex", gap:8, marginTop:4, alignItems:"center" }}>
                   {course.lessons?.length > 0 && <span style={{ fontSize:10, color:B.muted }}>{course.lessons.length} aula{course.lessons.length!==1?"s":""}</span>}
                   {course.videoUrl && <span style={{ fontSize:10, color:B.blue }}>▶ Vídeo</span>}
+                  {isPaid(course) && <span style={{ fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4, background:"#F59E0B15", color:"#F59E0B" }}>R$ {course.price}</span>}
+                  {isPaid(course) && isClientView && !hasAccess(course) && <span style={{ fontSize:9, color:"#EF4444" }}>🔒</span>}
                 </div>
               </div>
               {IC.chev()}
