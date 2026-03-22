@@ -15344,7 +15344,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     const el = document.getElementById("uh-report-content");
     if (!el) return;
     const style = document.createElement("style");
-    style.textContent = `@media print { body * { visibility: hidden; } #uh-report-content, #uh-report-content * { visibility: visible; } #uh-report-content { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; } }`;
+    style.textContent = `@media print { body * { visibility: hidden; } #uh-report-content, #uh-report-content * { visibility: visible; } #uh-report-content { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; } #uh-report-content img { max-width: 100% !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }`;
     document.head.appendChild(style);
     document.title = `Relatório — ${clientName || "Visão Geral"} — ${dateLabel}`;
     window.print();
@@ -15522,7 +15522,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
                   {repDetailTab==="posts" && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:10 }}>
                     {allPosts.map((p,pi) => (
                       <a key={pi} href={p._link||"#"} target="_blank" rel="noopener noreferrer" style={{ borderRadius:12, border:`1px solid ${B.border}`, overflow:"hidden", textDecoration:"none", color:B.text, transition:"all .15s", display:"block" }} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
-                        {p._img ? <div style={{ width:"100%", height:160, background:`url(${p._img}) center/cover`, position:"relative" }}>
+                        {p._img ? <div style={{ width:"100%", height:160, position:"relative", overflow:"hidden" }}><img src={p._img} crossOrigin="anonymous" alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} />
                           <span style={{ position:"absolute", top:6, left:6, fontSize:8, fontWeight:700, padding:"2px 6px", borderRadius:4, background:p._p==="ig"?"#E4405F":"#4267B2", color:"#fff" }}>{p._p==="ig"?"IG":"FB"}</span>
                           {p._type && <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:600, padding:"2px 6px", borderRadius:4, background:"rgba(0,0,0,0.6)", color:"#fff" }}>{p._type}</span>}
                         </div> : <div style={{ width:"100%", height:80, background:p._p==="ig"?"#E4405F10":"#4267B210", display:"flex", alignItems:"center", justifyContent:"center" }}>
