@@ -18769,10 +18769,13 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
     </div>
   );
 
-  return (<>
+  const TOP = 70;
+
+  return (
+    <div className={isInboxDesktop ? "content-wide" : ""} style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
     <CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} />
     {ToastEl}
-    <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 120px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isInboxDesktop?16:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", margin:isInboxDesktop?"0 16px 16px":"0" }}>
+    <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 140px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
       {isInboxDesktop ? (<>
         <ConvList />
         <MsgThread />
@@ -18780,7 +18783,8 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         selConv ? <MsgThread /> : <ConvList />
       )}
     </div>
-  </>);
+    </div>
+  );
 }
 
 
