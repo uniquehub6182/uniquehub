@@ -2734,6 +2734,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [driveError, setDriveError] = useState("");
   const [drivePath, setDrivePath] = useState([]);
   const [driveApiKey, setDriveApiKey] = useState(() => { try { return localStorage.getItem("uh_gdrive_apikey")||""; } catch { return ""; } });
+  /* ── Notes panel state (hoisted) ── */
+  const [dashNotes, setDashNotes] = useState(() => { try { return localStorage.getItem("uh_dash_notes")||""; } catch { return ""; } });
+  const saveDashNotes = (v) => { setDashNotes(v); try { localStorage.setItem("uh_dash_notes", v); } catch {} };
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKeyTmp, setApiKeyTmp] = useState("");
   const [driveIframeErr, setDriveIframeErr] = useState(false);
@@ -2812,7 +2815,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     const fn = icons[ak];
     return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor");
   };
-  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
+  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Notas",k:"notes"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
     if(key==="comunicados") {
@@ -3049,6 +3052,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       social:{l:"Redes Sociais",icon:"social"},
       drive:{l:"Drive / Nuvem",icon:"drive"},
       inbox:{l:"Inbox Social",icon:"inbox"},
+      notes:{l:"Bloco de Notas",icon:"notes"},
     };
     const dpIco = (k,sz=16,clr="#1A1D23") => {
       const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
@@ -3061,6 +3065,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         content:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
         drive:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M22 12h-6l-2 3H8l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>,
         inbox:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>,
+        notes:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>,
       };
       return p[k]||p.content;
     };
@@ -3385,6 +3390,17 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 </div>
               </>}
             </div>
+          </div>
+        );
+      }
+      if(pk==="notes") {
+        return (
+          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("notes",13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>Bloco de Notas</span></div>
+              <span style={{fontSize:9,fontWeight:600,color:B.muted}}>{dashNotes.length} caracteres</span>
+            </div>
+            <textarea value={dashNotes} onChange={e=>saveDashNotes(e.target.value)} placeholder="Anote ideias, lembretes, tarefas rápidas..." style={{flex:1,width:"100%",border:"none",outline:"none",resize:"none",padding:"14px 16px",fontFamily:"inherit",fontSize:13,lineHeight:1.7,color:B.text,background:"transparent",boxSizing:"border-box"}} />
           </div>
         );
       }
@@ -13159,6 +13175,7 @@ const ALL_TABS = [
   { k: "ideas", l: "Ideias", i: IC.ideas },
   { k: "ai", l: "IA", i: IC.ai },
   { k: "inbox", l: "Inbox", i: IC.inbox },
+  { k: "notes", l: "Notas", i: (c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg> },
   { k: "gamify", l: "Ranking", i: IC.gamify },
   { k: "match4biz", l: "Match4Biz", i: IC.match4biz },
   { k: "help", l: "Ajuda", i: IC.help },
@@ -13170,7 +13187,7 @@ const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
   { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
-  { k: "ai", l: "Assistente IA" }, { k: "inbox", l: "Inbox" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "settings", l: "Config" },
+  { k: "ai", l: "Assistente IA" }, { k: "inbox", l: "Inbox" }, { k: "notes", l: "Notas" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "settings", l: "Config" },
 ];
 
 function MoreSheet({ onClose, goSub }) {
@@ -18373,7 +18390,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
               </div>
             </>}
             {/* Input */}
-            <div style={{ padding:"14px 28px 18px", flexShrink:0, borderTop:`1px solid ${B.border}` }}>
+            <div style={{ padding:`14px 28px ${isClientView?"80px":"18px"}`, flexShrink:0, borderTop:`1px solid ${B.border}` }}>
               <div style={{ maxWidth:780, margin:"0 auto" }}>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:10, background:B.bg||"#F5F5F5", borderRadius:16, padding:"6px 6px 6px 18px", border:`1.5px solid ${B.border}`, transition:"border-color .2s" }} onFocusCapture={()=>document.activeElement?.closest?.('[style]')&&(document.activeElement.closest('[style*=border]')||{}).style} >
                   <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder={`Pergunte ao ${curModel.l}...`} rows={1} style={{ flex:1, minHeight:42, maxHeight:140, resize:"none", padding:"10px 0", fontFamily:"inherit", fontSize:15, lineHeight:1.5, border:"none", background:"transparent", outline:"none", color:B.text }}/>
@@ -18876,6 +18893,90 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   );
 }
 
+
+/* ═══ NOTES PAGE — Full-page notepad ═══ */
+function NotesPage({ onBack, user }) {
+  const isNotesDesktop = useIsDesktop();
+  const TOP = 70;
+  const [notes, setNotes] = useState(() => { try { return JSON.parse(localStorage.getItem("uh_notes_list")||"[]"); } catch { return []; } });
+  const [selNote, setSelNote] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const { showToast, ToastEl } = useToast();
+
+  const save = (list) => { setNotes(list); try { localStorage.setItem("uh_notes_list", JSON.stringify(list)); } catch {} };
+  const addNote = () => { const n = { id: Date.now(), title: "Nova nota", text: "", created: new Date().toISOString(), updated: new Date().toISOString() }; const list = [n, ...notes]; save(list); setSelNote(n); setEditTitle(n.title); setEditText(n.text); };
+  const saveNote = () => { if (!selNote) return; const list = notes.map(n => n.id === selNote.id ? { ...n, title: editTitle || "Sem título", text: editText, updated: new Date().toISOString() } : n); save(list); showToast("Nota salva ✓"); };
+  const deleteNote = () => { if (!selNote || !confirm("Excluir esta nota?")) return; save(notes.filter(n => n.id !== selNote.id)); setSelNote(null); showToast("Excluída"); };
+  const timeAgo = (t) => { if (!t) return ""; const d = (Date.now()-new Date(t).getTime())/1000; if(d<60) return "agora"; if(d<3600) return Math.floor(d/60)+"min"; if(d<86400) return Math.floor(d/3600)+"h"; return Math.floor(d/86400)+"d"; };
+
+  const NotesList = () => (
+    <div style={{ flex:isNotesDesktop?"0 0 320px":"1", borderRight:isNotesDesktop?`1px solid ${B.border}`:"none", display:"flex", flexDirection:"column", height:"100%" }}>
+      <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontSize:12, fontWeight:700, color:B.muted }}>{notes.length} nota{notes.length!==1?"s":""}</span>
+        <button onClick={addNote} style={{ padding:"6px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D", display:"flex", alignItems:"center", gap:4 }}>+ Nova</button>
+      </div>
+      <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+        {notes.length === 0 && <div style={{ padding:"50px 20px", textAlign:"center" }}>
+          <div style={{ width:56, height:56, borderRadius:16, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <p style={{ fontSize:14, fontWeight:700 }}>Nenhuma nota</p>
+          <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em "+ Nova" para criar</p>
+        </div>}
+        {notes.map(n => {
+          const active = selNote?.id === n.id;
+          return <div key={n.id} onClick={() => { setSelNote(n); setEditTitle(n.title); setEditText(n.text); }} style={{ padding:"10px 12px", borderRadius:12, cursor:"pointer", background:active?`${B.accent}10`:"transparent", border:active?`1.5px solid ${B.accent}25`:"1.5px solid transparent", marginBottom:2, transition:"all .15s" }}>
+            <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.title}</p>
+            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:2 }}>{n.text?.substring(0,60)||"Nota vazia..."}</p>
+            <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{timeAgo(n.updated)}</p>
+          </div>;
+        })}
+      </div>
+    </div>
+  );
+
+  const NoteEditor = () => (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%" }}>
+      {!selNote ? (
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ width:80, height:80, borderRadius:24, background:`${B.border}40`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <p style={{ fontSize:16, fontWeight:700, color:B.muted }}>Selecione uma nota</p>
+            <p style={{ fontSize:12, color:B.muted, opacity:.7, marginTop:4 }}>Ou crie uma nova clicando em "+ Nova"</p>
+          </div>
+        </div>
+      ) : (<>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+          {!isNotesDesktop && <button onClick={() => setSelNote(null)} style={{ width:32, height:32, borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>}
+          <input value={editTitle} onChange={e => setEditTitle(e.target.value)} onBlur={saveNote} style={{ flex:1, border:"none", outline:"none", background:"transparent", fontFamily:"inherit", fontSize:16, fontWeight:800, color:B.text }} placeholder="Título da nota..." />
+          <button onClick={saveNote} style={{ padding:"6px 14px", borderRadius:8, background:`${B.accent}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Salvar</button>
+          <button onClick={deleteNote} style={{ width:32, height:32, borderRadius:8, background:`${(B.red||"#EF4444")}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>
+        <textarea value={editText} onChange={e => setEditText(e.target.value)} onBlur={saveNote} placeholder="Escreva suas anotações aqui..." style={{ flex:1, width:"100%", border:"none", outline:"none", resize:"none", padding:"16px 20px", fontFamily:"inherit", fontSize:14, lineHeight:1.8, color:B.text, background:"transparent", boxSizing:"border-box" }} />
+      </>)}
+    </div>
+  );
+
+  return (
+    <div className={isNotesDesktop ? "content-wide" : ""} style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>} label="Produtividade" title="Notas" onBack={onBack} />
+      {ToastEl}
+      <div style={{ display:"flex", flex:1, height:isNotesDesktop?"calc(100vh - 140px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:16 }}>
+        {isNotesDesktop ? (<>
+          {NotesList()}
+          {NoteEditor()}
+        </>) : (
+          selNote ? NoteEditor() : NotesList()
+        )}
+      </div>
+    </div>
+  );
+}
 
 function HelpPage({ onBack }) {
   const isHelpDesktop = useIsDesktop();
@@ -22952,6 +23053,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
         {sub === "inbox" && <InboxPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
+        {sub === "notes" && <NotesPage onBack={() => setSub(null)} user={user} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} team={sharedTeam} clients={sharedClients} />}
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
@@ -22969,7 +23071,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
-              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team", "inbox"].includes(t.k)) { goSub(t.k); return; }
+              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team", "inbox", "notes"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
             }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?circleBg:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${circleBg}50`:"none" }}>
