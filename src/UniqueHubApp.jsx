@@ -14953,7 +14953,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     setLoading(true);
     const fetchAll = async () => {
       const results = {};
-      const connected = CDATA.filter(c => (c.socials?.facebook?.connected || c.socials?.instagram?.connected));
+      const connected = isClientView ? CDATA : CDATA.filter(c => (c.socials?.facebook?.connected || c.socials?.instagram?.connected));
       if (connected.length === 0) { setInsights({}); setLoading(false); setLoaded(true); return; }
       const settled = await Promise.all(connected.map(async c => {
         try { return { name: c.name, data: await fetchGraphInsights(c.supaId || c.id, dateSince, dateUntil) }; }
