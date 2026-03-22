@@ -14507,20 +14507,30 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>}
               {dayEvents.sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
                 const et = etCfg(ev.type);
+                const isDem = ev.isDemand;
+                const demColor = isDem ? (ev.color || B.accent) : et.c;
                 return (
-                  <div key={ev.id} onClick={()=>setViewEvent(ev)} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", borderLeft:`4px solid ${et.c}`, marginBottom:6, background:"transparent", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:et.c, transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${et.c}05`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c, flexShrink:0 }}>{et.icon}</div>
+                  <div key={ev.id} onClick={()=>{ if (!isDem) setViewEvent(ev); }} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:demColor, marginBottom:6, background:"transparent", transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${demColor}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    {isDem ? <div style={{ width:40, height:40, borderRadius:12, background:`${demColor}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:11, fontWeight:800, color:demColor }}>{(ev.client||"?")[0]}</div>
+                    : <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c, flexShrink:0 }}>{et.icon}</div>}
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:14, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
-                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3, flexWrap:"wrap" }}>
                         <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>{ev.time}</span>
-                        <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:`${et.c}12`, color:et.c, fontWeight:600 }}>{et.l}</span>
-                        {ev.client && <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>{ev.client}</span>}
+                        {isDem ? <>
+                          <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${demColor}15`, color:demColor, fontWeight:700 }}>{ev.stageLabel}</span>
+                          {ev.client && <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{ev.client}</span>}
+                          {ev.network && <span style={{ fontSize:9, color:B.muted }}>{ev.network.split(", ")[0]}</span>}
+                        </> : <>
+                          <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:`${et.c}12`, color:et.c, fontWeight:600 }}>{et.l}</span>
+                          {ev.client && <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>{ev.client}</span>}
+                        </>}
                       </div>
                     </div>
-                    {ev.participants?.length>0 && <div style={{ display:"flex" }}>
+                    {!isDem && ev.participants?.length>0 && <div style={{ display:"flex" }}>
                       {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-6:0, zIndex:3-j }}><Av name={name} sz={26} fs={9} /></div>)}
                     </div>}
+                    {isDem && ev.priority && <div style={{ width:6, height:6, borderRadius:3, background: ev.priority==="alta"?"#EF4444":ev.priority==="média"?"#F59E0B":"#10B981", flexShrink:0 }} title={ev.priority} />}
                   </div>
                 );
               })}
@@ -14573,25 +14583,35 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         </Card>
       ) : dayEvents.sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
         const et = etCfg(ev.type);
+        const isDem = ev.isDemand;
+        const demColor = isDem ? (ev.color || B.accent) : et.c;
         return (
-          <Card key={ev.id} delay={i*0.03} onClick={()=>setViewEvent(ev)} style={{ marginTop:i?6:0, borderLeft:`4px solid ${et.c}`, cursor:"pointer" }}>
+          <Card key={ev.id} delay={i*0.03} onClick={()=>{ if (!isDem) setViewEvent(ev); }} style={{ marginTop:i?6:0, borderLeft:`4px solid ${demColor}`, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c }}>{et.icon}</div>
+              {isDem ? <div style={{ width:40, height:40, borderRadius:12, background:`${demColor}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:demColor, flexShrink:0 }}>{(ev.client||"?")[0]}</div>
+              : <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c }}>{et.icon}</div>}
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
-                <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2, flexWrap:"wrap" }}>
                   <span style={{ fontSize:10, color:B.muted }}>{ev.time}</span>
-                  <span style={{ fontSize:10, color:et.c, fontWeight:600 }}>{et.l}</span>
-                  {ev.participants && ev.participants.length > 0 && <span style={{ fontSize:10, color:B.muted }}> · {ev.participants.length} pessoa{ev.participants.length>1?"s":""}</span>}
+                  {isDem ? <>
+                    <span style={{ fontSize:9, padding:"1px 6px", borderRadius:4, background:`${demColor}15`, color:demColor, fontWeight:700 }}>{ev.stageLabel}</span>
+                    {ev.client && <span style={{ fontSize:10, color:B.muted, fontWeight:600 }}>{ev.client}</span>}
+                    {ev.network && <span style={{ fontSize:9, color:B.muted }}>{ev.network.split(", ")[0]}</span>}
+                    {ev.priority && <div style={{ width:6, height:6, borderRadius:3, background:ev.priority==="alta"?"#EF4444":ev.priority==="média"?"#F59E0B":"#10B981" }} />}
+                  </> : <>
+                    <span style={{ fontSize:10, color:et.c, fontWeight:600 }}>{et.l}</span>
+                    {ev.participants && ev.participants.length > 0 && <span style={{ fontSize:10, color:B.muted }}> · {ev.participants.length} pessoa{ev.participants.length>1?"s":""}</span>}
+                  </>}
                 </div>
               </div>
-              {ev.participants && ev.participants.length > 0 && (
+              {!isDem && ev.participants && ev.participants.length > 0 && (
                 <div style={{ display:"flex" }}>
                   {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-8:0, zIndex:3-j }}><Av name={name} sz={24} fs={9} /></div>)}
                 </div>
               )}
             </div>
-            {(ev.createdBy || ev.client) && <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>Criado por {ev.createdBy || "Equipe"}{ev.client ? <span style={{ fontWeight:700, color:B.accent }}> · {ev.client}</span> : ""}{ev.location ? ` · ${ev.location}` : ""}</p>}
+            {!isDem && (ev.createdBy || ev.client) && <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>Criado por {ev.createdBy || "Equipe"}{ev.client ? <span style={{ fontWeight:700, color:B.accent }}> · {ev.client}</span> : ""}{ev.location ? ` · ${ev.location}` : ""}</p>}
           </Card>
         );
       })}
