@@ -12750,7 +12750,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <Card style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>1. Escaneie com seu app autenticador</p>
             <p style={{ fontSize: 11, color: B.muted, marginBottom: 12 }}>Use Google Authenticator, Authy ou similar.</p>
-            {twoFAQR && <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: twoFAQR.replace(/width="[^"]*"/, 'width="180"').replace(/height="[^"]*"/, 'height="180"') }} />}
+            {twoFAQR && <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><img src={twoFAQR} alt="QR Code 2FA" style={{ width:180, height:180, borderRadius:12, border:`2px solid ${B.border}` }} /></div>}
           </Card>
           <Card style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>2. Digite o código de 6 dígitos</p>
