@@ -7434,7 +7434,8 @@ REGRAS TÉCNICAS:
       {/* Progress bar */}
       <div style={{ height:3, background:B.border, flexShrink:0 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
 
-      <div style={{ flex:1, overflowY:"auto", padding:"16px" }}>
+      <div style={{ flex:1, overflowY:"auto", padding:"24px 16px" }}>
+        <div style={{ maxWidth:780, margin:"0 auto" }}>
         {/* ═══ STEP 1: SELECT CLIENT + UPLOAD ═══ */}
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
@@ -7632,6 +7633,7 @@ REGRAS TÉCNICAS:
           })}
           <div style={{ height:80 }} />
         </>}
+      </div>
       </div>
       </div>
     </div>
@@ -11460,6 +11462,7 @@ function NotifsPage({ onBack, user, navigate }) {
     <div className={isNotifDesktop ? "content-wide" : "pg"} style={isNotifDesktop ? { paddingTop:TOP, minHeight:"100%" } : {}}>
       {ToastEl}
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>} label="Central" title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} />
+      <div style={{ marginTop:20 }}>
       {unreadCount > 0 && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
         <button onClick={markAll} style={{ padding:"8px 16px", borderRadius:10, background:`${B.accent}15`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>✓ Marcar todas como lidas</button>
       </div>}
@@ -11506,6 +11509,7 @@ function NotifsPage({ onBack, user, navigate }) {
           </Card>
         ))
       ))}
+      </div>
     </div>
   );
 }
