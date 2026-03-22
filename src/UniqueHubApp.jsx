@@ -7424,7 +7424,7 @@ REGRAS TÉCNICAS:
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
     <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, display:"flex", flexDirection:"column", overflow:"hidden", alignItems:"center" }}>
-      <div style={{ width:"100%", maxWidth:860, display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
+      <div style={{ width:"100%", maxWidth:1400, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", padding:"0 24px" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+B.border, flexShrink:0 }}>
         <button onClick={resetImportPlan} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
@@ -11440,6 +11440,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
 function NotifsPage({ onBack, user, navigate }) {
+  const isNotifDesktop = useIsDesktop();
   const [notifs, setNotifs] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const { showToast, ToastEl } = useToast();
@@ -11450,22 +11451,60 @@ function NotifsPage({ onBack, user, navigate }) {
   const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
   const timeAgo = (d) => { const s = Math.floor((Date.now()-new Date(d).getTime())/1000); if(s<60) return "Agora"; if(s<3600) return Math.floor(s/60)+"min"; if(s<86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; };
 
+  const TOP = 70;
+  const grouped = {};
+  notifs.forEach(n => { const t = n.type || "system"; if (!grouped[t]) grouped[t] = []; grouped[t].push(n); });
+  const typeLabel = { post_created:"Posts Criados", post_approved:"Posts Aprovados", post_rejected:"Posts Rejeitados", demand_created:"Demandas", demand_updated:"Demandas Atualizadas", member_joined:"Equipe", member_approved:"Equipe", calendar_reminder:"Calendário", checkin:"Check-in", system:"Sistema", news_created:"Notícias" };
+
   return (
-    <div className="pg">
+    <div className={isNotifDesktop ? "content-wide" : "pg"} style={isNotifDesktop ? { paddingTop:TOP, minHeight:"100%" } : {}}>
       {ToastEl}
-      <Head title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} right={unreadCount > 0 ?
-        <button onClick={markAll} style={{ padding:"6px 12px", borderRadius:8, background:`${B.accent}15`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Marcar todas como lidas</button>
-      : null} />
-      {!loaded && <p style={{ textAlign:"center", color:B.muted, padding:40 }}>Carregando...</p>}
-      {loaded && notifs.length === 0 && <Card style={{ textAlign:"center", padding:30 }}><p style={{ fontSize:28, marginBottom:8 }}>🔔</p><p style={{ fontSize:14, fontWeight:600 }}>Sem notificações</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Quando houver atividades na agência, elas aparecerão aqui.</p></Card>}
-      {notifs.map((n, i) => (
-        <Card key={n.id} delay={i * 0.02} onClick={() => { if(!n.read) markRead(n.id); if(navigate) { const t=n.type||""; if(t.includes("demand")||t.includes("post")||t.includes("content")) navigate("content"); else if(t.includes("chat")||t.includes("message")) navigate("chat"); else if(t.includes("client")) navigate("clients"); else if(t.includes("financial")||t.includes("invoice")||t.includes("payment")) navigate("financial"); else if(t.includes("checkin")||t.includes("check")) navigate("checkin"); else if(t.includes("team")||t.includes("member")) navigate("team"); else if(t.includes("calendar")||t.includes("event")) navigate("calendar"); } }} style={{ marginTop: i ? 6 : 0, opacity: n.read ? 0.5 : 1, cursor:"pointer", borderLeft: `3px solid ${n.read ? B.border : B.accent}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${B.accent}10`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>{typeIcon[n.type] || n.icon || "🔔"}</div>
-            <div style={{ flex: 1 }}><p style={{ fontSize: 13, fontWeight: n.read ? 400 : 600 }}>{n.title}</p>{n.body && <p style={{ fontSize: 11, color: B.muted, marginTop:2 }}>{n.body}</p>}<p style={{ fontSize: 10, color: B.muted, marginTop:2 }}>{timeAgo(n.created_at)}{n.read ? " · Lida" : ""}</p></div>
-            {!n.read && <div style={{ width: 8, height: 8, borderRadius: 4, background: B.accent, flexShrink: 0 }} />}
-          </div>
-        </Card>
+      <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>} label="Central" title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} />
+      {unreadCount > 0 && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+        <button onClick={markAll} style={{ padding:"8px 16px", borderRadius:10, background:`${B.accent}15`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>✓ Marcar todas como lidas</button>
+      </div>}
+      {!loaded && <div style={{ textAlign:"center", padding:60 }}><div style={{ width:32, height:32, border:"3px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:12, color:B.muted, marginTop:12 }}>Carregando notificações...</p></div>}
+      {loaded && notifs.length === 0 && <Card style={{ textAlign:"center", padding:40, borderRadius:20 }}>
+        <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", fontSize:28 }}>🔔</div>
+        <p style={{ fontSize:16, fontWeight:800 }}>Sem notificações</p>
+        <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Quando houver atividades na agência,<br/>elas aparecerão aqui organizadas por tipo.</p>
+      </Card>}
+      {loaded && notifs.length > 0 && (isNotifDesktop ? (
+        /* Desktop: grid por tipo */
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(380px, 1fr))", gap:16 }}>
+          {Object.entries(grouped).map(([type, items]) => (
+            <Card key={type} style={{ borderRadius:18, padding:0, overflow:"hidden" }}>
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:16 }}>{typeIcon[type]||"🔔"}</span>
+                <span style={{ fontSize:13, fontWeight:700 }}>{typeLabel[type]||type}</span>
+                <span style={{ fontSize:10, fontWeight:600, color:B.muted, marginLeft:"auto", background:`${B.accent}10`, padding:"3px 8px", borderRadius:6 }}>{items.length}</span>
+              </div>
+              <div style={{ maxHeight:400, overflowY:"auto" }}>
+                {items.map((n, i) => (
+                  <div key={n.id} onClick={() => { if(!n.read) markRead(n.id); if(navigate) { const t=n.type||""; if(t.includes("demand")||t.includes("post")||t.includes("content")) navigate("content"); else if(t.includes("chat")||t.includes("message")) navigate("chat"); else if(t.includes("client")) navigate("clients"); else if(t.includes("financial")) navigate("financial"); else if(t.includes("checkin")) navigate("checkin"); else if(t.includes("team")||t.includes("member")) navigate("team"); else if(t.includes("calendar")) navigate("calendar"); } }} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", cursor:"pointer", opacity:n.read?.5:1, borderBottom:i<items.length-1?`1px solid ${B.border}08`:"none", transition:"background .15s" }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:n.read?400:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.title}</p>
+                      {n.body && <p style={{ fontSize:10, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.body}</p>}
+                      <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{timeAgo(n.created_at)}</p>
+                    </div>
+                    {!n.read && <div style={{ width:8, height:8, borderRadius:4, background:B.accent, flexShrink:0 }} />}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Mobile: lista simples */
+        notifs.map((n, i) => (
+          <Card key={n.id} delay={i * 0.02} onClick={() => { if(!n.read) markRead(n.id); if(navigate) { const t=n.type||""; if(t.includes("demand")||t.includes("post")||t.includes("content")) navigate("content"); else if(t.includes("chat")||t.includes("message")) navigate("chat"); else if(t.includes("client")) navigate("clients"); else if(t.includes("financial")) navigate("financial"); else if(t.includes("checkin")) navigate("checkin"); else if(t.includes("team")||t.includes("member")) navigate("team"); else if(t.includes("calendar")) navigate("calendar"); } }} style={{ marginTop:i?6:0, opacity:n.read?.5:1, cursor:"pointer", borderLeft:`3px solid ${n.read?B.border:B.accent}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:16 }}>{typeIcon[n.type]||"🔔"}</div>
+              <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:n.read?400:600 }}>{n.title}</p>{n.body&&<p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{n.body}</p>}<p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{timeAgo(n.created_at)}{n.read?" · Lida":""}</p></div>
+              {!n.read&&<div style={{ width:8, height:8, borderRadius:4, background:B.accent, flexShrink:0 }} />}
+            </div>
+          </Card>
+        ))
       ))}
     </div>
   );
