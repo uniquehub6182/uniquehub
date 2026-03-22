@@ -10766,6 +10766,23 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       setShowAttach(false);
       return;
     }
+
+  /* ── Paste image from clipboard (Ctrl+V / Cmd+V) ── */
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image")) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (!file) return;
+        const r = new FileReader();
+        r.onload = ev => setPendingFile({ file, preview: ev.target.result, name: `clipboard_${Date.now()}.png`, type: file.type });
+        r.readAsDataURL(file);
+        return;
+      }
+    }
+  };
     /* Non-image: send immediately */
     showToast("Enviando arquivo...");
     const result = await supaUploadChatFile(file);
@@ -11040,7 +11057,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
               )}
-              <input ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={e=>{if(showMentions&&mentionMembers.length){if(e.key==="ArrowDown"){e.preventDefault();setMentionIdx(p=>(p+1)%mentionMembers.length);}else if(e.key==="ArrowUp"){e.preventDefault();setMentionIdx(p=>(p-1+mentionMembers.length)%mentionMembers.length);}else if(e.key==="Enter"){e.preventDefault();insertMention(mentionMembers[mentionIdx]?.name);return;}else if(e.key==="Escape"){setShowMentions(false);return;}}if(e.key==="Enter")sendMsg();}} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none" }}/>
+              <input ref={inputRef} value={input} onChange={handleInputChange} onPaste={handlePaste} onKeyDown={e=>{if(showMentions&&mentionMembers.length){if(e.key==="ArrowDown"){e.preventDefault();setMentionIdx(p=>(p+1)%mentionMembers.length);}else if(e.key==="ArrowUp"){e.preventDefault();setMentionIdx(p=>(p-1+mentionMembers.length)%mentionMembers.length);}else if(e.key==="Enter"){e.preventDefault();insertMention(mentionMembers[mentionIdx]?.name);return;}else if(e.key==="Escape"){setShowMentions(false);return;}}if(e.key==="Enter")sendMsg();}} placeholder="Mensagem..." autoComplete="off" autoCorrect="off" onFocus={()=>setTimeout(()=>scrollToBottom(false),100)} autoCapitalize="sentences" spellCheck="false" style={{ flex:1, background:B.bg, border:`1.5px solid ${B.border}`, borderRadius:22, padding:"10px 16px", fontFamily:"inherit", fontSize:16, color:B.text, outline:"none" }}/>
               {input.trim() ? (
                 <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 14px ${B.accent}50` }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -11344,7 +11361,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
                     </div>
                     <button onClick={stopRecording} style={{ width:40, height:40, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
                   </> : <>
-                    <input ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={e=>{if(showMentions&&mentionMembers.length){if(e.key==="ArrowDown"){e.preventDefault();setMentionIdx(p=>(p+1)%mentionMembers.length);}else if(e.key==="ArrowUp"){e.preventDefault();setMentionIdx(p=>(p-1+mentionMembers.length)%mentionMembers.length);}else if(e.key==="Enter"){e.preventDefault();insertMention(mentionMembers[mentionIdx]?.name);return;}else if(e.key==="Escape"){setShowMentions(false);return;}}if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
+                    <input ref={inputRef} value={input} onChange={handleInputChange} onPaste={handlePaste} onKeyDown={e=>{if(showMentions&&mentionMembers.length){if(e.key==="ArrowDown"){e.preventDefault();setMentionIdx(p=>(p+1)%mentionMembers.length);}else if(e.key==="ArrowUp"){e.preventDefault();setMentionIdx(p=>(p-1+mentionMembers.length)%mentionMembers.length);}else if(e.key==="Enter"){e.preventDefault();insertMention(mentionMembers[mentionIdx]?.name);return;}else if(e.key==="Escape"){setShowMentions(false);return;}}if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg();}}} placeholder="Digite uma mensagem..." style={{ flex:1, padding:"10px 14px", borderRadius:20, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:14, color:B.text, outline:"none" }} />
                     {input.trim() ? <button onClick={sendMsg} style={{ width:40, height:40, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
                     : <button onClick={startRecording} style={{ width:40, height:40, borderRadius:"50%", background:`${B.accent}15`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>}
                   </>}
