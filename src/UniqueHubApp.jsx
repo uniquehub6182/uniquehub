@@ -1427,7 +1427,7 @@ const STAGE_CFG = {
 };
 const NETWORK_CFG = {
   Instagram: { icon: "instagram", c: "#E1306C" }, Facebook: { icon: "facebook", c: "#1877F2" },
-  TikTok: { icon: "tiktok", c: "#010101" }, LinkedIn: { icon: "linkedin", c: "#0A66C2" },
+  TikTok: { icon: "tiktok", c: "#010101" }, Threads: { icon: null, c: "#000000" }, LinkedIn: { icon: "linkedin", c: "#0A66C2" },
   YouTube: { icon: "youtube", c: "#FF0000" }, Twitter: { icon: "twitter", c: "#1D9BF0" },
 };
 const BANK_MAP = {
@@ -8229,7 +8229,7 @@ REGRAS TÉCNICAS:
           {createType === "social" && <>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Redes sociais</label>
             <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
-              {["Instagram","Facebook","TikTok","LinkedIn","YouTube","Twitter"].map(n=>{
+              {["Instagram","Facebook","TikTok","Threads","LinkedIn","YouTube","Twitter"].map(n=>{
                 const nets = form.networks || [];
                 const sel = nets.includes(n);
                 return (
@@ -8436,7 +8436,7 @@ REGRAS TÉCNICAS:
 
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Redes</label>
             <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
-              {["Instagram","Facebook","TikTok","LinkedIn","YouTube","Twitter"].map(n=>{
+              {["Instagram","Facebook","TikTok","Threads","LinkedIn","YouTube","Twitter"].map(n=>{
                 const nets = sel.network ? sel.network.split(", ") : [];
                 const on = nets.includes(n);
                 return <button key={n} onClick={()=>{
@@ -9096,11 +9096,30 @@ REGRAS TÉCNICAS:
                 };
 
                 const publishButtons = () => (
+                  <>
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                     {hasIG && !isStories && <button disabled={pubLoading} onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</>}</button>}
                     {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
                     {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
                   </div>
+                  {/* Manual posting helper for non-API networks */}
+                  {(() => {
+                    const nets = (sel.network||"").split(", ").filter(n=>["TikTok","Threads","YouTube","LinkedIn","Twitter"].includes(n));
+                    if (nets.length === 0) return null;
+                    const caption = (sel.steps?.caption?.text || sel.title || "") + (sel.steps?.caption?.hashtags ? "\n\n" + sel.steps.caption.hashtags : "");
+                    return (
+                      <div style={{ marginTop:8, padding:"10px 12px", borderRadius:12, background:`${B.muted}06`, border:`1px solid ${B.border}` }}>
+                        <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:6 }}>📋 Copiar para postar manualmente</p>
+                        <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                          {nets.map(n => {
+                            const nc = NETWORK_CFG[n]?.c || B.muted;
+                            return <button key={n} onClick={()=>{navigator.clipboard.writeText(caption);showToast(`Legenda copiada! Cole no ${n} ✓`);}} style={{ padding:"5px 10px", borderRadius:8, border:`1px solid ${nc}30`, background:`${nc}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:nc, display:"flex", alignItems:"center", gap:4 }}><NetworkIcon name={n} sz={12} active /> {n}</button>;
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  </>
                 );
 
                 /* ── STEP 1: Initial choice — send to client or not? ── */
@@ -9796,7 +9815,7 @@ REGRAS TÉCNICAS:
               const updStep=(sk,data)=>{const ns={...(d.steps||{}),[sk]:{...(d.steps?.[sk]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
               const updField=(fld,val)=>{setDemands(p=>p.map(x=>x.id===d.id?{...x,[fld]:val}:x));if(d.supaId){const sf=fld==="network"?"networks":fld;supaUpdateDemand(d.supaId,{[sf]:val});}};
               return(<div key={d.id} onDragOver={e=>{if(e.dataTransfer.types.includes("application/uh-drive-file")){e.preventDefault();e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=B.accent+"08";}}} onDragLeave={e=>{e.currentTarget.style.borderColor=isExp?cCfg.c:B.border;e.currentTarget.style.background=B.bgCard;}} onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(!raw)return;e.preventDefault();e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const nf=[...(d.steps?.design?.files||[]),{name:f.name,url:f.webViewLink||"",driveId:f.id,fromDrive:true}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});setExpandedId(d.id);if(cStage!=="design")setCStage("design");showToast("Anexado do Drive: "+f.name);}catch(err){console.error(err);}}} style={{background:B.bgCard,borderRadius:14,border:"1px solid "+(isExp?cCfg.c:B.border),overflow:"hidden",transition:"all .15s"}}>
-              <div onClick={()=>setExpandedId(isExp?null:d.id)} style={{padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10}}><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:8,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}12`,padding:"2px 6px",borderRadius:4}}>{d.priority||"média"}</span><span style={{fontSize:8,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"} · {d.format||"Feed"}</span>{d.network&&<span style={{fontSize:8,color:B.muted}}>· {d.network.split(", ")[0]}</span>}</div><p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{d.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{d.client||"Sem cliente"}</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,marginTop:4,transform:isExp?"rotate(180deg)":"none",transition:"transform .15s"}}><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div onClick={()=>setExpandedId(isExp?null:d.id)} style={{padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10}}><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:8,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}12`,padding:"2px 6px",borderRadius:4}}>{d.priority||"média"}</span>{d.sponsored&&<span style={{fontSize:8,fontWeight:700,color:"#0081FB",background:"#0081FB12",padding:"2px 6px",borderRadius:4}}>🚀</span>}<span style={{fontSize:8,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"} · {d.format||"Feed"}</span>{d.network&&<span style={{fontSize:8,color:B.muted}}>· {d.network.split(", ")[0]}</span>}</div><p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{d.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{d.client||"Sem cliente"}</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,marginTop:4,transform:isExp?"rotate(180deg)":"none",transition:"transform .15s"}}><polyline points="6 9 12 15 18 9"/></svg></div>
               {isExp&&<div style={{padding:"0 12px 12px",borderTop:`1px solid ${B.border}`}}>
                 <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
