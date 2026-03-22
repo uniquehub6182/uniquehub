@@ -668,14 +668,16 @@ const asaasCall = async (action, data = {}) => {
   } catch(e) { return { error: e.message }; }
 };
 
-const META_APP_ID = "1557196698688426";
-const META_CONFIG_ID = "1251666086415367";
+const META_APP_ID = "1253351873442734";
+const META_CONFIG_ID = "";
 const META_REDIRECT_URI = "https://uniquehub-beta.vercel.app/";
 const META_SCOPES = [
-  /* Pages — already approved */
+  /* Pages */
   "pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_read_user_content",
-  /* Insights — already approved */
+  /* Insights */
   "read_insights",
+  /* Instagram via Facebook */
+  "instagram_basic", "instagram_manage_insights", "instagram_content_publish", "instagram_manage_comments",
   /* Business */
   "business_management"
 ].join(",");
