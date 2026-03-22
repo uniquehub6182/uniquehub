@@ -11661,6 +11661,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     bio: user?.bio || "", emergency_name: user?.emergency_name || "",
     emergency_phone: user?.emergency_phone || "", emergency_relation: user?.emergency_relation || "",
     pix: user?.pix || "", shirt_size: user?.shirt_size || "",
+    bank_name: user?.bank_name || "", bank_agency: user?.bank_agency || "", bank_account: user?.bank_account || "", bank_type: user?.bank_type || "corrente",
     work_pref: user?.work_pref || "hibrido", availability: user?.availability || "integral",
     skills: user?.skills || [], cpf: user?.cpf || "",
   });
@@ -11681,7 +11682,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           phone: prof?.phone || user.phone || "", social: extras.social || "",
           birth: extras.birth || "", blood: extras.blood || "", bio: extras.bio || "",
           emergency_name: extras.emergency_name || "", emergency_phone: extras.emergency_phone || "",
-          emergency_relation: extras.emergency_relation || "", pix: extras.pix || "",
+          emergency_relation: extras.emergency_relation || "", pix: extras.pix || "", bank_name: extras.bank_name || "", bank_agency: extras.bank_agency || "", bank_account: extras.bank_account || "", bank_type: extras.bank_type || "corrente",
           shirt_size: extras.shirt_size || "", work_pref: extras.work_pref || "hibrido",
           availability: extras.availability || "integral", skills: extras.skills || [],
           cpf: extras.cpf || "",
@@ -11706,7 +11707,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       if (error) console.warn("profiles update:", error.message);
 
       /* Store extras in settings table (always works) */
-      const extras = { social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio, cpf: pf.cpf, emergency_name: pf.emergency_name, emergency_phone: pf.emergency_phone, emergency_relation: pf.emergency_relation, pix: pf.pix, shirt_size: pf.shirt_size, work_pref: pf.work_pref, availability: pf.availability, skills: pf.skills };
+      const extras = { social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio, cpf: pf.cpf, emergency_name: pf.emergency_name, emergency_phone: pf.emergency_phone, emergency_relation: pf.emergency_relation, pix: pf.pix, bank_name: pf.bank_name, bank_agency: pf.bank_agency, bank_account: pf.bank_account, bank_type: pf.bank_type, shirt_size: pf.shirt_size, work_pref: pf.work_pref, availability: pf.availability, skills: pf.skills };
       await supaSetSetting(`profile_extras_${user.id}`, JSON.stringify(extras));
 
       setUser(prev => ({ ...prev, name: pf.name, nick: pf.nick, phone: pf.phone, social: pf.social, birth: pf.birth, blood: pf.blood, bio: pf.bio }));
@@ -12064,7 +12065,18 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Instagram / Rede social</label>
           <input value={pf.social || ""} onChange={e => pfUp("social",e.target.value)} className="tinput" placeholder="@seuperfil" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Chave PIX</label>
-          <input value={pf.pix || ""} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" />
+          <input value={pf.pix || ""} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Banco</label>
+          <input value={pf.bank_name || ""} onChange={e => pfUp("bank_name",e.target.value)} className="tinput" placeholder="Ex: Nubank, Itaú, Bradesco..." style={{ marginBottom:10 }} />
+          <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+            <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Agência</label><input value={pf.bank_agency || ""} onChange={e => pfUp("bank_agency",e.target.value)} className="tinput" placeholder="0001" /></div>
+            <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Conta</label><input value={pf.bank_account || ""} onChange={e => pfUp("bank_account",e.target.value)} className="tinput" placeholder="12345-6" /></div>
+            <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Tipo</label>
+              <select value={pf.bank_type || "corrente"} onChange={e => pfUp("bank_type",e.target.value)} className="tinput" style={{ fontSize:12 }}>
+                <option value="corrente">Corrente</option><option value="poupanca">Poupança</option>
+              </select>
+            </div>
+          </div>
         </Card>
 
         <p className="sl" style={{ marginBottom:6 }}>Trabalho</p>
@@ -13521,6 +13533,10 @@ function TeamPage({ onBack, user, onTeamChange }) {
                   {memberExtras.pix&&isAdmin&&<div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Chave PIX</p><p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{memberExtras.pix}</p></div>
                     <button onClick={()=>{navigator.clipboard.writeText(memberExtras.pix);showToast("PIX copiado ✓");}} style={{ padding:"5px 10px", borderRadius:6, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent }}>Copiar</button>
+                  </div>}
+                  {memberExtras.bank_name&&isAdmin&&<div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                    <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Conta Bancária</p>
+                    <p style={{ fontSize:13, fontWeight:600, color:B.text }}>{memberExtras.bank_name} · Ag {memberExtras.bank_agency||"—"} · Cc {memberExtras.bank_account||"—"} · {memberExtras.bank_type==="poupanca"?"Poupança":"Corrente"}</p>
                   </div>}
                 </div>}
                 {/* Skills */}
@@ -22082,7 +22098,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
   const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
   const growthScore = realScore, growthZone = getZoneLabel(realScore);
-  const monthGoal = { label:"META · MARÇO 2026", pct:68, current:342, total:500, unit:"leads" };
+  const now = new Date();
+  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const publishedThisMonth = demands.filter(d => d.stage === "published" && d.publishedAt && new Date(d.publishedAt).getMonth() === now.getMonth() && new Date(d.publishedAt).getFullYear() === now.getFullYear()).length;
+  const totalDemands = demands.length;
+  const targetPosts = Math.max(totalDemands, 12);
+  const completedPct = targetPosts > 0 ? Math.round((publishedThisMonth / targetPosts) * 100) : 0;
+  const monthGoal = { label:`META · ${monthNames[now.getMonth()].toUpperCase()} ${now.getFullYear()}`, pct:Math.min(completedPct,100), current:publishedThisMonth, total:targetPosts, unit:"posts" };
   const metricsData = [
     { network:"Instagram", metrics:[{l:"Alcance",v:"—",d:""},{l:"Engajamento",v:"—",d:""},{l:"Seguidores",v:"—",d:""},{l:"Salvamentos",v:"—",d:""}] },
     { network:"Facebook", metrics:[{l:"Alcance",v:"—",d:""},{l:"Curtidas",v:"—",d:""},{l:"Compartilhamentos",v:"—",d:""},{l:"Cliques",v:"—",d:""}] },
@@ -22193,7 +22215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
         {clientCards.slice(0,2).map((ck,i) => {
-          const CARD_DATA = { meta:{label:"META DO MÊS",val:`${monthGoal.pct}%`,sub:`${monthGoal.current}/${monthGoal.total} ${monthGoal.unit}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:"Aguardando você",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"3",sub:"Matches ativos",action:()=>setSub("match4biz")} };
+          const CARD_DATA = { meta:{label:"META DO MÊS",val:`${monthGoal.pct}%`,sub:`${monthGoal.current}/${monthGoal.total} ${monthGoal.unit}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Conecte-se",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
           return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
             <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{cd.label}</div>
