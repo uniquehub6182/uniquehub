@@ -13104,6 +13104,7 @@ const ALL_TABS = [
   { k: "news", l: "News", i: IC.news },
   { k: "ideas", l: "Ideias", i: IC.ideas },
   { k: "ai", l: "IA", i: IC.ai },
+  { k: "inbox", l: "Inbox", i: IC.inbox },
   { k: "gamify", l: "Ranking", i: IC.gamify },
   { k: "match4biz", l: "Match4Biz", i: IC.match4biz },
   { k: "help", l: "Ajuda", i: IC.help },
@@ -13115,7 +13116,7 @@ const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
   { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
-  { k: "ai", l: "Assistente IA" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
+  { k: "ai", l: "Assistente IA" }, { k: "inbox", l: "Inbox" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "search", l: "Buscar" }, { k: "settings", l: "Config" },
 ];
 
 function MoreSheet({ onClose, goSub }) {
