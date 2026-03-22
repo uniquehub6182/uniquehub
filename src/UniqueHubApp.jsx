@@ -678,6 +678,8 @@ const META_SCOPES = [
   "read_insights",
   /* Instagram via Facebook */
   "instagram_basic", "instagram_manage_insights", "instagram_content_publish", "instagram_manage_comments",
+  /* Messaging */
+  "pages_messaging", "instagram_manage_messages",
   /* Business */
   "business_management"
 ].join(",");
@@ -2805,7 +2807,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     const fn = icons[ak];
     return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor");
   };
-  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
+  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
     if(key==="comunicados") {
@@ -18543,6 +18545,172 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   );
 }
 
+/* ═══ INBOX PAGE — Social messages (IG DMs + FB Messenger) ═══ */
+function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobile }) {
+  const isInboxDesktop = useIsDesktop() && !forceMobile;
+  const { showToast, ToastEl } = useToast();
+  const CDATA = propClients || [];
+  const [selClient, setSelClient] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selConv, setSelConv] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [msgsLoading, setMsgsLoading] = useState(false);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
+  const [filter, setFilter] = useState("");
+
+  const loadConversations = async (clientId) => {
+    if (!clientId) return;
+    setLoading(true); setConversations([]); setSelConv(null); setMessages([]);
+    try {
+      const res = await fetch(`${SUPA_URL}/functions/v1/social-inbox`, {
+        method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPA_KEY}`},
+        body: JSON.stringify({ action:"list", client_id: clientId })
+      });
+      const data = await res.json();
+      if (data.conversations) setConversations(data.conversations);
+      else if (data.error) showToast("Erro: " + data.error);
+    } catch(e) { showToast("Falha ao carregar conversas"); }
+    setLoading(false);
+  };
+
+  const loadMessages = async (conv) => {
+    setSelConv(conv); setMsgsLoading(true); setMessages([]);
+    try {
+      const res = await fetch(`${SUPA_URL}/functions/v1/social-inbox`, {
+        method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPA_KEY}`},
+        body: JSON.stringify({ action:"messages", client_id: selClient, conversation_id: conv.id })
+      });
+      const data = await res.json();
+      if (data.messages) setMessages(data.messages);
+      else if (data.error) showToast("Erro: " + data.error);
+    } catch(e) { showToast("Falha ao carregar mensagens"); }
+    setMsgsLoading(false);
+  };
+
+  const sendReply = async () => {
+    if (!reply.trim() || !selConv) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${SUPA_URL}/functions/v1/social-inbox`, {
+        method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPA_KEY}`},
+        body: JSON.stringify({ action:"send", client_id: selClient, conversation_id: selConv.id, message: reply.trim(), platform: selConv.platform })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => [...prev, { id: Date.now(), text: reply.trim(), created_time: new Date().toISOString(), from_name: user?.name || "Agência", is_page: true }]);
+        setReply("");
+      } else showToast("Erro ao enviar: " + (data.error || ""));
+    } catch(e) { showToast("Falha ao enviar mensagem"); }
+    setSending(false);
+  };
+
+  useEffect(() => { if (selClient) loadConversations(selClient); }, [selClient]);
+  useEffect(() => { if (isClientView && CDATA.length) setSelClient(CDATA[0]?.supaId || CDATA[0]?.id); }, []);
+
+  const filteredConvs = filter ? conversations.filter(c => (c.participant_name||"").toLowerCase().includes(filter.toLowerCase()) || (c.participant_username||"").toLowerCase().includes(filter.toLowerCase())) : conversations;
+  const clientObj = CDATA.find(c => (c.supaId||c.id) === selClient);
+
+  const timeAgo = (t) => { if (!t) return ""; const d = (Date.now()-new Date(t).getTime())/1000; if(d<60) return "agora"; if(d<3600) return Math.floor(d/60)+"min"; if(d<86400) return Math.floor(d/3600)+"h"; return Math.floor(d/86400)+"d"; };
+
+  const ConvList = () => (
+    <div style={{ flex:isInboxDesktop?"0 0 340px":"1", borderRight:isInboxDesktop?`1px solid ${B.border}`:"none", display:"flex", flexDirection:"column", height:"100%" }}>
+      {/* Client selector (agency only) */}
+      {!isClientView && <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
+        <select value={selClient||""} onChange={e=>setSelClient(e.target.value)} className="tinput" style={{ fontSize:13, fontWeight:600 }}>
+          <option value="">Selecione um cliente</option>
+          {CDATA.map(c => <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+        </select>
+      </div>}
+      {/* Search */}
+      <div style={{ padding:"8px 14px" }}>
+        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Buscar conversa..." className="tinput" style={{ fontSize:12 }} />
+      </div>
+      {/* Conversations list */}
+      <div style={{ flex:1, overflowY:"auto" }}>
+        {loading && <div style={{ padding:30, textAlign:"center" }}><div style={{ width:24, height:24, border:"2.5px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:11, color:B.muted, marginTop:8 }}>Carregando conversas...</p></div>}
+        {!loading && !selClient && <div style={{ padding:30, textAlign:"center" }}><p style={{ fontSize:13, color:B.muted }}>Selecione um cliente para ver as conversas</p></div>}
+        {!loading && selClient && filteredConvs.length === 0 && <div style={{ padding:30, textAlign:"center" }}><p style={{ fontSize:13, color:B.muted }}>Nenhuma conversa encontrada</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Verifique se as permissões de messaging estão ativas</p></div>}
+        {filteredConvs.map(c => (
+          <div key={c.id} onClick={()=>loadMessages(c)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", background:selConv?.id===c.id?`${B.accent}08`:"transparent", borderBottom:`1px solid ${B.border}05`, transition:"background .15s" }}>
+            <div style={{ width:40, height:40, borderRadius:"50%", background:c.platform==="instagram"?"#E1306C15":"#1877F215", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              {c.platform==="instagram" ? <svg width="18" height="18" viewBox="0 0 24 24" fill="#E1306C"><rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2"><path d="M12 2C6.48 2 2 6.48 2 12c0 5.52 4.48 10 10 10 5.52 0 10-4.48 10-10 0-5.52-4.48-10-10-10zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <p style={{ fontSize:13, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.participant_name}</p>
+                <span style={{ fontSize:9, color:B.muted, flexShrink:0 }}>{timeAgo(c.updated_time)}</span>
+              </div>
+              {c.participant_username && <p style={{ fontSize:10, color:"#E1306C", fontWeight:600 }}>@{c.participant_username}</p>}
+              {c.snippet && <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:200 }}>{c.snippet}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const MsgThread = () => (
+    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%" }}>
+      {!selConv ? (
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ textAlign:"center" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.border} strokeWidth="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <p style={{ fontSize:14, color:B.muted, marginTop:8 }}>Selecione uma conversa</p>
+          </div>
+        </div>
+      ) : (<>
+        {/* Thread header */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+          {!isInboxDesktop && <button onClick={()=>setSelConv(null)} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>}
+          <div style={{ width:36, height:36, borderRadius:"50%", background:selConv.platform==="instagram"?"#E1306C15":"#1877F215", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:16 }}>{selConv.platform==="instagram"?"📸":"💬"}</span>
+          </div>
+          <div>
+            <p style={{ fontSize:14, fontWeight:700 }}>{selConv.participant_name}</p>
+            <p style={{ fontSize:10, color:B.muted }}>{selConv.platform === "instagram" ? "Instagram" : "Messenger"} · {clientObj?.name || ""}</p>
+          </div>
+        </div>
+        {/* Messages */}
+        <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:4 }}>
+          {msgsLoading && <div style={{ textAlign:"center", padding:20 }}><div style={{ width:20, height:20, border:"2px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /></div>}
+          {messages.map(m => (
+            <div key={m.id} style={{ display:"flex", justifyContent:m.is_page?"flex-end":"flex-start", marginBottom:2 }}>
+              <div style={{ maxWidth:"75%", padding:"8px 12px", borderRadius:m.is_page?"16px 16px 4px 16px":"16px 16px 16px 4px", background:m.is_page?B.accent:"#F0F0F5", color:m.is_page?"#0D0D0D":B.text }}>
+                <p style={{ fontSize:13, lineHeight:1.4, whiteSpace:"pre-wrap" }}>{m.text}</p>
+                <p style={{ fontSize:9, color:m.is_page?"#0D0D0D80":B.muted, textAlign:"right", marginTop:2 }}>{m.created_time ? new Date(m.created_time).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Reply input */}
+        <div style={{ display:"flex", gap:8, padding:"10px 16px", borderTop:`1px solid ${B.border}`, flexShrink:0 }}>
+          <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); sendReply(); }}} placeholder="Digite sua resposta..." className="tinput" style={{ flex:1, fontSize:13 }} disabled={sending} />
+          <button onClick={sendReply} disabled={!reply.trim()||sending} style={{ width:40, height:40, borderRadius:12, background:reply.trim()?B.accent:B.border, border:"none", cursor:reply.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            {sending ? <div style={{ width:16, height:16, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} />
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={reply.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
+          </button>
+        </div>
+      </>)}
+    </div>
+  );
+
+  return (<>
+    <Head title="Inbox" sub={clientObj?.name || "Mensagens das redes sociais"} onBack={onBack || (selConv && !isInboxDesktop ? ()=>setSelConv(null) : undefined)} />
+    {ToastEl}
+    <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 120px)":"calc(100vh - 160px)", overflow:"hidden" }}>
+      {isInboxDesktop ? (<>
+        <ConvList />
+        <MsgThread />
+      </>) : (
+        selConv ? <MsgThread /> : <ConvList />
+      )}
+    </div>
+  </>);
+}
+
 
 function HelpPage({ onBack }) {
   const isHelpDesktop = useIsDesktop();
@@ -22615,6 +22783,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
+        {sub === "inbox" && <InboxPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} team={sharedTeam} clients={sharedClients} />}
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
@@ -22659,6 +22828,52 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
 
 /* ═══════════════════════ ROOT ═══════════════════════ */
 export default function App() {
+  /* ── Static pages: Privacy & Terms ── */
+  const pathname = window.location.pathname;
+  if (pathname === "/privacy" || pathname === "/terms") {
+    const isPrivacy = pathname === "/privacy";
+    return (
+      <div style={{ maxWidth:720, margin:"0 auto", padding:"40px 20px", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", color:"#1A1D23", lineHeight:1.7 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:32 }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:"#C8FF00", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:16 }}>U</div>
+          <span style={{ fontSize:20, fontWeight:800 }}>UniqueHub</span>
+        </div>
+        <h1 style={{ fontSize:28, fontWeight:800, marginBottom:16 }}>{isPrivacy ? "Política de Privacidade" : "Termos de Serviço"}</h1>
+        <p style={{ fontSize:12, color:"#888", marginBottom:24 }}>Última atualização: 21 de março de 2026</p>
+        {isPrivacy ? (<>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>1. Informações que coletamos</h2>
+          <p>O UniqueHub coleta informações necessárias para fornecer nossos serviços de gestão de marketing digital, incluindo: dados de conta (nome, email), dados de redes sociais conectadas via Meta API (Facebook e Instagram), métricas de desempenho e conteúdo publicado.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>2. Como usamos suas informações</h2>
+          <p>Utilizamos os dados para: gerenciar conteúdo e publicações em redes sociais, gerar relatórios de desempenho, facilitar a comunicação entre agência e clientes, e melhorar nossos serviços.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>3. Compartilhamento de dados</h2>
+          <p>Não vendemos, alugamos ou compartilhamos suas informações pessoais com terceiros, exceto quando necessário para fornecer nossos serviços (ex: APIs da Meta para publicação e insights).</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>4. Segurança</h2>
+          <p>Implementamos medidas de segurança técnicas e organizacionais para proteger seus dados, incluindo criptografia, controle de acesso e armazenamento seguro via Supabase.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>5. Exclusão de dados</h2>
+          <p>Você pode solicitar a exclusão de seus dados a qualquer momento entrando em contato conosco pelo email contato@uniquemkt.com.br. Processaremos sua solicitação em até 30 dias.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>6. Contato</h2>
+          <p>Para questões sobre privacidade: contato@uniquemkt.com.br</p>
+        </>) : (<>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>1. Aceitação dos termos</h2>
+          <p>Ao utilizar o UniqueHub, você concorda com estes termos de serviço. O UniqueHub é uma plataforma de gestão de marketing digital desenvolvida pela Unique Marketing 360.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>2. Serviços</h2>
+          <p>O UniqueHub fornece ferramentas para gestão de conteúdo, publicação em redes sociais, relatórios de desempenho, comunicação entre equipe e clientes, e inteligência artificial para criação de conteúdo.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>3. Responsabilidades do usuário</h2>
+          <p>Você é responsável por manter a segurança de sua conta, pelo conteúdo publicado através da plataforma, e por garantir que possui autorização para gerenciar as contas de redes sociais conectadas.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>4. Propriedade intelectual</h2>
+          <p>O UniqueHub e sua tecnologia são propriedade da Unique Marketing 360. O conteúdo criado pelos usuários permanece de propriedade dos respectivos donos.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>5. Limitação de responsabilidade</h2>
+          <p>O UniqueHub não se responsabiliza por perdas decorrentes do uso da plataforma, incluindo falhas em APIs de terceiros, perda de dados por força maior, ou ações de redes sociais que afetem as contas conectadas.</p>
+          <h2 style={{ fontSize:18, fontWeight:700, marginTop:24 }}>6. Contato</h2>
+          <p>Para questões sobre os termos: contato@uniquemkt.com.br</p>
+        </>)}
+        <div style={{ marginTop:40, padding:"16px 0", borderTop:"1px solid #eee", fontSize:12, color:"#888" }}>
+          © 2026 Unique Marketing 360 · UniqueHub · Todos os direitos reservados
+        </div>
+      </div>
+    );
+  }
+
   const [user, setUser] = useState(null);
   const [clientUser, setClientUser] = useState(null); /* Client portal user */
   const userRef = React.useRef(null); /* Track user for onAuthStateChange closure */

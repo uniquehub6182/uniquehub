@@ -1,7 +1,5 @@
 {
   "rewrites": [
-    { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/terms", "destination": "/terms.html" },
-    { "source": "/((?!assets|privacy|terms|manifest|favicon|icon|apple|debug).*)", "destination": "/index.html" }
+    { "source": "/((?!assets|manifest|favicon|icon|apple|debug).*)", "destination": "/index.html" }
   ]
 }
