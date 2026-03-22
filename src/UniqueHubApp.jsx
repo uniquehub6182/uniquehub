@@ -16666,7 +16666,7 @@ REGRAS:
   );
 }
 
-function IdeasPage({ onBack, user, clients: propClients, forceMobile }) {
+function IdeasPage({ onBack, user, clients: propClients, forceMobile, isClientView, clientFilter }) {
   const _isIdeasDesktop = useIsDesktop();
   const isIdeasDesktop = forceMobile ? false : _isIdeasDesktop;
   const IDEAS_MOCK = [];
@@ -16734,7 +16734,12 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile }) {
     showToast("Ideia adicionada! ✓");
   };
 
-  const filtered = filter === "all" ? ideas : ideas.filter(i=>i.status===filter);
+  const clientIdeas = isClientView ? ideas.filter(i => {
+    const cf = (clientFilter||user?.company||user?.name||"").toLowerCase();
+    const ic = (i.client||"").toLowerCase();
+    return !ic || ic === cf || cf.includes(ic.split(" ")[0]) || ic.includes(cf.split(" ")[0]);
+  }) : ideas;
+  const filtered = filter === "all" ? clientIdeas : clientIdeas.filter(i=>i.status===filter);
 
   /* ── ADD IDEA ── */
   if (adding && !isIdeasDesktop) return (
@@ -16903,7 +16908,7 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile }) {
         {/* Top bar */}
         <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:12, marginBottom:14 }}>
           <div style={{ display:"flex", gap:6, flex:1 }}>
-            {[{k:"all",l:"Todas",n:ideas.length},{k:"approved",l:"Aprovadas",n:ideas.filter(i=>i.status==="approved").length,c:B.green},{k:"review",l:"Em análise",n:ideas.filter(i=>i.status==="review").length,c:B.orange},{k:"pending",l:"Pendentes",n:ideas.filter(i=>i.status==="pending").length,c:B.muted}].map(f=>(
+            {[{k:"all",l:"Todas",n:clientIdeas.length},{k:"approved",l:"Aprovadas",n:clientIdeas.filter(i=>i.status==="approved").length,c:B.green},{k:"review",l:"Em análise",n:clientIdeas.filter(i=>i.status==="review").length,c:B.orange},{k:"pending",l:"Pendentes",n:clientIdeas.filter(i=>i.status==="pending").length,c:B.muted}].map(f=>(
               <button key={f.k} onClick={()=>setFilter(f.k)} style={{ padding:"8px 16px", borderRadius:10, border:`1.5px solid ${filter===f.k?(f.c||B.accent):B.border}`, background:filter===f.k?`${f.c||B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:filter===f.k?700:500, color:filter===f.k?(f.c||B.accent):B.muted }}>{f.l} <span style={{ fontWeight:800 }}>({f.n})</span></button>
             ))}
           </div>
@@ -17032,9 +17037,9 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile }) {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
             <div><p style={{ fontSize:22, fontWeight:900 }}>{ideas.length}</p><p style={{ fontSize:9, opacity:.6 }}>Total</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{ideas.filter(i=>i.status==="approved").length}</p><p style={{ fontSize:9, opacity:.6 }}>Aprovadas</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{ideas.filter(i=>i.status==="review").length}</p><p style={{ fontSize:9, opacity:.6 }}>Em análise</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.muted }}>{ideas.filter(i=>i.status==="pending").length}</p><p style={{ fontSize:9, opacity:.6 }}>Pendentes</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.green }}>{clientIdeas.filter(i=>i.status==="approved").length}</p><p style={{ fontSize:9, opacity:.6 }}>Aprovadas</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{clientIdeas.filter(i=>i.status==="review").length}</p><p style={{ fontSize:9, opacity:.6 }}>Em análise</p></div>
+            <div><p style={{ fontSize:22, fontWeight:900, color:B.muted }}>{clientIdeas.filter(i=>i.status==="pending").length}</p><p style={{ fontSize:9, opacity:.6 }}>Pendentes</p></div>
           </div>
           <button onClick={()=>{setForm({});setAdding(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>
             {IC.plus} Nova
@@ -22410,7 +22415,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile /> :
       sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /> :
       sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
-      sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /> :
+      sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={user?.company||user?.name} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
