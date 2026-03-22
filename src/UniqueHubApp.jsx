@@ -1420,6 +1420,7 @@ const VIDEO_STAGES = ["idea","briefing","production","editing","review","client"
 const STAGE_CFG = {
   idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Design",c:"#EC4899"},
   caption:{l:"Legenda",c:"#F59E0B"},review:{l:"Revisão",c:"#06B6D4"},client:{l:"Cliente",c:"#10B981"},
+  ajuste:{l:"Ajuste",c:"#F97316"},
   scheduled:{l:"Programado",c:"#F59E0B"},published:{l:"Publicado",c:"#BBF246"},planning:{l:"Planejamento",c:"#8B5CF6"},creation:{l:"Criação",c:"#3B82F6"},
   execution:{l:"Execução",c:"#EC4899"},completed:{l:"Concluído",c:"#10B981"},production:{l:"Produção",c:"#EC4899"},
   editing:{l:"Edição",c:"#F59E0B"},
@@ -4645,8 +4646,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         const result = await supaUploadClientFile(fileForm.file, clientId);
         console.log("[Library] Upload done:", JSON.stringify(result));
         if (result?.error) { showToast("Erro: " + result.error); return; }
-        const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
-        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "" };
+        const bytes = fileForm.file.size || 0;
+        const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
+        const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
+        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", originalExt: origExt, mimeType: fileForm.file.type || "" };
         const newFiles = [...files, nf];
         const saveKey = `client_files_${clientId}`;
         console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
@@ -9426,9 +9429,9 @@ REGRAS TÉCNICAS:
       {/* ── KANBAN DESKTOP VIEW ── */}
       {isContentDesktop && (() => {
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
-        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","scheduled","published","completed"];
+        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
         /* Only show columns that have demands or are from the social workflow */
-        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
+        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","ajuste","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
         const moveStage = (d, newStage) => {
@@ -14503,6 +14506,22 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
   const getFileCat = (f) => catMap[f.category] || "other";
 
+  /* Smart extension detection: checks name, originalExt, mimeType, url */
+  const IMG_EXTS = ["jpg","jpeg","png","gif","webp","svg","bmp","ico","tiff"];
+  const VID_EXTS = ["mp4","mov","avi","mkv","webm","m4v"];
+  const getFileExt = (f) => {
+    const fromName = f.name?.split(".").pop()?.toLowerCase();
+    if (fromName && fromName !== f.name?.toLowerCase() && fromName.length <= 5) return fromName;
+    if (f.originalExt) return f.originalExt;
+    const fromUrl = f.url?.split("?")[0]?.split(".").pop()?.toLowerCase();
+    if (fromUrl && fromUrl.length <= 5) return fromUrl;
+    if (f.mimeType?.startsWith("image/")) return f.mimeType.split("/")[1] === "jpeg" ? "jpg" : f.mimeType.split("/")[1];
+    if (f.mimeType?.startsWith("video/")) return f.mimeType.split("/")[1];
+    return fromName || "";
+  };
+  const isFileImage = (f) => IMG_EXTS.includes(getFileExt(f));
+  const isFileVideo = (f) => VID_EXTS.includes(getFileExt(f));
+
   const fileIcon = (name) => {
     const ext = name.split(".").pop()?.toLowerCase();
     if (["jpg","jpeg","png","gif","webp","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
@@ -14546,9 +14565,9 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     const f = viewFile;
     const fi = fileIcon(f.name);
     const cat = LIB_CATS.find(c => c.key === getFileCat(f));
-    const ext = f.name.split(".").pop()?.toLowerCase();
-    const isImage = ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
-    const isVideo = ["mp4","mov","avi","mkv","webm"].includes(ext);
+    const ext = getFileExt(f);
+    const isImage = isFileImage(f);
+    const isVideo = isFileVideo(f);
     const isPdf = ext === "pdf";
     const hasUrl = !!f.url;
 
@@ -14592,7 +14611,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         {/* Preview area */}
         {hasUrl && isImage && (
           <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
-            <img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain", background:`${B.dark}` }} />
+            <img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain", background:`${B.dark}` }} onError={e=>{e.target.onerror=null;e.target.style.display="none";e.target.parentElement.innerHTML=`<div style="padding:40px;text-align:center;background:${B.dark}"><p style="color:#fff;font-size:12px;opacity:0.7">Não foi possível carregar a imagem</p><p style="color:#fff;font-size:10px;opacity:0.4;margin-top:6px">${f.url?.substring(0,60)}...</p></div>`;}} />
           </Card>
         )}
         {hasUrl && isVideo && (
@@ -14685,8 +14704,10 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     const result = await supaUploadClientFile(fileForm.file, cid);
     setUploading(false);
     if (result?.error) return showToast("Erro: " + result.error);
-    const size = (fileForm.file.size / (1024 * 1024)).toFixed(1) + "MB";
-    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", uploadedBy: isClientView ? "cliente" : "agencia" };
+    const bytes = fileForm.file.size || 0;
+    const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
+    const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
+    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", uploadedBy: isClientView ? "cliente" : "agencia", originalExt: origExt, mimeType: fileForm.file.type || "" };
     const client = CDATA.find(c => c.id === cid);
     if (client) {
       const newFiles = [...(client.files||[]), nf];
@@ -14714,9 +14735,9 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   if (isLibDesktop) {
     const f = viewFile;
     const fi = f ? fileIcon(f.name) : null;
-    const ext = f ? f.name.split(".").pop()?.toLowerCase() : "";
-    const isImage = f && ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
-    const isVideo = f && ["mp4","mov","avi","mkv","webm"].includes(ext);
+    const ext = f ? getFileExt(f) : "";
+    const isImage = f && isFileImage(f);
+    const isVideo = f && isFileVideo(f);
     const clientNames = [...new Set(allFiles.map(ff=>ff.clientName))].sort();
     return (
       <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
@@ -14791,9 +14812,9 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                   {libView==="grid" && filtered.length>0 && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))", gap:10 }}>
                     {filtered.map((ff,i) => {
                       const ffi = fileIcon(ff.name); const isSel = viewFile?.id===ff.id;
-                      const ffExt = ff.name.split(".").pop()?.toLowerCase()||"";
-                      const isImg = ["jpg","jpeg","png","gif","webp","svg"].includes(ffExt);
-                      const isVid = ["mp4","mov","avi","mkv","webm"].includes(ffExt);
+                      const ffExt = getFileExt(ff);
+                      const isImg = isFileImage(ff);
+                      const isVid = isFileVideo(ff);
                       return (
                         <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:B.bgCard, transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
                           <div style={{ width:"100%", height:110, background:isImg&&ff.url?`url(${ff.url}) center/cover`:isVid&&ff.url?"#000":`${ffi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
@@ -14813,8 +14834,8 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                   {/* LIST VIEW */}
                   {libView==="list" && filtered.length>0 && filtered.map((ff,i) => {
                     const ffi = fileIcon(ff.name); const isSel = viewFile?.id===ff.id;
-                    const ffExt = ff.name.split(".").pop()?.toLowerCase()||"";
-                    const isImg = ["jpg","jpeg","png","gif","webp","svg"].includes(ffExt);
+                    const ffExt = getFileExt(ff);
+                    const isImg = isFileImage(ff);
                     return (
                       <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}06`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                         {isImg&&ff.url ? <div style={{ width:40, height:40, borderRadius:8, background:`url(${ff.url}) center/cover`, flexShrink:0 }}/> : <div style={{ width:40, height:40, borderRadius:8, background:`${ffi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:ffi.c, flexShrink:0 }}>{ffi.ic}</div>}
