@@ -11271,7 +11271,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
             {!isGroup && <div style={{ position:"absolute", bottom:1, right:1, width:contained?8:11, height:contained?8:11, borderRadius:"50%", background:otherIsOnline?"#22C55E":"#9CA3AF", border:`2px solid ${B.bgCard}` }}/>}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ fontSize:contained?13:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
+            <p style={{ fontSize:contained?13:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}{(() => { if(selConv?.is_group) return null; const pid = selConv?.members?.find(m=>m.id!==user.id)?.id; const pr = allProfiles.find(p=>p.id===pid); const rl = pr?.role; return rl === "cliente" ? <span style={{ fontSize:8, padding:"2px 5px", borderRadius:4, background:"#6366F115", color:"#6366F1", fontWeight:700, marginLeft:6, verticalAlign:"middle" }}>Cliente</span> : rl === "admin" ? <span style={{ fontSize:8, padding:"2px 5px", borderRadius:4, background:"#10B98115", color:"#10B981", fontWeight:700, marginLeft:6, verticalAlign:"middle" }}>Admin</span> : rl === "member" ? <span style={{ fontSize:8, padding:"2px 5px", borderRadius:4, background:"#F59E0B15", color:"#F59E0B", fontWeight:700, marginLeft:6, verticalAlign:"middle" }}>Equipe</span> : null; })()}</p>
             <p style={{ fontSize:contained?10:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
               {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : (otherIsOnline ? "Online" : fmtLastSeen(otherUserId))}
             </p>
@@ -11656,7 +11656,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
                         <div style={{ maxWidth:"65%", padding:"10px 14px", borderRadius:isMine?"18px 18px 4px 18px":"18px 18px 18px 4px", background:isMine?B.accent:(B.bgCard), color:isMine?"#0D0D0D":B.text, fontSize:14, lineHeight:1.5, wordBreak:"break-word", boxShadow:"0 1px 2px rgba(0,0,0,0.04)" }}>
                           {/* Reply quote in bubble */}
                           {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMine?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMine?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||rm.sender_name||"Membro"}</p><p style={{ fontSize:11, color:isMine?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
-                          {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}</p>}
+                          {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}{(() => { const pr = allProfiles.find(p=>p.id===m.sender_id); const rl = pr?.role; return rl === "cliente" ? <span style={{ fontSize:7, padding:"1px 4px", borderRadius:3, background:"#6366F115", color:"#6366F1", fontWeight:700, marginLeft:4, verticalAlign:"middle" }}>Cliente</span> : rl === "admin" ? <span style={{ fontSize:7, padding:"1px 4px", borderRadius:3, background:"#10B98115", color:"#10B981", fontWeight:700, marginLeft:4, verticalAlign:"middle" }}>Admin</span> : rl === "member" ? <span style={{ fontSize:7, padding:"1px 4px", borderRadius:3, background:"#F59E0B15", color:"#F59E0B", fontWeight:700, marginLeft:4, verticalAlign:"middle" }}>Equipe</span> : null; })()}</p>}
                           {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" onClick={()=>setViewImage(m.file_url)} style={{ maxWidth:220, maxHeight:260, borderRadius:10, cursor:"pointer", objectFit:"cover" }} />
                           : m.file_url && (m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"")) ? <div style={{ minWidth:180, maxWidth:240 }}><AudioPlayer src={m.file_url} isMe={isMine} accent={B.accent} muted={B.muted} /></div>
                           : m.file_url && (m.file_type?.startsWith("video") || /\.(mp4|mov|avi|mkv)$/i.test(m.file_name||"")) ? <video controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:12 }} />
@@ -22059,7 +22059,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     { k:"calendar", l:"Agenda", i:IC.calendar }, { k:"chat", l:"Chat", i:IC.chat },
     { k:"reports", l:"Relatórios", i:IC.reports }, { k:"gamify", l:"Growth", i:IC.gamify },
     { k:"library", l:"Biblioteca", i:IC.library }, { k:"news", l:"Notícias", i:IC.news },
-    { k:"ideas", l:"Ideias", i:IC.ideas }, { k:"ai", l:"IA", i:IC.ai },
+    { k:"ideas", l:"Comunique-se", i:IC.ideas }, { k:"notes", l:"Notas", i:(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> }, { k:"ai", l:"IA", i:IC.ai },
     { k:"inbox", l:"Inbox", i:IC.inbox }, { k:"match4biz", l:"Match4Biz", i:IC.match4biz },
     { k:"help", l:"Ajuda", i:IC.help }, { k:"settings", l:"Config", i:IC.settings },
   ];
@@ -22996,6 +22996,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={user?.company||user?.name} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
+      sub === "notes" ? <NotesPage onBack={() => setSub(null)} user={user} /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
@@ -23031,7 +23032,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               {l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais",sub:"library",navKey:null},
               {l:"Academy",ic:IC.academy,d:"Cursos e aprendizado",sub:"academy",navKey:null},
               {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news",navKey:null},
-              {l:"Ideias",ic:IC.ideas,d:"Crie e visualize ideias",sub:"ideas",navKey:null},
+              {l:"Comunique-se",ic:IC.ideas,d:"Envie ideias para a agência",sub:"ideas",navKey:null},
+              {l:"Bloco de Notas",ic:(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,d:"Suas anotações pessoais",sub:"notes",navKey:null},
               {l:"Assistente IA",ic:IC.ai,d:"IA para seu time comercial",sub:"ai",navKey:null},
               {l:"Inbox",ic:IC.inbox,d:"Mensagens do Instagram e Facebook",sub:"inbox",navKey:null},
               {l:"Ajuda",ic:IC.help,d:"Suporte e FAQ",sub:"help",navKey:null},
