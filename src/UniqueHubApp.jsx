@@ -20842,6 +20842,24 @@ function ClientMatch4Biz({ onBack, user }) {
     </div>
   );
 
+  /* ═══ NOT FOUND SCREEN ═══ */
+  if (!loading && !myClient) return (
+    <div className="app" style={{ background:B.bg, color:B.text }}>
+      <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
+      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
+      <div className="content" style={{ padding:"40px 20px", textAlign:"center" }}>
+        <div style={{ width:72, height:72, borderRadius:22, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h3 style={{ fontSize:18, fontWeight:800, marginBottom:8 }}>Perfil não encontrado</h3>
+        <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, maxWidth:300, margin:"0 auto 20px" }}>
+          Não conseguimos vincular seu login a um cliente cadastrado. Verifique com a agência se o e-mail <strong>{user?.email}</strong> está registrado no seu perfil de cliente.
+        </p>
+        <button onClick={onBack} style={{ padding:"12px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Voltar</button>
+      </div>
+    </div>
+  );
+
   /* ═══ TERMS SCREEN ═══ */
   if (!accepted) return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
