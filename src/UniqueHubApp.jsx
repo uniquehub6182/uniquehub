@@ -5632,8 +5632,19 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 {!confirmAction && profileTab==="files" && <div>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                     <p style={{ fontSize:13, fontWeight:700 }}>{dFiles.length} arquivo{dFiles.length!==1?"s":""}</p>
-                    <button onClick={()=>setAddingFile(true)} style={{ padding:"6px 12px", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D" }}>+ Adicionar</button>
+                    <button onClick={()=>{setAddingFile(!addingFile);setFileForm({});}} style={{ padding:"6px 12px", borderRadius:8, background:addingFile?B.border:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:addingFile?B.text:"#0D0D0D" }}>{addingFile?"✕ Cancelar":"+ Adicionar"}</button>
                   </div>
+                  {addingFile && <div style={{ padding:14, borderRadius:14, border:`1.5px solid ${B.accent}25`, background:`${B.accent}04`, marginBottom:14 }}>
+                    <input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" style={{ marginBottom:8, fontSize:12 }} />
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
+                      {["Artes Digitais","Posts Feed","Stories","Vídeos","Documentos","Outros"].map(c=><button key={c} onClick={()=>setFileForm(p=>({...p,category:c}))} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${fileForm.category===c?B.accent:B.border}`, background:fileForm.category===c?`${B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:fileForm.category===c?B.accent:B.muted }}>{c}</button>)}
+                    </div>
+                    <label style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}25`, borderRadius:10, padding:14, textAlign:"center", cursor:"pointer", background:fileForm.file?`${B.green}04`:`${B.accent}02` }}>
+                      <input type="file" style={{ display:"none" }} onChange={e=>{const f=e.target.files?.[0];if(f)setFileForm(p=>({...p,file:f,name:p.name||f.name}));}} />
+                      {fileForm.file ? <p style={{ fontSize:11, fontWeight:600, color:B.green }}>✓ {fileForm.file.name} ({(fileForm.file.size/1048576).toFixed(1)}MB)</p> : <p style={{ fontSize:11, color:B.muted }}>Clique para selecionar arquivo</p>}
+                    </label>
+                    <button onClick={addFile} style={{ width:"100%", marginTop:10, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Enviar Arquivo</button>
+                  </div>}
                   {dFiles.length===0 && <div style={{ textAlign:"center", padding:"40px 0", color:B.muted }}><p style={{ fontSize:13 }}>Nenhum arquivo</p></div>}
                   {dFiles.map((f,fi)=>(
                     <div key={fi} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:`1px solid ${B.border}`, marginBottom:6 }}>
