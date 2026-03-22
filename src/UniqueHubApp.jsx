@@ -10289,6 +10289,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
 
   /* ── Online Presence: track who's currently in the app ── */
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const [lastSeenMap, setLastSeenMap] = useState({});
   const presenceChanRef = useRef(null);
   useEffect(() => {
     if (!supabase || !user?.id) return;
@@ -14564,7 +14565,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
           {[
             { l:"Cliente", v:f.clientName },
             { l:"Categoria", v:f.category || "Outros" },
-            { l:"Tamanho", v:f.size },
+            { l:"Tamanho", v:f.size || "—" },
             { l:"Data", v:f.date },
             { l:"Extensão", v:ext?.toUpperCase() },
             ...(hasUrl ? [{ l:"Armazenamento", v:"Supabase Storage" }] : [{ l:"Armazenamento", v:"Demonstração" }]),
@@ -14719,14 +14720,15 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                       const isVid = ["mp4","mov","avi","mkv","webm"].includes(ffExt);
                       return (
                         <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:B.bgCard, transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
-                          <div style={{ width:"100%", height:110, background:isImg&&ff.url?`url(${ff.url}) center/cover`:`${ffi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
-                            {!(isImg&&ff.url) && <div style={{ color:ffi.c, opacity:0.6, transform:"scale(1.5)" }}>{ffi.ic}</div>}
+                          <div style={{ width:"100%", height:110, background:isImg&&ff.url?`url(${ff.url}) center/cover`:isVid&&ff.url?"#000":`${ffi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+                            {isVid&&ff.url && <><video src={ff.url+"#t=0.1"} preload="metadata" muted style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ width:32, height:32, borderRadius:16, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="9 6 19 12 9 18"/></svg></div></div></>}
+                            {!(isImg&&ff.url) && !(isVid&&ff.url) && <div style={{ color:ffi.c, opacity:0.6, transform:"scale(1.5)" }}>{ffi.ic}</div>}
                             {isVid && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.3)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21"/></svg></div>}
                             <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:"rgba(0,0,0,0.5)", color:"#fff", textTransform:"uppercase" }}>{ffExt}</span>
                           </div>
                           <div style={{ padding:"8px 10px" }}>
                             <p style={{ fontSize:11, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.name}</p>
-                            <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.clientName} · {ff.size||""}</p>
+                            <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.clientName}{ff.size ? " · "+ff.size : ""}</p>
                           </div>
                         </div>
                       );
@@ -17566,7 +17568,7 @@ function GamifyPage({ onBack, user, team }) {
               </>}
               {/* ═══ HISTORY TAB ═══ */}
               {tab==="history" && <>
-                <h3 style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>📊 Histórico de XP</h3>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}><h3 style={{ fontSize:20, fontWeight:900 }}>📊 Histórico de XP</h3><button onClick={async()=>{if(!confirm("Tem certeza que deseja ZERAR todo o XP de TODOS os colaboradores? Esta ação não pode ser desfeita."))return;try{await supabase.from("xp_events").delete().neq("id","00000000-0000-0000-0000-000000000000");setXpEvents([]);setXpLoaded(false);showToast("XP zerado para todos ✓");}catch(e){showToast("Erro: "+e.message);}}} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${B.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, background:`${B.red}08`, color:B.red }}>Zerar todo XP</button></div>
                 {myHistory.length===0 && <p style={{ fontSize:14, color:B.muted, textAlign:"center", padding:40 }}>Nenhum evento de XP registrado</p>}
                 <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                   {myHistory.map((ev,i) => (
@@ -17586,7 +17588,8 @@ function GamifyPage({ onBack, user, team }) {
               {tab==="redemptions" && isAdmin && <>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
                   <div><h3 style={{ fontSize:20, fontWeight:900 }}>Resgates</h3><p style={{ fontSize:12, color:B.muted, marginTop:2 }}>Gerencie os pedidos de resgate da equipe</p></div>
-                  <div style={{ display:"flex", gap:10 }}>
+                  <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                    <button onClick={async()=>{if(!confirm("Tem certeza que deseja ZERAR todos os resgates? Esta ação não pode ser desfeita."))return;setRedemptions([]);await supaSetSetting("gamify_redemptions",JSON.stringify([]));showToast("Resgates zerados ✓");}} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${B.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, background:`${B.red}08`, color:B.red }}>Zerar resgates</button>
                     {["pending","approved","rejected"].map(st_=>{const cnt=redemptions.filter(r=>r.status===st_).length;const cfg={pending:{l:"Pendentes",c:B.orange},approved:{l:"Aprovados",c:B.green},rejected:{l:"Rejeitados",c:B.red}}[st_];return(
                       <div key={st_} style={{ textAlign:"center", padding:"8px 16px", borderRadius:10, background:`${cfg.c}08` }}><p style={{ fontSize:16, fontWeight:800, color:cfg.c }}>{cnt}</p><p style={{ fontSize:9, color:B.muted }}>{cfg.l}</p></div>
                     );})}
