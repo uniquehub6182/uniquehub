@@ -9444,106 +9444,86 @@ REGRAS TÉCNICAS:
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
-        const hasAjuste = filtered.some(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"));
+        const hasAjuste = filtered.some(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")));
         if (hasAjuste) usedStages.add("ajuste");
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
-        const moveStage = (d, newStage) => {
-          setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x));
-          if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage });
-          showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`);
-        };
-        const getItems = (stg) => stg === "ajuste"
-          ? filtered.filter(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))
-          : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected")
-          : filtered.filter(d => d.stage === stg);
+        const moveStage = (d, newStage) => { setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x)); if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage }); showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`); };
+        const getItems = (stg) => stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : filtered.filter(d => d.stage === stg);
         const netC = { Instagram:"#E1306C", Facebook:"#1877F2", TikTok:"#000", LinkedIn:"#0A66C2", YouTube:"#FF0000", Twitter:"#1D9BF0" };
-        return (
-          <div style={{ padding:"8px 0" }}>
-            <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8 }}>
-              {visibleStages.map(stg => {
-                const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
-                const items = getItems(stg);
-                const isActive = kanbanCol === stg;
-                return (
-                  <div key={stg}
-                    style={{ flex: isActive ? "2.5 1 0%" : "1 1 0%", minWidth: isActive ? 280 : 110, maxWidth: isActive ? 420 : 180, display:"flex", flexDirection:"column", transition:"all .3s cubic-bezier(.4,0,.2,1)", borderRadius:16, overflow:"hidden", background:"#fff", border: isActive ? `1.5px solid ${cfg.c}40` : "1px solid rgba(0,0,0,0.05)", boxShadow: isActive ? `0 8px 32px ${cfg.c}15` : "0 1px 3px rgba(0,0,0,0.04)" }}
-                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; }}
-                    onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 8px 32px ${cfg.c}15` : "0 1px 3px rgba(0,0,0,0.04)"; }}
-                    onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 8px 32px ${cfg.c}15` : "0 1px 3px rgba(0,0,0,0.04)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") moveStage(dem, stg); } catch {} }}
-                  >
-                    {/* Column header */}
-                    <div onClick={() => setKanbanCol(isActive ? null : stg)}
-                      style={{ padding: isActive ? "12px 14px" : "10px 8px", cursor:"pointer", borderBottom:`2.5px solid ${cfg.c}`, display:"flex", alignItems:"center", gap:8, background: isActive ? `${cfg.c}08` : "transparent", transition:"all .2s" }}
-                    >
-                      <div style={{ width:8, height:8, borderRadius:4, background:cfg.c, flexShrink:0 }} />
-                      <span style={{ fontSize: isActive ? 12 : 10, fontWeight:700, color:"#1A1D23", flex:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", transition:"font-size .2s" }}>{cfg.l}</span>
-                      <span style={{ fontSize:11, fontWeight:800, color:cfg.c, background:`${cfg.c}12`, padding:"1px 8px", borderRadius:10, flexShrink:0 }}>{items.length}</span>
-                    </div>
-                    {/* Cards area */}
-                    <div style={{ flex:1, overflowY:"auto", padding: isActive ? "8px 10px" : "6px 4px", display:"flex", flexDirection:"column", gap: isActive ? 8 : 4, maxHeight:520, minHeight:80 }}>
-                      {items.length === 0 && <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}><span style={{ fontSize:9, color:"#9CA3AF" }}>—</span></div>}
-                      {items.map(d => {
-                        const pC = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
-                        const nets = (d.network||"").split(", ").filter(Boolean);
-                        const clIni = (d.client||"?")[0].toUpperCase();
-                        if (!isActive) {
-                          /* ── COMPACT card (collapsed column) ── */
-                          return (
-                            <div key={d.id} draggable
-                              onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
-                              onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
-                              onClick={e => { e.stopPropagation(); setSel(d); }}
-                              style={{ padding:"6px 8px", borderRadius:10, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.04)", cursor:"grab", transition:"all .15s", display:"flex", alignItems:"center", gap:6 }}
-                              onMouseEnter={e => { e.currentTarget.style.background="#F3F4F6"; e.currentTarget.style.borderColor=cfg.c+"50"; }}
-                              onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.borderColor="rgba(0,0,0,0.04)"; }}
-                            >
-                              <div style={{ width:3, height:18, borderRadius:2, background:pC, flexShrink:0 }} />
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <p style={{ fontSize:9, fontWeight:700, color:"#1A1D23", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.2 }}>{d.title||"Sem título"}</p>
-                                <p style={{ fontSize:8, color:"#9CA3AF", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginTop:1 }}>{d.client}</p>
-                              </div>
-                            </div>
-                          );
-                        }
-                        /* ── FULL card (expanded column) ── */
-                        return (
-                          <div key={d.id} draggable
-                            onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
-                            onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
-                            onClick={() => setSel(d)}
-                            style={{ padding:"12px 14px", borderRadius:14, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.05)", cursor:"grab", transition:"all .15s" }}
-                            onMouseEnter={e => { e.currentTarget.style.background="#fff"; e.currentTarget.style.boxShadow=`0 4px 16px ${cfg.c}12`; e.currentTarget.style.borderColor=cfg.c+"40"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(0,0,0,0.05)"; }}
-                          >
-                            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                              <div style={{ width:28, height:28, borderRadius:8, background:`${cfg.c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color:cfg.c, flexShrink:0 }}>{clIni}</div>
-                              <span style={{ fontSize:10, fontWeight:600, color:"#6B7280", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client}</span>
-                              <div style={{ display:"flex", gap:2 }}>{nets.slice(0,3).map((n,ni) => <div key={ni} style={{ width:16, height:16, borderRadius:8, background:netC[n]||"#888", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:7, fontWeight:900, color:"#fff" }}>{n[0]}</span></div>)}</div>
-                            </div>
-                            {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}><span style={{ fontSize:10 }}>📅</span><span style={{ fontSize:10, color:"#6B7280" }}>{d.scheduling.date}{d.scheduling.time ? ` às ${d.scheduling.time}` : ""}</span></div>}
-                            <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title || "Sem título"}</p>
-                            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                              <div style={{ width:4, height:4, borderRadius:2, background:pC }} />
-                              <span style={{ fontSize:8, fontWeight:700, color:pC, textTransform:"uppercase" }}>{d.priority||"média"}</span>
-                              {isScheduleExpired(d) && <span style={{ fontSize:7, fontWeight:700, color:"#EF4444", background:"#EF444410", padding:"1px 5px", borderRadius:4, marginLeft:4 }}>Expirado</span>}
-                              <span style={{ fontSize:8, color:"#C5C7CC", marginLeft:"auto" }}>{d.type==="campaign"?"Camp.":d.type==="video"?"Vídeo":"Post"}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        const expanded = kanbanCol;
+        const expandedItems = expanded ? getItems(expanded) : [];
+        const expandedCfg = expanded ? (STAGE_CFG[expanded] || { l: expanded, c: "#888" }) : null;
+        return <div style={{ padding:"8px 0" }}>
+          {/* ── Stage pills row ── */}
+          <div style={{ display:"flex", gap:6, marginBottom: expanded ? 16 : 0, overflowX:"auto", paddingBottom:4 }}>
+            {visibleStages.map(stg => {
+              const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
+              const cnt = getItems(stg).length;
+              const isActive = expanded === stg;
+              return <button key={stg} onClick={() => setKanbanCol(isActive ? null : stg)}
+                style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 16px", borderRadius:14, border: isActive ? `2px solid ${cfg.c}` : "1.5px solid rgba(0,0,0,0.06)", background: isActive ? `${cfg.c}10` : "#fff", cursor:"pointer", fontFamily:"inherit", transition:"all .2s", flexShrink:0, boxShadow: isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)", transform: isActive ? "scale(1.02)" : "scale(1)" }}
+                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor=cfg.c+"60"; e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.c}15`; }}}
+                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"; e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"; }}}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; e.currentTarget.style.transform="scale(1.05)"; }}
+                onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = isActive ? "scale(1.02)" : "scale(1)"; }}
+                onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = isActive ? "scale(1.02)" : "scale(1)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") { moveStage(dem, stg); setKanbanCol(stg); }} catch {} }}
+              >
+                <div style={{ width:10, height:10, borderRadius:5, background:cfg.c, flexShrink:0 }} />
+                <span style={{ fontSize:11, fontWeight: isActive ? 800 : 600, color: isActive ? "#1A1D23" : "#6B7280", whiteSpace:"nowrap" }}>{cfg.l}</span>
+                <span style={{ fontSize:12, fontWeight:800, color: isActive ? cfg.c : "#9CA3AF", background: isActive ? `${cfg.c}18` : "rgba(0,0,0,0.04)", padding:"2px 10px", borderRadius:10, minWidth:24, textAlign:"center" }}>{cnt}</span>
+              </button>;
+            })}
           </div>
-        );
+          {/* ── Expanded cards panel ── */}
+          {expanded && expandedCfg && <div style={{ borderRadius:18, background:"#fff", border:`1px solid ${expandedCfg.c}25`, overflow:"hidden", boxShadow:`0 8px 40px ${expandedCfg.c}08` }}>
+            <div style={{ padding:"14px 20px", borderBottom:`2px solid ${expandedCfg.c}`, display:"flex", alignItems:"center", gap:10, background:`${expandedCfg.c}06` }}>
+              <div style={{ width:12, height:12, borderRadius:6, background:expandedCfg.c }} />
+              <span style={{ fontSize:15, fontWeight:800, color:"#1A1D23" }}>{expandedCfg.l}</span>
+              <span style={{ fontSize:12, fontWeight:700, color:expandedCfg.c, background:`${expandedCfg.c}15`, padding:"3px 12px", borderRadius:12 }}>{expandedItems.length} {expandedItems.length === 1 ? "item" : "itens"}</span>
+              <div style={{ flex:1 }} />
+              <button onClick={() => setKanbanCol(null)} style={{ width:30, height:30, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:"#9CA3AF", fontFamily:"inherit" }}>✕</button>
+            </div>
+            <div style={{ padding:16, maxHeight:480, overflowY:"auto" }}>
+              {expandedItems.length === 0 && <div style={{ padding:"40px 0", textAlign:"center" }}><p style={{ fontSize:12, color:"#C5C7CC" }}>Nenhum item nesta etapa</p></div>}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:12 }}>
+                {expandedItems.map(d => {
+                  const pC = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
+                  const nets = (d.network||"").split(", ").filter(Boolean);
+                  const clIni = (d.client||"?")[0].toUpperCase();
+                  return <div key={d.id} draggable
+                    onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
+                    onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
+                    onClick={() => setSel(d)}
+                    style={{ padding:"14px 16px", borderRadius:14, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.05)", cursor:"grab", transition:"all .15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background="#fff"; e.currentTarget.style.boxShadow=`0 6px 24px ${expandedCfg.c}12`; e.currentTarget.style.borderColor=expandedCfg.c+"40"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(0,0,0,0.05)"; }}
+                  >
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                      <div style={{ width:30, height:30, borderRadius:10, background:`${expandedCfg.c}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:expandedCfg.c, flexShrink:0 }}>{clIni}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <span style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client}</span>
+                      </div>
+                      <div style={{ display:"flex", gap:3 }}>{nets.slice(0,3).map((n,ni) => <div key={ni} style={{ width:18, height:18, borderRadius:9, background:netC[n]||"#888", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:8, fontWeight:900, color:"#fff" }}>{n[0]}</span></div>)}</div>
+                    </div>
+                    <p style={{ fontSize:13, fontWeight:700, color:"#1A1D23", lineHeight:1.35, marginBottom:8, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title || "Sem título"}</p>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:8, fontWeight:700, color:pC, textTransform:"uppercase", background:`${pC}12`, padding:"2px 8px", borderRadius:6 }}>{d.priority||"média"}</span>
+                      {d.scheduling?.date && <span style={{ fontSize:8, color:"#6B7280", background:"rgba(0,0,0,0.04)", padding:"2px 8px", borderRadius:6 }}>📅 {d.scheduling.date}{d.scheduling.time ? ` · ${d.scheduling.time}` : ""}</span>}
+                      {isScheduleExpired(d) && <span style={{ fontSize:7, fontWeight:700, color:"#EF4444", background:"#EF444410", padding:"2px 6px", borderRadius:4 }}>Expirado</span>}
+                      <span style={{ fontSize:8, color:"#C5C7CC", marginLeft:"auto" }}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"}</span>
+                    </div>
+                  </div>;
+                })}
+              </div>
+            </div>
+          </div>}
+        </div>;
       })()}
       {/* -- CONTAINED CONTENT BLOCK (dashboard) -- redesigned -- */}
       {contained && !isContentDesktop && !sel && !creating && (() => {
         const SO=["idea","briefing","design","caption","review","client","ajuste","scheduled","published"];
         const scc={};SO.forEach(s=>{
-          if (s === "ajuste") scc[s] = filtered.filter(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")).length;
+          if (s === "ajuste") scc[s] = filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))).length;
           else if (s === "client") scc[s] = filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected").length;
           else scc[s] = filtered.filter(d => d.stage === s).length;
         });
