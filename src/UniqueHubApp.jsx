@@ -9451,7 +9451,7 @@ REGRAS TÉCNICAS:
         const moveStage = (d, newStage) => { setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x)); if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage }); showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`); };
         const getItems = (stg) => stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : filtered.filter(d => d.stage === stg);
         const netC = { Instagram:"#E1306C", Facebook:"#1877F2", TikTok:"#000", LinkedIn:"#0A66C2", YouTube:"#FF0000", Twitter:"#1D9BF0" };
-        const TEAM = team || [];
+        const TEAM = propTeam || [];
         return <div style={{ padding:"8px 0" }}>
           {/* ── View toggle ── */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginBottom:10 }}>
