@@ -10290,6 +10290,14 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   /* ── Online Presence: track who's currently in the app ── */
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const [lastSeenMap, setLastSeenMap] = useState({});
+  const fmtLastSeen = (uid) => {
+    const ts = lastSeenMap[uid]; if (!ts) return "Offline";
+    const d = new Date(ts), now = new Date(), diff = now - d;
+    if (diff < 60000) return "visto agora";
+    if (diff < 3600000) return `visto há ${Math.floor(diff/60000)} min`;
+    if (diff < 86400000) return `visto às ${d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`;
+    return `visto ${d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} ${d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`;
+  };
   const presenceChanRef = useRef(null);
   useEffect(() => {
     if (!supabase || !user?.id) return;
@@ -10302,6 +10310,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       setOnlineUserIds(prev => new Set([...prev, key]));
     }).on('presence', { event: 'leave' }, ({ key }) => {
       setOnlineUserIds(prev => { const n = new Set(prev); n.delete(key); return n; });
+      setLastSeenMap(prev => ({ ...prev, [key]: new Date().toISOString() }));
     }).subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await chan.track({ user_id: user.id, online_at: new Date().toISOString() });
@@ -10937,7 +10946,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ fontSize:contained?13:15, fontWeight:800, color:B.text, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
             <p style={{ fontSize:contained?10:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), margin:0, marginTop:1, fontWeight:otherTyping?700:500 }}>
-              {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : (otherIsOnline ? "Online" : "Offline")}
+              {otherTyping ? "digitando..." : isGroup ? `${(selConv.members||[]).length} membros` : (otherIsOnline ? "Online" : fmtLastSeen(otherUserId))}
             </p>
           </div>
           <div style={{ display:"flex", gap:8 }}>
@@ -11241,7 +11250,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
                   </div>
                   <div onClick={isGroup?()=>setShowGroupInfo(!showGroupInfo):undefined} style={{ flex:1, minWidth:0, cursor:isGroup?"pointer":"default" }}>
                     <p style={{ fontSize:14, fontWeight:800, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{convName}</p>
-                    <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros · Clique para ver`:(otherIsOnline?"Online":"Offline")}</p>
+                    <p style={{ fontSize:11, color:otherTyping?B.accent:(otherIsOnline&&!isGroup?"#22C55E":B.muted), fontWeight:otherTyping?700:500 }}>{otherTyping?"digitando...":isGroup?`${(selConv.members||[]).length} membros · Clique para ver`:(otherIsOnline?"Online":fmtLastSeen(otherMember?.id))}</p>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
                     <button onClick={toggleMute} title={isMuted?"Ativar notificações":"Silenciar"} style={{ width:34, height:34, borderRadius:"50%", border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
