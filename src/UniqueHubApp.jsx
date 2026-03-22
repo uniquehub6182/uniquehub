@@ -8257,7 +8257,26 @@ REGRAS TÉCNICAS:
             </div>
             {form.sponsored && <>
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Orçamento do boost</label>
-              <input value={form.budget||""} onChange={e=>setForm({...form,budget:e.target.value})} placeholder="R$ 150" className="tinput" style={{ marginBottom:12 }} />
+              <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                {["50","100","200","500"].map(v => (
+                  <button key={v} onClick={()=>setForm({...form,budget:`R$ ${v}`})} style={{ flex:1, padding:"6px 0", borderRadius:8, border:`1.5px solid ${form.budget===`R$ ${v}`?B.accent:B.border}`, background:form.budget===`R$ ${v}`?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:form.budget===`R$ ${v}`?B.accent:B.muted }}>R${v}</button>
+                ))}
+              </div>
+              <input value={form.budget||""} onChange={e=>setForm({...form,budget:e.target.value})} placeholder="Ou digite o valor" className="tinput" style={{ marginBottom:10 }} />
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>Duração</label>
+              <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                {[{l:"3 dias",v:"3"},{l:"5 dias",v:"5"},{l:"7 dias",v:"7"},{l:"14 dias",v:"14"}].map(d => (
+                  <button key={d.v} onClick={()=>setForm({...form,boostDays:d.v})} style={{ flex:1, padding:"6px 0", borderRadius:8, border:`1.5px solid ${form.boostDays===d.v?B.accent:B.border}`, background:form.boostDays===d.v?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:form.boostDays===d.v?B.accent:B.muted }}>{d.l}</button>
+                ))}
+              </div>
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>Objetivo</label>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+                {[{l:"Alcance",v:"reach",ic:"📢"},{l:"Engajamento",v:"engagement",ic:"💬"},{l:"Tráfego",v:"traffic",ic:"🔗"},{l:"Mensagens",v:"messages",ic:"💌"}].map(o => (
+                  <button key={o.v} onClick={()=>setForm({...form,boostObjective:o.v})} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.boostObjective===o.v?B.accent:B.border}`, background:form.boostObjective===o.v?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:form.boostObjective===o.v?B.accent:B.muted }}>{o.ic} {o.l}</button>
+                ))}
+              </div>
+              <label className="sl" style={{ display:"block", marginBottom:6 }}>Público-alvo (opcional)</label>
+              <input value={form.boostAudience||""} onChange={e=>setForm({...form,boostAudience:e.target.value})} placeholder="Ex: Mulheres 25-45, Petrópolis RJ, interesse em moda" className="tinput" style={{ marginBottom:12 }} />
             </>}
           </>}
           {createType === "campaign" && <>
@@ -8891,7 +8910,20 @@ REGRAS TÉCNICAS:
                 if (isTooSoon) return <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, padding:"8px 12px", borderRadius:10, background:`${(B.orange||"#F59E0B")}08`, border:`1px solid ${(B.orange||"#F59E0B")}20` }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p style={{ fontSize:11, color:B.orange||"#F59E0B", fontWeight:600 }}>Menos de 10 min para o horário. A API do Instagram exige no mínimo 10 minutos de antecedência para agendar.</p></div>;
                 return <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, padding:"8px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="16 8 10 16 7 13"/></svg><p style={{ fontSize:11, color:B.green, fontWeight:600 }}>Agendamento válido. Ao ser aprovado pelo cliente, será publicado automaticamente nesta data.</p></div>;
               })()}
-              {sel.sponsored && <div style={{ marginTop:8 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento do boost</label><input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" /></div>}
+              {sel.sponsored && <div style={{ marginTop:8, padding:"12px", borderRadius:12, background:"#0081FB08", border:"1px solid #0081FB20" }}>
+                <p style={{ fontSize:11, fontWeight:700, color:"#0081FB", marginBottom:8, display:"flex", alignItems:"center", gap:5 }}>🚀 Impulsionar Post</p>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
+                  <div><label style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Orçamento</label><input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" style={{ fontSize:12 }} /></div>
+                  <div><label style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Duração</label><select value={sel.traffic?.boostDays||""} onChange={e=>updateField("traffic",{...sel.traffic,boostDays:e.target.value})} className="tinput" style={{ fontSize:12 }}><option value="">—</option><option value="3">3 dias</option><option value="5">5 dias</option><option value="7">7 dias</option><option value="14">14 dias</option></select></div>
+                </div>
+                <div><label style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Objetivo</label>
+                <div style={{ display:"flex", gap:4, marginTop:3, flexWrap:"wrap" }}>
+                  {[{l:"Alcance",v:"reach"},{l:"Engajamento",v:"engagement"},{l:"Tráfego",v:"traffic"},{l:"Mensagens",v:"messages"}].map(o => (
+                    <button key={o.v} onClick={()=>updateField("traffic",{...sel.traffic,boostObjective:o.v})} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${(sel.traffic?.boostObjective||"")=== o.v?"#0081FB":B.border}`, background:(sel.traffic?.boostObjective||"")=== o.v?"#0081FB12":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:600, color:(sel.traffic?.boostObjective||"")===o.v?"#0081FB":B.muted }}>{o.l}</button>
+                  ))}
+                </div></div>
+                <div style={{ marginTop:6 }}><label style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Público-alvo</label><input value={sel.traffic?.boostAudience||""} onChange={e=>updateField("traffic",{...sel.traffic,boostAudience:e.target.value})} placeholder="Ex: Mulheres 25-45, interesse em..." className="tinput" style={{ fontSize:11, marginTop:3 }} /></div>
+              </div>}
             </> : sel.steps?.caption?.text && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <Av name={sel.steps?.caption?.by} sz={22} fs={9} />
@@ -9216,6 +9248,8 @@ REGRAS TÉCNICAS:
                   </span>
                 </div>}
               </>}
+              {/* Boost button for published posts */}
+              {!sel.sponsored && <button onClick={()=>{updateField("sponsored",true);updateField("traffic",{...sel.traffic});showToast("Ative o boost com orçamento e objetivo ✓");}} style={{ marginTop:12, width:"100%", padding:"10px 0", borderRadius:10, background:"#0081FB10", border:"1.5px solid #0081FB25", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0081FB", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>🚀 Impulsionar este post</button>}
             </div>}
             {/* Publish buttons — show when there are uploaded images and connected social */}
             {(() => {
@@ -9641,6 +9675,7 @@ REGRAS TÉCNICAS:
                           >
                             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                               <span style={{ fontSize:8, fontWeight:700, color:pColor, textTransform:"uppercase", background:`${pColor}15`, padding:"2px 6px", borderRadius:6 }}>{d.priority || "média"}</span>
+                              {d.sponsored && <span style={{ fontSize:8, fontWeight:700, color:"#0081FB", background:"#0081FB12", padding:"2px 6px", borderRadius:6 }}>🚀 Boost</span>}
                               {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>⚠️ Ajuste</span>}
                               {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6 }}>⏰ Expirado</span>}
                               <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
