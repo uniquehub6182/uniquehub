@@ -7863,6 +7863,14 @@ REGRAS TÉCNICAS:
   });
   const uniqueClients = [...new Set(demands.map(d => d.client))].sort();
   const getStages = t => t === "campaign" ? CAMPAIGN_STAGES : t === "video" ? VIDEO_STAGES : SOCIAL_STAGES;
+  const isScheduleExpired = (d) => {
+    if (d.stage !== "scheduled" || !d.scheduling?.date) return false;
+    const sd = d.scheduling.date; const st = d.scheduling.time || "23:59"; let dt;
+    if (sd.includes("-")) { dt = new Date(`${sd}T${st}:00`); }
+    else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); const yr = new Date().getFullYear(); dt = new Date(`${yr}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}T${st}:00`); }
+    else return false;
+    return !isNaN(dt) && dt < new Date();
+  };
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
   const priorityColor = p => p === "alta" ? B.red : p === "média" ? B.orange : B.green;
   const typeLabel = t => t === "social" ? "Post" : t === "campaign" ? "Campanha" : t === "video" ? "Vídeo" : "Outro";
@@ -9420,15 +9428,6 @@ REGRAS TÉCNICAS:
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","scheduled","published","completed"];
         /* Only show columns that have demands or are from the social workflow */
-        const isScheduleExpired = (d) => {
-          if (d.stage !== "scheduled" || !d.scheduling?.date) return false;
-          const sd = d.scheduling.date; const st = d.scheduling.time || "23:59";
-          let dt;
-          if (sd.includes("-")) { dt = new Date(`${sd}T${st}:00`); }
-          else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); const yr = new Date().getFullYear(); dt = new Date(`${yr}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}T${st}:00`); }
-          else return false;
-          return !isNaN(dt) && dt < new Date();
-        };
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
@@ -10817,18 +10816,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
 
   /* AudioPlayer is now at module level */
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !selConv) return;
-    /* If image, show preview first */
-    if (file.type?.startsWith("image")) {
-      const r = new FileReader();
-      r.onload = ev => setPendingFile({ file, preview: ev.target.result, name: file.name, type: file.type });
-      r.readAsDataURL(file);
-      setShowAttach(false);
-      return;
-    }
-
   /* ── Paste image from clipboard (Ctrl+V / Cmd+V) ── */
   const handlePaste = (e) => {
     const items = e.clipboardData?.items;
@@ -10845,6 +10832,18 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       }
     }
   };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selConv) return;
+    /* If image, show preview first */
+    if (file.type?.startsWith("image")) {
+      const r = new FileReader();
+      r.onload = ev => setPendingFile({ file, preview: ev.target.result, name: file.name, type: file.type });
+      r.readAsDataURL(file);
+      setShowAttach(false);
+      return;
+    }
     /* Non-image: send immediately */
     showToast("Enviando arquivo...");
     const result = await supaUploadChatFile(file);
