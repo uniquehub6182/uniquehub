@@ -13212,11 +13212,37 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               <span style={{ color: B.accent, display: "flex" }}>{IC.shield}</span>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 600 }}>Autenticação 2 Fatores</p>
-                <p style={{ fontSize: 11, color: twoFA ? B.green : B.muted }}>{twoFA ? "✓ Ativado" : "Desativado"}</p>
+                <p style={{ fontSize: 11, color: twoFA ? B.green : B.muted }}>{twoFA ? "✓ Ativado (App Autenticador)" : "Desativado"}</p>
               </div>
             </div>
             <Toggle on={twoFA} onToggle={() => { if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
           </div>
+          {!twoFA && <div style={{ marginTop: 12, paddingTop: 12, borderTop:`1px solid ${B.border}` }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom: 8 }}>Métodos disponíveis</p>
+            <div style={{ display:"flex", flexDirection:"column", gap: 6 }}>
+              <button onClick={() => setTwoFASetup('qr')} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.accent}30`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
+                </div>
+                <div style={{ flex:1 }}><p style={{ fontSize: 12, fontWeight: 600 }}>App Autenticador</p><p style={{ fontSize: 10, color: B.muted }}>Google Authenticator, Authy ou similar</p></div>
+                <span style={{ fontSize: 9, padding:"2px 6px", borderRadius:4, background:`${B.green}15`, color:B.green, fontWeight:700 }}>Recomendado</span>
+              </button>
+              <button onClick={() => showToast("Verificação por e-mail será disponibilizada em breve")} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <div style={{ flex:1 }}><p style={{ fontSize: 12, fontWeight: 600, color:B.muted }}>Verificação por E-mail</p><p style={{ fontSize: 10, color: B.muted }}>Código enviado para seu e-mail</p></div>
+                <span style={{ fontSize: 9, padding:"2px 6px", borderRadius:4, background:`${B.orange}15`, color:B.orange, fontWeight:700 }}>Em breve</span>
+              </button>
+              <button onClick={() => showToast("Verificação por SMS será disponibilizada em breve")} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                </div>
+                <div style={{ flex:1 }}><p style={{ fontSize: 12, fontWeight: 600, color:B.muted }}>Verificação por SMS</p><p style={{ fontSize: 10, color: B.muted }}>Código enviado para seu celular</p></div>
+                <span style={{ fontSize: 9, padding:"2px 6px", borderRadius:4, background:`${B.orange}15`, color:B.orange, fontWeight:700 }}>Em breve</span>
+              </button>
+            </div>
+          </div>}
         </Card>
         <Card onClick={() => setSessions(true)} style={{ cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
