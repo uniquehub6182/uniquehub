@@ -16835,7 +16835,7 @@ REGRAS:
   if (isNewsDesktop) {
     const a = selArticle;
     const isCreating = showCreateChoice || creating || aiMode || editingArticle;
-    const articleUrl = (art) => art?.sourceUrl || `${window.location.origin}/#/home?article=${art?.supaId||art?.id||""}`;
+    const articleUrl = (art) => art?.sourceUrl || art?.url || `${window.location.origin}/#/news/${art?.supaId||art?.id||""}`;
     const shareUrl_ = (url) => encodeURIComponent(url || window.location.href);
     const shareText_ = (t) => encodeURIComponent(t || "");
     const pinned = articles.filter(x=>x.pinned);
@@ -16889,9 +16889,9 @@ REGRAS:
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginTop:28, padding:"16px 20px", borderRadius:14, background:B.bg }}>
                   <span style={{ fontSize:12, fontWeight:600, color:B.muted }}>Compartilhar:</span>
                   {[
-                    {href:`https://wa.me/?text=${shareText_(a.title)}%20${shareUrl_(articleUrl(a))}`,bg:"#25D366",l:"WhatsApp"},
-                    {href:`https://www.facebook.com/sharer/sharer.php?u=${shareUrl_(articleUrl(a))}`,bg:"#4267B2",l:"Facebook"},
-                    {href:`https://twitter.com/intent/tweet?text=${shareText_(a.title)}&url=${shareUrl_(articleUrl(a))}`,bg:"#000",l:"X"},
+                    {href:`https://wa.me/?text=${shareText_(a.title + " — " + (a.summary||"").substring(0,100))}%20${shareUrl_(articleUrl(a))}`,bg:"#25D366",l:"WhatsApp"},
+                    {href:`https://www.facebook.com/sharer/sharer.php?u=${shareUrl_(articleUrl(a))}&quote=${shareText_(a.title)}`,bg:"#4267B2",l:"Facebook"},
+                    {href:`https://twitter.com/intent/tweet?text=${shareText_(a.title + (a.summary ? " — " + a.summary.substring(0,100) : ""))}&url=${shareUrl_(articleUrl(a))}`,bg:"#000",l:"X"},
                     {href:`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl_(articleUrl(a))}`,bg:"#0A66C2",l:"LinkedIn"},
                   ].map(s=><a key={s.l} href={s.href} target="_blank" rel="noopener" style={{ padding:"6px 12px", borderRadius:8, background:s.bg, color:"#fff", fontSize:10, fontWeight:700, textDecoration:"none" }}>{s.l}</a>)}
                   <button onClick={()=>{navigator.clipboard.writeText(articleUrl(a));showToast("Link copiado ✓");}} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.text }}>🔗 Copiar</button>
