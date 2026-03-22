@@ -2752,6 +2752,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
   const isDark = B.bg === "#0D0D0D";
+  const [clockTime, setClockTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
+  useEffect(() => { const iv = setInterval(() => { const n = new Date(); setClockTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, []);
   const H = { bg:isDark?"#fff":"#0D0D0D", txt:isDark?"#0D0D0D":"#fff", sub:isDark?"#999":"rgba(255,255,255,0.5)", btn:isDark?"#F3F3F3":"#2A2A2A", btnC:isDark?"#0D0D0D":"#fff", srch:isDark?"#F3F3F3":"#2A2A2A", srchT:isDark?"#BBB":"rgba(255,255,255,0.35)" };
   const C = { bg:isDark?"#0D0D0D":"#F5F5F5", card:isDark?"#1A1A1A":"#fff", brd:isDark?"#272727":"rgba(0,0,0,0.06)", txt:isDark?"#fff":"#0D0D0D", mut:isDark?"rgba(255,255,255,0.35)":"#888", pill:isDark?"#1E1E1E":"#fff", pbrd:isDark?"#2A2A2A":"rgba(0,0,0,0.08)", picn:isDark?"#2A2A2A":"#F3F3F3", aicn:isDark?"#252525":"#F3F3F3", readBtn:isDark?"#fff":"#0D0D0D", readBtnT:isDark?"#0D0D0D":"#fff", badge:isDark?"#252525":"#F3F3F3" };
   const LIME = "#C6F135";
@@ -3448,7 +3450,16 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                     <div><p style={{fontSize:13,fontWeight:700,color:"#fff",lineHeight:1.1}}>{weekEvents} compromisso{weekEvents>1?"s":""}</p><p style={{fontSize:9,fontWeight:600,color:"rgba(255,255,255,0.45)",marginTop:1}}>esta semana</p></div>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </div>}
-                  <div style={{flexShrink:0,textAlign:"right",marginLeft:"auto"}}><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div><div style={{fontSize:14,fontWeight:600,color:"rgba(255,255,255,0.6)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div></div>
+                  <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:14,marginLeft:"auto"}}>
+                    {/* Flip Clock */}
+                    <div style={{display:"flex",alignItems:"center",gap:3}}>
+                      {[clockTime.h[0],clockTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:30,height:38,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+                      <span style={{fontSize:22,fontWeight:900,color:LIME,margin:"0 1px",animation:"blink 1s step-end infinite"}}>:</span>
+                      {[clockTime.m[0],clockTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:30,height:38,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+                    </div>
+                    {/* Date */}
+                    <div style={{textAlign:"right"}}><div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.5)"}}>Hoje é {["domingo","segunda","terça","quarta","quinta","sexta","sábado"][today.getDay()]},</div><div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.5)"}}>{today.getDate()} de {["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][today.getMonth()]}</div></div>
+                  </div>
                   <div style={{display:"flex",gap:8,flexShrink:0}}>
                     <button onClick={()=>goTab("chat")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
                     <button onClick={()=>goSub("notifs")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{notifCount>0&&<span style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
@@ -23397,6 +23408,7 @@ input,textarea,select{font-size:16px !important}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .bnav{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,0.4);overflow:visible}
