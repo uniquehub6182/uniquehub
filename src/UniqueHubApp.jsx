@@ -14391,11 +14391,11 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3 }}>
                 {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`}/>)}
                 {Array.from({length:daysInMonth}).map((_,i) => {
-                  const d=i+1; const selected=d===selDay; const tdy=isToday(d); const has=hasEvents(d);
+                  const d=i+1; const selected=d===selDay; const tdy=isToday(d); const dots=dayDots(d);
                   return (
                     <button key={d} onClick={()=>setSelDay(d)} style={{ width:"100%", aspectRatio:"1", borderRadius:10, border:tdy&&!selected?`2px solid ${B.accent}`:"2px solid transparent", background:selected?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:selected||tdy?800:400, color:selected?B.dark:tdy?B.accent:B.dark, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, position:"relative" }}>
                       {d}
-                      {has && <div style={{ position:"absolute", bottom:2, width:5, height:5, borderRadius:3, background:selected?B.dark:B.accent }}/>}
+                      {dots.length > 0 && <div style={{ position:"absolute", bottom:2, display:"flex", gap:2 }}>{dots.map((c,ci)=><div key={ci} style={{ width:4, height:4, borderRadius:2, background:selected?B.dark:c }}/>)}</div>}
                     </button>
                   );
                 })}
@@ -14550,14 +14550,11 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
           {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`}/>)}
           {Array.from({length:daysInMonth}).map((_,i) => {
-            const d=i+1; const selected=d===selDay; const tdy=isToday(d); const has=hasEvents(d);
-            const dayEvCount = events.filter(e=>e.day===d&&e.month===curMonth&&e.year===curYear).length;
+            const d=i+1; const selected=d===selDay; const tdy=isToday(d); const dots=dayDots(d);
             return (
               <button key={d} onClick={()=>setSelDay(d)} style={{ width:"100%", aspectRatio:"1", borderRadius:12, border:tdy&&!selected?`2px solid ${B.accent}`:"2px solid transparent", background:selected?B.accent:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:selected||tdy?800:400, color:selected?B.dark:tdy?B.accent:B.dark, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, position:"relative" }}>
                 {d}
-                {has && <div style={{ display:"flex", gap:2, position:"absolute", bottom:2 }}>
-                  {dayEvCount <= 3 ? Array.from({length:dayEvCount}).map((_,j)=><div key={j} style={{ width:4, height:4, borderRadius:2, background:selected?B.dark:B.accent }}/>) : <div style={{ width:4, height:4, borderRadius:2, background:selected?B.dark:B.accent }}/>}
-                </div>}
+                {dots.length > 0 && <div style={{ display:"flex", gap:2, position:"absolute", bottom:2 }}>{dots.map((c,ci)=><div key={ci} style={{ width:4, height:4, borderRadius:2, background:selected?B.dark:c }}/>)}</div>}
               </button>
             );
           })}
