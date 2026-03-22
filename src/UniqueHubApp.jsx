@@ -5103,21 +5103,25 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         const f = viewClientFile;
         const fi = fileIcon(f.name);
         const ext = f.name.split(".").pop()?.toLowerCase();
-        const isImage = ["jpg","jpeg","png","gif","webp","svg"].includes(ext);
-        const isVideo = ["mp4","mov","avi","mkv","webm"].includes(ext);
+        const fExt = f.originalExt || (f.storagePath?.split(".").pop()?.toLowerCase()) || (/\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|pdf)(\?|$)/i.test(f.url||"") ? (f.url||"").match(/\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|pdf)/i)?.[1]?.toLowerCase() : "") || ext;
+        const imgExts = ["jpg","jpeg","png","gif","webp","svg","bmp"];
+        const vidExts = ["mp4","mov","avi","mkv","webm"];
+        const isImage = imgExts.includes(fExt) || (f.mimeType||"").startsWith("image/");
+        const isVideo = vidExts.includes(fExt) || (f.mimeType||"").startsWith("video/");
         const hasUrl = !!f.url;
+        const fmtSz = (s) => (!s || s==="0.0MB" || s==="0MB") ? "—" : s;
         return <>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
             <button onClick={()=>setViewClientFile(null)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
             <p style={{ fontSize:14, fontWeight:700 }}>Detalhes do arquivo</p>
           </div>
           {/* Preview */}
-          {hasUrl && isImage && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12, background:B.bgCard }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:250, objectFit:"contain" }} /></div>}
+          {hasUrl && isImage && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12, background:B.bgCard }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:250, objectFit:"contain" }} onError={e=>{e.target.onerror=null;e.target.style.display="none";}} /></div>}
           {hasUrl && isVideo && <video src={f.url} controls style={{ width:"100%", maxHeight:250, borderRadius:16, marginBottom:12 }} />}
           {!isImage && !isVideo && <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
             <div style={{ width:56, height:56, borderRadius:16, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", transform:"scale(1.5)" }}>{fi.ic}</div>
             <p style={{ fontSize:15, fontWeight:700, marginTop:8 }}>{f.name}</p>
-            <p style={{ fontSize:11, color:B.muted }}>{f.size} · {f.date}</p>
+            <p style={{ fontSize:11, color:B.muted }}>{fmtSz(f.size)} · {f.date}</p>
           </Card>}
           {/* Actions */}
           <div style={{ display:"flex", gap:8, marginBottom:12 }}>
@@ -5139,7 +5143,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           {/* File info */}
           <Card>
             <p className="sl" style={{ marginBottom:8 }}>Informações</p>
-            {[{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date},{l:"Extensão",v:ext?.toUpperCase()},{l:"Armazenamento",v:hasUrl?"Supabase Storage":"Local"}].map((item,i)=>(
+            {[{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:fmtSz(f.size)},{l:"Data",v:f.date},{l:"Extensão",v:(fExt||ext||"—").toUpperCase()},{l:"Armazenamento",v:hasUrl?"Supabase Storage":"Local"}].map((item,i)=>(
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
                 <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
                 <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
@@ -5166,11 +5170,12 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 <p className="sl">{cat.icon} {cat.label}</p>
                 <span style={{ fontSize:10, color:B.muted }}>{catFiles.length} arquivo{catFiles.length>1?"s":""}</span>
               </div>
-              {catFiles.map(f => { const fi=fileIcon(f.name); return (
+              {catFiles.map(f => { const fi=fileIcon(f.name); const fExt2=f.originalExt||(f.storagePath?.split(".").pop()?.toLowerCase())||(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(f.url||"")?(f.url||"").match(/\.(jpg|jpeg|png|gif|webp|svg)/i)?.[1]?.toLowerCase():""); const isImg2=["jpg","jpeg","png","gif","webp","svg","bmp"].includes(fExt2)||(f.mimeType||"").startsWith("image/"); const fmtSz2=(s)=>(!s||s==="0.0MB"?"—":s); return (
                 <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
-                    <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
+                    {isImg2 && f.url ? <img src={f.url} alt="" style={{ width:38, height:38, borderRadius:10, objectFit:"cover", flexShrink:0 }} onError={e=>{e.target.onerror=null;e.target.style.display="none";e.target.nextSibling&&(e.target.nextSibling.style.display="flex");}} /> : null}
+                    <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:isImg2&&f.url?"none":"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
+                    <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{fmtSz2(f.size)} · {f.date}</p></div>
                     {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ background:`${B.accent}10`, border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:6, borderRadius:8, flexShrink:0 }}>{IC.download}</a>}
                     <button onClick={e=>{e.stopPropagation();removeFile(f.id);}} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                   </div>
@@ -9431,8 +9436,11 @@ REGRAS TÉCNICAS:
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
         /* Only show columns that have demands or are from the social workflow */
-        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","ajuste","scheduled","published"];
+        const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
+        /* Show "ajuste" column if any demand has client revision status */
+        const hasAjuste = filtered.some(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"));
+        if (hasAjuste) usedStages.add("ajuste");
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
         const moveStage = (d, newStage) => {
           setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x));
@@ -9444,12 +9452,16 @@ REGRAS TÉCNICAS:
             <div style={{ display:"flex", gap:12, minWidth: visibleStages.length * 200 }}>
               {visibleStages.map(stg => {
                 const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
-                const items = filtered.filter(d => d.stage === stg);
+                const items = stg === "ajuste"
+                  ? filtered.filter(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))
+                  : stg === "client"
+                  ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected")
+                  : filtered.filter(d => d.stage === stg);
                 return (
                   <div key={stg} style={{ flex:1, minWidth:190, maxWidth:260, display:"flex", flexDirection:"column" }}
                     onDragOver={e => { e.preventDefault(); e.currentTarget.style.background=`${cfg.c}10`; }}
                     onDragLeave={e => { e.currentTarget.style.background="transparent"; }}
-                    onDrop={e => { e.preventDefault(); e.currentTarget.style.background="transparent"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg) moveStage(dem, stg); } catch {} }}
+                    onDrop={e => { e.preventDefault(); e.currentTarget.style.background="transparent"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") moveStage(dem, stg); } catch {} }}
                   >
                     <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", marginBottom:8, borderRadius:12, background:`${cfg.c}12` }}>
                       <div style={{ width:10, height:10, borderRadius:5, background:cfg.c, flexShrink:0 }} />
@@ -9500,14 +9512,22 @@ REGRAS TÉCNICAS:
       })()}
       {/* -- CONTAINED CONTENT BLOCK (dashboard) -- redesigned -- */}
       {contained && !isContentDesktop && !sel && !creating && (() => {
-        const SO=["idea","briefing","design","caption","review","client","scheduled","published"];
-        const scc={};SO.forEach(s=>{scc[s]=filtered.filter(d=>d.stage===s).length;});
-        const stIt=filtered.filter(d=>d.stage===cStage);
+        const SO=["idea","briefing","design","caption","review","client","ajuste","scheduled","published"];
+        const scc={};SO.forEach(s=>{
+          if (s === "ajuste") scc[s] = filtered.filter(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")).length;
+          else if (s === "client") scc[s] = filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected").length;
+          else scc[s] = filtered.filter(d => d.stage === s).length;
+        });
+        const stIt = cStage === "ajuste"
+          ? filtered.filter(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))
+          : cStage === "client"
+          ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected")
+          : filtered.filter(d => d.stage === cStage);
         const cCfg=STAGE_CFG[cStage]||{l:"Ideia",c:"#888"};
         const mvK=(did,ns)=>{setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));const dd=demands.find(x=>x.id===did);if(dd?.supaId)supaUpdateDemand(dd.supaId,{stage:ns});showToast("\u2192 "+(STAGE_CFG[ns]?.l||ns));};
         return (<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden"}}>
           <div className="hscroll" style={{display:"flex",gap:4,padding:"6px 12px",overflowX:"auto",flexShrink:0,borderBottom:`1px solid ${B.border}`}}>
-            {SO.map(s=>{const c2=STAGE_CFG[s]||{l:s,c:"#888"};const cnt=scc[s]||0;const act=cStage===s;return <button key={s} onClick={()=>setCStage(s)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:act?`2px solid ${c2.c}`:`1.5px solid ${B.border}`,background:act?`${c2.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:act?700:500,color:act?c2.c:B.muted,whiteSpace:"nowrap",flexShrink:0}}><span style={{width:6,height:6,borderRadius:3,background:c2.c,flexShrink:0}}/>{c2.l}{cnt>0&&<span style={{fontSize:9,fontWeight:700,color:act?c2.c:B.muted,background:act?`${c2.c}20`:`${B.muted}10`,padding:"1px 6px",borderRadius:10}}>{cnt}</span>}</button>;})}
+            {SO.filter(s => s !== "ajuste" || (scc["ajuste"]||0) > 0).map(s=>{const c2=STAGE_CFG[s]||{l:s,c:"#888"};const cnt=scc[s]||0;const act=cStage===s;return <button key={s} onClick={()=>setCStage(s)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:act?`2px solid ${c2.c}`:`1.5px solid ${B.border}`,background:act?`${c2.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:act?700:500,color:act?c2.c:B.muted,whiteSpace:"nowrap",flexShrink:0}}><span style={{width:6,height:6,borderRadius:3,background:c2.c,flexShrink:0}}/>{c2.l}{cnt>0&&<span style={{fontSize:9,fontWeight:700,color:act?c2.c:B.muted,background:act?`${c2.c}20`:`${B.muted}10`,padding:"1px 6px",borderRadius:10}}>{cnt}</span>}</button>;})}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
             {stIt.length===0&&<div style={{textAlign:"center",padding:"30px 0"}}><p style={{fontSize:12,fontWeight:600,color:B.muted,opacity:0.5}}>Nenhuma demanda em \"{cCfg.l}\"</p></div>}
@@ -14513,14 +14533,21 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     const fromName = f.name?.split(".").pop()?.toLowerCase();
     if (fromName && fromName !== f.name?.toLowerCase() && fromName.length <= 5) return fromName;
     if (f.originalExt) return f.originalExt;
-    const fromUrl = f.url?.split("?")[0]?.split(".").pop()?.toLowerCase();
-    if (fromUrl && fromUrl.length <= 5) return fromUrl;
+    const fromPath = f.storagePath?.split(".").pop()?.toLowerCase();
+    if (fromPath && fromPath.length <= 5) return fromPath;
+    const fromUrl = f.url?.split("?")[0]?.split("/").pop()?.split(".").pop()?.toLowerCase();
+    if (fromUrl && fromUrl.length <= 5 && fromUrl !== fromUrl?.split("_").pop()) return fromUrl;
     if (f.mimeType?.startsWith("image/")) return f.mimeType.split("/")[1] === "jpeg" ? "jpg" : f.mimeType.split("/")[1];
     if (f.mimeType?.startsWith("video/")) return f.mimeType.split("/")[1];
+    /* Last resort: check URL for common image patterns */
+    const urlLower = (f.url||"").toLowerCase();
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)/i)[1];
+    if (/\.(mp4|mov|webm|avi)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(mp4|mov|webm|avi)/i)[1];
     return fromName || "";
   };
   const isFileImage = (f) => IMG_EXTS.includes(getFileExt(f));
   const isFileVideo = (f) => VID_EXTS.includes(getFileExt(f));
+  const fmtFileSize = (s) => { if (!s || s === "0.0MB" || s === "0MB" || s === "0B") return "—"; return s; };
 
   const fileIcon = (name) => {
     const ext = name.split(".").pop()?.toLowerCase();
@@ -14660,7 +14687,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
           {[
             { l:"Cliente", v:f.clientName },
             { l:"Categoria", v:f.category || "Outros" },
-            { l:"Tamanho", v:f.size || "—" },
+            { l:"Tamanho", v:fmtFileSize(f.size) },
             { l:"Data", v:f.date },
             { l:"Extensão", v:ext?.toUpperCase() },
             ...(hasUrl ? [{ l:"Armazenamento", v:"Supabase Storage" }] : [{ l:"Armazenamento", v:"Demonstração" }]),
@@ -14825,7 +14852,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                           </div>
                           <div style={{ padding:"8px 10px" }}>
                             <p style={{ fontSize:11, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.name}</p>
-                            <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.clientName}{ff.size ? " · "+ff.size : ""}</p>
+                            <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.clientName}{fmtFileSize(ff.size) !== "—" ? " · "+fmtFileSize(ff.size) : ""}</p>
                           </div>
                         </div>
                       );
@@ -14879,7 +14906,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                     {f.url && isVideo && <div style={{ background:B.dark }}><video src={f.url} controls style={{ width:"100%", maxHeight:200, display:"block" }}/></div>}
                     {!(f.url && (isImage||isVideo)) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()}</p></div>}
                     <div style={{ padding:"12px 14px" }}>
-                      {[{l:"Cliente",v:f.clientName},{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:f.size},{l:"Data",v:f.date}].map((item,ii)=>(
+                      {[{l:"Cliente",v:f.clientName},{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:fmtFileSize(f.size)},{l:"Data",v:f.date}].map((item,ii)=>(
                         <div key={ii} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderTop:ii?`1px solid ${B.border}`:"none" }}>
                           <span style={{ fontSize:10, color:B.muted }}>{item.l}</span>
                           <span style={{ fontSize:12, fontWeight:600 }}>{item.v||"—"}</span>
