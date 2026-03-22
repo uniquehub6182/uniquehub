@@ -9455,22 +9455,22 @@ REGRAS TÉCNICAS:
         const expandedCfg = expanded ? (STAGE_CFG[expanded] || { l: expanded, c: "#888" }) : null;
         return <div style={{ padding:"8px 0" }}>
           {/* ── Stage pills row ── */}
-          <div style={{ display:"flex", gap:6, marginBottom: expanded ? 16 : 0, overflowX:"auto", paddingBottom:4 }}>
+          <div style={{ display:"flex", gap:6, marginBottom: expanded ? 16 : 0, paddingBottom:4 }}>
             {visibleStages.map(stg => {
               const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
               const cnt = getItems(stg).length;
               const isActive = expanded === stg;
               return <button key={stg} onClick={() => setKanbanCol(isActive ? null : stg)}
-                style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 16px", borderRadius:14, border: isActive ? `2px solid ${cfg.c}` : "1.5px solid rgba(0,0,0,0.06)", background: isActive ? `${cfg.c}10` : "#fff", cursor:"pointer", fontFamily:"inherit", transition:"all .2s", flexShrink:0, boxShadow: isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)", transform: isActive ? "scale(1.02)" : "scale(1)" }}
+                style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 6px", borderRadius:14, border: isActive ? `2px solid ${cfg.c}` : "1.5px solid rgba(0,0,0,0.06)", background: isActive ? `${cfg.c}10` : "#fff", cursor:"pointer", fontFamily:"inherit", transition:"all .2s", boxShadow: isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)", minWidth:0 }}
                 onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor=cfg.c+"60"; e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.c}15`; }}}
                 onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"; e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"; }}}
-                onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; e.currentTarget.style.transform="scale(1.05)"; }}
-                onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = isActive ? "scale(1.02)" : "scale(1)"; }}
-                onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = isActive ? "scale(1.02)" : "scale(1)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") { moveStage(dem, stg); setKanbanCol(stg); }} catch {} }}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; }}
+                onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; }}
+                onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") { moveStage(dem, stg); setKanbanCol(stg); }} catch {} }}
               >
-                <div style={{ width:10, height:10, borderRadius:5, background:cfg.c, flexShrink:0 }} />
-                <span style={{ fontSize:11, fontWeight: isActive ? 800 : 600, color: isActive ? "#1A1D23" : "#6B7280", whiteSpace:"nowrap" }}>{cfg.l}</span>
-                <span style={{ fontSize:12, fontWeight:800, color: isActive ? cfg.c : "#9CA3AF", background: isActive ? `${cfg.c}18` : "rgba(0,0,0,0.04)", padding:"2px 10px", borderRadius:10, minWidth:24, textAlign:"center" }}>{cnt}</span>
+                <div style={{ width:8, height:8, borderRadius:4, background:cfg.c, flexShrink:0 }} />
+                <span style={{ fontSize:11, fontWeight: isActive ? 800 : 600, color: isActive ? "#1A1D23" : "#6B7280", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{cfg.l}</span>
+                <span style={{ fontSize:11, fontWeight:800, color: isActive ? cfg.c : "#9CA3AF", background: isActive ? `${cfg.c}18` : "rgba(0,0,0,0.04)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>{cnt}</span>
               </button>;
             })}
           </div>
