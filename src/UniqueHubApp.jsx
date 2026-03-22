@@ -7173,6 +7173,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [editMode, setEditMode] = useState(false);
   const [quickPub, setQuickPub] = useState(false);
   const [kanbanCol, setKanbanCol] = useState(null);
+  const [kanbanView, setKanbanView] = useState("classic"); /* "classic" | "pipeline" */
   /* ═══ IMPORT PLANNING (AI) ═══ */
   const [importPlan, setImportPlan] = useState(false);
   const [ipStep, setIpStep] = useState(1); /* 1=upload, 2=processing, 3=preview */
@@ -9450,73 +9451,145 @@ REGRAS TÉCNICAS:
         const moveStage = (d, newStage) => { setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x)); if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage }); showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`); };
         const getItems = (stg) => stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : filtered.filter(d => d.stage === stg);
         const netC = { Instagram:"#E1306C", Facebook:"#1877F2", TikTok:"#000", LinkedIn:"#0A66C2", YouTube:"#FF0000", Twitter:"#1D9BF0" };
-        const expanded = kanbanCol;
-        const expandedItems = expanded ? getItems(expanded) : [];
-        const expandedCfg = expanded ? (STAGE_CFG[expanded] || { l: expanded, c: "#888" }) : null;
+        const TEAM = team || [];
         return <div style={{ padding:"8px 0" }}>
-          {/* ── Stage pills row ── */}
-          <div style={{ display:"flex", gap:6, marginBottom: expanded ? 16 : 0, paddingBottom:4 }}>
-            {visibleStages.map(stg => {
-              const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
-              const cnt = getItems(stg).length;
-              const isActive = expanded === stg;
-              return <button key={stg} onClick={() => setKanbanCol(isActive ? null : stg)}
-                style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 6px", borderRadius:14, border: isActive ? `2px solid ${cfg.c}` : "1.5px solid rgba(0,0,0,0.06)", background: isActive ? `${cfg.c}10` : "#fff", cursor:"pointer", fontFamily:"inherit", transition:"all .2s", boxShadow: isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)", minWidth:0 }}
-                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor=cfg.c+"60"; e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.c}15`; }}}
-                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"; e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"; }}}
-                onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; }}
-                onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; }}
-                onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") { moveStage(dem, stg); setKanbanCol(stg); }} catch {} }}
-              >
-                <div style={{ width:8, height:8, borderRadius:4, background:cfg.c, flexShrink:0 }} />
-                <span style={{ fontSize:11, fontWeight: isActive ? 800 : 600, color: isActive ? "#1A1D23" : "#6B7280", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{cfg.l}</span>
-                <span style={{ fontSize:11, fontWeight:800, color: isActive ? cfg.c : "#9CA3AF", background: isActive ? `${cfg.c}18` : "rgba(0,0,0,0.04)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>{cnt}</span>
-              </button>;
-            })}
-          </div>
-          {/* ── Expanded cards panel ── */}
-          {expanded && expandedCfg && <div style={{ borderRadius:18, background:"#fff", border:`1px solid ${expandedCfg.c}25`, overflow:"hidden", boxShadow:`0 8px 40px ${expandedCfg.c}08` }}>
-            <div style={{ padding:"14px 20px", borderBottom:`2px solid ${expandedCfg.c}`, display:"flex", alignItems:"center", gap:10, background:`${expandedCfg.c}06` }}>
-              <div style={{ width:12, height:12, borderRadius:6, background:expandedCfg.c }} />
-              <span style={{ fontSize:15, fontWeight:800, color:"#1A1D23" }}>{expandedCfg.l}</span>
-              <span style={{ fontSize:12, fontWeight:700, color:expandedCfg.c, background:`${expandedCfg.c}15`, padding:"3px 12px", borderRadius:12 }}>{expandedItems.length} {expandedItems.length === 1 ? "item" : "itens"}</span>
-              <div style={{ flex:1 }} />
-              <button onClick={() => setKanbanCol(null)} style={{ width:30, height:30, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:"#9CA3AF", fontFamily:"inherit" }}>✕</button>
+          {/* ── View toggle ── */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginBottom:10 }}>
+            <div style={{ display:"flex", background:"rgba(0,0,0,0.04)", borderRadius:10, padding:2 }}>
+              <button onClick={() => { setKanbanView("classic"); setKanbanCol(null); }} style={{ padding:"5px 14px", borderRadius:8, border:"none", background: kanbanView==="classic" ? "#fff" : "transparent", boxShadow: kanbanView==="classic" ? "0 1px 4px rgba(0,0,0,0.1)" : "none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight: kanbanView==="classic" ? 700 : 500, color: kanbanView==="classic" ? "#1A1D23" : "#9CA3AF", transition:"all .2s", display:"flex", alignItems:"center", gap:4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="12" rx="1"/></svg>
+                Kanban
+              </button>
+              <button onClick={() => setKanbanView("pipeline")} style={{ padding:"5px 14px", borderRadius:8, border:"none", background: kanbanView==="pipeline" ? "#fff" : "transparent", boxShadow: kanbanView==="pipeline" ? "0 1px 4px rgba(0,0,0,0.1)" : "none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight: kanbanView==="pipeline" ? 700 : 500, color: kanbanView==="pipeline" ? "#1A1D23" : "#9CA3AF", transition:"all .2s", display:"flex", alignItems:"center", gap:4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><line x1="6" y1="12" x2="11" y2="12"/><line x1="13" y1="12" x2="18" y2="12"/></svg>
+                Pipeline
+              </button>
             </div>
-            <div style={{ padding:16, maxHeight:480, overflowY:"auto" }}>
-              {expandedItems.length === 0 && <div style={{ padding:"40px 0", textAlign:"center" }}><p style={{ fontSize:12, color:"#C5C7CC" }}>Nenhum item nesta etapa</p></div>}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:12 }}>
-                {expandedItems.map(d => {
-                  const pC = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
-                  const nets = (d.network||"").split(", ").filter(Boolean);
-                  const clIni = (d.client||"?")[0].toUpperCase();
-                  return <div key={d.id} draggable
-                    onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
-                    onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
-                    onClick={() => setSel(d)}
-                    style={{ padding:"14px 16px", borderRadius:14, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.05)", cursor:"grab", transition:"all .15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background="#fff"; e.currentTarget.style.boxShadow=`0 6px 24px ${expandedCfg.c}12`; e.currentTarget.style.borderColor=expandedCfg.c+"40"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(0,0,0,0.05)"; }}
+          </div>
+          {/* ══════ CLASSIC KANBAN ══════ */}
+          {kanbanView === "classic" && <div style={{ overflowX:"auto" }}>
+            <div style={{ display:"flex", gap:12, minWidth: visibleStages.length * 200 }}>
+              {visibleStages.map(stg => {
+                const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
+                const items = getItems(stg);
+                return (
+                  <div key={stg} style={{ flex:1, minWidth:190, maxWidth:260, display:"flex", flexDirection:"column" }}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.background=`${cfg.c}10`; }}
+                    onDragLeave={e => { e.currentTarget.style.background="transparent"; }}
+                    onDrop={e => { e.preventDefault(); e.currentTarget.style.background="transparent"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") moveStage(dem, stg); } catch {} }}
                   >
-                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                      <div style={{ width:30, height:30, borderRadius:10, background:`${expandedCfg.c}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:expandedCfg.c, flexShrink:0 }}>{clIni}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <span style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client}</span>
-                      </div>
-                      <div style={{ display:"flex", gap:3 }}>{nets.slice(0,3).map((n,ni) => <div key={ni} style={{ width:18, height:18, borderRadius:9, background:netC[n]||"#888", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:8, fontWeight:900, color:"#fff" }}>{n[0]}</span></div>)}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", marginBottom:8, borderRadius:12, background:`${cfg.c}12` }}>
+                      <div style={{ width:10, height:10, borderRadius:5, background:cfg.c, flexShrink:0 }} />
+                      <span style={{ fontSize:12, fontWeight:700, color:"#1A1D23" }}>{cfg.l}</span>
+                      <span style={{ fontSize:10, fontWeight:600, color:"#9CA3AF", marginLeft:"auto" }}>{items.length}</span>
                     </div>
-                    <p style={{ fontSize:13, fontWeight:700, color:"#1A1D23", lineHeight:1.35, marginBottom:8, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title || "Sem título"}</p>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                      <span style={{ fontSize:8, fontWeight:700, color:pC, textTransform:"uppercase", background:`${pC}12`, padding:"2px 8px", borderRadius:6 }}>{d.priority||"média"}</span>
-                      {d.scheduling?.date && <span style={{ fontSize:8, color:"#6B7280", background:"rgba(0,0,0,0.04)", padding:"2px 8px", borderRadius:6 }}>📅 {d.scheduling.date}{d.scheduling.time ? ` · ${d.scheduling.time}` : ""}</span>}
-                      {isScheduleExpired(d) && <span style={{ fontSize:7, fontWeight:700, color:"#EF4444", background:"#EF444410", padding:"2px 6px", borderRadius:4 }}>Expirado</span>}
-                      <span style={{ fontSize:8, color:"#C5C7CC", marginLeft:"auto" }}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"}</span>
+                    <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, minHeight:100 }}>
+                      {items.map(d => {
+                        const pColor = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
+                        return (
+                          <div key={d.id} draggable
+                            onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.5"; }}
+                            onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
+                            onClick={() => setSel(d)}
+                            style={{ background:"#fff", borderRadius:14, padding:"12px 14px", border:"1px solid rgba(0,0,0,0.06)", cursor:"grab", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", transition:"box-shadow .15s" }}
+                            onMouseEnter={e => e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)"}
+                            onMouseLeave={e => e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)"}
+                          >
+                            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
+                              <span style={{ fontSize:8, fontWeight:700, color:pColor, textTransform:"uppercase", background:`${pColor}15`, padding:"2px 6px", borderRadius:6 }}>{d.priority || "média"}</span>
+                              {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>⚠️ Ajuste</span>}
+                              {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6 }}>⏰ Expirado</span>}
+                              <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
+                            </div>
+                            <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
+                            <p style={{ fontSize:10, color:"#9CA3AF", marginBottom:8 }}>{d.client}</p>
+                            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                              <div style={{ display:"flex" }}>
+                                {(d.assignees || []).slice(0,3).map((a, j) => {
+                                  const m = TEAM.find(t => t.name === a) || TEAM.find(t => a && t.name && (t.name.includes(a) || a.includes(t.name)));
+                                  const mp = m?.photo || m?.photo_url || (a === user?.name ? user?.photo : null);
+                                  return <div key={j} style={{ width:20, height:20, borderRadius:10, background: mp ? "transparent" : `${cfg.c}25`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft: j ? -5 : 0, border:"2px solid #fff", overflow:"hidden", zIndex:3-j, fontSize:7, fontWeight:800, color:cfg.c }}>{mp ? <img src={mp} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : a[0]}</div>;
+                                })}
+                              </div>
+                              {d.network && <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.network.split(", ")[0]}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {items.length === 0 && <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", border:"2px dashed rgba(0,0,0,0.06)", borderRadius:12, minHeight:80 }}><span style={{ fontSize:10, color:"#C5C7CC" }}>Arraste aqui</span></div>}
                     </div>
-                  </div>;
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>}
+          {/* ══════ PIPELINE VIEW ══════ */}
+          {kanbanView === "pipeline" && (() => {
+            const expanded = kanbanCol;
+            const expandedItems = expanded ? getItems(expanded) : [];
+            const expandedCfg = expanded ? (STAGE_CFG[expanded] || { l: expanded, c: "#888" }) : null;
+            return <>
+              <div style={{ display:"flex", gap:6, marginBottom: expanded ? 16 : 0, paddingBottom:4 }}>
+                {visibleStages.map(stg => {
+                  const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
+                  const cnt = getItems(stg).length;
+                  const isActive = expanded === stg;
+                  return <button key={stg} onClick={() => setKanbanCol(isActive ? null : stg)}
+                    style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 6px", borderRadius:14, border: isActive ? `2px solid ${cfg.c}` : "1.5px solid rgba(0,0,0,0.06)", background: isActive ? `${cfg.c}10` : "#fff", cursor:"pointer", fontFamily:"inherit", transition:"all .2s", boxShadow: isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)", minWidth:0 }}
+                    onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor=cfg.c+"60"; e.currentTarget.style.boxShadow=`0 2px 12px ${cfg.c}15`; }}}
+                    onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"; e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)"; }}}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; }}
+                    onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; }}
+                    onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 4px 20px ${cfg.c}20` : "0 1px 3px rgba(0,0,0,0.04)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") { moveStage(dem, stg); setKanbanCol(stg); }} catch {} }}
+                  >
+                    <div style={{ width:8, height:8, borderRadius:4, background:cfg.c, flexShrink:0 }} />
+                    <span style={{ fontSize:11, fontWeight: isActive ? 800 : 600, color: isActive ? "#1A1D23" : "#6B7280", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{cfg.l}</span>
+                    <span style={{ fontSize:11, fontWeight:800, color: isActive ? cfg.c : "#9CA3AF", background: isActive ? `${cfg.c}18` : "rgba(0,0,0,0.04)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>{cnt}</span>
+                  </button>;
+                })}
+              </div>
+              {expanded && expandedCfg && <div style={{ borderRadius:18, background:"#fff", border:`1px solid ${expandedCfg.c}25`, overflow:"hidden", boxShadow:`0 8px 40px ${expandedCfg.c}08` }}>
+                <div style={{ padding:"14px 20px", borderBottom:`2px solid ${expandedCfg.c}`, display:"flex", alignItems:"center", gap:10, background:`${expandedCfg.c}06` }}>
+                  <div style={{ width:12, height:12, borderRadius:6, background:expandedCfg.c }} />
+                  <span style={{ fontSize:15, fontWeight:800, color:"#1A1D23" }}>{expandedCfg.l}</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:expandedCfg.c, background:`${expandedCfg.c}15`, padding:"3px 12px", borderRadius:12 }}>{expandedItems.length} {expandedItems.length === 1 ? "item" : "itens"}</span>
+                  <div style={{ flex:1 }} />
+                  <button onClick={() => setKanbanCol(null)} style={{ width:30, height:30, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:"#9CA3AF", fontFamily:"inherit" }}>✕</button>
+                </div>
+                <div style={{ padding:16, maxHeight:480, overflowY:"auto" }}>
+                  {expandedItems.length === 0 && <div style={{ padding:"40px 0", textAlign:"center" }}><p style={{ fontSize:12, color:"#C5C7CC" }}>Nenhum item nesta etapa</p></div>}
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:12 }}>
+                    {expandedItems.map(d => {
+                      const pC = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
+                      const nets = (d.network||"").split(", ").filter(Boolean);
+                      const clIni = (d.client||"?")[0].toUpperCase();
+                      return <div key={d.id} draggable
+                        onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
+                        onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
+                        onClick={() => setSel(d)}
+                        style={{ padding:"14px 16px", borderRadius:14, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.05)", cursor:"grab", transition:"all .15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background="#fff"; e.currentTarget.style.boxShadow=`0 6px 24px ${expandedCfg.c}12`; e.currentTarget.style.borderColor=expandedCfg.c+"40"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(0,0,0,0.05)"; }}
+                      >
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                          <div style={{ width:30, height:30, borderRadius:10, background:`${expandedCfg.c}12`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:expandedCfg.c, flexShrink:0 }}>{clIni}</div>
+                          <div style={{ flex:1, minWidth:0 }}><span style={{ fontSize:11, fontWeight:600, color:"#374151", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client}</span></div>
+                          <div style={{ display:"flex", gap:3 }}>{nets.slice(0,3).map((n,ni) => <div key={ni} style={{ width:18, height:18, borderRadius:9, background:netC[n]||"#888", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:8, fontWeight:900, color:"#fff" }}>{n[0]}</span></div>)}</div>
+                        </div>
+                        <p style={{ fontSize:13, fontWeight:700, color:"#1A1D23", lineHeight:1.35, marginBottom:8, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title || "Sem título"}</p>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                          <span style={{ fontSize:8, fontWeight:700, color:pC, textTransform:"uppercase", background:`${pC}12`, padding:"2px 8px", borderRadius:6 }}>{d.priority||"média"}</span>
+                          {d.scheduling?.date && <span style={{ fontSize:8, color:"#6B7280", background:"rgba(0,0,0,0.04)", padding:"2px 8px", borderRadius:6 }}>📅 {d.scheduling.date}{d.scheduling.time ? ` · ${d.scheduling.time}` : ""}</span>}
+                          {isScheduleExpired(d) && <span style={{ fontSize:7, fontWeight:700, color:"#EF4444", background:"#EF444410", padding:"2px 6px", borderRadius:4 }}>Expirado</span>}
+                          <span style={{ fontSize:8, color:"#C5C7CC", marginLeft:"auto" }}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"}</span>
+                        </div>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              </div>}
+            </>;
+          })()}
         </div>;
       })()}
       {/* -- CONTAINED CONTENT BLOCK (dashboard) -- redesigned -- */}
