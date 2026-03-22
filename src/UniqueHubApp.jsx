@@ -14658,6 +14658,47 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.blue }}>{allEvents.filter(e=>e.month===curMonth&&e.year===curYear&&e.type==="meeting").length}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Reuniões</p></div>
               </div>
             </div>
+            {/* ── Weekly Timeline (mLabs-style) ── */}
+            {(() => {
+              const weekStart = new Date(curYear, curMonth, selDay);
+              const dow = weekStart.getDay();
+              weekStart.setDate(weekStart.getDate() - dow);
+              const weekDays = Array.from({length:7}, (_, i) => {
+                const d = new Date(weekStart);
+                d.setDate(d.getDate() + i);
+                return d;
+              });
+              const weekEvents = weekDays.map(wd => {
+                const evs = allEvents.filter(e => e.day === wd.getDate() && e.month === wd.getMonth() && e.year === wd.getFullYear());
+                return { date: wd, events: evs };
+              });
+              const hasDemands = weekEvents.some(we => we.events.some(e => e.isDemand));
+              if (!hasDemands && weekEvents.every(we => we.events.length === 0)) return null;
+              return (
+                <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, padding:"12px", marginTop:8, overflow:"hidden" }}>
+                  <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Semana atual</p>
+                  <div style={{ display:"flex", gap:4 }}>
+                    {weekDays.map((wd, wi) => {
+                      const evs = weekEvents[wi].events;
+                      const isToday = wd.toDateString() === today.toDateString();
+                      const isSel = wd.getDate() === selDay && wd.getMonth() === curMonth;
+                      const demandEv = evs.find(e => e.isDemand);
+                      return (
+                        <div key={wi} onClick={()=>{setCurMonth(wd.getMonth());setCurYear(wd.getFullYear());setSelDay(wd.getDate());}} style={{ flex:1, cursor:"pointer", borderRadius:10, padding:"6px 2px", textAlign:"center", background:isSel?`${B.accent}10`:isToday?`${B.blue}06`:"transparent", border:isSel?`1.5px solid ${B.accent}30`:"1.5px solid transparent", transition:"all .15s" }}>
+                          <p style={{ fontSize:8, fontWeight:600, color:isToday?B.accent:B.muted, textTransform:"uppercase" }}>{DAYS_W[wi]}</p>
+                          <p style={{ fontSize:13, fontWeight:isSel||isToday?800:500, color:isSel?B.accent:B.text, margin:"2px 0" }}>{wd.getDate()}</p>
+                          {demandEv ? (
+                            <div style={{ width:28, height:28, borderRadius:6, margin:"2px auto 0", background:demandEv.color||B.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:800, color:"#fff" }}>{(demandEv.client||"P")[0]}</div>
+                          ) : evs.length > 0 ? (
+                            <div style={{ display:"flex", justifyContent:"center", gap:2, marginTop:4 }}>{evs.slice(0,3).map((e,ei) => <div key={ei} style={{ width:4, height:4, borderRadius:2, background:etCfg(e.type).c }} />)}</div>
+                          ) : <div style={{ height:28, marginTop:2 }} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           {/* ── RIGHT: Day Events / View Event / Add Event ── */}
           <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
