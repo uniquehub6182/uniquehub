@@ -18709,13 +18709,15 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
 
   /* ── Message Thread Panel ── */
   const MsgThread = () => (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%", background:isInboxDesktop?B.bgCard:"transparent" }}>
+    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%", background:isInboxDesktop?"#FAFAFA":"transparent" }}>
       {!selConv ? (
-        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ textAlign:"center", opacity:.5 }}>
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            <p style={{ fontSize:14, fontWeight:600, color:B.muted, marginTop:12 }}>Selecione uma conversa</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em uma conversa ao lado para ver as mensagens</p>
+        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ width:80, height:80, borderRadius:24, background:`${B.border}40`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <p style={{ fontSize:16, fontWeight:700, color:B.muted, marginBottom:6 }}>Selecione uma conversa</p>
+            <p style={{ fontSize:12, color:B.muted, opacity:.7, lineHeight:1.5 }}>Escolha um cliente e clique em uma<br/>conversa ao lado para ver as mensagens</p>
           </div>
         </div>
       ) : (<>
