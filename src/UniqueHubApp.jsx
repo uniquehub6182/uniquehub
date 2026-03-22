@@ -14836,7 +14836,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
   /* Aggregate data per client */
   const clientMetrics = CDATA.map(c => {
     const ins = insights[c.name];
-    const hasData = !!ins && (!!ins.fb || !!ins.ig || !!ins.fbPosts || !!ins.fbPage || !!ins.igMedia);
+    const hasData = !!ins && (!!ins.fb || !!ins.ig || !!ins.fbPosts || !!ins.fbPage || !!ins.igMedia || !!ins.igTotals);
     const fbImpressions = sumInsight(ins?.fb, "page_posts_impressions") + sumInsight(ins?.fb, "page_views_total");
     const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements");
     const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
@@ -14847,21 +14847,31 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     const fbPrevImp = sumInsight(ins?.fbPrev, "page_posts_impressions") + sumInsight(ins?.fbPrev, "page_views_total");
     const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
 
-    const igImpressions = sumInsight(ins?.ig, "impressions");
+    /* v21: daily metrics (reach, follower_count) */
     const igReach = sumInsight(ins?.ig, "reach");
-    const igProfileViews = sumInsight(ins?.ig, "profile_views");
-    const igAccountsEngaged = sumInsight(ins?.ig, "accounts_engaged");
     const igFollowerCount = sumInsight(ins?.ig, "follower_count");
     const igPrevReach = sumInsight(ins?.igPrev, "reach");
-    const igPrevImp = sumInsight(ins?.igPrev, "impressions");
+    /* v21: total_value metrics from igTotals */
+    const igTotals = ins?.igTotals || {};
+    const igTotalsPrev = ins?.igTotalsPrev || {};
+    const igProfileViews = igTotals.profile_views || 0;
+    const igAccountsEngaged = igTotals.accounts_engaged || 0;
+    const igTotalInteractions = igTotals.total_interactions || 0;
+    const igTotalLikes = igTotals.likes || 0;
+    const igTotalComments = igTotals.comments || 0;
+    const igTotalShares = igTotals.shares || 0;
+    const igTotalSaves = igTotals.saves || 0;
+    const igImpressions = igReach; /* v21 removed impressions, use reach as proxy */
+    const igPrevImp = igPrevReach;
+    const igPrevEngaged = igTotalsPrev.accounts_engaged || 0;
+    const igPrevProfileViews = igTotalsPrev.profile_views || 0;
 
     const mediaPosts = (ins?.igMedia || []);
     const totalLikes = mediaPosts.reduce((a, p) => a + (p.like_count || 0), 0);
     const totalComments = mediaPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
-    const totalSaved = mediaPosts.reduce((a, p) => {
-      const s = p.insights?.data?.find(i => i.name === "saved");
-      return a + (s?.values?.[0]?.value || 0);
-    }, 0);
+    const totalSaved = mediaPosts.reduce((a, p) => a + (p.insights?.saved || 0), 0);
+    const totalShares = mediaPosts.reduce((a, p) => a + (p.insights?.shares || 0), 0);
+    const totalPostReach = mediaPosts.reduce((a, p) => a + (p.insights?.reach || 0), 0);
 
     /* FB Posts data (new — from published_posts) */
     const fbPosts = ins?.fbPosts || [];
@@ -14879,12 +14889,15 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     return {
       ...c, hasData, fbImpressions, fbEngagedUsers, fbPostEngagement,
       fbFanAdds, fbPageViews, fbPrevImp, fbPrevEng, igImpressions, igReach, igProfileViews,
-      igAccountsEngaged, igFollowerCount, igPrevReach, igPrevImp, mediaPosts, totalLikes,
-      totalComments, totalSaved, fbFollowers, igFollowers, igMediaCount, engRate,
+      igAccountsEngaged, igFollowerCount, igPrevReach, igPrevImp, igPrevEngaged, igPrevProfileViews,
+      igTotalInteractions, igTotalLikes, igTotalComments, igTotalShares, igTotalSaves,
+      mediaPosts, totalLikes, totalComments, totalSaved, totalShares, totalPostReach,
+      fbFollowers, igFollowers, igMediaCount, engRate,
       fbPosts, fbPostLikes, fbPostComments, fbPostShares, fbPostCount, needsPermission,
       totalReach: fbImpressions + igReach, totalEngaged: fbEngagedUsers + igAccountsEngaged,
       igProfile: ins?.igProfile, fbPage: ins?.fbPage,
       igDaily: ins?.ig, fbDaily: ins?.fb, igPrev: ins?.igPrev, fbPrev: ins?.fbPrev,
+      igTotals, igTotalsPrev,
     };
   });
 
@@ -14897,6 +14910,11 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     likes: clientMetrics.reduce((a, c) => a + c.totalLikes, 0),
     comments: clientMetrics.reduce((a, c) => a + c.totalComments, 0),
     saved: clientMetrics.reduce((a, c) => a + c.totalSaved, 0),
+    shares: clientMetrics.reduce((a, c) => a + (c.totalShares || 0), 0),
+    igProfileViews: clientMetrics.reduce((a, c) => a + c.igProfileViews, 0),
+    igTotalInteractions: clientMetrics.reduce((a, c) => a + (c.igTotalInteractions || 0), 0),
+    igTotalLikes: clientMetrics.reduce((a, c) => a + (c.igTotalLikes || 0), 0),
+    igTotalSaves: clientMetrics.reduce((a, c) => a + (c.igTotalSaves || 0), 0),
     fbFans: clientMetrics.reduce((a, c) => a + c.fbFanAdds, 0),
     fbPostsTotal: clientMetrics.reduce((a, c) => a + c.fbPostCount, 0),
     fbPostLikes: clientMetrics.reduce((a, c) => a + c.fbPostLikes, 0),
@@ -15018,7 +15036,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
               <p style={{ fontSize:9, color:B.muted }}>seguidores</p>
               {c.igProfile?.media_count > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{c.igProfile.media_count} publicações</p>}
               {c.igImpressions > 0 && <div style={{ marginTop:6, paddingTop:6, borderTop:`1px solid ${B.border}` }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}><span style={{ fontSize:9, color:B.muted }}>Impressões</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igImpressions)}</span></div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}><span style={{ fontSize:9, color:B.muted }}>Interações</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igTotalInteractions||0)}</span></div>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}><span style={{ fontSize:9, color:B.muted }}>Alcance</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igReach)}</span></div>
                 {c.igProfileViews > 0 && <div style={{ display:"flex", justifyContent:"space-between" }}><span style={{ fontSize:9, color:B.muted }}>Visitas perfil</span><span style={{ fontSize:10, fontWeight:700 }}>{formatNum(c.igProfileViews)}</span></div>}
               </div>}
@@ -15039,8 +15057,8 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
             <MetricCard label="Média comentários" value={formatNum(avgComments)} color="#1877F2" sub="Instagram" />
           </div>
           {(c.igReach>0||c.igImpressions>0) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
-            <MetricCard label="Alcance IG" value={formatNum(c.igReach)} color="#E1306C" change={pctChange(c.igReach, sumInsight(c.igPrev,"reach"))} sub="Contas únicas" />
-            <MetricCard label="Impressões IG" value={formatNum(c.igImpressions)} color="#833AB4" change={pctChange(c.igImpressions, sumInsight(c.igPrev,"impressions"))} sub="Total exibições" />
+            <MetricCard label="Alcance IG" value={formatNum(c.igReach)} color="#E1306C" change={pctChange(c.igReach, c.igPrevReach)} sub="Contas únicas" />
+            <MetricCard label="Interações IG" value={formatNum(c.igTotalInteractions||0)} color="#833AB4" change={pctChange(c.igTotalInteractions, c.igTotalsPrev?.total_interactions)} sub="Curtidas+Comentários+Shares+Saves" />
           </div>}
           {(c.fbImpressions>0||c.fbEngagedUsers>0) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
             <MetricCard label="Views página FB" value={formatNum(c.fbImpressions)} color="#1877F2" change={pctChange(c.fbImpressions,c.fbPrevImp)} sub="Visualizações" />
@@ -15234,7 +15252,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
                     <p style={{ fontSize:15, fontWeight:800 }}>Instagram</p>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:8 }}>
-                    {[{l:"Alcance",v:formatNum(totals.igReach),c:"#E4405F"},{l:"Impressões",v:formatNum(totals.igImp),c:"#C13584"},{l:"Seguidores",v:formatNum(totals.igFollowers),c:"#833AB4"},{l:"Curtidas",v:formatNum(totals.likes),c:"#E91E63"},{l:"Salvamentos",v:formatNum(totals.saved),c:"#FD1D1D"}].map((m,i) => (
+                    {[{l:"Alcance",v:formatNum(totals.igReach),c:"#E4405F"},{l:"Interações",v:formatNum(totals.igTotalInteractions),c:"#C13584"},{l:"Seguidores",v:formatNum(totals.igFollowers),c:"#833AB4"},{l:"Curtidas",v:formatNum(totals.igTotalLikes||totals.likes),c:"#E91E63"},{l:"Salvamentos",v:formatNum(totals.igTotalSaves||totals.saved),c:"#FD1D1D"},{l:"Perfil Views",v:formatNum(totals.igProfileViews),c:"#405DE6"}].map((m,i) => (
                       <div key={i} style={{ padding:"12px 14px", borderRadius:12, background:`${m.c}06`, border:`1px solid ${m.c}15` }}>
                         <p style={{ fontSize:20, fontWeight:900 }}>{m.v}</p>
                         <p style={{ fontSize:10, fontWeight:600, color:m.c, marginTop:4 }}>{m.l}</p>
@@ -15297,7 +15315,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
                 {!sc.hasData ? <div style={{ textAlign:"center", padding:"40px 0" }}><p style={{ fontSize:14, fontWeight:600, color:B.muted }}>Sem dados — conecte as redes sociais na página do cliente</p></div> : <>
                   {/* RESUMO TAB */}
                   {repDetailTab==="overview" && <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10 }}>
-                    {[{l:"Alcance IG",v:formatNum(sc.igReach),c:"#E4405F"},{l:"Impressões IG",v:formatNum(sc.igImpressions),c:"#C13584"},{l:"Engajamento IG",v:formatNum(sc.igAccountsEngaged),c:"#833AB4"},{l:"Eng. Rate",v:sc.engRate+"%",c:Number(sc.engRate)>3?B.green:B.orange},{l:"Curtidas",v:formatNum(sc.totalLikes),c:"#E91E63"},{l:"Comentários",v:formatNum(sc.totalComments),c:B.orange},{l:"Salvamentos",v:formatNum(sc.totalSaved),c:"#FD1D1D"},{l:"Impressões FB",v:formatNum(sc.fbImpressions),c:"#4267B2"}].map((m,i)=>(
+                    {[{l:"Alcance IG",v:formatNum(sc.igReach),c:"#E4405F"},{l:"Interações",v:formatNum(sc.igTotalInteractions||0),c:"#C13584"},{l:"Engajamento IG",v:formatNum(sc.igAccountsEngaged),c:"#833AB4"},{l:"Eng. Rate",v:sc.engRate+"%",c:Number(sc.engRate)>3?B.green:B.orange},{l:"Curtidas",v:formatNum(sc.igTotalLikes||sc.totalLikes),c:"#E91E63"},{l:"Comentários",v:formatNum(sc.igTotalComments||sc.totalComments),c:B.orange},{l:"Salvamentos",v:formatNum(sc.igTotalSaves||sc.totalSaved),c:"#FD1D1D"},{l:"Compartilh.",v:formatNum(sc.igTotalShares||sc.totalShares||0),c:"#405DE6"},{l:"Perfil Views",v:formatNum(sc.igProfileViews),c:"#833AB4"},{l:"Impressões FB",v:formatNum(sc.fbImpressions),c:"#4267B2"}].map((m,i)=>(
                       <div key={i} style={{ padding:"12px 14px", borderRadius:12, background:`${m.c}06`, border:`1px solid ${m.c}15` }}>
                         <p style={{ fontSize:20, fontWeight:900 }}>{m.v}</p>
                         <p style={{ fontSize:10, fontWeight:600, color:m.c, marginTop:4 }}>{m.l}</p>
@@ -15307,7 +15325,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
                   {/* INSTAGRAM TAB */}
                   {repDetailTab==="instagram" && <>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:10, marginBottom:16 }}>
-                      {[{l:"Alcance",v:formatNum(sc.igReach),c:"#E4405F"},{l:"Impressões",v:formatNum(sc.igImpressions),c:"#C13584"},{l:"Perfil Views",v:formatNum(sc.igProfileViews),c:"#833AB4"},{l:"Engajados",v:formatNum(sc.igAccountsEngaged),c:"#405DE6"},{l:"Seguidores",v:formatNum(sc.igFollowers),c:"#E4405F"},{l:"Posts",v:formatNum(sc.igMediaCount),c:"#833AB4"},{l:"Curtidas",v:formatNum(sc.totalLikes),c:"#E91E63"},{l:"Salvamentos",v:formatNum(sc.totalSaved),c:"#FD1D1D"}].map((m,i)=>(
+                      {[{l:"Alcance",v:formatNum(sc.igReach),c:"#E4405F"},{l:"Interações",v:formatNum(sc.igTotalInteractions||0),c:"#C13584"},{l:"Perfil Views",v:formatNum(sc.igProfileViews),c:"#833AB4"},{l:"Engajados",v:formatNum(sc.igAccountsEngaged),c:"#405DE6"},{l:"Seguidores",v:formatNum(sc.igFollowers),c:"#E4405F"},{l:"Posts",v:formatNum(sc.igMediaCount),c:"#833AB4"},{l:"Curtidas",v:formatNum(sc.igTotalLikes||sc.totalLikes),c:"#E91E63"},{l:"Salvamentos",v:formatNum(sc.igTotalSaves||sc.totalSaved),c:"#FD1D1D"}].map((m,i)=>(
                         <div key={i} style={{ padding:"12px 14px", borderRadius:12, background:`${m.c}06`, border:`1px solid ${m.c}15` }}>
                           <p style={{ fontSize:20, fontWeight:900 }}>{m.v}</p>
                           <p style={{ fontSize:10, fontWeight:600, color:m.c, marginTop:4 }}>{m.l}</p>
