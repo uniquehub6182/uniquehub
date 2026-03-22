@@ -20494,7 +20494,18 @@ function ClientMatch4Biz({ onBack, user }) {
     if (!supabase || !user?.email) { setLoading(false); return; }
     (async () => {
       try {
-        const { data: cl } = await supabase.from("clients").select("*").eq("contact_email", user.email).maybeSingle();
+        /* Try matching by contact_email first, then by name */
+        let cl = null;
+        const { data: byEmail } = await supabase.from("clients").select("*").eq("contact_email", user.email).maybeSingle();
+        if (byEmail) { cl = byEmail; }
+        else if (user.name) {
+          const { data: byName } = await supabase.from("clients").select("*").ilike("name", `%${user.name}%`).eq("status", "ativo").maybeSingle();
+          if (byName) cl = byName;
+        }
+        if (!cl && user.company) {
+          const { data: byCompany } = await supabase.from("clients").select("*").ilike("name", `%${user.company}%`).eq("status", "ativo").maybeSingle();
+          if (byCompany) cl = byCompany;
+        }
         if (!cl) { setLoading(false); return; }
         setMyClient(cl);
         const planCredits = getCreditsForPlan(cl.monthly_value);
