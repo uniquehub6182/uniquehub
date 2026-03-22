@@ -2754,6 +2754,11 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [showPanelEditor, setShowPanelEditor] = useState(false);
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
+  /* ── Banner carrossel state ── */
+  const [banners, setBanners] = useState(() => { try { const s = localStorage.getItem("uh_desktop_banners"); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [bannerIdx, setBannerIdx] = useState(0);
+  const saveBanners = (list) => { setBanners(list); try { localStorage.setItem("uh_desktop_banners", JSON.stringify(list)); } catch {} supaSetSetting("desktop_banners", JSON.stringify(list)); };
+  useEffect(() => { if (banners.length <= 1) return; const iv = setInterval(() => setBannerIdx(p => (p + 1) % banners.length), 5000); return () => clearInterval(iv); }, [banners.length]);
   const isDark = B.bg === "#0D0D0D";
   const [clockTime, setClockTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
   useEffect(() => { const iv = setInterval(() => { const n = new Date(); setClockTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, []);
@@ -3503,11 +3508,25 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               </div>);})}
           </div>
         </div>
-        {/* ── BANNER PUBLICITÁRIO ── */}
+        {/* ── BANNER CARROSSEL ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
-          <div onClick={()=>{if(!isAdmin){return;}const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",height:bannerImg?120:64,borderRadius:14,overflow:"hidden",cursor:isAdmin?"pointer":"default",background:bannerImg?`url(${bannerImg}) center/cover no-repeat`:"#E8E9ED",border:bannerImg?"none":"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}} onMouseEnter={e=>{if(!bannerImg&&isAdmin)e.currentTarget.style.borderColor="#9CA3AF";}} onMouseLeave={e=>{if(!bannerImg)e.currentTarget.style.borderColor="#C5C7CC";}}>
-            {!bannerImg&&isAdmin&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banner</span></>}
-          </div>
+          {banners.length > 0 ? (
+            <div style={{position:"relative",width:"100%",height:120,borderRadius:14,overflow:"hidden"}}>
+              {banners.map((b,i) => (
+                <div key={i} onClick={()=>b.link&&window.open(b.link,"_blank")} style={{position:"absolute",inset:0,opacity:bannerIdx===i?1:0,transition:"opacity .6s ease",cursor:b.link?"pointer":"default"}}>
+                  {b.type==="video" ? <video src={b.url} autoPlay muted loop playsInline style={{width:"100%",height:"100%",objectFit:"cover"}} /> : <img src={b.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />}
+                </div>
+              ))}
+              {banners.length>1&&<div style={{position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",display:"flex",gap:6}}>
+                {banners.map((_,i)=><button key={i} onClick={e=>{e.stopPropagation();setBannerIdx(i);}} style={{width:bannerIdx===i?20:8,height:8,borderRadius:4,background:bannerIdx===i?"#fff":"rgba(255,255,255,0.5)",border:"none",cursor:"pointer",transition:"all .3s",padding:0}} />)}
+              </div>}
+              {isAdmin&&<button onClick={e=>{e.stopPropagation();setShowPanelEditor(true);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:8,background:"rgba(0,0,0,0.5)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>}
+            </div>
+          ) : (
+            <div onClick={()=>{if(!isAdmin)return;setShowPanelEditor(true);}} style={{width:"100%",height:64,borderRadius:14,overflow:"hidden",cursor:isAdmin?"pointer":"default",background:"#E8E9ED",border:"2px dashed #C5C7CC",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
+              {isAdmin&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banners</span></>}
+            </div>
+          )}
         </div>
         {/* ── 3 BESPOKE PANELS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
@@ -3523,10 +3542,18 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             <button onClick={()=>setShowPanelEditor(false)} style={{width:32,height:32,borderRadius:8,background:"#F5F5F5",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
-            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Banner publicitário {!isAdmin&&<span style={{fontSize:9,fontWeight:500,color:"#9CA3AF"}}>(somente admin)</span>}</p>
-            <div style={{display:"flex",gap:6,marginBottom:20}}>
-              {isAdmin ? <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const r=new FileReader();r.onload=ev=>{const url=ev.target.result;setBannerImg(url);localStorage.setItem("uh_desktop_banner",url);supaSetSetting("desktop_banner",url);};r.readAsDataURL(f);}};inp.click();}} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid rgba(0,0,0,0.08)`,background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23"}}>Trocar imagem</button> : <p style={{fontSize:11,color:"#9CA3AF"}}>Apenas o administrador pode alterar o banner</p>}
-              {isAdmin&&bannerImg&&<button onClick={()=>{setBannerImg("");localStorage.removeItem("uh_desktop_banner");supaSetSetting("desktop_banner","");}} style={{padding:"10px 14px",borderRadius:10,border:"none",background:"#FEE2E2",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#EF4444"}}>Remover</button>}
+            <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Banners ({banners.length}) {!isAdmin&&<span style={{fontSize:9,fontWeight:500,color:"#9CA3AF"}}>(somente admin)</span>}</p>
+            <div style={{marginBottom:20}}>
+              {banners.map((b,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"6px 8px",borderRadius:10,background:"#F8F9FA",border:"1px solid rgba(0,0,0,0.06)"}}>
+                  <div style={{width:48,height:32,borderRadius:6,overflow:"hidden",flexShrink:0,background:"#E8E9ED"}}>{b.type==="video"?<video src={b.url} style={{width:"100%",height:"100%",objectFit:"cover"}} />:<img src={b.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />}</div>
+                  <div style={{flex:1,minWidth:0}}><p style={{fontSize:10,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.label||`Banner ${i+1}`}</p>{b.link&&<p style={{fontSize:8,color:"#9CA3AF",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.link}</p>}</div>
+                  {isAdmin&&<button onClick={()=>{const nb=[...banners];nb.splice(i,1);saveBanners(nb);if(bannerIdx>=nb.length)setBannerIdx(0);}} style={{width:22,height:22,borderRadius:6,background:"#FEE2E2",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+                </div>
+              ))}
+              {isAdmin&&<button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files?.[0];if(f){const isVid=f.type.startsWith("video");const r=new FileReader();r.onload=ev=>{const link=prompt("Link ao clicar (opcional):","")||"";const label=prompt("Nome do banner (opcional):",f.name)||f.name;const nb=[...banners,{url:ev.target.result,type:isVid?"video":"image",link,label}];saveBanners(nb);};r.readAsDataURL(f);}};inp.click();}} style={{width:"100%",padding:"10px",borderRadius:10,border:"1.5px dashed rgba(0,0,0,0.12)",background:"#F8F9FA",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#1A1D23",display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:6}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar banner
+              </button>}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Cards de métricas</p>
             <div style={{display:"flex",gap:6,marginBottom:20}}>
@@ -23494,7 +23521,7 @@ export default function App() {
             } catch(memberErr) { console.warn("[Auth] agency_members check failed, blocking:", memberErr); await supabase.auth.signOut(); clearTimeout(timeout); setAuthLoading(false); return; }
           }
           /* Load extras, photo, and visual prefs in ONE bulk query */
-          const settingsMap = await supaGetSettingsBulk([`profile_extras_${session.user.id}`, `profile_photo_${session.user.id}`, `visual_prefs_${session.user.id}`, "desktop_banner", "drive_config", "client_portal_config", "equipments_config"]);
+          const settingsMap = await supaGetSettingsBulk([`profile_extras_${session.user.id}`, `profile_photo_${session.user.id}`, `visual_prefs_${session.user.id}`, "desktop_banner", "desktop_banners", "drive_config", "client_portal_config", "equipments_config"]);
           const extrasRaw = settingsMap[`profile_extras_${session.user.id}`] || null;
           const photoSetting = settingsMap[`profile_photo_${session.user.id}`] || null;
           const cloudPrefs = settingsMap[`visual_prefs_${session.user.id}`] || null;
@@ -23534,6 +23561,8 @@ export default function App() {
           try {
             const _banner = settingsMap["desktop_banner"];
             if (_banner) { try { localStorage.setItem("uh_desktop_banner", _banner); } catch {} }
+            const _banners = settingsMap["desktop_banners"];
+            if (_banners) { try { localStorage.setItem("uh_desktop_banners", _banners); } catch {} }
             const _driveRaw = settingsMap["drive_config"];
             if (_driveRaw) { try { const dc = typeof _driveRaw === "string" ? JSON.parse(_driveRaw) : _driveRaw; localStorage.setItem("uh_drive_url", dc.url || ""); localStorage.setItem("uh_drive_type", dc.type || ""); } catch {} }
             const _cpRaw = settingsMap["client_portal_config"];
