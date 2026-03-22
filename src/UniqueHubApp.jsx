@@ -18538,7 +18538,8 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   const [imgPrompt, setImgPrompt] = useState("");
   const [imgLoading, setImgLoading] = useState(false);
   const [imgResult, setImgResult] = useState(null);
-  const [imgHistory, setImgHistory] = useState([]);
+  const [imgHistory, setImgHistory] = useState(() => { try { const s = localStorage.getItem("uh_ai_img_history_" + (user?.id||"anon")); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const saveImgHistory = (list) => { setImgHistory(list); try { localStorage.setItem("uh_ai_img_history_" + (user?.id||"anon"), JSON.stringify(list)); } catch {} };
   const [imgSize, setImgSize] = useState("1024x1024");
   const [imgStyle, setImgStyle] = useState("vivid");
 
@@ -18740,12 +18741,12 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
     if (!openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
     setImgLoading(true); setImgResult(null);
     try {
-      const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openaiKey }, body: JSON.stringify({ model: "dall-e-3", prompt: imgPrompt, n: 1, size: imgSize, style: imgStyle, response_format: "url" }) });
+      const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openaiKey }, body: JSON.stringify({ model: "dall-e-3", prompt: imgPrompt, n: 1, size: imgSize, style: imgStyle, quality: "hd", response_format: "url" }) });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message || "Erro na API");
       const url = d.data?.[0]?.url;
       const revised = d.data?.[0]?.revised_prompt || imgPrompt;
-      if (url) { setImgResult({ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }); setImgHistory(p => [{ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }, ...p].slice(0, 20)); }
+      if (url) { setImgResult({ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }); saveImgHistory([{ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }, ...imgHistory].slice(0, 30)); }
       else throw new Error("Nenhuma imagem retornada");
     } catch (e) { showToast("Erro: " + e.message); }
     setImgLoading(false);
@@ -22327,12 +22328,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const renderFinancialSub = () => {
     const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
     const PLAN_INFO = {
-      free:{ name:"Free", desc:"Plano gratuito de entrada", features:["Acesso ao Hub do cliente","Aprovação de conteúdos","Chat com a agência","Relatórios básicos"] },
-      starter:{ name:"Starter", desc:"Para quem está começando", features:["Social Media básico","Até 8 posts/mês","Stories semanais","Suporte via chat"] },
-      traction:{ name:"Traction", desc:"Startups & PMEs", features:["Gestão de Tráfego OU Social Media","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"] },
-      growth360:{ name:"Growth 360°", desc:"Scale-ups & Expansão", features:["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"] },
-      partner:{ name:"Partner", desc:"Grandes Contas & Business", features:["Tudo do Plano Growth 360°","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"] },
-      enterprise:{ name:"Enterprise", desc:"Soluções corporativas", features:["Tudo do Partner","Equipe dedicada","SLA prioritário","Relatórios personalizados"] },
+      free:{ name:"Free", price:"Grátis", desc:"Plano gratuito de entrada", features:["Acesso ao Hub do cliente","Aprovação de conteúdos","Chat com a agência","Relatórios básicos"] },
+      starter:{ name:"Starter", price:"R$ 1.480/mês", desc:"Para quem está começando", features:["Social Media básico","Até 8 posts/mês","Stories semanais","Suporte via chat","Relatórios mensais"] },
+      traction:{ name:"Traction", price:"R$ 2.480/mês", desc:"Startups & PMEs", features:["Gestão de Tráfego OU Social Media","Até 16 posts/mês","Edição e Motion","Design para Posts Estáticos","Relatórios de Performance","Suporte Comercial"] },
+      growth360:{ name:"Growth 360°", price:"R$ 3.480/mês", desc:"Scale-ups & Expansão", features:["Planejamento Estratégico & Mentoria Mensal","Tráfego Pago (Google & Meta Ads)","Gestão Completa de Redes Sociais","Captação de Conteúdo In-loco (Foto & Vídeo)","Motion Design & Criativos de Alta Conversão","Reuniões Quinzenais de Alinhamento"] },
+      partner:{ name:"Partner", price:"R$ 4.480/mês", desc:"Grandes Contas & Business", features:["Tudo do Plano Growth 360°","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"] },
+      enterprise:{ name:"Enterprise", price:"Sob consulta", desc:"Soluções corporativas", features:["Tudo do Partner","Equipe dedicada","SLA prioritário","Relatórios personalizados","Atendimento 24/7"] },
     };
     const plan = PLAN_INFO[myClient.plan] || PLAN_INFO.free;
     const monthlyVal = myClient.monthly_value ? `R$ ${Number(myClient.monthly_value).toLocaleString("pt-BR")}` : "Gratuito";
@@ -22403,9 +22404,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             return <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
               {isCurrent && <div style={{ position:"absolute", top:0, right:0, padding:"4px 14px", borderRadius:"0 0 0 12px", background:B.accent, fontSize:10, fontWeight:700, color:"#0D0D0D" }}>Seu plano</div>}
               <p style={{ fontSize:18, fontWeight:900 }}>{p.name}</p>
+              <p style={{ fontSize:22, fontWeight:900, color:B.accent, marginTop:4 }}>{p.price}</p>
               <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
               <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
-              {!isCurrent && <button onClick={() => { showToast("Fale com a agência para fazer upgrade!"); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>Solicitar upgrade</button>}
+              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no plano ${p.name} (${p.price}) do UniqueHub. Gostaria de saber mais.`); window.open(`https://wa.me/5524999999999?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
             </Card>;
           })}
         </div>
@@ -22414,12 +22416,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     if (finView === "service") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
-        <Head title={finView.title || "Serviço"} onBack={() => setFinView("main")} />
+        <Head title="Serviço Extra" onBack={() => setFinView("main")} />
         <div className="content" style={{ padding:"0 16px" }}>
           <Card style={{ textAlign:"center", padding:24 }}>
-            <p style={{ fontSize:14, fontWeight:700 }}>Interessado neste serviço?</p>
-            <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Entre em contato com a agência para solicitar um orçamento personalizado.</p>
-            <button onClick={() => showToast("Fale com a agência pelo chat!")} style={{ marginTop:14, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Falar com a agência</button>
+            <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontSize:28 }}>💼</div>
+            <p style={{ fontSize:16, fontWeight:800 }}>Solicitar Serviço Extra</p>
+            <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Entre em contato para receber um orçamento personalizado para o serviço desejado.</p>
+            <button onClick={() => { const msg = encodeURIComponent("Olá! Gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?"); window.open(`https://wa.me/5524999999999?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
+            <button onClick={() => setFinView("main")} style={{ marginTop:8, padding:"12px 28px", borderRadius:14, background:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, width:"100%" }}>Voltar</button>
           </Card>
         </div>
       </div>
@@ -22506,12 +22510,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           <button onClick={() => setFinView("plans")} style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
         </Card>
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
-        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}].map((s,i) => (
-          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => showToast(`Para contratar "${s.l}", fale com a agência pelo chat!`)}>
+        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:"🌐"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:"🎨"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:"📸"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:"🎬"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:"📈"}].map((s,i) => (
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/5524999999999?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.content(B.accent)}</div>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{s.ic}</div>
               <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
-              <span style={{ fontSize:11, fontWeight:600, color:B.accent }}>{s.v}</span>
+              <div style={{ textAlign:"right" }}><span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{s.v}</span><p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Solicitar →</p></div>
             </div>
           </Card>
         ))}
