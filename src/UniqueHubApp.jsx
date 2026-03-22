@@ -23537,7 +23537,7 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
           <p style={{fontSize:12,color:B.muted,marginBottom:4}}>"{newsToPostArticle.title?.substring(0,60)}{newsToPostArticle.title?.length>60?"...":""}"</p>
           <p style={{fontSize:13,fontWeight:600,marginBottom:10,marginTop:10}}>Para qual cliente?</p>
           <div style={{flex:1,overflowY:"auto",marginBottom:12}}>
-            {(sharedClients||[]).filter(c=>c.status==="ativo"||!c.status).map(c=>{
+            {(sharedClients||[]).map(c=>{
               const sel = newsToPostClient === (c.supaId||c.id);
               return <button key={c.supaId||c.id} onClick={()=>setNewsToPostClient(c.supaId||c.id)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 14px",borderRadius:14,border:sel?"2px solid "+B.accent:"1.5px solid "+B.border,background:sel?B.accent+"08":"transparent",cursor:"pointer",fontFamily:"inherit",textAlign:"left",marginBottom:6}}>
                 <Av name={c.name} src={c.logo||c.logo_url} sz={36} fs={14} />
