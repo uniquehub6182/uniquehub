@@ -8044,6 +8044,18 @@ REGRAS TÉCNICAS:
     return !isNaN(dt) && dt < new Date();
   };
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
+  /* ── Expiring content detection (5+ months old published with images) ── */
+  const expiringDemands = demands.filter(d => {
+    if (d.stage !== "published" && d.stage !== "completed") return false;
+    const hasImages = (d.steps?.design?.files?.length > 0) || d.imgFiles?.length > 0;
+    if (!hasImages) return false;
+    const pubDate = d.publishedAt || d.steps?.igPublished?.date || d.scheduling?.date || d.createdAt;
+    if (!pubDate) return false;
+    let dt; if (typeof pubDate === "string" && pubDate.includes("/")) { const [dd,mm,yy] = pubDate.split("/"); dt = new Date(`${yy||new Date().getFullYear()}-${(mm||"01").padStart(2,"0")}-${(dd||"01").padStart(2,"0")}`); } else dt = new Date(pubDate);
+    if (isNaN(dt)) return false;
+    const monthsOld = (Date.now() - dt.getTime()) / (1000*60*60*24*30);
+    return monthsOld >= 5;
+  });
   const priorityColor = p => p === "alta" ? B.red : p === "média" ? B.orange : B.green;
   const typeLabel = t => t === "social" ? "Post" : t === "campaign" ? "Campanha" : t === "video" ? "Vídeo" : "Outro";
   const typeColor = t => t === "social" ? B.blue : t === "campaign" ? B.purple : t === "video" ? B.orange : B.muted;
