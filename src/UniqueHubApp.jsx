@@ -18779,10 +18779,10 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
     {ToastEl}
     <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 140px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
       {isInboxDesktop ? (<>
-        <ConvList />
-        <MsgThread />
+        {ConvList()}
+        {MsgThread()}
       </>) : (
-        selConv ? <MsgThread /> : <ConvList />
+        selConv ? MsgThread() : ConvList()
       )}
     </div>
     </div>
