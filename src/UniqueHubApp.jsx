@@ -3202,7 +3202,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       if(pk==="content") return phoneFrame("Conteúdo","content",()=>goTab("content"),<ContentPage user={user} clients={clients} demands={demands} setDemands={setDemands||noop} team={team} canAccess={ca} forceMobile goTab={goTab} />);
       if(pk==="chat") return phoneFrame("Chat","chat",()=>goTab("chat"),<ChatPage user={user} chatTermsOk={true} setChatTermsOk={noop} forceMobile />);
       if(pk==="clients") return phoneFrame("Clientes","clients",()=>goTab("clients"),<ClientsPage onBack={null} onNavigate={noop} clients={clients} setClients={null} user={user} canAccess={ca} forceMobile />);
-      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile />);
+      if(pk==="calendar") return phoneFrame("Calendário","calendar",()=>goSub("calendar"),<CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} forceMobile demands={demands} />);
       if(pk==="ideas") return phoneFrame("Ideias","ideas",()=>goSub("ideas"),<IdeasPage onBack={null} user={user} clients={clients} forceMobile />);
       if(pk==="social") return phoneFrame("Redes Sociais","social",()=>goTab("clients"),<ReportsPage onBack={null} clients={clients} team={team} forceMobile />);
       if(pk==="drive") {
@@ -13881,6 +13881,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
     { k:"event", l:"Evento", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, c:B.purple, desc:"Workshop, feira, inauguração, live" },
     { k:"reminder", l:"Lembrete", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>, c:B.cyan, desc:"Prazo, entrega, tarefa, nota pessoal" },
     { k:"deadline", l:"Deadline", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, c:B.red, desc:"Data limite de entrega" },
+    { k:"demand", l:"Post", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, c:B.accent, desc:"Post agendado via conteúdo" },
   ];
 
   const DEFAULT_EQUIPMENTS = ["Câmera DSLR","Câmera Mirrorless","Tripé","Gimbal","Drone","Ring Light","Softbox","Microfone Lapela","Microfone Boom","Luz LED Portátil","Rebatedor","Fundo Chroma","Cartão de Memória Extra","Bateria Extra","Notebook p/ Review","HD Externo"];
@@ -13931,9 +13932,27 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
   const firstDow = new Date(curYear, curMonth, 1).getDay();
 
-  const allEvents = clientFilter ? events.filter(e => (e.client||"").toLowerCase() === clientFilter.toLowerCase() || (e.createdBy||"").toLowerCase() === clientFilter.toLowerCase()) : events;
+  /* ── Convert scheduled demands into calendar events ── */
+  const demandEvents = (propDemands||[]).filter(d => d.scheduling?.date).map(d => {
+    const sd = d.scheduling.date; const st = d.scheduling.time || "10:00"; let day, month, year;
+    if (sd.includes("-")) { const [y,m,dd] = sd.split("-"); day=parseInt(dd); month=parseInt(m)-1; year=parseInt(y); }
+    else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); day=parseInt(dd); month=parseInt(mm)-1; year=curYear; }
+    else return null;
+    if (isNaN(day)||isNaN(month)) return null;
+    const stCfg = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#EC4899",caption:"#F59E0B",review:"#06B6D4",client:"#10B981",scheduled:"#F59E0B",published:"#BBF246"};
+    const stLabel = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Aprovação",scheduled:"Agendado",published:"Publicado"};
+    return { id:"demand_"+d.id, type:"demand", title:d.title||d.client||"Post", time:st, color:stCfg[d.stage]||"#F59E0B", day, month, year:year||curYear, client:d.client, createdBy:d.assignees?.[0]||"", network:d.network, format:d.format, stage:d.stage, stageLabel:stLabel[d.stage]||d.stage, demandId:d.id, priority:d.priority, isDemand:true };
+  }).filter(Boolean);
+
+  const baseEvents = clientFilter ? events.filter(e => (e.client||"").toLowerCase() === clientFilter.toLowerCase() || (e.createdBy||"").toLowerCase() === clientFilter.toLowerCase()) : events;
+  const allEvents = [...baseEvents, ...demandEvents];
   const dayEvents = allEvents.filter(e => e.day === selDay && e.month === curMonth && e.year === curYear);
   const hasEvents = (d) => allEvents.some(e => e.day === d && e.month === curMonth && e.year === curYear);
+  const dayDots = (d) => {
+    const evs = allEvents.filter(e => e.day === d && e.month === curMonth && e.year === curYear);
+    const colors = [...new Set(evs.map(e => e.isDemand ? B.accent : (e.color || B.blue)))].slice(0,3);
+    return colors;
+  };
   const isToday = (d) => d === today.getDate() && curMonth === today.getMonth() && curYear === today.getFullYear();
   const prevMonth = () => { if (curMonth===0){setCurMonth(11);setCurYear(y=>y-1);}else setCurMonth(m=>m-1); setSelDay(1); };
   const nextMonth = () => { if (curMonth===11){setCurMonth(0);setCurYear(y=>y+1);}else setCurMonth(m=>m+1); setSelDay(1); };
@@ -22637,7 +22656,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
-      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile /> :
+      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile demands={demands} /> :
       sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /> :
       sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={user?.company||user?.name} /> :
@@ -22664,7 +22683,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile demands={demands} /></div>}
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
@@ -23320,7 +23339,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","clients"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={() => setShowNavEdit(true)} navPicks={navPicks} setNavPicks={p => setNavPicksAndSave(p, user?.id)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
-        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccessFn} />}
+        {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccessFn} demands={sharedDemands} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} onCreatePost={handleCreatePostFromNews} />}
