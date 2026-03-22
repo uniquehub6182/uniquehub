@@ -21528,6 +21528,20 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   }, []);
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
+  const [showClientNavEdit, setShowClientNavEdit] = useState(false);
+  const CLIENT_ALL_TABS = [
+    { k:"home", l:"Início", i:IC.home }, { k:"content", l:"Conteúdo", i:IC.content },
+    { k:"calendar", l:"Agenda", i:IC.calendar }, { k:"chat", l:"Chat", i:IC.chat },
+    { k:"reports", l:"Relatórios", i:IC.reports }, { k:"gamify", l:"Growth", i:IC.gamify },
+    { k:"library", l:"Biblioteca", i:IC.library }, { k:"news", l:"Notícias", i:IC.news },
+    { k:"ideas", l:"Ideias", i:IC.ideas }, { k:"ai", l:"IA", i:IC.ai },
+    { k:"inbox", l:"Inbox", i:IC.inbox }, { k:"match4biz", l:"Match4Biz", i:IC.match4biz },
+    { k:"help", l:"Ajuda", i:IC.help }, { k:"settings", l:"Config", i:IC.settings },
+  ];
+  const [clientNavPicks, setClientNavPicks] = useState(() => {
+    try { const s = localStorage.getItem("uh_client_nav"); return s ? JSON.parse(s) : ["home","content","chat","calendar"]; } catch { return ["home","content","chat","calendar"]; }
+  });
+  const setClientNavPicksAndSave = (p) => { setClientNavPicks(p); try { localStorage.setItem("uh_client_nav", JSON.stringify(p)); } catch {} };
   const [openArticleId, setOpenArticleId] = useState(null);
   const { showToast, ToastEl } = useToast();
   const [demands, setDemands] = useState([]);
@@ -21745,13 +21759,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
 
   const goTab = (k) => { setTab(k); setSub(null); setHeaderC(false); };
 
-  const TABS = [
-    { k:"home", l:"Início", i: IC.home },
-    { k:"content", l:"Conteúdo", i: IC.content, badge: pendingApproval.length },
-    { k:"calendar", l:"Agenda", i: IC.calendar },
-    { k:"chat", l:"Chat", i: IC.chat },
-    { k:"more", l:"Mais", i: IC.more || IC.settings },
-  ];
+  const TABS = [...clientNavPicks.map(k => CLIENT_ALL_TABS.find(t => t.k === k)).filter(Boolean), { k:"more", l:"Mais", i: IC.more || IC.settings }];
 
   const accentColor = B.accent;
   const navBg = dark ? "rgba(10,15,18,0.85)" : "rgba(25,33,38,0.90)";
@@ -22420,7 +22428,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
-      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /> :
+      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
       null
@@ -22477,6 +22485,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     </div>
+    {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
     {/* Navbar always visible - outside hidden div */}
     <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
