@@ -9460,6 +9460,17 @@ REGRAS TÉCNICAS:
           Importe com a Munique A.I
         </button>
       </div>}
+      {/* ── Expiring content warning ── */}
+      {expiringDemands.length > 0 && !contained && <div style={{ padding:"8px 16px 0" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, background:"#F59E0B08", border:"1.5px solid #F59E0B25" }}>
+          <span style={{ fontSize:18, flexShrink:0 }}>⚠️</span>
+          <div style={{ flex:1, minWidth:0 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>{expiringDemands.length} conteúdo{expiringDemands.length>1?"s":""} com 5+ meses</p>
+            <p style={{ fontSize:10, color:B.muted, lineHeight:1.4 }}>Imagens antigas ocupam espaço. Considere fazer backup e limpar.</p>
+          </div>
+          <button onClick={()=>showToast(`${expiringDemands.length} posts antigos: ${expiringDemands.map(d=>d.title||d.client).join(", ").substring(0,100)}`)} style={{ padding:"5px 10px", borderRadius:8, background:"#F59E0B15", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:"#F59E0B", flexShrink:0 }}>Ver</button>
+        </div>
+      </div>}
       {!isContentDesktop && !contained && canAccessFn("content.create") && <div style={{ padding:"6px 16px 0" }}>
         <button onClick={() => setNewsAutoGen(true)} style={{ width:"100%", padding:"12px 16px", borderRadius:14, background:"linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 3px 16px #3B82F630" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
@@ -11888,6 +11899,7 @@ function NotifsPage({ onBack, user, navigate }) {
   const markRead = async (id) => { await supaMarkNotificationRead(id); setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n)); };
   const markAll = async () => { if (!user?.id) return; await supaMarkAllNotificationsRead(user.id); setNotifs(p => p.map(n => ({ ...n, read: true }))); showToast("Todas marcadas como lidas"); };
   const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
+  const typeColor = { post_created:B.accent, post_approved:B.green, post_rejected:"#EF4444", demand_created:B.blue, demand_updated:"#F59E0B", member_joined:B.purple, member_approved:B.green, calendar_reminder:B.orange, checkin:B.cyan, system:B.muted, news_created:"#6366F1" };
   const timeAgo = (d) => { const s = Math.floor((Date.now()-new Date(d).getTime())/1000); if(s<60) return "Agora"; if(s<3600) return Math.floor(s/60)+"min"; if(s<86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; };
 
   const TOP = 70;
@@ -11900,7 +11912,23 @@ function NotifsPage({ onBack, user, navigate }) {
       {ToastEl}
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>} label="Central" title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} />
       <div style={{ marginTop:20 }}>
-      {unreadCount > 0 && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+      {/* Stats bar */}
+      {loaded && notifs.length > 0 && isNotifDesktop && <div style={{ display:"flex", gap:10, marginBottom:16 }}>
+        <div style={{ flex:1, padding:"14px 18px", borderRadius:14, background:B.bgCard, border:`1px solid ${B.border}` }}>
+          <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{unreadCount}</p>
+          <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Não lidas</p>
+        </div>
+        <div style={{ flex:1, padding:"14px 18px", borderRadius:14, background:B.bgCard, border:`1px solid ${B.border}` }}>
+          <p style={{ fontSize:22, fontWeight:900 }}>{notifs.length}</p>
+          <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Total</p>
+        </div>
+        <div style={{ flex:1, padding:"14px 18px", borderRadius:14, background:B.bgCard, border:`1px solid ${B.border}` }}>
+          <p style={{ fontSize:22, fontWeight:900 }}>{Object.keys(grouped).length}</p>
+          <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Categorias</p>
+        </div>
+        {unreadCount > 0 && <button onClick={markAll} style={{ padding:"14px 24px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D", flexShrink:0 }}>✓ Marcar todas como lidas</button>}
+      </div>}
+      {!isNotifDesktop && unreadCount > 0 && <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
         <button onClick={markAll} style={{ padding:"8px 16px", borderRadius:10, background:`${B.accent}15`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>✓ Marcar todas como lidas</button>
       </div>}
       {!loaded && <div style={{ textAlign:"center", padding:60 }}><div style={{ width:32, height:32, border:"3px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:12, color:B.muted, marginTop:12 }}>Carregando notificações...</p></div>}
@@ -11913,8 +11941,8 @@ function NotifsPage({ onBack, user, navigate }) {
         /* Desktop: grid por tipo */
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(380px, 1fr))", gap:16 }}>
           {Object.entries(grouped).map(([type, items]) => (
-            <Card key={type} style={{ borderRadius:18, padding:0, overflow:"hidden" }}>
-              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+            <Card key={type} style={{ borderRadius:18, padding:0, overflow:"hidden", borderTop:`3px solid ${typeColor[type]||B.accent}` }}>
+              <div style={{ padding:"12px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8, background:`${typeColor[type]||B.accent}04` }}>
                 <span style={{ fontSize:16 }}>{typeIcon[type]||"🔔"}</span>
                 <span style={{ fontSize:13, fontWeight:700 }}>{typeLabel[type]||type}</span>
                 <span style={{ fontSize:10, fontWeight:600, color:B.muted, marginLeft:"auto", background:`${B.accent}10`, padding:"3px 8px", borderRadius:6 }}>{items.length}</span>
