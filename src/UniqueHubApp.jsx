@@ -22119,11 +22119,57 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const targetPosts = Math.max(totalDemands, 12);
   const completedPct = targetPosts > 0 ? Math.round((publishedThisMonth / targetPosts) * 100) : 0;
   const monthGoal = { label:`META · ${monthNames[now.getMonth()].toUpperCase()} ${now.getFullYear()}`, pct:Math.min(completedPct,100), current:publishedThisMonth, total:targetPosts, unit:"posts" };
+
+  /* ── Load real metrics from social-insights Edge Function ── */
+  const [clientMetrics, setClientMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  useEffect(() => {
+    const myClient = clients.find(c => {
+      const cf = (user?.company||user?.name||"").toLowerCase();
+      return (c.name||"").toLowerCase().includes(cf.split(" ")[0]) || cf.includes((c.name||"").split(" ")[0].toLowerCase());
+    });
+    if (!myClient || clientMetrics) return;
+    setMetricsLoading(true);
+    (async () => {
+      try {
+        const cid = myClient.supaId || myClient.id;
+        const end = new Date(); const start = new Date(); start.setDate(start.getDate() - 30);
+        const since = start.toISOString().split("T")[0]; const until = end.toISOString().split("T")[0];
+        const res = await fetch(`${SUPA_URL}/functions/v1/social-insights`, {
+          method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${SUPA_KEY}`},
+          body: JSON.stringify({ client_id: cid, since, until })
+        });
+        const data = await res.json();
+        if (data && !data.error) setClientMetrics(data);
+      } catch(e) { console.warn("Client metrics load error:", e); }
+      setMetricsLoading(false);
+    })();
+  }, [clients, user]);
+
+  const fmt = (n) => { if (!n && n !== 0) return "—"; if (n >= 1000000) return (n/1000000).toFixed(1)+"M"; if (n >= 1000) return (n/1000).toFixed(1)+"K"; return String(n); };
+  const igT = clientMetrics?.igTotals || {};
+  const igDaily = clientMetrics?.ig || [];
+  const igReach = igDaily.reduce((a, d) => a + ((d.values || []).find(v => v.name === "reach")?.value || 0), 0);
+  const igFollowers = igDaily.reduce((a, d) => { const v = (d.values || []).find(v => v.name === "follower_count")?.value || 0; return Math.max(a, v); }, 0);
+  const fbPosts = clientMetrics?.fbPosts || [];
+  const fbLikes = fbPosts.reduce((a, p) => a + (p.likes_count || 0), 0);
+  const fbShares = fbPosts.reduce((a, p) => a + (p.shares_count || 0), 0);
+  const fbComments = fbPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
+
   const metricsData = [
-    { network:"Instagram", metrics:[{l:"Alcance",v:"—",d:""},{l:"Engajamento",v:"—",d:""},{l:"Seguidores",v:"—",d:""},{l:"Salvamentos",v:"—",d:""}] },
-    { network:"Facebook", metrics:[{l:"Alcance",v:"—",d:""},{l:"Curtidas",v:"—",d:""},{l:"Compartilhamentos",v:"—",d:""},{l:"Cliques",v:"—",d:""}] },
+    { network:"Instagram", metrics:[
+      {l:"Alcance",v:fmt(igReach),d:""},
+      {l:"Interações",v:fmt(igT.total_interactions||0),d:""},
+      {l:"Seguidores",v:fmt(igFollowers),d:""},
+      {l:"Salvamentos",v:fmt(igT.saves||0),d:""}
+    ]},
+    { network:"Facebook", metrics:[
+      {l:"Curtidas",v:fmt(fbLikes),d:""},
+      {l:"Comentários",v:fmt(fbComments),d:""},
+      {l:"Compartilhamentos",v:fmt(fbShares),d:""},
+      {l:"Posts",v:fmt(fbPosts.length),d:""}
+    ]},
   ];
-  /* TODO: Load real metrics from Meta API via social_tokens when connected */
 
   const renderDashSection = (key) => {
     const SH = ({title, action, onClick}) => <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt,margin:0}}>{title}</h3>{action&&<span onClick={onClick} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>{action}</span>}</div>;
