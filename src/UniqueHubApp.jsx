@@ -1233,6 +1233,7 @@ const IC = {
   reports: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
   news: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>,
   ideas: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>,
+  inbox: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>,
   help: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   headset: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3v5zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3v5z"/></svg>,
   target: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
@@ -2776,6 +2777,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       gamify:     IC.gamify,
       match4biz:  IC.match4biz,
       suporte:    IC.help,
+      inbox:      IC.inbox,
       ajustes:    IC.settings,
     };
     const fn = icons[pk];
@@ -2802,6 +2804,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       clientes:     IC.clients,
       financeiro:   IC.financial,
       suporte:      IC.help,
+      inbox:        IC.inbox,
       ajustes:      IC.settings,
     };
     const fn = icons[ak];
@@ -22106,6 +22109,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
+      sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
       sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>{}} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /> :
       sub === "financial" ? renderFinancialSub() :
@@ -22141,6 +22145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news",navKey:null},
               {l:"Ideias",ic:IC.ideas,d:"Crie e visualize ideias",sub:"ideas",navKey:null},
               {l:"Assistente IA",ic:IC.ai,d:"IA para seu time comercial",sub:"ai",navKey:null},
+              {l:"Inbox",ic:IC.inbox,d:"Mensagens do Instagram e Facebook",sub:"inbox",navKey:null},
               {l:"Ajuda",ic:IC.help,d:"Suporte e FAQ",sub:"help",navKey:null},
               {l:"Configurações",ic:IC.settings,d:"Perfil, aparência e segurança",sub:"settings",navKey:null},
             ].filter(item => {
@@ -22801,7 +22806,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
-              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team"].includes(t.k)) { goSub(t.k); return; }
+              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team", "inbox"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
             }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?circleBg:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${circleBg}50`:"none" }}>
