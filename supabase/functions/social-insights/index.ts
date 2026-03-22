@@ -14,9 +14,9 @@ serve(async (req) => {
     let igToken: any = null;
     try { const { data } = await sb.from("app_settings").select("value").eq("key", `ig_token_${client_id}`).single(); if (data?.value) igToken = JSON.parse(data.value); } catch {}
     if (!metaToken && !igToken) return json({ error: "Nenhum token social encontrado" });
-    const safeFetch = async (url: string) => { try { const r = await fetch(url); const d = await r.json(); if (d.error) { console.log("API err:", url.split("?")[0], d.error.message?.substring(0,80)); return null; } return d; } catch { return null; } };
+    const safeFetch = async (url: string) => { try { const r = await fetch(url); const d = await r.json(); if (d.error) { console.log("API err:", d.error.message?.substring(0,80)); return null; } return d; } catch { return null; } };
     const V = "v21.0";
-    const result: any = { fbPage: null, fbPosts: null, fb: null, fbPrev: null, igProfile: null, igMedia: null, ig: null, igPrev: null, igTotals: null, needsPermission: [] };
+    const result: any = { fbPage: null, fbPosts: null, fb: null, fbPrev: null, igProfile: null, igMedia: null, ig: null, igPrev: null, igTotals: null, igTotalsPrev: null, needsPermission: [] };
     const now = new Date();
     const sinceStr = since || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
     const untilStr = until || now.toISOString().split("T")[0];
@@ -26,6 +26,19 @@ serve(async (req) => {
     const prevStartD = new Date(prevEnd); prevStartD.setDate(prevStartD.getDate() - daysDiff);
     const prevStart = prevStartD.toISOString().split("T")[0];
     const prevEndStr = prevEnd.toISOString().split("T")[0];
+
+    /* Helper: chunk date range into 28-day segments (IG API max 30 days) */
+    const chunkDates = (s: string, u: string): Array<[string, string]> => {
+      const chunks: Array<[string, string]> = [];
+      let cur = new Date(s); const end = new Date(u);
+      while (cur < end) {
+        const next = new Date(cur); next.setDate(next.getDate() + 28);
+        if (next > end) { chunks.push([cur.toISOString().split("T")[0], u]); break; }
+        chunks.push([cur.toISOString().split("T")[0], next.toISOString().split("T")[0]]);
+        cur = next;
+      }
+      return chunks.length ? chunks : [[s, u]];
+    };
 
     /* ═══ FACEBOOK ═══ */
     if (metaToken?.page_id && metaToken?.page_token) {
@@ -51,32 +64,46 @@ serve(async (req) => {
           await sb.from("app_settings").upsert({ key: `meta_token_${client_id}`, value: JSON.stringify(metaToken), updated_at: new Date().toISOString() }, { onConflict: "key" });
         }
         result.igProfile = igBiz;
-        /* v21: daily metrics (reach, follower_count) */
-        const [igMedia, igDaily, igDailyPrev, igTotals, igTotalsPrev] = await Promise.all([
-          safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/media?fields=id,caption,media_type,media_product_type,timestamp,like_count,comments_count,thumbnail_url,media_url,permalink&limit=25&access_token=${at}`),
-          safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=reach,follower_count&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
-          safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=reach,follower_count&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`),
-          safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=profile_views,accounts_engaged,total_interactions,likes,comments,shares,saves&metric_type=total_value&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
-          safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=profile_views,accounts_engaged,total_interactions,likes,comments,shares,saves&metric_type=total_value&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`),
-        ]);
-        if (igDaily?.data) result.ig = igDaily.data;
-        if (igDailyPrev?.data) result.igPrev = igDailyPrev.data;
-        /* Extract total_value metrics into a clean object */
-        if (igTotals?.data) {
-          const t: any = {};
-          igTotals.data.forEach((m: any) => { t[m.name] = m.total_value?.value || 0; });
-          result.igTotals = t;
+        const igMedia = await safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/media?fields=id,caption,media_type,media_product_type,timestamp,like_count,comments_count,thumbnail_url,media_url,permalink&limit=25&access_token=${at}`);
+
+        /* Chunk ALL IG insight requests into 28-day segments */
+        const chunks = chunkDates(sinceStr, untilStr);
+        const prevChunks = chunkDates(prevStart, prevEndStr);
+
+        /* Daily metrics: reach, follower_count (chunked) */
+        const allDaily: any[] = [];
+        for (const [cs, cu] of chunks) {
+          const d = await safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=reach,follower_count&period=day&since=${cs}&until=${cu}&access_token=${at}`);
+          if (d?.data) { for (const m of d.data) { const ex = allDaily.find(x => x.name === m.name); if (ex) ex.values.push(...m.values); else allDaily.push({ ...m }); } }
         }
-        if (igTotalsPrev?.data) {
-          const tp: any = {};
-          igTotalsPrev.data.forEach((m: any) => { tp[m.name] = m.total_value?.value || 0; });
-          result.igTotalsPrev = tp;
+        const allDailyPrev: any[] = [];
+        for (const [cs, cu] of prevChunks) {
+          const d = await safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=reach,follower_count&period=day&since=${cs}&until=${cu}&access_token=${at}`);
+          if (d?.data) { for (const m of d.data) { const ex = allDailyPrev.find(x => x.name === m.name); if (ex) ex.values.push(...m.values); else allDailyPrev.push({ ...m }); } }
         }
+        if (allDaily.length) result.ig = allDaily;
+        if (allDailyPrev.length) result.igPrev = allDailyPrev;
+
+        /* Total value metrics (ALSO chunked — IG API max 30 days for all endpoints) */
+        const tvMetrics = "profile_views,accounts_engaged,total_interactions,likes,comments,shares,saves";
+        const totals: any = {};
+        for (const [cs, cu] of chunks) {
+          const d = await safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=${tvMetrics}&metric_type=total_value&period=day&since=${cs}&until=${cu}&access_token=${at}`);
+          if (d?.data) { for (const m of d.data) { totals[m.name] = (totals[m.name] || 0) + (m.total_value?.value || 0); } }
+        }
+        if (Object.keys(totals).length) result.igTotals = totals;
+
+        const totalsPrev: any = {};
+        for (const [cs, cu] of prevChunks) {
+          const d = await safeFetch(`https://graph.facebook.com/${V}/${igBiz.id}/insights?metric=${tvMetrics}&metric_type=total_value&period=day&since=${cs}&until=${cu}&access_token=${at}`);
+          if (d?.data) { for (const m of d.data) { totalsPrev[m.name] = (totalsPrev[m.name] || 0) + (m.total_value?.value || 0); } }
+        }
+        if (Object.keys(totalsPrev).length) result.igTotalsPrev = totalsPrev;
+
         /* IG media with per-post insights */
         if (igMedia?.data) {
           const mediaWithInsights = await Promise.all(igMedia.data.slice(0, 15).map(async (m: any) => {
-            const metrics = "reach,saved,shares,total_interactions";
-            const ins = await safeFetch(`https://graph.facebook.com/${V}/${m.id}/insights?metric=${metrics}&access_token=${at}`);
+            const ins = await safeFetch(`https://graph.facebook.com/${V}/${m.id}/insights?metric=reach,saved,shares,total_interactions&access_token=${at}`);
             const insMap: any = {};
             if (ins?.data) ins.data.forEach((i: any) => { insMap[i.name] = i.values?.[0]?.value || 0; });
             return { ...m, insights: insMap };

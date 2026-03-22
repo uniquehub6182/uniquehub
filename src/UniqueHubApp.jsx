@@ -14848,10 +14848,10 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
 
     /* v21: daily metrics (reach, follower_count) */
-    const igReach = sumInsight(ins?.ig, "reach");
+    const igDailyReachSum = sumInsight(ins?.ig, "reach");
     const igFollowerCount = sumInsight(ins?.ig, "follower_count");
-    const igPrevReach = sumInsight(ins?.igPrev, "reach");
-    /* v21: total_value metrics from igTotals */
+    const igPrevDailyReach = sumInsight(ins?.igPrev, "reach");
+    /* v21: total_value metrics from igTotals (works for any date range) */
     const igTotals = ins?.igTotals || {};
     const igTotalsPrev = ins?.igTotalsPrev || {};
     const igProfileViews = igTotals.profile_views || 0;
@@ -14861,8 +14861,6 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     const igTotalComments = igTotals.comments || 0;
     const igTotalShares = igTotals.shares || 0;
     const igTotalSaves = igTotals.saves || 0;
-    const igImpressions = igReach; /* v21 removed impressions, use reach as proxy */
-    const igPrevImp = igPrevReach;
     const igPrevEngaged = igTotalsPrev.accounts_engaged || 0;
     const igPrevProfileViews = igTotalsPrev.profile_views || 0;
 
@@ -14872,6 +14870,12 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     const totalSaved = mediaPosts.reduce((a, p) => a + (p.insights?.saved || 0), 0);
     const totalShares = mediaPosts.reduce((a, p) => a + (p.insights?.shares || 0), 0);
     const totalPostReach = mediaPosts.reduce((a, p) => a + (p.insights?.reach || 0), 0);
+
+    /* igTotals doesn't include reach (not supported in total_value), use daily sum or post-level */
+    const igReach = igDailyReachSum || totalPostReach;
+    const igPrevReach = igPrevDailyReach;
+    const igImpressions = igReach;
+    const igPrevImp = igPrevReach;
 
     /* FB Posts data (new — from published_posts) */
     const fbPosts = ins?.fbPosts || [];
