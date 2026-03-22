@@ -3046,6 +3046,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       ideas:{l:"Ideias",icon:"ideas"},
       social:{l:"Redes Sociais",icon:"social"},
       drive:{l:"Drive / Nuvem",icon:"drive"},
+      inbox:{l:"Inbox Social",icon:"inbox"},
     };
     const dpIco = (k,sz=16,clr="#1A1D23") => {
       const p={chat:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
@@ -3057,6 +3058,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         ai:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
         content:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
         drive:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M22 12h-6l-2 3H8l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>,
+        inbox:<svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={clr} strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>,
       };
       return p[k]||p.content;
     };
@@ -3380,6 +3382,36 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                   ))}
                 </div>
               </>}
+            </div>
+          </div>
+        );
+      }
+      if(pk==="inbox") {
+        return (
+          <div className="phone-block" style={{background:B.bgCard,borderRadius:"var(--uh-radius)",border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{dpIco("inbox",13,B.text)}<span style={{fontSize:12,fontWeight:700,color:B.text}}>Inbox Social</span></div>
+              <span onClick={()=>goSub("inbox")} style={{fontSize:10,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:2}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+              <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(135deg, #E1306C20, #1877F220)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
+                {dpIco("inbox",28,B.accent)}
+              </div>
+              <p style={{fontSize:15,fontWeight:800,color:B.text,marginBottom:6}}>Mensagens Sociais</p>
+              <p style={{fontSize:11,color:B.muted,textAlign:"center",lineHeight:1.5,maxWidth:240,marginBottom:20}}>Gerencie DMs do Instagram e mensagens do Facebook Messenger dos seus clientes</p>
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:100,background:"#E1306C10",border:"1px solid #E1306C20"}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg>
+                  <span style={{fontSize:10,fontWeight:700,color:"#E1306C"}}>Instagram</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:100,background:"#1877F210",border:"1px solid #1877F220"}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  <span style={{fontSize:10,fontWeight:700,color:"#1877F2"}}>Messenger</span>
+                </div>
+              </div>
+              <button onClick={()=>goSub("inbox")} style={{padding:"10px 28px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",display:"flex",alignItems:"center",gap:6}}>
+                {dpIco("inbox",14,"#0D0D0D")} Abrir Inbox
+              </button>
             </div>
           </div>
         );
@@ -19450,6 +19482,7 @@ function SearchPage({ onBack, team, clients }) {
     { k:"news", l:"News", d:"Notícias e tendências", ic:IC.news },
     { k:"ideas", l:"Ideias", d:"Brainstorm da equipe", ic:IC.ideas },
     { k:"ai", l:"Assistente IA", d:"Chat com inteligência artificial", ic:IC.ai },
+    { k:"inbox", l:"Inbox", d:"Mensagens do Instagram e Facebook", ic:IC.inbox },
     { k:"gamify", l:"Ranking", d:"Gamificação e recompensas", ic:IC.gamify },
     { k:"checkin", l:"Check-in", d:"Ponto digital", ic:IC.checkin },
     { k:"settings", l:"Configurações", d:"Perfil e preferências", ic:IC.settings },
