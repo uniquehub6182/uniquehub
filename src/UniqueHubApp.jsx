@@ -9441,7 +9441,6 @@ REGRAS TÉCNICAS:
       </Card>}
       {/* ── KANBAN DESKTOP VIEW ── */}
       {isContentDesktop && (() => {
-        const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
@@ -9453,78 +9452,85 @@ REGRAS TÉCNICAS:
           if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage });
           showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`);
         };
-        const getStageItems = (stg) => stg === "ajuste"
+        const getItems = (stg) => stg === "ajuste"
           ? filtered.filter(d => d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))
-          : stg === "client"
-          ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected")
+          : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected")
           : filtered.filter(d => d.stage === stg);
-        const STAGE_ICONS = {idea:"💡",planning:"📋",briefing:"📝",creation:"✏️",design:"🎨",production:"🎬",editing:"✂️",caption:"📄",review:"🔍",execution:"⚡",client:"👍",ajuste:"🔧",scheduled:"📅",published:"✅",completed:"🏁"};
-        const STAGE_COLORS_SOLID = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#EC4899",caption:"#F59E0B",review:"#06B6D4",client:"#10B981",ajuste:"#F97316",scheduled:"#F59E0B",published:"#BBF246",completed:"#22C55E",planning:"#6366F1",creation:"#8B5CF6",production:"#F43F5E",editing:"#A855F7",execution:"#EF4444"};
+        const netC = { Instagram:"#E1306C", Facebook:"#1877F2", TikTok:"#000", LinkedIn:"#0A66C2", YouTube:"#FF0000", Twitter:"#1D9BF0" };
         return (
-          <div style={{ padding:"12px 0" }}>
-            <div style={{ display:"flex", gap:12, alignItems:"stretch" }}>
+          <div style={{ padding:"8px 0" }}>
+            <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8 }}>
               {visibleStages.map(stg => {
                 const cfg = STAGE_CFG[stg] || { l: stg, c: "#888" };
-                const items = getStageItems(stg);
-                const isExpanded = kanbanCol === stg;
-                const solidC = STAGE_COLORS_SOLID[stg] || cfg.c;
-                /* ── COLLAPSED PILL ── */
-                if (!isExpanded) return (
-                  <div key={stg} onClick={() => setKanbanCol(stg)}
-                    style={{ width:70, minHeight:260, borderRadius:18, background:"#fff", border:"1px solid rgba(0,0,0,0.06)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", padding:"16px 8px", cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", transition:"all .2s", flexShrink:0 }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.1)"; e.currentTarget.style.borderColor=solidC; }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)"; e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"; }}
-                  >
-                    <div style={{ width:40, height:40, borderRadius:12, background:solidC, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>{STAGE_ICONS[stg]||"📌"}</div>
-                    <p style={{ writingMode:"vertical-lr", textOrientation:"mixed", fontSize:11, fontWeight:700, color:"#1A1D23", letterSpacing:0.5, margin:"12px 0", flex:1, display:"flex", alignItems:"center" }}>{cfg.l}</p>
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                      <span style={{ fontSize:16, fontWeight:800, color:"#1A1D23" }}>{items.length}</span>
-                      <div style={{ width:28, height:3, borderRadius:2, background:solidC }} />
-                      <span style={{ fontSize:16, color:"#9CA3AF" }}>›</span>
-                    </div>
-                  </div>
-                );
-                /* ── EXPANDED COLUMN ── */
+                const items = getItems(stg);
+                const isActive = kanbanCol === stg;
                 return (
-                  <div key={stg} style={{ flex:1, maxWidth:420, minWidth:300, borderRadius:18, background:"#fff", border:`2px solid ${solidC}`, display:"flex", flexDirection:"column", overflow:"hidden", boxShadow:`0 4px 20px ${solidC}22` }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", borderBottom:`2px solid ${solidC}20` }}>
-                      <div style={{ width:36, height:36, borderRadius:10, background:solidC, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>{STAGE_ICONS[stg]||"📌"}</div>
-                      <span style={{ fontSize:14, fontWeight:800, color:"#1A1D23", flex:1 }}>{cfg.l}</span>
-                      <span style={{ fontSize:12, fontWeight:700, color:solidC, background:`${solidC}15`, padding:"2px 10px", borderRadius:10 }}>{items.length}</span>
-                      <button onClick={(e) => { e.stopPropagation(); setKanbanCol(null); }} style={{ width:28, height:28, borderRadius:8, border:"1px solid rgba(0,0,0,0.1)", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, color:"#9CA3AF" }}>‹</button>
-                    </div>
-                    <div style={{ flex:1, overflowY:"auto", padding:"10px 14px", display:"flex", flexDirection:"column", gap:10, maxHeight:500 }}
-                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.background=`${solidC}08`; }}
-                      onDragLeave={e => { e.currentTarget.style.background="transparent"; }}
-                      onDrop={e => { e.preventDefault(); e.currentTarget.style.background="transparent"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") moveStage(dem, stg); } catch {} }}
+                  <div key={stg}
+                    style={{ flex: isActive ? "2.5 1 0%" : "1 1 0%", minWidth: isActive ? 280 : 110, maxWidth: isActive ? 420 : 180, display:"flex", flexDirection:"column", transition:"all .3s cubic-bezier(.4,0,.2,1)", borderRadius:16, overflow:"hidden", background:"#fff", border: isActive ? `1.5px solid ${cfg.c}40` : "1px solid rgba(0,0,0,0.05)", boxShadow: isActive ? `0 8px 32px ${cfg.c}15` : "0 1px 3px rgba(0,0,0,0.04)" }}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow=`0 0 0 2px ${cfg.c}`; }}
+                    onDragLeave={e => { e.currentTarget.style.boxShadow = isActive ? `0 8px 32px ${cfg.c}15` : "0 1px 3px rgba(0,0,0,0.04)"; }}
+                    onDrop={e => { e.preventDefault(); e.currentTarget.style.boxShadow = isActive ? `0 8px 32px ${cfg.c}15` : "0 1px 3px rgba(0,0,0,0.04)"; try { const dd = JSON.parse(e.dataTransfer.getData("text/plain")); const dem = demands.find(x => x.id === dd.id); if (dem && dem.stage !== stg && stg !== "ajuste") moveStage(dem, stg); } catch {} }}
+                  >
+                    {/* Column header */}
+                    <div onClick={() => setKanbanCol(isActive ? null : stg)}
+                      style={{ padding: isActive ? "12px 14px" : "10px 8px", cursor:"pointer", borderBottom:`2.5px solid ${cfg.c}`, display:"flex", alignItems:"center", gap:8, background: isActive ? `${cfg.c}08` : "transparent", transition:"all .2s" }}
                     >
+                      <div style={{ width:8, height:8, borderRadius:4, background:cfg.c, flexShrink:0 }} />
+                      <span style={{ fontSize: isActive ? 12 : 10, fontWeight:700, color:"#1A1D23", flex:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", transition:"font-size .2s" }}>{cfg.l}</span>
+                      <span style={{ fontSize:11, fontWeight:800, color:cfg.c, background:`${cfg.c}12`, padding:"1px 8px", borderRadius:10, flexShrink:0 }}>{items.length}</span>
+                    </div>
+                    {/* Cards area */}
+                    <div style={{ flex:1, overflowY:"auto", padding: isActive ? "8px 10px" : "6px 4px", display:"flex", flexDirection:"column", gap: isActive ? 8 : 4, maxHeight:520, minHeight:80 }}>
+                      {items.length === 0 && <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}><span style={{ fontSize:9, color:"#9CA3AF" }}>—</span></div>}
                       {items.map(d => {
-                        const pColor = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
-                        const clAvatar = (d.client||"?")[0];
+                        const pC = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
+                        const nets = (d.network||"").split(", ").filter(Boolean);
+                        const clIni = (d.client||"?")[0].toUpperCase();
+                        if (!isActive) {
+                          /* ── COMPACT card (collapsed column) ── */
+                          return (
+                            <div key={d.id} draggable
+                              onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
+                              onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
+                              onClick={e => { e.stopPropagation(); setSel(d); }}
+                              style={{ padding:"6px 8px", borderRadius:10, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.04)", cursor:"grab", transition:"all .15s", display:"flex", alignItems:"center", gap:6 }}
+                              onMouseEnter={e => { e.currentTarget.style.background="#F3F4F6"; e.currentTarget.style.borderColor=cfg.c+"50"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.borderColor="rgba(0,0,0,0.04)"; }}
+                            >
+                              <div style={{ width:3, height:18, borderRadius:2, background:pC, flexShrink:0 }} />
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <p style={{ fontSize:9, fontWeight:700, color:"#1A1D23", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:1.2 }}>{d.title||"Sem título"}</p>
+                                <p style={{ fontSize:8, color:"#9CA3AF", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginTop:1 }}>{d.client}</p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        /* ── FULL card (expanded column) ── */
                         return (
                           <div key={d.id} draggable
-                            onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.5"; }}
+                            onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.4"; }}
                             onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
                             onClick={() => setSel(d)}
-                            style={{ background:"#FAFAFA", borderRadius:14, padding:"12px 14px", border:"1px solid rgba(0,0,0,0.06)", cursor:"grab", transition:"all .15s" }}
-                            onMouseEnter={e => { e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)"; e.currentTarget.style.borderColor=solidC; }}
-                            onMouseLeave={e => { e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"; }}
+                            style={{ padding:"12px 14px", borderRadius:14, background:"#FAFAFA", border:"1px solid rgba(0,0,0,0.05)", cursor:"grab", transition:"all .15s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background="#fff"; e.currentTarget.style.boxShadow=`0 4px 16px ${cfg.c}12`; e.currentTarget.style.borderColor=cfg.c+"40"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background="#FAFAFA"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor="rgba(0,0,0,0.05)"; }}
                           >
-                            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
-                              <div style={{ width:28, height:28, borderRadius:8, background:`${solidC}18`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color:solidC }}>{clAvatar}</div>
-                              <span style={{ fontSize:11, fontWeight:600, color:"#6B7280", flex:1 }}>{d.client}</span>
-                              {d.network && <div style={{ display:"flex", gap:2 }}>{d.network.split(", ").slice(0,2).map((n,ni) => <span key={ni} style={{ fontSize:9, width:18, height:18, borderRadius:9, background:n==="Facebook"?"#1877F2":n==="Instagram"?"#E1306C":n==="TikTok"?"#010101":"#1D9BF0", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800 }}>{n[0]}</span>)}</div>}
+                            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                              <div style={{ width:28, height:28, borderRadius:8, background:`${cfg.c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color:cfg.c, flexShrink:0 }}>{clIni}</div>
+                              <span style={{ fontSize:10, fontWeight:600, color:"#6B7280", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client}</span>
+                              <div style={{ display:"flex", gap:2 }}>{nets.slice(0,3).map((n,ni) => <div key={ni} style={{ width:16, height:16, borderRadius:8, background:netC[n]||"#888", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:7, fontWeight:900, color:"#fff" }}>{n[0]}</span></div>)}</div>
                             </div>
-                            {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4, fontSize:10, color:"#6B7280" }}><span>📅</span> {d.scheduling.date} às {d.scheduling.time||"—"}</div>}
-                            <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:4, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
+                            {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}><span style={{ fontSize:10 }}>📅</span><span style={{ fontSize:10, color:"#6B7280" }}>{d.scheduling.date}{d.scheduling.time ? ` às ${d.scheduling.time}` : ""}</span></div>}
+                            <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title || "Sem título"}</p>
                             <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                              <span style={{ fontSize:7, fontWeight:700, color:pColor, textTransform:"uppercase", background:`${pColor}12`, padding:"2px 6px", borderRadius:6 }}>{d.priority || "média"}</span>
-                              {isScheduleExpired(d) && <span style={{ fontSize:7, fontWeight:700, color:"#EF4444", background:"#EF444412", padding:"2px 6px", borderRadius:6 }}>⏰ Expirado</span>}
+                              <div style={{ width:4, height:4, borderRadius:2, background:pC }} />
+                              <span style={{ fontSize:8, fontWeight:700, color:pC, textTransform:"uppercase" }}>{d.priority||"média"}</span>
+                              {isScheduleExpired(d) && <span style={{ fontSize:7, fontWeight:700, color:"#EF4444", background:"#EF444410", padding:"1px 5px", borderRadius:4, marginLeft:4 }}>Expirado</span>}
+                              <span style={{ fontSize:8, color:"#C5C7CC", marginLeft:"auto" }}>{d.type==="campaign"?"Camp.":d.type==="video"?"Vídeo":"Post"}</span>
                             </div>
                           </div>
                         );
                       })}
-                      {items.length === 0 && <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", border:"2px dashed rgba(0,0,0,0.06)", borderRadius:12, minHeight:80 }}><span style={{ fontSize:10, color:"#C5C7CC" }}>Nenhum item</span></div>}
                     </div>
                   </div>
                 );
