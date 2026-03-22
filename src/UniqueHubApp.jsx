@@ -9420,6 +9420,15 @@ REGRAS TÉCNICAS:
         const ALL_STAGES = [...new Set([...SOCIAL_STAGES, ...CAMPAIGN_STAGES, ...VIDEO_STAGES])];
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","scheduled","published","completed"];
         /* Only show columns that have demands or are from the social workflow */
+        const isScheduleExpired = (d) => {
+          if (d.stage !== "scheduled" || !d.scheduling?.date) return false;
+          const sd = d.scheduling.date; const st = d.scheduling.time || "23:59";
+          let dt;
+          if (sd.includes("-")) { dt = new Date(`${sd}T${st}:00`); }
+          else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); const yr = new Date().getFullYear(); dt = new Date(`${yr}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}T${st}:00`); }
+          else return false;
+          return !isNaN(dt) && dt < new Date();
+        };
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
@@ -9460,6 +9469,7 @@ REGRAS TÉCNICAS:
                             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                               <span style={{ fontSize:8, fontWeight:700, color:pColor, textTransform:"uppercase", background:`${pColor}15`, padding:"2px 6px", borderRadius:6 }}>{d.priority || "média"}</span>
                               {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6, display:"flex", alignItems:"center", gap:2 }}>⚠️ Ajuste</span>}
+                              {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6, display:"flex", alignItems:"center", gap:2 }}>⏰ Expirado</span>}
                               <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
                             </div>
                             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
@@ -9630,6 +9640,10 @@ REGRAS TÉCNICAS:
             {d.steps?.client?.status === "revision" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25` }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
               <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.orange||"#F59E0B" }}>Cliente pediu edição</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps.client.feedback?.substring(0,60)}{(d.steps.client.feedback?.length||0)>60?"...":""}</p></div>
+            </div>}
+            {isScheduleExpired(d) && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:"#EF444408", border:"1.5px solid #EF444425" }}>
+              <span style={{ fontSize:16 }}>⏰</span>
+              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:"#EF4444" }}>Agendamento expirado</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Data {d.scheduling?.date} {d.scheduling?.time} já passou</p></div>
             </div>}
             {d.steps?.client?.status === "approved" && d.stage === "client" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1.5px solid ${B.green}25` }}>
               {IC.check}<div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Cliente aprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pronto para publicar · {d.steps.client.respondedBy||""}</p></div>
@@ -12132,8 +12146,29 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <input value={pf.social || ""} onChange={e => pfUp("social",e.target.value)} className="tinput" placeholder="@seuperfil" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Chave PIX</label>
           <input value={pf.pix || ""} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" style={{ marginBottom:10 }} />
-          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Banco</label>
-          <input value={pf.bank_name || ""} onChange={e => pfUp("bank_name",e.target.value)} className="tinput" placeholder="Ex: Nubank, Itaú, Bradesco..." style={{ marginBottom:10 }} />
+          <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Banco</label>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:6, marginBottom:10 }}>
+            {[
+              {k:"nubank",l:"Nubank",c:"#8A05BE",logo:"https://logo.clearbit.com/nubank.com.br"},
+              {k:"itau",l:"Itaú",c:"#003399",logo:"https://logo.clearbit.com/itau.com.br"},
+              {k:"bradesco",l:"Bradesco",c:"#CC092F",logo:"https://logo.clearbit.com/bradesco.com.br"},
+              {k:"santander",l:"Santander",c:"#EA1D25",logo:"https://logo.clearbit.com/santander.com.br"},
+              {k:"bb",l:"Banco do Brasil",c:"#FFED00",logo:"https://logo.clearbit.com/bb.com.br"},
+              {k:"inter",l:"Inter",c:"#FF7A00",logo:"https://logo.clearbit.com/bancointer.com.br"},
+              {k:"c6",l:"C6 Bank",c:"#242424",logo:"https://logo.clearbit.com/c6bank.com.br"},
+              {k:"mercadopago",l:"Mercado Pago",c:"#00B1EA",logo:"https://logo.clearbit.com/mercadopago.com.br"},
+              {k:"picpay",l:"PicPay",c:"#21C25E",logo:"https://logo.clearbit.com/picpay.com"},
+              {k:"revolut",l:"Revolut",c:"#0075EB",logo:"https://logo.clearbit.com/revolut.com"},
+            ].map(b => {
+              const sel = (pf.bank_name||"").toLowerCase() === b.k;
+              return <button key={b.k} onClick={() => pfUp("bank_name", b.k)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 4px", borderRadius:12, border:sel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
+                <div style={{ width:32, height:32, borderRadius:10, overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", background:"#fff", border:"1px solid #eee" }}>
+                  <img src={b.logo} alt={b.l} style={{ width:24, height:24, objectFit:"contain" }} onError={e=>{e.target.style.display="none";e.target.parentElement.style.background=b.c;e.target.parentElement.innerHTML=`<span style="color:#fff;font-size:10px;font-weight:800">${b.l.substring(0,2).toUpperCase()}</span>`;}} />
+                </div>
+                <span style={{ fontSize:8, fontWeight:sel?700:500, color:sel?B.accent:B.muted, textAlign:"center", lineHeight:1.1 }}>{b.l}</span>
+              </button>;
+            })}
+          </div>
           <div style={{ display:"flex", gap:8, marginBottom:10 }}>
             <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Agência</label><input value={pf.bank_agency || ""} onChange={e => pfUp("bank_agency",e.target.value)} className="tinput" placeholder="0001" /></div>
             <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Conta</label><input value={pf.bank_account || ""} onChange={e => pfUp("bank_account",e.target.value)} className="tinput" placeholder="12345-6" /></div>
@@ -12217,6 +12252,16 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               {f[2]==="pix" && pf.pix && pf.pix!=="—" && <button onClick={()=>copyToClipboard(pf.pix)} style={{ padding:"6px 10px", borderRadius:8, border:`1.5px solid ${B.accent}30`, background:`${B.accent}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", gap:4 }}>{IC.clipboard}<span>Copiar</span></button>}
             </div>
           ))}
+          {pf.bank_name && (()=>{
+            const BK={nubank:{l:"Nubank",logo:"https://logo.clearbit.com/nubank.com.br"},itau:{l:"Itaú",logo:"https://logo.clearbit.com/itau.com.br"},bradesco:{l:"Bradesco",logo:"https://logo.clearbit.com/bradesco.com.br"},santander:{l:"Santander",logo:"https://logo.clearbit.com/santander.com.br"},bb:{l:"Banco do Brasil",logo:"https://logo.clearbit.com/bb.com.br"},inter:{l:"Inter",logo:"https://logo.clearbit.com/bancointer.com.br"},c6:{l:"C6 Bank",logo:"https://logo.clearbit.com/c6bank.com.br"},mercadopago:{l:"Mercado Pago",logo:"https://logo.clearbit.com/mercadopago.com.br"},picpay:{l:"PicPay",logo:"https://logo.clearbit.com/picpay.com"},revolut:{l:"Revolut",logo:"https://logo.clearbit.com/revolut.com"}};
+            const bk=BK[pf.bank_name]||{l:pf.bank_name};
+            return <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:"1px solid "+B.border }}>
+              <div style={{ width:28, height:28, borderRadius:8, overflow:"hidden", background:"#fff", border:"1px solid #eee", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                {bk.logo ? <img src={bk.logo} alt="" style={{ width:20, height:20, objectFit:"contain" }} onError={e=>{e.target.style.display="none";}} /> : null}
+              </div>
+              <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>Banco</p><p style={{ fontSize:13, fontWeight:600 }}>{bk.l} · Ag {pf.bank_agency||"—"} · Cc {pf.bank_account||"—"} · {pf.bank_type==="poupanca"?"Poupança":"Corrente"}</p></div>
+            </div>;
+          })()}
         </Card>
         </div>{/* end col 1 */}
 
@@ -13600,10 +13645,22 @@ function TeamPage({ onBack, user, onTeamChange }) {
                     <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Chave PIX</p><p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{memberExtras.pix}</p></div>
                     <button onClick={()=>{navigator.clipboard.writeText(memberExtras.pix);showToast("PIX copiado ✓");}} style={{ padding:"5px 10px", borderRadius:6, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent }}>Copiar</button>
                   </div>}
-                  {memberExtras.bank_name&&isAdmin&&<div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg }}>
-                    <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Conta Bancária</p>
-                    <p style={{ fontSize:13, fontWeight:600, color:B.text }}>{memberExtras.bank_name} · Ag {memberExtras.bank_agency||"—"} · Cc {memberExtras.bank_account||"—"} · {memberExtras.bank_type==="poupanca"?"Poupança":"Corrente"}</p>
-                  </div>}
+                  {memberExtras.bank_name&&isAdmin&&(()=>{
+                    const BK={nubank:{l:"Nubank",c:"#8A05BE",logo:"https://logo.clearbit.com/nubank.com.br"},itau:{l:"Itaú",c:"#003399",logo:"https://logo.clearbit.com/itau.com.br"},bradesco:{l:"Bradesco",c:"#CC092F",logo:"https://logo.clearbit.com/bradesco.com.br"},santander:{l:"Santander",c:"#EA1D25",logo:"https://logo.clearbit.com/santander.com.br"},bb:{l:"Banco do Brasil",c:"#FFED00",logo:"https://logo.clearbit.com/bb.com.br"},inter:{l:"Inter",c:"#FF7A00",logo:"https://logo.clearbit.com/bancointer.com.br"},c6:{l:"C6 Bank",c:"#242424",logo:"https://logo.clearbit.com/c6bank.com.br"},mercadopago:{l:"Mercado Pago",c:"#00B1EA",logo:"https://logo.clearbit.com/mercadopago.com.br"},picpay:{l:"PicPay",c:"#21C25E",logo:"https://logo.clearbit.com/picpay.com"},revolut:{l:"Revolut",c:"#0075EB",logo:"https://logo.clearbit.com/revolut.com"}};
+                    const bk=BK[memberExtras.bank_name]||{l:memberExtras.bank_name,c:B.muted};
+                    return <div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                      <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Conta Bancária</p>
+                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <div style={{ width:28, height:28, borderRadius:8, overflow:"hidden", background:"#fff", border:"1px solid #eee", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                          {bk.logo ? <img src={bk.logo} alt="" style={{ width:20, height:20, objectFit:"contain" }} onError={e=>{e.target.style.display="none";}} /> : <span style={{ fontSize:9, fontWeight:800, color:bk.c }}>{bk.l.substring(0,2)}</span>}
+                        </div>
+                        <div>
+                          <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{bk.l}</p>
+                          <p style={{ fontSize:11, color:B.muted, marginTop:1 }}>Ag {memberExtras.bank_agency||"—"} · Cc {memberExtras.bank_account||"—"} · {memberExtras.bank_type==="poupanca"?"Poupança":"Corrente"}</p>
+                        </div>
+                      </div>
+                    </div>;
+                  })()}
                 </div>}
                 {/* Skills */}
                 {m.skills&&m.skills.length>0 && <div style={{ marginBottom:16 }}>
@@ -13778,7 +13835,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca, forceMobile }) {
+function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca, forceMobile, demands: propDemands }) {
   const _isCalDesktop = useIsDesktop();
   const isCalDesktop = forceMobile ? false : _isCalDesktop;
   const contained = !!forceMobile;
