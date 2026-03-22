@@ -1430,6 +1430,13 @@ const NETWORK_CFG = {
   TikTok: { icon: "tiktok", c: "#010101" }, LinkedIn: { icon: "linkedin", c: "#0A66C2" },
   YouTube: { icon: "youtube", c: "#FF0000" }, Twitter: { icon: "twitter", c: "#1D9BF0" },
 };
+const BANK_MAP = {
+  nubank:{l:"Nubank",c:"#8A05BE",ini:"Nu"},itau:{l:"Itaú",c:"#003399",ini:"Itaú"},bradesco:{l:"Bradesco",c:"#CC092F",ini:"Br"},
+  santander:{l:"Santander",c:"#EA1D25",ini:"San"},bb:{l:"Banco do Brasil",c:"#FFED00",ini:"BB"},inter:{l:"Inter",c:"#FF7A00",ini:"Int"},
+  c6:{l:"C6 Bank",c:"#242424",ini:"C6"},mercadopago:{l:"Mercado Pago",c:"#00B1EA",ini:"MP"},picpay:{l:"PicPay",c:"#21C25E",ini:"PP"},
+  revolut:{l:"Revolut",c:"#0075EB",ini:"Rev"},
+};
+const BankLogo = ({bankKey, sz}) => { const b = BANK_MAP[bankKey]; if (!b) return null; const s = sz||28; return <div style={{width:s,height:s,borderRadius:s/3.5,background:b.c,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:b.c==="#FFED00"?"#003399":"#fff",fontSize:s*0.35,fontWeight:800,letterSpacing:-0.5}}>{b.ini}</span></div>; };
 const NetworkIcon = ({ name, sz, active }) => {
   const cfg = NETWORK_CFG[name]; if (!cfg) return null;
   const fn = IC[cfg.icon]; if (!fn) return null;
@@ -12170,23 +12177,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <input value={pf.pix || ""} onChange={e => pfUp("pix",e.target.value)} className="tinput" placeholder="CPF, e-mail ou chave aleatória" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:6 }}>Banco</label>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:6, marginBottom:10 }}>
-            {[
-              {k:"nubank",l:"Nubank",c:"#8A05BE",logo:"https://logo.clearbit.com/nubank.com.br"},
-              {k:"itau",l:"Itaú",c:"#003399",logo:"https://logo.clearbit.com/itau.com.br"},
-              {k:"bradesco",l:"Bradesco",c:"#CC092F",logo:"https://logo.clearbit.com/bradesco.com.br"},
-              {k:"santander",l:"Santander",c:"#EA1D25",logo:"https://logo.clearbit.com/santander.com.br"},
-              {k:"bb",l:"Banco do Brasil",c:"#FFED00",logo:"https://logo.clearbit.com/bb.com.br"},
-              {k:"inter",l:"Inter",c:"#FF7A00",logo:"https://logo.clearbit.com/bancointer.com.br"},
-              {k:"c6",l:"C6 Bank",c:"#242424",logo:"https://logo.clearbit.com/c6bank.com.br"},
-              {k:"mercadopago",l:"Mercado Pago",c:"#00B1EA",logo:"https://logo.clearbit.com/mercadopago.com.br"},
-              {k:"picpay",l:"PicPay",c:"#21C25E",logo:"https://logo.clearbit.com/picpay.com"},
-              {k:"revolut",l:"Revolut",c:"#0075EB",logo:"https://logo.clearbit.com/revolut.com"},
-            ].map(b => {
-              const sel = (pf.bank_name||"").toLowerCase() === b.k;
-              return <button key={b.k} onClick={() => pfUp("bank_name", b.k)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 4px", borderRadius:12, border:sel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
-                <div style={{ width:32, height:32, borderRadius:10, overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", background:"#fff", border:"1px solid #eee" }}>
-                  <img src={b.logo} alt={b.l} style={{ width:24, height:24, objectFit:"contain" }} onError={e=>{e.target.style.display="none";e.target.parentElement.style.background=b.c;e.target.parentElement.innerHTML=`<span style="color:#fff;font-size:10px;font-weight:800">${b.l.substring(0,2).toUpperCase()}</span>`;}} />
-                </div>
+            {Object.entries(BANK_MAP).map(([k,b]) => {
+              const sel = (pf.bank_name||"") === k;
+              return <button key={k} onClick={() => pfUp("bank_name", k)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"8px 4px", borderRadius:12, border:sel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:sel?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
+                <BankLogo bankKey={k} sz={32} />
                 <span style={{ fontSize:8, fontWeight:sel?700:500, color:sel?B.accent:B.muted, textAlign:"center", lineHeight:1.1 }}>{b.l}</span>
               </button>;
             })}
@@ -12275,12 +12269,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
           ))}
           {pf.bank_name && (()=>{
-            const BK={nubank:{l:"Nubank",logo:"https://logo.clearbit.com/nubank.com.br"},itau:{l:"Itaú",logo:"https://logo.clearbit.com/itau.com.br"},bradesco:{l:"Bradesco",logo:"https://logo.clearbit.com/bradesco.com.br"},santander:{l:"Santander",logo:"https://logo.clearbit.com/santander.com.br"},bb:{l:"Banco do Brasil",logo:"https://logo.clearbit.com/bb.com.br"},inter:{l:"Inter",logo:"https://logo.clearbit.com/bancointer.com.br"},c6:{l:"C6 Bank",logo:"https://logo.clearbit.com/c6bank.com.br"},mercadopago:{l:"Mercado Pago",logo:"https://logo.clearbit.com/mercadopago.com.br"},picpay:{l:"PicPay",logo:"https://logo.clearbit.com/picpay.com"},revolut:{l:"Revolut",logo:"https://logo.clearbit.com/revolut.com"}};
-            const bk=BK[pf.bank_name]||{l:pf.bank_name};
+            const bk=BANK_MAP[pf.bank_name]||{l:pf.bank_name};
             return <div style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:"1px solid "+B.border }}>
-              <div style={{ width:28, height:28, borderRadius:8, overflow:"hidden", background:"#fff", border:"1px solid #eee", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                {bk.logo ? <img src={bk.logo} alt="" style={{ width:20, height:20, objectFit:"contain" }} onError={e=>{e.target.style.display="none";}} /> : null}
-              </div>
+              <BankLogo bankKey={pf.bank_name} sz={28} />
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>Banco</p><p style={{ fontSize:13, fontWeight:600 }}>{bk.l} · Ag {pf.bank_agency||"—"} · Cc {pf.bank_account||"—"} · {pf.bank_type==="poupanca"?"Poupança":"Corrente"}</p></div>
             </div>;
           })()}
@@ -13653,29 +13644,43 @@ function TeamPage({ onBack, user, onTeamChange }) {
                   ))}
                 </div>
                 {/* Extras */}
-                {m.user_id && memberExtras && (memberExtras.social||memberExtras.birth||memberExtras.blood) && <div style={{ marginBottom:16 }}>
+                {m.user_id && memberExtras && <div style={{ marginBottom:16 }}>
                   <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Dados adicionais</p>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                    {[{l:"Rede social",v:memberExtras.social},{l:"Data nascimento",v:memberExtras.birth&&isAdmin?memberExtras.birth:null},{l:"Tipo sanguíneo",v:memberExtras.blood},{l:"CPF",v:memberExtras.cpf&&isAdmin?memberExtras.cpf:null}].filter(x=>x.v).map((item,ii)=>(
+                    {[
+                      {l:"Rede social",v:memberExtras.social},
+                      {l:"Data nascimento",v:memberExtras.birth&&isAdmin?memberExtras.birth:null},
+                      {l:"Tipo sanguíneo",v:memberExtras.blood},
+                      {l:"CPF",v:memberExtras.cpf&&isAdmin?memberExtras.cpf:null},
+                      {l:"Modelo trabalho",v:memberExtras.work_pref?({presencial:"Presencial",remoto:"Remoto",hibrido:"Híbrido"}[memberExtras.work_pref]||memberExtras.work_pref):null},
+                      {l:"Disponibilidade",v:memberExtras.availability?({integral:"Integral",meio:"Meio período",freelancer:"Freelancer"}[memberExtras.availability]||memberExtras.availability):null},
+                      {l:"Camiseta",v:memberExtras.shirt_size||null},
+                    ].filter(x=>x.v).map((item,ii)=>(
                       <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
                         <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
                         <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v}</p>
                       </div>
                     ))}
                   </div>
+                  {/* Contato de emergência */}
+                  {isAdmin&&(memberExtras.emergency_name||memberExtras.emergency_phone)&&<div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg }}>
+                    <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Contato de emergência</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                      {memberExtras.emergency_name&&<div><p style={{fontSize:9,color:B.muted}}>Nome</p><p style={{fontSize:12,fontWeight:600,marginTop:2}}>{memberExtras.emergency_name}</p></div>}
+                      {memberExtras.emergency_phone&&<div><p style={{fontSize:9,color:B.muted}}>Telefone</p><p style={{fontSize:12,fontWeight:600,marginTop:2}}>{memberExtras.emergency_phone}</p></div>}
+                      {memberExtras.emergency_relation&&<div><p style={{fontSize:9,color:B.muted}}>Parentesco</p><p style={{fontSize:12,fontWeight:600,marginTop:2}}>{memberExtras.emergency_relation}</p></div>}
+                    </div>
+                  </div>}
                   {memberExtras.pix&&isAdmin&&<div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Chave PIX</p><p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{memberExtras.pix}</p></div>
                     <button onClick={()=>{navigator.clipboard.writeText(memberExtras.pix);showToast("PIX copiado ✓");}} style={{ padding:"5px 10px", borderRadius:6, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.accent }}>Copiar</button>
                   </div>}
                   {memberExtras.bank_name&&isAdmin&&(()=>{
-                    const BK={nubank:{l:"Nubank",c:"#8A05BE",logo:"https://logo.clearbit.com/nubank.com.br"},itau:{l:"Itaú",c:"#003399",logo:"https://logo.clearbit.com/itau.com.br"},bradesco:{l:"Bradesco",c:"#CC092F",logo:"https://logo.clearbit.com/bradesco.com.br"},santander:{l:"Santander",c:"#EA1D25",logo:"https://logo.clearbit.com/santander.com.br"},bb:{l:"Banco do Brasil",c:"#FFED00",logo:"https://logo.clearbit.com/bb.com.br"},inter:{l:"Inter",c:"#FF7A00",logo:"https://logo.clearbit.com/bancointer.com.br"},c6:{l:"C6 Bank",c:"#242424",logo:"https://logo.clearbit.com/c6bank.com.br"},mercadopago:{l:"Mercado Pago",c:"#00B1EA",logo:"https://logo.clearbit.com/mercadopago.com.br"},picpay:{l:"PicPay",c:"#21C25E",logo:"https://logo.clearbit.com/picpay.com"},revolut:{l:"Revolut",c:"#0075EB",logo:"https://logo.clearbit.com/revolut.com"}};
-                    const bk=BK[memberExtras.bank_name]||{l:memberExtras.bank_name,c:B.muted};
+                    const bk=BANK_MAP[memberExtras.bank_name]||{l:memberExtras.bank_name,c:B.muted};
                     return <div style={{ marginTop:10, padding:"10px 12px", borderRadius:10, background:B.bg }}>
                       <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Conta Bancária</p>
                       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <div style={{ width:28, height:28, borderRadius:8, overflow:"hidden", background:"#fff", border:"1px solid #eee", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                          {bk.logo ? <img src={bk.logo} alt="" style={{ width:20, height:20, objectFit:"contain" }} onError={e=>{e.target.style.display="none";}} /> : <span style={{ fontSize:9, fontWeight:800, color:bk.c }}>{bk.l.substring(0,2)}</span>}
-                        </div>
+                        <BankLogo bankKey={memberExtras.bank_name} sz={28} />
                         <div>
                           <p style={{ fontSize:13, fontWeight:700, color:B.text }}>{bk.l}</p>
                           <p style={{ fontSize:11, color:B.muted, marginTop:1 }}>Ag {memberExtras.bank_agency||"—"} · Cc {memberExtras.bank_account||"—"} · {memberExtras.bank_type==="poupanca"?"Poupança":"Corrente"}</p>
