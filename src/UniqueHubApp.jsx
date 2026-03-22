@@ -13649,7 +13649,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                     {[
                       {l:"Rede social",v:memberExtras.social},
-                      {l:"Data nascimento",v:memberExtras.birth&&isAdmin?memberExtras.birth:null},
+                      {l:"Data nascimento",v:memberExtras.birth&&isAdmin?(()=>{ const d=memberExtras.birth.replace(/\D/g,""); return d.length===8?d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4):memberExtras.birth; })():null},
                       {l:"Tipo sanguíneo",v:memberExtras.blood},
                       {l:"CPF",v:memberExtras.cpf&&isAdmin?memberExtras.cpf:null},
                       {l:"Modelo trabalho",v:memberExtras.work_pref?({presencial:"Presencial",remoto:"Remoto",hibrido:"Híbrido"}[memberExtras.work_pref]||memberExtras.work_pref):null},
@@ -13937,16 +13937,24 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
   const firstDow = new Date(curYear, curMonth, 1).getDay();
 
-  /* ── Convert scheduled demands into calendar events ── */
-  const demandEvents = (propDemands||[]).filter(d => d.scheduling?.date).map(d => {
-    const sd = d.scheduling.date; const st = d.scheduling.time || "10:00"; let day, month, year;
-    if (sd.includes("-")) { const [y,m,dd] = sd.split("-"); day=parseInt(dd); month=parseInt(m)-1; year=parseInt(y); }
-    else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); day=parseInt(dd); month=parseInt(mm)-1; year=curYear; }
-    else return null;
-    if (isNaN(day)||isNaN(month)) return null;
-    const stCfg = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#EC4899",caption:"#F59E0B",review:"#06B6D4",client:"#10B981",scheduled:"#F59E0B",published:"#BBF246"};
-    const stLabel = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Aprovação",scheduled:"Agendado",published:"Publicado"};
-    return { id:"demand_"+d.id, type:"demand", title:d.title||d.client||"Post", time:st, color:stCfg[d.stage]||"#F59E0B", day, month, year:year||curYear, client:d.client, createdBy:d.assignees?.[0]||"", network:d.network, format:d.format, stage:d.stage, stageLabel:stLabel[d.stage]||d.stage, demandId:d.id, priority:d.priority, isDemand:true };
+  /* ── Convert demands into calendar events ── */
+  const stCfgCal = {idea:"#8B5CF6",briefing:"#3B82F6",design:"#EC4899",caption:"#F59E0B",review:"#06B6D4",client:"#10B981",ajuste:"#F97316",scheduled:"#F59E0B",published:"#BBF246"};
+  const stLabelCal = {idea:"Ideia",briefing:"Briefing",design:"Design",caption:"Legenda",review:"Revisão",client:"Aprovação",ajuste:"Ajuste",scheduled:"Agendado",published:"Publicado"};
+  const parseDateStr = (str) => {
+    if (!str) return null;
+    if (str.includes("-")) { const p = str.split("T")[0].split("-"); return { day:parseInt(p[2]), month:parseInt(p[1])-1, year:parseInt(p[0]) }; }
+    if (str.includes("/") && str.length <= 5) { const [dd,mm] = str.split("/"); return { day:parseInt(dd), month:parseInt(mm)-1, year:curYear }; }
+    if (str.includes("/") && str.length > 5) { const [dd,mm,yy] = str.split("/"); return { day:parseInt(dd), month:parseInt(mm)-1, year:parseInt(yy) }; }
+    return null;
+  };
+  const demandEvents = (propDemands||[]).map(d => {
+    let dateInfo = parseDateStr(d.scheduling?.date);
+    let time = d.scheduling?.time || "10:00";
+    if (!dateInfo && d.publishedAt) dateInfo = parseDateStr(d.publishedAt);
+    if (!dateInfo && d.createdAt) dateInfo = parseDateStr(d.createdAt);
+    if (!dateInfo) return null;
+    const realStage = (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")) ? "ajuste" : d.stage;
+    return { id:"demand_"+d.id, type:"demand", title:d.title||d.client||"Post", time, color:stCfgCal[realStage]||"#F59E0B", day:dateInfo.day, month:dateInfo.month, year:dateInfo.year, client:d.client, createdBy:d.assignees?.[0]||"", network:d.network, format:d.format, stage:realStage, stageLabel:stLabelCal[realStage]||realStage, demandId:d.id, priority:d.priority, isDemand:true };
   }).filter(Boolean);
 
   const baseEvents = clientFilter ? events.filter(e => (e.client||"").toLowerCase() === clientFilter.toLowerCase() || (e.createdBy||"").toLowerCase() === clientFilter.toLowerCase()) : events;
