@@ -18553,7 +18553,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const isInboxDesktop = useIsDesktop() && !forceMobile;
   const { showToast, ToastEl } = useToast();
   const CDATA = propClients || [];
-  const [selClient, setSelClient] = useState(null);
+  const [selClient, setSelClient] = useState(isClientView && CDATA.length ? (CDATA[0]?.supaId || CDATA[0]?.id) : null);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selConv, setSelConv] = useState(null);
@@ -18562,6 +18562,9 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [filter, setFilter] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("all");
+  const [headerC, setHeaderC] = useState(false);
+  const msgsEndRef = useRef(null);
 
   const loadConversations = async (clientId) => {
     if (!clientId) return;
@@ -18586,7 +18589,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         body: JSON.stringify({ action:"messages", client_id: selClient, conversation_id: conv.id })
       });
       const data = await res.json();
-      if (data.messages) setMessages(data.messages);
+      if (data.messages) { setMessages(data.messages); setTimeout(() => msgsEndRef.current?.scrollIntoView({ behavior:"smooth" }), 100); }
       else if (data.error) showToast("Erro: " + data.error);
     } catch(e) { showToast("Falha ao carregar mensagens"); }
     setMsgsLoading(false);
@@ -18603,95 +18606,161 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
       const data = await res.json();
       if (data.success) {
         setMessages(prev => [...prev, { id: Date.now(), text: reply.trim(), created_time: new Date().toISOString(), from_name: user?.name || "Agência", is_page: true }]);
-        setReply("");
+        setReply(""); setTimeout(() => msgsEndRef.current?.scrollIntoView({ behavior:"smooth" }), 100);
       } else showToast("Erro ao enviar: " + (data.error || ""));
     } catch(e) { showToast("Falha ao enviar mensagem"); }
     setSending(false);
   };
 
   useEffect(() => { if (selClient) loadConversations(selClient); }, [selClient]);
-  useEffect(() => { if (isClientView && CDATA.length) setSelClient(CDATA[0]?.supaId || CDATA[0]?.id); }, []);
 
-  const filteredConvs = filter ? conversations.filter(c => (c.participant_name||"").toLowerCase().includes(filter.toLowerCase()) || (c.participant_username||"").toLowerCase().includes(filter.toLowerCase())) : conversations;
+  const filteredConvs = conversations.filter(c => {
+    if (platformFilter !== "all" && c.platform !== platformFilter) return false;
+    if (filter && !(c.participant_name||"").toLowerCase().includes(filter.toLowerCase()) && !(c.participant_username||"").toLowerCase().includes(filter.toLowerCase())) return false;
+    return true;
+  });
   const clientObj = CDATA.find(c => (c.supaId||c.id) === selClient);
+  const igCount = conversations.filter(c => c.platform === "instagram").length;
+  const fbCount = conversations.filter(c => c.platform === "facebook").length;
 
   const timeAgo = (t) => { if (!t) return ""; const d = (Date.now()-new Date(t).getTime())/1000; if(d<60) return "agora"; if(d<3600) return Math.floor(d/60)+"min"; if(d<86400) return Math.floor(d/3600)+"h"; return Math.floor(d/86400)+"d"; };
 
+  /* ── Conversation List Panel ── */
   const ConvList = () => (
-    <div style={{ flex:isInboxDesktop?"0 0 340px":"1", borderRight:isInboxDesktop?`1px solid ${B.border}`:"none", display:"flex", flexDirection:"column", height:"100%" }}>
+    <div style={{ flex:isInboxDesktop?"0 0 360px":"1", borderRight:isInboxDesktop?`1px solid ${B.border}`:"none", display:"flex", flexDirection:"column", height:"100%", background:isInboxDesktop?B.bg:"transparent" }}>
       {/* Client selector (agency only) */}
-      {!isClientView && <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
-        <select value={selClient||""} onChange={e=>setSelClient(e.target.value)} className="tinput" style={{ fontSize:13, fontWeight:600 }}>
-          <option value="">Selecione um cliente</option>
-          {CDATA.map(c => <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
-        </select>
+      {!isClientView && <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${B.border}` }}>
+        <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Cliente</p>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+          {CDATA.filter(c => c.status === "ativo").map(c => {
+            const cid = c.supaId || c.id;
+            const active = selClient === cid;
+            return <button key={cid} onClick={() => setSelClient(cid)} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:100, border:active?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:active?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:active?700:500, color:active?B.text:B.muted, transition:"all .15s" }}>
+              <Av src={c.logo} name={c.name} sz={18} fs={8} />
+              {c.name.split(" ")[0]}
+            </button>;
+          })}
+        </div>
       </div>}
-      {/* Search */}
-      <div style={{ padding:"8px 14px" }}>
-        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Buscar conversa..." className="tinput" style={{ fontSize:12 }} />
+
+      {/* Platform tabs + search */}
+      <div style={{ padding:"10px 16px 0" }}>
+        <div style={{ display:"flex", gap:4, marginBottom:8 }}>
+          {[{k:"all",l:"Todos",n:conversations.length},{k:"instagram",l:"Instagram",n:igCount},{k:"facebook",l:"Messenger",n:fbCount}].map(t => (
+            <button key={t.k} onClick={() => setPlatformFilter(t.k)} style={{ padding:"5px 12px", borderRadius:100, border:platformFilter===t.k?"none":`1.5px solid ${B.border}`, background:platformFilter===t.k?t.k==="instagram"?"#E1306C":t.k==="facebook"?"#1877F2":B.accent:"transparent", color:platformFilter===t.k?"#fff":B.muted, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, transition:"all .15s" }}>
+              {t.l} {t.n > 0 && <span style={{ marginLeft:2, opacity:.8 }}>({t.n})</span>}
+            </button>
+          ))}
+        </div>
+        <div style={{ position:"relative" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Buscar por nome..." className="tinput" style={{ fontSize:12, paddingLeft:32 }} />
+        </div>
       </div>
-      {/* Conversations list */}
-      <div style={{ flex:1, overflowY:"auto" }}>
-        {loading && <div style={{ padding:30, textAlign:"center" }}><div style={{ width:24, height:24, border:"2.5px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:11, color:B.muted, marginTop:8 }}>Carregando conversas...</p></div>}
-        {!loading && !selClient && <div style={{ padding:30, textAlign:"center" }}><p style={{ fontSize:13, color:B.muted }}>Selecione um cliente para ver as conversas</p></div>}
-        {!loading && selClient && filteredConvs.length === 0 && <div style={{ padding:30, textAlign:"center" }}><p style={{ fontSize:13, color:B.muted }}>Nenhuma conversa encontrada</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Verifique se as permissões de messaging estão ativas</p></div>}
-        {filteredConvs.map(c => (
-          <div key={c.id} onClick={()=>loadMessages(c)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", background:selConv?.id===c.id?`${B.accent}08`:"transparent", borderBottom:`1px solid ${B.border}05`, transition:"background .15s" }}>
-            <div style={{ width:40, height:40, borderRadius:"50%", background:c.platform==="instagram"?"#E1306C15":"#1877F215", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              {c.platform==="instagram" ? <svg width="18" height="18" viewBox="0 0 24 24" fill="#E1306C"><rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C"/></svg>
-              : <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2"><path d="M12 2C6.48 2 2 6.48 2 12c0 5.52 4.48 10 10 10 5.52 0 10-4.48 10-10 0-5.52-4.48-10-10-10zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>}
-            </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <p style={{ fontSize:13, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.participant_name}</p>
-                <span style={{ fontSize:9, color:B.muted, flexShrink:0 }}>{timeAgo(c.updated_time)}</span>
-              </div>
-              {c.participant_username && <p style={{ fontSize:10, color:"#E1306C", fontWeight:600 }}>@{c.participant_username}</p>}
-              {c.snippet && <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:200 }}>{c.snippet}</p>}
-            </div>
+
+      {/* Conversations */}
+      <div style={{ flex:1, overflowY:"auto", padding:"6px 8px" }}>
+        {loading && <div style={{ padding:40, textAlign:"center" }}>
+          <div style={{ width:32, height:32, border:"3px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} />
+          <p style={{ fontSize:12, color:B.muted, marginTop:12 }}>Carregando conversas...</p>
+        </div>}
+
+        {!loading && !selClient && <div style={{ padding:"60px 20px", textAlign:"center" }}>
+          <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+            {IC.inbox(B.accent)}
           </div>
-        ))}
+          <p style={{ fontSize:16, fontWeight:800, color:B.text, marginBottom:4 }}>Inbox Social</p>
+          <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>Selecione um cliente acima para visualizar<br/>as mensagens do Instagram e Facebook</p>
+        </div>}
+
+        {!loading && selClient && filteredConvs.length === 0 && conversations.length === 0 && <div style={{ padding:"50px 20px", textAlign:"center" }}>
+          <div style={{ width:56, height:56, borderRadius:16, background:"#F59E0B10", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <p style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>Nenhuma conversa</p>
+          <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>As permissões de messaging precisam ser<br/>aprovadas pela Meta para acessar as conversas.</p>
+          <p style={{ fontSize:10, color:B.accent, fontWeight:600, marginTop:10 }}>Permissões necessárias: pages_messaging,<br/>instagram_manage_messages</p>
+        </div>}
+
+        {filteredConvs.map(c => {
+          const active = selConv?.id === c.id;
+          return (
+            <div key={c.id} onClick={() => loadMessages(c)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", cursor:"pointer", background:active?`${B.accent}10`:"transparent", borderRadius:14, marginBottom:2, border:active?`1.5px solid ${B.accent}25`:"1.5px solid transparent", transition:"all .15s" }}>
+              <div style={{ width:44, height:44, borderRadius:"50%", background:c.platform==="instagram"?"linear-gradient(135deg, #F58529, #DD2A7B, #8134AF)":"#1877F2", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 2px 8px rgba(0,0,0,0.1)" }}>
+                {c.platform==="instagram"
+                  ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#fff" stroke="none"/></svg>
+                  : <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.participant_name}</p>
+                  <span style={{ fontSize:9, color:B.muted, flexShrink:0, fontWeight:600 }}>{timeAgo(c.updated_time)}</span>
+                </div>
+                {c.participant_username && <p style={{ fontSize:10, color:c.platform==="instagram"?"#E1306C":"#1877F2", fontWeight:600 }}>@{c.participant_username}</p>}
+                {c.snippet && <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:1 }}>{c.snippet}</p>}
+                {!c.snippet && c.message_count > 0 && <p style={{ fontSize:10, color:B.muted }}>{c.message_count} mensagen{c.message_count!==1?"s":""}</p>}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 
+  /* ── Message Thread Panel ── */
   const MsgThread = () => (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%" }}>
+    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%", background:isInboxDesktop?B.bgCard:"transparent" }}>
       {!selConv ? (
         <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ textAlign:"center" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.border} strokeWidth="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            <p style={{ fontSize:14, color:B.muted, marginTop:8 }}>Selecione uma conversa</p>
+          <div style={{ textAlign:"center", opacity:.5 }}>
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <p style={{ fontSize:14, fontWeight:600, color:B.muted, marginTop:12 }}>Selecione uma conversa</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em uma conversa ao lado para ver as mensagens</p>
           </div>
         </div>
       ) : (<>
         {/* Thread header */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
-          {!isInboxDesktop && <button onClick={()=>setSelConv(null)} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>}
-          <div style={{ width:36, height:36, borderRadius:"50%", background:selConv.platform==="instagram"?"#E1306C15":"#1877F215", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize:16 }}>{selConv.platform==="instagram"?"📸":"💬"}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard }}>
+          {!isInboxDesktop && <button onClick={() => setSelConv(null)} style={{ width:32, height:32, borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>}
+          <div style={{ width:40, height:40, borderRadius:"50%", background:selConv.platform==="instagram"?"linear-gradient(135deg, #F58529, #DD2A7B, #8134AF)":"#1877F2", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.1)" }}>
+            {selConv.platform==="instagram"
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>}
           </div>
-          <div>
+          <div style={{ flex:1 }}>
             <p style={{ fontSize:14, fontWeight:700 }}>{selConv.participant_name}</p>
-            <p style={{ fontSize:10, color:B.muted }}>{selConv.platform === "instagram" ? "Instagram" : "Messenger"} · {clientObj?.name || ""}</p>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:10, padding:"2px 8px", borderRadius:6, background:selConv.platform==="instagram"?"#E1306C12":"#1877F212", color:selConv.platform==="instagram"?"#E1306C":"#1877F2", fontWeight:700 }}>{selConv.platform === "instagram" ? "Instagram" : "Messenger"}</span>
+              <span style={{ fontSize:10, color:B.muted }}>{clientObj?.name || ""}</span>
+            </div>
           </div>
         </div>
+
         {/* Messages */}
-        <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:4 }}>
-          {msgsLoading && <div style={{ textAlign:"center", padding:20 }}><div style={{ width:20, height:20, border:"2px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /></div>}
-          {messages.map(m => (
-            <div key={m.id} style={{ display:"flex", justifyContent:m.is_page?"flex-end":"flex-start", marginBottom:2 }}>
-              <div style={{ maxWidth:"75%", padding:"8px 12px", borderRadius:m.is_page?"16px 16px 4px 16px":"16px 16px 16px 4px", background:m.is_page?B.accent:"#F0F0F5", color:m.is_page?"#0D0D0D":B.text }}>
-                <p style={{ fontSize:13, lineHeight:1.4, whiteSpace:"pre-wrap" }}>{m.text}</p>
-                <p style={{ fontSize:9, color:m.is_page?"#0D0D0D80":B.muted, textAlign:"right", marginTop:2 }}>{m.created_time ? new Date(m.created_time).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""}</p>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:6, background:`${B.bg}80` }}>
+          {msgsLoading && <div style={{ textAlign:"center", padding:30 }}><div style={{ width:24, height:24, border:"2.5px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:11, color:B.muted, marginTop:8 }}>Carregando mensagens...</p></div>}
+          {!msgsLoading && messages.length === 0 && <div style={{ textAlign:"center", padding:30, opacity:.5 }}><p style={{ fontSize:12, color:B.muted }}>Nenhuma mensagem carregada</p></div>}
+          {messages.map((m, idx) => {
+            const showDate = idx === 0 || new Date(m.created_time).toDateString() !== new Date(messages[idx-1]?.created_time).toDateString();
+            return <React.Fragment key={m.id}>
+              {showDate && m.created_time && <div style={{ textAlign:"center", padding:"8px 0" }}><span style={{ fontSize:9, fontWeight:700, color:B.muted, background:B.bg, padding:"4px 12px", borderRadius:100, border:`1px solid ${B.border}` }}>{new Date(m.created_time).toLocaleDateString("pt-BR", { day:"2-digit", month:"short" })}</span></div>}
+              <div style={{ display:"flex", justifyContent:m.is_page?"flex-end":"flex-start" }}>
+                <div style={{ maxWidth:"75%", padding:"10px 14px", borderRadius:m.is_page?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.is_page?B.accent:B.bgCard, color:m.is_page?"#0D0D0D":B.text, border:m.is_page?"none":`1px solid ${B.border}`, boxShadow:m.is_page?"0 2px 8px "+B.accent+"20":"0 1px 4px rgba(0,0,0,0.04)" }}>
+                  {!m.is_page && <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:3 }}>{m.from_name}</p>}
+                  <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{m.text}</p>
+                  {m.attachments?.length > 0 && <div style={{ marginTop:6 }}>{m.attachments.map((a,ai) => a.url ? <img key={ai} src={a.url} style={{ maxWidth:"100%", borderRadius:10, marginTop:4 }} /> : <span key={ai} style={{ fontSize:10, color:B.muted }}>📎 {a.name||"Anexo"}</span>)}</div>}
+                  <p style={{ fontSize:9, color:m.is_page?"#0D0D0D60":B.muted, textAlign:"right", marginTop:3 }}>{m.created_time ? new Date(m.created_time).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            </React.Fragment>;
+          })}
+          <div ref={msgsEndRef} />
         </div>
+
         {/* Reply input */}
-        <div style={{ display:"flex", gap:8, padding:"10px 16px", borderTop:`1px solid ${B.border}`, flexShrink:0 }}>
-          <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); sendReply(); }}} placeholder="Digite sua resposta..." className="tinput" style={{ flex:1, fontSize:13 }} disabled={sending} />
-          <button onClick={sendReply} disabled={!reply.trim()||sending} style={{ width:40, height:40, borderRadius:12, background:reply.trim()?B.accent:B.border, border:"none", cursor:reply.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ display:"flex", gap:8, padding:"12px 16px", borderTop:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard }}>
+          <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); sendReply(); }}} placeholder="Digite sua resposta..." className="tinput" style={{ flex:1, fontSize:13, padding:"10px 14px" }} disabled={sending} />
+          <button onClick={sendReply} disabled={!reply.trim()||sending} style={{ width:42, height:42, borderRadius:12, background:reply.trim()?B.accent:B.border, border:"none", cursor:reply.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", boxShadow:reply.trim()?"0 2px 8px "+B.accent+"30":"none" }}>
             {sending ? <div style={{ width:16, height:16, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} />
             : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={reply.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
           </button>
@@ -18701,9 +18770,9 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   );
 
   return (<>
-    <Head title="Inbox" sub={clientObj?.name || "Mensagens das redes sociais"} onBack={onBack || (selConv && !isInboxDesktop ? ()=>setSelConv(null) : undefined)} />
+    <CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} />
     {ToastEl}
-    <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 120px)":"calc(100vh - 160px)", overflow:"hidden" }}>
+    <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 120px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isInboxDesktop?16:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", margin:isInboxDesktop?"0 16px 16px":"0" }}>
       {isInboxDesktop ? (<>
         <ConvList />
         <MsgThread />
