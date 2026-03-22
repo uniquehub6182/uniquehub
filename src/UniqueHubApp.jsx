@@ -7651,7 +7651,7 @@ REGRAS TÉCNICAS:
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
     <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, display:"flex", flexDirection:"column", overflow:"hidden", alignItems:"center" }}>
-      <div style={{ width:"100%", maxWidth:1400, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", padding:"0 24px" }}>
+      <div style={{ width:"100%", maxWidth:1400, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", padding:"0 16px" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+B.border, flexShrink:0 }}>
         <button onClick={resetImportPlan} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
