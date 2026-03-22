@@ -7167,7 +7167,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
       setNaSources(sources);
       setNaProgress("Buscando notícias recentes dos sites...");
       const keys = await supaGetAIKeys();
-      const clientObj = (clients||[]).find(c=>(c.supaId||c.id)===naClient);
+      const clientObj = (CDATA).find(c=>(c.supaId||c.id)===naClient);
       const clientName = clientObj?.name || "Cliente";
       const clientSegment = clientObj?.segment || "";
       const currentYear = new Date().getFullYear();
@@ -7249,7 +7249,7 @@ RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
       const newD = {
         title: (p.title||"Notícia").substring(0,57), type: p.type||"social", stage: "design",
         format: p.format||"Feed", priority: "média", network: (p.networks||["Instagram","Facebook"]).join(", "),
-        client: (clients||[]).find(c=>(c.supaId||c.id)===naClient)?.name||"", client_id: naClient,
+        client: (CDATA).find(c=>(c.supaId||c.id)===naClient)?.name||"", client_id: naClient,
         scheduling: p.schedDate ? { date: p.schedDate, time: p.schedTime||"10:00" } : null,
         steps: {
           idea: { text: `📰 Gerado a partir de: ${p.sourceName||"Fonte de notícias"}\n${p.sourceUrl||""}\n\n${p.title}\n\n${p.description||""}`, by: "Munique A.I · News", date: today },
@@ -7679,7 +7679,7 @@ REGRAS TÉCNICAS:
           {naStep === 1 && <>
             <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Selecione o cliente</p>
             <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.4 }}>A IA vai acessar os sites de referência configurados e gerar posts automaticamente.</p>
-            {(clients||[]).filter(c => c.status === "ativo" || !c.status).map(c => {
+            {(CDATA).filter(c => c.status === "ativo" || !c.status).map(c => {
               const cid = c.supaId || c.id;
               const sel = naClient === cid;
               return <button key={cid} onClick={async () => { setNaClient(cid); const srcs = await loadClientSources(cid); setNaSources(srcs); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 14px", borderRadius:14, border:sel?"2px solid "+B.accent:"1.5px solid "+B.border, background:sel?B.accent+"08":"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left", marginBottom:6 }}>
@@ -10183,7 +10183,7 @@ const showBrowserNotif = (title, body) => {
   } catch {}
 };
 
-function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
+function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUserId, onOpenWithConsumed }) {
   const _chatDesktop = useIsDesktop();
   const chatIsDesktop = forceMobile ? false : _chatDesktop;
   const contained = !!forceMobile; /* true when inside dashboard phone-block */
@@ -10327,6 +10327,21 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile }) {
     };
     load();
   }, [user?.id]);
+
+  /* Auto-open DM when redirected from Team page */
+  useEffect(() => {
+    if (!openWithUserId || !user?.id) return;
+    (async () => {
+      const convId = await supaFindOrCreateDM(user.id, openWithUserId);
+      if (convId) {
+        const refreshed = await supaLoadConversations(user.id);
+        setConvs(refreshed);
+        const found = refreshed.find(c => c.id === convId);
+        if (found) { setSelConv(found); setView("chat"); }
+      }
+      if (onOpenWithConsumed) onOpenWithConsumed();
+    })();
+  }, [openWithUserId]);
 
   /* Load messages + subscribe when conversation selected */
   const markReadTimer = useRef(null);
@@ -22533,6 +22548,12 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
   const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
+  const [chatOpenWith, setChatOpenWith] = useState(null);
+  useEffect(() => {
+    const handler = (e) => { const d = e.detail; if (d?.userId) { setSub(null); setTab("chat"); setChatOpenWith(d.userId); } };
+    window.addEventListener("uh_open_chat_with", handler);
+    return () => window.removeEventListener("uh_open_chat_with", handler);
+  }, []);
 
   const [agencyIdentity, setAgencyIdentity] = useState({ name:"Unique Marketing 360", slogan:"Agência de marketing 360", city:"Petrópolis, RJ", logo_url:"" });
   useEffect(() => {
@@ -23058,7 +23079,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "notes" && <NotesPage onBack={() => setSub(null)} user={user} />}
         {sub === "search" && <SearchPage onBack={() => setSub(null)} team={sharedTeam} clients={sharedClients} />}
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
-        {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} />}
+        {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} openWithUserId={chatOpenWith} onOpenWithConsumed={() => setChatOpenWith(null)} />}
       </div>
 
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
