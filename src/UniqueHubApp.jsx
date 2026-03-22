@@ -1789,9 +1789,19 @@ function LoginPage({ onAuth, onClientAuth }) {
 
   /* ── Validation per step ── */
   const cpfRaw = rCpf.replace(/\D/g, "");
+  const validateCpf = (cpf) => {
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let sum = 0; for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+    let d1 = 11 - (sum % 11); if (d1 >= 10) d1 = 0;
+    if (parseInt(cpf[9]) !== d1) return false;
+    sum = 0; for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i);
+    let d2 = 11 - (sum % 11); if (d2 >= 10) d2 = 0;
+    return parseInt(cpf[10]) === d2;
+  };
+  const cpfValid = cpfRaw.length === 11 && validateCpf(cpfRaw);
   const birthRaw = rBirth.replace(/\D/g, "");
   const phoneRaw = rPhone.replace(/\D/g, "");
-  const step1Valid = rName.trim().length >= 3 && rNick.trim() && cpfRaw.length === 11 && birthRaw.length === 8;
+  const step1Valid = rName.trim().length >= 3 && rNick.trim() && cpfValid && birthRaw.length === 8;
   const step2Valid = phoneRaw.length >= 10;
   const step3Valid = !!rCargo;
   const step4Valid = supabase ? (rPw.length >= 6 && rPw === rPwConfirm) : (pwStrong(rPw) && rPw === rPwConfirm);
@@ -2118,7 +2128,8 @@ function LoginPage({ onAuth, onClientAuth }) {
             <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>CPF *</label>
             <input value={rCpf} onChange={e => setRCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" className="tinput" inputMode="numeric" />
             {cpfRaw.length > 0 && cpfRaw.length < 11 && <p style={{ fontSize: 10, color: B.orange, marginTop: 4 }}>{11 - cpfRaw.length} dígitos restantes</p>}
-            {cpfRaw.length === 11 && <p style={{ fontSize: 10, color: B.green, marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}><span style={{ display: "flex" }}>{IC.check}</span>CPF válido</p>}
+            {cpfRaw.length === 11 && cpfValid && <p style={{ fontSize: 10, color: B.green, marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}><span style={{ display: "flex" }}>{IC.check}</span>CPF válido</p>}
+            {cpfRaw.length === 11 && !cpfValid && <p style={{ fontSize: 10, color: B.red, marginTop: 4 }}>CPF inválido — verifique os dígitos</p>}
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Data de nascimento *</label>
