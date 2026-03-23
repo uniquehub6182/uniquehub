@@ -19733,7 +19733,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
     </div>
   );
 
-  const TOP = 70;
+  const TOP = forceMobile ? "env(safe-area-inset-top, 16px)" : 70;
 
   return (
     <div className={isInboxDesktop ? "content-wide" : ""} style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
