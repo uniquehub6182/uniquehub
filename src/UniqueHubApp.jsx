@@ -16485,7 +16485,19 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     ...(!isClientView ? [{ k:"clients", l:"Por Cliente", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> }] : []),
     { k:"instagram", l:"Instagram", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> },
     { k:"facebook", l:"Facebook", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg> },
+    { k:"posts", l:"Posts", ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
   ];
+
+  /* Build allPosts for mobile view */
+  const mobileAllPosts = React.useMemo(() => {
+    const posts = [];
+    clientMetrics.forEach(c => {
+      if (!c.hasData) return;
+      (c.fbPosts||[]).forEach(p => posts.push({_p:"fb",_client:c.name,_date:p.created_time,_img:p.full_picture,_text:p.message,_likes:p.likes_count||0,_comments:p.comments_count||0,_shares:p.shares_count||0,_saved:0,_link:p.permalink_url,_type:"post"}));
+      (c.mediaPosts||[]).forEach(p => { const sv=p.insights?.data?.find(i=>i.name==="saved")?.values?.[0]?.value||0; const sh=p.insights?.data?.find(i=>i.name==="shares")?.values?.[0]?.value||0; posts.push({_p:"ig",_client:c.name,_date:p.timestamp,_img:p.thumbnail_url||p.media_url,_text:p.caption,_likes:p.like_count||0,_comments:p.comments_count||0,_shares:sh,_saved:sv,_link:p.permalink,_type:p.media_type==="VIDEO"?"reels":p.media_type==="CAROUSEL_ALBUM"?"carrossel":"imagem"}); });
+    });
+    return posts.sort((a,b)=>new Date(b._date||0)-new Date(a._date||0));
+  }, [clientMetrics]);
 
   return (
     <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
@@ -16716,6 +16728,38 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
           {clientMetrics.filter(c => c.fbDaily).length === 0 && <Card style={{ textAlign:"center", padding:20 }}><p style={{ fontSize:12, color:B.muted }}>Nenhum cliente com Facebook conectado via API.</p></Card>}
         </>}
       </>}
+
+        {tab === "posts" && <>
+          <Card style={{ marginBottom:8, background:B.dark, border:"none", padding:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>Posts Publicados</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginTop:2 }}>{mobileAllPosts.length} posts no período</p></div>
+            </div>
+          </Card>
+          {mobileAllPosts.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, color:B.muted }}>Nenhum post encontrado no período selecionado.</p></Card>}
+          {mobileAllPosts.map((p,pi) => (
+            <Card key={pi} style={{ marginBottom:8, padding:0, overflow:"hidden" }}>
+              <div style={{ display:"flex", gap:0 }}>
+                {p._img && <div style={{ width:100, height:100, flexShrink:0, position:"relative" }}>
+                  <img src={p._img} crossOrigin="anonymous" alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} />
+                  <span style={{ position:"absolute", top:4, left:4, fontSize:7, fontWeight:700, padding:"2px 5px", borderRadius:4, background:p._p==="ig"?"#E4405F":"#4267B2", color:"#fff" }}>{p._p==="ig"?"IG":"FB"}</span>
+                </div>}
+                <div style={{ flex:1, padding:"10px 12px", minWidth:0 }}>
+                  {p._text && <p style={{ fontSize:11, lineHeight:1.3, marginBottom:8, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", color:B.text }}>{p._text}</p>}
+                  <div style={{ display:"flex", gap:12 }}>
+                    <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#E91E63" }}>{p._likes}</p><p style={{ fontSize:8, color:B.muted }}>Curtidas</p></div>
+                    <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{p._comments}</p><p style={{ fontSize:8, color:B.muted }}>Coment.</p></div>
+                    <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.cyan||"#22D3EE" }}>{p._saved}</p><p style={{ fontSize:8, color:B.muted }}>Salvos</p></div>
+                    <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.blue }}>{p._shares}</p><p style={{ fontSize:8, color:B.muted }}>Compart.</p></div>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6 }}>
+                    <p style={{ fontSize:9, color:B.muted }}>{p._date ? new Date(p._date).toLocaleDateString("pt-BR") : ""}{p._type?" · "+p._type:""}{!isClientView&&p._client?" · "+p._client:""}</p>
+                    {p._link && <a href={p._link} target="_blank" rel="noopener noreferrer" style={{ fontSize:9, fontWeight:700, color:B.accent, textDecoration:"none" }}>Ver ↗</a>}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </>}
 
       <div style={{ height:100 }} />
       </div>
