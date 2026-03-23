@@ -16746,7 +16746,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
           {mobileAllPosts.map((p,pi) => (
             <Card key={pi} style={{ marginBottom:8, padding:0, overflow:"hidden" }}>
               <div style={{ display:"flex", gap:0 }}>
-                {p._img && <div style={{ width:100, height:100, flexShrink:0, position:"relative" }}>
+                {p._img && <div style={{ width:120, height:120, flexShrink:0, position:"relative", borderRadius:12, overflow:"hidden" }}>
                   <img src={p._img} crossOrigin="anonymous" alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>{e.target.style.display="none"}} />
                   <span style={{ position:"absolute", top:4, left:4, fontSize:7, fontWeight:700, padding:"2px 5px", borderRadius:4, background:p._p==="ig"?"#E4405F":"#4267B2", color:"#fff" }}>{p._p==="ig"?"IG":"FB"}</span>
                 </div>}
@@ -20917,7 +20917,7 @@ function HelpPage({ onBack }) {
         </div>
 
         {/* Version info */}
-        <div style={{ textAlign:"center", padding:"20px 0 8px", opacity:0.4 }}>
+        <div style={{ textAlign:"center", padding:"20px 0 8px", opacity:0.4, marginBottom:100 }}>
           <p style={{ fontSize:10 }}>UniqueHub v1.0.0 · Unique Marketing 360</p>
           <p style={{ fontSize:9, marginTop:2 }}>Petrópolis, RJ — Brasil</p>
         </div>
@@ -22437,42 +22437,40 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </>}
 
         {tab === "ranking" && <>
-          <Card style={{ padding:0, overflow:"hidden" }}>
-            <div style={{ background:"#1A2332", padding:"24px 16px 0", color:"#fff", textAlign:"center" }}>
-              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", marginBottom:24 }}>Top 3 do mês</p>
-              <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative", minHeight:230, padding:"0 8px" }}>
-                {/* Dotted line */}
-                <div style={{ position:"absolute", left:16, right:16, top:"42%", borderTop:"2px dashed rgba(255,255,255,0.06)" }} />
+          <div style={{ borderRadius:24, overflow:"hidden", background:"linear-gradient(180deg, #0D0D0D 0%, #1A2332 100%)", padding:"28px 20px 0", color:"#fff", textAlign:"center", border:"none" }}>
+            <p style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", marginBottom:28 }}>⭐ Top 3 do mês</p>
+            <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative", minHeight:260, padding:"0 4px" }}>
+              {/* Glow behind 1st */}
+              <div style={{ position:"absolute", top:"20%", left:"50%", transform:"translateX(-50%)", width:120, height:120, borderRadius:"50%", background:`radial-gradient(circle, ${B.accent}20 0%, transparent 70%)`, filter:"blur(30px)" }} />
 
-                {/* 2nd */}
-                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#C0C0C0"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">2</text><path d="M7 18l5 4 5-4" fill="none" stroke="#8B9099" strokeWidth="2"/></svg>
-                  <div style={{ width:48, height:48, borderRadius:14, background:"#2A3444", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"rgba(255,255,255,0.7)" }}>{(RANKING[1]?.name||"?")[0]}</div>
-                  <p style={{ fontSize:10, fontWeight:600, marginTop:8, color:"rgba(255,255,255,0.6)" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:18, fontWeight:900, marginTop:2 }}>{RANKING[1]?.score}</p>
-                  <div style={{ width:52, height:46, background:"#2A3444", borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
-                </div>
+              {/* 2nd */}
+              <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
+                <div style={{ width:52, height:52, borderRadius:"50%", background:"linear-gradient(135deg, #E8E8E8, #B0B0B0)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"#fff", border:"3px solid #C0C0C0", boxShadow:"0 4px 15px rgba(192,192,192,0.3)" }}>{(RANKING[1]?.name||"?")[0]}</div>
+                <div style={{ width:24, height:24, borderRadius:"50%", background:"#C0C0C0", display:"flex", alignItems:"center", justifyContent:"center", margin:"-10px auto 0", position:"relative", zIndex:2, fontSize:11, fontWeight:900, color:"#fff" }}>2</div>
+                <p style={{ fontSize:11, fontWeight:600, marginTop:6, color:"rgba(255,255,255,0.6)" }}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{ fontSize:20, fontWeight:900, marginTop:2, color:"#C0C0C0" }}>{RANKING[1]?.score||0}</p>
+                <div style={{ width:"80%", height:50, background:"linear-gradient(180deg, #3A4454, #2A3444)", borderRadius:"8px 8px 0 0", margin:"12px auto 0" }} />
+              </div>
 
-                {/* 1st */}
-                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:2 }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#FFD700"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">1</text><path d="M7 18l5 4 5-4" fill="none" stroke="#DAA520" strokeWidth="2"/></svg>
-                  <div style={{ width:60, height:60, borderRadius:"50%", border:`3px solid ${B.accent}`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:24, fontWeight:900, color:B.accent, background:"#2A3444" }}>{(RANKING[0]?.name||"?")[0]}</div>
-                  <p style={{ fontSize:11, fontWeight:700, marginTop:8 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:22, fontWeight:900, color:B.accent, marginTop:2 }}>{RANKING[0]?.score}</p>
-                  <div style={{ width:52, height:64, background:B.accent, borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
-                </div>
+              {/* 1st */}
+              <div style={{ flex:1.2, textAlign:"center", position:"relative", zIndex:2 }}>
+                <div style={{ width:68, height:68, borderRadius:"50%", background:`linear-gradient(135deg, ${B.accent}, ${B.accent}CC)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:26, fontWeight:900, color:"#0D0D0D", border:`4px solid ${B.accent}`, boxShadow:`0 6px 25px ${B.accent}40` }}>{(RANKING[0]?.name||"?")[0]}</div>
+                <div style={{ width:28, height:28, borderRadius:"50%", background:"#FFD700", display:"flex", alignItems:"center", justifyContent:"center", margin:"-12px auto 0", position:"relative", zIndex:2, fontSize:13, fontWeight:900, color:"#fff", boxShadow:"0 2px 10px rgba(255,215,0,0.5)", border:"2px solid #DAA520" }}>1</div>
+                <p style={{ fontSize:13, fontWeight:800, marginTop:6 }}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{ fontSize:26, fontWeight:900, color:B.accent, marginTop:2 }}>{RANKING[0]?.score||0}</p>
+                <div style={{ width:"80%", height:70, background:`linear-gradient(180deg, ${B.accent}, ${B.accent}AA)`, borderRadius:"8px 8px 0 0", margin:"12px auto 0", boxShadow:`0 -4px 20px ${B.accent}30` }} />
+              </div>
 
-                {/* 3rd */}
-                <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" style={{ marginBottom:4 }}><circle cx="12" cy="10" r="9" fill="#CD7F32"/><text x="12" y="13" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="900">3</text><path d="M7 18l5 4 5-4" fill="none" stroke="#A0522D" strokeWidth="2"/></svg>
-                  <div style={{ width:48, height:48, borderRadius:14, background:"#2A3444", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:20, fontWeight:900, color:"rgba(255,255,255,0.7)" }}>{(RANKING[2]?.name||"?")[0]}</div>
-                  <p style={{ fontSize:10, fontWeight:600, marginTop:8, color:"rgba(255,255,255,0.6)" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")}</p>
-                  <p style={{ fontSize:18, fontWeight:900, marginTop:2 }}>{RANKING[2]?.score}</p>
-                  <div style={{ width:52, height:34, background:"#2A3444", borderRadius:"6px 6px 0 0", margin:"10px auto 0" }} />
-                </div>
+              {/* 3rd */}
+              <div style={{ flex:1, textAlign:"center", position:"relative", zIndex:1 }}>
+                <div style={{ width:48, height:48, borderRadius:"50%", background:"linear-gradient(135deg, #E8C090, #B87333)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", fontSize:18, fontWeight:900, color:"#fff", border:"3px solid #CD7F32", boxShadow:"0 4px 15px rgba(205,127,50,0.3)" }}>{(RANKING[2]?.name||"?")[0]}</div>
+                <div style={{ width:24, height:24, borderRadius:"50%", background:"#CD7F32", display:"flex", alignItems:"center", justifyContent:"center", margin:"-10px auto 0", position:"relative", zIndex:2, fontSize:11, fontWeight:900, color:"#fff" }}>3</div>
+                <p style={{ fontSize:11, fontWeight:600, marginTop:6, color:"rgba(255,255,255,0.6)" }}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{ fontSize:20, fontWeight:900, marginTop:2, color:"#CD7F32" }}>{RANKING[2]?.score||0}</p>
+                <div style={{ width:"80%", height:38, background:"linear-gradient(180deg, #3A4454, #2A3444)", borderRadius:"8px 8px 0 0", margin:"12px auto 0" }} />
               </div>
             </div>
-          </Card>
+          </div>
           <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:4 }}>Top 10 — Ranking</p>
           <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Apenas os 10 melhores clientes aparecem no ranking.</p>
           {RANKING.slice(0,10).map((r,i) => <Card key={i} delay={i*0.03} style={{ marginBottom:6, background:r.isMe?`${B.accent}06`:B.bgCard, border:r.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
@@ -22499,16 +22497,14 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </>}
 
         {tab === "missions" && <>
-          <Card style={{ padding:0, overflow:"hidden" }}>
-            <div style={{ background:B.dark||"#111", padding:"16px 20px", color:"#fff" }}>
-              <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Missões do mês</p>
+          <div style={{ borderRadius:20, overflow:"hidden", background:`linear-gradient(165deg, #0D0D0D 0%, #1A1D23 50%, #0D0D0D 100%)`, padding:"24px 20px", color:"#fff", marginBottom:4, border:"1px solid rgba(255,255,255,0.06)" }}>
+              <p style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,0.3)", textTransform:"uppercase" }}>Missões do mês</p>
               <div style={{ display:"flex", justifyContent:"space-around", marginTop:12 }}>
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.green }}>{mDone}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>concluídas</p></div>
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900 }}>{mPending}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pendentes</p></div>
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.accent }}>+{mPts}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>pts disponíveis</p></div>
               </div>
-            </div>
-          </Card>
+          </div>
           {MISSIONS.map((m,i) => <Card key={i} style={{ marginTop:8, opacity:m.done?0.6:1, borderLeft:m.done?`3px solid ${B.green}`:`3px solid ${B.accent}` }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               {m.done ? <div style={{ width:36, height:36, borderRadius:"50%", background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ color:B.green }}>{IC.check}</span></div>
@@ -23201,7 +23197,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     if (finView === "plans") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
-        <div style={{ padding:"0 20px" }}><Head title="Nossos Planos" onBack={() => setFinView("main")} /></div>
+        <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
         <div className="content" style={{ padding:"0 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
             const isCurrent = k === myClient.plan;
@@ -23211,7 +23207,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               
               <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
               <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
-              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no plano ${p.name} (${p.price}) do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
+              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient.name||""}) e tenho interesse no plano ${p.name} do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
             </Card>;
           })}
         </div>
@@ -23226,7 +23222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontSize:28 }}>💼</div>
             <p style={{ fontSize:16, fontWeight:800 }}>Solicitar Serviço Extra</p>
             <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Entre em contato para receber um orçamento personalizado para o serviço desejado.</p>
-            <button onClick={() => { const msg = encodeURIComponent("Olá! Gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?"); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
+            <button onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient?.name||""}) e gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
             <button onClick={() => setFinView("main")} style={{ marginTop:8, padding:"12px 28px", borderRadius:14, background:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, width:"100%" }}>Voltar</button>
           </Card>
         </div>
@@ -23316,10 +23312,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           <button onClick={() => setFinView("plans")} style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
         </Card>
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
-        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:"🌐"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:"🎨"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:"📸"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:"🎬"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:"📈"}].map((s,i) => (
-          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
+        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}].map((s,i) => (
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient?.name||""}) e tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{s.ic}</div>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{s.ic}</div>
               <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
               <div style={{ textAlign:"right" }}><span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{s.v}</span><p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Solicitar →</p></div>
             </div>
