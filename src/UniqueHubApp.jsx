@@ -3670,7 +3670,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               {isAdmin&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banners</span></>}
             </div>
           )}
-        </div>}
+        </div>
 
         {/* ── 3 BESPOKE PANELS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
