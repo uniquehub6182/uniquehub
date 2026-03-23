@@ -12543,11 +12543,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       settingsPanelRef.current.scrollTop = settingsScrollRef.current;
     }
   });
-  const captureScroll = () => { if (settingsPanelRef.current) settingsScrollRef.current = settingsPanelRef.current.scrollTop; };
+  const captureScroll = () => { try { if (settingsPanelRef.current) settingsScrollRef.current = settingsPanelRef.current.scrollTop; } catch {} };
 
   const SetPage = React.useCallback(({ title, onBackOverride, wide, children }) => {
     if (!isSetDesktop) return (
-      <div className="pg" style={{ paddingBottom:140 }}>
+      <div className="pg" style={{ paddingBottom:180 }}>
         {ToastEl}
         <Head title={title} onBack={onBackOverride || (() => setSub(null))} />
         {children}
@@ -22408,7 +22408,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [headerC, setHeaderC] = useState(false);
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_uiprefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
-  B = getB(dark, "#BBF246", uiPrefs);
+  B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
@@ -23414,7 +23414,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
-      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>({...p,...v}));try{localStorage.setItem("uh_uiprefs",JSON.stringify({...uiPrefs,...v}))}catch{}}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_uiprefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
+      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_uiprefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_uiprefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
       sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
@@ -23426,7 +23426,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
-.app,.pg,.content{transition:background-color .25s ease,color .15s ease!important}
+
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
 .bnav .nb-item{color:${inactiveColor}!important}
 .bnav .nb-item.active{color:${UP.navTextColor||"#fff"}!important}
