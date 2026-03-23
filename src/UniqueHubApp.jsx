@@ -11656,7 +11656,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
         {allProfiles.map(p => (
           <button key={p.id} onClick={() => startDM(p.id)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
             <Av src={p.photo_url} name={p.name} sz={38} fs={14} />
-            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.nick || (p.role==="admin"?"Administrador":p.role==="member"?"Equipe":p.role==="cliente"?"Cliente":"Colaborador")}{p.email?" · "+p.email:""}</p></div>
+            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.role==="admin"?"Admin":p.role==="member"?"Equipe":"Cliente"}{p.nick?" | "+p.nick:""}{p.email?" · "+p.email:""}</p></div>
           </button>
         ))}
         {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro ativo na equipe. Convide membros em Equipe e peça que acessem o link de convite.</p>}
@@ -21390,7 +21390,7 @@ function ClientMatch4Biz({ onBack, user }) {
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px" }}>
+      <div className="content" style={{ padding:"0 16px 120px" }}>
         <div style={{ textAlign:"center", padding:"24px 0 20px" }}>
           <div style={{ width:72, height:72, borderRadius:22, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"m4b-float 3s ease-in-out infinite" }}>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -22356,8 +22356,8 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
-  /* Theme for client portal - respects dark mode setting */
-  B = getB(dark, "#BBF246", uiPrefs);
+  /* Theme for client portal - set after uiPrefs is defined */
+  B = getB(false, "#BBF246");
   const canAccessFn = () => true;
   /* Inject essential CSS globally for all sub-pages */
   React.useEffect(() => {
@@ -22408,6 +22408,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [headerC, setHeaderC] = useState(false);
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_uiprefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
+  B = getB(dark, "#BBF246", uiPrefs);
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
