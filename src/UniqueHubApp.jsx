@@ -14896,7 +14896,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 const d=i+1; const tdy=isToday(d); const selected=d===selDay;
                 const dayEvs=allEvents.filter(e=>e.day===d&&e.month===curMonth&&e.year===curYear);
                 const typeColor=t=>({meeting:B.blue,event:B.accent,reminder:B.orange,deadline:B.red,recording:B.purple||"#8B5CF6"}[t]||B.muted);
-                return <div key={d} onClick={()=>setSelDay(d)} style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative",outline:selected?`2px solid ${B.accent}`:"none",outlineOffset:"-2px",borderRadius:selected?4:0}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";}}>
+                return <div key={d} onClick={()=>{setSelDay(d);setViewEvent(null);}} style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative",outline:selected?`2px solid ${B.accent}`:"none",outlineOffset:"-2px",borderRadius:selected?4:0}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <span style={{fontSize:13,fontWeight:tdy||selected?800:500,color:selected?B.accent:tdy?B.accent:B.text,width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:tdy&&!selected?`${B.accent}15`:"transparent"}}>{d}</span>
                     {dayEvs.length>3&&<span style={{fontSize:9,color:B.muted,fontWeight:600}}>+{dayEvs.length-3}</span>}
@@ -14918,7 +14918,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>
               {selEvs.length===0 ? <p style={{fontSize:13,color:B.muted,padding:"20px 0",textAlign:"center"}}>Nenhum evento neste dia</p>
               : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
-                {selEvs.map((ev,ei)=><div key={ei} onClick={()=>{setViewEvent(ev);setCalExpanded(false);}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${B.border}`,cursor:"pointer",transition:"all .12s",background:`${typeColor(ev.type)}06`}} onMouseEnter={e=>{e.currentTarget.style.borderColor=typeColor(ev.type);e.currentTarget.style.background=`${typeColor(ev.type)}12`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=`${typeColor(ev.type)}06`;}}>
+                {selEvs.map((ev,ei)=><div key={ei} onClick={()=>setViewEvent(ev)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${B.border}`,cursor:"pointer",transition:"all .12s",background:`${typeColor(ev.type)}06`}} onMouseEnter={e=>{e.currentTarget.style.borderColor=typeColor(ev.type);e.currentTarget.style.background=`${typeColor(ev.type)}12`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=`${typeColor(ev.type)}06`;}}>
                   <div style={{width:6,height:40,borderRadius:3,background:typeColor(ev.type),flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <p style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</p>
@@ -14930,6 +14930,30 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>)}
               </div>}
+            </div>;
+          })()}
+          {/* ── Event detail panel (expanded mode) ── */}
+          {viewEvent && (() => {
+            const ev = viewEvent; const et = etCfg(ev.type);
+            return <div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 20px",marginTop:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                <button onClick={()=>setViewEvent(null)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div style={{flex:1}}><p style={{fontSize:16,fontWeight:800}}>{ev.title}</p><p style={{fontSize:11,color:B.muted}}>{et.l} · {ev.time}</p></div>
+                <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{width:32,height:32,borderRadius:8,border:"1px solid #FEE2E2",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+                {[{l:"Tipo",v:et.l},{l:"Horário",v:ev.time},{l:"Data",v:`${ev.day}/${(ev.month+1).toString().padStart(2,"0")}/${ev.year}`},{l:"Criado por",v:ev.createdBy},{l:"Cliente",v:ev.client},{l:"Local",v:ev.location}].filter(x=>x.v).map((item,ii)=>(
+                  <div key={ii} style={{padding:"10px 12px",borderRadius:10,background:B.bg}}>
+                    <p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase"}}>{item.l}</p>
+                    <p style={{fontSize:13,fontWeight:600,color:B.text,marginTop:3}}>{item.v}</p>
+                  </div>
+                ))}
+              </div>
+              {ev.participants?.length>0 && <div style={{marginTop:12}}>
+                <p style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>Participantes</p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{ev.participants.map((name,pi)=><span key={pi} style={{fontSize:12,fontWeight:600,padding:"4px 10px",borderRadius:8,background:B.bg}}>{name}</span>)}</div>
+              </div>}
+              {ev.notes && <div style={{marginTop:12,padding:"10px 12px",borderRadius:10,background:B.bg}}><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:4}}>Notas</p><p style={{fontSize:12,lineHeight:1.6,color:B.text}}>{ev.notes}</p></div>}
             </div>;
           })()}
         </div>}
