@@ -22734,7 +22734,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               
               <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
               <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
-              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no plano ${p.name} (${p.price}) do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/5521922159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
+              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no plano ${p.name} (${p.price}) do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
             </Card>;
           })}
         </div>
@@ -22749,7 +22749,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontSize:28 }}>💼</div>
             <p style={{ fontSize:16, fontWeight:800 }}>Solicitar Serviço Extra</p>
             <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Entre em contato para receber um orçamento personalizado para o serviço desejado.</p>
-            <button onClick={() => { const msg = encodeURIComponent("Olá! Gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?"); window.open(`https://wa.me/5521922159867?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
+            <button onClick={() => { const msg = encodeURIComponent("Olá! Gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?"); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
             <button onClick={() => setFinView("main")} style={{ marginTop:8, padding:"12px 28px", borderRadius:14, background:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, width:"100%" }}>Voltar</button>
           </Card>
         </div>
@@ -22840,7 +22840,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </Card>
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
         {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:"🌐"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:"🎨"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:"📸"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:"🎬"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:"📈"}].map((s,i) => (
-          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/5521922159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{s.ic}</div>
               <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
