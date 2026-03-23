@@ -19924,8 +19924,7 @@ function FeedPlannerPage({ onBack, clients, user }) {
   const [profile, setProfile] = useState({ username:"", bio:"", followers:"", following:"", posts:"" });
   const [highlights, setHighlights] = useState([]);
   const [feedImages, setFeedImages] = useState([]);
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [swapFrom, setSwapFrom] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
@@ -19975,10 +19974,16 @@ function FeedPlannerPage({ onBack, clients, user }) {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const handleDrop = (targetIdx) => {
-    if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setDragOverIdx(null); return; }
-    setFeedImages(prev => { const items = [...prev]; const t = items[dragIdx]; items[dragIdx] = items[targetIdx]; items[targetIdx] = t; return items; });
-    setDragIdx(null); setDragOverIdx(null);
+  const handleSwap = (idx) => {
+    if (swapFrom === null) { setSwapFrom(idx); return; }
+    if (swapFrom === idx) { setSwapFrom(null); return; }
+    setFeedImages(prev => { const items = [...prev]; const t = items[swapFrom]; items[swapFrom] = items[idx]; items[idx] = t; return items; });
+    setSwapFrom(null);
+  };
+  const moveImage = (idx, dir) => {
+    const target = idx + dir;
+    if (target < 0 || target >= feedImages.length) return;
+    setFeedImages(prev => { const items = [...prev]; const t = items[idx]; items[idx] = items[target]; items[target] = t; return items; });
   };
   const removeImage = (idx) => setFeedImages(prev => prev.filter((_,i) => i !== idx));
   const addHighlight = () => setHighlights(prev => [...prev, { name: "Destaque", cover: "" }]);
@@ -20033,9 +20038,16 @@ function FeedPlannerPage({ onBack, clients, user }) {
       {/* Feed Grid */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:1 }}>
         {feedImages.length > 0 ? feedImages.map((img, i) => (
-          <div key={img.url+i} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();if(dragOverIdx!==i)setDragOverIdx(i);}} onDrop={()=>handleDrop(i)} onDragEnd={()=>{setDragIdx(null);setDragOverIdx(null);}} style={{ aspectRatio:"1", position:"relative", cursor:"grab", outline:dragOverIdx===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:dragIdx===i?0.5:1, transition:"opacity .1s" }}>
-            <img src={img.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-            <button onClick={()=>removeImage(i)} style={{ position:"absolute", top:4, right:4, width:20, height:20, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:11, fontWeight:900 }}>×</button>
+          <div key={i} onClick={()=>handleSwap(i)} style={{ aspectRatio:"1", position:"relative", cursor:"pointer", outline:swapFrom===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:swapFrom!==null&&swapFrom!==i?0.6:1 }}>
+            <img src={img.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            {swapFrom===i && <div style={{position:"absolute",inset:0,background:`${B.accent}30`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{background:"#fff",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#0D0D0D",boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}}>Selecione o destino</span></div>}
+            {swapFrom===null && <div style={{position:"absolute",top:4,right:4,display:"flex",gap:3}}>
+              <button onClick={e=>{e.stopPropagation();removeImage(i);}} style={{width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:900}}>×</button>
+            </div>}
+            {swapFrom===null && <div style={{position:"absolute",bottom:4,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2}}>
+              {i>0&&<button onClick={e=>{e.stopPropagation();moveImage(i,-1);}} style={{width:22,height:22,borderRadius:6,background:"rgba(0,0,0,0.5)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
+              {i<feedImages.length-1&&<button onClick={e=>{e.stopPropagation();moveImage(i,1);}} style={{width:22,height:22,borderRadius:6,background:"rgba(0,0,0,0.5)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
+            </div>}
           </div>
         )) : Array.from({length:9}).map((_,i) => (
           <div key={`e${i}`} onClick={()=>fileRef.current?.click()} style={{ aspectRatio:"1", background:"#FAFAFA", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
@@ -20080,7 +20092,7 @@ function FeedPlannerPage({ onBack, clients, user }) {
         {/* LEFT: Instagram Simulation */}
         <div style={{ width:isFPDesktop?"380px":"100%", flexShrink:0 }}>
           <ProfileSim />
-          {feedImages.length > 0 && <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginTop:8 }}>Arraste para reordenar • {feedImages.length} post{feedImages.length!==1?"s":""}</p>}
+          {feedImages.length > 0 && <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginTop:8 }}>{swapFrom!==null?"Clique em outro post para trocar":"Clique para trocar posição • Setas para mover"} • {feedImages.length} post{feedImages.length!==1?"s":""}</p>}
         </div>
         {/* RIGHT: Controls */}
         <div style={{ flex:1, minWidth:0, marginTop:isFPDesktop?0:16 }}>
