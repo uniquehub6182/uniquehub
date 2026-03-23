@@ -23253,7 +23253,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         setEditCfg(null); setEditSections([]); setShowDashEdit(false);
       };
       return <><div onClick={()=>{setEditCfg(null);setShowDashEdit(false);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999,touchAction:"none"}} />
-      <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:430,margin:"0 auto",background:C.card,borderRadius:"28px 28px 0 0",zIndex:1000,padding:"20px 24px calc(24px + env(safe-area-inset-bottom,0px))",maxHeight:"85vh",overflowY:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 -4px 30px rgba(0,0,0,0.15)"}}>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:430,margin:"0 auto",background:C.card,borderRadius:"28px 28px 0 0",zIndex:1000,padding:"20px 24px calc(80px + env(safe-area-inset-bottom,0px))",maxHeight:"85vh",overflowY:"auto",WebkitOverflowScrolling:"touch",boxShadow:"0 -4px 30px rgba(0,0,0,0.15)"}}>
         <div style={{width:32,height:4,borderRadius:2,background:C.brd,margin:"0 auto 16px"}} />
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h3 style={{fontSize:18,fontWeight:800}}>Personalizar</h3>
