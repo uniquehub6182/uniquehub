@@ -2991,45 +2991,41 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         </div>
       </div>;
     }
-    if(key==="destaques") { const L=LIME; const DB="#0D0D0D"; return <div key="destaques">
+    if(key==="destaques") { const L=LIME; return <div key="destaques">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Destaques</h3></div>
-      {/* Match4Biz - wide banner */}
-      <div onClick={()=>nav("match4biz")} style={{ cursor:"pointer", overflow:"hidden", borderRadius:20, background:DB, padding:"22px 20px", position:"relative", marginBottom:10, border:"1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ position:"absolute", top:-30, right:-30, width:140, height:140, borderRadius:"50%", background:`radial-gradient(circle, ${L}12 0%, transparent 70%)`, filter:"blur(25px)" }} />
+      {/* Match4Biz - dark banner (destaque principal) */}
+      <div onClick={()=>nav("match4biz")} style={{ cursor:"pointer", overflow:"hidden", borderRadius:20, background:"#0D0D0D", padding:"22px 20px", position:"relative", marginBottom:10 }}>
+        <div style={{ position:"absolute", top:-30, right:-30, width:140, height:140, borderRadius:"50%", background:`radial-gradient(circle, ${L}15 0%, transparent 70%)`, filter:"blur(25px)" }} />
         <div style={{ display:"flex", alignItems:"center", gap:14, position:"relative", zIndex:1 }}>
           <div style={{ width:52, height:52, borderRadius:16, background:L, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:`0 4px 20px ${L}40` }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
           <div style={{ flex:1 }}><p style={{ fontSize:17, fontWeight:800, color:"#fff" }}>Conecte seus clientes</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4 }}>Match4Biz — parcerias que geram resultados</p></div>
           <div style={{ width:36, height:36, borderRadius:"50%", background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
       </div>
-      {/* Row 1: IA + Academy */}
+      {/* Row 1: IA (light) + Academy (light) */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-        <div onClick={()=>nav("ai")} style={{ cursor:"pointer", borderRadius:20, background:DB, padding:"20px 16px", position:"relative", overflow:"hidden", border:"1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ position:"absolute", top:-15, right:-15, width:70, height:70, borderRadius:"50%", background:`radial-gradient(circle, ${L}10 0%, transparent 70%)`, filter:"blur(15px)" }} />
-          <div style={{ width:40, height:40, borderRadius:12, background:`${L}18`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 10v2a4 4 0 01-8 0v-2"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></div>
-          <p style={{ fontSize:14, fontWeight:800, color:"#fff", position:"relative", zIndex:1 }}>Assistente IA</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginTop:3 }}>Crie conteúdo inteligente</p>
+        <div onClick={()=>nav("ai")} style={{ cursor:"pointer", borderRadius:20, background:C.card, padding:"20px 16px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
+          <div style={{ width:42, height:42, borderRadius:14, background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 10v2a4 4 0 01-8 0v-2"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></div>
+          <p style={{ fontSize:14, fontWeight:800, color:C.txt }}>Assistente IA</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:3 }}>Crie conteúdo inteligente</p>
         </div>
-        <div onClick={()=>nav("academy")} style={{ cursor:"pointer", borderRadius:20, background:DB, padding:"20px 16px", position:"relative", overflow:"hidden", border:"1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ position:"absolute", bottom:-15, left:-15, width:70, height:70, borderRadius:"50%", background:`radial-gradient(circle, ${L}10 0%, transparent 70%)`, filter:"blur(15px)" }} />
-          <div style={{ width:40, height:40, borderRadius:12, background:`${L}18`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
-          <p style={{ fontSize:14, fontWeight:800, color:"#fff", position:"relative", zIndex:1 }}>Academy</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginTop:3 }}>Aprenda e evolua</p>
+        <div onClick={()=>nav("academy")} style={{ cursor:"pointer", borderRadius:20, background:C.card, padding:"20px 16px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
+          <div style={{ width:42, height:42, borderRadius:14, background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+          <p style={{ fontSize:14, fontWeight:800, color:C.txt }}>Academy</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:3 }}>Aprenda e evolua</p>
         </div>
       </div>
-      {/* Row 2: Ranking + Calendário */}
+      {/* Row 2: Ranking (light) + Calendário (light) */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        <div onClick={()=>nav("gamify")} style={{ cursor:"pointer", borderRadius:20, background:DB, padding:"20px 16px", position:"relative", overflow:"hidden", border:"1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ position:"absolute", top:-15, left:-15, width:70, height:70, borderRadius:"50%", background:`radial-gradient(circle, ${L}10 0%, transparent 70%)`, filter:"blur(15px)" }} />
-          <div style={{ width:40, height:40, borderRadius:12, background:`${L}18`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-          <p style={{ fontSize:14, fontWeight:800, color:"#fff", position:"relative", zIndex:1 }}>Ranking</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginTop:3 }}>Gamificação da equipe</p>
+        <div onClick={()=>nav("gamify")} style={{ cursor:"pointer", borderRadius:20, background:C.card, padding:"20px 16px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
+          <div style={{ width:42, height:42, borderRadius:14, background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <p style={{ fontSize:14, fontWeight:800, color:C.txt }}>Ranking</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:3 }}>Gamificação da equipe</p>
         </div>
-        <div onClick={()=>nav("calendar")} style={{ cursor:"pointer", borderRadius:20, background:DB, padding:"20px 16px", position:"relative", overflow:"hidden", border:"1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ position:"absolute", bottom:-15, right:-15, width:70, height:70, borderRadius:"50%", background:`radial-gradient(circle, ${L}10 0%, transparent 70%)`, filter:"blur(15px)" }} />
-          <div style={{ width:40, height:40, borderRadius:12, background:`${L}18`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-          <p style={{ fontSize:14, fontWeight:800, color:"#fff", position:"relative", zIndex:1 }}>Calendário</p>
-          <p style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginTop:3 }}>Agenda e compromissos</p>
+        <div onClick={()=>nav("calendar")} style={{ cursor:"pointer", borderRadius:20, background:C.card, padding:"20px 16px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
+          <div style={{ width:42, height:42, borderRadius:14, background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <p style={{ fontSize:14, fontWeight:800, color:C.txt }}>Calendário</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:3 }}>Agenda e compromissos</p>
         </div>
       </div>
     </div>; }
