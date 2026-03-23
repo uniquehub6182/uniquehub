@@ -12854,7 +12854,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     const navW=UP.navWidth||320, navSt=UP.navStyle||"pill", navPos=UP.navPosition||"float", navSz=UP.navSize||"md", navBlur=UP.navBlur!==false, navLabels=UP.navLabels!==false;
 
-    const tabs = [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
+    const tabs = isClientView ? [{k:"temas",l:"Temas"}] : [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
 
     return (
     <SetPage title="Aparência" wide>
@@ -21445,7 +21445,7 @@ function ClientMatch4Biz({ onBack, user }) {
           </ul>
         </div>
 
-        <button onClick={doAccept} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", marginBottom:30 }}>Aceitar e Começar</button>
+        <button onClick={doAccept} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", marginBottom:100 }}>Aceitar e Começar</button>
       </div>
     </div>
   );
@@ -23425,6 +23425,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
+.app,.pg,.content{transition:background-color .3s ease,color .3s ease!important}
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
 
