@@ -10851,6 +10851,30 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   const [hoverMsgId, setHoverMsgId] = useState(null);
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
+  const profilePhotoRef = useRef(null);
+  const highlightCoverRef = useRef(null);
+  const [editingHighlight, setEditingHighlight] = useState(null);
+
+  const handleProfilePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    const dataUrl = await new Promise((res) => { reader.onload = () => res(reader.result); reader.readAsDataURL(file); });
+    setProfile(p => ({...p, photo: dataUrl}));
+    showToast("Foto do perfil atualizada");
+    if (profilePhotoRef.current) profilePhotoRef.current.value = "";
+  };
+
+  const handleHighlightCover = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || editingHighlight === null) return;
+    const reader = new FileReader();
+    const dataUrl = await new Promise((res) => { reader.onload = () => res(reader.result); reader.readAsDataURL(file); });
+    setHighlights(prev => prev.map((h,i) => i === editingHighlight ? {...h, cover: dataUrl} : h));
+    setEditingHighlight(null);
+    showToast("Capa do destaque atualizada");
+    if (highlightCoverRef.current) highlightCoverRef.current.value = "";
+  };
   const { showToast, ToastEl } = useToast();
   const [chatTab, setChatTab] = useState("all");
   const [showGroupInfo, setShowGroupInfo] = useState(false);
@@ -19980,11 +20004,7 @@ function FeedPlannerPage({ onBack, clients, user }) {
     setFeedImages(prev => { const items = [...prev]; const t = items[swapFrom]; items[swapFrom] = items[idx]; items[idx] = t; return items; });
     setSwapFrom(null);
   };
-  const moveImage = (idx, dir) => {
-    const target = idx + dir;
-    if (target < 0 || target >= feedImages.length) return;
-    setFeedImages(prev => { const items = [...prev]; const t = items[idx]; items[idx] = items[target]; items[target] = t; return items; });
-  };
+
   const removeImage = (idx) => setFeedImages(prev => prev.filter((_,i) => i !== idx));
   const addHighlight = () => setHighlights(prev => [...prev, { name: "Destaque", cover: "" }]);
 
@@ -20012,9 +20032,9 @@ function FeedPlannerPage({ onBack, clients, user }) {
         <div style={{ display:"flex", gap:12, overflowX:"auto", padding:"10px 0 14px", scrollbarWidth:"none" }}>
           {highlights.map((h,i) => (
             <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0, width:62 }}>
-              <div style={{ width:56, height:56, borderRadius:"50%", border:"2px solid #DBDBDB", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAFAFA", position:"relative" }}>
+              <div onClick={()=>{setEditingHighlight(i);highlightCoverRef.current?.click();}} style={{ width:56, height:56, borderRadius:"50%", border:"2px solid #DBDBDB", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAFAFA", position:"relative", cursor:"pointer" }}>
                 {h.cover ? <img src={h.cover} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} alt="" /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
-                <div onClick={()=>setHighlights(prev=>prev.filter((_,j)=>j!==i))} style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:"50%", background:"#FF3B30", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:9, color:"#fff", fontWeight:900 }}>×</div>
+                <div onClick={e=>{e.stopPropagation();setHighlights(prev=>prev.filter((_,j)=>j!==i));}} style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:"50%", background:"#FF3B30", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:9, color:"#fff", fontWeight:900 }}>×</div>
               </div>
               <input value={h.name} onChange={e=>{const v=e.target.value;setHighlights(prev=>prev.map((x,j)=>j===i?{...x,name:v}:x));}} style={{ fontSize:9, color:"#8E8E8E", border:"none", background:"transparent", textAlign:"center", width:58, fontFamily:"inherit", outline:"none" }} />
             </div>
@@ -20038,16 +20058,10 @@ function FeedPlannerPage({ onBack, clients, user }) {
       {/* Feed Grid */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:1 }}>
         {feedImages.length > 0 ? feedImages.map((img, i) => (
-          <div key={i} onClick={()=>handleSwap(i)} style={{ aspectRatio:"1", position:"relative", cursor:"pointer", outline:swapFrom===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:swapFrom!==null&&swapFrom!==i?0.6:1 }}>
+          <div key={i} onClick={()=>handleSwap(i)} style={{ aspectRatio:"1", position:"relative", cursor:"pointer", outline:swapFrom===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:swapFrom!==null&&swapFrom!==i?0.7:1 }}>
             <img src={img.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-            {swapFrom===i && <div style={{position:"absolute",inset:0,background:`${B.accent}30`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{background:"#fff",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#0D0D0D",boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}}>Selecione o destino</span></div>}
-            {swapFrom===null && <div style={{position:"absolute",top:4,right:4,display:"flex",gap:3}}>
-              <button onClick={e=>{e.stopPropagation();removeImage(i);}} style={{width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:900}}>×</button>
-            </div>}
-            {swapFrom===null && <div style={{position:"absolute",bottom:4,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2}}>
-              {i>0&&<button onClick={e=>{e.stopPropagation();moveImage(i,-1);}} style={{width:22,height:22,borderRadius:6,background:"rgba(0,0,0,0.5)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
-              {i<feedImages.length-1&&<button onClick={e=>{e.stopPropagation();moveImage(i,1);}} style={{width:22,height:22,borderRadius:6,background:"rgba(0,0,0,0.5)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
-            </div>}
+            {swapFrom===i && <div style={{position:"absolute",inset:0,background:`${B.accent}30`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{background:"#fff",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#0D0D0D",boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}}>Clique no destino</span></div>}
+            {swapFrom===null && <button onClick={e=>{e.stopPropagation();removeImage(i);}} style={{position:"absolute",top:4,right:4,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.6)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:900}}>×</button>}
           </div>
         )) : Array.from({length:9}).map((_,i) => (
           <div key={`e${i}`} onClick={()=>fileRef.current?.click()} style={{ aspectRatio:"1", background:"#FAFAFA", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
@@ -20088,11 +20102,13 @@ function FeedPlannerPage({ onBack, clients, user }) {
       {ToastEl}
       <CollapseHeader icon={IC.feed} label={selClient.name} title="Feed Planner" onBack={() => setSelClient(null)} collapsed={false} />
       <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleUpload} style={{ position:"absolute", opacity:0, pointerEvents:"none" }} />
+      <input ref={profilePhotoRef} type="file" accept="image/*" onChange={handleProfilePhoto} style={{ position:"absolute", opacity:0, pointerEvents:"none" }} />
+      <input ref={highlightCoverRef} type="file" accept="image/*" onChange={handleHighlightCover} style={{ position:"absolute", opacity:0, pointerEvents:"none" }} />
       <div style={{ display:isFPDesktop?"flex":"block", gap:24, padding:"12px 0 120px" }}>
         {/* LEFT: Instagram Simulation */}
         <div style={{ width:isFPDesktop?"380px":"100%", flexShrink:0 }}>
           <ProfileSim />
-          {feedImages.length > 0 && <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginTop:8 }}>{swapFrom!==null?"Clique em outro post para trocar":"Clique para trocar posição • Setas para mover"} • {feedImages.length} post{feedImages.length!==1?"s":""}</p>}
+          {feedImages.length > 0 && <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginTop:8 }}>{swapFrom!==null?"Agora clique em outro post para trocar de posição":"Clique em um post para trocar de lugar com outro"} • {feedImages.length} post{feedImages.length!==1?"s":""}</p>}
         </div>
         {/* RIGHT: Controls */}
         <div style={{ flex:1, minWidth:0, marginTop:isFPDesktop?0:16 }}>
@@ -20121,13 +20137,14 @@ function FeedPlannerPage({ onBack, clients, user }) {
             </div>
           </Card>
           <Card>
-            <p style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>Dicas</p>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>Como usar</p>
             <div style={{ fontSize:12, color:B.muted, lineHeight:1.7 }}>
-              <p>• Arraste os posts no grid para reordenar</p>
-              <p>• Clique no × para remover um post</p>
-              <p>• Adicione destaques clicando em "Novo"</p>
-              <p>• Clique em "Salvar" para manter as alterações</p>
-              <p>• Os posts mais recentes ficam primeiro no grid</p>
+              <p>• Clique em um post e depois em outro para trocar de posição</p>
+              <p>• Clique no × para remover um post do grid</p>
+              <p>• Clique na foto do perfil para trocar a imagem</p>
+              <p>• Clique em um destaque para adicionar capa</p>
+              <p>• Os posts mais recentes ficam primeiro</p>
+              <p>• Clique em "Salvar" para manter tudo</p>
             </div>
           </Card>
         </div>
