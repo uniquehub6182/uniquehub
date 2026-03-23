@@ -14896,7 +14896,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 const d=i+1; const tdy=isToday(d); const selected=d===selDay;
                 const dayEvs=allEvents.filter(e=>e.day===d&&e.month===curMonth&&e.year===curYear);
                 const typeColor=t=>({meeting:B.blue,event:B.accent,reminder:B.orange,deadline:B.red,recording:B.purple||"#8B5CF6"}[t]||B.muted);
-                return <div key={d} onClick={()=>{setSelDay(d);setCalExpanded(false);}} style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}08`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative"}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}08`:tdy?`${B.accent}04`:"transparent";}}>
+                return <div key={d} onClick={()=>setSelDay(d)} style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative",outline:selected?`2px solid ${B.accent}`:"none",outlineOffset:"-2px",borderRadius:selected?4:0}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <span style={{fontSize:13,fontWeight:tdy||selected?800:500,color:selected?B.accent:tdy?B.accent:B.text,width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:tdy&&!selected?`${B.accent}15`:"transparent"}}>{d}</span>
                     {dayEvs.length>3&&<span style={{fontSize:9,color:B.muted,fontWeight:600}}>+{dayEvs.length-3}</span>}
@@ -14906,6 +14906,32 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               })}
             </div>
           </div>
+          {/* ── Selected day detail panel (expanded mode) ── */}
+          {(() => {
+            const selEvs = allEvents.filter(e=>e.day===selDay&&e.month===curMonth&&e.year===curYear);
+            const typeColor=t=>({meeting:B.blue,event:B.accent,reminder:B.orange,deadline:B.red,recording:B.purple||"#8B5CF6"}[t]||B.muted);
+            const typeLabel=t=>({meeting:"Reunião",event:"Evento",reminder:"Lembrete",deadline:"Deadline",recording:"Gravação"}[t]||t);
+            return <div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 20px",marginTop:12}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                <p style={{fontSize:15,fontWeight:800}}>{selDay} de {MONTHS[curMonth]} {curYear}</p>
+                <span style={{fontSize:12,color:B.muted,fontWeight:600}}>{selEvs.length} evento{selEvs.length!==1?"s":""}</span>
+              </div>
+              {selEvs.length===0 ? <p style={{fontSize:13,color:B.muted,padding:"20px 0",textAlign:"center"}}>Nenhum evento neste dia</p>
+              : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
+                {selEvs.map((ev,ei)=><div key={ei} onClick={()=>{setViewEvent(ev);setCalExpanded(false);}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${B.border}`,cursor:"pointer",transition:"all .12s",background:`${typeColor(ev.type)}06`}} onMouseEnter={e=>{e.currentTarget.style.borderColor=typeColor(ev.type);e.currentTarget.style.background=`${typeColor(ev.type)}12`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=`${typeColor(ev.type)}06`;}}>
+                  <div style={{width:6,height:40,borderRadius:3,background:typeColor(ev.type),flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</p>
+                    <div style={{display:"flex",gap:8,marginTop:3}}>
+                      {ev.time&&<span style={{fontSize:11,color:B.muted,fontWeight:600}}>{ev.time.substring(0,5)}</span>}
+                      <span style={{fontSize:11,color:typeColor(ev.type),fontWeight:600}}>{typeLabel(ev.type)}</span>
+                    </div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>)}
+              </div>}
+            </div>;
+          })()}
         </div>}
         {/* ── COLLAPSED: Normal two-panel layout ── */}
         {!calExpanded && <div style={{ display:"flex", gap:16, marginTop:4, height:"calc(100vh - 270px)" }}>
