@@ -12547,7 +12547,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   const SetPage = React.useCallback(({ title, onBackOverride, wide, children }) => {
     if (!isSetDesktop) return (
-      <div className="pg">
+      <div className="pg" style={{ paddingBottom:120 }}>
         {ToastEl}
         <Head title={title} onBack={onBackOverride || (() => setSub(null))} />
         {children}
@@ -17050,7 +17050,7 @@ REGRAS:
       </div>
     );
     return (
-      <div className="pg">
+      <div className="pg" style={{ paddingBottom:120 }}>
         {ToastEl}
         <Head title="" onBack={() => {setSelArticle(null);setEditingArticle(false);}} right={<div style={{display:"flex",gap:6}}>
           <button onClick={() => toggleSave(a.id)} className="ib" style={{ color:saved.includes(a.id)?B.accent:B.muted }}>
