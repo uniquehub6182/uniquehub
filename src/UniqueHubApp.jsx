@@ -22232,7 +22232,7 @@ function ClientOnboarding({ onComplete, onBack }) {
       if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
       /* Save client profile extras + sync with existing client record */
       if (authData?.user?.id) {
-        try { await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone })); } catch(e) { console.warn("Extras save:", e); }
+        try { await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone, linked_client_id: validatedClient?.id || null })); } catch(e) { console.warn("Extras save:", e); }
         /* Use validated client from access code — exact match, no searching needed */
         if (validatedClient?.id) {
           try {
@@ -22437,23 +22437,34 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   useEffect(() => {
     if (!supabase || !user?.email) return;
     (async () => {
-      const { data: cl } = await supabase.from("clients").select("id").eq("contact_email", user.email).maybeSingle();
-      if (!cl?.id) return;
-      const { data: scores } = await supabase.from("client_scores").select("points").eq("client_id", cl.id);
+      /* Use linked_client_id first, then email fallback */
+      const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
+      let linkedId = null;
+      try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
+      let clId = linkedId;
+      if (!clId) {
+        const { data: cl } = await supabase.from("clients").select("id").eq("contact_email", user.email).maybeSingle();
+        clId = cl?.id;
+      }
+      if (!clId) return;
+      const { data: scores } = await supabase.from("client_scores").select("points").eq("client_id", clId);
       if (scores) setRealScore(Math.min(100, Math.round(scores.reduce((a, r) => a + Number(r.points), 0))));
     })();
-  }, [user?.email]);
+  }, [user?.email, user?.id]);
 
   useEffect(() => {
     if (!supabase || demandsLoaded || !user?.id) return;
     (async () => {
       try {
-        /* Find which client record belongs to this logged-in user (match by email or company name) */
+        /* Find which client record belongs to this logged-in user */
+        /* Priority: 1) linked_client_id from extras, 2) contact_email match, 3) name match */
+        const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
+        let linkedId = null;
+        try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
         const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
-        const myClient = (allClients||[]).find(c => 
-          (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase() ||
-          (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase()
-        );
+        const myClient = linkedId ? (allClients||[]).find(c => c.id === linkedId) : null
+          || (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
+          || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
         if (!myClient) { console.warn("[Client] No matching client record for", user?.email); setDemandsLoaded(true); return; }
         /* Load demands for THIS client only */
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
@@ -22974,13 +22985,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const [clientMetrics, setClientMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
   useEffect(() => {
-    const myClient = clients.find(c => {
-      const cf = (user?.company||user?.name||"").toLowerCase();
-      return (c.name||"").toLowerCase().includes(cf.split(" ")[0]) || cf.includes((c.name||"").split(" ")[0].toLowerCase());
-    });
-    if (!myClient || clientMetrics) return;
-    setMetricsLoading(true);
+    if (!supabase || clientMetrics) return;
     (async () => {
+      /* Use linked_client_id first, then email, then name fallback */
+      const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
+      let linkedId = null;
+      try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
+      const myClient = linkedId ? clients.find(c => (c.id === linkedId || c.supaId === linkedId)) : null
+        || clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
+        || clients.find(c => { const cf = (user?.company||user?.name||"").toLowerCase(); return (c.name||"").toLowerCase().includes(cf.split(" ")[0]) || cf.includes((c.name||"").split(" ")[0].toLowerCase()); });
+      if (!myClient) return;
+      setMetricsLoading(true);
       try {
         const cid = myClient.supaId || myClient.id;
         const end = new Date(); const start = new Date(); start.setDate(start.getDate() - 30);
