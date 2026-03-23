@@ -1305,6 +1305,7 @@ const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accen
 
 const IC = {
   home: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  feed: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
   content: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
   chat: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
   clients: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
@@ -23739,7 +23740,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     { k:"financial", l:"Financeiro", i:IC.financial, isSub:true },
     { k:"reports", l:"Relatórios", i:IC.reports, isSub:true },
     { k:"library", l:"Biblioteca", i:IC.library, isSub:true },
-    { k:"feedplanner", l:"Feed Planner", i:IC.feed, isSub:true },
     { k:"academy", l:"Academy", i:IC.academy, isSub:true },
     { k:"news", l:"Notícias", i:IC.news, isSub:true },
     { k:"ideas", l:"Ideias", i:IC.ideas, isSub:true },
@@ -23809,7 +23809,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               {l:"Relatórios",ic:IC.reports,d:"Performance das redes",sub:"reports",navKey:null},
               {l:"Calendário",ic:IC.calendar,d:"Reuniões e gravações",sub:"calendar",navKey:"calendar"},
               {l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais",sub:"library",navKey:null},
-              {l:"Feed Planner",ic:IC.feed,d:"Simulador de feed do Instagram",sub:"feedplanner",navKey:null},
               {l:"Academy",ic:IC.academy,d:"Cursos e aprendizado",sub:"academy",navKey:null},
               {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news",navKey:null},
               {l:"Comunique-se",ic:IC.ideas,d:"Envie ideias para a agência",sub:"ideas",navKey:null},
