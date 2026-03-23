@@ -12742,7 +12742,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <div>
         <p className="sl" style={{ marginBottom:6 }}>Dados pessoais</p>
         <Card style={{ marginBottom:10 }}>
-          {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",fmtBirth(pf.birth)||"—","calendar"],["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",fmtCpf(pf.cpf)||"—","id"]].map((f,i) => (
+          {[["Nome completo",user?.name||"—","user"],["Apelido",pf.nick||"—","smile"],["Data nascimento",fmtBirth(pf.birth)||"—","calendar"],...(!isClientView?[["Tipo sanguíneo",pf.blood||"—","heart"],["CPF",fmtCpf(pf.cpf)||"—","id"]]:[])].map((f,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderTop:i?"1px solid "+B.border:"none" }}>
               <span style={{ color:B.accent, display:"flex", flexShrink:0 }}>{profileFieldIcon(f[2])}</span>
               <div style={{ flex:1 }}><p style={{ fontSize:10, color:B.muted }}>{f[0]}</p><p style={{ fontSize:13, fontWeight:600 }}>{f[1]}</p></div>
