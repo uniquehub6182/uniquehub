@@ -20067,10 +20067,11 @@ function FeedPlannerPage({ onBack, clients, user }) {
     <div style={{ background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #DBDBDB" }}>
       <div style={{ padding:"20px 16px 0", color:"#262626" }}>
         <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14 }}>
-          <div style={{ width:80, height:80, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", padding:3, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div onClick={()=>profilePhotoRef.current?.click()} style={{ width:80, height:80, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", padding:3, cursor:"pointer", position:"relative" }}>
             <div style={{ width:"100%", height:"100%", borderRadius:"50%", overflow:"hidden", background:"#DBDBDB", border:"3px solid #fff" }}>
-              {selClient.logo ? <img src={selClient.logo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#8E8E8E" }}>{(selClient.name||"?")[0]}</div>}
+              {(profile.photo || selClient.logo) ? <img src={profile.photo || selClient.logo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#8E8E8E" }}>{(selClient.name||"?")[0]}</div>}
             </div>
+            <div style={{position:"absolute",bottom:0,right:0,width:22,height:22,borderRadius:"50%",background:"#0095F6",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #fff"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
           </div>
           <div style={{ display:"flex", gap:20, flex:1, justifyContent:"center" }}>
             {[{v:profile.posts||String(feedImages.length),l:"posts",k:"posts"},{v:profile.followers,l:"seguidores",k:"followers"},{v:profile.following,l:"seguindo",k:"following"}].map(s=>(
@@ -20178,29 +20179,36 @@ function FeedPlannerPage({ onBack, clients, user }) {
               <button onClick={save} style={{ padding:"14px 24px", borderRadius:14, background:B.dark||"#192126", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff" }}>Salvar</button>
             </div>
           </Card>
-          <Card style={{ marginBottom:12 }}>
-            <p style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>Informações do perfil</p>
-            <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Edite os dados diretamente no perfil à esquerda, ou preencha aqui:</p>
-            <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Username</label>
-            <input value={profile.username} onChange={e=>setProfile(p=>({...p,username:e.target.value}))} className="tinput" placeholder="@usuario" style={{ marginBottom:10 }} />
-            <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio</label>
-            <textarea value={profile.bio} onChange={e=>setProfile(p=>({...p,bio:e.target.value}))} className="tinput" rows={3} placeholder="Bio do perfil..." style={{ marginBottom:10, resize:"vertical" }} />
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-              <div><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Seguidores</label><input value={profile.followers} onChange={e=>setProfile(p=>({...p,followers:e.target.value}))} className="tinput" placeholder="0" /></div>
-              <div><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Seguindo</label><input value={profile.following} onChange={e=>setProfile(p=>({...p,following:e.target.value}))} className="tinput" placeholder="0" /></div>
+          {/* Stats */}
+          <Card style={{ marginBottom:12, background:B.dark||"#0D0D0D", border:"none", padding:16 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, textAlign:"center" }}>
+              <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{feedImages.length}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Posts no grid</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{highlights.length}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Destaques</p></div>
+              <div><p style={{ fontSize:22, fontWeight:900, color:"#fff" }}>{Math.ceil(feedImages.length/3)}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>Linhas no feed</p></div>
             </div>
           </Card>
-          <Card>
-            <p style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>Como usar</p>
-            <div style={{ fontSize:12, color:B.muted, lineHeight:1.7 }}>
-              <p>• Clique em um post e depois em outro para trocar de posição</p>
-              <p>• Clique no × para remover um post do grid</p>
-              <p>• Clique na foto do perfil para trocar a imagem</p>
-              <p>• Clique em um destaque para adicionar capa</p>
-              <p>• Os posts mais recentes ficam primeiro</p>
-              <p>• Clique em "Salvar" para manter tudo</p>
+          {/* Grid preview - larger view of images */}
+          {feedImages.length > 0 && <Card style={{ marginBottom:12 }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>Preview dos posts ({feedImages.length})</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(80px, 1fr))", gap:6 }}>
+              {feedImages.map((img, i) => (
+                <div key={i} onClick={()=>handleSwap(i)} style={{ aspectRatio:"1", borderRadius:8, overflow:"hidden", cursor:"pointer", position:"relative", outline:swapFrom===i?`2px solid ${B.accent}`:"none" }}>
+                  <img src={img.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                  <div style={{position:"absolute",bottom:2,left:2,background:"rgba(0,0,0,0.6)",color:"#fff",fontSize:8,fontWeight:700,padding:"1px 4px",borderRadius:3}}>{i+1}</div>
+                </div>
+              ))}
             </div>
-          </Card>
+          </Card>}
+          {/* How to use */}
+          <div style={{ padding:"12px 16px", background:`${B.accent}08`, borderRadius:14, border:`1px solid ${B.accent}15` }}>
+            <p style={{ fontSize:12, fontWeight:700, color:B.accent, marginBottom:6 }}>Como funciona</p>
+            <div style={{ fontSize:11, color:B.muted, lineHeight:1.7 }}>
+              <p>• Clique em um post e depois em outro para trocar</p>
+              <p>• × remove o post • Foto do perfil é clicável</p>
+              <p>• Clique nos destaques para adicionar capas</p>
+              <p>• Salve para persistir as alterações</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
