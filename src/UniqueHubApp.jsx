@@ -19977,7 +19977,7 @@ function FeedPlannerPage({ onBack, clients, user }) {
 
   const handleDrop = (targetIdx) => {
     if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setDragOverIdx(null); return; }
-    setFeedImages(prev => { const items = [...prev]; const [moved] = items.splice(dragIdx, 1); items.splice(targetIdx, 0, moved); return items; });
+    setFeedImages(prev => { const items = [...prev]; const t = items[dragIdx]; items[dragIdx] = items[targetIdx]; items[targetIdx] = t; return items; });
     setDragIdx(null); setDragOverIdx(null);
   };
   const removeImage = (idx) => setFeedImages(prev => prev.filter((_,i) => i !== idx));
@@ -20033,7 +20033,7 @@ function FeedPlannerPage({ onBack, clients, user }) {
       {/* Feed Grid */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:1 }}>
         {feedImages.length > 0 ? feedImages.map((img, i) => (
-          <div key={i} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i);}} onDrop={()=>handleDrop(i)} onDragEnd={()=>{setDragIdx(null);setDragOverIdx(null);}} style={{ aspectRatio:"1", position:"relative", cursor:"grab", outline:dragOverIdx===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:dragIdx===i?0.4:1 }}>
+          <div key={img.url+i} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();if(dragOverIdx!==i)setDragOverIdx(i);}} onDrop={()=>handleDrop(i)} onDragEnd={()=>{setDragIdx(null);setDragOverIdx(null);}} style={{ aspectRatio:"1", position:"relative", cursor:"grab", outline:dragOverIdx===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:dragIdx===i?0.5:1, transition:"opacity .1s" }}>
             <img src={img.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
             <button onClick={()=>removeImage(i)} style={{ position:"absolute", top:4, right:4, width:20, height:20, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:11, fontWeight:900 }}>×</button>
           </div>
@@ -20051,20 +20051,21 @@ function FeedPlannerPage({ onBack, clients, user }) {
     <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%" }}>
       {ToastEl}
       <CollapseHeader icon={IC.feed} label="Simulador" title="Feed Planner" onBack={onBack} collapsed={false} />
-      <div style={{ padding:"20px 16px", maxWidth:600, margin:"0 auto" }}>
-        <Card style={{ textAlign:"center", padding:32 }}>
-          <div style={{ width:72, height:72, borderRadius:22, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>{IC.feed(B.accent)}</div>
-          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>Feed Planner</h3>
-          <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:20 }}>Simule o feed do Instagram antes de publicar. Selecione um cliente.</p>
-          <div style={{ display:"grid", gap:8 }}>
-            {CDATA.map(c => (
-              <button key={c.id} onClick={() => setSelClient(c)} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"14px 16px", border:`1.5px solid ${B.border}`, borderRadius:14, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
-                <Av src={c.logo} name={c.name} sz={40} fs={14} />
-                <div><p style={{ fontSize:14, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:11, color:B.muted }}>{c.plan || "Cliente"}</p></div>
-              </button>
-            ))}
-          </div>
-        </Card>
+      <div style={{ padding:"20px 0" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:24 }}>
+          <div style={{ width:56, height:56, borderRadius:18, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.feed(B.accent)}</div>
+          <div><h3 style={{ fontSize:22, fontWeight:900, marginBottom:2 }}>Feed Planner</h3><p style={{ fontSize:13, color:B.muted }}>Simule o feed do Instagram antes de publicar. Selecione um cliente para começar.</p></div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:isFPDesktop?"repeat(auto-fill,minmax(280px,1fr))":"1fr", gap:12 }}>
+          {CDATA.map(c => (
+            <div key={c.id} onClick={() => setSelClient(c)} style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 18px", border:`1.5px solid ${B.border}`, borderRadius:18, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.boxShadow=`0 4px 16px ${B.accent}15`;e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}>
+              <Av src={c.logo} name={c.name} sz={48} fs={16} />
+              <div style={{flex:1,minWidth:0}}><p style={{ fontSize:15, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{c.plan || "Cliente"}</p></div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          ))}
+          {CDATA.length === 0 && <Card style={{textAlign:"center",padding:32}}><p style={{fontSize:13,color:B.muted}}>Nenhum cliente cadastrado.</p></Card>}
+        </div>
       </div>
     </div>
   );
