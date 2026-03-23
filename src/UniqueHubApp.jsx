@@ -18650,6 +18650,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   useEffect(() => { if (!user?.id) return; supaGetSetting("ai_img_history_" + user.id).then(v => { try { if (v) { const cloud = JSON.parse(v); const local = JSON.parse(localStorage.getItem("uh_ai_img_history_" + user.id) || "[]"); if (cloud.length > local.length) { setImgHistory(cloud); try { localStorage.setItem("uh_ai_img_history_" + user.id, JSON.stringify(cloud)); } catch {} } } } catch {} }); }, [user?.id]);
   const [imgSize, setImgSize] = useState("1024x1024");
   const [imgStyle, setImgStyle] = useState("vivid");
+  const [imgProvider, setImgProvider] = useState("gemini"); /* gemini | dalle */
 
   const PRESETS = isClientView ? [
     { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>, label: "Ideias para meu negócio", prompt: "Me dê ideias criativas de marketing e conteúdo para minha empresa " },
@@ -18845,17 +18846,42 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   /* ═══ IMAGE GENERATION (DALL-E 3) ═══ */
   const generateImage = async () => {
     if (!imgPrompt.trim() || imgLoading) return;
-    const openaiKey = aiKeys.openai_key;
-    if (!openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); return; }
     setImgLoading(true); setImgResult(null);
     try {
-      const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openaiKey }, body: JSON.stringify({ model: "dall-e-3", prompt: imgPrompt, n: 1, size: imgSize, style: imgStyle, quality: "hd", response_format: "url" }) });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error.message || "Erro na API");
-      const url = d.data?.[0]?.url;
-      const revised = d.data?.[0]?.revised_prompt || imgPrompt;
-      if (url) { setImgResult({ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }); saveImgHistory([{ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, ts: Date.now() }, ...imgHistory].slice(0, 30)); }
-      else throw new Error("Nenhuma imagem retornada");
+      if (imgProvider === "gemini") {
+        /* ── Gemini (Nano Banana) ── */
+        const gemKey = aiKeys.gemini_key || "AIzaSyD2qzX2rZYcp_LR8hLkRr9zJosuCvu0azk";
+        const model = "gemini-2.0-flash-exp";
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Generate a high-quality, professional image: ${imgPrompt}` }] }],
+            generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
+          })
+        });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error.message || "Erro na API Gemini");
+        const parts = d.candidates?.[0]?.content?.parts || [];
+        const imgPart = parts.find(p => p.inlineData);
+        const textPart = parts.find(p => p.text);
+        if (imgPart) {
+          const url = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+          const revised = textPart?.text || imgPrompt;
+          setImgResult({ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, provider: "gemini", ts: Date.now() });
+          saveImgHistory([{ prompt: imgPrompt, revised, size: imgSize, style: imgStyle, provider: "gemini", ts: Date.now() }, ...imgHistory].slice(0, 30));
+        } else throw new Error("Nenhuma imagem retornada pelo Gemini");
+      } else {
+        /* ── DALL-E 3 ── */
+        const openaiKey = aiKeys.openai_key;
+        if (!openaiKey) { showToast("Chave OpenAI não configurada. Vá em Config → Assistente IA"); setImgLoading(false); return; }
+        const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openaiKey }, body: JSON.stringify({ model: "dall-e-3", prompt: imgPrompt, n: 1, size: imgSize, style: imgStyle, quality: "hd", response_format: "url" }) });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error.message || "Erro na API");
+        const url = d.data?.[0]?.url;
+        const revised = d.data?.[0]?.revised_prompt || imgPrompt;
+        if (url) { setImgResult({ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, provider: "dalle", ts: Date.now() }); saveImgHistory([{ url, prompt: imgPrompt, revised, size: imgSize, style: imgStyle, provider: "dalle", ts: Date.now() }, ...imgHistory].slice(0, 30)); }
+        else throw new Error("Nenhuma imagem retornada");
+      }
     } catch (e) { showToast("Erro: " + e.message); }
     setImgLoading(false);
   };
@@ -18974,12 +19000,25 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
                 {imgHistory.length > 0 && !imgResult && !imgLoading && <div style={{ marginTop:16 }}>
                   <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:10 }}>Imagens recentes</p>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))", gap:8 }}>
-                    {imgHistory.map((h,i)=><div key={i} onClick={()=>setImgResult(h)} style={{ cursor:"pointer", borderRadius:12, overflow:"hidden", border:`1px solid ${B.border}`, transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.03)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}><img src={h.url} alt="" style={{ width:"100%", height:100, objectFit:"cover" }}/><p style={{ fontSize:9, padding:"6px 8px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.muted }}>{h.prompt}</p></div>)}
+                    {imgHistory.map((h,i)=><div key={i} onClick={()=>setImgResult(h.fullUrl?{...h,url:h.fullUrl}:h)} style={{ cursor:"pointer", borderRadius:12, overflow:"hidden", border:`1px solid ${B.border}`, transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.03)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+                      {h.provider==="gemini"&&!h.fullUrl ? <div style={{width:"100%",height:100,background:"linear-gradient(135deg,#4285F4,#EA4335)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28}}>🖼️</span></div> : <img src={h.fullUrl||h.url} alt="" style={{ width:"100%", height:100, objectFit:"cover" }}/>}
+                      <div style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px"}}>{h.provider==="gemini"?<span style={{fontSize:8,padding:"1px 4px",borderRadius:3,background:"#4285F410",color:"#4285F4",fontWeight:700}}>Gemini</span>:<span style={{fontSize:8,padding:"1px 4px",borderRadius:3,background:"#10A37F10",color:"#10A37F",fontWeight:700}}>DALL-E</span>}<p style={{ fontSize:9, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:B.muted, flex:1 }}>{h.prompt}</p></div>
+                    </div>)}
                   </div>
                 </div>}
               </div>
               {/* Input bar */}
               <div style={{ padding:"16px 20px", borderTop:`1px solid ${B.border}` }}>
+                <div style={{ display:"flex", gap:4, marginBottom:10 }}>
+                  <button onClick={()=>setImgProvider("gemini")} style={{ flex:1, padding:"8px 0", borderRadius:10, border:imgProvider==="gemini"?"2px solid #4285F4":`1.5px solid ${B.border}`, background:imgProvider==="gemini"?"#4285F408":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:imgProvider==="gemini"?700:500, color:imgProvider==="gemini"?"#4285F4":B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    Gemini
+                  </button>
+                  <button onClick={()=>setImgProvider("dalle")} style={{ flex:1, padding:"8px 0", borderRadius:10, border:imgProvider==="dalle"?"2px solid #10A37F":`1.5px solid ${B.border}`, background:imgProvider==="dalle"?"#10A37F08":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:imgProvider==="dalle"?700:500, color:imgProvider==="dalle"?"#10A37F":B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22.2 11.8a4.7 4.7 0 00-.4-3.87 4.75 4.75 0 00-5.13-2.3A4.7 4.7 0 0013.13 2a4.74 4.74 0 00-4.53 3.3A4.72 4.72 0 005.45 7a4.75 4.75 0 00-.58 5.93A4.73 4.73 0 005.27 17a4.75 4.75 0 005.13 2.3A4.73 4.73 0 0013.84 22a4.75 4.75 0 004.53-3.3 4.72 4.72 0 003.15-1.65 4.75 4.75 0 00.58-5.25z"/></svg>
+                    DALL-E 3
+                  </button>
+                </div>
                 <div style={{ display:"flex", gap:8, marginBottom:10 }}>
                   <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:4 }}>TAMANHO</p><div style={{ display:"flex", gap:4 }}>{[{k:"1024x1024",l:"1:1"},{k:"1792x1024",l:"16:9"},{k:"1024x1792",l:"9:16"}].map(s=><button key={s.k} onClick={()=>setImgSize(s.k)} style={{ padding:"4px 10px", borderRadius:6, border:`1.5px solid ${imgSize===s.k?"#8B5CF6":B.border}`, background:imgSize===s.k?"#8B5CF610":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:imgSize===s.k?700:500, color:imgSize===s.k?"#8B5CF6":B.muted }}>{s.l}</button>)}</div></div>
                   <div><p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:4 }}>ESTILO</p><div style={{ display:"flex", gap:4 }}>{[{k:"vivid",l:"Vibrante"},{k:"natural",l:"Natural"}].map(s=><button key={s.k} onClick={()=>setImgStyle(s.k)} style={{ padding:"4px 10px", borderRadius:6, border:`1.5px solid ${imgStyle===s.k?"#EC4899":B.border}`, background:imgStyle===s.k?"#EC489910":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:imgStyle===s.k?700:500, color:imgStyle===s.k?"#EC4899":B.muted }}>{s.l}</button>)}</div></div>
