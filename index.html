@@ -53,6 +53,20 @@
         else document.documentElement.classList.remove('uh-desktop');
       });
     </script>
+      <style>
+      /* iOS PWA standalone - fill safe area */
+      @media all and (display-mode: standalone) {
+        html, body, #root { 
+          min-height: 100vh; 
+          min-height: 100dvh;
+          min-height: -webkit-fill-available;
+          background: #0F1419;
+        }
+      }
+      @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        html { padding-bottom: env(safe-area-inset-bottom); background: #0F1419; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
