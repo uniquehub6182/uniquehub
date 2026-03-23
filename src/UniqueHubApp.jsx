@@ -23047,6 +23047,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     ]},
   ];
 
+  /* Week data for agenda section — must be before renderDashSection */
+  const weekStartD = new Date(); weekStartD.setDate(weekStartD.getDate() - weekStartD.getDay());
+  const weekEndD = new Date(weekStartD); weekEndD.setDate(weekEndD.getDate() + 7);
+  const weekDemands = demands.filter(d => { if (!d.schedule_date) return false; const sd = new Date(d.schedule_date + "T12:00:00"); return sd >= weekStartD && sd <= weekEndD; });
+  const dayNamesG = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+
   const renderDashSection = (key) => {
     const SH = ({title, action, onClick}) => <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt,margin:0}}>{title}</h3>{action&&<span onClick={onClick} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>{action}</span>}</div>;
 
@@ -23122,7 +23128,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       {weekDemands.length === 0 ? <Card style={{ borderRadius:20, padding:20, textAlign:"center" }}><p style={{ fontSize:13, color:C.mut }}>Nenhum conteúdo agendado esta semana</p></Card> :
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{weekDemands.slice(0,5).map(d => {
           const sd = d.schedule_date ? new Date(d.schedule_date + "T12:00:00") : null;
-          const dayStr = sd ? `${dayNames[sd.getDay()].substring(0,3)}, ${sd.getDate()}/${sd.getMonth()+1}` : "";
+          const dayStr = sd ? `${dayNamesG[sd.getDay()].substring(0,3)}, ${sd.getDate()}/${sd.getMonth()+1}` : "";
           const stageColors = { draft:"#F59E0B", design:"#8B5CF6", review:"#3B82F6", approved:"#10B981", published:"#10B981" };
           return <Card key={d.id} style={{ borderRadius:16, padding:"12px 14px", cursor:"pointer" }} onClick={()=>goTab("content")}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -23150,11 +23156,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const pendingCount = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
 
   /* Clock + day (moved to renderHome scope below, no hooks here) */
-  const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
-  const weekDemands = demands.filter(d => { if (!d.schedule_date) return false; const sd = new Date(d.schedule_date + "T12:00:00"); return sd >= weekStart && sd <= weekEnd; });
-  const dayNames = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
-  const todayStr = `${dayNames[now.getDay()]}, ${now.getDate()} de ${monthNames[now.getMonth()]}`;
+  const todayStr = `${dayNamesG[now.getDay()]}, ${now.getDate()} de ${monthNames[now.getMonth()]}`;
 
   return <>
     {/* ═══ AGENCY-STYLE HEADER ═══ */}
