@@ -12854,7 +12854,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     const navW=UP.navWidth||320, navSt=UP.navStyle||"pill", navPos=UP.navPosition||"float", navSz=UP.navSize||"md", navBlur=UP.navBlur!==false, navLabels=UP.navLabels!==false;
 
-    const tabs = isClientView ? [{k:"temas",l:"Temas"}] : [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
+    const tabs = [{k:"temas",l:"Temas"},{k:"ajustes",l:"Ajustes"}];
 
     return (
     <SetPage title="Aparência" wide>
@@ -22368,7 +22368,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
     s.textContent = `
 .app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:${B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
-.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
+.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}
@@ -22634,9 +22634,10 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const TABS = [...clientNavPicks.map(k => CLIENT_ALL_TABS.find(t => t.k === k)).filter(Boolean), { k:"more", l:"Mais", i: IC.more || IC.settings }];
 
   const accentColor = B.accent;
-  const navBg = dark ? "rgba(10,15,18,0.85)" : "rgba(25,33,38,0.90)";
+  const UP = uiPrefs || {};
+  const navBg = UP.navBgColor || (dark ? "rgba(10,15,18,0.85)" : "rgba(25,33,38,0.90)");
   const navBorder = dark ? "1px solid #2A2A2A" : "1px solid rgba(255,255,255,0.08)";
-  const inactiveColor = dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)";
+  const inactiveColor = UP.navInactiveColor || (dark ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.5)");
   const circleIcon = dark ? "#0D0D0D" : "#fff";
 
   /* ═══ CLIENT SUB-PAGES — wrapper with back button ═══ */
@@ -22644,7 +22645,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const clientStyles = `
 .app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}!important;color:${B.text}!important}
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:16px!important;padding:16px!important}
+.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}
@@ -23425,8 +23426,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
-.app,.pg,.content{transition:background-color .3s ease,color .3s ease!important}
+.app,.pg,.content{transition:background-color .25s ease,color .15s ease!important}
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
+.bnav .nb-item{color:${inactiveColor}!important}
+.bnav .nb-item.active{color:${UP.navTextColor||"#fff"}!important}
+:root{--uh-radius:${UP.cardRadius==="sharp"?"6px":UP.cardRadius==="pill"?"20px":"14px"}}
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
@@ -23483,7 +23487,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               <div style={{ width:a?54:36, height:a?54:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-22px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none" }}>
                 {t.i(a ? circleIcon : inactiveColor)}
               </div>
-              {a && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:accentColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
+              {a && <span style={{ position:"absolute", bottom:2, fontSize:9, fontWeight:700, color:UP.navTextColor||accentColor, whiteSpace:"nowrap", animation:"fadeIn .3s ease" }}>{t.l}</span>}
               {t.badge > 0 && !a && <span style={{ position:"absolute", top:6, right:"calc(50% - 16px)", width:16, height:16, borderRadius:8, background:B.red||"#FF6B6B", fontSize:9, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>{t.badge}</span>}
             </button>
           );
