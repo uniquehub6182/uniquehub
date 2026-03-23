@@ -19526,7 +19526,6 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const [filter, setFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [headerC, setHeaderC] = useState(false);
-  const [clientSearchQ, setClientSearchQ] = useState("");
   const msgsEndRef = useRef(null);
 
   const loadConversations = async (clientId) => {
@@ -22402,6 +22401,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
+  const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
   useEffect(() => { if (tab !== "home" || sub) return; const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, [tab, sub]);
@@ -23180,8 +23180,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <input value={clientSearchQ} onChange={e=>setClientSearchQ(e.target.value)} placeholder="Buscar conteúdo, relatórios..." style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"inherit",fontSize:15,color:"#fff",padding:"14px 0"}} />
         {clientSearchQ && <button onClick={()=>setClientSearchQ("")} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
         {clientSearchQ.length >= 2 && <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,zIndex:50,background:B.bgCard||"#1A1A1A",borderRadius:16,border:"1px solid "+(B.border||"rgba(255,255,255,0.1)"),maxHeight:240,overflowY:"auto",boxShadow:"0 12px 40px rgba(0,0,0,0.4)"}}>
-          {demands.filter(d=>(d.title||"").toLowerCase().includes(searchQ.toLowerCase())||(d.type||"").toLowerCase().includes(clientSearchQ.toLowerCase())).slice(0,6).map(d=><div key={d.id} onClick={()=>{setClientSearchQ("");setSub("demand_"+d.id);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:"1px solid "+(B.border||"rgba(255,255,255,0.06)"),display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg><div><p style={{fontSize:13,fontWeight:600,color:B.text||"#fff"}}>{d.title||d.type}</p><p style={{fontSize:10,color:B.muted||"rgba(255,255,255,0.4)"}}>{d.network||d.type} · {d.stage}</p></div></div>)}
-          {demands.filter(d=>(d.title||"").toLowerCase().includes(searchQ.toLowerCase())||(d.type||"").toLowerCase().includes(clientSearchQ.toLowerCase())).length===0 && <div style={{padding:"20px 16px",textAlign:"center"}}><p style={{fontSize:13,color:B.muted||"rgba(255,255,255,0.4)"}}>Nenhum resultado para "{clientSearchQ}"</p></div>}
+          {demands.filter(d=>(d.title||"").toLowerCase().includes(clientSearchQ.toLowerCase())||(d.type||"").toLowerCase().includes(clientSearchQ.toLowerCase())).slice(0,6).map(d=><div key={d.id} onClick={()=>{setClientSearchQ("");setSub("demand_"+d.id);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:"1px solid "+(B.border||"rgba(255,255,255,0.06)"),display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg><div><p style={{fontSize:13,fontWeight:600,color:B.text||"#fff"}}>{d.title||d.type}</p><p style={{fontSize:10,color:B.muted||"rgba(255,255,255,0.4)"}}>{d.network||d.type} · {d.stage}</p></div></div>)}
+          {demands.filter(d=>(d.title||"").toLowerCase().includes(clientSearchQ.toLowerCase())||(d.type||"").toLowerCase().includes(clientSearchQ.toLowerCase())).length===0 && <div style={{padding:"20px 16px",textAlign:"center"}}><p style={{fontSize:13,color:B.muted||"rgba(255,255,255,0.4)"}}>Nenhum resultado para "{clientSearchQ}"</p></div>}
         </div>}
       </div>
       {/* Appointments + Clock/Day — agency style */}
