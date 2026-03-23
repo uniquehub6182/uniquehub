@@ -23177,19 +23177,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
       </div>
       {/* Clock + Day + Appointments — agency style */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 24px 0", gap:10 }}>
-        <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:13, fontWeight:600, color:H.sub, margin:0 }}>{todayStr}</p>
-        </div>
-        <div onClick={()=>goTab("content")} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:`1px solid ${weekDemands.length>0?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)"}`, cursor:"pointer", whiteSpace:"nowrap", transition:"all .15s", backdropFilter:"blur(8px)" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:"rgba(255,255,255,0.35)"} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <div><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
-          {weekDemands.length>0 && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
-        </div>
-        <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:3 }}>
-          {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
-          <span style={{fontSize:19,fontWeight:900,color:LIME,margin:"0 1px",animation:"blink 1s step-end infinite"}}>:</span>
-          {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+      <div style={{ padding:"14px 24px 0" }}>
+        <p style={{ fontSize:13, fontWeight:600, color:H.sub, margin:"0 0 10px" }}>{todayStr}</p>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div onClick={()=>goTab("content")} style={{ flex:1, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:`1px solid ${weekDemands.length>0?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)"}`, cursor:"pointer", transition:"all .15s", backdropFilter:"blur(8px)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:"rgba(255,255,255,0.35)"} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <div><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
+            {weekDemands.length>0 && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round" style={{marginLeft:"auto"}}><polyline points="9 18 15 12 9 6"/></svg>}
+          </div>
+          <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:3 }}>
+            {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+            <span style={{fontSize:19,fontWeight:900,color:LIME,margin:"0 1px",animation:"blink 1s step-end infinite"}}>:</span>
+            {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+          </div>
         </div>
       </div>
       {/* Dynamic accent cards from config */}
