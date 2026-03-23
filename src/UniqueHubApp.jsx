@@ -872,7 +872,7 @@ const THREADS_SCOPES = "threads_basic,threads_content_publish";
 const startThreadsOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_threads_oauth_client", clientId); } catch {}
   const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
-  const url = `https://threads.net/oauth/authorize?client_id=1557196698688426&redirect_uri=${redirectUri}&scope=${encodeURIComponent(THREADS_SCOPES)}&response_type=code&state=threads_connect_${clientId}`;
+  const url = `https://threads.net/oauth/authorize?client_id=1285265573811515&redirect_uri=${redirectUri}&scope=${encodeURIComponent(THREADS_SCOPES)}&response_type=code&state=threads_connect_${clientId}`;
   console.log("[Threads OAuth] Starting...");
   window.location.href = url;
 };
