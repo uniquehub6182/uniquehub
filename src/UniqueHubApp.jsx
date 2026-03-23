@@ -23487,7 +23487,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile demands={demands} /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={()=>true} forceMobile demands={demands} /></div>}
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
