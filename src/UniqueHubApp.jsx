@@ -14877,11 +14877,40 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
               : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>}
           </button>
-          <span style={{fontSize:11,color:B.muted,fontWeight:500}}>{calExpanded?"Largura total":"Expandir"}</span>
+          <span style={{fontSize:11,color:B.muted,fontWeight:500}}>{calExpanded?"Recolher":"Expandir"}</span>
+          {calExpanded && <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+            <button onClick={prevMonth} className="ib" style={{width:32,height:32}}>{IC.back()}</button>
+            <p style={{fontSize:16,fontWeight:800,minWidth:140,textAlign:"center"}}>{MONTHS[curMonth]} {curYear}</p>
+            <button onClick={nextMonth} className="ib" style={{width:32,height:32}}>{IC.chev()}</button>
+          </div>}
         </div>
-        <div style={{ display:"flex", gap:16, marginTop:4, height:"calc(100vh - 270px)" }}>
+        {/* ── EXPANDED: Full-width Notion-style month grid ── */}
+        {calExpanded && <div style={{flex:1,overflowY:"auto",marginTop:8}}>
+          <div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:`1px solid ${B.border}`}}>
+              {DAYS_W.map(d=><div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5}}>{d}</div>)}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+              {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`} style={{minHeight:100,borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,background:B.bg+"80"}}/>)}
+              {Array.from({length:daysInMonth}).map((_,i)=>{
+                const d=i+1; const tdy=isToday(d); const selected=d===selDay;
+                const dayEvs=allEvents.filter(e=>e.day===d&&e.month===curMonth&&e.year===curYear);
+                const typeColor=t=>({meeting:B.blue,event:B.accent,reminder:B.orange,deadline:B.red,recording:B.purple||"#8B5CF6"}[t]||B.muted);
+                return <div key={d} onClick={()=>{setSelDay(d);setCalExpanded(false);}} style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}08`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative"}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}08`:tdy?`${B.accent}04`:"transparent";}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:13,fontWeight:tdy||selected?800:500,color:selected?B.accent:tdy?B.accent:B.text,width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:tdy&&!selected?`${B.accent}15`:"transparent"}}>{d}</span>
+                    {dayEvs.length>3&&<span style={{fontSize:9,color:B.muted,fontWeight:600}}>+{dayEvs.length-3}</span>}
+                  </div>
+                  {dayEvs.slice(0,3).map((ev,ei)=><div key={ei} style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:4,marginBottom:2,background:`${typeColor(ev.type)}15`,color:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}</div>)}
+                </div>;
+              })}
+            </div>
+          </div>
+        </div>}
+        {/* ── COLLAPSED: Normal two-panel layout ── */}
+        {!calExpanded && <div style={{ display:"flex", gap:16, marginTop:4, height:"calc(100vh - 270px)" }}>
           {/* ── LEFT: Calendar Grid ── */}
-          <div style={{ width:calExpanded?"50%":"380px", flexShrink:0, display:"flex", flexDirection:"column", gap:10, transition:"width .3s ease" }}>
+          <div style={{ width:380, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
             <div style={{ background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, padding:"18px 16px", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
                 <button onClick={prevMonth} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
@@ -15081,7 +15110,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
             </div>
             </>}
           </div>
-        </div>
+        </div>}
       </div>
     );
   }
