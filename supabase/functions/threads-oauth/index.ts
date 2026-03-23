@@ -12,8 +12,8 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { action } = body;
-    const APP_ID = Deno.env.get("META_APP_ID")!;
-    const APP_SECRET = Deno.env.get("META_APP_SECRET")!;
+    const APP_ID = Deno.env.get("THREADS_APP_ID") || Deno.env.get("META_APP_ID")!;
+    const APP_SECRET = Deno.env.get("THREADS_APP_SECRET") || Deno.env.get("META_APP_SECRET")!;
     if (!APP_ID || !APP_SECRET) throw new Error("Threads credentials not configured");
 
     if (action === "exchange_token") {
