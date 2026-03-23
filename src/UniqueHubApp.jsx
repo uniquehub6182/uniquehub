@@ -14393,7 +14393,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const [form, setForm] = useState({});
   const { showToast, ToastEl } = useToast();
 
-  const EVENT_TYPES = [
+  const _ALL_EVENT_TYPES = [
     { k:"meeting", l:"Reunião", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>, c:B.blue, desc:"Interna ou com cliente, online ou presencial" },
     { k:"recording", l:"Gravação", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>, c:B.orange, desc:"Vídeo, foto, produção audiovisual" },
     { k:"event", l:"Evento", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, c:B.purple, desc:"Workshop, feira, inauguração, live" },
@@ -14401,6 +14401,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
     { k:"deadline", l:"Deadline", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, c:B.red, desc:"Data limite de entrega" },
     { k:"demand", l:"Post", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>, c:B.accent, desc:"Post agendado via conteúdo" },
   ];
+  const EVENT_TYPES = clientFilter ? _ALL_EVENT_TYPES.filter(t => !["recording","deadline"].includes(t.k)) : _ALL_EVENT_TYPES;
 
   const DEFAULT_EQUIPMENTS = ["Câmera DSLR","Câmera Mirrorless","Tripé","Gimbal","Drone","Ring Light","Softbox","Microfone Lapela","Microfone Boom","Luz LED Portátil","Rebatedor","Fundo Chroma","Cartão de Memória Extra","Bateria Extra","Notebook p/ Review","HD Externo"];
   const [EQUIPMENTS, setEquipments] = useState(() => { try { const s = localStorage.getItem("uh_equipments"); return s ? JSON.parse(s) : DEFAULT_EQUIPMENTS; } catch { return DEFAULT_EQUIPMENTS; } });
@@ -21146,7 +21147,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   const onTouchStart = (e) => setTouchStartX(e.touches[0].clientX);
   const onTouchMove = (e) => { if (touchStartX === null) return; setDragX(e.touches[0].clientX - touchStartX); };
-  const onTouchEnd = () => { if (Math.abs(dragX) > 80) { dragX > 0 ? handleLike() : handlePass(); } else setDragX(0); setTouchStartX(null); };
+  const onTouchEnd = () => { const dx = dragX; setDragX(0); setTouchStartX(null); if (Math.abs(dx) > 80) { dx > 0 ? handleLike() : handlePass(); } };
 
   const sendChatMsg = async (text, type = "text") => { if (!chatMatch || (!text?.trim() && type === "text")) return; const msg = { from: myClient?.id, fromName: myClient?.name, text: text?.trim() || "", type, ts: new Date().toISOString() }; const msgs = [...(chatMatch.messages || []), msg]; try { await supabase.from("match4biz").update({ messages: msgs }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, messages: msgs } : m)); setChatMatch(p => ({ ...p, messages: msgs })); setChatInput(""); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100); };
   const handleChatFile = async (e) => { const f = e.target.files?.[0]; if (!f || !supabase) return; const path = `m4b/${Date.now()}_${f.name}`; const { error } = await supabase.storage.from("demand-files").upload(path, f, { upsert: true }); if (error) { showToast("Erro no upload"); return; } const { data: u } = supabase.storage.from("demand-files").getPublicUrl(path); const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name); sendChatMsg(u.publicUrl, isImg ? "image" : "file"); e.target.value = ""; };
@@ -21615,7 +21616,7 @@ function ClientMatch4Biz({ onBack, user }) {
       {ToastEl}
       {BuyOverlay}
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px" }}>
+      <div className="content" style={{ padding:"12px 16px 120px" }}>
         {/* Tabs + actions row */}
         <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
           <div style={{ flex:1, display:"flex", gap:0, background:B.bgCard, borderRadius:14, padding:3, border:"1px solid "+B.border }}>
@@ -21623,12 +21624,13 @@ function ClientMatch4Biz({ onBack, user }) {
               <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", background:tab===t.k?B.accent+"15":"transparent", color:tab===t.k?B.text:B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
             ))}
           </div>
-          <button onClick={() => setShowEditProfile(true)} style={{ width:36, height:36, borderRadius:12, background:profileComplete?B.accent+"08":"#F59E0B10", border:"1.5px solid "+(profileComplete?B.accent+"20":"#F59E0B30"), cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={profileComplete?B.accent:"#F59E0B"} strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <button onClick={() => setShowEditProfile(true)} style={{ padding:"8px 14px", borderRadius:12, background:profileComplete?"#10B98115":"linear-gradient(135deg,#F59E0B,#EF4444)", border:profileComplete?"1.5px solid #10B98130":"none", cursor:"pointer", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:profileComplete?"none":"0 2px 8px rgba(245,158,11,0.4)", animation:profileComplete?"none":"skPulse 2s ease infinite" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={profileComplete?"#10B981":"#fff"} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span style={{ fontSize:11, fontWeight:700, color:profileComplete?"#10B981":"#fff" }}>{profileComplete?"Perfil":"Perfil!"}</span>
           </button>
-          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"6px 12px", borderRadius:12, background:noCredits?"#EF444410":B.bg, border:"1.5px solid "+(noCredits?"#EF444430":B.border), cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={noCredits?"#EF4444":B.accent} strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            <span style={{ fontSize:12, fontWeight:800, color:noCredits?"#EF4444":B.accent }}>{isUnlimited ? "∞" : credits}</span>
+          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"8px 14px", borderRadius:12, background:noCredits?"linear-gradient(135deg,#EF4444,#DC2626)":"linear-gradient(135deg,#6366F1,#8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:noCredits?"0 2px 8px rgba(239,68,68,0.3)":"0 2px 8px rgba(99,102,241,0.3)" }}>
+            <span style={{ fontSize:16 }}>{noCredits?"🔥":"💎"}</span>
+            <span style={{ fontSize:12, fontWeight:800, color:"#fff" }}>{isUnlimited ? "∞" : credits} crédito{credits!==1?"s":""}</span>
           </button>
         </div>
 
@@ -21896,7 +21898,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
     <div className="app" style={{ background:B.bg, color:B.text }}>
       {ToastEl}
       <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px" }}>
+      <div className="content" style={{ padding:"12px 16px 120px" }}>
         <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
           {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
         </div>
@@ -22401,10 +22403,10 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [headerC, setHeaderC] = useState(false);
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
-  useEffect(() => { const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, []);
+  useEffect(() => { if (sub) return; const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, [sub]);
   const scrollRef = useRef(null);
   const CLIENT_DASH_DEFAULT_INIT = ["growth","news","posts","metricas","match"];
-  const CLIENT_DASH_VALID_KEYS = ["growth","agenda","news","posts","metricas","match"];
+  const CLIENT_DASH_VALID_KEYS = ["growth","news","posts","metricas","match","agenda"];
   const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
@@ -22870,8 +22872,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
         {ToastEl}
-        <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden" }}>
-          <Head title={d.title} onBack={() => setSub(null)} />
+        <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", minWidth:0 }}>
+          <div style={{ padding:"0 20px" }}><Head title={d.title} onBack={() => setSub(null)} /></div>
           <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"14px 16px calc(90px + env(safe-area-inset-bottom,0px))" }}>
             {/* Approved banner */}
             {isApproved && <Card style={{ background:`${B.green}08`, border:`1.5px solid ${B.green}25`, textAlign:"center", padding:20, marginBottom:10 }}>
@@ -22971,7 +22973,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const nav = (k) => goTab(k);
 
   /* ═══ DASHBOARD CONFIG ═══ */
-  const CLIENT_SECTIONS = { growth:"Growth Score", agenda:"Compromissos", news:"Comunicados", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz" };
+  const CLIENT_SECTIONS = { growth:"Growth Score", news:"Comunicados", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz", agenda:"Compromissos" };
   const CLIENT_DASH_DEFAULT = ["growth","news","posts","metricas","match"];
 
   const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
@@ -23168,11 +23170,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
         <div style={{ display:"flex", gap:12 }}>
           <button onClick={()=>goTab("chat")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
-          <button onClick={()=>setSub("settings")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{pendingCount>0&&<span style={{position:"absolute",top:10,right:10,width:9,height:9,borderRadius:"50%",background:"#FF3B30",border:`2px solid ${H.bg}`}}/>}</button>
+          <button onClick={()=>setSub("notifications")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{pendingCount>0&&<span style={{position:"absolute",top:10,right:10,width:9,height:9,borderRadius:"50%",background:"#FF3B30",border:`2px solid ${H.bg}`}}/>}</button>
         </div>
       </div>
       {/* Search bar */}
-      <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px" }}>
+      <div onClick={()=>{const q=prompt("Buscar...");if(q){const found=demands.find(d=>(d.title||"").toLowerCase().includes(q.toLowerCase()));if(found)goTab("content");else showToast("Nenhum resultado");}}} style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", cursor:"pointer" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
       </div>
