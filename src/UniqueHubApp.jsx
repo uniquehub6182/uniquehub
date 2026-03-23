@@ -15082,20 +15082,20 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   return (
     <div style={{ paddingTop:contained?0:TOP, minHeight:"100%", display:"flex", flexDirection:"column", ...(calExpanded && isCalDesktop ? { width:"100vw", marginLeft:"calc(-50vw + 50%)", maxWidth:"100vw" } : {}) }}>
       {ToastEl}
-      {!contained && <div style={{display:"flex",alignItems:"center"}}>
-        <div style={{flex:1}}><CollapseHeader icon={IC.calendar} label="Agenda" title="Calendário" collapsed={pgC} stats={[]} /></div>
-        {isCalDesktop && <button onClick={()=>setCalExpanded(!calExpanded)} title={calExpanded?"Recolher":"Expandir largura total"} style={{marginRight:16,width:36,height:36,borderRadius:10,background:calExpanded?B.accent:"transparent",border:`1.5px solid ${calExpanded?B.accent:B.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",flexShrink:0}}>
-          {calExpanded
-            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>}
-        </button>}
-      </div>}
+      {!contained && <CollapseHeader icon={IC.calendar} label="Agenda" title="Calendário" collapsed={pgC} stats={[]} />}
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
       <Card style={{ marginBottom:10 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
           <button onClick={prevMonth} className="ib" style={{ width:32, height:32 }}>{IC.back()}</button>
           <p style={{ fontSize:15, fontWeight:800 }}>{MONTHS[curMonth]} {curYear}</p>
-          <button onClick={nextMonth} className="ib" style={{ width:32, height:32 }}>{IC.chev()}</button>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            {isCalDesktop && <button onClick={()=>setCalExpanded(!calExpanded)} title={calExpanded?"Recolher":"Expandir"} style={{width:32,height:32,borderRadius:8,background:calExpanded?B.accent:"transparent",border:`1.5px solid ${calExpanded?B.accent:B.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s"}}>
+              {calExpanded
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={calExpanded?"#0D0D0D":B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>}
+            </button>}
+            <button onClick={nextMonth} className="ib" style={{ width:32, height:32 }}>{IC.chev()}</button>
+          </div>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, textAlign:"center", marginBottom:4 }}>
           {DAYS_W.map(d=><span key={d} style={{ fontSize:10, fontWeight:600, color:B.muted }}>{d}</span>)}
