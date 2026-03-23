@@ -22351,7 +22351,8 @@ function ClientOnboarding({ onComplete, onBack }) {
 
 class ClientEB extends React.Component{constructor(p){super(p);this.state={err:null};}static getDerivedStateFromError(e){return{err:e};}render(){if(this.state.err)return React.createElement("div",{className:"app",style:{position:"fixed",inset:0,background:"#F5F5F5",color:"#0D0D0D",padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},React.createElement("h2",{style:{color:"#EF4444",marginBottom:10,fontSize:18}},"Erro na pagina"),React.createElement("pre",{style:{fontSize:11,color:"#666",maxWidth:320,textAlign:"center",lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-all"}},String(this.state.err?.message||this.state.err)),React.createElement("button",{onClick:()=>{this.setState({err:null});},style:{marginTop:16,padding:"10px 20px",borderRadius:10,background:"#BBF246",border:"none",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}},"Voltar"));return this.props.children;}}
 
-function MainClientApp({ user: userProp, onLogout, dark }) {
+function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
+  const [dark, setDark] = useState(() => { try { const s = localStorage.getItem("uh_dark"); return s ? s === "1" : darkProp; } catch { return darkProp; } });
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
