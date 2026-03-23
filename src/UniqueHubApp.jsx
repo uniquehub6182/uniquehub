@@ -1001,7 +1001,7 @@ const supaLoadConversations = async (userId) => {
     const allMembers = memRes.data || [];
     const uniqueUserIds = [...new Set(allMembers.map(m => m.user_id))];
     const profileRes = uniqueUserIds.length > 0
-      ? await supabase.from("profiles").select("id, name, email, photo_url").in("id", uniqueUserIds)
+      ? await supabase.from("profiles").select("id, name, email, photo_url, role, nick").in("id", uniqueUserIds)
       : { data: [] };
     const allProfiles = profileRes.data || [];
     const profileMap = {};
@@ -11656,7 +11656,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
         {allProfiles.map(p => (
           <button key={p.id} onClick={() => startDM(p.id)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
             <Av src={p.photo_url} name={p.name} sz={38} fs={14} />
-            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.nick || (p.role==="admin"?"Administrador":p.role==="member"?"Equipe":"Cliente")} · {p.email}</p></div>
+            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.nick || (p.role==="admin"?"Administrador":p.role==="member"?"Equipe":p.role==="cliente"?"Cliente":"Colaborador")}{p.email?" · "+p.email:""}</p></div>
           </button>
         ))}
         {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro ativo na equipe. Convide membros em Equipe e peça que acessem o link de convite.</p>}
@@ -12547,7 +12547,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   const SetPage = React.useCallback(({ title, onBackOverride, wide, children }) => {
     if (!isSetDesktop) return (
-      <div className="pg" style={{ paddingBottom:120 }}>
+      <div className="pg" style={{ paddingBottom:140 }}>
         {ToastEl}
         <Head title={title} onBack={onBackOverride || (() => setSub(null))} />
         {children}
@@ -17050,7 +17050,7 @@ REGRAS:
       </div>
     );
     return (
-      <div className="pg" style={{ paddingBottom:120 }}>
+      <div className="pg">
         {ToastEl}
         <Head title="" onBack={() => {setSelArticle(null);setEditingArticle(false);}} right={<div style={{display:"flex",gap:6}}>
           <button onClick={() => toggleSave(a.id)} className="ib" style={{ color:saved.includes(a.id)?B.accent:B.muted }}>
@@ -17089,7 +17089,7 @@ REGRAS:
           ))}
         </Card>
         {a.tags && a.tags.length > 0 && (
-          <Card style={{ marginBottom:12 }}>
+          <Card style={{ marginBottom:100 }}>
             <p className="sl" style={{ marginBottom:6 }}>Tags</p>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
               {a.tags.map((t,i) => <Tag key={i} color={catColor(a.cat)}>#{t}</Tag>)}
@@ -22758,7 +22758,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     if (finView === "contract") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
-        <Head title="Contrato" onBack={() => setFinView("main")} />
+        <div style={{ padding:"0 20px" }}><Head title="Contrato" onBack={() => setFinView("main")} /></div>
         <div className="content" style={{ padding:"0 16px 120px" }}>
           <Card><p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Termos de Serviço</p>
             <p style={{ fontSize:12, lineHeight:1.8, color:B.muted }}>
@@ -22778,7 +22778,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px 120px" }}>
+      <div className="content" style={{ padding:"12px 16px 120px" }}>
         <div style={{ borderRadius:20, overflow:"hidden", border:"none" }}>
           <div style={{ background:"#0D0D0D", padding:"20px 20px 18px", borderRadius:"20px 20px 0 0" }}>
             <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
