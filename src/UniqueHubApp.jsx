@@ -2814,6 +2814,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const cfg = dashCfg || cfgDefault;
   /* Desktop panel state — top level for React hooks rules */
   const [dPanels, setDPanels] = useState(() => (dashCfg?.desktopPanels || cfgDefault.desktopPanels || ["news","ai","content"]));
+  const [calExpanded, setCalExpanded] = useState(false);
   const [dpNews, setDpNews] = useState([]);
   const [dpNewsExpanded, setDpNewsExpanded] = useState(null);
   useEffect(() => { supaLoadNews().then(rows => { if(rows?.length) setDpNews(rows); }); }, []);
@@ -3644,6 +3645,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <button onClick={()=>setShowPanelEditor(!showPanelEditor)} style={{width:38,height:38,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+            <button onClick={()=>setCalExpanded(!calExpanded)} title={calExpanded?"Recolher calendário":"Expandir calendário"} style={{width:38,height:38,borderRadius:10,background:calExpanded?LIME:"#fff",border:calExpanded?"none":"1px solid rgba(0,0,0,0.08)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all .2s"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={calExpanded?"#0D0D0D":"#1A1D23"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk=>{const p=PILLS[pk];return p&&(p.k!=="financial"||canFinancial);}).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return(
               <div key={i} onClick={()=>nav(p.k)} style={{display:"flex",alignItems:"center",gap:7,background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:"#1A1D23",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,0,0,0.08)";}}>
                 <div style={{width:24,height:24,borderRadius:7,background:"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",color:"#1A1D23"}}>{pillIcon(pk)}</div>{p.l}
@@ -3651,7 +3653,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           </div>
         </div>
         {/* ── BANNER CARROSSEL ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
+        {!calExpanded && <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
           {banners.length > 0 ? (
             <div style={{position:"relative",width:"100%",height:120,borderRadius:14,overflow:"hidden"}}>
               {banners.map((b,i) => (
@@ -3669,7 +3671,13 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               {isAdmin&&<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span style={{fontSize:12,fontWeight:600,color:"#9CA3AF"}}>Clique para adicionar banners</span></>}
             </div>
           )}
-        </div>
+        </div>}
+        {/* ── EXPANDED CALENDAR (Notion-style) ── */}
+        {calExpanded && <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
+          <div style={{background:"#fff",borderRadius:20,border:"1px solid rgba(0,0,0,0.08)",overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+            <CalendarPage onBack={null} clients={clients} team={team} user={user} canAccess={canAccessFn} demands={demands} />
+          </div>
+        </div>}
         {/* ── 3 BESPOKE PANELS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"16px 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"start"}}>
