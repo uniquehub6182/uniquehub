@@ -22994,7 +22994,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const myClient = (linkedId ? clients.find(c => (c.id === linkedId || c.supaId === linkedId)) : null)
         || clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
         || clients.find(c => { const cf = (user?.company||user?.name||"").toLowerCase(); return (c.name||"").toLowerCase().includes(cf.split(" ")[0]) || cf.includes((c.name||"").split(" ")[0].toLowerCase()); });
-      if (!myClient) { console.warn("[Client Dashboard] No matching client for", user?.email, "linkedId:", linkedId); return; }
+      if (!myClient) { console.warn("[Client Dashboard] No matching client for", user?.email, "linkedId:", linkedId, "clients:", clients.length); return; }
+      console.log("[Client Dashboard] Matched client:", myClient.name, myClient.id || myClient.supaId);
       setMetricsLoading(true);
       try {
         const cid = myClient.supaId || myClient.id;
@@ -23005,7 +23006,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           body: JSON.stringify({ client_id: cid, since, until })
         });
         const data = await res.json();
-        if (data && !data.error) setClientMetrics(data);
+        if (data && !data.error) { console.log("[Client Dashboard] Metrics loaded:", Object.keys(data), "igTotals:", JSON.stringify(data.igTotals||{}).substring(0,150)); setClientMetrics(data); }
+        else console.warn("[Client Dashboard] Metrics error:", data?.error);
       } catch(e) { console.warn("Client metrics load error:", e); }
       setMetricsLoading(false);
     })();
@@ -23013,13 +23015,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
   const fmt = (n) => { if (!n && n !== 0) return "—"; if (n >= 1000000) return (n/1000000).toFixed(1)+"M"; if (n >= 1000) return (n/1000).toFixed(1)+"K"; return String(n); };
   const igT = clientMetrics?.igTotals || {};
-  const igDaily = clientMetrics?.ig || [];
-  const igReach = igDaily.reduce((a, d) => a + ((d.values || []).find(v => v.name === "reach")?.value || 0), 0);
-  const igFollowers = igDaily.reduce((a, d) => { const v = (d.values || []).find(v => v.name === "follower_count")?.value || 0; return Math.max(a, v); }, 0);
+  const igMetrics = clientMetrics?.ig || [];
+  const reachMetric = igMetrics.find(m => m.name === "reach");
+  const followerMetric = igMetrics.find(m => m.name === "follower_count");
+  const igReach = (reachMetric?.values || []).reduce((a, v) => a + (v.value || 0), 0);
+  const igFollowers = (followerMetric?.values || []).reduce((a, v) => Math.max(a, v.value || 0), 0);
   const fbPosts = clientMetrics?.fbPosts || [];
-  const fbLikes = fbPosts.reduce((a, p) => a + (p.likes_count || 0), 0);
-  const fbShares = fbPosts.reduce((a, p) => a + (p.shares_count || 0), 0);
-  const fbComments = fbPosts.reduce((a, p) => a + (p.comments_count || 0), 0);
+  const fbLikes = fbPosts.reduce((a, p) => a + (p.likes_count || p.likes?.summary?.total_count || 0), 0);
+  const fbComments = fbPosts.reduce((a, p) => a + (p.comments_count || p.comments?.summary?.total_count || 0), 0);
+  const fbShares = fbPosts.reduce((a, p) => a + (p.shares_count || p.shares?.count || 0), 0);
 
   const metricsData = [
     { network:"Instagram", metrics:[
@@ -23066,9 +23070,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>;
 
     if (key === "metricas") return <div key="metricas">
-      <SH title="Métricas" action="Ver tudo" onClick={()=>setSub("reports")} />
+      <SH title={`Métricas · ${monthNames[now.getMonth()]} ${now.getFullYear()}`} action="Ver tudo" onClick={()=>setSub("reports")} />
+      {metricsLoading && <div style={{ textAlign:"center", padding:30 }}><div style={{ width:24, height:24, border:"2.5px solid "+C.brd, borderTopColor:LIME, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:11, color:C.mut, marginTop:8 }}>Carregando métricas...</p></div>}
+      {!metricsLoading && <>
       <div style={{ display:"flex", gap:8, marginBottom:10 }}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{ padding:"8px 16px", borderRadius:100, border:metricsSlide===i?"none":`1.5px solid ${C.brd}`, background:metricsSlide===i?LIME:"transparent", color:metricsSlide===i?(B.textOnAccent||"#0D0D0D"):C.mut, fontSize:12, fontWeight:metricsSlide===i?700:500, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>{md.network}</button>)}</div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{metricsData[metricsSlide]?.metrics.map((m,i) => <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer", borderRadius:18 }}><span style={{ fontSize:10, fontWeight:600, letterSpacing:0.5, color:C.mut, textTransform:"uppercase" }}>{m.l}</span><div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:6 }}><span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.v}</span><span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 7px", borderRadius:6 }}>{m.d}</span></div></Card>)}</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>{metricsData[metricsSlide]?.metrics.map((m,i) => <Card key={i} onClick={()=>setSub("reports")} style={{ padding:14, cursor:"pointer", borderRadius:18 }}><span style={{ fontSize:10, fontWeight:600, letterSpacing:0.5, color:C.mut, textTransform:"uppercase" }}>{m.l}</span><div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:6 }}><span style={{ fontSize:22, fontWeight:900, color:C.txt }}>{m.v}</span>{m.d && <span style={{ fontSize:10, fontWeight:700, color:B.green, background:`${B.green}10`, padding:"2px 7px", borderRadius:6 }}>{m.d}</span>}</div></Card>)}</div>
+      </>}
     </div>;
 
     if (key === "growth") return <div key="growth" style={{ paddingTop:24 }}>
