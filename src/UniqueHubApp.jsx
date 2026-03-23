@@ -23116,7 +23116,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ background:`linear-gradient(135deg, #8B5CF610, ${LIME}08)`, padding:"18px 20px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <div style={{ width:50, height:50, borderRadius:16, background:"linear-gradient(135deg, #8B5CF625, #BBF24625)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-            <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Encontre parceiros</p><p style={{ fontSize:12, color:C.mut, marginTop:3 }}>Conecte-se com outros clientes da agência</p></div>
+            <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Faça networking e feche negócios</p><p style={{ fontSize:12, color:C.mut, marginTop:3 }}>Conecte-se com outros clientes e cresça junto</p></div>
             <Tag color={LIME}>3</Tag>
           </div>
         </div>
@@ -23178,12 +23178,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
       {/* Appointments + Clock/Day — agency style */}
       <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:"14px 24px 0" }}>
-        <div onClick={()=>goTab("content")} style={{ flex:1, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:`1px solid ${weekDemands.length>0?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)"}`, cursor:"pointer", transition:"all .15s", backdropFilter:"blur(8px)" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:"rgba(255,255,255,0.35)"} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <div style={{flex:1}}><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
-          {weekDemands.length>0 && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
-        </div>
-        <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"flex-end", justifyContent:"center", gap:4 }}>
+        <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"flex-start", justifyContent:"center", gap:4 }}>
           <p style={{ fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.45)", margin:0, whiteSpace:"nowrap" }}>{todayStr}</p>
           <div style={{ display:"flex", alignItems:"center", gap:3 }}>
             {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
@@ -23191,11 +23186,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
           </div>
         </div>
+        <div onClick={()=>goTab("content")} style={{ flex:1, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:`1px solid ${weekDemands.length>0?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)"}`, cursor:"pointer", transition:"all .15s", backdropFilter:"blur(8px)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:"rgba(255,255,255,0.35)"} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div style={{flex:1}}><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
+          {weekDemands.length>0 && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
+        </div>
       </div>
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
         {clientCards.slice(0,2).map((ck,i) => {
-          const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% da meta${pendingApprovalCount>0?" · "+pendingApprovalCount+" p/ aprovar":""}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Conecte-se",action:()=>setSub("match4biz")} };
+          const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% da meta${pendingApprovalCount>0?" · "+pendingApprovalCount+" p/ aprovar":""}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
           return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
             <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{cd.label}</div>
