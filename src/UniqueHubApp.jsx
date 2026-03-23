@@ -22330,23 +22330,44 @@ function ClientGamification({ onBack, user, clients, demands }) {
   const pendingApprovals = (demands || []).filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
   const approvedCount = (demands || []).filter(d => d.steps?.client?.status === "approved").length;
   const totalDemands = (demands || []).length;
-  const MISSIONS = [
+  /* Load custom gamify data from app_settings */
+  const [gamifyData, setGamifyData] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services","gamify_about"];
+        const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
+        if (data?.length) {
+          const gd = {};
+          data.forEach(d => { try { gd[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { gd[d.key] = d.value; } });
+          setGamifyData(gd);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const DEFAULT_MISSIONS = [
     { title:`Aprovar ${Math.max(1, pendingApprovals)} post${pendingApprovals!==1?"s":""} pendente${pendingApprovals!==1?"s":""}`, pts:1.5*Math.max(1,pendingApprovals), done:pendingApprovals===0 && approvedCount > 0, pillar:"execucao" },
     { title:"Criar um evento no calendário", pts:2.0, done:false, pillar:"estrategia" },
     { title:"Acessar os relatórios de performance", pts:1.0, done:false, pillar:"crescimento" },
     { title:"Ler uma notícia no News", pts:0.5, done:false, pillar:"educacao" },
     { title:"Visitar a página Match4Biz", pts:1.0, done:false, pillar:"ecossistema" },
   ];
+  const customMissions = gamifyData?.gamify_missions;
+  const MISSIONS = customMissions?.length ? customMissions.map(m => ({...m, done: false})) : DEFAULT_MISSIONS;
   const mDone = MISSIONS.filter(m=>m.done).length;
   const mPending = MISSIONS.filter(m=>!m.done).length;
   const mPts = MISSIONS.filter(m=>!m.done).reduce((a,m)=>a+m.pts,0);
-  const ZONES = [
+  const DEFAULT_ZONES = [
     { name:"Estruturação", range:"0–10", color:"#EF4444", desc:"Início da jornada. Complete as primeiras ações no app.", reward:"Boas-vindas + diagnóstico inicial" },
     { name:"Organização", range:"11–30", color:"#F59E0B", desc:"Você está ativo! Continue aprovando conteúdos e participando.", reward:"Relatório mensal detalhado" },
     { name:"Estratégica", range:"31–60", color:"#BBF246", desc:"Engajamento consistente. Suas ações impactam o marketing.", reward:"Prioridade no atendimento" },
     { name:"Crescimento", range:"61–85", color:"#10B981", desc:"Resultados visíveis. Seu marketing cresce de verdade.", reward:"Consultoria estratégica mensal" },
     { name:"Escala", range:"86–100", color:"#3B82F6", desc:"Excelência. Você é referência entre os clientes da agência.", reward:"Desconto no plano + destaque no portfólio" },
   ];
+  const customZones = gamifyData?.gamify_zones;
+  const ZONES = customZones?.length ? customZones : DEFAULT_ZONES;
+
   const SCORING = [
     { action:"Aprovar conteúdo da agência", pts:"+1.5", pillar:"Execução", c:"#10B981" },
     { action:"Solicitar edição com feedback", pts:"+0.5", pillar:"Execução", c:"#10B981" },
@@ -22488,7 +22509,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
             <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{score === 0 ? "Todos os clientes começam zerados. Aprove conteúdos e complete missões para subir no ranking." : "Complete missões e ações no app para subir de posição."}</p>
           </Card>
           <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:8 }}>Bonificações do pódio</p>
-          {[{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}].map((p,i) => (
+          {(gamifyData?.gamify_podium || [{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}]).map((p,i) => (
             <Card key={i} style={{ marginBottom:6, borderLeft:`3px solid ${p.c}` }}>
               <p style={{ fontSize:13, fontWeight:700 }}>{p.pos}</p>
               <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{p.reward}</p>
@@ -23312,7 +23333,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           <button onClick={() => setFinView("plans")} style={{ marginTop:12, padding:"12px 28px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Ver planos</button>
         </Card>
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
-        {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}].map((s,i) => (
+        {(gamifyData?.gamify_services || [{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}]).map((s,i) => (
           <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient?.name||""}) e tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{s.ic}</div>
