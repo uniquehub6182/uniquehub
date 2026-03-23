@@ -22356,8 +22356,8 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
-  /* Force light theme for client portal */
-  B = getB(false, "#BBF246");
+  /* Theme for client portal - respects dark mode setting */
+  B = getB(dark, "#BBF246", uiPrefs);
   const canAccessFn = () => true;
   /* Inject essential CSS globally for all sub-pages */
   React.useEffect(() => {
