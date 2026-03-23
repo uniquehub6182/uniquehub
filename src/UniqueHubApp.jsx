@@ -11656,7 +11656,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
         {allProfiles.map(p => (
           <button key={p.id} onClick={() => startDM(p.id)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 0", border:"none", background:"none", cursor:"pointer", fontFamily:"inherit" }}>
             <Av src={p.photo_url} name={p.name} sz={38} fs={14} />
-            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.email}</p></div>
+            <div style={{ textAlign:"left" }}><p style={{ fontSize:14, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:11, color:B.muted }}>{p.nick || (p.role==="admin"?"Administrador":p.role==="member"?"Equipe":"Cliente")} · {p.email}</p></div>
           </button>
         ))}
         {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro ativo na equipe. Convide membros em Equipe e peça que acessem o link de convite.</p>}
@@ -22724,17 +22724,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     if (finView === "plans") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
-        <Head title="Nossos Planos" onBack={() => setFinView("main")} />
-        <div className="content" style={{ padding:"0 16px" }}>
+        <div style={{ padding:"0 20px" }}><Head title="Nossos Planos" onBack={() => setFinView("main")} /></div>
+        <div className="content" style={{ padding:"0 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
             const isCurrent = k === myClient.plan;
             return <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
               {isCurrent && <div style={{ position:"absolute", top:0, right:0, padding:"4px 14px", borderRadius:"0 0 0 12px", background:B.accent, fontSize:10, fontWeight:700, color:"#0D0D0D" }}>Seu plano</div>}
               <p style={{ fontSize:18, fontWeight:900 }}>{p.name}</p>
-              <p style={{ fontSize:22, fontWeight:900, color:B.accent, marginTop:4 }}>{p.price}</p>
+              
               <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
               <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
-              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no plano ${p.name} (${p.price}) do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/5524992538076?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
+              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no plano ${p.name} (${p.price}) do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/5521922159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
             </Card>;
           })}
         </div>
@@ -22749,7 +22749,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontSize:28 }}>💼</div>
             <p style={{ fontSize:16, fontWeight:800 }}>Solicitar Serviço Extra</p>
             <p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Entre em contato para receber um orçamento personalizado para o serviço desejado.</p>
-            <button onClick={() => { const msg = encodeURIComponent("Olá! Gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?"); window.open(`https://wa.me/5524992538076?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
+            <button onClick={() => { const msg = encodeURIComponent("Olá! Gostaria de solicitar um serviço extra no UniqueHub. Podem me passar mais informações?"); window.open(`https://wa.me/5521922159867?text=${msg}`, "_blank"); }} style={{ marginTop:14, padding:"14px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", width:"100%" }}>Falar no WhatsApp</button>
             <button onClick={() => setFinView("main")} style={{ marginTop:8, padding:"12px 28px", borderRadius:14, background:"transparent", border:`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted, width:"100%" }}>Voltar</button>
           </Card>
         </div>
@@ -22759,7 +22759,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     if (finView === "contract") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
         <Head title="Contrato" onBack={() => setFinView("main")} />
-        <div className="content" style={{ padding:"0 16px" }}>
+        <div className="content" style={{ padding:"0 16px 120px" }}>
           <Card><p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Termos de Serviço</p>
             <p style={{ fontSize:12, lineHeight:1.8, color:B.muted }}>
               Este contrato estabelece os termos de prestação de serviços entre a Unique Marketing 360 ("Agência") e o cliente contratante.{"\n\n"}
@@ -22778,19 +22778,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return (
     <div className="app" style={{ background:B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px" }}>
-        <Card style={{ padding:0, overflow:"hidden" }}>
-          <div style={{ background:B.dark||"#111", padding:"20px", color:"#fff" }}>
+      <div className="content" style={{ padding:"0 16px 120px" }}>
+        <div style={{ borderRadius:20, overflow:"hidden", border:"none" }}>
+          <div style={{ background:"#0D0D0D", padding:"20px 20px 18px", borderRadius:"20px 20px 0 0" }}>
             <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
-            <p style={{ fontSize:22, fontWeight:900, marginTop:6 }}>{plan.name}</p>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>{plan.desc}</p>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6 }}>
+              <p style={{ fontSize:24, fontWeight:900, color:"#fff" }}>{plan.name}</p>
+              <span style={{ fontSize:12, color:B.accent, fontWeight:700, padding:"4px 12px", borderRadius:8, background:B.accent+"15" }}>{plan.desc}</span>
+            </div>
           </div>
           <div style={{ padding:"14px 20px" }}>
             <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Valor mensal</span><span style={{ fontSize:14, fontWeight:700, color:B.accent }}>{monthlyVal}</span></div>
             <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${B.border}` }}><span style={{ fontSize:12, color:B.muted }}>Status</span><Tag color={B.green}>Ativo</Tag></div>
             <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 0" }}><span style={{ fontSize:12, color:B.muted }}>Plano sem fidelidade</span><span style={{ fontSize:12, fontWeight:600 }}>Início imediato</span></div>
           </div>
-        </Card>
+        </div>
         <Card style={{ marginTop:8 }}>
           <p style={{ fontSize:14, fontWeight:800, marginBottom:10 }}>O que inclui</p>
           {plan.features.map((item,i) => <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{item}</span></div>)}
@@ -22838,7 +22840,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </Card>
         <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:16, marginBottom:8 }}>Serviços extras</p>
         {[{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500",ic:"🌐"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800",ic:"🎨"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800",ic:"📸"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000",ic:"🎬"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês",ic:"📈"}].map((s,i) => (
-          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/5524992538076?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
+          <Card key={i} style={{ marginBottom:6, cursor:"pointer" }} onClick={() => { const msg = encodeURIComponent(`Olá! Tenho interesse no serviço "${s.l}" (${s.v}). Gostaria de saber mais e solicitar um orçamento.`); window.open(`https://wa.me/5521922159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:18 }}>{s.ic}</div>
               <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{s.l}</p><p style={{ fontSize:10, color:B.muted }}>{s.d}</p></div>
@@ -23203,7 +23205,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
         {clientCards.slice(0,2).map((ck,i) => {
-          const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% da meta${pendingApprovalCount>0?" · "+pendingApprovalCount+" p/ aprovar":""}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
+          const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% concluído`,action:()=>goTab("content")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
           return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
             <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{cd.label}</div>
@@ -23418,7 +23420,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
 
-      <div className="content" ref={scrollRef} onScroll={e=>{const v=e.currentTarget.scrollTop>60;if(v!==headerC)setHeaderC(v);}}>
+      <div className="content" ref={scrollRef} onScroll={null}>
         {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
