@@ -22462,7 +22462,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         let linkedId = null;
         try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
         const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
-        const myClient = linkedId ? (allClients||[]).find(c => c.id === linkedId) : null
+        const myClient = (linkedId ? (allClients||[]).find(c => c.id === linkedId) : null)
           || (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
           || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
         if (!myClient) { console.warn("[Client] No matching client record for", user?.email); setDemandsLoaded(true); return; }
@@ -22991,10 +22991,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
       let linkedId = null;
       try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
-      const myClient = linkedId ? clients.find(c => (c.id === linkedId || c.supaId === linkedId)) : null
+      const myClient = (linkedId ? clients.find(c => (c.id === linkedId || c.supaId === linkedId)) : null)
         || clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
         || clients.find(c => { const cf = (user?.company||user?.name||"").toLowerCase(); return (c.name||"").toLowerCase().includes(cf.split(" ")[0]) || cf.includes((c.name||"").split(" ")[0].toLowerCase()); });
-      if (!myClient) return;
+      if (!myClient) { console.warn("[Client Dashboard] No matching client for", user?.email, "linkedId:", linkedId); return; }
       setMetricsLoading(true);
       try {
         const cid = myClient.supaId || myClient.id;
