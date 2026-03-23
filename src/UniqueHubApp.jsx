@@ -19526,6 +19526,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const [filter, setFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [headerC, setHeaderC] = useState(false);
+  const [clientSearchQ, setClientSearchQ] = useState("");
   const msgsEndRef = useRef(null);
 
   const loadConversations = async (clientId) => {
@@ -21624,13 +21625,13 @@ function ClientMatch4Biz({ onBack, user }) {
               <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", background:tab===t.k?B.accent+"15":"transparent", color:tab===t.k?B.text:B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
             ))}
           </div>
-          <button onClick={() => setShowEditProfile(true)} style={{ padding:"8px 14px", borderRadius:12, background:profileComplete?"#10B98115":"linear-gradient(135deg,#F59E0B,#EF4444)", border:profileComplete?"1.5px solid #10B98130":"none", cursor:"pointer", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:profileComplete?"none":"0 2px 8px rgba(245,158,11,0.4)", animation:profileComplete?"none":"skPulse 2s ease infinite" }}>
+          <button onClick={() => setShowEditProfile(true)} style={{ height:38, padding:"0 14px", borderRadius:12, background:profileComplete?"#10B98115":"linear-gradient(135deg,#F59E0B,#EF4444)", border:profileComplete?"1.5px solid #10B98130":"none", cursor:"pointer", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:profileComplete?"none":"0 2px 8px rgba(245,158,11,0.4)", animation:profileComplete?"none":"skPulse 2s ease infinite" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={profileComplete?"#10B981":"#fff"} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span style={{ fontSize:11, fontWeight:700, color:profileComplete?"#10B981":"#fff" }}>{profileComplete?"Perfil":"Perfil!"}</span>
           </button>
-          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"8px 14px", borderRadius:12, background:noCredits?"linear-gradient(135deg,#EF4444,#DC2626)":"linear-gradient(135deg,#6366F1,#8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:noCredits?"0 2px 8px rgba(239,68,68,0.3)":"0 2px 8px rgba(99,102,241,0.3)" }}>
-            <span style={{ fontSize:16 }}>{noCredits?"🔥":"💎"}</span>
-            <span style={{ fontSize:12, fontWeight:800, color:"#fff" }}>{isUnlimited ? "∞" : credits} crédito{credits!==1?"s":""}</span>
+          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ height:38, padding:"0 14px", borderRadius:12, background:noCredits?"linear-gradient(135deg,#EF4444,#DC2626)":"linear-gradient(135deg,#6366F1,#8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:noCredits?"0 2px 8px rgba(239,68,68,0.3)":"0 2px 8px rgba(99,102,241,0.3)" }}>
+            <span style={{ fontSize:14 }}>{noCredits?"🔥":"💎"}</span>
+            <span style={{ fontSize:11, fontWeight:800, color:"#fff" }}>{isUnlimited ? "∞" : credits} créditos</span>
           </button>
         </div>
 
@@ -22403,7 +22404,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [headerC, setHeaderC] = useState(false);
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
-  useEffect(() => { if (sub) return; const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, [sub]);
+  useEffect(() => { if (tab !== "home" || sub) return; const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, [tab, sub]);
   const scrollRef = useRef(null);
   const CLIENT_DASH_DEFAULT_INIT = ["growth","news","posts","metricas","match"];
   const CLIENT_DASH_VALID_KEYS = ["growth","news","posts","metricas","match","agenda"];
@@ -23114,15 +23115,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     if (key === "match") return <div key="match">
       <SH title="Match4Biz" action="Explorar" onClick={()=>setSub("match4biz")} />
-      <Card onClick={()=>setSub("match4biz")} style={{ cursor:"pointer", padding:0, overflow:"hidden", borderRadius:20 }}>
-        <div style={{ background:`linear-gradient(135deg, #8B5CF610, ${LIME}08)`, padding:"18px 20px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <div style={{ width:50, height:50, borderRadius:16, background:"linear-gradient(135deg, #8B5CF625, #BBF24625)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-            <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Faça networking e feche negócios</p><p style={{ fontSize:12, color:C.mut, marginTop:3 }}>Conecte-se com outros clientes e cresça junto</p></div>
-            <Tag color={LIME}>3</Tag>
-          </div>
+      <div onClick={()=>setSub("match4biz")} style={{ cursor:"pointer", overflow:"hidden", borderRadius:20, background:"linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", padding:"22px 20px", position:"relative" }}>
+        <div style={{ position:"absolute", top:-20, right:-20, width:120, height:120, borderRadius:"50%", background:"radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)", filter:"blur(20px)" }} />
+        <div style={{ position:"absolute", bottom:-15, left:-15, width:80, height:80, borderRadius:"50%", background:"radial-gradient(circle, rgba(236,72,153,0.2) 0%, transparent 70%)", filter:"blur(15px)" }} />
+        <div style={{ display:"flex", alignItems:"center", gap:14, position:"relative", zIndex:1 }}>
+          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #6366F1, #EC4899)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 4px 15px rgba(99,102,241,0.4)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+          <div style={{ flex:1 }}><p style={{ fontSize:17, fontWeight:800, color:"#fff" }}>Faça networking e feche negócios</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Conecte-se com outros clientes e cresça junto</p></div>
+          <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
-      </Card>
+      </div>
     </div>;
 
     if (key === "agenda") return <div key="agenda">
@@ -23174,9 +23175,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
       {/* Search bar */}
-      <div onClick={()=>{const q=prompt("Buscar...");if(q){const found=demands.find(d=>(d.title||"").toLowerCase().includes(q.toLowerCase()));if(found)goTab("content");else showToast("Nenhum resultado");}}} style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px", cursor:"pointer" }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
+      <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"0 18px", position:"relative" }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0}}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input value={clientSearchQ} onChange={e=>setClientSearchQ(e.target.value)} placeholder="Buscar conteúdo, relatórios..." style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"inherit",fontSize:15,color:"#fff",padding:"14px 0"}} />
+        {clientSearchQ && <button onClick={()=>setClientSearchQ("")} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+        {clientSearchQ.length >= 2 && <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,zIndex:50,background:B.bgCard||"#1A1A1A",borderRadius:16,border:"1px solid "+(B.border||"rgba(255,255,255,0.1)"),maxHeight:240,overflowY:"auto",boxShadow:"0 12px 40px rgba(0,0,0,0.4)"}}>
+          {demands.filter(d=>(d.title||"").toLowerCase().includes(searchQ.toLowerCase())||(d.type||"").toLowerCase().includes(clientSearchQ.toLowerCase())).slice(0,6).map(d=><div key={d.id} onClick={()=>{setClientSearchQ("");setSub("demand_"+d.id);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:"1px solid "+(B.border||"rgba(255,255,255,0.06)"),display:"flex",alignItems:"center",gap:10}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg><div><p style={{fontSize:13,fontWeight:600,color:B.text||"#fff"}}>{d.title||d.type}</p><p style={{fontSize:10,color:B.muted||"rgba(255,255,255,0.4)"}}>{d.network||d.type} · {d.stage}</p></div></div>)}
+          {demands.filter(d=>(d.title||"").toLowerCase().includes(searchQ.toLowerCase())||(d.type||"").toLowerCase().includes(clientSearchQ.toLowerCase())).length===0 && <div style={{padding:"20px 16px",textAlign:"center"}}><p style={{fontSize:13,color:B.muted||"rgba(255,255,255,0.4)"}}>Nenhum resultado para "{clientSearchQ}"</p></div>}
+        </div>}
       </div>
       {/* Appointments + Clock/Day — agency style */}
       <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:"14px 24px 0" }}>
@@ -23398,6 +23404,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
       sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /> :
+      sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
       null
@@ -23411,8 +23418,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 .bnav{background:${navBg}!important;backdrop-filter:blur(20px) saturate(1.4)!important;-webkit-backdrop-filter:blur(20px) saturate(1.4)!important;border-radius:100px!important;border:${navBorder}!important;width:calc(100% - 40px)!important;max-width:340px!important;padding:8px 8px!important}
       ` }} />
 
-      <div className="content" ref={scrollRef} onScroll={e=>setHeaderC(e.currentTarget.scrollTop>60)}>
-        {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={headerC} />}
+      <div className="content" ref={scrollRef} onScroll={e=>{const v=e.currentTarget.scrollTop>60;if(v!==headerC)setHeaderC(v);}}>
+        {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
