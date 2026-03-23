@@ -5552,6 +5552,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       { key:"facebook", name:"Facebook", c:"#1877F2" },
       { key:"instagram", name:"Instagram", c:"#E1306C" },
       { key:"tiktok", name:"TikTok", c:"#000" },
+      { key:"threads", name:"Threads", c:"#000" },
       { key:"linkedin", name:"LinkedIn", c:"#0A66C2" },
       { key:"youtube", name:"YouTube", c:"#FF0000" },
       { key:"google", name:"Google Business", c:"#4285F4" },
@@ -5746,8 +5747,23 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                         <button onClick={()=>{startMetaOAuth(sel.supaId||sel.id);}} style={{ width:"100%", padding:"10px", borderRadius:12, background:"#F59E0B", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff" }}>🔄 Reconectar com Meta</button>
                       </div>}
 
+                      {/* Threads OAuth */}
+                      {editingSocial==="threads" && !current.connected && supabase && <div style={{ padding:16, borderRadius:14, background:"#00000008", border:"1.5px solid #00000015", marginBottom:12, textAlign:"center" }}>
+                        <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Conexão via Threads API</p>
+                        <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Publique textos e imagens no Threads diretamente pelo UniqueHub.</p>
+                        <button onClick={()=>{startThreadsOAuth(sel.supaId||sel.id);}} style={{ width:"100%", padding:"12px", borderRadius:12, background:"#000", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>Conectar Threads</button>
+                      </div>}
+
+                      {/* TikTok OAuth */}
+                      {editingSocial==="tiktok" && !current.connected && supabase && <div style={{ padding:16, borderRadius:14, background:"#01010108", border:"1.5px solid #01010115", marginBottom:12, textAlign:"center" }}>
+                        <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Conexão via TikTok API</p>
+                        <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Envie vídeos ao TikTok diretamente pelo UniqueHub.</p>
+                        <button onClick={()=>{const tk=aiKeys.tiktok_client_key;if(!tk){showToast("TikTok Client Key não configurada");return;}startTikTokOAuth(sel.supaId||sel.id,tk);}} style={{ width:"100%", padding:"12px", borderRadius:12, background:"#010101", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>Conectar TikTok</button>
+                        <p style={{ fontSize:9, color:B.muted, marginTop:6 }}>Requer app em developers.tiktok.com</p>
+                      </div>}
+
                       {/* Divider if OAuth shown */}
-                      {(editingSocial==="facebook"||editingSocial==="instagram") && !current.connected && supabase && <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+                      {(editingSocial==="facebook"||editingSocial==="instagram"||editingSocial==="threads"||editingSocial==="tiktok") && !current.connected && supabase && <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
                         <div style={{ flex:1, height:1, background:B.border }}/><span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span><div style={{ flex:1, height:1, background:B.border }}/>
                       </div>}
 
