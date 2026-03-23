@@ -3017,8 +3017,8 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           <p style={{ fontSize:10, color:C.mut, marginTop:3 }}>Aprenda e evolua</p>
         </div>
       </div>
-      {/* Row 2: Ranking (light) + Calendário (light) */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      {/* Row 2: Ranking + Calendário + Feed Planner */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
         <div onClick={()=>nav("gamify")} style={{ cursor:"pointer", borderRadius:20, background:C.card, padding:"20px 16px", position:"relative", overflow:"hidden", border:`1px solid ${C.brd}` }}>
           <div style={{ width:42, height:42, borderRadius:14, background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
           <p style={{ fontSize:14, fontWeight:800, color:C.txt }}>Ranking</p>
@@ -3028,6 +3028,12 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
           <div style={{ width:42, height:42, borderRadius:14, background:`${L}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={L} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           <p style={{ fontSize:14, fontWeight:800, color:C.txt }}>Calendário</p>
           <p style={{ fontSize:10, color:C.mut, marginTop:3 }}>Agenda e compromissos</p>
+        </div>
+        <div onClick={()=>nav("feedplanner")} style={{ cursor:"pointer", borderRadius:20, background:"#0D0D0D", padding:"20px 16px", position:"relative", overflow:"hidden" }}>
+          <div style={{ position:"absolute", top:-15, right:-15, width:70, height:70, borderRadius:"50%", background:`radial-gradient(circle, ${L}12 0%, transparent 70%)`, filter:"blur(15px)" }} />
+          <div style={{ width:42, height:42, borderRadius:14, background:L, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12, boxShadow:`0 3px 12px ${L}40` }}>{IC.feed("#0D0D0D")}</div>
+          <p style={{ fontSize:14, fontWeight:800, color:"#fff", position:"relative", zIndex:1 }}>Feed Planner</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", marginTop:3 }}>Simule o feed do Instagram</p>
         </div>
       </div>
     </div>; }
