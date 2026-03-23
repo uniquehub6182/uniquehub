@@ -13898,6 +13898,7 @@ const ALL_TABS = [
   { k: "financial", l: "Financeiro", i: IC.financial },
   { k: "calendar", l: "Calendário", i: IC.calendar },
   { k: "library", l: "Biblioteca", i: IC.library },
+  { k: "feedplanner", l: "Feed Planner", i: IC.feed },
   { k: "reports", l: "Relatórios", i: IC.reports },
   { k: "news", l: "News", i: IC.news },
   { k: "ideas", l: "Ideias", i: IC.ideas },
@@ -13914,7 +13915,7 @@ const DEFAULT_NAV = ["home", "content", "chat", "clients"];
 const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
-  { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
+  { k: "feedplanner", l: "Feed Planner" }, { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
   { k: "ai", l: "Assistente IA" }, { k: "inbox", l: "Inbox" }, { k: "notes", l: "Notas" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "settings", l: "Config" },
 ];
 
