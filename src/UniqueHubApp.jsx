@@ -994,8 +994,8 @@ const supaLoadConversations = async (userId) => {
     const [convRes, memRes, msgsRes] = await Promise.all([
       supabase.from("conversations").select("*").in("id", convIds),
       supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds),
-      /* Fetch last message per conversation — one query per conv for reliability */
-      Promise.all(convIds.map(cid => supabase.from("messages").select("id,conversation_id,content,file_url,file_name,sender_id,created_at").eq("conversation_id", cid).order("created_at", { ascending: false }).limit(1).maybeSingle())).then(results => results.map(r => r.data).filter(Boolean)),
+      /* Fetch last messages in ONE query — get recent messages and deduplicate by conversation */
+      supabase.from("messages").select("id,conversation_id,content,file_url,file_name,sender_id,created_at").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(convIds.length * 2),
     ]);
     const convs = convRes.data || [];
     const allMembers = memRes.data || [];
@@ -1007,7 +1007,7 @@ const supaLoadConversations = async (userId) => {
     const profileMap = {};
     allProfiles.forEach(p => { profileMap[p.id] = p; });
     const lastMsgMap = {};
-    (msgsRes || []).forEach(m => { if (m && !lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
+    (msgsRes.data || []).forEach(m => { if (m && !lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m; });
     const result = [];
     for (const c of convs) {
       const members = allMembers.filter(m => m.conversation_id === c.id);
@@ -11442,12 +11442,17 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   };
 
   const startDM = async (profileId) => {
+    /* Check if we already have this DM in state */
+    const existing = convs.find(c => c.type === "dm" && c.members?.some(m => m.id === profileId));
+    if (existing) { setSelConv(existing); setView("chat"); setShowNewChat(false); return; }
+    /* Create new DM — build conv object instantly from profile data */
     const convId = await supaFindOrCreateDM(user.id, profileId);
     if (convId) {
-      const refreshed = await supaLoadConversations(user.id);
-      setConvs(refreshed);
-      const found = refreshed.find(c => c.id === convId);
-      if (found) { setSelConv(found); setView("chat"); }
+      const otherProfile = allProfiles.find(p => p.id === profileId);
+      const instantConv = { id: convId, type: "dm", name: otherProfile?.name || "", members: [{ id: user.id, name: user.name, email: user.email, photo_url: user.photo }, ...(otherProfile ? [otherProfile] : [])], lastMsg: null, unread: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      setConvs(prev => [instantConv, ...prev.filter(c => c.id !== convId)]);
+      setSelConv(instantConv);
+      setView("chat");
     }
     setShowNewChat(false);
   };
