@@ -22975,11 +22975,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const growthScore = realScore, growthZone = getZoneLabel(realScore);
   const now = new Date();
   const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  const publishedThisMonth = demands.filter(d => d.stage === "published" && d.publishedAt && new Date(d.publishedAt).getMonth() === now.getMonth() && new Date(d.publishedAt).getFullYear() === now.getFullYear()).length;
-  const totalDemands = demands.length;
-  const targetPosts = Math.max(totalDemands, 12);
+  /* ── Monthly stats based on real data ── */
+  const postsThisMonth = demands.filter(d => { const ca = d.createdAt; if (!ca) return false; const parts = ca.split("/"); if (parts.length === 3) { const [dd,mm,yy] = parts; return parseInt(mm) === now.getMonth()+1 && parseInt(yy) === now.getFullYear(); } return false; }).length;
+  const publishedThisMonth = demands.filter(d => (d.stage === "published" || d.stage === "completed")).length;
+  const pendingApprovalCount = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
+  const PLAN_POSTS = { free:8, starter:8, traction:16, growth360:20, partner:24, enterprise:30 };
+  const myPlanClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase());
+  const targetPosts = PLAN_POSTS[myPlanClient?.plan] || 12;
   const completedPct = targetPosts > 0 ? Math.round((publishedThisMonth / targetPosts) * 100) : 0;
-  const monthGoal = { label:`META · ${monthNames[now.getMonth()].toUpperCase()} ${now.getFullYear()}`, pct:Math.min(completedPct,100), current:publishedThisMonth, total:targetPosts, unit:"posts" };
+  const monthGoal = { label:`${monthNames[now.getMonth()].toUpperCase()} ${now.getFullYear()}`, pct:Math.min(completedPct,100), current:publishedThisMonth, total:targetPosts, unit:"posts" };
 
   /* ── Load real metrics from social-insights Edge Function ── */
   const [clientMetrics, setClientMetrics] = useState(null);
@@ -23147,7 +23151,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
         {clientCards.slice(0,2).map((ck,i) => {
-          const CARD_DATA = { meta:{label:"META DO MÊS",val:`${monthGoal.pct}%`,sub:`${monthGoal.current}/${monthGoal.total} ${monthGoal.unit}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Conecte-se",action:()=>setSub("match4biz")} };
+          const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% da meta${pendingApprovalCount>0?" · "+pendingApprovalCount+" p/ aprovar":""}`,action:()=>setSub("reports")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Conecte-se",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
           return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
             <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",textTransform:"uppercase",letterSpacing:0.4,marginBottom:3}}>{cd.label}</div>
