@@ -10851,30 +10851,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   const [hoverMsgId, setHoverMsgId] = useState(null);
   const longPressTimer = useRef(null);
   const fileRef = useRef(null);
-  const profilePhotoRef = useRef(null);
-  const highlightCoverRef = useRef(null);
-  const [editingHighlight, setEditingHighlight] = useState(null);
 
-  const handleProfilePhoto = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    const dataUrl = await new Promise((res) => { reader.onload = () => res(reader.result); reader.readAsDataURL(file); });
-    setProfile(p => ({...p, photo: dataUrl}));
-    showToast("Foto do perfil atualizada");
-    if (profilePhotoRef.current) profilePhotoRef.current.value = "";
-  };
-
-  const handleHighlightCover = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || editingHighlight === null) return;
-    const reader = new FileReader();
-    const dataUrl = await new Promise((res) => { reader.onload = () => res(reader.result); reader.readAsDataURL(file); });
-    setHighlights(prev => prev.map((h,i) => i === editingHighlight ? {...h, cover: dataUrl} : h));
-    setEditingHighlight(null);
-    showToast("Capa do destaque atualizada");
-    if (highlightCoverRef.current) highlightCoverRef.current.value = "";
-  };
   const { showToast, ToastEl } = useToast();
   const [chatTab, setChatTab] = useState("all");
   const [showGroupInfo, setShowGroupInfo] = useState(false);
@@ -19951,6 +19928,30 @@ function FeedPlannerPage({ onBack, clients, user }) {
   const [swapFrom, setSwapFrom] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const profilePhotoRef = useRef(null);
+  const highlightCoverRef = useRef(null);
+  const [editingHighlight, setEditingHighlight] = useState(null);
+
+  const handleProfilePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    const dataUrl = await new Promise((res) => { reader.onload = () => res(reader.result); reader.readAsDataURL(file); });
+    setProfile(p => ({...p, photo: dataUrl}));
+    showToast("Foto do perfil atualizada");
+    if (profilePhotoRef.current) profilePhotoRef.current.value = "";
+  };
+
+  const handleHighlightCover = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || editingHighlight === null) return;
+    const reader = new FileReader();
+    const dataUrl = await new Promise((res) => { reader.onload = () => res(reader.result); reader.readAsDataURL(file); });
+    setHighlights(prev => prev.map((h,i) => i === editingHighlight ? {...h, cover: dataUrl} : h));
+    setEditingHighlight(null);
+    showToast("Capa do destaque atualizada");
+    if (highlightCoverRef.current) highlightCoverRef.current.value = "";
+  };
 
   useEffect(() => {
     if (!selClient) return;
