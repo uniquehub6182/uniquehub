@@ -14560,7 +14560,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
       id: Date.now(), type: eventType, title: form.title.trim(), time: form.time || "09:00",
       color: et?.c || B.blue, day: selDay, month: curMonth, year: curYear,
       createdBy: userName, createdById: propUser?.id || null, notes: form.notes || "",
-      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: isClientView ? "client" : (form.meetingScope || "internal"), participants: form.participants || [], client: isClientView ? clientFilter : (form.client || ""), location: form.location || "" }),
+      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: isClientView ? "client" : (form.meetingScope || "internal"), participants: form.participants || [], client: isClientView ? clientFilter : (form.client || ""), clientContact: form.clientContact || "", location: form.location || "" }),
       ...(eventType === "recording" && { client: isClientView ? clientFilter : (form.client || ""), participants: form.participants || [], location: form.location || "", equipment: form.equipment || [] }),
       ...(eventType === "event" && { client: isClientView ? clientFilter : "", participants: form.participants || [], location: form.location || "" }),
       ...(eventType === "reminder" && { client: isClientView ? clientFilter : "" }),
@@ -14616,6 +14616,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
             { l:"Horário", v:ev.time, show:true },
             { l:"Local", v:ev.location, show:!!ev.location },
             { l:"Cliente", v:ev.client, show:!!ev.client },
+            { l:"Contato do cliente", v:ev.clientContact, show:!!ev.clientContact },
             { l:"Modo", v:ev.meetingMode==="online"?"Online (remoto)":"Presencial", show:!!ev.meetingMode },
             { l:"Escopo", v:ev.meetingScope==="internal"?"Reunião interna (equipe)":"Reunião com cliente", show:!!ev.meetingScope },
           ].filter(x=>x.show).map((item,i) => (
@@ -14787,6 +14788,14 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 <button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{c.name}</button>
               ))}
             </div>
+          </Card>
+        )}
+
+        {/* Client contact person (when meeting with client) */}
+        {!isClientView && eventType==="meeting" && (form.meetingScope||"internal")==="client" && form.client && (
+          <Card style={{ marginBottom:8 }}>
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Contato do cliente (com quem)</label>
+            <input value={form.clientContact||""} onChange={e=>setForm(p=>({...p,clientContact:e.target.value}))} placeholder="Ex: João Silva, Maria da Silva" className="tinput" />
           </Card>
         )}
 
@@ -15061,7 +15070,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     {ev.meetingMode && <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${ev.meetingMode==="online"?B.blue:B.green}12`, color:ev.meetingMode==="online"?B.blue:B.green }}>{ev.meetingMode==="online"?"Online":"Presencial"}</span>}
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
-                    {[{l:"Criado por",v:ev.createdBy},{l:"Cliente",v:ev.client},{l:"Local",v:ev.location},{l:"Data",v:`${ev.day}/${(ev.month+1).toString().padStart(2,"0")}/${ev.year}`}].filter(x=>x.v).map((item,ii)=>(
+                    {[{l:"Criado por",v:ev.createdBy},{l:"Cliente",v:ev.client},{l:"Contato do cliente",v:ev.clientContact},{l:"Local",v:ev.location},{l:"Data",v:`${ev.day}/${(ev.month+1).toString().padStart(2,"0")}/${ev.year}`}].filter(x=>x.v).map((item,ii)=>(
                       <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
                         <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>{item.l}</p>
                         <p style={{ fontSize:13, fontWeight:600, color:B.text, marginTop:3 }}>{item.v}</p>
@@ -25024,7 +25033,7 @@ input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
 .screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.bg}}
-.pg{padding:16px 16px 20px;padding-top:${TOP}}
+.pg{padding:16px 16px 120px;padding-top:${TOP}}
 .card{padding:16px;border-radius:var(--uh-radius);background:${dark?"#1C2228":"#fff"};border:none;box-shadow:0 1px 3px ${dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)"}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
 .ani{animation:fadeUp .35s ease both}
