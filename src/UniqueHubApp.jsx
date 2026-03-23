@@ -22403,9 +22403,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
   useEffect(() => { const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, []);
   const scrollRef = useRef(null);
-  const CLIENT_DASH_DEFAULT_INIT = ["growth","agenda","news","posts","metricas","match"];
+  const CLIENT_DASH_DEFAULT_INIT = ["growth","news","posts","metricas","match"];
   const CLIENT_DASH_VALID_KEYS = ["growth","agenda","news","posts","metricas","match"];
-  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); if (!parsed.includes("agenda")) return CLIENT_DASH_DEFAULT_INIT; return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
+  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
   const [editCfg, setEditCfg] = useState(null);
@@ -22972,7 +22972,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
   /* ═══ DASHBOARD CONFIG ═══ */
   const CLIENT_SECTIONS = { growth:"Growth Score", agenda:"Compromissos", news:"Comunicados", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz" };
-  const CLIENT_DASH_DEFAULT = ["growth","agenda","news","posts","metricas","match"];
+  const CLIENT_DASH_DEFAULT = ["growth","news","posts","metricas","match"];
 
   const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
   const growthScore = realScore, growthZone = getZoneLabel(realScore);
@@ -23176,21 +23176,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
       </div>
-      {/* Clock + Day + Appointments */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 24px 0" }}>
-        <div>
+      {/* Clock + Day + Appointments — agency style */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 24px 0", gap:10 }}>
+        <div style={{ flex:1, minWidth:0 }}>
           <p style={{ fontSize:13, fontWeight:600, color:H.sub, margin:0 }}>{todayStr}</p>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          {weekDemands.length > 0 && <div onClick={()=>goTab("content")} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:10, background:"rgba(0,0,0,0.5)", cursor:"pointer", border:"1px solid rgba(255,255,255,0.1)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span style={{ fontSize:11, fontWeight:700, color:"#fff" }}>{weekDemands.length}</span>
-          </div>}
-          <div style={{ display:"flex", gap:3, alignItems:"center" }}>
-            {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:24,height:30,borderRadius:5,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace"}}>{d}</div>)}
-            <span style={{fontSize:17,fontWeight:900,color:"rgba(255,255,255,0.4)",margin:"0 1px"}}>:</span>
-            {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:24,height:30,borderRadius:5,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace"}}>{d}</div>)}
-          </div>
+        {weekDemands.length > 0 && <div onClick={()=>goTab("content")} style={{ flexShrink:0, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:"1px solid rgba(255,255,255,0.15)", cursor:"pointer", whiteSpace:"nowrap", transition:"all .15s", backdropFilter:"blur(8px)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length} compromisso{weekDemands.length>1?"s":""}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>}
+        <div style={{ flexShrink:0, display:"flex", alignItems:"center", gap:3 }}>
+          {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+          <span style={{fontSize:19,fontWeight:900,color:LIME,margin:"0 1px",animation:"blink 1s step-end infinite"}}>:</span>
+          {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:28,height:34,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
         </div>
       </div>
       {/* Dynamic accent cards from config */}
