@@ -12223,7 +12223,7 @@ const profileFieldIcon = (k) => {
   if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
   return <span style={{fontSize:14}}>•</span>;
 };
-function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud, isClientView }) {
   const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -12531,7 +12531,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" },
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
-    { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
+    ...(!isClientView ? [{ k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" }] : []),
     { k:"about", l:"Sobre", desc:"Versão e informações" },
   ];
 
@@ -12646,12 +12646,14 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <input value={pf.cpf || ""} onChange={e => pfUp("cpf",maskCpfPf(e.target.value))} className="tinput" placeholder="000.000.000-00" inputMode="numeric" style={{ marginBottom:10 }} />
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Data de nascimento</label>
           <input value={pf.birth || ""} onChange={e => pfUp("birth",maskDate(e.target.value))} className="tinput" placeholder="DD/MM/AAAA" inputMode="numeric" style={{ marginBottom:10 }} />
+          {!isClientView && <>
           <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Tipo sanguíneo</label>
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
             {["A+","A-","B+","B-","AB+","AB-","O+","O-","Não sei"].map(b => (
               <button key={b} onClick={() => pfUp("blood",b)} style={{ padding:"6px 11px", borderRadius:8, border:"1.5px solid "+(pf.blood===b?B.accent:B.border), background:pf.blood===b?B.accent+"15":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:pf.blood===b?B.accent:B.muted }}>{b}</button>
             ))}
           </div>
+          </>}
         </Card>
 
         <p className="sl" style={{ marginBottom:6 }}>Contato</p>
@@ -12700,6 +12702,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           ))}
         </Card>
 
+        {!isClientView && <>
         <p className="sl" style={{ marginBottom:6 }}>Skills</p>
         <Card style={{ marginBottom:10 }}>
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
@@ -12729,6 +12732,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             ))}
           </div>
         </Card>
+        </>}
 
         <div style={{ display:"flex", gap:8, marginBottom:20 }}>
           <button onClick={() => setEditProfile(false)} style={{ flex:1, padding:14, borderRadius:14, background:B.bgCard, border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.dark }}>Cancelar</button>
@@ -22401,6 +22405,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
+  const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_uiprefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+  const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
@@ -23405,7 +23411,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
-      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={()=>{}} themeColor={"lime"} setThemeColor={()=>{}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={{}} updateUiPrefs={()=>{}} replaceUiPrefs={()=>{}} savePrefsToCloud={()=>{}} /> :
+      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>({...p,...v}));try{localStorage.setItem("uh_uiprefs",JSON.stringify({...uiPrefs,...v}))}catch{}}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_uiprefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
       sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
