@@ -47,17 +47,23 @@ const _metaOAuthCapture = (() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     const state = params.get("state");
-    if (code && (state?.startsWith("meta_connect_") || state?.startsWith("ig_connect_") || sessionStorage.getItem("uh_meta_oauth_client") || sessionStorage.getItem("uh_ig_oauth_client"))) {
+    if (code && (state?.startsWith("meta_connect_") || state?.startsWith("ig_connect_") || state?.startsWith("threads_connect_") || state?.startsWith("tiktok_connect_") || sessionStorage.getItem("uh_meta_oauth_client") || sessionStorage.getItem("uh_ig_oauth_client") || sessionStorage.getItem("uh_threads_oauth_client") || sessionStorage.getItem("uh_tiktok_oauth_client"))) {
       const isInstagram = state?.startsWith("ig_connect_") || !!sessionStorage.getItem("uh_ig_oauth_client");
+      const isThreads = state?.startsWith("threads_connect_") || !!sessionStorage.getItem("uh_threads_oauth_client");
+      const isTikTok = state?.startsWith("tiktok_connect_") || !!sessionStorage.getItem("uh_tiktok_oauth_client");
       const clientId = state?.startsWith("meta_connect_") ? state.replace("meta_connect_", "") 
         : state?.startsWith("ig_connect_") ? state.replace("ig_connect_", "")
-        : sessionStorage.getItem("uh_ig_oauth_client") || sessionStorage.getItem("uh_meta_oauth_client");
+        : state?.startsWith("threads_connect_") ? state.replace("threads_connect_", "")
+        : state?.startsWith("tiktok_connect_") ? state.replace("tiktok_connect_", "")
+        : sessionStorage.getItem("uh_threads_oauth_client") || sessionStorage.getItem("uh_tiktok_oauth_client") || sessionStorage.getItem("uh_ig_oauth_client") || sessionStorage.getItem("uh_meta_oauth_client");
       const actualRedirectUri = window.location.origin + window.location.pathname;
-      console.log("[OAuth Capture] code length:", code.length, "clientId:", clientId, "isInstagram:", isInstagram, "redirectUri:", actualRedirectUri);
+      console.log("[OAuth Capture] code length:", code.length, "clientId:", clientId, "isInstagram:", isInstagram, "isThreads:", isThreads, "isTikTok:", isTikTok, "redirectUri:", actualRedirectUri);
       window.history.replaceState({}, "", window.location.pathname);
       sessionStorage.removeItem("uh_meta_oauth_client");
       sessionStorage.removeItem("uh_ig_oauth_client");
-      return { code, clientId, redirectUri: actualRedirectUri, isInstagram };
+      sessionStorage.removeItem("uh_threads_oauth_client");
+      sessionStorage.removeItem("uh_tiktok_oauth_client");
+      return { code, clientId, redirectUri: actualRedirectUri, isInstagram, isThreads, isTikTok };
     }
   } catch {}
   return null;
@@ -859,6 +865,86 @@ const saveInstagramToken = async (clientId, igData) => {
     });
     return await supaSetSetting(key, value);
   } catch(e) { console.error("saveInstagramToken:", e); return false; }
+};
+
+/* ═══ THREADS API ═══ */
+const THREADS_SCOPES = "threads_basic,threads_content_publish,threads_manage_insights";
+const startThreadsOAuth = (clientId) => {
+  try { sessionStorage.setItem("uh_threads_oauth_client", clientId); } catch {}
+  const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
+  const url = `https://threads.net/oauth/authorize?client_id=${META_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(THREADS_SCOPES)}&response_type=code&state=threads_connect_${clientId}`;
+  console.log("[Threads OAuth] Starting...");
+  window.location.href = url;
+};
+const handleThreadsOAuthCallback = async (code, redirectUri) => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/threads-oauth`, {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ code, redirect_uri: redirectUri || "https://uniquehub-beta.vercel.app/", action: "exchange_token" })
+    });
+    const data = await res.json();
+    if (data.error) return { error: typeof data.error === "string" ? data.error : JSON.stringify(data.error) };
+    return data;
+  } catch(e) { return { error: e.message }; }
+};
+const saveThreadsToken = async (clientId, tData) => {
+  if (!supabase) return false;
+  try {
+    const key = `threads_token_${clientId}`;
+    return await supaSetSetting(key, JSON.stringify({ ...tData, updated_at: new Date().toISOString() }));
+  } catch(e) { return false; }
+};
+const publishToThreads = async (clientId, text, imageUrl) => {
+  if (!SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/threads-oauth`, {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ client_id: clientId, text, image_url: imageUrl, action: "publish" })
+    });
+    return await res.json();
+  } catch(e) { return { error: e.message }; }
+};
+
+/* ═══ TIKTOK API ═══ */
+const TIKTOK_CLIENT_KEY = ""; /* Set in app_settings: tiktok_client_key */
+const startTikTokOAuth = (clientId, clientKey) => {
+  if (!clientKey) { console.error("TikTok client_key not configured"); return; }
+  try { sessionStorage.setItem("uh_tiktok_oauth_client", clientId); } catch {}
+  const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
+  const scopes = "user.info.basic,video.upload,video.publish";
+  const url = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&scope=${scopes}&response_type=code&redirect_uri=${redirectUri}&state=tiktok_connect_${clientId}`;
+  console.log("[TikTok OAuth] Starting...");
+  window.location.href = url;
+};
+const handleTikTokOAuthCallback = async (code, redirectUri) => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/tiktok-oauth`, {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ code, redirect_uri: redirectUri || "https://uniquehub-beta.vercel.app/", action: "exchange_token" })
+    });
+    const data = await res.json();
+    if (data.error) return { error: typeof data.error === "string" ? data.error : JSON.stringify(data.error) };
+    return data;
+  } catch(e) { return { error: e.message }; }
+};
+const saveTikTokToken = async (clientId, tData) => {
+  if (!supabase) return false;
+  try {
+    const key = `tiktok_token_${clientId}`;
+    return await supaSetSetting(key, JSON.stringify({ ...tData, updated_at: new Date().toISOString() }));
+  } catch(e) { return false; }
+};
+const publishToTikTok = async (clientId, videoUrl, caption) => {
+  if (!SUPA_URL) return { error: "Supabase não configurado" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/tiktok-oauth`, {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ client_id: clientId, video_url: videoUrl, caption, action: "publish" })
+    });
+    return await res.json();
+  } catch(e) { return { error: e.message }; }
 };
 
 const supaCheckInvite = async (email) => {
@@ -4374,13 +4460,35 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     if ((platformKey === "instagram" || platformKey === "facebook") && supabase) {
       const current = sel.socials?.[platformKey] || {};
       if (current.connected) {
-        /* Already connected — open manage modal */
         setEditingSocial(platformKey);
         setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
       } else {
-        /* Offer choice: manual or OAuth */
         setEditingSocial(platformKey);
         setSocialForm({ user: "", followers: "", reviews: "", showOAuth: true });
+      }
+      return;
+    }
+    /* For Threads, offer OAuth */
+    if (platformKey === "threads" && supabase) {
+      const current = sel.socials?.[platformKey] || {};
+      if (current.connected) {
+        setEditingSocial(platformKey);
+        setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
+      } else {
+        setEditingSocial(platformKey);
+        setSocialForm({ user: "", followers: "", reviews: "", showOAuth: true, isThreads: true });
+      }
+      return;
+    }
+    /* For TikTok, offer OAuth */
+    if (platformKey === "tiktok" && supabase) {
+      const current = sel.socials?.[platformKey] || {};
+      if (current.connected) {
+        setEditingSocial(platformKey);
+        setSocialForm({ user: current.user || "", followers: current.followers || "", reviews: current.reviews || "" });
+      } else {
+        setEditingSocial(platformKey);
+        setSocialForm({ user: "", followers: "", reviews: "", showOAuth: true, isTikTok: true });
       }
       return;
     }
@@ -24093,11 +24201,37 @@ export default function App() {
   const [metaSavingPage, setMetaSavingPage] = useState(false);
   useEffect(() => {
     if (!_metaOAuthCapture) return;
-    const { code, clientId, redirectUri: capturedRedirectUri, isInstagram } = _metaOAuthCapture;
-    console.log("[OAuth] Processing callback, clientId:", clientId, "isInstagram:", isInstagram);
+    const { code, clientId, redirectUri: capturedRedirectUri, isInstagram, isThreads, isTikTok } = _metaOAuthCapture;
+    console.log("[OAuth] Processing callback, clientId:", clientId, "isInstagram:", isInstagram, "isThreads:", isThreads, "isTikTok:", isTikTok);
     (async () => {
       try {
-        if (isInstagram) {
+        if (isThreads) {
+          /* Threads API flow */
+          const result = await handleThreadsOAuthCallback(code, capturedRedirectUri);
+          console.log("[Threads OAuth] Result:", JSON.stringify(result).substring(0, 300));
+          if (result && !result.error && result.access_token) {
+            await saveThreadsToken(clientId, result);
+            const displayName = result.username ? `@${result.username}` : "Threads";
+            try { sessionStorage.setItem("uh_threads_connected", JSON.stringify({ clientId, ...result })); } catch {}
+            setMetaOAuthResult({ success: true, msg: `Threads ${displayName} conectado!`, isThreads: true });
+          } else {
+            setMetaOAuthResult({ success: false, msg: result?.error || "Erro ao conectar Threads" });
+          }
+          setMetaOAuthPending(false);
+        } else if (isTikTok) {
+          /* TikTok API flow */
+          const result = await handleTikTokOAuthCallback(code, capturedRedirectUri);
+          console.log("[TikTok OAuth] Result:", JSON.stringify(result).substring(0, 300));
+          if (result && !result.error && result.access_token) {
+            await saveTikTokToken(clientId, result);
+            const displayName = result.username ? `@${result.username}` : "TikTok";
+            try { sessionStorage.setItem("uh_tiktok_connected", JSON.stringify({ clientId, ...result })); } catch {}
+            setMetaOAuthResult({ success: true, msg: `TikTok ${displayName} conectado!`, isTikTok: true });
+          } else {
+            setMetaOAuthResult({ success: false, msg: result?.error || "Erro ao conectar TikTok" });
+          }
+          setMetaOAuthPending(false);
+        } else if (isInstagram) {
           /* Instagram Platform API flow */
           const result = await handleInstagramOAuthCallback(code, capturedRedirectUri);
           console.log("[Instagram OAuth] Result:", JSON.stringify(result).substring(0, 300));
