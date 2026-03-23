@@ -4570,6 +4570,45 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </div>
         </>}
 
+        {/* Threads OAuth */}
+        {editingSocial === "threads" && !current.connected && supabase && <>
+          <Card style={{ marginBottom:12, background:"#00000008", border:"1.5px solid #00000015" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão via Threads API</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Threads para publicar textos e imagens diretamente pelo UniqueHub.</p>
+              <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startThreadsOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#000", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.775.709c-1.003-3.597-3.53-5.46-7.533-5.55-2.58.017-4.518.87-5.757 2.535-1.178 1.582-1.79 3.874-1.818 6.809.028 2.898.637 5.16 1.81 6.72 1.236 1.645 3.167 2.485 5.736 2.494 2.07-.026 3.632-.546 4.765-1.59 1.088-1.003 1.632-2.332 1.632-3.958 0-1.05-.186-1.904-.558-2.54-.335-.573-.848-.991-1.527-1.24-.033 1.036-.18 1.992-.439 2.834-.344 1.12-.875 2.012-1.578 2.652-.763.695-1.744 1.086-2.914 1.164l-.154.006c-1.088 0-2.04-.35-2.755-1.012-.757-.702-1.158-1.684-1.158-2.84 0-2.648 1.742-4.457 4.333-4.495.917.015 1.706.203 2.35.56.005-.305.004-.614-.003-.927-.028-1.234-.157-2.17-.398-2.864l2.657-.78c.368 1.046.533 2.326.565 3.91.005.26.006.527.003.8 1.103.722 1.903 1.733 2.35 2.986.39 1.098.587 2.39.587 3.843 0 2.424-.824 4.416-2.449 5.916C18.245 23.136 15.732 23.966 12.186 24zM10.884 14.4c-1.39.024-2.08.864-2.08 2.17 0 .524.157.943.468 1.23.33.306.818.468 1.407.468l.07-.002c.63-.047 1.132-.258 1.498-.627.416-.42.723-.99.914-1.694.16-.59.26-1.252.295-1.974-.475-.233-1.096-.36-1.844-.375-.243-.002-.486.004-.728.004z"/></svg>
+                Conectar Threads
+              </button>
+            </div>
+          </Card>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+            <div style={{ flex:1, height:1, background:B.border }} />
+            <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
+            <div style={{ flex:1, height:1, background:B.border }} />
+          </div>
+        </>}
+
+        {/* TikTok OAuth */}
+        {editingSocial === "tiktok" && !current.connected && supabase && <>
+          <Card style={{ marginBottom:12, background:"#01010108", border:"1.5px solid #01010115" }}>
+            <div style={{ textAlign:"center" }}>
+              <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>Conexão via TikTok API</p>
+              <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o TikTok para enviar vídeos diretamente pelo UniqueHub.</p>
+              <button onClick={() => { const tk = aiKeys.tiktok_client_key; if (!tk) { showToast("TikTok Client Key não configurada. Vá em Config → Assistente IA e adicione a chave tiktok_client_key"); return; } if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startTikTokOAuth(sel.supaId || sel.id, tk); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#010101", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                {IC.tiktok && IC.tiktok(18)}
+                Conectar TikTok
+              </button>
+              <p style={{ fontSize:9, color:B.muted, marginTop:8 }}>Requer app aprovado em developers.tiktok.com</p>
+            </div>
+          </Card>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+            <div style={{ flex:1, height:1, background:B.border }} />
+            <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>ou conecte manualmente</span>
+            <div style={{ flex:1, height:1, background:B.border }} />
+          </div>
+        </>}
+
         {/* Reconnect option when already connected via Meta OAuth */}
         {isMetaType && current.connected && hasOAuth && supabase && <>
           <Card style={{ marginBottom:12, background:"#F59E0B10", border:"1.5px solid #F59E0B25" }}>
