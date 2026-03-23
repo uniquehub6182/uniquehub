@@ -22399,10 +22399,13 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
+  /* ── Clock for client dashboard ── */
+  const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
+  useEffect(() => { const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, []);
   const scrollRef = useRef(null);
-  const CLIENT_DASH_DEFAULT_INIT = ["news","posts","metricas","growth","match","relatorio"];
-  const CLIENT_DASH_VALID_KEYS = ["news","posts","metricas","growth","match","relatorio"];
-  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
+  const CLIENT_DASH_DEFAULT_INIT = ["growth","agenda","news","posts","metricas","match"];
+  const CLIENT_DASH_VALID_KEYS = ["growth","agenda","news","posts","metricas","match"];
+  const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); if (!parsed.includes("agenda")) return CLIENT_DASH_DEFAULT_INIT; return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [editSections, setEditSections] = useState([]);
   const [editCfg, setEditCfg] = useState(null);
@@ -22968,8 +22971,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const nav = (k) => goTab(k);
 
   /* ═══ DASHBOARD CONFIG ═══ */
-  const CLIENT_SECTIONS = { growth:"Growth Score", posts:"Posts Recentes", metricas:"Métricas", news:"Comunicados", match:"Match4Biz", relatorio:"Relatório" };
-  const CLIENT_DASH_DEFAULT = ["news","posts","metricas","growth","match","relatorio"];
+  const CLIENT_SECTIONS = { growth:"Growth Score", agenda:"Compromissos", news:"Comunicados", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz" };
+  const CLIENT_DASH_DEFAULT = ["growth","agenda","news","posts","metricas","match"];
 
   const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
   const growthScore = realScore, growthZone = getZoneLabel(realScore);
@@ -23114,11 +23117,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </Card>
     </div>;
 
-    if (key === "relatorio") return <div key="relatorio">
-      <SH title="Relatório" action="Ver completo" onClick={()=>setSub("reports")} />
-      <Card onClick={()=>setSub("reports")} style={{ cursor:"pointer", borderRadius:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}><div style={{ width:48, height:48, borderRadius:16, background:`${LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.reports ? IC.reports(LIME) : IC.content(LIME)}</div><div style={{ flex:1 }}><p style={{ fontSize:15, fontWeight:700 }}>Relatório de Fevereiro</p><p style={{ fontSize:12, color:C.mut, marginTop:2 }}>Performance completa do mês</p></div><Tag color={LIME}>Novo</Tag></div>
-      </Card>
+    if (key === "agenda") return <div key="agenda">
+      <SH title="Compromissos da Semana" action="Ver conteúdo" onClick={()=>goTab("content")} />
+      {weekDemands.length === 0 ? <Card style={{ borderRadius:20, padding:20, textAlign:"center" }}><p style={{ fontSize:13, color:C.mut }}>Nenhum conteúdo agendado esta semana</p></Card> :
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{weekDemands.slice(0,5).map(d => {
+          const sd = d.schedule_date ? new Date(d.schedule_date + "T12:00:00") : null;
+          const dayStr = sd ? `${dayNames[sd.getDay()].substring(0,3)}, ${sd.getDate()}/${sd.getMonth()+1}` : "";
+          const stageColors = { draft:"#F59E0B", design:"#8B5CF6", review:"#3B82F6", approved:"#10B981", published:"#10B981" };
+          return <Card key={d.id} style={{ borderRadius:16, padding:"12px 14px", cursor:"pointer" }} onClick={()=>goTab("content")}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${stageColors[d.stage]||LIME}12`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={stageColors[d.stage]||LIME} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title || d.type}</p>
+                <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>{dayStr}{d.schedule_time ? ` às ${d.schedule_time}` : ""} · {d.network||d.type}</p>
+              </div>
+            </div>
+          </Card>;
+        })}</div>
+      }
     </div>;
 
     return null;
@@ -23130,6 +23148,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const LIME = B.accent || "#BBF246";
   const initials = (user?.name||"C").split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase();
   const pendingCount = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
+
+  /* Clock + day (moved to renderHome scope below, no hooks here) */
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekDemands = demands.filter(d => { if (!d.schedule_date) return false; const sd = new Date(d.schedule_date + "T12:00:00"); return sd >= weekStart && sd <= weekEnd; });
+  const dayNames = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+  const todayStr = `${dayNames[now.getDay()]}, ${now.getDate()} de ${monthNames[now.getMonth()]}`;
+
   return <>
     {/* ═══ AGENCY-STYLE HEADER ═══ */}
     <div style={{ margin:"-14px -16px 0", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:16, paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
@@ -23147,6 +23173,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"14px 18px" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span style={{fontFamily:"inherit",fontSize:16,color:H.srchT}}>Buscar...</span>
+      </div>
+      {/* Clock + Day + Appointments */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 24px 0" }}>
+        <div>
+          <p style={{ fontSize:13, fontWeight:600, color:H.sub, margin:0 }}>{todayStr}</p>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {weekDemands.length > 0 && <div onClick={()=>goTab("content")} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:10, background:"rgba(0,0,0,0.5)", cursor:"pointer", border:"1px solid rgba(255,255,255,0.1)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span style={{ fontSize:11, fontWeight:700, color:"#fff" }}>{weekDemands.length}</span>
+          </div>}
+          <div style={{ display:"flex", gap:3, alignItems:"center" }}>
+            {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:24,height:30,borderRadius:5,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace"}}>{d}</div>)}
+            <span style={{fontSize:17,fontWeight:900,color:"rgba(255,255,255,0.4)",margin:"0 1px"}}>:</span>
+            {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:24,height:30,borderRadius:5,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace"}}>{d}</div>)}
+          </div>
+        </div>
       </div>
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
