@@ -19929,7 +19929,6 @@ function FeedPlannerPage({ onBack, clients, user }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
-  /* Load saved data when client changes */
   useEffect(() => {
     if (!selClient) return;
     (async () => {
@@ -19943,77 +19942,120 @@ function FeedPlannerPage({ onBack, clients, user }) {
           setFeedImages(parsed.feedImages || []);
         } else {
           setProfile({ username: selClient.instagram || selClient.name || "", bio: "", followers: "", following: "", posts: "" });
-          setHighlights([]);
-          setFeedImages([]);
+          setHighlights([]); setFeedImages([]);
         }
       } catch { setProfile({ username: selClient.name || "", bio:"", followers:"", following:"", posts:"" }); setHighlights([]); setFeedImages([]); }
     })();
   }, [selClient]);
 
-  /* Save to Supabase */
   const save = async () => {
     if (!selClient) return;
     const key = "feed_planner_" + (selClient.supaId || selClient.id);
     const val = JSON.stringify({ profile, highlights, feedImages });
-    try {
-      await supabase.from("app_settings").upsert({ key, value: val }, { onConflict: "key" });
-      showToast("Feed salvo \u2713");
-    } catch { showToast("Erro ao salvar"); }
+    try { await supabase.from("app_settings").upsert({ key, value: val }, { onConflict: "key" }); showToast("Feed salvo ✓"); } catch { showToast("Erro ao salvar"); }
   };
 
-  /* Upload image to storage */
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !selClient) return;
     setUploading(true);
     const newImages = [];
     for (const file of files) {
-      const ext = file.name.split(".").pop();
-      const path = `feed-planner/${selClient.supaId || selClient.id}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
       try {
-        const { error } = await supabase.storage.from("client-files").upload(path, file);
-        if (!error) {
-          const { data: urlData } = supabase.storage.from("client-files").getPublicUrl(path);
-          newImages.push({ url: urlData.publicUrl, path, caption: "" });
-        }
+        const reader = new FileReader();
+        const dataUrl = await new Promise((res, rej) => { reader.onload = () => res(reader.result); reader.onerror = rej; reader.readAsDataURL(file); });
+        newImages.push({ url: dataUrl, caption: "" });
       } catch {}
     }
-    setFeedImages(prev => [...newImages, ...prev]);
+    if (newImages.length > 0) {
+      setFeedImages(prev => [...newImages, ...prev]);
+      showToast(newImages.length + " imagem(ns) adicionada(s)");
+    }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
-    showToast(newImages.length + " imagem(ns) adicionada(s)");
   };
 
-  /* Drag and drop reorder */
   const handleDrop = (targetIdx) => {
     if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setDragOverIdx(null); return; }
-    setFeedImages(prev => {
-      const items = [...prev];
-      const [moved] = items.splice(dragIdx, 1);
-      items.splice(targetIdx, 0, moved);
-      return items;
-    });
+    setFeedImages(prev => { const items = [...prev]; const [moved] = items.splice(dragIdx, 1); items.splice(targetIdx, 0, moved); return items; });
     setDragIdx(null); setDragOverIdx(null);
   };
+  const removeImage = (idx) => setFeedImages(prev => prev.filter((_,i) => i !== idx));
+  const addHighlight = () => setHighlights(prev => [...prev, { name: "Destaque", cover: "" }]);
 
-  const removeImage = (idx) => {
-    setFeedImages(prev => prev.filter((_,i) => i !== idx));
-  };
-
-  const addHighlight = () => {
-    setHighlights(prev => [...prev, { name: "Destaque", cover: "" }]);
-  };
+  /* ── PROFILE SIMULATION (reused in both layouts) ── */
+  const ProfileSim = () => (
+    <div style={{ background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #DBDBDB" }}>
+      <div style={{ padding:"20px 16px 0", color:"#262626" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:14 }}>
+          <div style={{ width:80, height:80, borderRadius:"50%", flexShrink:0, background:"linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", padding:3, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:"100%", height:"100%", borderRadius:"50%", overflow:"hidden", background:"#DBDBDB", border:"3px solid #fff" }}>
+              {selClient.logo ? <img src={selClient.logo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#8E8E8E" }}>{(selClient.name||"?")[0]}</div>}
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:20, flex:1, justifyContent:"center" }}>
+            {[{v:profile.posts||String(feedImages.length),l:"posts",k:"posts"},{v:profile.followers,l:"seguidores",k:"followers"},{v:profile.following,l:"seguindo",k:"following"}].map(s=>(
+              <div key={s.k} style={{ textAlign:"center" }}>
+                <input value={s.v} onChange={e=>setProfile(p=>({...p,[s.k]:e.target.value}))} style={{ fontSize:17, fontWeight:700, color:"#262626", border:"none", background:"transparent", textAlign:"center", width:60, fontFamily:"inherit", outline:"none" }} placeholder="0"/>
+                <p style={{ fontSize:12, color:"#8E8E8E" }}>{s.l}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <input value={profile.username} onChange={e=>setProfile(p=>({...p,username:e.target.value}))} style={{ fontSize:14, fontWeight:700, color:"#262626", border:"none", background:"transparent", width:"100%", fontFamily:"inherit", padding:0, marginBottom:2, outline:"none" }} placeholder="@usuario" />
+        <textarea value={profile.bio} onChange={e=>setProfile(p=>({...p,bio:e.target.value}))} rows={2} style={{ fontSize:13, color:"#262626", border:"none", background:"transparent", width:"100%", fontFamily:"inherit", padding:0, resize:"none", lineHeight:1.4, outline:"none" }} placeholder="Bio do perfil..." />
+        <div style={{ display:"flex", gap:12, overflowX:"auto", padding:"10px 0 14px", scrollbarWidth:"none" }}>
+          {highlights.map((h,i) => (
+            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0, width:62 }}>
+              <div style={{ width:56, height:56, borderRadius:"50%", border:"2px solid #DBDBDB", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAFAFA", position:"relative" }}>
+                {h.cover ? <img src={h.cover} style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }} alt="" /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
+                <div onClick={()=>setHighlights(prev=>prev.filter((_,j)=>j!==i))} style={{ position:"absolute", top:-2, right:-2, width:16, height:16, borderRadius:"50%", background:"#FF3B30", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:9, color:"#fff", fontWeight:900 }}>×</div>
+              </div>
+              <input value={h.name} onChange={e=>{const v=e.target.value;setHighlights(prev=>prev.map((x,j)=>j===i?{...x,name:v}:x));}} style={{ fontSize:9, color:"#8E8E8E", border:"none", background:"transparent", textAlign:"center", width:58, fontFamily:"inherit", outline:"none" }} />
+            </div>
+          ))}
+          <div onClick={addHighlight} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0, width:62, cursor:"pointer" }}>
+            <div style={{ width:56, height:56, borderRadius:"50%", border:"2px dashed #DBDBDB", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <span style={{ fontSize:9, color:"#C7C7C7" }}>Novo</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ display:"flex", borderTop:"1px solid #DBDBDB" }}>
+        <div style={{ flex:1, padding:"10px 0", textAlign:"center", borderBottom:"2px solid #262626" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <div style={{ flex:1, padding:"10px 0", textAlign:"center" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        </div>
+      </div>
+      {/* Feed Grid */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:1 }}>
+        {feedImages.length > 0 ? feedImages.map((img, i) => (
+          <div key={i} draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i);}} onDrop={()=>handleDrop(i)} onDragEnd={()=>{setDragIdx(null);setDragOverIdx(null);}} style={{ aspectRatio:"1", position:"relative", cursor:"grab", outline:dragOverIdx===i?`3px solid ${B.accent}`:"none", outlineOffset:"-3px", opacity:dragIdx===i?0.4:1 }}>
+            <img src={img.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+            <button onClick={()=>removeImage(i)} style={{ position:"absolute", top:4, right:4, width:20, height:20, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:11, fontWeight:900 }}>×</button>
+          </div>
+        )) : Array.from({length:9}).map((_,i) => (
+          <div key={`e${i}`} onClick={()=>fileRef.current?.click()} style={{ aspectRatio:"1", background:"#FAFAFA", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DBDBDB" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   /* ── Client selector ── */
   if (!selClient) return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%" }}>
       {ToastEl}
       <CollapseHeader icon={IC.feed} label="Simulador" title="Feed Planner" onBack={onBack} collapsed={false} />
-      <div style={{ padding:"20px 16px", maxWidth:600, margin:"0 auto", width:"100%" }}>
+      <div style={{ padding:"20px 16px", maxWidth:600, margin:"0 auto" }}>
         <Card style={{ textAlign:"center", padding:32 }}>
           <div style={{ width:72, height:72, borderRadius:22, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>{IC.feed(B.accent)}</div>
-          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>Simulador de Feed</h3>
-          <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:20 }}>Visualize como ficará o feed do Instagram do seu cliente antes de publicar. Selecione um cliente para começar.</p>
+          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:6 }}>Feed Planner</h3>
+          <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:20 }}>Simule o feed do Instagram antes de publicar. Selecione um cliente.</p>
           <div style={{ display:"grid", gap:8 }}>
             {CDATA.map(c => (
               <button key={c.id} onClick={() => setSelClient(c)} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"14px 16px", border:`1.5px solid ${B.border}`, borderRadius:14, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=B.accent;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
@@ -20021,7 +20063,6 @@ function FeedPlannerPage({ onBack, clients, user }) {
                 <div><p style={{ fontSize:14, fontWeight:700 }}>{c.name}</p><p style={{ fontSize:11, color:B.muted }}>{c.plan || "Cliente"}</p></div>
               </button>
             ))}
-            {CDATA.length === 0 && <p style={{ fontSize:13, color:B.muted }}>Nenhum cliente cadastrado.</p>}
           </div>
         </Card>
       </div>
@@ -20030,91 +20071,58 @@ function FeedPlannerPage({ onBack, clients, user }) {
 
   /* ── Main Feed Planner ── */
   return (
-    <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%" }}>
       {ToastEl}
       <CollapseHeader icon={IC.feed} label={selClient.name} title="Feed Planner" onBack={() => setSelClient(null)} collapsed={false} />
-      <div style={{ padding:"12px 16px 120px", maxWidth:isFPDesktop?900:480, margin:"0 auto", width:"100%" }}>
-
-        {/* ── Instagram Profile Header ── */}
-        <Card style={{ padding:0, overflow:"hidden", marginBottom:12 }}>
-          <div style={{ background:"#fff", color:"#262626", padding:"20px 16px 0" }}>
-            {/* Profile row */}
-            <div style={{ display:"flex", alignItems:"center", gap:isFPDesktop?24:16, marginBottom:14 }}>
-              <div style={{ width:isFPDesktop?86:72, height:isFPDesktop?86:72, borderRadius:"50%", flexShrink:0, border:"3px solid #E1306C", padding:2, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <div style={{ width:"100%", height:"100%", borderRadius:"50%", overflow:"hidden", background:"#DBDBDB" }}>
-                  {selClient.logo ? <img src={selClient.logo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, fontWeight:900, color:"#8E8E8E" }}>{(selClient.name||"?")[0]}</div>}
-                </div>
-              </div>
-              <div style={{ display:"flex", gap:isFPDesktop?32:20, flex:1, justifyContent:"center" }}>
-                <div style={{ textAlign:"center" }}><input value={profile.posts||feedImages.length} onChange={e=>setProfile(p=>({...p,posts:e.target.value}))} style={{ fontSize:17, fontWeight:700, color:"#262626", border:"none", background:"transparent", textAlign:"center", width:50, fontFamily:"inherit" }} placeholder="0"/><p style={{ fontSize:12, color:"#8E8E8E" }}>posts</p></div>
-                <div style={{ textAlign:"center" }}><input value={profile.followers} onChange={e=>setProfile(p=>({...p,followers:e.target.value}))} style={{ fontSize:17, fontWeight:700, color:"#262626", border:"none", background:"transparent", textAlign:"center", width:60, fontFamily:"inherit" }} placeholder="0"/><p style={{ fontSize:12, color:"#8E8E8E" }}>seguidores</p></div>
-                <div style={{ textAlign:"center" }}><input value={profile.following} onChange={e=>setProfile(p=>({...p,following:e.target.value}))} style={{ fontSize:17, fontWeight:700, color:"#262626", border:"none", background:"transparent", textAlign:"center", width:60, fontFamily:"inherit" }} placeholder="0"/><p style={{ fontSize:12, color:"#8E8E8E" }}>seguindo</p></div>
-              </div>
-            </div>
-            {/* Username + Bio */}
-            <div style={{ marginBottom:12 }}>
-              <input value={profile.username} onChange={e=>setProfile(p=>({...p,username:e.target.value}))} style={{ fontSize:14, fontWeight:700, color:"#262626", border:"none", background:"transparent", width:"100%", fontFamily:"inherit", padding:0, marginBottom:2 }} placeholder="@usuario" />
-              <textarea value={profile.bio} onChange={e=>setProfile(p=>({...p,bio:e.target.value}))} rows={2} style={{ fontSize:13, color:"#262626", border:"none", background:"transparent", width:"100%", fontFamily:"inherit", padding:0, resize:"none", lineHeight:1.4 }} placeholder="Bio do perfil..." />
-            </div>
-            {/* Highlights */}
-            <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:14, scrollbarWidth:"none" }}>
-              {highlights.map((h,i) => (
-                <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0, width:64 }}>
-                  <div style={{ width:58, height:58, borderRadius:"50%", border:"2px solid #DBDBDB", display:"flex", alignItems:"center", justifyContent:"center", background:"#FAFAFA", overflow:"hidden", cursor:"pointer", position:"relative" }}>
-                    {h.cover ? <img src={h.cover} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="" /> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
-                    <div onClick={(e)=>{e.stopPropagation();setHighlights(prev=>prev.filter((_,j)=>j!==i));}} style={{ position:"absolute", top:-4, right:-4, width:18, height:18, borderRadius:"50%", background:"#FF3B30", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:10, color:"#fff", fontWeight:900 }}>×</div>
-                  </div>
-                  <input value={h.name} onChange={e=>{const v=e.target.value;setHighlights(prev=>prev.map((x,j)=>j===i?{...x,name:v}:x));}} style={{ fontSize:10, color:"#8E8E8E", border:"none", background:"transparent", textAlign:"center", width:60, fontFamily:"inherit" }} />
-                </div>
-              ))}
-              <div onClick={addHighlight} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flexShrink:0, width:64, cursor:"pointer" }}>
-                <div style={{ width:58, height:58, borderRadius:"50%", border:"2px dashed #DBDBDB", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </div>
-                <span style={{ fontSize:10, color:"#C7C7C7" }}>Novo</span>
-              </div>
-            </div>
-            {/* Tab bar (grid/reels) */}
-            <div style={{ display:"flex", borderTop:"1px solid #DBDBDB" }}>
-              <div style={{ flex:1, padding:"10px 0", textAlign:"center", borderBottom:"2px solid #262626" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-              </div>
-              <div style={{ flex:1, padding:"10px 0", textAlign:"center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* ── Upload + Save buttons ── */}
-        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>
-            {uploading ? "Enviando..." : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Adicionar Posts</>}
-          </button>
-          <button onClick={save} style={{ padding:"12px 20px", borderRadius:12, background:B.dark||"#192126", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Salvar</button>
-          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleUpload} style={{ display:"none" }} />
+      <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleUpload} style={{ position:"absolute", opacity:0, pointerEvents:"none" }} />
+      <div style={{ display:isFPDesktop?"flex":"block", gap:24, padding:"12px 0 120px" }}>
+        {/* LEFT: Instagram Simulation */}
+        <div style={{ width:isFPDesktop?"380px":"100%", flexShrink:0 }}>
+          <ProfileSim />
+          {feedImages.length > 0 && <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginTop:8 }}>Arraste para reordenar • {feedImages.length} post{feedImages.length!==1?"s":""}</p>}
         </div>
-
-        {/* ── Feed Grid (3 columns) ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:2, background:"#fff", borderRadius:12, overflow:"hidden" }}>
-          {feedImages.map((img, i) => (
-            <div key={i} draggable onDragStart={()=>setDragIdx(i)} onDragOver={(e)=>{e.preventDefault();setDragOverIdx(i);}} onDrop={()=>handleDrop(i)} onDragEnd={()=>{setDragIdx(null);setDragOverIdx(null);}} style={{ aspectRatio:"1", position:"relative", cursor:"grab", outline:dragOverIdx===i?`3px solid ${B.accent}`:"none", opacity:dragIdx===i?0.4:1, transition:"opacity .15s" }}>
-              <img src={img.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-              <button onClick={()=>removeImage(i)} style={{ position:"absolute", top:4, right:4, width:22, height:22, borderRadius:"50%", background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:12, fontWeight:900 }}>×</button>
+        {/* RIGHT: Controls */}
+        <div style={{ flex:1, minWidth:0, marginTop:isFPDesktop?0:16 }}>
+          <Card style={{ marginBottom:12 }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Gerenciar Posts</p>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>
+                {uploading ? "Enviando..." : <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Adicionar Posts
+                </>}
+              </button>
+              <button onClick={save} style={{ padding:"14px 24px", borderRadius:14, background:B.dark||"#192126", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff" }}>Salvar</button>
             </div>
-          ))}
-          {feedImages.length === 0 && Array.from({length:9}).map((_,i) => (
-            <div key={`empty-${i}`} onClick={() => fileRef.current?.click()} style={{ aspectRatio:"1", background:"#FAFAFA", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", border:"1px solid #EFEFEF" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C7C7C7" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </Card>
+          <Card style={{ marginBottom:12 }}>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>Informações do perfil</p>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:12 }}>Edite os dados diretamente no perfil à esquerda, ou preencha aqui:</p>
+            <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Username</label>
+            <input value={profile.username} onChange={e=>setProfile(p=>({...p,username:e.target.value}))} className="tinput" placeholder="@usuario" style={{ marginBottom:10 }} />
+            <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Bio</label>
+            <textarea value={profile.bio} onChange={e=>setProfile(p=>({...p,bio:e.target.value}))} className="tinput" rows={3} placeholder="Bio do perfil..." style={{ marginBottom:10, resize:"vertical" }} />
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              <div><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Seguidores</label><input value={profile.followers} onChange={e=>setProfile(p=>({...p,followers:e.target.value}))} className="tinput" placeholder="0" /></div>
+              <div><label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:3 }}>Seguindo</label><input value={profile.following} onChange={e=>setProfile(p=>({...p,following:e.target.value}))} className="tinput" placeholder="0" /></div>
             </div>
-          ))}
+          </Card>
+          <Card>
+            <p style={{ fontSize:14, fontWeight:800, marginBottom:8 }}>Dicas</p>
+            <div style={{ fontSize:12, color:B.muted, lineHeight:1.7 }}>
+              <p>• Arraste os posts no grid para reordenar</p>
+              <p>• Clique no × para remover um post</p>
+              <p>• Adicione destaques clicando em "Novo"</p>
+              <p>• Clique em "Salvar" para manter as alterações</p>
+              <p>• Os posts mais recentes ficam primeiro no grid</p>
+            </div>
+          </Card>
         </div>
-
-        {feedImages.length > 0 && <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginTop:8 }}>Arraste para reordenar • {feedImages.length} post{feedImages.length!==1?"s":""}</p>}
       </div>
     </div>
   );
 }
+
 
 function NotesPage({ onBack, user }) {
   const isNotesDesktop = useIsDesktop();
