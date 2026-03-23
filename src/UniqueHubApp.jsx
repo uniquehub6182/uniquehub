@@ -1044,23 +1044,20 @@ const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fil
 const supaFindOrCreateDM = async (userId, otherId) => {
   if (!supabase) return null;
   try {
-    /* Find existing DM: get MY dm conversations, then check if other user is in any of them */
-    const { data: myMemberships } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", userId);
-    if (myMemberships?.length) {
-      const myConvIds = myMemberships.map(m => m.conversation_id);
-      /* Get all DM conversations I'm in */
-      const { data: myDMs } = await supabase.from("conversations").select("id").in("id", myConvIds).eq("type", "dm");
-      if (myDMs?.length) {
-        const dmIds = myDMs.map(d => d.id);
-        /* Check which of my DMs also has the other user */
-        const { data: sharedMembers } = await supabase.from("conversation_members").select("conversation_id").in("conversation_id", dmIds).eq("user_id", otherId);
-        if (sharedMembers?.length) {
-          console.log("[DM] Found existing DM:", sharedMembers[0].conversation_id);
-          return sharedMembers[0].conversation_id;
-        }
-      }
+    /* Find existing DM in 2 parallel queries instead of 3 sequential */
+    const [myRes, otherRes] = await Promise.all([
+      supabase.from("conversation_members").select("conversation_id").eq("user_id", userId),
+      supabase.from("conversation_members").select("conversation_id").eq("user_id", otherId),
+    ]);
+    const myIds = new Set((myRes.data||[]).map(m => m.conversation_id));
+    const otherIds = (otherRes.data||[]).map(m => m.conversation_id);
+    const shared = otherIds.filter(id => myIds.has(id));
+    if (shared.length) {
+      /* Check if any shared conversation is a DM */
+      const { data: dms } = await supabase.from("conversations").select("id").in("id", shared).eq("type", "dm").limit(1);
+      if (dms?.length) return dms[0].id;
     }
-    /* No existing DM found — create new */
+    /* No existing DM — create new */
     console.log("[DM] Creating new DM between", userId, "and", otherId);
     const { data: newConv, error: convErr } = await supabase.from("conversations").insert({ type: "dm", created_by: userId }).select();
     if (convErr) { console.error("[DM] Error creating conversation:", convErr); return null; }
@@ -11442,19 +11439,24 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   };
 
   const startDM = async (profileId) => {
-    /* Check if we already have this DM in state */
+    /* Check local state first — instant */
     const existing = convs.find(c => c.type === "dm" && c.members?.some(m => m.id === profileId));
     if (existing) { setSelConv(existing); setView("chat"); setShowNewChat(false); return; }
-    /* Create new DM — build conv object instantly from profile data */
+    /* Show chat immediately with temp conversation (optimistic) */
+    const otherProfile = allProfiles.find(p => p.id === profileId);
+    const tempId = "temp_" + Date.now();
+    const tempConv = { id: tempId, type: "dm", name: otherProfile?.name || "", members: [{ id: user.id, name: user.name, email: user.email, photo_url: user.photo }, ...(otherProfile ? [otherProfile] : [])], lastMsg: null, unread: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    setConvs(prev => [tempConv, ...prev]);
+    setSelConv(tempConv);
+    setView("chat");
+    setShowNewChat(false);
+    /* Create real conversation in background */
     const convId = await supaFindOrCreateDM(user.id, profileId);
     if (convId) {
-      const otherProfile = allProfiles.find(p => p.id === profileId);
-      const instantConv = { id: convId, type: "dm", name: otherProfile?.name || "", members: [{ id: user.id, name: user.name, email: user.email, photo_url: user.photo }, ...(otherProfile ? [otherProfile] : [])], lastMsg: null, unread: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-      setConvs(prev => [instantConv, ...prev.filter(c => c.id !== convId)]);
-      setSelConv(instantConv);
-      setView("chat");
+      const realConv = { ...tempConv, id: convId };
+      setConvs(prev => prev.map(c => c.id === tempId ? realConv : c));
+      setSelConv(realConv);
     }
-    setShowNewChat(false);
   };
 
   const createGroup = async () => {
