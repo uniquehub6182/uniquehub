@@ -18851,7 +18851,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
       if (imgProvider === "gemini") {
         /* ── Gemini (Nano Banana) ── */
         const gemKey = aiKeys.gemini_key || "AIzaSyD2qzX2rZYcp_LR8hLkRr9zJosuCvu0azk";
-        const model = "gemini-2.0-flash-exp";
+        const model = "gemini-2.5-flash-image";
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gemKey}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
