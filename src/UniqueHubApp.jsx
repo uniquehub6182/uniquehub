@@ -12596,6 +12596,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     ...(user?.supaRole==="admin"?[{ k:"permissions", l:"Permissões", desc:"Acesso por cargo" }]:[]),
 
     ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", desc:"Chaves API e provedor" }]:[]),
+    ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas, pódio, serviços" }]:[]),
     { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" },
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
@@ -13786,6 +13787,116 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             ))}
           </div>}
         </div>
+      </SetPage>
+    );
+  }
+
+  /* ═══ GAMIFY EDIT ═══ */
+  if (sub === "gamifyedit") {
+    const [gTab, setGTab] = useState("zones");
+    const [gLoading, setGLoading] = useState(true);
+    const [gZones, setGZones] = useState(null);
+    const [gPodium, setGPodium] = useState(null);
+    const [gMissions, setGMissions] = useState(null);
+    const [gServices, setGServices] = useState(null);
+    useEffect(() => {
+      (async () => {
+        const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services"];
+        const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
+        const map = {};
+        (data||[]).forEach(d => { try { map[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { map[d.key] = d.value; } });
+        if (map.gamify_zones) setGZones(map.gamify_zones);
+        if (map.gamify_podium) setGPodium(map.gamify_podium);
+        if (map.gamify_missions) setGMissions(map.gamify_missions);
+        if (map.gamify_services) setGServices(map.gamify_services);
+        setGLoading(false);
+      })();
+    }, []);
+    const saveGamify = async (key, val) => {
+      await supabase.from("app_settings").upsert({ key, value: JSON.stringify(val) }, { onConflict: "key" });
+      showToast("Salvo ✓");
+    };
+    const accent = B.accent;
+    const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"},{k:"services",l:"Serviços"}];
+    const defZones = [{name:"Estruturação",range:"0–10",color:"#EF4444",reward:"Boas-vindas + diagnóstico inicial"},{name:"Organização",range:"11–30",color:"#F59E0B",reward:"Relatório mensal detalhado"},{name:"Estratégica",range:"31–60",color:"#BBF246",reward:"Prioridade no atendimento"},{name:"Crescimento",range:"61–85",color:"#10B981",reward:"Consultoria estratégica mensal"},{name:"Escala",range:"86–100",color:"#3B82F6",reward:"Desconto no plano + destaque no portfólio"}];
+    const defPodium = [{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}];
+    const defMissions = [{title:"Aprovar posts pendentes",pts:3,pillar:"execucao"},{title:"Criar um evento no calendário",pts:2,pillar:"estrategia"},{title:"Acessar os relatórios de performance",pts:1,pillar:"crescimento"},{title:"Ler uma notícia no News",pts:0.5,pillar:"educacao"},{title:"Visitar a página Match4Biz",pts:1,pillar:"ecossistema"}];
+    const defServices = [{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}];
+    const zones = gZones || defZones;
+    const podium = gPodium || defPodium;
+    const missions = gMissions || defMissions;
+    const services = gServices || defServices;
+    return (
+      <SetPage title="Gamificação do Cliente">
+        {gLoading ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando...</p></Card> : <>
+        <div style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto" }}>
+          {TABS.map(t => <button key={t.k} onClick={()=>setGTab(t.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${gTab===t.k?accent:B.border}`, background:gTab===t.k?`${accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:gTab===t.k?700:500, color:gTab===t.k?accent:B.muted, flexShrink:0 }}>{t.l}</button>)}
+        </div>
+
+        {gTab === "zones" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as recompensas de cada zona de pontuação.</p>
+          {zones.map((z,i) => (
+            <Card key={i} style={{ marginBottom:8, borderLeft:`3px solid ${z.color}` }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                <span style={{ fontSize:13, fontWeight:700 }}>{z.name}</span>
+                <span style={{ fontSize:10, color:B.muted }}>{z.range} pts</span>
+              </div>
+              <label style={{ fontSize:10, color:B.muted }}>Recompensa</label>
+              <input value={z.reward||""} onChange={e=>{const v=e.target.value;const nz=[...zones];nz[i]={...nz[i],reward:v};setGZones(nz);}} className="tinput" placeholder="Ex: Relatório mensal detalhado" />
+            </Card>
+          ))}
+          <button onClick={()=>saveGamify("gamify_zones", zones)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginTop:8 }}>Salvar recompensas</button>
+        </>}
+
+        {gTab === "podium" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Defina as bonificações para os 3 primeiros do ranking.</p>
+          {podium.map((p,i) => (
+            <Card key={i} style={{ marginBottom:8, borderLeft:`3px solid ${p.c}` }}>
+              <p style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>{p.pos}</p>
+              <label style={{ fontSize:10, color:B.muted }}>Bonificação</label>
+              <input value={p.reward||""} onChange={e=>{const v=e.target.value;const np=[...podium];np[i]={...np[i],reward:v};setGPodium(np);}} className="tinput" placeholder="Ex: 1 mês grátis" />
+            </Card>
+          ))}
+          <button onClick={()=>saveGamify("gamify_podium", podium)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginTop:8 }}>Salvar bonificações</button>
+        </>}
+
+        {gTab === "missions" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Defina as missões mensais que os clientes devem completar.</p>
+          {missions.map((m,i) => (
+            <Card key={i} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", gap:8, marginBottom:6 }}>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Missão</label><input value={m.title||""} onChange={e=>{const v=e.target.value;const nm=[...missions];nm[i]={...nm[i],title:v};setGMissions(nm);}} className="tinput" /></div>
+                <div style={{ width:60 }}><label style={{ fontSize:10, color:B.muted }}>Pontos</label><input type="number" value={m.pts||0} onChange={e=>{const v=parseFloat(e.target.value)||0;const nm=[...missions];nm[i]={...nm[i],pts:v};setGMissions(nm);}} className="tinput" style={{textAlign:"center"}} /></div>
+                <button onClick={()=>{const nm=[...missions];nm.splice(i,1);setGMissions(nm);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, alignSelf:"flex-end", marginBottom:2 }}>×</button>
+              </div>
+              <label style={{ fontSize:10, color:B.muted }}>Pilar</label>
+              <select value={m.pillar||"execucao"} onChange={e=>{const nm=[...missions];nm[i]={...nm[i],pillar:e.target.value};setGMissions(nm);}} className="tinput">
+                <option value="execucao">Execução</option><option value="estrategia">Estratégia</option><option value="crescimento">Crescimento</option><option value="educacao">Educação</option><option value="ecossistema">Ecossistema</option>
+              </select>
+            </Card>
+          ))}
+          <button onClick={()=>setGMissions([...missions,{title:"",pts:1,pillar:"execucao"}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar missão</button>
+          <button onClick={()=>saveGamify("gamify_missions", missions)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar missões</button>
+        </>}
+
+        {gTab === "services" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Defina os serviços extras disponíveis para os clientes.</p>
+          {services.map((s,i) => (
+            <Card key={i} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"flex-end" }}>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Serviço</label><input value={s.l||""} onChange={e=>{const v=e.target.value;const ns=[...services];ns[i]={...ns[i],l:v};setGServices(ns);}} className="tinput" /></div>
+                <button onClick={()=>{const ns=[...services];ns.splice(i,1);setGServices(ns);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, marginBottom:2 }}>×</button>
+              </div>
+              <label style={{ fontSize:10, color:B.muted }}>Descrição</label>
+              <input value={s.d||""} onChange={e=>{const ns=[...services];ns[i]={...ns[i],d:e.target.value};setGServices(ns);}} className="tinput" style={{marginBottom:6}} placeholder="Ex: Landing page ou site institucional" />
+              <label style={{ fontSize:10, color:B.muted }}>Valor</label>
+              <input value={s.v||""} onChange={e=>{const ns=[...services];ns[i]={...ns[i],v:e.target.value};setGServices(ns);}} className="tinput" placeholder="Ex: A partir de R$ 2.500" />
+            </Card>
+          ))}
+          <button onClick={()=>setGServices([...services,{l:"",d:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar serviço</button>
+          <button onClick={()=>saveGamify("gamify_services", services)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar serviços</button>
+        </>}
+        </>}
       </SetPage>
     );
   }
