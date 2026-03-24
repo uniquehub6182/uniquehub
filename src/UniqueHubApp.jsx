@@ -7742,7 +7742,8 @@ Para CADA item do documento, gere um JSON com:
 - networks: ["Instagram"] ou ["Instagram","Facebook"]
 - schedDate: "${currentYear}-MM-DD"
 - schedTime: "10:00" (posts) ou "18:00" (vídeos)
-- caption: legenda humanizada seguindo TODAS as regras acima
+- caption: legenda humanizada seguindo TODAS as regras acima (SEM hashtags no final — hashtags vão em campo separado)
+- hashtags: string com todas as hashtags separadas por espaço (ex: "#marketing #redes #design"), NUNCA incluir hashtags dentro da caption
 - designBrief: briefing completo pro designer (formato, elementos visuais, textos na arte, cores, estilo, referências)
 - scriptOrRoteiro: roteiro completo pra vídeos (gancho, desenvolvimento, CTA) ou "" pra posts
 
@@ -7809,19 +7810,36 @@ REGRAS TÉCNICAS:
         showToast("Nenhum post encontrado no documento.");
         setIpStep(1); setIpLoading(false); setIpProgress(""); return;
       }
-      /* Add IDs and defaults */
-      posts = posts.map((p, i) => ({
-        ...p, _id: Date.now() + i, _enabled: true,
-        title: p.title || "Post " + (i + 1),
-        type: p.type || "social",
-        format: p.format || "Feed",
-        networks: p.networks || ["Instagram"],
-        schedDate: p.schedDate || "",
-        schedTime: p.schedTime || "10:00",
-        caption: p.caption || "",
-        designBrief: p.designBrief || "",
-        scriptOrRoteiro: p.scriptOrRoteiro || "",
-      }));
+      /* Add IDs and defaults — separate hashtags from caption if mixed */
+      posts = posts.map((p, i) => {
+        let cap = p.caption || "";
+        let tags = p.hashtags || "";
+        /* If caption contains hashtags, split them out */
+        if (!tags && cap.includes("#")) {
+          const lines = cap.split("\n");
+          const tagLines = []; const capLines = [];
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed && trimmed.split(" ").filter(w=>w.startsWith("#")).length > trimmed.split(" ").length * 0.5) {
+              tagLines.push(trimmed);
+            } else { capLines.push(line); }
+          }
+          if (tagLines.length > 0) { cap = capLines.join("\n").trim(); tags = tagLines.join(" "); }
+        }
+        return {
+          ...p, _id: Date.now() + i, _enabled: true,
+          title: p.title || "Post " + (i + 1),
+          type: p.type || "social",
+          format: p.format || "Feed",
+          networks: p.networks || ["Instagram"],
+          schedDate: p.schedDate || "",
+          schedTime: p.schedTime || "10:00",
+          caption: cap,
+          hashtags: tags,
+          designBrief: p.designBrief || "",
+          scriptOrRoteiro: p.scriptOrRoteiro || "",
+        };
+      });
       setIpPosts(posts);
       setIpLoading(false); setIpProgress("");
       setIpStep(3);
@@ -7850,7 +7868,7 @@ REGRAS TÉCNICAS:
         steps: {
           idea: { text: p.scriptOrRoteiro || p.caption || "", by: "Planejamento IA", date: today },
           briefing: { text: p.designBrief || "", by: "Planejamento IA", date: today },
-          caption: { text: p.caption || "", hashtags: "", by: "Planejamento IA", date: today },
+          caption: { text: p.caption || "", hashtags: p.hashtags || "", by: "Planejamento IA", date: today },
         },
         scheduling: { date: p.schedDate || "", time: p.schedTime || "" },
       };
