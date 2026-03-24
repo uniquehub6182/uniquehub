@@ -774,25 +774,6 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
   } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
 };
 
-/* ── Compress image before upload (max 1080px, 85% quality) ── */
-const compressImage = (file, maxW = 1080, quality = 0.85) => new Promise((resolve) => {
-  if (!file.type.startsWith("image/") || file.size < 200000) { resolve(file); return; } /* skip small/non-images */
-  const img = new Image();
-  img.onload = () => {
-    const c = document.createElement("canvas");
-    let w = img.width, h = img.height;
-    if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-    c.width = w; c.height = h;
-    c.getContext("2d").drawImage(img, 0, 0, w, h);
-    c.toBlob(blob => {
-      if (blob && blob.size < file.size) resolve(new File([blob], file.name, { type: "image/jpeg" }));
-      else resolve(file); /* keep original if compression didn't help */
-    }, "image/jpeg", quality);
-  };
-  img.onerror = () => resolve(file);
-  img.src = URL.createObjectURL(file);
-});
-
 /* ── Upload file to Supabase Storage and return public URL ── */
 const uploadToStorage = async (file, folder = "quick-publish") => {
   if (!supabase) return null;
@@ -1579,7 +1560,7 @@ const VIDEO_STAGES = ["idea","briefing","design","production","caption","review"
 const STAGE_CFG = {
   idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Criativo",c:"#EC4899"},
   caption:{l:"Legenda",c:"#F59E0B"},review:{l:"Revisão",c:"#06B6D4"},client:{l:"Cliente",c:"#10B981"},
-  ajuste:{l:"Ajuste",c:"#F97316"},
+  ajuste:{l:"Alterações",c:"#F97316"},
   scheduled:{l:"Programado",c:"#F59E0B"},published:{l:"Publicado",c:"#BBF246"},planning:{l:"Planejamento",c:"#8B5CF6"},creation:{l:"Criação",c:"#3B82F6"},
   execution:{l:"Execução",c:"#EC4899"},completed:{l:"Concluído",c:"#10B981"},production:{l:"Produção",c:"#EC4899"},
   editing:{l:"Edição",c:"#F59E0B"},
@@ -8152,7 +8133,7 @@ REGRAS TÉCNICAS:
             </div>
             <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Em quais redes os posts serão publicados?</p>
             <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              {["Instagram","Facebook","YouTube"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={16} active={sel2} />{n}</button>; })}
+              {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={16} active={sel2} />{n}</button>; })}
             </div>
           </div>
 
@@ -8781,11 +8762,10 @@ REGRAS TÉCNICAS:
             </div>
             <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
               {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
-                <button key={f} onClick={()=>setForm({...form,format:f})} className={`htab${form.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
+                <button key={f} onClick={()=>{const dimMap={Feed:"1:1",Stories:"9:16",Reels:"9:16",Carrossel:"1:1",Shorts:"9:16"};setForm({...form,format:f,aspectRatio:dimMap[f]||"1:1"});}} className={`htab${form.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
               ))}
             </div>
-            {/* Auto-set dimension based on format */}
-            {(() => { const fmtDims = {Feed:["1:1","4:5","3:4"],Stories:["9:16"],Reels:["9:16"],Carrossel:["1:1","4:5","3:4"],Shorts:["9:16"]}; const allowed = fmtDims[form.format||"Feed"]||["1:1"]; if(allowed.length===1 && form.aspectRatio!==allowed[0]) setTimeout(()=>setForm(f=>({...f,aspectRatio:allowed[0]})),0); return null; })()}
+
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
               <span style={{ fontSize:13, fontWeight:600 }}>Post patrocinado?</span>
               <Toggle on={form.sponsored||false} onToggle={()=>setForm({...form,sponsored:!form.sponsored})} />
@@ -8992,7 +8972,7 @@ REGRAS TÉCNICAS:
             </div>
             <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
               {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
-                <button key={f} onClick={()=>updateField("format",f)} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
+                <button key={f} onClick={()=>{const dimMap={Feed:"1:1",Stories:"9:16",Reels:"9:16",Carrossel:"1:1",Shorts:"9:16"};updateField("format",f);updateField("aspectRatio",dimMap[f]||"1:1");}} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
               ))}
             </div>
             {/* Dimension — format-aware */}
@@ -10251,11 +10231,11 @@ REGRAS TÉCNICAS:
         const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
-        const hasAjuste = filtered.some(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")));
+        const hasAjuste = filtered.some(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")) || (d.steps?.review?.status === "rejected" && ["design","caption"].includes(d.stage)));
         if (hasAjuste) usedStages.add("ajuste");
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
         const moveStage = (d, newStage) => { setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x)); if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage }); showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`); };
-        const getItems = (stg) => { const raw = stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : filtered.filter(d => d.stage === stg); return raw.sort((a,b) => { const da = a.scheduling?.date || "9999"; const db = b.scheduling?.date || "9999"; if (da !== db) return da.localeCompare(db); const ta = a.scheduling?.time || "99:99"; const tb = b.scheduling?.time || "99:99"; return ta.localeCompare(tb); }); };
+        const getItems = (stg) => { const raw = stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")) || (d.steps?.review?.status === "rejected" && ["design","caption"].includes(d.stage))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : stg === "design" ? filtered.filter(d => d.stage === stg && d.steps?.review?.status !== "rejected") : stg === "caption" ? filtered.filter(d => d.stage === stg && d.steps?.review?.status !== "rejected") : filtered.filter(d => d.stage === stg); return raw.sort((a,b) => { const da = a.scheduling?.date || "9999"; const db = b.scheduling?.date || "9999"; if (da !== db) return da.localeCompare(db); const ta = a.scheduling?.time || "99:99"; const tb = b.scheduling?.time || "99:99"; return ta.localeCompare(tb); }); };
         const netC = { Instagram:"#E1306C", Facebook:"#1877F2", TikTok:"#000", LinkedIn:"#0A66C2", YouTube:"#FF0000", Twitter:"#1D9BF0" };
         const TEAM = propTeam || [];
         return <div style={{ padding:"8px 0" }}>
@@ -10306,13 +10286,13 @@ REGRAS TÉCNICAS:
                               {d.sponsored && <span style={{ fontSize:8, fontWeight:700, color:"#0081FB", background:"#0081FB12", padding:"2px 6px", borderRadius:6 }}>🚀 Boost</span>}
                               {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>⚠️ Ajuste</span>}
                               {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6 }}>⏰ Expirado</span>}
-                              {d.steps?.review?.status==="rejected" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>✏️ Alteração</span>}
+                              {d.steps?.review?.status==="rejected" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Alteração</span>}
                               <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
                             </div>
                             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
                             <p style={{ fontSize:10, color:"#9CA3AF", marginBottom:4 }}>{d.client}</p>
                             {d.steps?.review?.status==="rejected" && d.steps?.review?.note && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4, padding:"4px 8px", borderRadius:8, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
-                              <span style={{ fontSize:9, fontWeight:700, color:"#F59E0B" }}>✏️</span>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                               <span style={{ fontSize:9, color:"#92400E", lineHeight:1.3 }}>{d.steps.review.note.substring(0,60)}{d.steps.review.note.length>60?"...":""}</span>
                             </div>}
                             {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
@@ -10875,8 +10855,8 @@ REGRAS TÉCNICAS:
                   <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><select value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput"><option value="">Selecionar...</option>{CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
                 </div>
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Prioridade</p><div style={{display:"flex",gap:4}}>{[{k:"baixa",l:"Baixa",c:B.green||"#10B981"},{k:"média",l:"Média",c:B.orange||"#F59E0B"},{k:"alta",l:"Alta",c:B.red||"#EF4444"}].map(p=><button key={p.k} onClick={()=>setForm(pr=>({...pr,priority:p.k}))} style={{flex:1,padding:"7px 0",borderRadius:8,border:`1.5px solid ${(form.priority||"média")===p.k?p.c:B.border}`,background:(form.priority||"média")===p.k?`${p.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:(form.priority||"média")===p.k?700:500,color:(form.priority||"média")===p.k?p.c:B.muted}}>{p.l}</button>)}</div></div>
-                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Formato</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Facebook","YouTube"]}; const allowed=compat[f]||["Instagram","Facebook","LinkedIn","TikTok","YouTube"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div></div>
-                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Redes <span style={{fontSize:8,color:B.muted,fontWeight:400}}>(multi-seleção)</span></p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(() => {const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Facebook","YouTube"]}; const allowed=compat[form.format||"Feed"]||["Instagram","Facebook","LinkedIn","TikTok","YouTube"]; return ["Instagram","Facebook","YouTube"].map(n=>{const ok=allowed.includes(n);const sel=(form.networks||["Instagram"]).includes(n);return <button key={n} onClick={()=>{if(!ok)return;setForm(p=>{const cur=p.networks||["Instagram"];const next=sel?cur.filter(x=>x!==n):[...cur,n];return{...p,networks:next.length?next:cur};});}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.border:`${B.muted}30`}`,background:sel?`${NETWORK_CFG[n]?.c||B.accent}12`:ok?"transparent":`${B.muted}05`,cursor:ok?"pointer":"not-allowed",fontFamily:"inherit",fontSize:9,fontWeight:sel?700:500,color:sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.muted:`${B.muted}40`,display:"flex",alignItems:"center",gap:4,opacity:ok?1:0.4}}><NetworkIcon name={n} sz={12} active={sel}/>{n}</button>;});})()}</div></div>
+                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Formato</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Instagram","Facebook"]}; const allowed=compat[f]||["Instagram","Facebook"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div></div>
+                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Redes <span style={{fontSize:8,color:B.muted,fontWeight:400}}>(multi-seleção)</span></p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(() => {const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Instagram","Facebook"]}; const allowed=compat[form.format||"Feed"]||["Instagram","Facebook"]; return ["Instagram","Facebook"].map(n=>{const ok=allowed.includes(n);const sel=(form.networks||["Instagram"]).includes(n);return <button key={n} onClick={()=>{if(!ok)return;setForm(p=>{const cur=p.networks||["Instagram"];const next=sel?cur.filter(x=>x!==n):[...cur,n];return{...p,networks:next.length?next:cur};});}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.border:`${B.muted}30`}`,background:sel?`${NETWORK_CFG[n]?.c||B.accent}12`:ok?"transparent":`${B.muted}05`,cursor:ok?"pointer":"not-allowed",fontFamily:"inherit",fontSize:9,fontWeight:sel?700:500,color:sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.muted:`${B.muted}40`,display:"flex",alignItems:"center",gap:4,opacity:ok?1:0.4}}><NetworkIcon name={n} sz={12} active={sel}/>{n}</button>;});})()}</div></div>
                 {(form.format||"Feed")==="Carrossel"&&<div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Nº de slides</p><div style={{display:"flex",gap:4}}>{[2,3,4,5,6,8,10].map(n=><button key={n} onClick={()=>setForm(p=>({...p,slides:n}))} style={{width:28,height:28,borderRadius:8,border:`1.5px solid ${(form.slides||5)===n?B.accent:B.border}`,background:(form.slides||5)===n?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:(form.slides||5)===n?700:500,color:(form.slides||5)===n?B.accent:B.muted}}>{n}</button>)}</div></div>}
                 {(form.format||"Feed")==="Stories"&&<div style={{padding:"8px 10px",borderRadius:8,background:`${B.orange||"#F59E0B"}08`,border:`1px solid ${B.orange||"#F59E0B"}20`}}><p style={{fontSize:9,fontWeight:600,color:B.orange||"#F59E0B"}}>⚠ Stories não suporta legenda e hashtags</p></div>}
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Ideia</p><textarea value={form.idea||""} onChange={e=>setForm(p=>({...p,idea:e.target.value}))} placeholder="Descreva a ideia..." className="tinput" rows={3} style={{resize:"vertical"}} /></div>
@@ -11096,7 +11076,7 @@ REGRAS TÉCNICAS:
                 {createType === "social" && <>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Redes</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
-                    {["Instagram","Facebook","YouTube"].map(n=>{const nets=form.networks||[];const sel2=nets.includes(n);return(<button key={n} onClick={()=>setForm({...form,networks:sel2?nets.filter(x=>x!==n):[...nets,n]})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${sel2?(NETWORK_CFG[n]?.c||"#BBF246"):"rgba(0,0,0,0.08)"}`, background:sel2?`${NETWORK_CFG[n]?.c||"#BBF246"}10`:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:sel2?(NETWORK_CFG[n]?.c||"#1A1D23"):"#9CA3AF" }}>{n}</button>);})}
+                    {["Instagram","Facebook"].map(n=>{const nets=form.networks||[];const sel2=nets.includes(n);return(<button key={n} onClick={()=>setForm({...form,networks:sel2?nets.filter(x=>x!==n):[...nets,n]})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${sel2?(NETWORK_CFG[n]?.c||"#BBF246"):"rgba(0,0,0,0.08)"}`, background:sel2?`${NETWORK_CFG[n]?.c||"#BBF246"}10`:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:sel2?(NETWORK_CFG[n]?.c||"#1A1D23"):"#9CA3AF" }}>{n}</button>);})}
                   </div>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Formato</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
@@ -15878,7 +15858,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               {/* ── Posts/Demandas section ── */}
               {dayEvents.filter(e=>e.isDemand).length > 0 && <>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, paddingBottom:6, borderBottom:`1px solid ${B.border}` }}>
-                  <span style={{ fontSize:12 }}>📱</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#1A1D23" stroke="none"/></svg>
                   <span style={{ fontSize:11, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Posts / Demandas</span>
                   <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>e.isDemand).length}</span>
                 </div>
@@ -15915,7 +15895,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               {/* ── Eventos section ── */}
               {dayEvents.filter(e=>!e.isDemand).length > 0 && <>
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, marginTop:dayEvents.filter(e=>e.isDemand).length>0?16:0, paddingBottom:6, borderBottom:`1px solid ${B.border}` }}>
-                  <span style={{ fontSize:12 }}>📅</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                   <span style={{ fontSize:11, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Eventos</span>
                   <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>!e.isDemand).length}</span>
                 </div>
@@ -15997,7 +15977,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         {/* ── Posts/Demandas section (mobile) ── */}
         {dayEvents.filter(e=>e.isDemand).length > 0 && <>
           <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6, marginTop:4 }}>
-            <span style={{ fontSize:11 }}>📱</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#1A1D23" stroke="none"/></svg>
             <span style={{ fontSize:10, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Posts / Demandas</span>
             <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>e.isDemand).length}</span>
           </div>
@@ -16039,7 +16019,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         {/* ── Eventos section (mobile) ── */}
         {dayEvents.filter(e=>!e.isDemand).length > 0 && <>
           <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6, marginTop:dayEvents.filter(e=>e.isDemand).length>0?14:4 }}>
-            <span style={{ fontSize:11 }}>📅</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <span style={{ fontSize:10, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Eventos</span>
             <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>!e.isDemand).length}</span>
           </div>
