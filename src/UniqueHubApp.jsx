@@ -8427,6 +8427,38 @@ REGRAS TÉCNICAS:
     return !isNaN(dt) && dt < new Date();
   };
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
+  /* ── Auto-publisher: check every 60s for expired scheduled posts ── */
+  const autoPublishRef = useRef(new Set());
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const expired = demands.filter(d => isScheduleExpired(d) && !autoPublishRef.current.has(d.id));
+      if (!expired.length) return;
+      for (const d of expired) {
+        autoPublishRef.current.add(d.id);
+        const cId = d.client_id || CDATA.find(c => c.name === d.client)?.supaId;
+        if (!cId) continue;
+        const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
+        const imgUrls = imgFiles.filter(f=>f.url).map(f=>f.url);
+        if (!imgUrls.length) continue;
+        const fullCap = (d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");
+        const cl = CDATA.find(c => (c.supaId||c.id) === cId);
+        const mt = (d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
+        let ok = false;
+        try {
+          if (cl?.socials?.instagram?.oauth) { const r = await publishToInstagram(cId,imgUrls,fullCap,mt); if (!r?.error) ok = true; }
+          if (cl?.socials?.facebook?.oauth) { const r = await publishToMeta(cId,imgUrls[0],fullCap); if (!r?.error) ok = true; }
+          if (ok) {
+            const stgs = getStages(d.type);
+            const pubStg = stgs[stgs.indexOf("scheduled")+1] || "published";
+            setDemands(p => p.map(x => x.id === d.id ? syncMilestones({...x, stage:pubStg}, pubStg) : x));
+            if (d.supaId) supaUpdateDemand(d.supaId, { stage:pubStg });
+            showToast(`✅ Auto-publicado: ${d.title}`);
+          }
+        } catch {}
+      }
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [demands]);
   /* ── Expiring content detection (5+ months old published with images) ── */
   const expiringDemands = demands.filter(d => {
     if (d.stage !== "published" && d.stage !== "completed") return false;
@@ -8452,7 +8484,7 @@ REGRAS TÉCNICAS:
     return { ...demand, campaign: { ...demand.campaign, milestones: ms } };
   };
 
-  const advanceStage = (d) => {
+  const advanceStage = async (d) => {
     const stages = getStages(d.type);
     const idx = stages.indexOf(d.stage);
     if (idx < stages.length - 1) {
@@ -8462,6 +8494,38 @@ REGRAS TÉCNICAS:
       if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
       showToast(`Avançou para: ${STAGE_CFG[next].l}`);
       supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
+      /* ── Auto-publish when moving to "scheduled" ── */
+      if (next === "scheduled" && d.scheduling?.date) {
+        const cId = d.client_id || CDATA.find(c => c.name === d.client)?.supaId;
+        if (!cId) { showToast("Cliente não vinculado — agende manualmente"); return; }
+        const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
+        const imgUrls = imgFiles.filter(f=>f.url).map(f=>f.url);
+        if (imgUrls.length === 0) { showToast("Sem mídia para publicar — adicione imagens/vídeo primeiro"); return; }
+        const fullCaption = (d.steps?.caption?.text||"") + (d.steps?.caption?.hashtags ? "\n\n"+d.steps.caption.hashtags : "");
+        const schedTs = getScheduledTimestamp(d.scheduling);
+        const clientObj = CDATA.find(c => (c.supaId||c.id) === cId);
+        const hasFB = clientObj?.socials?.facebook?.oauth;
+        const hasIG = clientObj?.socials?.instagram?.oauth;
+        if (!hasFB && !hasIG) { showToast("Cliente sem rede social conectada"); return; }
+        const mediaType = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
+        showToast(schedTs ? "Agendando publicação via Meta API..." : "Publicando agora (horário já passou)...");
+        try {
+          let ok = false;
+          if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs); if (r?.error) showToast("Erro IG: "+r.error); else ok = true; }
+          if (hasFB) { const r = await publishToMeta(cId, imgUrls[0], fullCaption); if (r?.error) showToast("Erro FB: "+r.error); else ok = true; }
+          if (ok) {
+            const pubStage = stages[stages.indexOf("scheduled")+1] || "published";
+            if (!schedTs) { /* Publish immediately — move to published */
+              setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({...x, stage:pubStage}, pubStage) : x));
+              setSel(prev => syncMilestones({...prev, stage:pubStage}, pubStage));
+              if (d.supaId) supaUpdateDemand(d.supaId, { stage:pubStage });
+              showToast("✅ Publicado com sucesso!");
+            } else {
+              showToast("✅ Agendado! O Meta vai publicar automaticamente em "+d.scheduling.date+" às "+d.scheduling.time);
+            }
+          }
+        } catch(e) { showToast("Erro: "+e.message); }
+      }
     }
   };
   const setDemandStage = (d, targetStage) => {
@@ -10420,6 +10484,7 @@ REGRAS TÉCNICAS:
             {isScheduleExpired(d) && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:"#EF444408", border:"1.5px solid #EF444425" }}>
               <span style={{ fontSize:16 }}>⏰</span>
               <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:"#EF4444" }}>Agendamento expirado</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Data {d.scheduling?.date} {d.scheduling?.time} já passou</p></div>
+              <button onClick={async(e)=>{e.stopPropagation();const cId=d.client_id||CDATA.find(c=>c.name===d.client)?.supaId;if(!cId){showToast("Cliente não vinculado");return;}const imgFiles=d.steps?.design?.files||d.steps?.production?.files||[];const imgUrls=imgFiles.filter(f=>f.url).map(f=>f.url);if(!imgUrls.length){showToast("Sem mídia");return;}const fullCap=(d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");const cl=CDATA.find(c=>(c.supaId||c.id)===cId);const mt=(d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));showToast("Publicando agora...");let ok=false;if(cl?.socials?.instagram?.oauth){const r=await publishToInstagram(cId,imgUrls,fullCap,mt);if(r?.error)showToast("Erro IG: "+r.error);else ok=true;}if(cl?.socials?.facebook?.oauth){const r=await publishToMeta(cId,imgUrls[0],fullCap);if(r?.error)showToast("Erro FB: "+r.error);else ok=true;}if(ok){const stgs=getStages(d.type);const pubStg=stgs[stgs.indexOf("scheduled")+1]||"published";setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:pubStg},pubStg):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:pubStg});showToast("✅ Publicado!");}}} style={{padding:"6px 14px",borderRadius:8,background:"#EF4444",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>Publicar agora</button>
             </div>}
             {d.steps?.client?.status === "approved" && d.stage === "client" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1.5px solid ${B.green}25` }}>
               {IC.check}<div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Cliente aprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pronto para publicar · {d.steps.client.respondedBy||""}</p></div>
