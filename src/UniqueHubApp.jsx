@@ -2828,6 +2828,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     match4biz: {l:"Match4Biz",   k:"match4biz"},
     suporte:   {l:"Suporte",     k:"help"},
     ajustes:   {l:"Ajustes",     k:"settings"},
+    notas:     {l:"Notas",       k:"notes"},
   };
   const ACTIONS = {
     aprovar:   {l:"Aprovar conteúdos",  k:"content"},
@@ -2843,6 +2844,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     noticias:  {l:"Ler notícias",        k:"news"},
     ideias:    {l:"Ver ideias",          k:"ideas"},
     gamify:    {l:"Gamify / Ranking",    k:"gamify"},
+    notas:     {l:"Minhas notas",        k:"notes"},
     match4biz: {l:"Match4Biz",          k:"match4biz"},
     academy:   {l:"Academy",            k:"academy"},
     equipe:    {l:"Ver equipe",          k:"team"},
@@ -20788,7 +20790,7 @@ function NotesPage({ onBack, user }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
         </div>
-        <textarea value={editText} onChange={e => setEditText(e.target.value)} onBlur={saveNote} placeholder="Escreva suas anotações aqui..." style={{ flex:1, width:"100%", border:"none", outline:"none", resize:"none", padding:"16px 20px", fontFamily:"inherit", fontSize:14, lineHeight:1.8, color:B.text, background:"transparent", boxSizing:"border-box" }} />
+        <textarea value={editText} onChange={e => setEditText(e.target.value)} onBlur={saveNote} placeholder="Escreva suas anotações aqui..." style={{ flex:1, width:"100%", minHeight:isNotesDesktop?400:300, border:"none", outline:"none", resize:"none", padding:"20px 20px", fontFamily:"inherit", fontSize:15, lineHeight:2, color:B.text, background:"transparent", boxSizing:"border-box" }} />
       </>)}
     </div>
   );
@@ -20797,7 +20799,7 @@ function NotesPage({ onBack, user }) {
     <div className={isNotesDesktop ? "content-wide" : ""} style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>} label="Produtividade" title="Notas" onBack={onBack} />
       {ToastEl}
-      <div style={{ display:"flex", flex:1, height:isNotesDesktop?"calc(100vh - 140px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:16 }}>
+      <div style={{ display:"flex", flex:1, height:isNotesDesktop?"calc(100vh - 140px)":"calc(100vh - 120px)", overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:isNotesDesktop?16:8 }}>
         {isNotesDesktop ? (<>
           {NotesList()}
           {NoteEditor()}
