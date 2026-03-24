@@ -4243,6 +4243,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [profileTab, setProfileTab] = useState("info");
   const [clientIdeas, setClientIdeas] = useState([]);
   const [clientIdeasLoaded, setClientIdeasLoaded] = useState(null); /* client id that was loaded */
+  const [clientUsers, setClientUsers] = useState([]);
+  const [clientUsersLoaded, setClientUsersLoaded] = useState(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({});
   const [editingSocial, setEditingSocial] = useState(null);
@@ -4365,6 +4367,31 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       setClientIdeas(filtered.map(r => ({ id: r.id, title: r.title, desc: r.description || "", author: r.author || "—", date: new Date(r.created_at).toLocaleDateString("pt-BR"), votes: r.votes || 0, status: r.status || "pending", tags: r.tags || [], comments: r.comments || [] })));
       setClientIdeasLoaded(sel.name);
     });
+  }, [profileTab, sel]);
+  /* Load client portal users when access tab is opened */
+  useEffect(() => {
+    if (profileTab !== "access" || !sel || !supabase) return;
+    const cid = sel.supaId || sel.id;
+    if (clientUsersLoaded === cid) return;
+    (async () => {
+      try {
+        /* Get all client-role profiles */
+        const { data: profiles } = await supabase.from("profiles").select("id,name,email,photo_url,role,created_at,blocked").eq("role", "cliente");
+        if (!profiles?.length) { setClientUsers([]); setClientUsersLoaded(cid); return; }
+        /* Get extras to find linked_client_id */
+        const extrasKeys = profiles.map(p => `client_extras_${p.id}`);
+        const { data: extras } = await supabase.from("app_settings").select("key,value").in("key", extrasKeys);
+        const extrasMap = {};
+        (extras||[]).forEach(e => { try { extrasMap[e.key] = typeof e.value === "string" ? JSON.parse(e.value) : e.value; } catch {} });
+        /* Filter profiles linked to this client */
+        const linked = profiles.filter(p => {
+          const ext = extrasMap[`client_extras_${p.id}`];
+          return ext?.linked_client_id === cid;
+        });
+        setClientUsers(linked);
+        setClientUsersLoaded(cid);
+      } catch(e) { console.error("Load client users:", e); }
+    })();
   }, [profileTab, sel]);
   /* Load credentials for selected client */
   useEffect(() => {
@@ -5057,7 +5084,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
       </div>
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
-        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
+        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"access",l:"Acessos",admin:true},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
           <button key={t.k} onClick={()=>{setProfileTab(t.k);setViewClientFile(null);}} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
         ))}
       </div>
@@ -5437,6 +5464,50 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             </Card>
           );
         })}
+      </>}
+
+      {profileTab === "access" && <>
+        <Card style={{ marginBottom:10, background:B.dark||"#0D0D0D", border:"none", padding:14 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>Acessos do Portal</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)", marginTop:2 }}>{clientUsers.length} usuário{clientUsers.length!==1?"s":""} vinculado{clientUsers.length!==1?"s":""}</p></div>
+            <div style={{ padding:"4px 12px", borderRadius:8, background:`${B.accent}15`, fontSize:11, fontWeight:700, color:B.accent }}>{sel.access_code||"—"}</div>
+          </div>
+        </Card>
+        {clientUsers.length === 0 && <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:13, color:B.muted }}>Nenhum usuário cadastrado neste cliente.</p><p style={{ fontSize:11, color:B.muted, marginTop:6 }}>Quando alguém se cadastrar usando o código <strong>{sel.access_code||"—"}</strong>, aparecerá aqui.</p></Card>}
+        {clientUsers.map((u,i) => (
+          <Card key={u.id} style={{ marginBottom:6, opacity:u.blocked?0.5:1 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <Av src={u.photo_url} name={u.name} sz={42} fs={14} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:14, fontWeight:700 }}>{u.name||"Sem nome"}</p>
+                <p style={{ fontSize:11, color:B.muted }}>{u.email}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Desde {u.created_at ? new Date(u.created_at).toLocaleDateString("pt-BR") : "—"}{u.blocked ? " · Bloqueado" : ""}</p>
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                <button onClick={async()=>{
+                  const newBlocked = !u.blocked;
+                  const { error } = await supabase.from("profiles").update({ blocked: newBlocked }).eq("id", u.id);
+                  if (!error) { setClientUsers(prev => prev.map(x => x.id===u.id ? {...x, blocked:newBlocked} : x)); showToast(newBlocked?"Acesso bloqueado":"Acesso desbloqueado"); }
+                  else showToast("Erro: "+error.message);
+                }} title={u.blocked?"Desbloquear":"Bloquear"} style={{ width:34, height:34, borderRadius:10, background:u.blocked?`${B.green}10`:`${B.orange||"#F59E0B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {u.blocked ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>
+                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
+                </button>
+                <button onClick={async()=>{
+                  if (!confirm(`Tem certeza que deseja remover o acesso de ${u.name||u.email}? Esta ação não pode ser desfeita.`)) return;
+                  const { error } = await supabase.from("profiles").delete().eq("id", u.id);
+                  if (!error) {
+                    await supabase.from("app_settings").delete().eq("key", `client_extras_${u.id}`);
+                    setClientUsers(prev => prev.filter(x => x.id !== u.id));
+                    showToast("Acesso removido");
+                  } else showToast("Erro: "+error.message);
+                }} title="Remover acesso" style={{ width:34, height:34, borderRadius:10, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </Card>
+        ))}
       </>}
 
       {profileTab === "contract" && <>
