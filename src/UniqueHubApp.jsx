@@ -22247,7 +22247,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   const BuyOverlay = showBuy ? (
     <div className="m4b-overlay-enter" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(12px)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={() => { setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }}>
-      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:B.bgCard, borderRadius:"28px 28px 0 0", padding:"20px 20px calc(24px + env(safe-area-inset-bottom,0px))", maxHeight:"85vh", overflowY:"auto" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:B.bgCard, borderRadius:"28px 28px 0 0", padding:"20px 20px calc(90px + env(safe-area-inset-bottom,0px))", maxHeight:"90vh", overflowY:"auto" }}>
         <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 18px" }} />
 
         {buyStep === "packages" ? (<>
