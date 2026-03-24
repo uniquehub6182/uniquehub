@@ -9188,7 +9188,7 @@ REGRAS TÉCNICAS:
             {sel.stage === "design" ? <>
               {/* Show review feedback if this was rejected */}
               {sel.steps?.design?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
-                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.design.reviewFeedbackBy} · {sel.steps.design.reviewFeedbackDate}):</p>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>Alteração solicitada ({sel.steps.design.reviewFeedbackBy} · {sel.steps.design.reviewFeedbackDate}):</p>
                 <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.design.reviewFeedback}</p>
               </div>}
               {/* Show briefing instructions for designer to read */}
@@ -9426,7 +9426,7 @@ REGRAS TÉCNICAS:
             {sel.stage === "caption" ? <>
               {/* Show review feedback if this was rejected */}
               {sel.steps?.caption?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
-                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>⚠️ Feedback da revisão ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
+                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>Alteração solicitada ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
                 <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.caption.reviewFeedback}</p>
               </div>}
               {/* Show design files for reference (mobile only — desktop has carousel in design stage) */}
@@ -10003,7 +10003,7 @@ REGRAS TÉCNICAS:
       {/* ── Expiring content warning ── */}
       {expiringDemands.length > 0 && !contained && <div style={{ padding:"8px 16px 0" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, background:"#F59E0B08", border:"1.5px solid #F59E0B25" }}>
-          <span style={{ fontSize:18, flexShrink:0 }}>⚠️</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ fontSize:11, fontWeight:700, color:"#F59E0B" }}>{expiringDemands.length} conteúdo{expiringDemands.length>1?"s":""} com 5+ meses</p>
             <p style={{ fontSize:10, color:B.muted, lineHeight:1.4 }}>Imagens antigas ocupam espaço. Considere fazer backup e limpar.</p>
@@ -10283,17 +10283,21 @@ REGRAS TÉCNICAS:
                           >
                             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                               <span style={{ fontSize:8, fontWeight:700, color:pColor, textTransform:"uppercase", background:`${pColor}15`, padding:"2px 6px", borderRadius:6 }}>{d.priority || "média"}</span>
-                              {d.sponsored && <span style={{ fontSize:8, fontWeight:700, color:"#0081FB", background:"#0081FB12", padding:"2px 6px", borderRadius:6 }}>🚀 Boost</span>}
-                              {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>⚠️ Ajuste</span>}
-                              {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6 }}>⏰ Expirado</span>}
+                              {d.sponsored && <span style={{ fontSize:8, fontWeight:700, color:"#0081FB", background:"#0081FB12", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0081FB" strokeWidth="3" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Boost</span>}
+                              {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Ajuste</span>
+                              {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Expirado</span>}
                               {d.steps?.review?.status==="rejected" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Alteração</span>}
                               <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
                             </div>
                             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
                             <p style={{ fontSize:10, color:"#9CA3AF", marginBottom:4 }}>{d.client}</p>
-                            {d.steps?.review?.status==="rejected" && d.steps?.review?.note && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4, padding:"4px 8px", borderRadius:8, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                              <span style={{ fontSize:9, color:"#92400E", lineHeight:1.3 }}>{d.steps.review.note.substring(0,60)}{d.steps.review.note.length>60?"...":""}</span>
+                            {d.steps?.review?.status==="rejected" && d.steps?.review?.note && <div style={{ display:"flex", alignItems:"flex-start", gap:5, marginBottom:4, padding:"6px 8px", borderRadius:8, background:"#F97316" + "08", border:"1px solid #F97316" + "25" }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0,marginTop:1}}><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                              <div><p style={{ fontSize:8, fontWeight:700, color:"#F97316", textTransform:"uppercase", marginBottom:2 }}>Alteração solicitada</p><p style={{ fontSize:9, color:"#78350F", lineHeight:1.3 }}>{d.steps.review.note.substring(0,80)}{d.steps.review.note.length>80?"...":""}</p></div>
+                            </div>}
+                            {d.steps?.client?.status==="revision" && d.steps?.client?.note && <div style={{ display:"flex", alignItems:"flex-start", gap:5, marginBottom:4, padding:"6px 8px", borderRadius:8, background:"#F59E0B" + "08", border:"1px solid #F59E0B" + "25" }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0,marginTop:1}}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                              <div><p style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", marginBottom:2 }}>Cliente pediu ajuste</p><p style={{ fontSize:9, color:"#78350F", lineHeight:1.3 }}>{d.steps.client.note.substring(0,80)}{d.steps.client.note.length>80?"...":""}</p></div>
                             </div>}
                             {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -10543,7 +10547,7 @@ REGRAS TÉCNICAS:
               <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.orange||"#F59E0B" }}>Cliente pediu edição</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps.client.feedback?.substring(0,60)}{(d.steps.client.feedback?.length||0)>60?"...":""}</p></div>
             </div>}
             {isScheduleExpired(d) && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:"#EF444408", border:"1.5px solid #EF444425" }}>
-              <span style={{ fontSize:16 }}>⏰</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:"#EF4444" }}>Agendamento expirado</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Data {d.scheduling?.date} {d.scheduling?.time} já passou</p></div>
               <button onClick={async(e)=>{e.stopPropagation();const cId=d.client_id||CDATA.find(c=>c.name===d.client)?.supaId;if(!cId){showToast("Cliente não vinculado");return;}const imgFiles=d.steps?.design?.files||d.steps?.production?.files||[];const imgUrls=imgFiles.filter(f=>f.url).map(f=>f.url);if(!imgUrls.length){showToast("Sem mídia");return;}const fullCap=(d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");const cl=CDATA.find(c=>(c.supaId||c.id)===cId);const mt=(d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));showToast("Publicando agora...");let ok=false;if(cl?.socials?.instagram?.oauth){const r=await publishToInstagram(cId,imgUrls,fullCap,mt);if(r?.error)showToast("Erro IG: "+r.error);else ok=true;}if(cl?.socials?.facebook?.oauth){const r=await publishToMeta(cId,imgUrls[0],fullCap);if(r?.error)showToast("Erro FB: "+r.error);else ok=true;}if(ok){const stgs=getStages(d.type);const pubStg=stgs[stgs.indexOf("scheduled")+1]||"published";setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:pubStg},pubStg):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:pubStg});showToast("✅ Publicado!");}}} style={{padding:"6px 14px",borderRadius:8,background:"#EF4444",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>Publicar agora</button>
             </div>}
