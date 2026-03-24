@@ -12297,15 +12297,17 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   /* Gamify edit states (must be at top level for hooks rules) */
   const [gTab, setGTab] = useState("zones");
-  const [gLoading, setGLoading] = useState(true);
   const [gZones, setGZones] = useState(null);
   const [gPodium, setGPodium] = useState(null);
   const [gMissions, setGMissions] = useState(null);
   const [gServices, setGServices] = useState(null);
   const [gAbout, setGAbout] = useState(null);
   const [aboutData, setAboutData] = useState(null);
+  const gLoadedRef = useRef(false);
+  const aboutLoadedRef = useRef(false);
   useEffect(() => {
-    if (sub === "gamifyedit" && gLoading) {
+    if (sub === "gamifyedit" && !gLoadedRef.current) {
+      gLoadedRef.current = true;
       (async () => {
         const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services","gamify_about"];
         const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
@@ -12316,8 +12318,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         if (map.gamify_missions) setGMissions(map.gamify_missions);
         if (map.gamify_services) setGServices(map.gamify_services);
         if (map.gamify_about) setGAbout(map.gamify_about);
-        setGLoading(false);
       })();
+    }
+    if (sub === "about" && !aboutLoadedRef.current) {
+      aboutLoadedRef.current = true;
+      supabase.from("app_settings").select("value").eq("key","gamify_about").maybeSingle().then(({data}) => {
+        if (data?.value) { try { setAboutData(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
+      });
     }
   }, [sub]);
   const [twoFA, setTwoFA] = useState(false);
@@ -13834,7 +13841,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const services = gServices || defServices;
     return (
       <SetPage title="Gamificação do Cliente">
-        {gLoading ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando...</p></Card> : <>
+        {!gLoadedRef.current && !gZones ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando...</p></Card> : <>
         <div style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto" }}>
           {TABS.map(t => <button key={t.k} onClick={()=>setGTab(t.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${gTab===t.k?accent:B.border}`, background:gTab===t.k?`${accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:gTab===t.k?700:500, color:gTab===t.k?accent:B.muted, flexShrink:0 }}>{t.l}</button>)}
         </div>
@@ -13923,13 +13930,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ ABOUT ═══ */
-  useEffect(() => {
-    if (sub === "about" && !aboutData) {
-      supabase.from("app_settings").select("value").eq("key","gamify_about").maybeSingle().then(({data}) => {
-        if (data?.value) { try { setAboutData(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
-      });
-    }
-  }, [sub]);
   if (sub === "about") return (
     <SetPage title="Sobre">
       <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12 }}>
