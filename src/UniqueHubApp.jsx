@@ -13826,8 +13826,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   /* ═══ GAMIFY EDIT ═══ */
   if (sub === "gamifyedit") {
     const saveGamify = async (key, val) => {
-      await supabase.from("app_settings").upsert({ key, value: JSON.stringify(val) }, { onConflict: "key" });
-      showToast("Salvo ✓");
+      try {
+        const payload = { key, value: val };
+        const { error } = await supabase.from("app_settings").upsert(payload, { onConflict: "key" });
+        if (error) { console.error("saveGamify error:", error); showToast("Erro: " + (error.message||"falha ao salvar")); }
+        else showToast("Salvo ✓");
+      } catch(e) { console.error("saveGamify exception:", e); showToast("Erro: " + e.message); }
     };
     const accent = B.accent;
     const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"},{k:"services",l:"Serviços"},{k:"about",l:"Sobre"}];
