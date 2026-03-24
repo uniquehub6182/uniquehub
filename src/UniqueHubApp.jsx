@@ -2109,6 +2109,11 @@ function LoginPage({ onAuth, onClientAuth }) {
       if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
       let profile = null;
       try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
+      /* ── Block blocked users ── */
+      if (profile?.blocked) {
+        setError("Seu acesso foi bloqueado. Entre em contato com a agência.");
+        await supabase.auth.signOut(); setLoginLoading(false); return;
+      }
       /* ── Block agency users from logging into client portal ── */
       if (profile?.role === "admin" || profile?.role === "member") {
         setError("Esta conta é de colaborador. Use a aba \"Colaborador\" para acessar.");
@@ -25296,6 +25301,11 @@ export default function App() {
           const extras = extrasRaw ? (() => { try { return typeof extrasRaw === "string" ? JSON.parse(extrasRaw) : extrasRaw; } catch { return {}; } })() : {};
           const photo = profile?.photo_url || photoSetting || null;
           const isCliente = profile?.role === "cliente" || session.user.user_metadata?.role === "cliente";
+          if (profile?.blocked) {
+            /* Blocked user — sign out */
+            await supabase.auth.signOut();
+            return;
+          }
           if (isCliente) {
             /* ── CLIENT user: restore to client portal ── */
             setClientUser({
