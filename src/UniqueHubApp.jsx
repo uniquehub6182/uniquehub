@@ -774,6 +774,46 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
   } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
 };
 
+/* ── Delete post from Meta (Facebook/Instagram) ── */
+const deleteFromMeta = async (clientId, postId) => {
+  if (!supabase || !SUPA_URL) return { error: "Supabase not configured" };
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/meta-delete-post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+      body: JSON.stringify({ client_id: clientId, post_id: postId })
+    });
+    return await res.json();
+  } catch(e) { console.error("deleteFromMeta error:", e); return { error: e.message }; }
+};
+
+/* ── Best Times to Post (analyze engagement patterns) ── */
+const getBestTimesToPost = (insights) => {
+  /* Default recommended times based on Brazilian market research */
+  const defaults = [
+    { day:"Segunda", times:["08:00","12:00","18:00"], best:"12:00" },
+    { day:"Terça", times:["08:00","12:00","19:00"], best:"12:00" },
+    { day:"Quarta", times:["08:00","12:00","19:00"], best:"19:00" },
+    { day:"Quinta", times:["08:00","12:00","19:00"], best:"12:00" },
+    { day:"Sexta", times:["08:00","13:00","17:00"], best:"13:00" },
+    { day:"Sábado", times:["10:00","14:00","20:00"], best:"10:00" },
+    { day:"Domingo", times:["10:00","15:00","20:00"], best:"15:00" },
+  ];
+  if (!insights) return defaults;
+  /* If we have online_followers data from Meta, use it */
+  try {
+    const onlineData = insights?.online_followers || insights?.page_fans_online;
+    if (onlineData && typeof onlineData === "object") {
+      return Object.entries(onlineData).map(([day, hours]) => {
+        const sorted = Object.entries(hours||{}).sort(([,a],[,b])=>b-a);
+        const topTimes = sorted.slice(0,3).map(([h])=>h.padStart(2,"0")+":00");
+        return { day, times:topTimes, best:topTimes[0]||"12:00" };
+      });
+    }
+  } catch {}
+  return defaults;
+};
+
 /* ── Instagram Platform API (Direct Login via Instagram) ── */
 const IG_APP_ID = "1380216083791935";
 const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments";
@@ -8834,6 +8874,15 @@ REGRAS TÉCNICAS:
                 <input value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" />
               </div>
             </div>
+            {/* Best times suggestion */}
+            <div style={{ marginTop:8, padding:"8px 10px", borderRadius:10, background:`${B.accent}06`, border:`1px solid ${B.accent}15` }}>
+              <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>📊 Melhores horários</p>
+              <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                {(() => { const bt = getBestTimesToPost(null); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map(t => (
+                  <button key={t} onClick={()=>updateField("scheduling",{...sel.scheduling,time:t})} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${sel.scheduling?.time===t?B.accent:B.border}`, background:sel.scheduling?.time===t?`${B.accent}15`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:sel.scheduling?.time===t?B.accent:B.muted }}>{t}</button>
+                )); })()}
+              </div>
+            </div>
 
             {sel.sponsored && <div style={{ marginTop:10 }}>
               <label className="sl" style={{ display:"block", marginBottom:4 }}>Orçamento tráfego</label>
@@ -9610,6 +9659,12 @@ REGRAS TÉCNICAS:
           {/* ── 8. PUBLICADO ── */}
           {renderSection("published", <>
             {sel.stage === "published" && <div style={{ textAlign:"center", padding:12 }}>
+              {(() => { const pubStep = Object.values(sel.steps||{}).find(s=>s.metaPostId); const metaId = pubStep?.metaPostId; return metaId ? (
+                <button onClick={async()=>{if(!confirm("Excluir publicação do Instagram/Facebook? Isso é irreversível."))return;const cId=sel.client_id||CDATA.find(c=>c.name===sel.client)?.supaId;if(!cId){showToast("Cliente não encontrado");return;}showToast("Excluindo publicação...");const r=await deleteFromMeta(cId,metaId);if(r?.success){showToast("Publicação excluída das redes sociais ✓");const ns={...sel.steps};Object.keys(ns).forEach(k=>{if(ns[k]?.metaPostId===metaId)ns[k]={...ns[k],metaPostId:"",deletedAt:new Date().toISOString()};});setDemands(p=>p.map(d=>d.id===sel.id?{...d,steps:ns}:d));if(sel.supaId)supaUpdateDemand(sel.supaId,{steps:ns});}else showToast("Erro: "+(r?.error||"falha ao excluir"));}} style={{ marginTop:8, padding:"10px 20px", borderRadius:12, background:`${B.red||"#EF4444"}10`, border:`1px solid ${B.red||"#EF4444"}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red||"#EF4444", display:"inline-flex", alignItems:"center", gap:6 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  Excluir das redes sociais
+                </button>
+              ) : null; })()}
               {sel.steps?.igPublished?.scheduled ? <>
                 <div style={{ width:48, height:48, borderRadius:24, background:"#F59E0B15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
                 <p style={{ fontSize:14, fontWeight:700, color:"#F59E0B" }}>Post agendado!</p>
@@ -10495,7 +10550,7 @@ REGRAS TÉCNICAS:
                                     if(platform==="instagram"){r3=await publishToInstagram(cId3,imgF3.map(f=>f.url),fullCap3,type,null);}
                                     else{r3=await publishToMeta(cId3,imgF3[0].url,fullCap3,["facebook"]);}
                                     if(r3?.error){showToast(`Erro: ${r3.error}`);setInlinePublishing(false);return;}
-                                    const ns3={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),publishedAt:new Date().toISOString(),platform,type}};
+                                    const ns3={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),publishedAt:new Date().toISOString(),platform,type,metaPostId:r3?.id||r3?.post_id||""}};
                                     const next3=stages[si+1];
                                     if(next3){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next3,steps:ns3},next3):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next3,steps:ns3});}
                                     showToast("✅ Publicado com sucesso!");
@@ -10542,7 +10597,7 @@ REGRAS TÉCNICAS:
                                     if(platform==="instagram"){r=await publishToInstagram(cId,imgF2.map(f=>f.url),fullCap2,type,null);}
                                     else{r=await publishToMeta(cId,imgF2[0].url,fullCap2,["facebook"]);}
                                     if(r?.error){showToast(`Erro: ${r.error}`);setInlinePublishing(false);return;}
-                                    const ns2={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),status:"approved",publishedAt:new Date().toISOString(),platform,type}};
+                                    const ns2={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),status:"approved",publishedAt:new Date().toISOString(),platform,type,metaPostId:r3?.id||r3?.post_id||""}};
                                     const next2=stages[si+1];
                                     if(next2){setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next2,steps:ns2},next2):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next2,steps:ns2});}
                                     showToast("✅ Publicado com sucesso!");
