@@ -12295,6 +12295,31 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  /* Gamify edit states (must be at top level for hooks rules) */
+  const [gTab, setGTab] = useState("zones");
+  const [gLoading, setGLoading] = useState(true);
+  const [gZones, setGZones] = useState(null);
+  const [gPodium, setGPodium] = useState(null);
+  const [gMissions, setGMissions] = useState(null);
+  const [gServices, setGServices] = useState(null);
+  const [gAbout, setGAbout] = useState(null);
+  const [aboutData, setAboutData] = useState(null);
+  useEffect(() => {
+    if (sub === "gamifyedit" && gLoading) {
+      (async () => {
+        const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services","gamify_about"];
+        const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
+        const map = {};
+        (data||[]).forEach(d => { try { map[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { map[d.key] = d.value; } });
+        if (map.gamify_zones) setGZones(map.gamify_zones);
+        if (map.gamify_podium) setGPodium(map.gamify_podium);
+        if (map.gamify_missions) setGMissions(map.gamify_missions);
+        if (map.gamify_services) setGServices(map.gamify_services);
+        if (map.gamify_about) setGAbout(map.gamify_about);
+        setGLoading(false);
+      })();
+    }
+  }, [sub]);
   const [twoFA, setTwoFA] = useState(false);
   const { showToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs?.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
@@ -13793,27 +13818,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ GAMIFY EDIT ═══ */
   if (sub === "gamifyedit") {
-    const [gTab, setGTab] = useState("zones");
-    const [gLoading, setGLoading] = useState(true);
-    const [gZones, setGZones] = useState(null);
-    const [gPodium, setGPodium] = useState(null);
-    const [gMissions, setGMissions] = useState(null);
-    const [gServices, setGServices] = useState(null);
-    const [gAbout, setGAbout] = useState(null);
-    useEffect(() => {
-      (async () => {
-        const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services","gamify_about"];
-        const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
-        const map = {};
-        (data||[]).forEach(d => { try { map[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { map[d.key] = d.value; } });
-        if (map.gamify_zones) setGZones(map.gamify_zones);
-        if (map.gamify_podium) setGPodium(map.gamify_podium);
-        if (map.gamify_missions) setGMissions(map.gamify_missions);
-        if (map.gamify_services) setGServices(map.gamify_services);
-        if (map.gamify_about) setGAbout(map.gamify_about);
-        setGLoading(false);
-      })();
-    }, []);
     const saveGamify = async (key, val) => {
       await supabase.from("app_settings").upsert({ key, value: JSON.stringify(val) }, { onConflict: "key" });
       showToast("Salvo ✓");
@@ -13919,7 +13923,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ ABOUT ═══ */
-  const [aboutData, setAboutData] = useState(null);
   useEffect(() => {
     if (sub === "about" && !aboutData) {
       supabase.from("app_settings").select("value").eq("key","gamify_about").maybeSingle().then(({data}) => {
