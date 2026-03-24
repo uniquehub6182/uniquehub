@@ -5776,7 +5776,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
               {/* Tabs */}
               <div style={{ display:"flex", gap:4, padding:"12px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
-                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).map(t=>(
+                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"access",l:"Acessos"},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).filter(t=>t.k!=="access"||isAdmin).map(t=>(
                   <button key={t.k} onClick={()=>setProfileTab(t.k)} style={{ padding:"6px 14px", borderRadius:100, border:profileTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, background:profileTab===t.k?B.accent:"transparent", color:profileTab===t.k?"#0D0D0D":B.muted }}>{t.l}</button>
                 ))}
               </div>
@@ -5954,6 +5954,33 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       {f.url && <a href={f.url} target="_blank" rel="noopener" style={{ fontSize:10, fontWeight:600, color:B.accent }}>Abrir</a>}
                     </div>
                   ))}
+                </div>}
+                {!confirmAction && profileTab==="access" && isAdmin && <div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                    <div><p style={{ fontSize:16, fontWeight:800 }}>Acessos do Portal</p><p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{clientUsers.length} usuário{clientUsers.length!==1?"s":""} vinculado{clientUsers.length!==1?"s":""}</p></div>
+                    <div style={{ padding:"6px 14px", borderRadius:10, background:`${B.accent}10`, border:`1px solid ${B.accent}20`, fontSize:12, fontWeight:700, color:B.accent }}>Código: {sel.access_code||"—"}</div>
+                  </div>
+                  {clientUsers.length === 0 && <div style={{ textAlign:"center", padding:30, background:B.bg, borderRadius:16 }}><p style={{ fontSize:13, color:B.muted }}>Nenhum usuário cadastrado neste cliente.</p><p style={{ fontSize:11, color:B.muted, marginTop:6 }}>Quando alguém se cadastrar com o código <strong>{sel.access_code||"—"}</strong>, aparecerá aqui.</p></div>}
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(320px, 1fr))", gap:10 }}>
+                    {clientUsers.map(u => (
+                      <div key={u.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:16, background:B.bg, border:`1px solid ${B.border}`, opacity:u.blocked?0.5:1 }}>
+                        <Av src={u.photo_url} name={u.name} sz={42} fs={14} />
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ fontSize:14, fontWeight:700 }}>{u.name||"Sem nome"}</p>
+                          <p style={{ fontSize:11, color:B.muted }}>{u.email}</p>
+                          <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Desde {u.created_at ? new Date(u.created_at).toLocaleDateString("pt-BR") : "—"}{u.blocked?" · Bloqueado":""}</p>
+                        </div>
+                        <div style={{ display:"flex", gap:6 }}>
+                          <button onClick={async()=>{const nb=!u.blocked;const{error}=await supabase.from("profiles").update({blocked:nb}).eq("id",u.id);if(!error){setClientUsers(prev=>prev.map(x=>x.id===u.id?{...x,blocked:nb}:x));showToast(nb?"Bloqueado":"Desbloqueado");}else showToast("Erro: "+error.message);}} title={u.blocked?"Desbloquear":"Bloquear"} style={{ width:34, height:34, borderRadius:10, background:u.blocked?`${B.green}10`:`${B.orange||"#F59E0B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            {u.blocked ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
+                          </button>
+                          <button onClick={async()=>{if(!confirm(`Remover acesso de ${u.name||u.email}?`))return;const{error}=await supabase.from("profiles").delete().eq("id",u.id);if(!error){await supabase.from("app_settings").delete().eq("key",`client_extras_${u.id}`);setClientUsers(prev=>prev.filter(x=>x.id!==u.id));showToast("Removido");}else showToast("Erro: "+error.message);}} title="Remover" style={{ width:34, height:34, borderRadius:10, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>}
                 {!confirmAction && profileTab==="financial" && canFinancial && <div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
