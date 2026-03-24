@@ -8427,36 +8427,44 @@ REGRAS TÉCNICAS:
     return !isNaN(dt) && dt < new Date();
   };
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
-  /* ── Auto-publisher: check every 60s for expired scheduled posts ── */
-  const autoPublishRef = useRef(new Set());
+  /* ── Auto-publisher: calls publish-scheduled Edge Function every 60s ── */
+  const autoPublishRef = useRef(false);
   useEffect(() => {
-    const timer = setInterval(async () => {
-      const expired = demands.filter(d => isScheduleExpired(d) && !autoPublishRef.current.has(d.id));
-      if (!expired.length) return;
-      for (const d of expired) {
-        autoPublishRef.current.add(d.id);
-        const cId = d.client_id || CDATA.find(c => c.name === d.client)?.supaId;
-        if (!cId) continue;
-        const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
-        const imgUrls = imgFiles.filter(f=>f.url).map(f=>f.url);
-        if (!imgUrls.length) continue;
-        const fullCap = (d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");
-        const cl = CDATA.find(c => (c.supaId||c.id) === cId);
-        const mt = (d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
-        let ok = false;
-        try {
-          if (cl?.socials?.instagram?.oauth) { const r = await publishToInstagram(cId,imgUrls,fullCap,mt); if (!r?.error) ok = true; }
-          if (cl?.socials?.facebook?.oauth) { const r = await publishToMeta(cId,imgUrls[0],fullCap); if (!r?.error) ok = true; }
-          if (ok) {
-            const stgs = getStages(d.type);
-            const pubStg = stgs[stgs.indexOf("scheduled")+1] || "published";
-            setDemands(p => p.map(x => x.id === d.id ? syncMilestones({...x, stage:pubStg}, pubStg) : x));
-            if (d.supaId) supaUpdateDemand(d.supaId, { stage:pubStg });
-            showToast(`✅ Auto-publicado: ${d.title}`);
+    const hasScheduled = demands.some(d => d.stage === "scheduled");
+    if (!hasScheduled) return;
+    const callScheduler = async () => {
+      if (autoPublishRef.current) return; /* prevent concurrent calls */
+      autoPublishRef.current = true;
+      try {
+        const res = await fetch(`${SUPA_URL}/functions/v1/publish-scheduled`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
+          body: "{}"
+        });
+        const data = await res.json();
+        if (data.results?.length > 0) {
+          /* Some posts were published — update local state */
+          const published = data.results.filter(r => r.status === "published");
+          if (published.length > 0) {
+            /* Reload demands from Supabase to get updated stages */
+            const { data: freshDemands } = await supabase.from("demands").select("*").in("id", published.map(r => r.demand_id || r.id));
+            if (freshDemands) {
+              setDemands(prev => {
+                const map = new Map(freshDemands.map(d => [d.id, d]));
+                return prev.map(d => map.has(d.supaId) ? { ...d, stage: map.get(d.supaId).stage || d.stage } : d);
+              });
+            }
+            showToast(`✅ ${published.length} post${published.length>1?"s":""} publicado${published.length>1?"s":""} automaticamente!`);
           }
-        } catch {}
-      }
-    }, 60000);
+          const failed = data.results.filter(r => r.status === "failed");
+          if (failed.length > 0) showToast(`⚠️ ${failed.length} post${failed.length>1?"s":""} falhou: ${failed[0].error||"erro desconhecido"}`);
+        }
+      } catch(e) { console.error("Auto-publish scheduler error:", e); }
+      autoPublishRef.current = false;
+    };
+    /* Call immediately on mount and then every 60s */
+    callScheduler();
+    const timer = setInterval(callScheduler, 60000);
     return () => clearInterval(timer);
   }, [demands]);
   /* ── Expiring content detection (5+ months old published with images) ── */
