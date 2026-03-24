@@ -15819,7 +15819,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div>
                 <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{selDay} de {MONTHS[curMonth]}</p>
-                <p style={{ fontSize:11, color:B.muted }}>{dayEvents.length} evento{dayEvents.length!==1?"s":""}</p>
+                <p style={{ fontSize:11, color:B.muted }}>{dayEvents.filter(e=>!e.isDemand).length} evento{dayEvents.filter(e=>!e.isDemand).length!==1?"s":""} · {dayEvents.filter(e=>e.isDemand).length} post{dayEvents.filter(e=>e.isDemand).length!==1?"s":""}</p>
               </div>
               <button onClick={()=>setAdding(true)} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>{IC.plus} Novo</button>
             </div>
@@ -15829,7 +15829,14 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 <p style={{ fontSize:13, fontWeight:600, color:B.muted }}>Nenhum evento</p>
                 <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Clique em "+ Novo" para adicionar</p>
               </div>}
-              {dayEvents.sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
+              {/* ── Posts/Demandas section ── */}
+              {dayEvents.filter(e=>e.isDemand).length > 0 && <>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, paddingBottom:6, borderBottom:`1px solid ${B.border}` }}>
+                  <span style={{ fontSize:12 }}>📱</span>
+                  <span style={{ fontSize:11, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Posts / Demandas</span>
+                  <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>e.isDemand).length}</span>
+                </div>
+                {dayEvents.filter(e=>e.isDemand).sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
                 const et = etCfg(ev.type);
                 const isDem = ev.isDemand;
                 const demColor = isDem ? (ev.color || B.accent) : et.c;
@@ -15858,6 +15865,34 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                   </div>
                 );
               })}
+              </>}
+              {/* ── Eventos section ── */}
+              {dayEvents.filter(e=>!e.isDemand).length > 0 && <>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, marginTop:dayEvents.filter(e=>e.isDemand).length>0?16:0, paddingBottom:6, borderBottom:`1px solid ${B.border}` }}>
+                  <span style={{ fontSize:12 }}>📅</span>
+                  <span style={{ fontSize:11, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Eventos</span>
+                  <span style={{ fontSize:10, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>!e.isDemand).length}</span>
+                </div>
+                {dayEvents.filter(e=>!e.isDemand).sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
+                const et = etCfg(ev.type);
+                return (
+                  <div key={ev.id} onClick={()=>setViewEvent(ev)} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:et.c, marginBottom:6, background:"transparent", transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${et.c}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c, flexShrink:0 }}>{et.icon}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:14, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
+                      <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3, flexWrap:"wrap" }}>
+                        <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>{ev.time}</span>
+                        <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:`${et.c}12`, color:et.c, fontWeight:600 }}>{et.l}</span>
+                        {ev.client && <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>{ev.client}</span>}
+                      </div>
+                    </div>
+                    {ev.participants?.length>0 && <div style={{ display:"flex" }}>
+                      {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-6:0, zIndex:3-j }}><Av name={name} sz={26} fs={9} /></div>)}
+                    </div>}
+                  </div>
+                );
+              })}
+              </>}
             </div>
             </>}
           </div>
@@ -15904,7 +15939,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
 
       {/* Events */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-        <p className="sl">{selDay} de {MONTHS[curMonth]} — {dayEvents.length} evento{dayEvents.length!==1?"s":""}</p>
+        <p className="sl">{selDay} de {MONTHS[curMonth]} — {dayEvents.filter(e=>!e.isDemand).length} evento{dayEvents.filter(e=>!e.isDemand).length!==1?"s":""} · {dayEvents.filter(e=>e.isDemand).length} post{dayEvents.filter(e=>e.isDemand).length!==1?"s":""}</p>
         <button onClick={()=>setAdding(true)} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.text }}>{IC.plus} Novo</button>
       </div>
       {dayEvents.length === 0 ? (
@@ -15912,7 +15947,15 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           <p style={{ fontSize:12, color:B.muted }}>Nenhum evento neste dia</p>
           <button onClick={()=>setAdding(true)} style={{ marginTop:8, padding:"8px 16px", borderRadius:8, background:`${B.accent}10`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.accent }}>+ Adicionar evento</button>
         </Card>
-      ) : dayEvents.sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
+      ) : <>
+        {/* ── Posts/Demandas section (mobile) ── */}
+        {dayEvents.filter(e=>e.isDemand).length > 0 && <>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6, marginTop:4 }}>
+            <span style={{ fontSize:11 }}>📱</span>
+            <span style={{ fontSize:10, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Posts / Demandas</span>
+            <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>e.isDemand).length}</span>
+          </div>
+          {dayEvents.filter(e=>e.isDemand).sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
         const et = etCfg(ev.type);
         const isDem = ev.isDemand;
         const demColor = isDem ? (ev.color || B.accent) : et.c;
@@ -15946,6 +15989,34 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           </Card>
         );
       })}
+        </>}
+        {/* ── Eventos section (mobile) ── */}
+        {dayEvents.filter(e=>!e.isDemand).length > 0 && <>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6, marginTop:dayEvents.filter(e=>e.isDemand).length>0?14:4 }}>
+            <span style={{ fontSize:11 }}>📅</span>
+            <span style={{ fontSize:10, fontWeight:800, color:B.text, textTransform:"uppercase", letterSpacing:1 }}>Eventos</span>
+            <span style={{ fontSize:9, color:B.muted, marginLeft:"auto" }}>{dayEvents.filter(e=>!e.isDemand).length}</span>
+          </div>
+          {dayEvents.filter(e=>!e.isDemand).sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
+        const et2 = etCfg(ev.type);
+        return (
+          <Card key={ev.id} delay={i*0.03} onClick={()=>setViewEvent(ev)} style={{ marginTop:i?6:0, borderLeft:`4px solid ${et2.c}`, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:40, height:40, borderRadius:12, background:`${et2.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et2.c }}>{et2.icon}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
+                  <span style={{ fontSize:10, color:B.muted }}>{ev.time}</span>
+                  <span style={{ fontSize:10, color:et2.c, fontWeight:600 }}>{et2.l}</span>
+                  {ev.client && <span style={{ fontSize:10, color:B.accent, fontWeight:600 }}>{ev.client}</span>}
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+        </>}
+      </>}
       </div>
     </div>
   );
