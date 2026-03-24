@@ -10763,11 +10763,12 @@ REGRAS TÉCNICAS:
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Cliente</label>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:16, paddingBottom:4 }}>
                   {connectedClients.map(c => (
-                    <button key={c.name} onClick={() => setQpForm(p => ({...p, client:c.name}))} style={{ flexShrink:0, padding:"8px 14px", borderRadius:10, border: qpForm.client===c.name ? "2px solid #BBF246" : "1.5px solid rgba(0,0,0,0.06)", background: qpForm.client===c.name ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color: qpForm.client===c.name ? "#1A1D23" : "#9CA3AF" }}>
+                    <button key={c.name} onClick={() => setQpForm(p => ({...p, client:c.name, _files:[], imageUrl:""}))} style={{ flexShrink:0, padding:"8px 14px", borderRadius:12, border: qpForm.client===c.name ? "2px solid #BBF246" : "1.5px solid rgba(0,0,0,0.06)", background: qpForm.client===c.name ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color: qpForm.client===c.name ? "#1A1D23" : "#9CA3AF" }}>
                       {c.name}
-                      <div style={{ display:"flex", gap:3, marginTop:3, justifyContent:"center" }}>
-                        {c.socials?.facebook?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#1877F2" }} />}
-                        {c.socials?.instagram?.oauth && <span style={{ width:6, height:6, borderRadius:3, background:"#E1306C" }} />}
+                      <div style={{ display:"flex", gap:4, marginTop:4, justifyContent:"center" }}>
+                        {c.socials?.facebook?.oauth && <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>}
+                        {c.socials?.instagram?.oauth && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E1306C" stroke="none"/></svg>}
+                        {c.socials?.tiktok?.oauth && <svg width="14" height="14" viewBox="0 0 24 24" fill="#000"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.87-2.88A2.89 2.89 0 019.5 12.4v-3.5a6.37 6.37 0 00-6.38 6.38A6.37 6.37 0 009.5 21.66a6.37 6.37 0 006.38-6.38V8.86a8.27 8.27 0 003.71.87V6.29"/></svg>}
                       </div>
                     </button>
                   ))}
@@ -10775,37 +10776,58 @@ REGRAS TÉCNICAS:
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Formato</label>
                 <div style={{ display:"flex", gap:6, marginBottom:14 }}>
                   {["Feed","Stories","Reels","Carrossel"].map(f => (
-                    <button key={f} onClick={() => setQpForm(p => ({...p, format:f}))} style={{ flex:1, padding:"8px 0", borderRadius:10, border: (qpForm.format||"Feed")===f ? "2px solid #BBF246" : "1.5px solid rgba(0,0,0,0.06)", background: (qpForm.format||"Feed")===f ? "#BBF24610" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color: (qpForm.format||"Feed")===f ? "#1A1D23" : "#9CA3AF" }}>{f}</button>
+                    <button key={f} onClick={() => setQpForm(p => ({...p, format:f, _files:[], imageUrl:""}))} style={{ flex:1, padding:"8px 0", borderRadius:10, border: (qpForm.format||"Feed")===f ? "2px solid #BBF246" : "1.5px solid rgba(0,0,0,0.06)", background: (qpForm.format||"Feed")===f ? "#BBF24610" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color: (qpForm.format||"Feed")===f ? "#1A1D23" : "#9CA3AF" }}>{f}</button>
                   ))}
                 </div>
-                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Mídia</label>
-                {/* Upload previews */}
-                {(qpForm._files||[]).length > 0 && <div style={{ display:"flex", gap:6, marginBottom:8, overflowX:"auto" }}>
-                  {(qpForm._files||[]).map((f,i) => (
-                    <div key={i} style={{ position:"relative", width:64, height:64, borderRadius:10, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)", flexShrink:0 }}>
-                      {f.preview ? <img src={f.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"#F3F4F6", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#9CA3AF" }}>{f.name?.split(".").pop()}</div>}
-                      <button onClick={() => setQpForm(p => ({...p, _files:(p._files||[]).filter((_,j)=>j!==i)}))} style={{ position:"absolute", top:2, right:2, width:18, height:18, borderRadius:9, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    </div>
-                  ))}
-                </div>}
-                <input type="file" id="qpFileUpload" multiple accept="image/*,video/*" style={{ display:"none" }} onChange={e => {
-                  const files = Array.from(e.target.files);
-                  const newFiles = files.map(f => ({ file:f, name:f.name, size:f.size, preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null }));
-                  setQpForm(p => ({...p, _files:[...(p._files||[]), ...newFiles]}));
-                  /* Also set imageUrl for first image for API compatibility */
-                  if (newFiles.length && newFiles[0].preview) {
-                    const reader = new FileReader(); reader.onload = ev => setQpForm(p => ({...p, imageUrl: ev.target.result})); reader.readAsDataURL(files[0]);
-                  }
-                  e.target.value = "";
-                }} />
-                <button onClick={() => document.getElementById("qpFileUpload").click()} style={{ width:"100%", padding:"14px", borderRadius:12, border:"2px dashed rgba(0,0,0,0.1)", background:"rgba(0,0,0,0.02)", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:"#9CA3AF", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:14 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  {(qpForm._files||[]).length > 0 ? "Adicionar mais arquivos" : "Selecionar fotos ou vídeos"}
-                </button>
-                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Legenda</label>
-                <textarea value={qpForm.caption} onChange={e => setQpForm(p => ({...p, caption:e.target.value}))} placeholder="Escreva a legenda do post..." className="tinput" style={{ marginBottom:14, minHeight:80, resize:"vertical" }} />
-                <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Hashtags</label>
-                <input value={qpForm.hashtags} onChange={e => setQpForm(p => ({...p, hashtags:e.target.value}))} placeholder="#marketing #digital #agencia" className="tinput" style={{ marginBottom:16, fontSize:12 }} />
+                {/* Format rules */}
+                {(() => {
+                  const fmt = qpForm.format || "Feed";
+                  const isReels = fmt === "Reels";
+                  const isStories = fmt === "Stories";
+                  const isCarrossel = fmt === "Carrossel";
+                  const isFeed = fmt === "Feed";
+                  const maxFiles = isCarrossel ? 20 : isStories ? 10 : 1;
+                  const acceptType = isReels ? "video/*" : "image/*";
+                  const uploadLabel = isReels ? "Selecionar vídeo" : isCarrossel ? `Selecionar imagens (máx ${maxFiles})` : isStories ? "Selecionar imagens" : "Selecionar imagem";
+                  const currentFiles = qpForm._files || [];
+                  const canAddMore = currentFiles.length < maxFiles;
+                  return <>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>{isReels?"Vídeo":"Mídia"} {currentFiles.length>0?`(${currentFiles.length}${isCarrossel?`/${maxFiles}`:""})`:""}</label>
+                    {currentFiles.length > 0 && <div style={{ display:"flex", gap:6, marginBottom:8, overflowX:"auto" }}>
+                      {currentFiles.map((f,i) => (
+                        <div key={i} style={{ position:"relative", width:64, height:64, borderRadius:10, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)", flexShrink:0 }}>
+                          {f.preview ? <img src={f.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : f.name?.match(/\.(mp4|mov|webm)$/i) ? <div style={{ width:"100%", height:"100%", background:"#111", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div> : <div style={{ width:"100%", height:"100%", background:"#F3F4F6", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#9CA3AF" }}>{f.name?.split(".").pop()}</div>}
+                          <button onClick={() => setQpForm(p => ({...p, _files:(p._files||[]).filter((_,j)=>j!==i), imageUrl:i===0?"":p.imageUrl}))} style={{ position:"absolute", top:2, right:2, width:18, height:18, borderRadius:9, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        </div>
+                      ))}
+                    </div>}
+                    <input type="file" id="qpFileUpload" multiple={isCarrossel||isStories} accept={acceptType} style={{ display:"none" }} onChange={e => {
+                      const files = Array.from(e.target.files).slice(0, maxFiles - currentFiles.length);
+                      if (!files.length) return;
+                      const newFiles = files.map(f => ({ file:f, name:f.name, size:f.size, preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null }));
+                      setQpForm(p => ({...p, _files: isFeed || isReels ? newFiles : [...(p._files||[]), ...newFiles].slice(0, maxFiles)}));
+                      if (newFiles.length && newFiles[0].preview) {
+                        const reader = new FileReader(); reader.onload = ev => setQpForm(p => ({...p, imageUrl: ev.target.result})); reader.readAsDataURL(files[0]);
+                      }
+                      e.target.value = "";
+                    }} />
+                    {canAddMore && <button onClick={() => document.getElementById("qpFileUpload").click()} style={{ width:"100%", padding:"14px", borderRadius:12, border:"2px dashed rgba(0,0,0,0.1)", background:"rgba(0,0,0,0.02)", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:"#9CA3AF", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:8 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      {uploadLabel}
+                    </button>}
+                    {isReels && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6, marginTop:8 }}>Capa do vídeo</label>
+                    <input type="file" id="qpCoverUpload" accept="image/*" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if(f){ const reader = new FileReader(); reader.onload = ev => setQpForm(p => ({...p, coverUrl: ev.target.result, _coverPreview: URL.createObjectURL(f)})); reader.readAsDataURL(f); } e.target.value=""; }} />
+                    {qpForm._coverPreview ? <div style={{ position:"relative", width:80, height:80, borderRadius:10, overflow:"hidden", marginBottom:8 }}><img src={qpForm._coverPreview} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><button onClick={()=>setQpForm(p=>({...p,coverUrl:"",_coverPreview:""}))} style={{ position:"absolute", top:2, right:2, width:18, height:18, borderRadius:9, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div> : <button onClick={()=>document.getElementById("qpCoverUpload").click()} style={{ width:"100%", padding:"10px", borderRadius:10, border:"1.5px dashed rgba(0,0,0,0.08)", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#9CA3AF", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Selecionar capa</button>}
+                    </>}
+                    {/* Caption — hidden for Stories */}
+                    {!isStories && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6, marginTop:6 }}>Legenda</label>
+                    <textarea value={qpForm.caption} onChange={e => setQpForm(p => ({...p, caption:e.target.value}))} placeholder="Escreva a legenda do post..." className="tinput" style={{ marginBottom:8, minHeight:80, resize:"vertical" }} /></>}
+                    {isStories && <div style={{ padding:"12px 14px", borderRadius:12, background:"#FEF3C7", border:"1px solid #FDE68A", marginBottom:8, marginTop:6 }}><p style={{ fontSize:11, fontWeight:700, color:"#92400E" }}>📌 Stories não suporta legenda</p><p style={{ fontSize:10, color:"#B45309", marginTop:2 }}>O texto deve estar na própria imagem/arte.</p></div>}
+                    {/* Hashtags — hidden for Stories */}
+                    {!isStories && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Hashtags</label>
+                    <input value={qpForm.hashtags} onChange={e => setQpForm(p => ({...p, hashtags:e.target.value}))} placeholder="#marketing #digital #agencia" className="tinput" style={{ marginBottom:12, fontSize:12 }} /></>}
+                  </>;
+                })()}
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:8 }}>Publicar em</label>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {hasFB && hasIG && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); Promise.all([publishToMeta(clientId,qpForm.imageUrl,caption), publishToInstagram(clientId,[qpForm.imageUrl],caption,(qpForm.format||"Feed").toUpperCase())]).then(([rFb,rIg])=>{ setQpLoading(false); if(rFb?.error||rIg?.error){showToast("Erro: "+(rFb?.error||rIg?.error));return;} showToast("✓ Publicado no Facebook e Instagram!"); setQuickPub(false); setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both",_files:[]}); }).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Publicando...":"Facebook + Instagram"}</button>}
