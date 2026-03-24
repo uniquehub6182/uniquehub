@@ -8751,7 +8751,13 @@ REGRAS TÉCNICAS:
                 </button>
               );})}
             </div>
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Formato</label>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+              <label className="sl" style={{ display:"block" }}>Formato</label>
+              <button onClick={()=>showToast("📐 Dimensões Instagram:\n• Feed: 1:1 (1080×1080), 4:5 (1080×1350), 3:4 (1080×1440)\n• Stories/Reels: 9:16 (1080×1920)\n• Carrossel: 1:1 ou 4:5 (até 20 slides)\n\n📐 Dimensões Facebook:\n• Feed: 1200×630 (paisagem) ou 1080×1080\n• Stories: 1080×1920\n• Vídeo: 1280×720 mínimo")} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:B.muted, fontFamily:"inherit", fontSize:10, fontWeight:600 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Guia de dimensões
+              </button>
+            </div>
             <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
               {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
                 <button key={f} onClick={()=>setForm({...form,format:f})} className={`htab${form.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
@@ -8956,7 +8962,13 @@ REGRAS TÉCNICAS:
               })}
             </div>
 
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>Formato</label>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+              <label className="sl" style={{ display:"block" }}>Formato</label>
+              <button onClick={()=>showToast("📐 Dimensões Instagram:\n• Feed: 1:1 (1080×1080), 4:5 (1080×1350), 3:4 (1080×1440)\n• Stories/Reels: 9:16 (1080×1920)\n• Carrossel: 1:1 ou 4:5 (até 20 slides)\n\n📐 Dimensões Facebook:\n• Feed: 1200×630 (paisagem) ou 1080×1080\n• Stories: 1080×1920\n• Vídeo: 1280×720 mínimo")} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:B.muted, fontFamily:"inherit", fontSize:10, fontWeight:600 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Guia
+              </button>
+            </div>
             <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
               {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
                 <button key={f} onClick={()=>updateField("format",f)} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
@@ -9664,8 +9676,8 @@ REGRAS TÉCNICAS:
                         Sim, enviar
                       </button>
                       <button onClick={() => updateStep("client", { mode:"publish_direct" })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.bgCard, color:B.text, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                        Não, publicar direto
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Agendar publicação
                       </button>
                     </div>
                   </div>
@@ -9734,14 +9746,14 @@ REGRAS TÉCNICAS:
                 /* ── STEP 2B: Publish direct — now or scheduled ── */
                 if (clientMode === "publish_direct") return (
                   <div style={{ padding:12 }}>
-                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:10, textAlign:"center" }}>Publicar sem aprovação do cliente</p>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:10, textAlign:"center" }}>Agendar e publicar</p>
                     {hasApi && imgFiles.length > 0 ? <>
                       {schedTs ? <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:12, padding:"8px 12px", borderRadius:10, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         <span style={{ fontSize:11, fontWeight:600, color:"#F59E0B" }}>Agendado: {schedLabel}</span>
                       </div> : <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:12, padding:"8px 12px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20` }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
-                        <span style={{ fontSize:11, fontWeight:600, color:B.green }}>Publicação imediata (defina data/hora na etapa Legenda para agendar)</span>
+                        <span style={{ fontSize:11, fontWeight:600, color:B.green }}>Publicação imediata — defina data/hora no agendamento para programar</span>
                       </div>}
                       {publishButtons()}
                     </> : <div style={{ textAlign:"center", padding:10 }}>
