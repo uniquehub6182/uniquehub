@@ -21695,6 +21695,12 @@ function ClientMatch4Biz({ onBack, user }) {
   const [accepted, setAccepted] = useState(() => { try { return localStorage.getItem("uh_m4b_accepted") === "1"; } catch { return false; } });
   const [tab, setTab] = useState("discover");
   const [credits, setCredits] = useState(0);
+  const [customPkgs, setCustomPkgs] = useState(null);
+  useEffect(() => {
+    supabase.from("app_settings").select("value").eq("key","pay_credits").maybeSingle().then(({data}) => {
+      if (data?.value) { try { setCustomPkgs(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
+    });
+  }, []);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [matches, setMatches] = useState([]);
   const [allClients, setAllClients] = useState([]);
@@ -22230,7 +22236,10 @@ function ClientMatch4Biz({ onBack, user }) {
   }
 
   /* ═══ BUY CREDITS MODAL ═══ */
-  const PACKAGES = [
+  const PACKAGES = customPkgs ? customPkgs.map((p,i) => ({
+    id:i+1, n:p.credits||10, price:`R$ ${p.price||"0"}`, raw:parseFloat(p.price)||0,
+    desc:p.name||`${p.credits} créditos`, popular:i===1, save:i>0?`${Math.round((1-(parseFloat(p.price)/(parseFloat(customPkgs[0]?.price||1)*(p.credits/(customPkgs[0]?.credits||1)))))*100)}%`:""
+  })) : [
     { id:1, n:10, price:"R$ 100", raw:100, desc:"1 match", popular:false },
     { id:2, n:30, price:"R$ 250", raw:250, desc:"3 matches", save:"17%", popular:true },
     { id:3, n:50, price:"R$ 400", raw:400, desc:"5 matches", save:"20%", popular:false },
