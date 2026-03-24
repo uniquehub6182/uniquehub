@@ -9675,9 +9675,22 @@ REGRAS TÉCNICAS:
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
                         Sim, enviar
                       </button>
-                      <button onClick={() => updateStep("client", { mode:"publish_direct" })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.bgCard, color:B.text, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                      <button onClick={async () => {
+                        /* Direct schedule: auto-publish to all connected platforms */
+                        if (!hasApi || imgFiles.length === 0) {
+                          updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                          setTimeout(()=>advanceStage(sel),100);
+                          return;
+                        }
+                        const platforms = [];
+                        if (hasIG) platforms.push("instagram");
+                        if (hasFB) platforms.push("facebook");
+                        for (const platform of platforms) {
+                          await doPublish(platform, isStories?"STORIES":"FEED");
+                        }
+                      }} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.bgCard, color:B.text, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                        Agendar publicação
+                        {schedTs ? "Agendar publicação" : "Publicar agora"}
                       </button>
                     </div>
                   </div>
