@@ -11090,15 +11090,20 @@ REGRAS TÉCNICAS:
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
                     {["Feed","Stories","Reels","Carrossel"].map(f=>(<button key={f} onClick={()=>setForm({...form,format:f})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${form.format===f?"#BBF246":"rgba(0,0,0,0.08)"}`, background:form.format===f?"#BBF24610":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:form.format===f?"#1A1D23":"#9CA3AF" }}>{f}</button>))}
                   </div>
+                  {/* Dimension - format-aware */}
+                  {(() => { const fmtDims = {Feed:["1:1","4:5","3:4"],Stories:["9:16"],Reels:["9:16"],Carrossel:["1:1","4:5","3:4"],Shorts:["9:16"],"Vídeo":["9:16"]}; const allowed = fmtDims[form.format||"Feed"]||["1:1"]; return allowed.length > 1 ? <>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Dimensão</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
-                    {[{k:"1:1",l:"1:1",w:4,h:4},{k:"4:5",l:"4:5",w:4,h:5},{k:"3:4",l:"3:4 ✨",w:3,h:4},{k:"9:16",l:"9:16",w:3,h:5},{k:"16:9",l:"16:9",w:5,h:3}].map(r=>(
-                      <button key={r.k} onClick={()=>setForm({...form,aspectRatio:r.k})} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:10, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?"#BBF246":"rgba(0,0,0,0.08)"}`, background:(form.aspectRatio||"1:1")===r.k?"#BBF24610":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:(form.aspectRatio||"1:1")===r.k?"#1A1D23":"#9CA3AF" }}>
-                        <div style={{ width:r.w*2.5, height:r.h*2.5, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?"#BBF246":"#9CA3AF"}`, borderRadius:1 }} />
+                    {allowed.map(k => { const dims={"1:1":{w:4,h:4,l:"1:1"},"4:5":{w:4,h:5,l:"4:5"},"3:4":{w:3,h:4,l:"3:4 ✨"},"9:16":{w:3,h:5,l:"9:16"},"16:9":{w:5,h:3,l:"16:9"}}; const r=dims[k]; return (
+                      <button key={k} onClick={()=>setForm({...form,aspectRatio:k})} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:10, border:`1.5px solid ${(form.aspectRatio||"1:1")===k?"#BBF246":"rgba(0,0,0,0.08)"}`, background:(form.aspectRatio||"1:1")===k?"#BBF24610":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:(form.aspectRatio||"1:1")===k?"#1A1D23":"#9CA3AF" }}>
+                        <div style={{ width:r.w*2.5, height:r.h*2.5, border:`1.5px solid ${(form.aspectRatio||"1:1")===k?"#BBF246":"#9CA3AF"}`, borderRadius:1 }} />
                         {r.l}
                       </button>
-                    ))}
+                    ); })}
                   </div>
+                  </> : <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14, padding:"6px 10px", borderRadius:8, background:"#BBF24606", border:"1px solid #BBF24615" }}>
+                    {(()=>{ const dims={"1:1":{w:10,h:10,px:"1080×1080"},"9:16":{w:7,h:12,px:"1080×1920"}}; const d=dims[allowed[0]]||dims["9:16"]; return<><div style={{width:d.w,height:d.h,border:"1.5px solid #BBF246",borderRadius:1}}/><span style={{fontSize:10,fontWeight:700,color:"#BBF246"}}>{allowed[0]}</span><span style={{fontSize:9,color:"#9CA3AF"}}>({d.px})</span><span style={{fontSize:9,color:"#9CA3AF",marginLeft:"auto"}}>Formato fixo para {form.format}</span></>;})()}
+                  </div>; })()}
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Agendamento</label>
                   <div style={{ display:"flex", gap:8, marginBottom:8 }}>
                     <input type="date" value={form.schedDate||""} onChange={e=>setForm({...form,schedDate:e.target.value})} className="tinput" style={{ flex:1 }} />
