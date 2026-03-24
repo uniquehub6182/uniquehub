@@ -10036,7 +10036,7 @@ REGRAS TÉCNICAS:
         if (hasAjuste) usedStages.add("ajuste");
         const visibleStages = KANBAN_STAGES.filter(s => SOCIAL_BASE.includes(s) || usedStages.has(s));
         const moveStage = (d, newStage) => { setDemands(p => p.map(x => x.id === d.id ? { ...x, stage: newStage } : x)); if (d.supaId) supaUpdateDemand(d.supaId, { stage: newStage }); showToast(`${d.title} → ${STAGE_CFG[newStage]?.l || newStage}`); };
-        const getItems = (stg) => stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : filtered.filter(d => d.stage === stg);
+        const getItems = (stg) => { const raw = stg === "ajuste" ? filtered.filter(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected"))) : stg === "client" ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected") : filtered.filter(d => d.stage === stg); return raw.sort((a,b) => { const da = a.scheduling?.date || "9999"; const db = b.scheduling?.date || "9999"; if (da !== db) return da.localeCompare(db); const ta = a.scheduling?.time || "99:99"; const tb = b.scheduling?.time || "99:99"; return ta.localeCompare(tb); }); };
         const netC = { Instagram:"#E1306C", Facebook:"#1877F2", TikTok:"#000", LinkedIn:"#0A66C2", YouTube:"#FF0000", Twitter:"#1D9BF0" };
         const TEAM = propTeam || [];
         return <div style={{ padding:"8px 0" }}>
