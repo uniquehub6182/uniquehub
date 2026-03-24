@@ -1556,7 +1556,7 @@ const SOCIAL_STAGES = ["idea","briefing","design","caption","review","client","s
 const CAMPAIGN_STAGES = ["planning","creation","review","execution","completed"];
 const VIDEO_STAGES = ["idea","briefing","design","production","caption","review","client","scheduled","published"];
 const STAGE_CFG = {
-  idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Design",c:"#EC4899"},
+  idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Criativo",c:"#EC4899"},
   caption:{l:"Legenda",c:"#F59E0B"},review:{l:"Revisão",c:"#06B6D4"},client:{l:"Cliente",c:"#10B981"},
   ajuste:{l:"Ajuste",c:"#F97316"},
   scheduled:{l:"Programado",c:"#F59E0B"},published:{l:"Publicado",c:"#BBF246"},planning:{l:"Planejamento",c:"#8B5CF6"},creation:{l:"Criação",c:"#3B82F6"},
@@ -7720,11 +7720,12 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [ipCreating, setIpCreating] = useState(false);
   const [ipCreated, setIpCreated] = useState(0);
   const [ipTone, setIpTone] = useState("informativo");
+  const [ipNetworks, setIpNetworks] = useState(["Instagram", "Facebook"]);
   const [ipEmojis, setIpEmojis] = useState(true);
   const [ipEmojiQty, setIpEmojiQty] = useState("moderado");
   const ipFileRef = useRef(null);
 
-  const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); setIpTone("informativo"); setIpEmojis(true); setIpEmojiQty("moderado"); };
+  const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); setIpTone("informativo"); setIpEmojis(true); setIpEmojiQty("moderado"); setIpNetworks(["Instagram","Facebook"]); };
 
   /* ═══ NEWS AUTO-GEN: Generate posts from client's reference sites ═══ */
   const [newsAutoGen, setNewsAutoGen] = useState(false);
@@ -7837,7 +7838,7 @@ RESPONDA APENAS com array JSON, sem markdown, sem backticks.`;
       const fullCaption = hashtagsText ? captionText + (captionText.includes("#") ? "" : "\n\n" + hashtagsText) : captionText;
       const newD = {
         title: (p.title||"Notícia").substring(0,57), type: p.type||"social", stage: "design",
-        format: p.format||"Feed", priority: "média", network: (p.networks||["Instagram","Facebook"]).join(", "),
+        format: p.format||"Feed", priority: "média", network: ipNetworks.join(", "),
         client: (CDATA).find(c=>(c.supaId||c.id)===naClient)?.name||"", client_id: naClient,
         scheduling: p.schedDate ? { date: p.schedDate, time: p.schedTime||"10:00" } : null,
         steps: {
@@ -8121,10 +8122,23 @@ REGRAS TÉCNICAS:
             )}
           </div>
 
-          {/* ── SECTION 3: PREFERÊNCIAS ── */}
+          {/* ── SECTION 3: REDES SOCIAIS ── */}
+          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>3</div>
+              <p style={{ fontSize:14, fontWeight:700 }}>Redes sociais</p>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Em quais redes os posts serão publicados?</p>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {["Instagram","Facebook","YouTube"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={16} active={sel2} />{n}</button>; })}
+            </div>
+          </div>
+
+          {/* ── SECTION 4: PREFERÊNCIAS ── */}
           <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:20 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
-              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>3</div>
+              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>4</div>
               <p style={{ fontSize:14, fontWeight:700 }}>Preferências</p>
             </div>
 
@@ -8743,16 +8757,8 @@ REGRAS TÉCNICAS:
                 <button key={f} onClick={()=>setForm({...form,format:f})} className={`htab${form.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
               ))}
             </div>
-            {/* Aspect ratio / dimension */}
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Dimensão</label>
-            <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
-              {[{k:"1:1",l:"1:1",w:1,h:1},{k:"4:5",l:"4:5",w:4,h:5},{k:"3:4",l:"3:4",w:3,h:4},{k:"9:16",l:"9:16",w:9,h:16},{k:"16:9",l:"16:9",w:16,h:9}].map(r=>(
-                <button key={r.k} onClick={()=>setForm({...form,aspectRatio:r.k})} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?B.accent:B.border}`, background:(form.aspectRatio||"1:1")===r.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:(form.aspectRatio||"1:1")===r.k?B.accent:B.muted }}>
-                  <div style={{ width:r.w*4>16?16:r.w*4, height:r.h*4>16?16:r.h*4, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?B.accent:B.muted}`, borderRadius:2 }} />
-                  {r.l}
-                </button>
-              ))}
-            </div>
+            {/* Auto-set dimension based on format */}
+            {(() => { const fmtDims = {Feed:["1:1","4:5","3:4"],Stories:["9:16"],Reels:["9:16"],Carrossel:["1:1","4:5","3:4"],Shorts:["9:16"]}; const allowed = fmtDims[form.format||"Feed"]||["1:1"]; if(allowed.length===1 && form.aspectRatio!==allowed[0]) setTimeout(()=>setForm(f=>({...f,aspectRatio:allowed[0]})),0); return null; })()}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
               <span style={{ fontSize:13, fontWeight:600 }}>Post patrocinado?</span>
               <Toggle on={form.sponsored||false} onToggle={()=>setForm({...form,sponsored:!form.sponsored})} />
@@ -8842,7 +8848,7 @@ REGRAS TÉCNICAS:
     };
 
     /* Role label for each stage */
-    const stageRole = { idea:"Head / CEO", briefing:"Social Media", design:"Designer / Audiovisual", caption:"Social Media", review:"Gerente", client:"Cliente", published:"—",
+    const stageRole = { idea:"Head / CEO", briefing:"Social Media", design:"Designer / Criativo", caption:"Social Media", review:"Gerente", client:"Cliente", published:"—",
       planning:"Head / CEO", creation:"Equipe", execution:"Equipe", completed:"—", production:"Audiovisual", editing:"Editor" };
     const stageIcon = { idea:IC.ideas, briefing:IC.doc, design:IC.img, caption:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
       review:IC.shield, client:IC.users, published:IC.check, planning:IC.ideas, creation:IC.img, execution:IC.target, completed:IC.check, production:IC.vid, editing:IC.vid };
@@ -8956,15 +8962,16 @@ REGRAS TÉCNICAS:
                 <button key={f} onClick={()=>updateField("format",f)} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
               ))}
             </div>
-            {/* Aspect ratio */}
-            <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
-              {[{k:"1:1",l:"1:1",w:4,h:4},{k:"4:5",l:"4:5",w:4,h:5},{k:"3:4",l:"3:4 ✨",w:3,h:4},{k:"9:16",l:"9:16",w:3,h:5},{k:"16:9",l:"16:9",w:5,h:3}].map(r=>(
-                <button key={r.k} onClick={()=>updateField("aspectRatio",r.k)} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 8px", borderRadius:8, border:`1.5px solid ${(sel.aspectRatio||"1:1")===r.k?B.accent:B.border}`, background:(sel.aspectRatio||"1:1")===r.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:(sel.aspectRatio||"1:1")===r.k?B.accent:B.muted }}>
-                  <div style={{ width:r.w*2.5, height:r.h*2.5, border:`1.5px solid ${(sel.aspectRatio||"1:1")===r.k?B.accent:B.muted}`, borderRadius:1 }} />
-                  {r.l}
-                </button>
-              ))}
-            </div>
+            {/* Dimension — format-aware */}
+            {(() => { const fmtDims = {Feed:["1:1","4:5","3:4"],Stories:["9:16"],Reels:["9:16"],Carrossel:["1:1","4:5","3:4"],Shorts:["9:16"]}; const allowed = fmtDims[sel.format||"Feed"]||["1:1","4:5","3:4","9:16","16:9"]; return allowed.length > 1 ? <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
+              {allowed.map(k => {
+                const dims = {"1:1":{w:4,h:4},"4:5":{w:4,h:5},"3:4":{w:3,h:4},"9:16":{w:3,h:5},"16:9":{w:5,h:3}};
+                const r = dims[k]||{w:4,h:4};
+                return <button key={k} onClick={()=>updateField("aspectRatio",k)} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 8px", borderRadius:8, border:`1.5px solid ${(sel.aspectRatio||"1:1")===k?B.accent:B.border}`, background:(sel.aspectRatio||"1:1")===k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:(sel.aspectRatio||"1:1")===k?B.accent:B.muted }}>
+                  <div style={{ width:r.w*2.5, height:r.h*2.5, border:`1.5px solid ${(sel.aspectRatio||"1:1")===k?B.accent:B.muted}`, borderRadius:1 }} /> {k}
+                </button>;
+              })}
+            </div> : null; })()}
 
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
               <span style={{ fontSize:13, fontWeight:600 }}>Patrocinado?</span>
@@ -9525,14 +9532,15 @@ REGRAS TÉCNICAS:
                 {sel.steps?.caption?.hashtags && <p style={{ fontSize:10, color:B.blue, marginTop:4 }}>{sel.steps.caption.hashtags}</p>}
               </div>}
               {/* Feedback textarea */}
-              <label className="sl" style={{ display:"block", marginBottom:4 }}>Observação / O que precisa corrigir</label>
-              <textarea value={sel.steps?.review?.note||""} onChange={e=>updateStep("review",{note:e.target.value})} placeholder="Descreva o que está errado ou precisa ser alterado..." className="tinput" style={{ marginBottom:12, minHeight:70, resize:"vertical" }} />
+              <label className="sl" style={{ display:"block", marginBottom:4 }}>O que precisa ser alterado? <span style={{color:B.red||"#EF4444"}}>*</span></label>
+              <textarea value={sel.steps?.review?.note||""} onChange={e=>updateStep("review",{note:e.target.value})} placeholder="Descreva detalhadamente o que está errado ou precisa ser alterado... (obrigatório para solicitar revisão)" className="tinput" style={{ marginBottom:4, minHeight:80, resize:"vertical", border:(sel.steps?.review?.note||"").trim()?"":(`2px solid ${B.red||"#EF4444"}30`) }} />
+              {!(sel.steps?.review?.note||"").trim() && <p style={{ fontSize:10, color:B.red||"#EF4444", marginBottom:8 }}>⚠ Obrigatório descrever as alterações para solicitar revisão</p>}
               {/* Action buttons */}
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 <button onClick={() => { updateStep("review",{status:"approved",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); setTimeout(()=>advanceStage(sel),100); }} style={{ flex:"1 1 100%", padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>✓ Aprovar</button>
-                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"design",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); rejectToStage(sel,"design",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.orange, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Arte</button>
-                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"caption",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); rejectToStage(sel,"caption",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.red, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Legenda</button>
-                <button onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"both",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}); const d = {...sel, _rejectBoth:true}; rejectToStage(d,"design",note); }} style={{ flex:"1 1 100%", padding:"10px 0", borderRadius:14, background:B.dark, color:"#fff", border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:"pointer" }}>↩ Revisar Arte + Legenda</button>
+                <button disabled={!(sel.steps?.review?.note||"").trim()} onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"design",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),note}); rejectToStage(sel,"design",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.orange, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:(sel.steps?.review?.note||"").trim()?"pointer":"not-allowed", opacity:(sel.steps?.review?.note||"").trim()?1:0.4 }}>↩ Revisar Arte</button>
+                <button disabled={!(sel.steps?.review?.note||"").trim()} onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"caption",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),note}); rejectToStage(sel,"caption",note); }} style={{ flex:1, padding:"10px 0", borderRadius:14, background:B.red, color:"#fff", border:"none", fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:(sel.steps?.review?.note||"").trim()?"pointer":"not-allowed", opacity:(sel.steps?.review?.note||"").trim()?1:0.4 }}>↩ Revisar Legenda</button>
+                <button disabled={!(sel.steps?.review?.note||"").trim()} onClick={() => { const note = sel.steps?.review?.note || ""; updateStep("review",{status:"rejected",target:"both",by:user?.name||"Matheus",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),note}); const d = {...sel, _rejectBoth:true}; rejectToStage(d,"design",note); }} style={{ flex:"1 1 100%", padding:"10px 0", borderRadius:14, background:B.dark, color:"#fff", border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:700, cursor:(sel.steps?.review?.note||"").trim()?"pointer":"not-allowed", opacity:(sel.steps?.review?.note||"").trim()?1:0.4 }}>↩ Revisar Arte + Legenda</button>
               </div>
             </> : sel.steps?.review?.status && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
@@ -10252,10 +10260,15 @@ REGRAS TÉCNICAS:
                               {d.sponsored && <span style={{ fontSize:8, fontWeight:700, color:"#0081FB", background:"#0081FB12", padding:"2px 6px", borderRadius:6 }}>🚀 Boost</span>}
                               {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>⚠️ Ajuste</span>}
                               {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6 }}>⏰ Expirado</span>}
+                              {d.steps?.review?.status==="rejected" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6 }}>✏️ Alteração</span>}
                               <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
                             </div>
                             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
                             <p style={{ fontSize:10, color:"#9CA3AF", marginBottom:4 }}>{d.client}</p>
+                            {d.steps?.review?.status==="rejected" && d.steps?.review?.note && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4, padding:"4px 8px", borderRadius:8, background:"#F59E0B08", border:"1px solid #F59E0B20" }}>
+                              <span style={{ fontSize:9, fontWeight:700, color:"#F59E0B" }}>✏️</span>
+                              <span style={{ fontSize:9, color:"#92400E", lineHeight:1.3 }}>{d.steps.review.note.substring(0,60)}{d.steps.review.note.length>60?"...":""}</span>
+                            </div>}
                             {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                               <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.scheduling.date.split("-").reverse().join("/")}{d.scheduling.time ? " · "+d.scheduling.time : ""}</span>
@@ -10630,7 +10643,7 @@ REGRAS TÉCNICAS:
                                     📩 Enviar ao cliente
                                   </button>
                                   <button onClick={(e)=>{e.stopPropagation();inlineUpdate({mode:"publish_direct"});showToast("Modo: publicar direto");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>
-                                    📤 Publicar direto
+                                    📤 Agendar publicação
                                   </button>
                                 </div>
                               </div>
@@ -10816,8 +10829,8 @@ REGRAS TÉCNICAS:
                   <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><select value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput"><option value="">Selecionar...</option>{CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
                 </div>
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Prioridade</p><div style={{display:"flex",gap:4}}>{[{k:"baixa",l:"Baixa",c:B.green||"#10B981"},{k:"média",l:"Média",c:B.orange||"#F59E0B"},{k:"alta",l:"Alta",c:B.red||"#EF4444"}].map(p=><button key={p.k} onClick={()=>setForm(pr=>({...pr,priority:p.k}))} style={{flex:1,padding:"7px 0",borderRadius:8,border:`1.5px solid ${(form.priority||"média")===p.k?p.c:B.border}`,background:(form.priority||"média")===p.k?`${p.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:(form.priority||"média")===p.k?700:500,color:(form.priority||"média")===p.k?p.c:B.muted}}>{p.l}</button>)}</div></div>
-                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Formato</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook","LinkedIn"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook","TikTok"],Carrossel:["Instagram","Facebook"],"Vídeo":["Facebook","YouTube","LinkedIn"]}; const allowed=compat[f]||["Instagram","Facebook","LinkedIn","TikTok","YouTube"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div></div>
-                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Redes <span style={{fontSize:8,color:B.muted,fontWeight:400}}>(multi-seleção)</span></p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(() => {const compat={Feed:["Instagram","Facebook","LinkedIn"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook","TikTok"],Carrossel:["Instagram","Facebook"],"Vídeo":["Facebook","YouTube","LinkedIn"]}; const allowed=compat[form.format||"Feed"]||["Instagram","Facebook","LinkedIn","TikTok","YouTube"]; return ["Instagram","Facebook","LinkedIn","TikTok","YouTube"].map(n=>{const ok=allowed.includes(n);const sel=(form.networks||["Instagram"]).includes(n);return <button key={n} onClick={()=>{if(!ok)return;setForm(p=>{const cur=p.networks||["Instagram"];const next=sel?cur.filter(x=>x!==n):[...cur,n];return{...p,networks:next.length?next:cur};});}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.border:`${B.muted}30`}`,background:sel?`${NETWORK_CFG[n]?.c||B.accent}12`:ok?"transparent":`${B.muted}05`,cursor:ok?"pointer":"not-allowed",fontFamily:"inherit",fontSize:9,fontWeight:sel?700:500,color:sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.muted:`${B.muted}40`,display:"flex",alignItems:"center",gap:4,opacity:ok?1:0.4}}><NetworkIcon name={n} sz={12} active={sel}/>{n}</button>;});})()}</div></div>
+                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Formato</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Facebook","YouTube"]}; const allowed=compat[f]||["Instagram","Facebook","LinkedIn","TikTok","YouTube"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div></div>
+                <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Redes <span style={{fontSize:8,color:B.muted,fontWeight:400}}>(multi-seleção)</span></p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(() => {const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Facebook","YouTube"]}; const allowed=compat[form.format||"Feed"]||["Instagram","Facebook","LinkedIn","TikTok","YouTube"]; return ["Instagram","Facebook","YouTube"].map(n=>{const ok=allowed.includes(n);const sel=(form.networks||["Instagram"]).includes(n);return <button key={n} onClick={()=>{if(!ok)return;setForm(p=>{const cur=p.networks||["Instagram"];const next=sel?cur.filter(x=>x!==n):[...cur,n];return{...p,networks:next.length?next:cur};});}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.border:`${B.muted}30`}`,background:sel?`${NETWORK_CFG[n]?.c||B.accent}12`:ok?"transparent":`${B.muted}05`,cursor:ok?"pointer":"not-allowed",fontFamily:"inherit",fontSize:9,fontWeight:sel?700:500,color:sel?(NETWORK_CFG[n]?.c||B.accent):ok?B.muted:`${B.muted}40`,display:"flex",alignItems:"center",gap:4,opacity:ok?1:0.4}}><NetworkIcon name={n} sz={12} active={sel}/>{n}</button>;});})()}</div></div>
                 {(form.format||"Feed")==="Carrossel"&&<div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Nº de slides</p><div style={{display:"flex",gap:4}}>{[2,3,4,5,6,8,10].map(n=><button key={n} onClick={()=>setForm(p=>({...p,slides:n}))} style={{width:28,height:28,borderRadius:8,border:`1.5px solid ${(form.slides||5)===n?B.accent:B.border}`,background:(form.slides||5)===n?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:(form.slides||5)===n?700:500,color:(form.slides||5)===n?B.accent:B.muted}}>{n}</button>)}</div></div>}
                 {(form.format||"Feed")==="Stories"&&<div style={{padding:"8px 10px",borderRadius:8,background:`${B.orange||"#F59E0B"}08`,border:`1px solid ${B.orange||"#F59E0B"}20`}}><p style={{fontSize:9,fontWeight:600,color:B.orange||"#F59E0B"}}>⚠ Stories não suporta legenda e hashtags</p></div>}
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Ideia</p><textarea value={form.idea||""} onChange={e=>setForm(p=>({...p,idea:e.target.value}))} placeholder="Descreva a ideia..." className="tinput" rows={3} style={{resize:"vertical"}} /></div>
@@ -11037,7 +11050,7 @@ REGRAS TÉCNICAS:
                 {createType === "social" && <>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Redes</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
-                    {["Instagram","Facebook","TikTok","LinkedIn"].map(n=>{const nets=form.networks||[];const sel2=nets.includes(n);return(<button key={n} onClick={()=>setForm({...form,networks:sel2?nets.filter(x=>x!==n):[...nets,n]})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${sel2?(NETWORK_CFG[n]?.c||"#BBF246"):"rgba(0,0,0,0.08)"}`, background:sel2?`${NETWORK_CFG[n]?.c||"#BBF246"}10`:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:sel2?(NETWORK_CFG[n]?.c||"#1A1D23"):"#9CA3AF" }}>{n}</button>);})}
+                    {["Instagram","Facebook","YouTube"].map(n=>{const nets=form.networks||[];const sel2=nets.includes(n);return(<button key={n} onClick={()=>setForm({...form,networks:sel2?nets.filter(x=>x!==n):[...nets,n]})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${sel2?(NETWORK_CFG[n]?.c||"#BBF246"):"rgba(0,0,0,0.08)"}`, background:sel2?`${NETWORK_CFG[n]?.c||"#BBF246"}10`:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:sel2?(NETWORK_CFG[n]?.c||"#1A1D23"):"#9CA3AF" }}>{n}</button>);})}
                   </div>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Formato</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
