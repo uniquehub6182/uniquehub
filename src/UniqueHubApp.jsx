@@ -8820,8 +8820,8 @@ REGRAS TÉCNICAS:
         </div>} />
         )}
 
-        {/* ═══ EDIT MODE (mobile only) ═══ */}
-        {!isContentDesktop && editMode ? (
+        {/* ═══ EDIT MODE ═══ */}
+        {editMode ? (
           <Card style={{ marginBottom:14 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
               <p style={{ fontSize:14, fontWeight:700 }}>Editando demanda</p>
@@ -8908,7 +8908,7 @@ REGRAS TÉCNICAS:
               <input value={sel.traffic?.budget||""} onChange={e=>updateField("traffic",{...sel.traffic,budget:e.target.value})} placeholder="R$ 150" className="tinput" />
             </div>}
           </Card>
-        ) : !isContentDesktop ? (
+        ) : (
         <div style={{ textAlign:"center", marginBottom:14 }}>
           <Av src={(propClients||[]).find(c=>c.name===sel.client)?.logo} name={sel.client} sz={48} fs={18} />
           <h2 style={{ fontSize:17, fontWeight:800, marginTop:8, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"100%" }}>{sel.title}</h2>
@@ -8929,7 +8929,7 @@ REGRAS TÉCNICAS:
             Editar demanda
           </button>
         </div>
-        ) : null}
+        )}
         {/* ═══ POST PREVIEW (mobile only) ═══ */}
         {!isContentDesktop && sel.type === "social" && (() => {
           const selNetworks = sel.network ? sel.network.split(", ") : [];
@@ -10860,6 +10860,26 @@ REGRAS TÉCNICAS:
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Formato</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
                     {["Feed","Stories","Reels","Carrossel"].map(f=>(<button key={f} onClick={()=>setForm({...form,format:f})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${form.format===f?"#BBF246":"rgba(0,0,0,0.08)"}`, background:form.format===f?"#BBF24610":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:form.format===f?"#1A1D23":"#9CA3AF" }}>{f}</button>))}
+                  </div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Dimensão</label>
+                  <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
+                    {[{k:"1:1",l:"1:1",w:4,h:4},{k:"4:5",l:"4:5",w:4,h:5},{k:"3:4",l:"3:4 ✨",w:3,h:4},{k:"9:16",l:"9:16",w:3,h:5},{k:"16:9",l:"16:9",w:5,h:3}].map(r=>(
+                      <button key={r.k} onClick={()=>setForm({...form,aspectRatio:r.k})} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:10, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?"#BBF246":"rgba(0,0,0,0.08)"}`, background:(form.aspectRatio||"1:1")===r.k?"#BBF24610":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:(form.aspectRatio||"1:1")===r.k?"#1A1D23":"#9CA3AF" }}>
+                        <div style={{ width:r.w*2.5, height:r.h*2.5, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?"#BBF246":"#9CA3AF"}`, borderRadius:1 }} />
+                        {r.l}
+                      </button>
+                    ))}
+                  </div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Agendamento</label>
+                  <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                    <input type="date" value={form.schedDate||""} onChange={e=>setForm({...form,schedDate:e.target.value})} className="tinput" style={{ flex:1 }} />
+                    <input value={form.schedTime||""} onChange={e=>setForm({...form,schedTime:e.target.value})} placeholder="18:00" className="tinput" style={{ width:80 }} />
+                  </div>
+                  <div style={{ display:"flex", gap:4, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
+                    <span style={{ fontSize:9, fontWeight:700, color:"#BBF246" }}>📊 Melhores horários</span>
+                    {(() => { const bt = getBestTimesToPost(null); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map(t => (
+                      <button key={t} onClick={()=>setForm({...form,schedTime:t})} style={{ padding:"3px 8px", borderRadius:6, border:`1px solid ${form.schedTime===t?"#BBF246":"rgba(0,0,0,0.08)"}`, background:form.schedTime===t?"#BBF24615":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:form.schedTime===t?"#1A1D23":"#9CA3AF" }}>{t}</button>
+                    )); })()}
                   </div>
                 </>}
                 {createType === "campaign" && <>
