@@ -1540,7 +1540,7 @@ const CLIENTS_DATA_INIT = [
 /* ═══════════════════════ DEMAND / CONTENT DATA ═══════════════════════ */
 const SOCIAL_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
 const CAMPAIGN_STAGES = ["planning","creation","review","execution","completed"];
-const VIDEO_STAGES = ["idea","briefing","production","editing","review","client","scheduled","published"];
+const VIDEO_STAGES = ["idea","briefing","design","production","caption","review","client","scheduled","published"];
 const STAGE_CFG = {
   idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Design",c:"#EC4899"},
   caption:{l:"Legenda",c:"#F59E0B"},review:{l:"Revisão",c:"#06B6D4"},client:{l:"Cliente",c:"#10B981"},
