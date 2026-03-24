@@ -12303,6 +12303,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [gServices, setGServices] = useState(null);
   const [gAbout, setGAbout] = useState(null);
   const [aboutData, setAboutData] = useState(null);
+  /* Payment packages states */
+  const [payTab, setPayTab] = useState("credits");
+  const [payCredits, setPayCredits] = useState(null);
+  const [payCourses, setPayCourses] = useState(null);
+  const [payPlans, setPayPlans] = useState(null);
+  const payLoadedRef = useRef(false);
   const gLoadedRef = useRef(false);
   const aboutLoadedRef = useRef(false);
   useEffect(() => {
@@ -12325,6 +12331,18 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       supabase.from("app_settings").select("value").eq("key","gamify_about").maybeSingle().then(({data}) => {
         if (data?.value) { try { setAboutData(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
       });
+    }
+    if (sub === "payments" && !payLoadedRef.current) {
+      payLoadedRef.current = true;
+      (async () => {
+        const keys = ["pay_credits","pay_courses","pay_plans"];
+        const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
+        const map = {};
+        (data||[]).forEach(d => { try { map[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { map[d.key] = d.value; } });
+        if (map.pay_credits) setPayCredits(map.pay_credits);
+        if (map.pay_courses) setPayCourses(map.pay_courses);
+        if (map.pay_plans) setPayPlans(map.pay_plans);
+      })();
     }
   }, [sub]);
   const [twoFA, setTwoFA] = useState(false);
@@ -12629,6 +12647,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", desc:"Chaves API e provedor" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas, pódio, serviços" }]:[]),
+    ...(!isClientView && user?.supaRole==="admin"?[{ k:"payments", l:"Pagamentos", desc:"Pacotes, créditos, cursos pagos" }]:[]),
     { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" },
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
@@ -13928,6 +13947,85 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={()=>setGAbout([...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}]),{l:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar campo</button>
           <button onClick={()=>saveGamify("gamify_about", gAbout||[])} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar informações</button>
         </>}
+        </>}
+      </SetPage>
+    );
+  }
+
+  /* ═══ PAYMENTS CONFIG ═══ */
+  if (sub === "payments") {
+    const savePay = async (key, val) => {
+      try {
+        const { error } = await supabase.from("app_settings").upsert({ key, value: val }, { onConflict: "key" });
+        if (error) showToast("Erro: " + (error.message||"falha")); else showToast("Salvo ✓");
+      } catch(e) { showToast("Erro: " + e.message); }
+    };
+    const accent = B.accent;
+    const PTABS = [{k:"credits",l:"Créditos Match4Biz"},{k:"courses",l:"Cursos Pagos"},{k:"plans",l:"Planos de Upgrade"}];
+    const defCredits = [{name:"10 créditos",credits:10,price:"29.00"},{name:"30 créditos",credits:30,price:"69.00"},{name:"100 créditos",credits:100,price:"199.00"}];
+    const defCourses = [{name:"Curso de exemplo",price:"97.00",courseId:""}];
+    const defPlans = [{name:"Starter",monthlyPrice:"480.00",planKey:"starter"},{name:"Growth 180°",monthlyPrice:"1280.00",planKey:"growth180"},{name:"Growth 360°",monthlyPrice:"2480.00",planKey:"growth360"}];
+    const credits = payCredits || defCredits;
+    const courses = payCourses || defCourses;
+    const plans = payPlans || defPlans;
+    return (
+      <SetPage title="Pagamentos">
+        <Card style={{ marginBottom:12, background:B.dark||"#0D0D0D", border:"none", padding:14 }}>
+          <p style={{ fontSize:14, fontWeight:800, color:"#fff", marginBottom:4 }}>Configuração de Pagamentos</p>
+          <p style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Defina pacotes e preços. Integração com Asaas (PIX, cartão, boleto).</p>
+        </Card>
+        <div style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto" }}>
+          {PTABS.map(t => <button key={t.k} onClick={()=>setPayTab(t.k)} style={{ padding:"8px 12px", borderRadius:10, border:`1.5px solid ${payTab===t.k?accent:B.border}`, background:payTab===t.k?`${accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:payTab===t.k?700:500, color:payTab===t.k?accent:B.muted, flexShrink:0 }}>{t.l}</button>)}
+        </div>
+
+        {payTab === "credits" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Pacotes de créditos do Match4Biz. O cliente compra créditos para desbloquear matches.</p>
+          {credits.map((c,i) => (
+            <Card key={i} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Nome do pacote</label><input value={c.name||""} onChange={e=>{const nc=[...credits];nc[i]={...nc[i],name:e.target.value};setPayCredits(nc);}} className="tinput" placeholder="Ex: 10 créditos" /></div>
+                <div style={{ width:80 }}><label style={{ fontSize:10, color:B.muted }}>Créditos</label><input type="number" value={c.credits||0} onChange={e=>{const nc=[...credits];nc[i]={...nc[i],credits:parseInt(e.target.value)||0};setPayCredits(nc);}} className="tinput" style={{textAlign:"center"}} /></div>
+                <div style={{ width:100 }}><label style={{ fontSize:10, color:B.muted }}>Preço (R$)</label><input value={c.price||""} onChange={e=>{const nc=[...credits];nc[i]={...nc[i],price:e.target.value};setPayCredits(nc);}} className="tinput" style={{textAlign:"center"}} placeholder="29.00" /></div>
+                <button onClick={()=>{const nc=[...credits];nc.splice(i,1);setPayCredits(nc);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, marginBottom:2 }}>×</button>
+              </div>
+            </Card>
+          ))}
+          <button onClick={()=>setPayCredits([...credits,{name:"",credits:0,price:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar pacote</button>
+          <button onClick={()=>savePay("pay_credits", credits)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar pacotes de créditos</button>
+        </>}
+
+        {payTab === "courses" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Cursos pagos na Academy. Associe um preço a cada curso.</p>
+          {courses.map((c,i) => (
+            <Card key={i} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Nome do curso</label><input value={c.name||""} onChange={e=>{const nc=[...courses];nc[i]={...nc[i],name:e.target.value};setPayCourses(nc);}} className="tinput" /></div>
+                <div style={{ width:100 }}><label style={{ fontSize:10, color:B.muted }}>Preço (R$)</label><input value={c.price||""} onChange={e=>{const nc=[...courses];nc[i]={...nc[i],price:e.target.value};setPayCourses(nc);}} className="tinput" style={{textAlign:"center"}} placeholder="97.00" /></div>
+                <button onClick={()=>{const nc=[...courses];nc.splice(i,1);setPayCourses(nc);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, marginBottom:2 }}>×</button>
+              </div>
+              <label style={{ fontSize:10, color:B.muted, marginTop:6, display:"block" }}>ID do curso (opcional — para vincular automaticamente)</label>
+              <input value={c.courseId||""} onChange={e=>{const nc=[...courses];nc[i]={...nc[i],courseId:e.target.value};setPayCourses(nc);}} className="tinput" placeholder="Deixe vazio para vincular manualmente" />
+            </Card>
+          ))}
+          <button onClick={()=>setPayCourses([...courses,{name:"",price:"",courseId:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar curso</button>
+          <button onClick={()=>savePay("pay_courses", courses)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar cursos pagos</button>
+        </>}
+
+        {payTab === "plans" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Planos de upgrade. Quando o cliente solicitar upgrade, será gerada uma cobrança com estes valores.</p>
+          {plans.map((p,i) => (
+            <Card key={i} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Nome do plano</label><input value={p.name||""} onChange={e=>{const np=[...plans];np[i]={...np[i],name:e.target.value};setPayPlans(np);}} className="tinput" /></div>
+                <div style={{ width:120 }}><label style={{ fontSize:10, color:B.muted }}>Mensalidade (R$)</label><input value={p.monthlyPrice||""} onChange={e=>{const np=[...plans];np[i]={...np[i],monthlyPrice:e.target.value};setPayPlans(np);}} className="tinput" style={{textAlign:"center"}} placeholder="1280.00" /></div>
+                <button onClick={()=>{const np=[...plans];np.splice(i,1);setPayPlans(np);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, marginBottom:2 }}>×</button>
+              </div>
+              <label style={{ fontSize:10, color:B.muted, marginTop:6, display:"block" }}>Chave do plano (para identificação interna)</label>
+              <input value={p.planKey||""} onChange={e=>{const np=[...plans];np[i]={...np[i],planKey:e.target.value};setPayPlans(np);}} className="tinput" placeholder="Ex: growth180" />
+            </Card>
+          ))}
+          <button onClick={()=>setPayPlans([...plans,{name:"",monthlyPrice:"",planKey:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar plano</button>
+          <button onClick={()=>savePay("pay_plans", plans)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar planos</button>
         </>}
       </SetPage>
     );
