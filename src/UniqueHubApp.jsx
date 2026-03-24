@@ -23378,7 +23378,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     } catch(e) { console.error("respondDemand error:", e); showToast("Erro ao responder"); }
   };
 
-  const goTab = (k) => { setTab(k); setSub(null); setHeaderC(false); };
+  const goTab = (k) => { setTab(k); setSub(null); setHeaderC(false); setTimeout(()=>{document.querySelector('.content')?.scrollTo(0,0);},0); };
 
   const TABS = [...clientNavPicks.map(k => CLIENT_ALL_TABS.find(t => t.k === k)).filter(Boolean), { k:"more", l:"Mais", i: IC.more || IC.settings }];
 
