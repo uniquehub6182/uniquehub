@@ -13799,9 +13799,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const [gPodium, setGPodium] = useState(null);
     const [gMissions, setGMissions] = useState(null);
     const [gServices, setGServices] = useState(null);
+    const [gAbout, setGAbout] = useState(null);
     useEffect(() => {
       (async () => {
-        const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services"];
+        const keys = ["gamify_zones","gamify_podium","gamify_missions","gamify_services","gamify_about"];
         const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
         const map = {};
         (data||[]).forEach(d => { try { map[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { map[d.key] = d.value; } });
@@ -13809,6 +13810,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         if (map.gamify_podium) setGPodium(map.gamify_podium);
         if (map.gamify_missions) setGMissions(map.gamify_missions);
         if (map.gamify_services) setGServices(map.gamify_services);
+        if (map.gamify_about) setGAbout(map.gamify_about);
         setGLoading(false);
       })();
     }, []);
@@ -13817,7 +13819,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       showToast("Salvo ✓");
     };
     const accent = B.accent;
-    const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"},{k:"services",l:"Serviços"}];
+    const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"},{k:"services",l:"Serviços"},{k:"about",l:"Sobre"}];
     const defZones = [{name:"Estruturação",range:"0–10",color:"#EF4444",reward:"Boas-vindas + diagnóstico inicial"},{name:"Organização",range:"11–30",color:"#F59E0B",reward:"Relatório mensal detalhado"},{name:"Estratégica",range:"31–60",color:"#BBF246",reward:"Prioridade no atendimento"},{name:"Crescimento",range:"61–85",color:"#10B981",reward:"Consultoria estratégica mensal"},{name:"Escala",range:"86–100",color:"#3B82F6",reward:"Desconto no plano + destaque no portfólio"}];
     const defPodium = [{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}];
     const defMissions = [{title:"Aprovar posts pendentes",pts:3,pillar:"execucao"},{title:"Criar um evento no calendário",pts:2,pillar:"estrategia"},{title:"Acessar os relatórios de performance",pts:1,pillar:"crescimento"},{title:"Ler uma notícia no News",pts:0.5,pillar:"educacao"},{title:"Visitar a página Match4Biz",pts:1,pillar:"ecossistema"}];
@@ -13896,12 +13898,35 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={()=>setGServices([...services,{l:"",d:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar serviço</button>
           <button onClick={()=>saveGamify("gamify_services", services)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar serviços</button>
         </>}
+
+        {gTab === "about" && <>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as informações exibidas na tela "Sobre" do app do cliente.</p>
+          {(gAbout || [{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}]).map((item,i) => (
+            <Card key={i} style={{ marginBottom:8 }}>
+              <div style={{ display:"flex", gap:8 }}>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Label</label><input value={item.l||""} onChange={e=>{const v=e.target.value;const na=[...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}])];na[i]={...na[i],l:v};setGAbout(na);}} className="tinput" /></div>
+                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Valor</label><input value={item.v||""} onChange={e=>{const v=e.target.value;const na=[...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}])];na[i]={...na[i],v:v};setGAbout(na);}} className="tinput" /></div>
+                <button onClick={()=>{const na=[...(gAbout||[])];na.splice(i,1);setGAbout(na);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, alignSelf:"flex-end", marginBottom:2 }}>×</button>
+              </div>
+            </Card>
+          ))}
+          <button onClick={()=>setGAbout([...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}]),{l:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar campo</button>
+          <button onClick={()=>saveGamify("gamify_about", gAbout||[])} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar informações</button>
+        </>}
         </>}
       </SetPage>
     );
   }
 
   /* ═══ ABOUT ═══ */
+  const [aboutData, setAboutData] = useState(null);
+  useEffect(() => {
+    if (sub === "about" && !aboutData) {
+      supabase.from("app_settings").select("value").eq("key","gamify_about").maybeSingle().then(({data}) => {
+        if (data?.value) { try { setAboutData(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
+      });
+    }
+  }, [sub]);
   if (sub === "about") return (
     <SetPage title="Sobre">
       <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12 }}>
@@ -13910,13 +13935,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <p style={{ fontSize: 12, color: B.muted, marginTop: 4 }}>v1.0.0</p>
       </Card>
       <Card style={{ marginBottom: 8 }}>
-        {[
+        {(aboutData || [
           { l: "Desenvolvido por", v: "Unique Marketing 360" },
           { l: "Localização", v: "Petrópolis, RJ — Brasil" },
           { l: "Website", v: "www.uniquemkt.com.br" },
           { l: "Versão do sistema", v: "1.0.0 (build 2026.03)" },
           { l: "Última atualização", v: "01/03/2026" },
-        ].map((item, i) => (
+        ]).map((item, i) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
             <span style={{ fontSize: 12, color: B.muted }}>{item.l}</span>
             <span style={{ fontSize: 12, fontWeight: 600 }}>{item.v}</span>
@@ -23330,7 +23355,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     if (finView === "plans") return (
       <div className="app" style={{ background:B.bg, color:B.text }}>
         <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
-        <div className="content" style={{ padding:"0 16px 120px" }}>
+        <div className="content" style={{ padding:"12px 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
             const isCurrent = k === myClient.plan;
             return <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
