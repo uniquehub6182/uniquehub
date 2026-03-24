@@ -774,6 +774,19 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms) => {
   } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
 };
 
+/* ── Upload file to Supabase Storage and return public URL ── */
+const uploadToStorage = async (file, folder = "quick-publish") => {
+  if (!supabase) return null;
+  try {
+    const safeName = (file.name||"file").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,4)}_${safeName}`;
+    const { error } = await supabase.storage.from("demand-files").upload(path, file, { upsert:true, cacheControl:"3600", contentType:file.type||"application/octet-stream" });
+    if (error) { console.error("Upload error:", error); return null; }
+    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+    return pub?.publicUrl || null;
+  } catch(e) { console.error("uploadToStorage:", e); return null; }
+};
+
 /* ── Delete post from Meta (Facebook/Instagram) ── */
 const deleteFromMeta = async (clientId, postId) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase not configured" };
@@ -10904,11 +10917,43 @@ REGRAS TÉCNICAS:
                   </>;
                 })()}
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:8 }}>Publicar em</label>
-                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  {hasFB && hasIG && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); Promise.all([publishToMeta(clientId,qpForm.imageUrl,caption), publishToInstagram(clientId,[qpForm.imageUrl],caption,(qpForm.format||"Feed").toUpperCase())]).then(([rFb,rIg])=>{ setQpLoading(false); if(rFb?.error||rIg?.error){showToast("Erro: "+(rFb?.error||rIg?.error));return;} showToast("✓ Publicado no Facebook e Instagram!"); setQuickPub(false); setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both",_files:[]}); }).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Publicando...":"Facebook + Instagram"}</button>}
-                  {hasFB && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); publishToMeta(clientId,qpForm.imageUrl,caption).then(r=>{setQpLoading(false);if(r?.error){showToast("Erro: "+r.error);return;}showToast("✓ Publicado no Facebook!");setQuickPub(false);setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both",_files:[]});}).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#1877F2", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Publicando...":"Facebook"}</button>}
-                  {hasIG && <button onClick={() => { const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption; const clientId = selClient.supaId||selClient.id; setQpLoading(true); publishToInstagram(clientId,[qpForm.imageUrl],caption,(qpForm.format||"Feed").toUpperCase()).then(r=>{setQpLoading(false);if(r?.error){showToast("Erro: "+r.error);return;}showToast("✓ Publicado no Instagram!");setQuickPub(false);setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both",_files:[]});}).catch(e=>{setQpLoading(false);showToast("Erro: "+e.message);}); }} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#E1306C", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Publicando...":"Instagram"}</button>}
-                </div>
+                {(() => {
+                  const doQpPublish = async (platforms) => {
+                    if (qpLoading || !(qpForm._files||[]).length) return;
+                    setQpLoading(true);
+                    const caption = qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption;
+                    const clientId = selClient.supaId||selClient.id;
+                    const fmt = (qpForm.format||"Feed").toUpperCase();
+                    /* Upload files to Supabase Storage first */
+                    showToast("Enviando mídia...");
+                    const publicUrls = [];
+                    for (const f of (qpForm._files||[])) {
+                      if (f.file) {
+                        const url = await uploadToStorage(f.file, `quick-publish/${clientId}`);
+                        if (url) publicUrls.push(url);
+                        else { showToast("Erro ao enviar arquivo: "+f.name); setQpLoading(false); return; }
+                      }
+                    }
+                    if (!publicUrls.length) { showToast("Nenhum arquivo enviado"); setQpLoading(false); return; }
+                    showToast("Publicando...");
+                    let ok = false;
+                    if (platforms.includes("ig")) {
+                      const r = await publishToInstagram(clientId, publicUrls, caption, fmt);
+                      if (r?.error) showToast("Erro IG: "+r.error); else ok = true;
+                    }
+                    if (platforms.includes("fb")) {
+                      const r = await publishToMeta(clientId, publicUrls[0], caption);
+                      if (r?.error) showToast("Erro FB: "+r.error); else ok = true;
+                    }
+                    setQpLoading(false);
+                    if (ok) { showToast("✅ Publicado com sucesso!"); setQuickPub(false); setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both",_files:[],coverUrl:"",_coverPreview:""}); }
+                  };
+                  return <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {hasFB && hasIG && <button onClick={()=>doQpPublish(["fb","ig"])} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Enviando...":"Facebook + Instagram"}</button>}
+                    {hasFB && <button onClick={()=>doQpPublish(["fb"])} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#1877F2", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Enviando...":"Facebook"}</button>}
+                    {hasIG && <button onClick={()=>doQpPublish(["ig"])} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#E1306C", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Enviando...":"Instagram"}</button>}
+                  </div>;
+                })()}
               </>}
             </div>
           </div>
