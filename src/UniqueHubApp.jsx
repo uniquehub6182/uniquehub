@@ -223,7 +223,7 @@ const supaUpdateDemand = async (id, updates) => {
   if (!supabase) return null;
   try {
     const payload = {};
-    const map = { stage:1, title:1, priority:1, steps:1, scheduling:1, traffic:1, format:1, networks:1, sponsored:1, description:1, client_id:1 };
+    const map = { stage:1, title:1, priority:1, steps:1, scheduling:1, traffic:1, format:1, aspectRatio:1, networks:1, sponsored:1, description:1, client_id:1 };
     for (const k of Object.keys(updates)) { if (map[k] !== undefined) payload[k] = updates[k]; }
     if (Object.keys(payload).length === 0) return null;
     const { error } = await supabase.from("demands").update(payload).eq("id", id);
@@ -8497,7 +8497,7 @@ REGRAS TÉCNICAS:
     const newD = {
       id: Date.now(), type: createType, client: form.client || "Novo Cliente", title: form.title || "Nova demanda",
       stage: createType === "campaign" ? "planning" : "idea", priority: form.priority || "média",
-      network: (form.networks && form.networks.length > 0) ? form.networks.join(", ") : "Instagram", format: form.format || "Feed", sponsored: form.sponsored || false,
+      network: (form.networks && form.networks.length > 0) ? form.networks.join(", ") : "Instagram", format: form.format || "Feed", aspectRatio: form.aspectRatio || "1:1", sponsored: form.sponsored || false,
       assignees: form.assignees || [user?.name || "Matheus"], createdAt: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
       steps: { idea: { by: user?.name || "Matheus", text: form.idea || "", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) } },
       scheduling: { date: form.schedDate || "", time: form.schedTime || "" }, traffic: { budget: form.budget || "" },
@@ -8653,6 +8653,16 @@ REGRAS TÉCNICAS:
             <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
               {["Feed","Stories","Reels","Carrossel","Shorts"].map(f=>(
                 <button key={f} onClick={()=>setForm({...form,format:f})} className={`htab${form.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
+              ))}
+            </div>
+            {/* Aspect ratio / dimension */}
+            <label className="sl" style={{ display:"block", marginBottom:6 }}>Dimensão</label>
+            <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+              {[{k:"1:1",l:"1:1",w:1,h:1},{k:"4:5",l:"4:5",w:4,h:5},{k:"3:4",l:"3:4",w:3,h:4},{k:"9:16",l:"9:16",w:9,h:16},{k:"16:9",l:"16:9",w:16,h:9}].map(r=>(
+                <button key={r.k} onClick={()=>setForm({...form,aspectRatio:r.k})} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?B.accent:B.border}`, background:(form.aspectRatio||"1:1")===r.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:(form.aspectRatio||"1:1")===r.k?B.accent:B.muted }}>
+                  <div style={{ width:r.w*4>16?16:r.w*4, height:r.h*4>16?16:r.h*4, border:`1.5px solid ${(form.aspectRatio||"1:1")===r.k?B.accent:B.muted}`, borderRadius:2 }} />
+                  {r.l}
+                </button>
               ))}
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
@@ -8858,6 +8868,15 @@ REGRAS TÉCNICAS:
                 <button key={f} onClick={()=>updateField("format",f)} className={`htab${sel.format===f?" a":""}`} style={{ fontSize:11 }}>{f}</button>
               ))}
             </div>
+            {/* Aspect ratio */}
+            <div style={{ display:"flex", gap:5, marginBottom:10, flexWrap:"wrap" }}>
+              {[{k:"1:1",l:"1:1",w:4,h:4},{k:"4:5",l:"4:5",w:4,h:5},{k:"3:4",l:"3:4 ✨",w:3,h:4},{k:"9:16",l:"9:16",w:3,h:5},{k:"16:9",l:"16:9",w:5,h:3}].map(r=>(
+                <button key={r.k} onClick={()=>updateField("aspectRatio",r.k)} style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 8px", borderRadius:8, border:`1.5px solid ${(sel.aspectRatio||"1:1")===r.k?B.accent:B.border}`, background:(sel.aspectRatio||"1:1")===r.k?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:(sel.aspectRatio||"1:1")===r.k?B.accent:B.muted }}>
+                  <div style={{ width:r.w*2.5, height:r.h*2.5, border:`1.5px solid ${(sel.aspectRatio||"1:1")===r.k?B.accent:B.muted}`, borderRadius:1 }} />
+                  {r.l}
+                </button>
+              ))}
+            </div>
 
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
               <span style={{ fontSize:13, fontWeight:600 }}>Patrocinado?</span>
@@ -8901,6 +8920,7 @@ REGRAS TÉCNICAS:
               <NetworkIcon name={sel.network} sz={14} active />{sel.network}
             </span>}
             {sel.format && <Tag color={B.cyan}>{sel.format}</Tag>}
+            {sel.aspectRatio && sel.aspectRatio !== "1:1" && <Tag color={B.purple||"#8B5CF6"}>{sel.aspectRatio}</Tag>}
             {sel.sponsored && <Tag color={B.orange}>Patrocinado</Tag>}
             {sel.scheduling?.date && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>📅 {sel.scheduling.date}{sel.scheduling.time ? ` às ${sel.scheduling.time}` : ""}</span>}
           </div>
@@ -10158,7 +10178,7 @@ REGRAS TÉCNICAS:
                                   return <div key={j} style={{ width:20, height:20, borderRadius:10, background: mp ? "transparent" : `${cfg.c}25`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft: j ? -5 : 0, border:"2px solid #fff", overflow:"hidden", zIndex:3-j, fontSize:7, fontWeight:800, color:cfg.c }}>{mp ? <img src={mp} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : a[0]}</div>;
                                 })}
                               </div>
-                              {d.network && <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.network.split(", ")[0]}</span>}
+                              {d.network && <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.network.split(", ")[0]}{d.aspectRatio && d.aspectRatio !== "1:1" ? ` · ${d.aspectRatio}` : ""}</span>}
                             </div>
                           </div>
                         );
