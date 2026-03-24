@@ -57,11 +57,27 @@ serve(async (req) => {
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       cid = d.id;
+    } else if (type === "STORIES") {
+      /* ── STORIES: each image is a separate story ── */
+      const results: string[] = [];
+      for (const url of urls) {
+        const p = new URLSearchParams({ access_token: at, image_url: url, media_type: "STORIES" });
+        const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+        const d = await r.json();
+        if (d.error) throw new Error(d.error.message);
+        const storyId = d.id;
+        await waitReady(storyId, at);
+        const pp = new URLSearchParams({ access_token: at, creation_id: storyId });
+        const pr = await fetch(`https://graph.instagram.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
+        const pd = await pr.json();
+        if (pd.error) throw new Error(pd.error.message);
+        results.push(pd.id);
+      }
+      return json({ success: true, media_id: results[0], post_ids: results, media_type: "STORIES", count: results.length, message: `${results.length} Storie${results.length > 1 ? "s" : ""} publicado${results.length > 1 ? "s" : ""}!` });
     } else {
-      /* ── FEED or STORIES ── */
+      /* ── FEED ── */
       const p = new URLSearchParams({ access_token: at, image_url: urls[0] });
-      if (type === "STORIES") p.append("media_type", "STORIES");
-      if (caption && type !== "STORIES") p.append("caption", caption);
+      if (caption) p.append("caption", caption);
       const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
