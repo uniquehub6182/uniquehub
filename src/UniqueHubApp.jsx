@@ -22986,6 +22986,20 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   /* Theme for client portal - set after uiPrefs is defined */
   B = getB(false, "#BBF246");
   const canAccessFn = () => true;
+  /* Load custom gamify data for client financeiro */
+  const [gamifyData, setGamifyData] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase.from("app_settings").select("key,value").in("key", ["gamify_services"]);
+        if (data?.length) {
+          const gd = {};
+          data.forEach(d => { try { gd[d.key] = typeof d.value === "string" ? JSON.parse(d.value) : d.value; } catch { gd[d.key] = d.value; } });
+          setGamifyData(gd);
+        }
+      } catch {}
+    })();
+  }, []);
   /* Inject essential CSS globally for all sub-pages */
   React.useEffect(() => {
     const id = "uh-client-styles";
