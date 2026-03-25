@@ -9187,9 +9187,19 @@ REGRAS TÉCNICAS:
           {renderSection("design", <>
             {sel.stage === "design" ? <>
               {/* Show review feedback if this was rejected */}
-              {sel.steps?.design?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
-                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>Alteração solicitada ({sel.steps.design.reviewFeedbackBy} · {sel.steps.design.reviewFeedbackDate}):</p>
+              {sel.steps?.design?.reviewFeedback && <div style={{ background:"#F9731608", padding:12, borderRadius:12, marginBottom:10, border:"2px solid #F9731630" }}>
+                <p style={{ fontSize:10, fontWeight:800, color:"#F97316", marginBottom:4, display:"flex", alignItems:"center", gap:4, textTransform:"uppercase", letterSpacing:0.5 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Alteração solicitada</p>
                 <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.design.reviewFeedback}</p>
+                <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>Por {sel.steps.design.reviewFeedbackBy} · {sel.steps.design.reviewFeedbackDate}</p>
+                <button onClick={() => {
+                  updateStep("design", { ajusteFeito:true, ajusteFeitoBy:user?.name||"", ajusteFeitoAt:new Date().toISOString() });
+                  updateStep("review", { status:"pending", note:"" });
+                  setTimeout(() => setDemandStage(sel, "review"), 200);
+                  showToast("✅ Ajuste feito! Enviado para revisão");
+                }} style={{ width:"100%", marginTop:10, padding:"12px 0", borderRadius:12, background:"#10B981", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Ajuste feito → Enviar para revisão
+                </button>
               </div>}
               {/* Show briefing instructions for designer to read */}
               <div style={{ background:`${STAGE_CFG.briefing.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.briefing.c}15` }}>
@@ -9465,9 +9475,19 @@ REGRAS TÉCNICAS:
           {renderSection("caption", <>
             {sel.stage === "caption" ? <>
               {/* Show review feedback if this was rejected */}
-              {sel.steps?.caption?.reviewFeedback && <div style={{ background:`${B.red}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.red}20` }}>
-                <p style={{ fontSize:10, fontWeight:700, color:B.red, marginBottom:4, display:"flex", alignItems:"center", gap:4 }}>Alteração solicitada ({sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}):</p>
+              {sel.steps?.caption?.reviewFeedback && <div style={{ background:"#F9731608", padding:12, borderRadius:12, marginBottom:10, border:"2px solid #F9731630" }}>
+                <p style={{ fontSize:10, fontWeight:800, color:"#F97316", marginBottom:4, display:"flex", alignItems:"center", gap:4, textTransform:"uppercase", letterSpacing:0.5 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Alteração na legenda</p>
                 <p style={{ fontSize:12, lineHeight:1.5, color:B.text, fontStyle:"italic" }}>{sel.steps.caption.reviewFeedback}</p>
+                <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>Por {sel.steps.caption.reviewFeedbackBy} · {sel.steps.caption.reviewFeedbackDate}</p>
+                <button onClick={() => {
+                  updateStep("caption", { ajusteFeito:true, ajusteFeitoBy:user?.name||"", ajusteFeitoAt:new Date().toISOString() });
+                  updateStep("review", { status:"pending", note:"" });
+                  setTimeout(() => setDemandStage(sel, "review"), 200);
+                  showToast("✅ Ajuste na legenda feito! Enviado para revisão");
+                }} style={{ width:"100%", marginTop:10, padding:"12px 0", borderRadius:12, background:"#10B981", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Ajuste feito → Enviar para revisão
+                </button>
               </div>}
               {/* Show design files for reference (mobile only — desktop has carousel in design stage) */}
               {!isContentDesktop && sel.steps?.design?.files?.length > 0 && <div style={{ background:`${B.pink}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.pink}15` }}>
@@ -10339,12 +10359,14 @@ REGRAS TÉCNICAS:
                     <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, minHeight:100 }}>
                       {items.map(d => {
                         const pColor = d.priority === "alta" ? "#EF4444" : d.priority === "média" ? "#F59E0B" : "#10B981";
+                        const isAjuste = d.steps?.review?.status === "rejected" || d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected" || d.stage === "ajuste";
+                        const ajusteDone = isAjuste && d.steps?.design?.ajusteFeito;
                         return (
                           <div key={d.id} draggable
                             onDragStart={e => { e.dataTransfer.setData("text/plain", JSON.stringify({ id: d.id })); e.currentTarget.style.opacity="0.5"; }}
                             onDragEnd={e => { e.currentTarget.style.opacity="1"; }}
                             onClick={() => setSel(d)}
-                            style={{ background:"#fff", borderRadius:14, padding:"12px 14px", border:"1px solid rgba(0,0,0,0.06)", cursor:"grab", boxShadow:"0 1px 4px rgba(0,0,0,0.04)", transition:"box-shadow .15s" }}
+                            style={{ background: isAjuste && !ajusteDone ? "#FFF7ED" : "#fff", borderRadius:14, padding:"12px 14px", border: isAjuste && !ajusteDone ? "2px solid #F97316" : ajusteDone ? "2px solid #10B981" : "1px solid rgba(0,0,0,0.06)", cursor:"grab", boxShadow: isAjuste && !ajusteDone ? "0 0 12px rgba(249,115,22,0.2)" : "0 1px 4px rgba(0,0,0,0.04)", transition:"box-shadow .15s" }}
                             onMouseEnter={e => e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)"}
                             onMouseLeave={e => e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)"}
                           >
@@ -10354,6 +10376,7 @@ REGRAS TÉCNICAS:
                               {d.steps?.client?.status === "revision" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Ajuste</span>}
                               {isScheduleExpired(d) && <span style={{ fontSize:8, fontWeight:700, color:"#EF4444", textTransform:"uppercase", background:"#EF444415", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Expirado</span>}
                               {d.steps?.review?.status==="rejected" && <span style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", background:"#F59E0B15", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Alteração</span>}
+                              {ajusteDone && <span style={{ fontSize:8, fontWeight:700, color:"#10B981", textTransform:"uppercase", background:"#10B98115", padding:"2px 6px", borderRadius:6, display:"inline-flex", alignItems:"center", gap:2 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Ajuste feito</span>}
                               <span style={{ fontSize:8, color:"#9CA3AF" }}>{d.type === "campaign" ? "Campanha" : d.type === "video" ? "Vídeo" : "Post"}</span>
                             </div>
                             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{d.title}</p>
@@ -10726,6 +10749,16 @@ REGRAS TÉCNICAS:
                                 Upload
                                 <input type="file" multiple accept="image/*,video/*,.pdf,.psd" style={{display:"none"}} onChange={handleFiles} onClick={e=>e.stopPropagation()}/>
                               </label>
+                            </div>}
+                            {/* Ajuste: show feedback and "Ajuste feito" button */}
+                            {(stageKey==="design"||stageKey==="caption")&&(stepData.reviewFeedback||d.steps?.review?.status==="rejected")&&<div style={{marginTop:8,padding:"10px 12px",borderRadius:12,background:"#F9731608",border:"2px solid #F9731630"}}>
+                              <p style={{fontSize:9,fontWeight:800,color:"#F97316",textTransform:"uppercase",letterSpacing:0.5,marginBottom:4,display:"flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Alteração solicitada</p>
+                              <p style={{fontSize:12,color:B.text,lineHeight:1.5,fontStyle:"italic",marginBottom:8}}>{stepData.reviewFeedback||d.steps?.review?.note||"Revisor solicitou alterações"}</p>
+                              {stepData.reviewFeedbackBy&&<p style={{fontSize:9,color:B.muted,marginBottom:8}}>Por {stepData.reviewFeedbackBy} · {stepData.reviewFeedbackDate||""}</p>}
+                              <button onClick={(e)=>{e.stopPropagation();inlineUpdate({ajusteFeito:true,ajusteFeitoBy:user?.name||"",ajusteFeitoAt:new Date().toISOString()});const ns={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),ajusteFeito:true},review:{...(d.steps?.review||{}),status:"pending",note:""}};setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:"review",steps:ns},"review"):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:"review",steps:ns});showToast("✅ Ajuste feito! Enviado para revisão");}} style={{width:"100%",padding:"10px 0",borderRadius:10,background:"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Ajuste feito → Enviar para revisão
+                              </button>
                             </div>}
                             {/* Stage-specific actions */}
                             {stageKey==="review"?
