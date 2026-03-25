@@ -9264,18 +9264,20 @@ REGRAS TÉCNICAS:
                 {/* Format-specific upload guidance */}
                 {(() => {
                   const fmt = sel.format || "Feed";
+                  const ratio = sel.aspectRatio || "1:1";
                   const isReels = fmt === "Reels" || fmt === "Shorts";
                   const isFeed = fmt === "Feed";
                   const isCarousel = fmt === "Carrossel";
                   const isStories = fmt === "Stories";
                   const existingFiles = (sel.steps?.design?.files||[]).filter(f => f.url);
                   const existingImages = existingFiles.filter(f => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  const dimPx = {"1:1":"1080×1080","4:5":"1080×1350","3:4":"1080×1440","9:16":"1080×1920","16:9":"1920×1080"}[ratio] || "1080×1080";
                   const guidanceMap = {
-                    Feed: { icon:"🖼️", text:"Envie 1 imagem (JPG, PNG ou WebP). Tamanho ideal: 1080×1080 ou 1080×1350.", color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
-                    Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG ou WebP). Cada uma será 1 story. Tamanho: 1080×1920.`, color:"#F59E0B", warn: null },
-                    Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG ou WebP). Tamanho ideal: 1080×1080.`, color:"#8B5CF6", warn: null },
-                    Reels: { icon:"🎬", text:"Envie 1 vídeo (MP4, MOV) + 1 imagem de capa (JPG, PNG). Formato: 1080×1920.", color:"#EF4444", warn: null },
-                    Shorts: { icon:"🎬", text:"Envie 1 vídeo (MP4, MOV) + 1 imagem de capa (JPG, PNG). Formato: 1080×1920.", color:"#EF4444", warn: null },
+                    Feed: { icon:"🖼️", text:`Envie 1 imagem (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
+                    Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG ou WebP). Cada uma será 1 story. Dimensão: 9:16 (1080×1920).`, color:"#F59E0B", warn: null },
+                    Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#8B5CF6", warn: null },
+                    Reels: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV) + 1 imagem de capa (JPG, PNG). Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
+                    Shorts: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV) + 1 imagem de capa (JPG, PNG). Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
                   };
                   const g = guidanceMap[fmt] || guidanceMap.Feed;
                   return <>
