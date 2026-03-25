@@ -8618,11 +8618,18 @@ REGRAS TÉCNICAS:
     showToast("✅ Demanda criada com sucesso!");
     /* Auto-scroll to top so user sees the new card in "Ideia" */
     setTimeout(() => {
-      /* Try scrolling the kanban container first (desktop), then the page container, then window */
-      const kanban = document.querySelector('[class*="content-wide"]') || document.querySelector('.pg');
-      if (kanban) kanban.scrollTo({ top: 0, behavior: "smooth" });
+      /* Scroll page to top */
       window.scrollTo({ top: 0, behavior: "smooth" });
       document.querySelector('.pg')?.scrollTo?.({ top: 0, behavior: "smooth" });
+      document.querySelector('[class*="content-wide"]')?.scrollTo?.({ top: 0, behavior: "smooth" });
+      /* Scroll kanban container to leftmost column (Ideia) */
+      const kanbanScroll = document.querySelector('[style*="overflowX"][style*="auto"]');
+      if (kanbanScroll) kanbanScroll.scrollTo({ left: 0, behavior: "smooth" });
+      /* Also try any scrollable parent */
+      document.querySelectorAll('[style*="overflow"]').forEach(el => {
+        if (el.scrollLeft > 0) el.scrollTo({ left: 0, behavior: "smooth" });
+        if (el.scrollTop > 0) el.scrollTo({ top: 0, behavior: "smooth" });
+      });
     }, 300);
     if (result?.data) supaCreateNotificationForAll("demand_created", "Nova demanda criada", `${newD.title || newD.type} — ${newD.clientName || ""}`, "📋", null, user?.id);
   };
@@ -8649,15 +8656,15 @@ REGRAS TÉCNICAS:
           ]);
           if (rFb?.error) { showToast("Erro FB: " + rFb.error); setQpLoading(false); return; }
           if (rIg?.error) { showToast("Erro IG: " + rIg.error); setQpLoading(false); return; }
-          showToast("✓ Publicado no " + [hasFB && "Facebook", hasIG && "Instagram"].filter(Boolean).join(" e ") + "!");
+          showToast("✅ Publicado no " + [hasFB && "Facebook", hasIG && "Instagram"].filter(Boolean).join(" e ") + "!");
         } else if (platform === "facebook") {
           r = await publishToMeta(clientId, qpForm.imageUrl, caption);
           if (r?.error) { showToast("Erro: " + r.error); setQpLoading(false); return; }
-          showToast("✓ Publicado no Facebook!");
+          showToast("✅ Publicado no Facebook!");
         } else {
           r = await publishToInstagram(clientId, [qpForm.imageUrl], caption, "FEED");
           if (r?.error) { showToast("Erro: " + r.error); setQpLoading(false); return; }
-          showToast("✓ Publicado no Instagram!");
+          showToast("✅ Publicado no Instagram!");
         }
         supaCreateNotificationForAll("post_created", "Post publicado", `${selClient.name} — ${platform === "both" ? "FB + IG" : platform}`, "📝", null, user?.id);
         setQpLoading(false); setQuickPub(false); setQpForm({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
@@ -9667,7 +9674,7 @@ REGRAS TÉCNICAS:
                     updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
                     updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
                     setTimeout(() => setDemandStage(sel, "published"), 200);
-                    showToast("✓ Publicado!");
+                    showToast("✅ Publicado!");
                     setPubLoading(false);
                   }
                 };
@@ -9950,7 +9957,7 @@ REGRAS TÉCNICAS:
                   if (r?.error) { showToast(`Erro: ${r.error}`); setPubLoading(false); return; }
                   updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
                   setTimeout(() => setDemandStage(sel, "published"), 200);
-                  showToast("✓ Publicado!");
+                  showToast("✅ Publicado!");
                   setPubLoading(false);
                 }
               };
@@ -10837,7 +10844,7 @@ REGRAS TÉCNICAS:
                                 );
                               })()
                             :si<stages.length-1?
-                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
                                 Avançar para {stageLabels[stages[si+1]]||"próxima"} →
                               </button>
                             :
@@ -23949,7 +23956,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
               const fbType = isStories ? "STORIES" : "FEED";
               const r = await publishToMeta(clientId, imgUrls, fullCaption, null, fbType);
               if (r?.error) { showToast(`Aprovado, mas erro ao publicar FB: ${r.error}`); }
-              else { showToast("✓ Publicado no Facebook!"); published = true; }
+              else { showToast("✅ Publicado no Facebook!"); published = true; }
             } catch(e) { console.error("[Publish] FB error:", e); }
           }
           if (!published) { showToast("Conteúdo aprovado! Publicação pendente pela agência."); }
