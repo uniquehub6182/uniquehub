@@ -10722,7 +10722,7 @@ REGRAS TÉCNICAS:
                             </div>}
                             {/* Stage-specific actions */}
                             {stageKey==="review"?
-                              <button onClick={(e)=>{e.stopPropagation();inlineUpdate({status:"approved",by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});setTimeout(()=>{const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`Avançou para: ${STAGE_CFG[next].l}`);}},100);}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
+                              <button onClick={(e)=>{e.stopPropagation();inlineUpdate({status:"approved",by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});setTimeout(()=>{const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);}},100);}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.dark}}>
                                 ✓ Aprovar e avançar
                               </button>
                             :stageKey==="client"&&!stepData.mode?
