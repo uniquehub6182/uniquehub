@@ -932,6 +932,14 @@ const getScheduledTimestamp = (scheduling) => {
   } catch { return null; }
 };
 
+/* Helper: separate video and cover from design files for Reels */
+const separateMedia = (files) => {
+  const all = (files || []).filter(f => f.url);
+  const vids = all.filter(f => /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
+  const imgs = all.filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg")));
+  return { vids, imgs, videoUrl: vids[0]?.url||null, coverUrl: imgs[0]?.url||null, allUrls: all.map(f=>f.url) };
+};
+
 const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEED", scheduledTime = null, coverUrl = null) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   try {
@@ -8749,7 +8757,10 @@ REGRAS TÉCNICAS:
         const cId = d.client_id || CDATA.find(c => c.name === d.client)?.supaId;
         if (!cId) { showToast("Cliente não vinculado — agende manualmente"); return; }
         const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
-        const imgUrls = imgFiles.filter(f=>f.url).map(f=>f.url);
+        const media = separateMedia(imgFiles);
+        const isReels = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video");
+        const imgUrls = isReels && media.videoUrl ? [media.videoUrl] : media.allUrls;
+        const coverUrl = isReels ? media.coverUrl : null;
         if (imgUrls.length === 0) { showToast("Sem mídia para publicar — adicione imagens/vídeo primeiro"); return; }
         const fullCaption = (d.steps?.caption?.text||"") + (d.steps?.caption?.hashtags ? "\n\n"+d.steps.caption.hashtags : "");
         const schedTs = getScheduledTimestamp(d.scheduling);
@@ -8757,11 +8768,11 @@ REGRAS TÉCNICAS:
         const hasFB = clientObj?.socials?.facebook?.oauth;
         const hasIG = clientObj?.socials?.instagram?.oauth;
         if (!hasFB && !hasIG) { showToast("Cliente sem rede social conectada"); return; }
-        const mediaType = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
+        const mediaType = isReels?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
         showToast(schedTs ? "Agendando publicação via Meta API..." : "Publicando agora (horário já passou)...");
         try {
           let igOk = false, fbOk = false, igErr = "", fbErr = "";
-          if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs); if (r?.error) igErr = r.error; else igOk = true; }
+          if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs, coverUrl); if (r?.error) igErr = r.error; else igOk = true; }
           if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType, schedTs); if (r?.error) fbErr = r.error; else fbOk = true; }
           if (igOk || fbOk) {
             const pubStage = stages[stages.indexOf("scheduled")+1] || "published";
@@ -9905,7 +9916,8 @@ REGRAS TÉCNICAS:
               {(() => {
                 const clientMode = sel.steps?.client?.mode;
                 const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-                const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
+                const mediaInfo = separateMedia(allFiles);
                 const clientObj = CDATA.find(c => c.name === sel.client);
                 const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
                 const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
@@ -9919,9 +9931,11 @@ REGRAS TÉCNICAS:
 
                 const doPublish = async (platform, type) => {
                   if (pubLoading) return;
-                  if (imgFiles.length === 0) { showToast("Nenhuma imagem disponível"); return; }
+                  if (imgFiles.length === 0) { showToast("Nenhuma mídia disponível"); return; }
                   setPubLoading(true);
-                  const imgUrls = imgFiles.map(f => f.url);
+                  const isReelsType = type === "REELS";
+                  const imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                  const pubCoverUrl = isReelsType ? mediaInfo.coverUrl : null;
                   const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                   const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                   const clientId = clientObj.supaId || clientObj.id;
@@ -9963,7 +9977,7 @@ REGRAS TÉCNICAS:
                     showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
                     let r;
                     if (platform === "instagram") {
-                      r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null);
+                      r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl);
                     } else {
                       r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
                     }
@@ -10023,14 +10037,16 @@ REGRAS TÉCNICAS:
                           return;
                         }
                         setPubLoading(true);
-                        const imgUrls = imgFiles.map(f => f.url);
+                        const isReels = sel.format === "Reels" || sel.format === "Shorts";
+                        const imgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                        const pubCoverUrl2 = isReels ? mediaInfo.coverUrl : null;
                         const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                         const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                         const clientId = clientObj.supaId || clientObj.id;
-                        const type = isStories ? "STORIES" : "FEED";
-                        showToast("Publicando...");
+                        const type = isStories ? "STORIES" : isReels ? "REELS" : "FEED";
+                        showToast(isReels ? "⏳ Publicando Reels... aguarde o processamento" : "Publicando...", isReels ? 30000 : 5000);
                         let igOk = false, fbOk = false, igErr = "", fbErr = "";
-                        if (hasIG) { const r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null); if (r?.error) igErr = r.error; else igOk = true; }
+                        if (hasIG) { const r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl2); if (r?.error) igErr = r.error; else igOk = true; }
                         if (hasFB) { const r = await publishToMeta(clientId, imgUrls, fullCaption, null, type); if (r?.error) fbErr = r.error; else fbOk = true; }
                         if (igOk || fbOk) {
                           updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
@@ -10217,7 +10233,8 @@ REGRAS TÉCNICAS:
             {/* Publish buttons — show when there are uploaded images and connected social */}
             {(() => {
               const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-              const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+              const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
+              const mediaInfo = separateMedia(allFiles);
               const clientObj = CDATA.find(c => c.name === sel.client);
               const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
               const fbConnected = clientObj?.socials?.facebook?.connected && clientObj?.socials?.facebook?.oauth;
@@ -10231,7 +10248,9 @@ REGRAS TÉCNICAS:
               const doPublish = async (platform, type) => {
                 if (pubLoading) return;
                 setPubLoading(true);
-                const imgUrls = imgFiles.map(f => f.url);
+                const isReelsType = type === "REELS";
+                const imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                const pubCoverUrl = isReelsType ? mediaInfo.coverUrl : null;
                 const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                 const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                 const clientId = clientObj.supaId || clientObj.id;
@@ -10269,7 +10288,7 @@ REGRAS TÉCNICAS:
                   showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
                   let r;
                   if (platform === "instagram") {
-                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null);
+                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl);
                   } else {
                     r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
                   }
