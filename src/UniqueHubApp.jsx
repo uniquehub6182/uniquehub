@@ -21495,7 +21495,7 @@ function NotesPage({ onBack, user }) {
           const active = selNote?.id === n.id;
           return <div key={n.id} onClick={() => { setSelNote(n); setEditTitle(n.title); setEditText(n.text); }} style={{ padding:"10px 12px", borderRadius:12, cursor:"pointer", background:active?`${B.accent}10`:"transparent", border:active?`1.5px solid ${B.accent}25`:"1.5px solid transparent", marginBottom:2, transition:"all .15s" }}>
             <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.title}</p>
-            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:2 }}>{n.text?.substring(0,60)||"Nota vazia..."}</p>
+            <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginTop:2 }}>{(n.text||"Nota vazia...").replace(/<[^>]*>/g,"").substring(0,60)||"Nota vazia..."}</p>
             <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{timeAgo(n.updated)}</p>
           </div>;
         })}
