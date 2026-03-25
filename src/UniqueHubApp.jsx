@@ -7720,7 +7720,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [calYear, setCalYear] = useState(null);
   const [sel, setSel] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [createType, setCreateType] = useState(null);
+  const [createType, setCreateType] = useState("social");
   const [form, setForm] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [quickPub, setQuickPub] = useState(false);
@@ -8633,7 +8633,7 @@ REGRAS TÉCNICAS:
     if (result?.data) { newD.id = result.data.id; newD.supaId = result.data.id; toastMsg = "Demanda criada! ✓"; }
     else if (result?.err) { toastMsg = "Erro: " + result.err; }
     setDemands(prev => [newD, ...prev]);
-    setCreating(false); setCreateType(null); setForm({});
+    setCreating(false); setCreateType("social"); setForm({});
     showToast("✅ Demanda criada com sucesso!");
     /* Auto-scroll to top so user sees the new card in "Ideia" */
     setTimeout(() => {
@@ -8743,7 +8743,7 @@ REGRAS TÉCNICAS:
   if (creating && !isContentDesktop && !contained) return (
     <div className="pg" style={{ paddingTop: TOP }}>
       {ToastEl}
-      <Head title="Novo Post" onBack={() => { setCreating(false); setCreateType(null); setForm({}); }} />
+      <Head title="Novo Post" onBack={() => { setCreating(false); setCreateType("social"); setForm({}); }} />
         <div>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
           <div style={{ position:"relative", marginBottom:12 }}>
@@ -10128,10 +10128,10 @@ REGRAS TÉCNICAS:
         </div>
       </div>}
 
-      {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType(null); setForm({}); } : null} />}
+      {!contained && <CollapseHeader icon={IC.content} label="Produção" title="Demandas" collapsed={headerCollapsed} onAdd={canAccessFn("content.create") ? () => { setCreating(true); setCreateType("social"); setForm({}); } : null} />}
       {contained && canAccessFn("content.create") && !sel && !creating && <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 0"}}>
         <span style={{fontSize:13,fontWeight:700,color:B.text}}>{totalCount} demanda{totalCount!==1?"s":""}</span>
-        <button onClick={()=>{ setCreating(true);setCreateType(null);setForm({}); }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
+        <button onClick={()=>{ setCreating(true);setCreateType("social");setForm({}); }} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D"}}>{IC.plus} Nova</button>
       </div>}
 
       {/* Quick Publish button (mobile only) */}
@@ -10990,15 +10990,15 @@ REGRAS TÉCNICAS:
 
       {/* ── CONTAINED DETAIL DRAWER (dashboard block) ── */}
       {contained && (sel || creating) && <>
-        <div onClick={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.3)",zIndex:20,borderRadius:"var(--uh-radius)"}} />
+        <div onClick={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType("social");}} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.3)",zIndex:20,borderRadius:"var(--uh-radius)"}} />
         <div style={{position:"absolute",top:0,right:0,bottom:0,width:"100%",background:B.bgCard,zIndex:21,boxShadow:"-4px 0 20px rgba(0,0,0,0.15)",display:"flex",flexDirection:"column",animation:"slideInRight .2s ease both",borderRadius:"var(--uh-radius)",overflow:"hidden"}}>
           <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-            <button onClick={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <button onClick={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType("social");}} style={{width:28,height:28,borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{creating?"Nova Demanda":sel?.title||""}</p></div>
             <button onClick={()=>{setSel(null);setCreating(false);goTab("content");}} style={{fontSize:9,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Expandir ↗</button>
           </div>
-          <DemandDetailBoundary onBack={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}}>
+          <DemandDetailBoundary onBack={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType("social");}}>
           <div style={{flex:1,overflowY:"auto",padding:0}}>
             {sel && detailInner}
             {creating && <div style={{padding:16}}>
@@ -11200,13 +11200,13 @@ REGRAS TÉCNICAS:
 
       {/* ── DESKTOP CREATE DRAWER ── */}
       {creating && isContentDesktop && <>
-        <div onClick={() => { setCreating(false); setCreateType(null); setForm({}); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
+        <div onClick={() => { setCreating(false); setCreateType("social"); setForm({}); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
         <div style={{ position:"fixed", top:0, right:0, bottom:0, width:480, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", display:"flex", flexDirection:"column", animation:"slideInRight .25s ease both" }}>
           <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
           {/* Drawer header */}
           <div style={{ padding:"16px 20px", borderBottom:"1px solid rgba(0,0,0,0.06)", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <button onClick={() => { if (createType) setCreateType(null); else { setCreating(false); setForm({}); } }} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{createType ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}</button>
+              <button onClick={() => { if (createType) setCreateType("social"); else { setCreating(false); setForm({}); } }} style={{ width:32, height:32, borderRadius:10, border:"1px solid rgba(0,0,0,0.08)", background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>{createType ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}</button>
               <h3 style={{ fontSize:16, fontWeight:800, color:"#1A1D23" }}>{createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"}</h3>
             </div>
           </div>
