@@ -1861,7 +1861,7 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
 
 function useToast() {
   const [toast, setToast] = useState(null);
-  const showToast = (msg) => { const isLong = msg && msg.includes("\n\n"); setToast(msg); setTimeout(() => setToast(null), isLong ? 6000 : 2800); };
+  const showToast = (msg, duration) => { const isLong = msg && msg.includes("\n\n"); setToast(msg); setTimeout(() => setToast(null), duration || (isLong ? 6000 : 2800)); };
   const isError = toast && (toast.includes("Erro") || toast.includes("erro") || toast.includes("falh") || toast.includes("❌"));
   const isSuccess = toast && (toast.includes("✅") || toast.includes("✓") || toast.includes("Publicado") || toast.includes("criada") || toast.includes("Avançou"));
   const isGuide = toast && toast.includes("\n\n");
@@ -9495,15 +9495,17 @@ REGRAS TÉCNICAS:
                   );
                 })()}
                 {(sel.steps?.design?.files||[]).map((f,i) => {
-                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || f.url || ''));
                   if (isContentDesktop && isImg && f.url) return null; /* shown in carousel above */
-                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || ''));
+                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || f.url || '')) || f.type?.startsWith("video/");
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
                   return (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
-                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} loading="lazy" /> :
-                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
+                  <div key={i} style={{ marginBottom:6 }}>
+                    {isVid && fUrl && <video src={fUrl} controls playsInline style={{ width:"100%", maxHeight:300, borderRadius:12, background:"#000", marginBottom:4 }} />}
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink}06`, borderRadius:10, border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink)}15` }}>
+                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
@@ -9511,6 +9513,7 @@ REGRAS TÉCNICAS:
                     </div>
                     {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
                     <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.design?.files||[])]; nf.splice(i,1); updateStep("design",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
+                  </div>
                   </div>
                   );
                 })}
@@ -9559,7 +9562,9 @@ REGRAS TÉCNICAS:
                     e.target.value = "";
                     return;
                   }
-                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
+                  const hasVideo = files.some(f => f.type?.startsWith("video/"));
+                  const totalMB = (files.reduce((a,f)=>a+f.size,0)/1024/1024).toFixed(0);
+                  showToast(hasVideo ? `⏳ Enviando vídeo (${totalMB}MB)... aguarde, pode levar alguns minutos` : `Enviando ${files.length} arquivo${files.length>1?"s":""}...`, hasVideo ? 30000 : 5000);
                   const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
                   const uploaded = results.filter(r => !r.error);
                   const errors = results.filter(r => r.error);
@@ -10012,7 +10017,9 @@ REGRAS TÉCNICAS:
                       <button onClick={async () => {
                         if (!hasApi || imgFiles.length === 0) {
                           updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                          setTimeout(()=>advanceStage(sel),100);
+                          /* Go directly to published — NOT advanceStage which goes to scheduled */
+                          setTimeout(() => setDemandStage(sel, "published"), 100);
+                          showToast("✅ Publicação manual registrada");
                           return;
                         }
                         setPubLoading(true);
