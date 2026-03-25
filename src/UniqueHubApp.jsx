@@ -765,10 +765,11 @@ const getMetaConnection = async (clientId) => {
 const publishToMeta = async (clientId, imageUrl, caption, platforms, mediaType = "FEED") => {
   if (!supabase || !SUPA_URL) return null;
   try {
+    const urls = Array.isArray(imageUrl) ? imageUrl : [imageUrl];
     const res = await fetch(`${SUPA_URL}/functions/v1/facebook-publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ client_id: clientId, image_url: imageUrl, caption, media_type: mediaType })
+      body: JSON.stringify({ client_id: clientId, image_url: urls[0], image_urls: urls, caption, media_type: mediaType })
     });
     return await res.json();
   } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
@@ -8550,7 +8551,7 @@ REGRAS TÉCNICAS:
         try {
           let ok = false;
           if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs); if (r?.error) showToast("Erro IG: "+r.error); else ok = true; }
-          if (hasFB) { const r = await publishToMeta(cId, imgUrls[0], fullCaption); if (r?.error) showToast("Erro FB: "+r.error); else ok = true; }
+          if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType); if (r?.error) showToast("Erro FB: "+r.error); else ok = true; }
           if (ok) {
             const pubStage = stages[stages.indexOf("scheduled")+1] || "published";
             if (!schedTs) { /* Publish immediately — move to published */
@@ -9628,7 +9629,7 @@ REGRAS TÉCNICAS:
                     if (platform === "instagram") {
                       r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null);
                     } else {
-                      r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                      r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
                     }
                     if (r?.error) { showToast(`Erro: ${r.error}`); setPubLoading(false); return; }
                     updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
@@ -9885,7 +9886,7 @@ REGRAS TÉCNICAS:
                   if (platform === "instagram") {
                     r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null);
                   } else {
-                    r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+                    r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
                   }
                   if (r?.error) { showToast(`Erro: ${r.error}`); setPubLoading(false); return; }
                   updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
@@ -10549,7 +10550,7 @@ REGRAS TÉCNICAS:
             {isScheduleExpired(d) && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:"#EF444408", border:"1.5px solid #EF444425" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:"#EF4444" }}>Agendamento expirado</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Data {d.scheduling?.date} {d.scheduling?.time} já passou</p></div>
-              <button onClick={async(e)=>{e.stopPropagation();const cId=d.client_id||CDATA.find(c=>c.name===d.client)?.supaId;if(!cId){showToast("Cliente não vinculado");return;}const imgFiles=d.steps?.design?.files||d.steps?.production?.files||[];const imgUrls=imgFiles.filter(f=>f.url).map(f=>f.url);if(!imgUrls.length){showToast("Sem mídia");return;}const fullCap=(d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");const cl=CDATA.find(c=>(c.supaId||c.id)===cId);const mt=(d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));showToast("Publicando agora...");let ok=false;if(cl?.socials?.instagram?.oauth){const r=await publishToInstagram(cId,imgUrls,fullCap,mt);if(r?.error)showToast("Erro IG: "+r.error);else ok=true;}if(cl?.socials?.facebook?.oauth){const r=await publishToMeta(cId,imgUrls[0],fullCap,null,mt);if(r?.error)showToast("Erro FB: "+r.error);else ok=true;}if(ok){const stgs=getStages(d.type);const pubStg=stgs[stgs.indexOf("scheduled")+1]||"published";setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:pubStg},pubStg):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:pubStg});showToast("✅ Publicado!");}}} style={{padding:"6px 14px",borderRadius:8,background:"#EF4444",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>Publicar agora</button>
+              <button onClick={async(e)=>{e.stopPropagation();const cId=d.client_id||CDATA.find(c=>c.name===d.client)?.supaId;if(!cId){showToast("Cliente não vinculado");return;}const imgFiles=d.steps?.design?.files||d.steps?.production?.files||[];const imgUrls=imgFiles.filter(f=>f.url).map(f=>f.url);if(!imgUrls.length){showToast("Sem mídia");return;}const fullCap=(d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");const cl=CDATA.find(c=>(c.supaId||c.id)===cId);const mt=(d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));showToast("Publicando agora...");let ok=false;if(cl?.socials?.instagram?.oauth){const r=await publishToInstagram(cId,imgUrls,fullCap,mt);if(r?.error)showToast("Erro IG: "+r.error);else ok=true;}if(cl?.socials?.facebook?.oauth){const r=await publishToMeta(cId,imgUrls,fullCap,null,mt);if(r?.error)showToast("Erro FB: "+r.error);else ok=true;}if(ok){const stgs=getStages(d.type);const pubStg=stgs[stgs.indexOf("scheduled")+1]||"published";setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:pubStg},pubStg):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:pubStg});showToast("✅ Publicado!");}}} style={{padding:"6px 14px",borderRadius:8,background:"#EF4444",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>Publicar agora</button>
             </div>}
             {d.steps?.client?.status === "approved" && d.stage === "client" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1.5px solid ${B.green}25` }}>
               {IC.check}<div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Cliente aprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pronto para publicar · {d.steps.client.respondedBy||""}</p></div>
@@ -10703,7 +10704,7 @@ REGRAS TÉCNICAS:
                                   try{
                                     let r3;
                                     if(platform==="instagram"){r3=await publishToInstagram(cId3,imgF3.map(f=>f.url),fullCap3,type,null);}
-                                    else{r3=await publishToMeta(cId3,imgF3[0].url,fullCap3,["facebook"]);}
+                                    else{r3=await publishToMeta(cId3,imgF3.map(f=>f.url),fullCap3,null,type);}
                                     if(r3?.error){showToast(`Erro: ${r3.error}`);setInlinePublishing(false);return;}
                                     const ns3={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),publishedAt:new Date().toISOString(),platform,type,metaPostId:r3?.id||r3?.post_id||""}};
                                     const next3=stages[si+1];
@@ -10750,7 +10751,7 @@ REGRAS TÉCNICAS:
                                   try{
                                     let r;
                                     if(platform==="instagram"){r=await publishToInstagram(cId,imgF2.map(f=>f.url),fullCap2,type,null);}
-                                    else{r=await publishToMeta(cId,imgF2[0].url,fullCap2,["facebook"]);}
+                                    else{r=await publishToMeta(cId,imgF2.map(f=>f.url),fullCap2,null,type);}
                                     if(r?.error){showToast(`Erro: ${r.error}`);setInlinePublishing(false);return;}
                                     const ns2={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),status:"approved",publishedAt:new Date().toISOString(),platform,type,metaPostId:r3?.id||r3?.post_id||""}};
                                     const next2=stages[si+1];
@@ -11006,7 +11007,7 @@ REGRAS TÉCNICAS:
                       if (r?.error) { showToast("Erro IG: "+r.error); } else { ok = true; postId = r?.media_id || r?.post_id; }
                     }
                     if (platforms.includes("fb")) {
-                      const r = await publishToMeta(clientId, publicUrls[0], caption, null, fmt);
+                      const r = await publishToMeta(clientId, publicUrls, caption, null, fmt);
                       if (r?.error) { showToast("Erro FB: "+r.error); } else { ok = true; if (!postId) postId = r?.id || r?.post_id; }
                     }
                     if (ok) {
@@ -23906,7 +23907,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           /* Try Facebook */
           if (networks.some(n => n.includes("facebook"))) {
             try {
-              const r = await publishToMeta(clientId, imgUrls[0], fullCaption, ["facebook"]);
+              const fbType = isStories ? "STORIES" : "FEED";
+              const r = await publishToMeta(clientId, imgUrls, fullCaption, null, fbType);
               if (r?.error) { showToast(`Aprovado, mas erro ao publicar FB: ${r.error}`); }
               else { showToast("✓ Publicado no Facebook!"); published = true; }
             } catch(e) { console.error("[Publish] FB error:", e); }

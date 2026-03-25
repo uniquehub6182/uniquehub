@@ -13,9 +13,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { client_id, image_url, caption, media_type } = await req.json();
+    const body = await req.json();
+    const { client_id, caption, media_type } = body;
+    /* Accept both image_url (string) and image_urls (array) */
+    const urls: string[] = body.image_urls
+      ? (Array.isArray(body.image_urls) ? body.image_urls : [body.image_urls])
+      : body.image_url ? [body.image_url] : [];
     if (!client_id) throw new Error("Missing client_id");
-    if (!image_url) throw new Error("Missing image_url");
+    if (urls.length === 0) throw new Error("Missing image_url or image_urls");
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -31,30 +36,45 @@ serve(async (req) => {
     const type = (media_type || "FEED").toUpperCase();
     const isStories = type === "STORIES";
 
-    console.log(`[FB Publish] page: ${page_id}, type: ${type}, hasImage: ${!!image_url}`);
+    console.log(`[FB Publish] page: ${page_id}, type: ${type}, images: ${urls.length}`);
 
-    const params = new URLSearchParams();
-    params.append("access_token", page_token);
-    params.append("url", image_url);
-
-    if (!isStories && caption) params.append("message", caption);
-
-    /* Stories use /photo_stories endpoint, Feed uses /photos */
-    const endpoint = isStories
-      ? `https://graph.facebook.com/v21.0/${page_id}/photo_stories`
-      : `https://graph.facebook.com/v21.0/${page_id}/photos`;
-
-    const res = await fetch(endpoint, { method: "POST", body: params });
-    const data = await res.json();
-    console.log(`[FB Publish] Response:`, JSON.stringify(data).substring(0, 300));
-
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-
-    return json({
-      success: true,
-      media_id: data.id || data.post_id,
-      message: isStories ? "Story publicado no Facebook!" : "Post publicado no Facebook!",
-    });
+    if (isStories) {
+      /* ── STORIES: loop through each image, publish one story per image ── */
+      const results: { id: string }[] = [];
+      for (const url of urls) {
+        const params = new URLSearchParams();
+        params.append("access_token", page_token);
+        params.append("url", url);
+        const endpoint = `https://graph.facebook.com/v21.0/${page_id}/photo_stories`;
+        const res = await fetch(endpoint, { method: "POST", body: params });
+        const data = await res.json();
+        console.log(`[FB Story] Response:`, JSON.stringify(data).substring(0, 200));
+        if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+        results.push({ id: data.id || data.post_id });
+      }
+      return json({
+        success: true,
+        count: results.length,
+        post_ids: results.map(r => r.id),
+        message: `${results.length} story${results.length > 1 ? "s" : ""} publicado${results.length > 1 ? "s" : ""} no Facebook!`,
+      });
+    } else {
+      /* ── FEED: single photo post ── */
+      const params = new URLSearchParams();
+      params.append("access_token", page_token);
+      params.append("url", urls[0]);
+      if (caption) params.append("message", caption);
+      const endpoint = `https://graph.facebook.com/v21.0/${page_id}/photos`;
+      const res = await fetch(endpoint, { method: "POST", body: params });
+      const data = await res.json();
+      console.log(`[FB Feed] Response:`, JSON.stringify(data).substring(0, 200));
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      return json({
+        success: true,
+        media_id: data.id || data.post_id,
+        message: "Post publicado no Facebook!",
+      });
+    }
   } catch (err: any) {
     console.error("[FB Publish] Error:", err.message);
     return json({ error: err.message }, 400);
