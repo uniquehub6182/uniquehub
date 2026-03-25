@@ -7742,6 +7742,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [ipNetworks, setIpNetworks] = useState(["Instagram", "Facebook"]);
   const [ipEmojis, setIpEmojis] = useState(true);
   const [ipEmojiQty, setIpEmojiQty] = useState("moderado");
+    const [ipAspectRatio, setIpAspectRatio] = useState("1:1");
   const ipFileRef = useRef(null);
 
   const resetImportPlan = () => { setImportPlan(false); setIpStep(1); setIpClient(null); setIpFile(null); setIpPosts([]); setIpLoading(false); setIpProgress(""); setIpAutoCreate(false); setIpCreating(false); setIpCreated(0); setIpTone("informativo"); setIpEmojis(true); setIpEmojiQty("moderado"); setIpNetworks(["Instagram","Facebook"]); };
@@ -7903,6 +7904,7 @@ CLIENTE: ${clientName}
 ANO ATUAL: ${currentYear}
 TOM: ${ipTone}
 EMOJIS: ${ipEmojis ? `Sim, de forma ${ipEmojiQty === "pouco" ? "sutil (máx 1-2 por parágrafo)" : ipEmojiQty === "moderado" ? "moderada (2-3 por parágrafo, variados)" : "generosa (4-5 por parágrafo)"}` : "NÃO usar emojis"}
+DIMENSÃO: ${ipAspectRatio} (usar essa dimensão no briefing do designer)
 REDES SOCIAIS: ${ipNetworks.join(", ")} (TODOS os posts devem ter networks: [${ipNetworks.map(n=>'"'+n+'"').join(",")}])
 
 REGRAS OBRIGATÓRIAS DE HUMANIZAÇÃO:
@@ -7924,7 +7926,7 @@ Para CADA item do documento, gere um JSON com:
 - schedTime: "10:00" (posts) ou "18:00" (vídeos)
 - caption: legenda humanizada seguindo TODAS as regras acima (SEM hashtags no final — hashtags vão em campo separado)
 - hashtags: string com todas as hashtags separadas por espaço (ex: "#marketing #redes #design"), NUNCA incluir hashtags dentro da caption
-- designBrief: briefing completo pro designer (formato, elementos visuais, textos na arte, cores, estilo, referências)
+- designBrief: briefing completo pro designer (formato, dimensão ${ipAspectRatio}, elementos visuais, textos na arte, cores, estilo, referências). SEMPRE mencionar a dimensão ${ipAspectRatio} no briefing.
 - scriptOrRoteiro: roteiro completo pra vídeos (gancho, desenvolvimento, CTA) ou "" pra posts
 
 REGRAS TÉCNICAS:
@@ -8010,7 +8012,7 @@ REGRAS TÉCNICAS:
           ...p, _id: Date.now() + i, _enabled: true,
           title: p.title || "Post " + (i + 1),
           type: p.type || "social",
-          format: p.format || "Feed",
+          format: p.format || "Feed", aspectRatio: ipAspectRatio || "1:1",
           networks: p.networks || ["Instagram"],
           schedDate: p.schedDate || "",
           schedTime: p.schedTime || "10:00",
@@ -8152,6 +8154,18 @@ REGRAS TÉCNICAS:
                 <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>Em quais redes os posts serão publicados?</p>
                 <div style={{ display:"flex", gap:8 }}>
                   {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 16px", borderRadius:12, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={18} active={sel2} />{n}</button>; })}
+                </div>
+                {/* Dimensão */}
+                <div style={{ marginTop:10, paddingTop:10, borderTop:"1px solid "+B.border }}>
+                  <p style={{ fontSize:12, color:B.muted, marginBottom:6 }}>Dimensão dos posts:</p>
+                  <div style={{ display:"flex", gap:5 }}>
+                    {[{k:"1:1",l:"1:1",px:"1080×1080"},{k:"4:5",l:"4:5",px:"1080×1350"},{k:"9:16",l:"9:16",px:"1080×1920"}].map(d => (
+                      <button key={d.k} onClick={()=>setIpAspectRatio(d.k)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:ipAspectRatio===d.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipAspectRatio===d.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipAspectRatio===d.k?700:500, color:ipAspectRatio===d.k?B.accent:B.muted, textAlign:"center" }}>
+                        <span style={{ display:"block", fontWeight:700 }}>{d.l}</span>
+                        <span style={{ display:"block", fontSize:9, opacity:0.7 }}>{d.px}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -10121,14 +10135,14 @@ REGRAS TÉCNICAS:
         </div>
       </div>}
       {/* ── AI Just Created overlay ── */}
-      {aiJustCreated && <div style={{ position:"fixed", inset:0, zIndex:99990, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.5)", backdropFilter:"blur(6px)" }} onClick={() => setAiJustCreated(null)}>
-        <div style={{ textAlign:"center", padding:"40px 30px", background:B.bgCard, borderRadius:24, boxShadow:"0 20px 60px rgba(0,0,0,0.3)", maxWidth:340 }}>
-          <div style={{ width:64, height:64, borderRadius:"50%", background:B.green+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green||"#10B981"} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      {aiJustCreated && <div style={{ position:"fixed", inset:0, zIndex:99990, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", backdropFilter:"blur(10px)" }} onClick={() => setAiJustCreated(null)}>
+        <div style={{ textAlign:"center", padding:"32px 40px", background:B.bg, borderRadius:20, border:"1px solid "+B.border, maxWidth:380, width:"90%", animation:"slideInRight .3s ease" }}>
+          <div style={{ width:52, height:52, borderRadius:16, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <p style={{ fontSize:18, fontWeight:800, color:B.text, marginBottom:4 }}>Posts criados! 🎉</p>
-          <p style={{ fontSize:13, color:B.muted }}>{aiJustCreated} post{aiJustCreated > 1 ? "s" : ""} criado{aiJustCreated > 1 ? "s" : ""} pela Munique A.I</p>
-          <p style={{ fontSize:11, color:B.muted, marginTop:10 }}>Toque para ver as demandas</p>
+          <p style={{ fontSize:20, fontWeight:800, color:B.text, marginBottom:6 }}>{aiJustCreated} post{aiJustCreated > 1 ? "s" : ""} criado{aiJustCreated > 1 ? "s" : ""}!</p>
+          <p style={{ fontSize:13, color:B.muted, lineHeight:1.5, marginBottom:20 }}>A Munique A.I gerou tudo. Agora é só revisar e publicar.</p>
+          <button onClick={() => setAiJustCreated(null)} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Ver demandas</button>
         </div>
       </div>}
 
