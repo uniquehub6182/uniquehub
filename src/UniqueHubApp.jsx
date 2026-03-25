@@ -8588,6 +8588,38 @@ REGRAS TÉCNICAS:
     const timer = setInterval(callScheduler, 60000);
     return () => clearInterval(timer);
   }, [demands]);
+
+  /* ── Auto-advance: move "scheduled" → "published" when scheduled time has passed ── */
+  useEffect(() => {
+    const checkExpired = () => {
+      const now = new Date();
+      const expired = demands.filter(d => {
+        if (d.stage !== "scheduled" || !d.scheduling?.date) return false;
+        const sd = d.scheduling.date; const st = d.scheduling.time || "23:59";
+        let dt;
+        if (sd.includes("-")) dt = new Date(`${sd}T${st}:00`);
+        else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); dt = new Date(`${now.getFullYear()}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}T${st}:00`); }
+        else return false;
+        return !isNaN(dt) && dt < now;
+      });
+      if (expired.length > 0) {
+        const stages = getStages("social");
+        const pubStage = stages[stages.indexOf("scheduled") + 1] || "published";
+        setDemands(prev => prev.map(d => {
+          if (expired.find(e => e.id === d.id)) {
+            if (d.supaId) supaUpdateDemand(d.supaId, { stage: pubStage });
+            return { ...d, stage: pubStage };
+          }
+          return d;
+        }));
+        console.log(`[Auto] ${expired.length} demanda(s) movida(s) para ${pubStage}`);
+      }
+    };
+    checkExpired();
+    const timer = setInterval(checkExpired, 30000);
+    return () => clearInterval(timer);
+  }, [demands]);
+
   /* ── Expiring content detection (5+ months old published with images) ── */
   const expiringDemands = demands.filter(d => {
     if (d.stage !== "published" && d.stage !== "completed") return false;
