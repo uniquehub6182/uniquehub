@@ -7744,6 +7744,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const dateFilterBtnRef = useRef(null);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calMonth, setCalMonth] = useState(null);
@@ -10333,20 +10334,24 @@ REGRAS TÉCNICAS:
       {/* ── Desktop toolbar: Data | Clientes | Publicação Rápida ── */}
       {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
         {/* Date filter */}
-        <button onClick={() => setShowCalendar(v => !v)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${dateFilter ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: dateFilter ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF" }}>
+        <div ref={dateFilterBtnRef} style={{ position:"relative" }}>
+        <button onClick={() => { setShowCalendar(v => !v); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${dateFilter ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: dateFilter ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           {dateFilter ? (dateFilter.substring(5).split("-").reverse().join("/") + (dateFilterEnd && dateFilterEnd !== dateFilter ? " → " + dateFilterEnd.substring(5).split("-").reverse().join("/") : "")) : "Data"}
           {dateFilter && <span onClick={e => { e.stopPropagation(); setDateFilter(""); setDateFilterEnd(""); setShowCalendar(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
         </button>
+        </div>
         {/* Client filter */}
         <div style={{ position:"relative" }}>
-          <button onClick={() => setShowClientPicker(!showClientPicker)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: clientFilter !== "all" ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: clientFilter !== "all" ? "#1A1D23" : "#9CA3AF" }}>
+          <button onClick={() => { setShowClientPicker(!showClientPicker); setShowCalendar(false); }} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: clientFilter !== "all" ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: clientFilter !== "all" ? "#1A1D23" : "#9CA3AF" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             {clientFilter !== "all" ? clientFilter : "Clientes"}
             {clientFilter !== "all" && <span onClick={e => { e.stopPropagation(); setClientFilter("all"); setShowClientPicker(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform:showClientPicker?"rotate(180deg)":"none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          {showClientPicker && <div style={{ position:"absolute", top:"100%", left:0, marginTop:6, width:280, background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border||"rgba(0,0,0,0.08)"}`, boxShadow:"0 8px 30px rgba(0,0,0,0.12)", zIndex:50, padding:6, maxHeight:300, overflowY:"auto" }}>
+          {showClientPicker && <>
+            <div onClick={() => setShowClientPicker(false)} style={{ position:"fixed", inset:0, zIndex:49 }} />
+            <div style={{ position:"absolute", top:"100%", left:0, marginTop:6, width:280, background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border||"rgba(0,0,0,0.08)"}`, boxShadow:"0 8px 30px rgba(0,0,0,0.12)", zIndex:50, padding:6, maxHeight:300, overflowY:"auto" }}>
             <div onClick={() => { setClientFilter("all"); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:clientFilter==="all"?`${B.accent}08`:"transparent", marginBottom:2 }}>
               <div style={{ width:28, height:28, borderRadius:14, background:`${B.muted||"#999"}10`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted||"#999"} strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
               <span style={{ fontSize:12, fontWeight:600 }}>Todos os clientes</span>
@@ -10357,7 +10362,7 @@ REGRAS TÉCNICAS:
                 <div><span style={{ fontSize:12, fontWeight:600 }}>{c}</span><p style={{ fontSize:9, color:B.muted||"#999" }}>{demands.filter(d=>d.client===c).length} demandas</p></div>
               </div>
             ))}
-          </div>}
+          </div></>}
         </div>
         {/* Type tabs */}
         <div style={{ flex:1, display:"flex", gap:6 }}>
@@ -10451,9 +10456,9 @@ REGRAS TÉCNICAS:
         });
 
         return (
-          <div style={isContentDesktop ? { position:"relative", zIndex:50, height:0 } : {}}>
+          <div style={isContentDesktop ? { position:"absolute", zIndex:998, height:0 } : {}}>
           {isContentDesktop && <div onClick={() => setShowCalendar(false)} style={{ position:"fixed", inset:0, zIndex:998 }} />}
-          <Card style={isContentDesktop ? { position:"fixed", top:140, left:200, width:300, padding:12, boxShadow:"0 8px 30px rgba(0,0,0,0.15)", border:"1px solid rgba(0,0,0,0.06)", zIndex:999 } : { marginBottom:10, padding:12 }}>
+          <Card style={isContentDesktop ? (() => { const r = dateFilterBtnRef.current?.getBoundingClientRect(); return { position:"fixed", top:(r?.bottom||50)+6, left:r?.left||20, width:300, padding:12, boxShadow:"0 8px 30px rgba(0,0,0,0.15)", border:"1px solid rgba(0,0,0,0.06)", zIndex:999 }; })() : { marginBottom:10, padding:12 }}>
             {/* Close button (desktop) */}
             {isContentDesktop && <button onClick={() => setShowCalendar(false)} style={{ position:"absolute", top:10, right:10, width:22, height:22, borderRadius:6, border:"none", background:"rgba(0,0,0,0.06)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
             {/* Month nav */}
