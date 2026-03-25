@@ -7743,6 +7743,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [filter, setFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
+  const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calMonth, setCalMonth] = useState(null);
@@ -8535,20 +8536,23 @@ REGRAS TÉCNICAS:
     if (filter === "carrossel" && (d.format||"") !== "Carrossel") return false;
     if (clientFilter !== "all" && d.client !== clientFilter) return false;
     if (dateFilter) {
-      const [y, m, dy] = dateFilter.split("-");
-      const target = `${y}-${m}-${dy}`;
-      const targetDM = `${dy}/${m}`;
-      /* Prioriza data de publicação (scheduling.date), fallback para data de criação */
+      /* Get the demand's relevant date (scheduling > created) */
+      let demandDate = "";
       const schedDate = d.scheduling?.date || "";
       if (schedDate && schedDate.includes("-")) {
-        if (schedDate !== target) return false;
+        demandDate = schedDate;
       } else if (schedDate && schedDate.includes("/")) {
         const [dd2, mm2] = schedDate.split("/");
-        if (`${dd2}/${mm2}` !== targetDM) return false;
-      } else {
-        const dDate = d.createdAt;
-        if (dDate !== targetDM) return false;
+        const yr = new Date().getFullYear();
+        demandDate = `${yr}-${mm2.padStart(2,"0")}-${dd2.padStart(2,"0")}`;
+      } else if (d.createdAt) {
+        const [dd3, mm3] = d.createdAt.split("/");
+        const yr = new Date().getFullYear();
+        demandDate = `${yr}-${mm3?.padStart(2,"0")||"01"}-${dd3?.padStart(2,"0")||"01"}`;
       }
+      if (!demandDate) return false;
+      const endDate = dateFilterEnd || dateFilter;
+      if (demandDate < dateFilter || demandDate > endDate) return false;
     }
     return true;
   });
@@ -10331,8 +10335,8 @@ REGRAS TÉCNICAS:
         {/* Date filter */}
         <button onClick={() => setShowCalendar(v => !v)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${dateFilter ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: dateFilter ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          {dateFilter || "Data"}
-          {dateFilter && <span onClick={e => { e.stopPropagation(); setDateFilter(""); setShowCalendar(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
+          {dateFilter ? (dateFilter.substring(5).split("-").reverse().join("/") + (dateFilterEnd && dateFilterEnd !== dateFilter ? " → " + dateFilterEnd.substring(5).split("-").reverse().join("/") : "")) : "Data"}
+          {dateFilter && <span onClick={e => { e.stopPropagation(); setDateFilter(""); setDateFilterEnd(""); setShowCalendar(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
         </button>
         {/* Client filter */}
         <div style={{ position:"relative" }}>
@@ -10420,7 +10424,7 @@ REGRAS TÉCNICAS:
           cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", flexShrink:0,
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dateFilter ? B.accent : B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          {dateFilter && <div style={{ position:"absolute", top:-4, right:-4, width:16, height:16, borderRadius:8, background:B.red, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={e => { e.stopPropagation(); setDateFilter(""); setShowCalendar(false); }}>
+          {dateFilter && <div style={{ position:"absolute", top:-4, right:-4, width:16, height:16, borderRadius:8, background:B.red, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={e => { e.stopPropagation(); setDateFilter(""); setDateFilterEnd(""); setShowCalendar(false); }}>
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </div>}
         </button>
@@ -10468,18 +10472,21 @@ REGRAS TÉCNICAS:
                 <div key={i} style={{ textAlign:"center", fontSize:10, fontWeight:600, color:B.muted, padding:"4px 0" }}>{d}</div>
               ))}
             </div>
+            {dateFilter && !dateFilterEnd && <p style={{ fontSize:10, color:B.accent, textAlign:"center", marginBottom:4, fontWeight:600 }}>Selecione a data final do período</p>}
+            {dateFilter && dateFilterEnd && <p style={{ fontSize:10, color:B.accent, textAlign:"center", marginBottom:4, fontWeight:600 }}>{dateFilter.substring(5).split("-").reverse().join("/")} → {dateFilterEnd.substring(5).split("-").reverse().join("/")}</p>}
             {/* Day grid */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:2 }}>
               {cells.map((day, i) => {
                 if (!day) return <div key={`e${i}`} />;
                 const dateStr = `${cy}-${pad(cm+1)}-${pad(day)}`;
-                const isSelected = dateFilter === dateStr;
+                const isSelected = dateFilter === dateStr || dateFilterEnd === dateStr;
+                const isInRange = dateFilter && dateFilterEnd && dateStr >= dateFilter && dateStr <= dateFilterEnd;
                 const isToday = day === today.getDate() && cm === today.getMonth() && cy === today.getFullYear();
                 const hasDemand = daysWithDemands.has(day);
                 return (
-                  <button key={i} onClick={() => { setDateFilter(isSelected ? "" : dateStr); if (!isSelected) setShowCalendar(false); }} style={{
+                  <button key={i} onClick={() => { if (isSelected) { setDateFilter(""); setDateFilterEnd(""); } else if (!dateFilter || dateFilterEnd) { setDateFilter(dateStr); setDateFilterEnd(""); } else { if (dateStr < dateFilter) { setDateFilterEnd(dateFilter); setDateFilter(dateStr); } else { setDateFilterEnd(dateStr); } setShowCalendar(false); } }} style={{
                     width:"100%", aspectRatio:"1", borderRadius:10, border: isSelected ? `2px solid ${B.accent}` : isToday ? `1.5px solid ${B.accent}40` : "1.5px solid transparent",
-                    background: isSelected ? B.accent : "transparent", color: isSelected ? B.dark : B.dark,
+                    background: isSelected ? B.accent : isInRange ? B.accent+"20" : "transparent", color: isSelected ? B.dark : B.dark,
                     fontSize:12, fontWeight: isSelected || isToday ? 700 : 400, cursor:"pointer", fontFamily:"inherit",
                     display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1, position:"relative",
                   }}>
@@ -10491,8 +10498,10 @@ REGRAS TÉCNICAS:
             </div>
             {/* Quick actions */}
             <div style={{ display:"flex", gap:6, marginTop:10 }}>
-              <button onClick={() => { setCalMonth(today.getMonth()); setCalYear(today.getFullYear()); setDateFilter(`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.text }}>Hoje</button>
-              <button onClick={() => { setDateFilter(""); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.muted }}>Limpar</button>
+              <button onClick={() => { setCalMonth(today.getMonth()); setCalYear(today.getFullYear()); setDateFilter(`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`); setDateFilterEnd(""); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.text }}>Hoje</button>
+              <button onClick={() => { const d0=new Date(); const dow=d0.getDay(); const mon=new Date(d0); mon.setDate(d0.getDate()-dow+1); const sun=new Date(mon); sun.setDate(mon.getDate()+6); setDateFilter(`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`); setDateFilterEnd(`${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.text }}>Semana</button>
+              <button onClick={() => { setCalMonth(today.getMonth()); setCalYear(today.getFullYear()); setDateFilter(`${today.getFullYear()}-${pad(today.getMonth()+1)}-01`); const lastDay=new Date(today.getFullYear(),today.getMonth()+1,0).getDate(); setDateFilterEnd(`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(lastDay)}`); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.text }}>Mês</button>
+              <button onClick={() => { setDateFilter(""); setDateFilterEnd(""); setShowCalendar(false); }} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", color:B.muted }}>Limpar</button>
             </div>
           </Card>
           </div>
@@ -10506,7 +10515,7 @@ REGRAS TÉCNICAS:
           {clientFilter} <button onClick={()=>setClientFilter("all")} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </span>}
         {dateFilter && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
-          {dateFilter.split("-").reverse().join("/")} <button onClick={()=>setDateFilter("")} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          {dateFilter.split("-").reverse().join("/")}{dateFilterEnd && dateFilterEnd !== dateFilter ? " → "+dateFilterEnd.split("-").reverse().join("/") : ""} <button onClick={()=>{setDateFilter("");setDateFilterEnd("");}} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </span>}
         <span style={{ fontSize:10, color:B.muted }}>· {filtered.length} resultado{filtered.length!==1?"s":""}</span>
       </div>}
