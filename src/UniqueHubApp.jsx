@@ -7938,29 +7938,8 @@ REGRAS TÉCNICAS:
 
       let aiText = "";
       const isPdf = ipFile.type === "application/pdf";
-      if (keys?.claude_key) {
-        setIpProgress("Processando com Claude...");
-        const messages = [{ role: "user", content: isPdf ? [
-          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-          { type: "text", text: prompt }
-        ] : [{ type: "text", text: prompt + "\n\nCONTEÚDO DO DOCUMENTO:\n" + await ipFile.text() }] }];
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages })
-        });
-        const d = await r.json();
-        aiText = d?.content?.[0]?.text || "";
-      } else if (keys?.openai_key) {
-        setIpProgress("Processando com OpenAI...");
-        const textContent = isPdf ? "(PDF enviado - extraindo texto)" : await ipFile.text();
-        const r = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + keys.openai_key },
-          body: JSON.stringify({ model: "gpt-4o", max_tokens: 8000, messages: [{ role: "user", content: prompt + "\n\nCONTEÚDO:\n" + textContent }] })
-        });
-        const d = await r.json();
-        aiText = d?.choices?.[0]?.message?.content || "";
-      } else if (keys?.gemini_key) {
-        setIpProgress("Processando com Gemini...");
+      if (keys?.gemini_key) {
+        setIpProgress("Processando com Gemini Flash...");
         const textContent = isPdf ? "(PDF enviado)" : await ipFile.text();
         const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + keys.gemini_key, {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -7968,6 +7947,27 @@ REGRAS TÉCNICAS:
         });
         const d = await r.json();
         aiText = d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      } else if (keys?.claude_key) {
+        setIpProgress("Processando com Claude...");
+        const messages = [{ role: "user", content: isPdf ? [
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+          { type: "text", text: prompt }
+        ] : [{ type: "text", text: prompt + "\n\nCONTEÚDO DO DOCUMENTO:\n" + await ipFile.text() }] }];
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({ model: "claude-3-5-haiku-20241022", max_tokens: 8000, messages })
+        });
+        const d = await r.json();
+        aiText = d?.content?.[0]?.text || "";
+      } else if (keys?.openai_key) {
+        setIpProgress("Processando com GPT-4o mini...");
+        const textContent = isPdf ? "(PDF enviado)" : await ipFile.text();
+        const r = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + keys.openai_key },
+          body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 8000, messages: [{ role: "user", content: prompt + "\n\nCONTEÚDO:\n" + textContent }] })
+        });
+        const d2 = await r.json();
+        aiText = d2?.choices?.[0]?.message?.content || "";
       } else {
         setIpProgress(""); setIpLoading(false);
         showToast("Configure uma chave de IA em Configurações");
