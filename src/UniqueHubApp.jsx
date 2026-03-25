@@ -23932,7 +23932,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
   /* Theme for client portal - read uiPrefs from localStorage to avoid overwriting global B */
-  const clientUiPrefs = (() => { try { return JSON.parse(localStorage.getItem("uh_uiprefs") || "{}"); } catch { return {}; } })();
+  const clientUiPrefs = (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })();
   B = getB(false, "#BBF246", clientUiPrefs);
   const canAccessFn = () => true;
   /* Load custom gamify data for client financeiro */
@@ -23996,7 +23996,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
-  const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_uiprefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+  const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
   React.useEffect(() => { document.documentElement.style.background = B.bg; document.body.style.background = B.bg; }, [dark, uiPrefs]);
@@ -25006,7 +25006,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
-      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_uiprefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_uiprefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
+      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_ui_prefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_ui_prefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
       sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
@@ -25838,7 +25838,18 @@ export default function App() {
     try { return localStorage.getItem("uh_theme") || "default"; } catch { return "default"; }
   });
   const [uiPrefs, setUiPrefs] = useState(() => {
-    try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; }
+    try {
+      /* Migrate from old key if exists */
+      const oldKey = localStorage.getItem("uh_uiprefs");
+      if (oldKey) {
+        const newKey = localStorage.getItem("uh_ui_prefs");
+        const merged = { ...(oldKey ? JSON.parse(oldKey) : {}), ...(newKey ? JSON.parse(newKey) : {}) };
+        localStorage.setItem("uh_ui_prefs", JSON.stringify(merged));
+        localStorage.removeItem("uh_uiprefs");
+        return merged;
+      }
+      const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {};
+    } catch { return {}; }
   });
 
   /* Save visual prefs to Supabase (debounced) — includes dash+nav */
