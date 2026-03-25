@@ -274,15 +274,38 @@ const supaUploadFile = async (file, demandId) => {
   try {
     const isVideo = file.type.startsWith("video/");
     const compressed = isVideo ? file : await compressImage(file);
-    /* Supabase Free tier limit: 50MB per file. Pro tier: 5GB */
-    const maxSize = 50 * 1024 * 1024;
-    if (compressed.size > maxSize) return { error: `Arquivo muito grande (${(compressed.size/1024/1024).toFixed(0)}MB). Máximo permitido: 50MB.${isVideo?" Comprima o vídeo antes de enviar.":""}` };
     const safeName = (compressed.name || file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const R2_THRESHOLD = 10 * 1024 * 1024; /* 10MB — route to R2 */
+
+    /* Route large files / videos to Cloudflare R2 */
+    if (compressed.size > R2_THRESHOLD || isVideo) {
+      try {
+        const r2Res = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${SUPA_KEY}`,
+            "x-file-name": safeName,
+            "x-content-type": compressed.type || file.type || "application/octet-stream",
+          },
+          body: compressed,
+        });
+        const r2Data = await r2Res.json();
+        if (r2Data.url) {
+          console.log("R2 upload OK:", r2Data.url);
+          return { name: file.name, path: r2Data.key, url: r2Data.url, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
+        }
+        console.warn("R2 upload failed, falling back to Supabase:", r2Data.error);
+      } catch(r2Err) { console.warn("R2 error, falling back:", r2Err); }
+    }
+
+    /* Supabase Storage fallback (or primary for small files) */
+    const maxSize = 50 * 1024 * 1024;
+    if (compressed.size > maxSize) return { error: `Arquivo muito grande (${(compressed.size/1024/1024).toFixed(0)}MB). Tente novamente em instantes.` };
     const path = `${demandId}/${Date.now()}_${safeName}`;
     const { data, error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600", contentType: compressed.type || file.type || "application/octet-stream" });
     if (error) { console.error("Upload error:", error.message); return { error: error.message }; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
-    return { name: file.name, path, url: pub?.publicUrl || "", size: compressed.size, type: compressed.type || file.type };
+    return { name: file.name, path, url: pub?.publicUrl || "", size: compressed.size, type: compressed.type || file.type, storage: "supabase" };
   } catch (e) { console.error("Upload catch:", e); return { error: e.message }; }
 };
 const supaUploadClientFile = async (file, clientId) => {
