@@ -13692,12 +13692,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       /* Immediately recalculate B so current render uses new values */
       const newAccent = THEME_MAP[p.theme] || "#BBF246";
       B = getB(p.dark, newAccent, p.pr);
-      /* Update body background immediately */
-      document.documentElement.style.background = B.bodyBg;
-      document.body.style.background = B.bodyBg;
-      document.documentElement.style.background = bg;
-      document.body.style.background = bg;
-      /* Trigger React state updates */
+      /* Trigger React state updates — dynamic <style> in App handles backgrounds */
       setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr);
       /* Force second re-render so all CSS template literals update */
       setTimeout(() => { setDark(p.dark); }, 50);
@@ -23999,7 +23994,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
-  React.useEffect(() => { document.documentElement.style.background = B.bg; document.body.style.background = B.bg; }, [dark, uiPrefs]);
+  React.useEffect(() => { if (!B.transparent) { document.documentElement.style.background = B.bg; document.body.style.background = B.bg; } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
@@ -25114,10 +25109,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
-  React.useEffect(() => {
-    document.documentElement.style.background = B.bodyBg;
-    document.body.style.background = B.bodyBg;
-  }, [dark, uiPrefs, themeColor]);
+  /* Background is handled by App's dynamic <style id="uh-dynamic-bg"> */
   const [sub, setSub] = useState(() => {
     const fromHash = parseHash();
     if (fromHash.sub) return fromHash.sub;
@@ -25856,10 +25848,27 @@ export default function App() {
   const appAccent = themeColor === "custom" ? (uiPrefs?.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, appAccent, uiPrefs);
 
-  /* Apply body background from B.bodyBg */
+  /* Apply body background + transparent layers via injected <style> */
   React.useEffect(() => {
-    document.documentElement.style.background = B.bodyBg;
-    document.body.style.background = B.bodyBg;
+    let el = document.getElementById("uh-dynamic-bg");
+    if (!el) { el = document.createElement("style"); el.id = "uh-dynamic-bg"; document.head.appendChild(el); }
+    if (B.transparent) {
+      el.textContent = `
+        html, body, #root { background: ${B.bodyBg} !important; }
+        .app, .screen, .content { background: transparent !important; }
+        html.uh-desktop .app, html.uh-desktop .screen { background: transparent !important; }
+        .desktop-dash { background: transparent !important; }
+        .pg { background: transparent !important; }
+        .card { background: ${B.glassCard || (dark ? "rgba(28,34,40,0.7)" : "rgba(255,255,255,0.55)")} !important;
+          backdrop-filter: ${B.glassBlur || "blur(24px) saturate(180%)"} !important;
+          -webkit-backdrop-filter: ${B.glassBlur || "blur(24px) saturate(180%)"} !important;
+          border: 1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.5)"} !important;
+          box-shadow: ${B.glassShadow || (dark ? "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)" : "0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)")} !important;
+        }
+      `;
+    } else {
+      el.textContent = "";
+    }
   }, [dark, uiPrefs, themeColor]);
 
   /* Save visual prefs to Supabase (debounced) — includes dash+nav */
@@ -25938,9 +25947,12 @@ export default function App() {
 
   /* ── Sync body background with dark mode — paints iOS 26 PWA gap zone ── */
   useEffect(() => {
-    const bg = dark ? "#0F1419" : "#F7F7F8";
-    document.documentElement.style.background = bg;
-    document.body.style.background = bg;
+    /* Only set solid bg if no custom background — dynamic <style> handles gradients/images */
+    if (!B.transparent) {
+      const bg = dark ? "#0F1419" : "#F7F7F8";
+      document.documentElement.style.background = bg;
+      document.body.style.background = bg;
+    }
   }, [dark]);
 
   /* Force-kick blocked users even if app is already open */
