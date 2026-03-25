@@ -947,8 +947,9 @@ const getScheduledTimestamp = (scheduling) => {
 const separateMedia = (files) => {
   const all = (files || []).filter(f => f.url);
   const vids = all.filter(f => /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
-  const imgs = all.filter(f => /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg")));
-  return { vids, imgs, videoUrl: vids[0]?.url||null, coverUrl: imgs[0]?.url||null, allUrls: all.map(f=>f.url) };
+  const cover = all.find(f => f.isCover);
+  const imgs = all.filter(f => !f.isCover && (/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg"))));
+  return { vids, imgs, videoUrl: vids[0]?.url||null, coverUrl: cover?.url || imgs[0]?.url||null, allUrls: all.map(f=>f.url) };
 };
 
 const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEED", scheduledTime = null, coverUrl = null) => {
@@ -9531,12 +9532,12 @@ REGRAS TÉCNICAS:
                   return (
                   <div key={i} style={{ marginBottom:6 }}>
                     {isVid && fUrl && <video src={fUrl} controls playsInline style={{ width:"100%", maxHeight:300, borderRadius:12, background:"#000", marginBottom:4 }} />}
-                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink}06`, borderRadius:10, border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink)}15` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:f.isCover?`${B.accent}06`:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink}06`, borderRadius:10, border:`1px solid ${f.isCover?B.accent:isVid?(B.blue||"#3B82F6"):(B.pink)}15` }}>
                     {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
                      isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6 }}>{fName}{f.isCover && <span style={{ fontSize:8, fontWeight:800, color:B.accent, background:`${B.accent}15`, padding:"2px 6px", borderRadius:4, flexShrink:0 }}>CAPA</span>}</p>
                       {f.size && <p style={{ fontSize:9, color:B.muted }}>{f.size > 1048576 ? `${(f.size/1048576).toFixed(1)} MB` : `${(f.size/1024).toFixed(0)} KB`}</p>}
                     </div>
                     {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
@@ -9573,7 +9574,7 @@ REGRAS TÉCNICAS:
                     </div>}
                   </>;
                 })()}
-                <input type="file" id="designUpload" multiple={sel.format !== "Feed"} accept={(sel.format==="Reels"||sel.format==="Shorts") ? "video/mp4,video/quicktime,video/webm,image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,image/gif"} style={{ display:"none" }} onChange={async (e)=>{
+                <input type="file" id="designUpload" multiple={sel.format !== "Feed" && sel.format !== "Reels" && sel.format !== "Shorts"} accept={(sel.format==="Reels"||sel.format==="Shorts") ? "video/mp4,video/quicktime,video/webm" : "image/jpeg,image/png,image/webp,image/gif"} style={{ display:"none" }} onChange={async (e)=>{
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   /* Validate Feed: max 1 image */
@@ -9605,16 +9606,36 @@ REGRAS TÉCNICAS:
                   }
                   e.target.value = "";
                 }} />
+                {/* Cover image input for Reels */}
+                <input type="file" id="designCoverUpload" accept="image/jpeg,image/png,image/webp" style={{ display:"none" }} onChange={async (e)=>{
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  showToast("Enviando capa...");
+                  const result = await supaUploadFile(file, sel.supaId || sel.id);
+                  if (result.error) { showToast(`❌ ${result.error}`); }
+                  else {
+                    /* Tag as cover */
+                    const coverFile = { ...result, isCover: true };
+                    /* Remove previous cover if exists */
+                    const prevFiles = (sel.steps?.design?.files||[]).filter(f => !f.isCover);
+                    updateStep("design", { files: [...prevFiles, coverFile], by: user?.name||"", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                    showToast("Capa enviada ✓");
+                  }
+                  e.target.value = "";
+                }} />
                 <button onClick={()=>{
-                  /* Feed: block if already has image */
                   if (sel.format === "Feed") {
                     const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
                     if (existingImgs.length >= 1) { showToast("⚠ Feed permite apenas 1 imagem. Remova a atual ou mude para Carrossel."); return; }
                   }
                   document.getElementById("designUpload").click();
-                }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo + capa" : sel.format==="Feed" ? "Enviar imagem" : `Enviar imagens${sel.format==="Carrossel"?" (2-20)":""}`}
+                }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${(sel.format==="Reels"||sel.format==="Shorts")?"#3B82F6":B.pink}40`, background:`${(sel.format==="Reels"||sel.format==="Shorts")?"#3B82F6":B.pink}04`, cursor:"pointer", color:(sel.format==="Reels"||sel.format==="Shorts")?"#3B82F6":B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {(sel.format==="Reels"||sel.format==="Shorts") ? <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Enviar vídeo</> : <>{IC.upload} {sel.format==="Feed" ? "Enviar imagem" : `Enviar imagens${sel.format==="Carrossel"?" (2-20)":""}`}</>}
                 </button>
+                {(sel.format==="Reels"||sel.format==="Shorts") && <button onClick={()=>document.getElementById("designCoverUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:12, border:`2px dashed ${B.accent}40`, background:`${B.accent}04`, cursor:"pointer", color:B.accent, fontSize:12, fontWeight:600, fontFamily:"inherit", marginTop:6 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  {(sel.steps?.design?.files||[]).some(f=>f.isCover) ? "Trocar capa do vídeo" : "Enviar capa do vídeo"}
+                </button>}
               </div>
               {uploadProgress && <div style={{ margin:"8px 0", padding:"10px 12px", borderRadius:10, background:`${B.accent}08`, border:`1px solid ${B.accent}20` }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
