@@ -236,6 +236,17 @@ const supaDeleteDemand = async (id) => {
   if (!supabase) return;
   try { await supabase.from("demands").delete().eq("id", id); } catch(e) {}
 };
+const supaBulkDeleteDemands = async (clientId) => {
+  if (!supabase) return 0;
+  try {
+    let q = supabase.from("demands").delete();
+    if (clientId) q = q.eq("client_id", clientId);
+    else q = q.neq("id", "00000000-0000-0000-0000-000000000000"); /* delete all */
+    const { data, error } = await q.select("id");
+    if (error) { console.error("Bulk delete error:", error); return 0; }
+    return data?.length || 0;
+  } catch(e) { console.error(e); return 0; }
+};
 
 /* ── Supabase Storage: compress + upload files for demands ── */
 const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
@@ -7747,6 +7758,7 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const dateFilterBtnRef = useRef(null);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [calMonth, setCalMonth] = useState(null);
   const [calYear, setCalYear] = useState(null);
   const [sel, setSel] = useState(null);
@@ -10384,6 +10396,27 @@ REGRAS TÉCNICAS:
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20"/><path d="M2 12h20"/></svg>
           Gerar Posts de Notícias
         </button>
+        {user?.supaRole === "admin" && <div style={{ position:"relative" }}>
+          <button onClick={() => setShowBulkDelete(v => !v)} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 12px", borderRadius:12, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Limpar
+          </button>
+          {showBulkDelete && <>
+            <div onClick={() => setShowBulkDelete(false)} style={{ position:"fixed", inset:0, zIndex:49 }} />
+            <div style={{ position:"absolute", top:"100%", right:0, marginTop:6, width:260, background:B.bgCard, borderRadius:14, border:`1px solid ${B.border}`, boxShadow:"0 8px 30px rgba(0,0,0,0.12)", zIndex:50, padding:8 }}>
+              <p style={{ fontSize:10, fontWeight:700, color:B.muted, padding:"4px 8px", textTransform:"uppercase" }}>Apagar demandas</p>
+              <button onClick={async () => { if (!confirm("Tem certeza que deseja apagar TODAS as demandas? Isso nao pode ser desfeito.")) return; const n = await supaBulkDeleteDemands(null); setDemands([]); setShowBulkDelete(false); showToast(n + " demandas apagadas"); }} style={{ width:"100%", padding:"10px 12px", borderRadius:10, border:"none", background:`${B.red||"#EF4444"}08`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.red||"#EF4444", textAlign:"left", marginBottom:4 }}>Todas as demandas ({demands.length})</button>
+              {[...new Set(demands.map(d=>d.client).filter(Boolean))].sort().map(cl => {
+                const clientDemands = demands.filter(d=>d.client===cl);
+                const clientObj = CDATA.find(cc=>cc.name===cl);
+                return <button key={cl} onClick={async () => { if (!confirm("Apagar todas as demandas de "+cl+"?")) return; const cid = clientObj?.supaId||clientObj?.id; const n = await supaBulkDeleteDemands(cid); setDemands(prev => prev.filter(d => d.client !== cl)); setShowBulkDelete(false); showToast(n + " demandas de " + cl + " apagadas"); }} style={{ width:"100%", padding:"8px 12px", borderRadius:10, border:"none", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:500, color:B.text, textAlign:"left", display:"flex", alignItems:"center", gap:8 }}>
+                  <Av name={cl} sz={22} fs={8} />
+                  <span>{cl} ({clientDemands.length})</span>
+                </button>;
+              })}
+            </div>
+          </>}
+        </div>}
         </div>
       </div>}
 
@@ -21491,7 +21524,28 @@ function NotesPage({ onBack, user }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
         </div>
-        <textarea value={editText} onChange={e => setEditText(e.target.value)} onBlur={saveNote} placeholder="Escreva suas anotações aqui..." style={{ flex:1, width:"100%", minHeight:isNotesDesktop?400:300, border:"none", outline:"none", resize:"none", padding:"20px 20px", fontFamily:"inherit", fontSize:15, lineHeight:2, color:B.text, background:"transparent", boxSizing:"border-box" }} />
+        {/* Rich text toolbar */}
+        <div style={{ display:"flex", alignItems:"center", gap:2, padding:"6px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
+          {[
+            { cmd:"bold", icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"/><path d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"/></svg>, label:"Negrito" },
+            { cmd:"italic", icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>, label:"Itálico" },
+            { cmd:"underline", icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 3v7a6 6 0 006 6 6 6 0 006-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>, label:"Sublinhado" },
+            { cmd:"strikeThrough", icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M17.3 4.9c-1.2-1.1-2.9-1.4-4.5-1.4-3.1 0-5.3 1.6-5.3 4 0 1.4.7 2.4 1.8 3.1"/><line x1="4" y1="12" x2="20" y2="12"/><path d="M6.7 15.1c0 2.6 2.2 4.4 5.5 4.4 1.6 0 3.3-.4 4.5-1.5"/></svg>, label:"Riscado" },
+          ].map(b => (
+            <button key={b.cmd} title={b.label} onMouseDown={e => { e.preventDefault(); document.execCommand(b.cmd, false, null); }} style={{ width:30, height:28, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted }}>
+              {b.icon}
+            </button>
+          ))}
+          <div style={{ width:1, height:18, background:B.border, margin:"0 4px" }} />
+          {[
+            { cmd:"insertUnorderedList", icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>, label:"Lista" },
+          ].map(b => (
+            <button key={b.cmd} title={b.label} onMouseDown={e => { e.preventDefault(); document.execCommand(b.cmd, false, null); }} style={{ width:30, height:28, borderRadius:6, border:"none", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.muted }}>
+              {b.icon}
+            </button>
+          ))}
+        </div>
+        <div contentEditable suppressContentEditableWarning ref={el => { if (el && el.innerHTML !== editText && !el.matches(":focus")) el.innerHTML = editText || ""; }} onInput={e => setEditText(e.currentTarget.innerHTML)} onBlur={saveNote} placeholder="Escreva suas anotações aqui..." style={{ flex:1, width:"100%", minHeight:isNotesDesktop?400:300, border:"none", outline:"none", padding:"20px 20px", fontFamily:"inherit", fontSize:15, lineHeight:2, color:B.text, background:"transparent", boxSizing:"border-box", overflowY:"auto" }} />
       </>)}
     </div>
   );
