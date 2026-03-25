@@ -7958,9 +7958,11 @@ REGRAS TÉCNICAS:
         ] : [{ type: "text", text: prompt + "\n\nCONTEÚDO DO DOCUMENTO:\n" + textContent }] }];
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({ model: "claude-3-5-haiku-20241022", max_tokens: 8000, messages })
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages })
         });
         const d = await r.json();
+        console.log("[Munique] Claude response:", r.status, d?.error ? JSON.stringify(d.error) : "OK", "text length:", (d?.content?.[0]?.text||"").length);
+        if (d?.error) { showToast(`Erro Claude: ${d.error.message || JSON.stringify(d.error)}`); return ""; }
         return d?.content?.[0]?.text || "";
       };
       const callOpenAI = async () => {
@@ -7970,6 +7972,8 @@ REGRAS TÉCNICAS:
           body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 8000, messages: [{ role: "user", content: prompt + "\n\nCONTEÚDO:\n" + (textContent || "(PDF)") }] })
         });
         const d = await r.json();
+        console.log("[Munique] OpenAI response:", r.status, d?.error ? JSON.stringify(d.error) : "OK");
+        if (d?.error) { showToast(`Erro OpenAI: ${d.error.message || JSON.stringify(d.error)}`); return ""; }
         return d?.choices?.[0]?.message?.content || "";
       };
 
@@ -7977,15 +7981,17 @@ REGRAS TÉCNICAS:
       else if (ipAiModel === "openai" && keys?.openai_key) aiText = await callOpenAI();
       else if (ipAiModel === "gemini" && keys?.gemini_key) aiText = await callGemini();
       else if (ipAiModel === "auto") {
+        /* Try all available in sequence until one succeeds */
         if (keys?.gemini_key) aiText = await callGemini();
-        else if (keys?.claude_key) aiText = await callClaude();
-        else if (keys?.openai_key) aiText = await callOpenAI();
+        if (!aiText && keys?.claude_key) aiText = await callClaude();
+        if (!aiText && keys?.openai_key) aiText = await callOpenAI();
       }
-      /* Fallback: try any available key */
+      /* Fallback: if specific model failed, try others */
       if (!aiText && ipAiModel !== "auto") {
-        if (keys?.claude_key && ipAiModel !== "claude") aiText = await callClaude();
-        else if (keys?.openai_key && ipAiModel !== "openai") aiText = await callOpenAI();
-        else if (keys?.gemini_key && ipAiModel !== "gemini") aiText = await callGemini();
+        console.log("[Munique] Primary model failed, trying fallback...");
+        if (!aiText && keys?.claude_key) aiText = await callClaude();
+        if (!aiText && keys?.openai_key) aiText = await callOpenAI();
+        if (!aiText && keys?.gemini_key) aiText = await callGemini();
       }
       if (!aiText) {
         setIpProgress(""); setIpLoading(false);
