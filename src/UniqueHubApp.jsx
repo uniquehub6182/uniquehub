@@ -3699,7 +3699,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       return phoneFrame(opt.l,opt.icon||"content",noop,<div style={{padding:"40px 20px",textAlign:"center",color:"#9CA3AF"}}><p style={{fontSize:13}}>{opt.l} — Em breve</p></div>);
     };
     return (
-      <div className="desktop-dash" style={{minHeight:"100vh",background:B.bg,paddingBottom:100,margin:0}}>
+      <div className="desktop-dash" style={{minHeight:"100vh",background:B.transparent?"transparent":B.bg,paddingBottom:100,margin:0}}>
         {/* ── HEADER ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
@@ -23956,7 +23956,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
     const s = document.createElement("style");
     s.id = id;
     s.textContent = `
-.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:${B.bg}!important;color:${B.text}!important}
+.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
@@ -24235,7 +24235,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   /* ═══ CLIENT SUB-PAGES — wrapper with back button ═══ */
   /* Inject essential styles for sub-pages (they return early, bypassing main style tag) */
   const clientStyles = `
-.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.bg}!important;color:${B.text}!important}
+.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
@@ -25620,7 +25620,7 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
 --uh-nav-rad:${({pill:"20px",rounded:"14px",bar:"0",minimal:"10px"})[uiPrefs.navStyle||"pill"]||"20px"};
 }
 body,*{font-family:var(--uh-font)!important}
-.app,.screen{background:${B.bg}!important;color:${B.text}!important;transition:background .25s,color .25s${uiPrefs.highContrast?";filter:contrast(1.15)":""}}
+.app,.screen{background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important;transition:background .25s,color .25s${uiPrefs.highContrast?";filter:contrast(1.15)":""}}
 .card{background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border);border-radius:var(--uh-radius)!important;padding:var(--uh-pad)!important;transition:background .25s,box-shadow .25s,border .25s,border-radius .25s;${uiPrefs.cardStyle==="glass"&&!uiPrefs.reduceTransparency?"backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);":""}transition:all var(--uh-anim) ease}
 .demands-grid>div{border-radius:var(--uh-radius)!important;overflow:hidden!important;background:var(--uh-card-bg);box-shadow:var(--uh-card-shadow);border:var(--uh-card-border)}
 .phone-block{border-radius:var(--uh-radius)!important}
@@ -25668,7 +25668,7 @@ ${(()=>{
     diagonal:{img:`repeating-linear-gradient(45deg,transparent,transparent 10px,${dark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"} 10px,${dark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.02)"} 11px)`,sz:"auto"},
     topography:{img:`url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0C8.96 0 0 8.96 0 20s8.96 20 20 20 20-8.96 20-20S31.04 0 20 0z' fill='none' stroke='${dark?"%23ffffff06":"%2300000006"}' stroke-width='1'/%3E%3C/svg%3E")`,sz:"40px 40px"},
   };
-  if(BG[t]) return `.app,.screen{background:${BG[t]}!important}`;
+  if(BG[t] && !B.transparent) return `.app,.screen{background:${BG[t]}!important}`;
   if(OV[t]){
     const bg = t==="grid_cyber"?(dark?"#0a0f14":"#f5f5f7"):B.bg;
     return `.app,.screen{background:${bg}!important}.app::before,.screen::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:${OV[t].img};background-size:${OV[t].sz}}`;
@@ -26267,9 +26267,9 @@ input,textarea,select{font-size:16px !important}
 /* ── Desktop Layout (class-based for maximum specificity) ── */
 .d-sidebar{display:none!important}
 html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:${B.bg}!important;transition:background .25s}
-html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:${B.bg}!important;width:100%!important;max-width:100%!important}
+html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important;max-width:100%!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:${B.bg}!important;width:100%!important;box-sizing:border-box!important;transition:background .25s}
-html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:${B.bg}!important;width:100%!important}
+html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important}
 html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:var(--uh-radius)!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
