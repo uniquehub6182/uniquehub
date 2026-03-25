@@ -8067,30 +8067,25 @@ REGRAS TÉCNICAS:
 
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
-    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, display:"flex", flexDirection:"column", overflow:"hidden", alignItems:"center" }}>
-      <div style={{ width:"100%", maxWidth:1400, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", padding:"0 16px" }}>
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+B.border, flexShrink:0 }}>
-        <button onClick={resetImportPlan} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-        <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800 }}>Importe com a Munique A.I</p><p style={{ fontSize:11, color:B.muted }}>Passo {ipStep} de 3</p></div>
-        {ipStep === 3 && <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 18px", borderRadius:12, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#0D0D0D", boxShadow:"0 2px 10px "+B.accent+"30", display:"flex", alignItems:"center", gap:6 }}>{ipCreating ? <><div style={{ width:14, height:14, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {ipCreated}/{ipPosts.filter(p=>p._enabled).length}</> : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg> Criar {ipPosts.filter(p=>p._enabled).length} posts</>}</button>}
-      </div>
-      {/* Progress bar */}
-      <div style={{ height:3, background:B.border, flexShrink:0 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
+    <div className="pg" style={{ paddingTop: TOP, background:B.bg, minHeight:"100vh" }}>
+      {ToastEl}
+      <Head title={`Munique A.I · Passo ${ipStep}/3`} onBack={resetImportPlan} right={ipStep === 3 ? <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:800, color:"#0D0D0D", display:"flex", alignItems:"center", gap:5 }}>{ipCreating ? <><div style={{ width:12, height:12, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {ipCreated}/{ipPosts.filter(p=>p._enabled).length}</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Criar {ipPosts.filter(p=>p._enabled).length} posts</>}</button> : null} />
 
-      <div style={{ flex:1, overflowY:"auto", padding:"24px 16px" }}>
-        <div style={{ maxWidth:780, margin:"0 auto" }}>
+      {/* Progress bar */}
+      <div style={{ height:3, background:B.border, marginBottom:20 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
+
+      <div style={{ maxWidth:860, margin:"0 auto" }}>
         {/* ═══ STEP 1: SELECT CLIENT + UPLOAD ═══ */}
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
 
           {/* ── HERO ── */}
-          <div style={{ textAlign:"center", padding:"8px 0 24px" }}>
-            <div style={{ width:56, height:56, borderRadius:18, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", boxShadow:"0 4px 20px "+B.accent+"30" }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+          <div style={{ textAlign:"center", padding:"0 0 20px" }}>
+            <div style={{ width:48, height:48, borderRadius:14, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
             </div>
-            <h2 style={{ fontSize:20, fontWeight:900, marginBottom:4, letterSpacing:"-0.3px" }}>Munique A.I vai criar seus posts</h2>
-            <p style={{ fontSize:13, color:B.muted, lineHeight:1.5, maxWidth:360, margin:"0 auto" }}>Envie o planejamento e a IA gera legendas, briefings e programação automaticamente</p>
+            <h2 style={{ fontSize:17, fontWeight:800, marginBottom:3, letterSpacing:"-0.3px" }}>A Munique vai criar seus posts</h2>
+            <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>Envie o planejamento e a IA gera legendas, briefings e programação</p>
           </div>
 
           {/* ── SECTION 1: CLIENTE ── */}
@@ -8185,8 +8180,8 @@ REGRAS TÉCNICAS:
           </div>
 
           {/* ── CTA ── */}
-          <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:ipClient && ipFile ? "linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)" : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:15, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, boxShadow:ipClient && ipFile ? "0 4px 20px "+B.accent+"30" : "none", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+          <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:14, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:20 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
             Processar com a Munique A.I
           </button>
         </>}
@@ -8290,8 +8285,6 @@ REGRAS TÉCNICAS:
           })}
           <div style={{ height:80 }} />
         </>}
-      </div>
-      </div>
       </div>
     </div>
   ) : null;
