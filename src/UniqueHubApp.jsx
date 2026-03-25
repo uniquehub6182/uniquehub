@@ -13672,8 +13672,20 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
     const applyPreset = (p) => {
       captureScroll();
+      /* Immediately recalculate B so current render uses new values */
+      const newAccent = THEME_MAP[p.theme] || "#BBF246";
+      B = getB(p.dark, newAccent, p.pr);
+      /* Update body background immediately (don't wait for useEffect) */
+      const bg = B.liquidGlass
+        ? (p.dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)")
+        : B.bg;
+      document.documentElement.style.background = bg;
+      document.body.style.background = bg;
+      /* Trigger React state updates */
       setDark(p.dark); setThemeColor(p.theme); replaceUiPrefs(p.pr);
-      /* Force a single correct cloud save with all new values */
+      /* Force second re-render so all CSS template literals update */
+      setTimeout(() => { setDark(p.dark); }, 50);
+      /* Cloud save */
       if (typeof savePrefsToCloud === "function" && user?.id) {
         setTimeout(() => savePrefsToCloud(p.dark, p.theme, p.pr, user.id), 50);
       }
@@ -25057,7 +25069,13 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const { showToast: mainToast, ToastEl } = useToast();
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
-  React.useEffect(() => { document.documentElement.style.background = B.bg; document.body.style.background = B.bg; }, [dark, uiPrefs]);
+  React.useEffect(() => {
+    const bg = B.liquidGlass
+      ? (dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)")
+      : B.bg;
+    document.documentElement.style.background = bg;
+    document.body.style.background = bg;
+  }, [dark, uiPrefs, themeColor]);
   const [sub, setSub] = useState(() => {
     const fromHash = parseHash();
     if (fromHash.sub) return fromHash.sub;
