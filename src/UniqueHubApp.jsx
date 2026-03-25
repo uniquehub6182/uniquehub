@@ -7904,7 +7904,7 @@ CLIENTE: ${clientName}
 ANO ATUAL: ${currentYear}
 TOM: ${ipTone}
 EMOJIS: ${ipEmojis ? `Sim, de forma ${ipEmojiQty === "pouco" ? "sutil (máx 1-2 por parágrafo)" : ipEmojiQty === "moderado" ? "moderada (2-3 por parágrafo, variados)" : "generosa (4-5 por parágrafo)"}` : "NÃO usar emojis"}
-DIMENSÃO: ${ipAspectRatio} (usar essa dimensão no briefing do designer)
+DIMENSÃO: ${ipAspectRatio} para Feed e Carrossel. Reels e Stories são SEMPRE 9:16 (1080×1920).
 REDES SOCIAIS: ${ipNetworks.join(", ")} (TODOS os posts devem ter networks: [${ipNetworks.map(n=>'"'+n+'"').join(",")}])
 
 REGRAS OBRIGATÓRIAS DE HUMANIZAÇÃO:
@@ -7926,7 +7926,7 @@ Para CADA item do documento, gere um JSON com:
 - schedTime: "10:00" (posts) ou "18:00" (vídeos)
 - caption: legenda humanizada seguindo TODAS as regras acima (SEM hashtags no final — hashtags vão em campo separado)
 - hashtags: string com todas as hashtags separadas por espaço (ex: "#marketing #redes #design"), NUNCA incluir hashtags dentro da caption
-- designBrief: briefing completo pro designer (formato, dimensão ${ipAspectRatio}, elementos visuais, textos na arte, cores, estilo, referências). SEMPRE mencionar a dimensão ${ipAspectRatio} no briefing.
+- designBrief: briefing completo pro designer. Para Feed/Carrossel usar dimensão ${ipAspectRatio}. Para Reels/Stories usar 9:16 (1080×1920). SEMPRE mencionar a dimensão correta no briefing.
 - scriptOrRoteiro: roteiro completo pra vídeos (gancho, desenvolvimento, CTA) ou "" pra posts
 
 REGRAS TÉCNICAS:
@@ -8012,7 +8012,7 @@ REGRAS TÉCNICAS:
           ...p, _id: Date.now() + i, _enabled: true,
           title: p.title || "Post " + (i + 1),
           type: p.type || "social",
-          format: p.format || "Feed", aspectRatio: ipAspectRatio || "1:1",
+          format: p.format || "Feed", aspectRatio: (p.format==="Reels"||p.format==="Stories") ? "9:16" : (ipAspectRatio || "1:1"),
           networks: p.networks || ["Instagram"],
           schedDate: p.schedDate || "",
           schedTime: p.schedTime || "10:00",
@@ -8157,9 +8157,9 @@ REGRAS TÉCNICAS:
                 </div>
                 {/* Dimensão */}
                 <div style={{ marginTop:10, paddingTop:10, borderTop:"1px solid "+B.border }}>
-                  <p style={{ fontSize:12, color:B.muted, marginBottom:6 }}>Dimensão dos posts:</p>
+                  <p style={{ fontSize:12, color:B.muted, marginBottom:6 }}>Dimensão dos posts (Feed/Carrossel):</p>
                   <div style={{ display:"flex", gap:5 }}>
-                    {[{k:"1:1",l:"1:1",px:"1080×1080"},{k:"4:5",l:"4:5",px:"1080×1350"},{k:"9:16",l:"9:16",px:"1080×1920"}].map(d => (
+                    {[{k:"1:1",l:"1:1",px:"1080×1080"},{k:"4:5",l:"4:5",px:"1080×1350"},{k:"3:4",l:"3:4",px:"1080×1440"}].map(d => (
                       <button key={d.k} onClick={()=>setIpAspectRatio(d.k)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:ipAspectRatio===d.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipAspectRatio===d.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipAspectRatio===d.k?700:500, color:ipAspectRatio===d.k?B.accent:B.muted, textAlign:"center" }}>
                         <span style={{ display:"block", fontWeight:700 }}>{d.l}</span>
                         <span style={{ display:"block", fontSize:9, opacity:0.7 }}>{d.px}</span>
