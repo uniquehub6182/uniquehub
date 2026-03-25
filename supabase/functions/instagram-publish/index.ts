@@ -4,12 +4,12 @@ const H = { "Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"au
 const json = (d: unknown, s=200) => new Response(JSON.stringify(d), { headers:{...H,"Content-Type":"application/json"}, status:s });
 
 async function waitReady(id: string, token: string) {
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     const r = await fetch(`https://graph.instagram.com/v21.0/${id}?fields=status_code&access_token=${token}`);
     const d = await r.json();
     if (d.status_code === "FINISHED") return;
     if (d.status_code === "ERROR") throw new Error("Instagram processing error: " + JSON.stringify(d));
-    await new Promise(r => setTimeout(r, i < 5 ? 500 : 1000));
+    await new Promise(r => setTimeout(r, i < 5 ? 1000 : 2000));
   }
   throw new Error("Media processing timeout");
 }
