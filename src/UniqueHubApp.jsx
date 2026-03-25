@@ -766,14 +766,16 @@ const getMetaConnection = async (clientId) => {
   } catch(e) { return null; }
 };
 
-const publishToMeta = async (clientId, imageUrl, caption, platforms, mediaType = "FEED") => {
+const publishToMeta = async (clientId, imageUrl, caption, platforms, mediaType = "FEED", scheduledTime = null) => {
   if (!supabase || !SUPA_URL) return null;
   try {
     const urls = Array.isArray(imageUrl) ? imageUrl : [imageUrl];
+    const body = { client_id: clientId, image_url: urls[0], image_urls: urls, caption, media_type: mediaType };
+    if (scheduledTime) body.scheduled_publish_time = scheduledTime;
     const res = await fetch(`${SUPA_URL}/functions/v1/facebook-publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ client_id: clientId, image_url: urls[0], image_urls: urls, caption, media_type: mediaType })
+      body: JSON.stringify(body)
     });
     return await res.json();
   } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
@@ -8614,7 +8616,7 @@ REGRAS TÉCNICAS:
         try {
           let igOk = false, fbOk = false, igErr = "", fbErr = "";
           if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs); if (r?.error) igErr = r.error; else igOk = true; }
-          if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType); if (r?.error) fbErr = r.error; else fbOk = true; }
+          if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType, schedTs); if (r?.error) fbErr = r.error; else fbOk = true; }
           if (igOk || fbOk) {
             const pubStage = stages[stages.indexOf("scheduled")+1] || "published";
             const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
@@ -9786,8 +9788,13 @@ REGRAS TÉCNICAS:
                       setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: combinedSteps } : x));
                       setSel(prev => ({ ...prev, steps: combinedSteps }));
                       if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: combinedSteps });
-                      setTimeout(() => advanceStage(sel), 200);
-                      showToast(`✓ Agendado para ${schedLabel}`);
+                      /* Move to scheduled stage WITHOUT triggering auto-publish */
+                      const stages = getStages(sel.type);
+                      const nextStage = stages[stages.indexOf("client") + 1] || "scheduled";
+                      setDemands(prev => prev.map(x => x.id === sel.id ? syncMilestones({...x, stage: nextStage, steps: combinedSteps}, nextStage) : x));
+                      setSel(prev => syncMilestones({...prev, stage: nextStage, steps: combinedSteps}, nextStage));
+                      if (sel.supaId) supaUpdateDemand(sel.supaId, { stage: nextStage });
+                      showToast(`✅ Agendado para ${schedLabel}`);
                     } catch(e) { showToast(`Erro ao agendar: ${e.message}`); }
                     setPubLoading(false);
                   } else {

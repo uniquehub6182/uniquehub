@@ -59,11 +59,17 @@ serve(async (req) => {
         message: `${results.length} story${results.length > 1 ? "s" : ""} publicado${results.length > 1 ? "s" : ""} no Facebook!`,
       });
     } else {
-      /* ── FEED: single photo post ── */
+      /* ── FEED: single photo post (with optional scheduling) ── */
+      const scheduledTime = body.scheduled_publish_time;
       const params = new URLSearchParams();
       params.append("access_token", page_token);
       params.append("url", urls[0]);
       if (caption) params.append("message", caption);
+      if (scheduledTime) {
+        params.append("published", "false");
+        params.append("scheduled_publish_time", String(scheduledTime));
+        console.log(`[FB Feed] Scheduling for timestamp: ${scheduledTime} (${new Date(scheduledTime * 1000).toISOString()})`);
+      }
       const endpoint = `https://graph.facebook.com/v21.0/${page_id}/photos`;
       const res = await fetch(endpoint, { method: "POST", body: params });
       const data = await res.json();
@@ -72,7 +78,8 @@ serve(async (req) => {
       return json({
         success: true,
         media_id: data.id || data.post_id,
-        message: "Post publicado no Facebook!",
+        scheduled: !!scheduledTime,
+        message: scheduledTime ? "Post agendado no Facebook!" : "Post publicado no Facebook!",
       });
     }
   } catch (err: any) {
