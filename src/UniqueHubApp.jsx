@@ -208,6 +208,7 @@ const supaCreateDemand = async (d, clientId) => {
       networks: d.network ? d.network.split(", ") : ["Instagram"],
       sponsored: d.sponsored || false,
     };
+    if (d.aspectRatio) payload.aspectRatio = d.aspectRatio;
     if (clientId) payload.client_id = clientId;
     /* Save steps with creator info */
     if (d.steps) payload.steps = d.steps;
@@ -8044,7 +8045,7 @@ REGRAS TÉCNICAS:
     for (const p of enabled) {
       const newD = {
         title: p.title, type: p.type || "social", stage: "design",
-        format: p.format || "Feed", priority: "média",
+        format: p.format || "Feed", aspectRatio: (p.format==="Reels"||p.format==="Stories") ? "9:16" : (ipAspectRatio || "1:1"), priority: "média",
         network: (p.networks || ["Instagram"]).join(", "),
         client: selClient?.name || "", client_id: clientId,
         steps: {
