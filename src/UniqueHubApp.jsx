@@ -7903,6 +7903,7 @@ CLIENTE: ${clientName}
 ANO ATUAL: ${currentYear}
 TOM: ${ipTone}
 EMOJIS: ${ipEmojis ? `Sim, de forma ${ipEmojiQty === "pouco" ? "sutil (máx 1-2 por parágrafo)" : ipEmojiQty === "moderado" ? "moderada (2-3 por parágrafo, variados)" : "generosa (4-5 por parágrafo)"}` : "NÃO usar emojis"}
+REDES SOCIAIS: ${ipNetworks.join(", ")} (TODOS os posts devem ter networks: [${ipNetworks.map(n=>'"'+n+'"').join(",")}])
 
 REGRAS OBRIGATÓRIAS DE HUMANIZAÇÃO:
 1. PROIBIDO usar frases clichê de IA: "você sabia que", "não perca", "confira já", "fique ligado", "vem comigo", "bora lá", "arrasta pra cima". Se sentir vontade de usar, reescreva.
@@ -7918,7 +7919,7 @@ Para CADA item do documento, gere um JSON com:
 - title: título curto (max 60 chars)
 - type: "social" ou "video"
 - format: "Feed", "Stories", "Reels", "Carrossel" (detecte pelo contexto)
-- networks: ["Instagram"] ou ["Instagram","Facebook"]
+- networks: [${ipNetworks.map(n=>'"'+n+'"').join(",")}] (SEMPRE usar essas redes)
 - schedDate: "${currentYear}-MM-DD"
 - schedTime: "10:00" (posts) ou "18:00" (vídeos)
 - caption: legenda humanizada seguindo TODAS as regras acima (SEM hashtags no final — hashtags vão em campo separado)
@@ -8215,89 +8216,76 @@ REGRAS TÉCNICAS:
 
         {/* ═══ STEP 3: PREVIEW ═══ */}
         {ipStep === 3 && <>
-          {/* Summary hero */}
-          <div style={{ background:B.bgCard, borderRadius:20, border:"1px solid "+B.border, padding:"20px", marginBottom:16, display:"flex", alignItems:"center", gap:16 }}>
-            <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, "+B.accent+" 0%, #8BC34A 100%)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {/* Summary bar */}
+          <div style={{ display:"flex", alignItems:"center", gap:14, background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px 18px", marginBottom:16 }}>
+            <div style={{ width:40, height:40, borderRadius:12, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:18, fontWeight:900 }}>{ipPosts.length} posts gerados</p>
-              <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{ipPosts.filter(p=>p._enabled).length} selecionados · {ipPosts.filter(p=>p.type==="video").length} vídeos · {ipPosts.filter(p=>p.type!=="video").length} posts</p>
+              <p style={{ fontSize:16, fontWeight:800 }}>{ipPosts.length} posts gerados</p>
+              <p style={{ fontSize:12, color:B.muted }}>{ipPosts.filter(p=>p._enabled).length} selecionados · {ipPosts.filter(p=>p.type==="video").length} vídeos · {ipPosts.filter(p=>p.type!=="video").length} posts</p>
             </div>
             <button onClick={() => setIpPosts(p => p.map(x => ({ ...x, _enabled: !p.every(y => y._enabled) })))} style={{ padding:"8px 14px", borderRadius:10, border:"1.5px solid "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>
-              {ipPosts.every(p => p._enabled) ? "Desmarcar" : "Selecionar"}
+              {ipPosts.every(p => p._enabled) ? "Desmarcar todos" : "Selecionar todos"}
             </button>
           </div>
 
+          {/* Grid 3 columns */}
+          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(3, 1fr)" : "1fr", gap:12 }}>
           {ipPosts.map((post, idx) => {
             const updatePost = (field, val) => setIpPosts(p => p.map((x, i) => i === idx ? { ...x, [field]: val } : x));
             const isVideo = post.type === "video";
-            const typeColor = isVideo ? (B.orange||"#F59E0B") : (B.blue||"#3B82F6");
-            const formatIcon = { Feed:"📷", Stories:"📱", Reels:"🎬", Carrossel:"🔄" }[post.format] || (isVideo?"🎥":"📝");
-            const dateStr = post.schedDate ? new Date(post.schedDate+"T12:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}).replace(".","") : "";
+            const typeColor = isVideo ? "#F59E0B" : "#3B82F6";
+            const formatIcon = { Feed:"📷", Stories:"📱", Reels:"🎬", Carrossel:"🔄" }[post.format] || "📝";
+            const isExpanded = post._expanded;
             return (
-              <div key={post._id} style={{ marginBottom:14, borderRadius:20, border:"1px solid "+(post._enabled ? B.accent+"25" : B.border), background:B.bgCard, overflow:"hidden", opacity:post._enabled ? 1 : 0.45, transition:"all .2s" }}>
+              <div key={post._id} style={{ borderRadius:16, border:"1px solid "+(post._enabled ? B.accent+"30" : B.border), background:B.bgCard, overflow:"hidden", opacity:post._enabled ? 1 : 0.4, transition:"all .2s" }}>
 
-                {/* ── Card header with colored accent bar ── */}
-                <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", background:post._enabled ? typeColor+"06" : "transparent", borderBottom:"1px solid "+B.border }}>
-                  <button onClick={() => updatePost("_enabled", !post._enabled)} style={{ width:26, height:26, borderRadius:9, border:post._enabled ? "none" : "2px solid "+B.border, background:post._enabled ? B.accent : "transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}>
-                    {post._enabled && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                {/* Card header */}
+                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", borderBottom:"1px solid "+B.border, background:post._enabled ? typeColor+"05" : "transparent" }}>
+                  <button onClick={() => updatePost("_enabled", !post._enabled)} style={{ width:22, height:22, borderRadius:7, border:post._enabled ? "none" : "2px solid "+B.border, background:post._enabled ? B.accent : "transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    {post._enabled && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </button>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <input value={post.title} onChange={e => updatePost("title", e.target.value)} style={{ width:"100%", fontSize:15, fontWeight:800, color:B.text, background:"transparent", border:"none", outline:"none", fontFamily:"inherit", padding:0, letterSpacing:"-0.2px" }} />
-                  </div>
-                  {/* Number badge */}
-                  <span style={{ fontSize:10, fontWeight:700, color:B.muted, background:B.bg, padding:"4px 10px", borderRadius:8, flexShrink:0 }}>{idx+1}/{ipPosts.length}</span>
+                  <p style={{ flex:1, fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{post.title}</p>
+                  <span style={{ fontSize:9, fontWeight:700, color:B.muted, background:B.bg, padding:"2px 7px", borderRadius:6, flexShrink:0 }}>{idx+1}/{ipPosts.length}</span>
                 </div>
 
-                {/* ── Meta pills row ── */}
-                <div style={{ display:"flex", gap:6, padding:"10px 16px", flexWrap:"wrap", alignItems:"center" }}>
-                  <span style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8, background:typeColor+"12", color:typeColor, display:"flex", alignItems:"center", gap:4 }}>{formatIcon} {isVideo ? "Vídeo" : "Post"}</span>
-                  <span style={{ fontSize:10, fontWeight:600, padding:"4px 10px", borderRadius:8, background:B.bg, color:B.muted }}>{post.format}</span>
-                  {(post.networks||[]).map(n => <span key={n} style={{ fontSize:10, fontWeight:600, padding:"4px 10px", borderRadius:8, background:n==="Instagram"?"#E1306C10":n==="Facebook"?"#1877F210":B.bg, color:n==="Instagram"?"#E1306C":n==="Facebook"?"#1877F2":B.muted }}>{n}</span>)}
-                  {dateStr && <span style={{ fontSize:10, fontWeight:600, padding:"4px 10px", borderRadius:8, background:B.accent+"10", color:B.accent, marginLeft:"auto" }}>📅 {dateStr} · {post.schedTime}</span>}
+                {/* Meta pills */}
+                <div style={{ display:"flex", gap:4, padding:"8px 12px", flexWrap:"wrap", alignItems:"center" }}>
+                  <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6, background:typeColor+"12", color:typeColor }}>{formatIcon} {post.format}</span>
+                  {(post.networks||[]).map(n => <span key={n} style={{ fontSize:9, fontWeight:600, padding:"3px 8px", borderRadius:6, background:n==="Instagram"?"#E1306C10":"#1877F210", color:n==="Instagram"?"#E1306C":"#1877F2" }}>{n}</span>)}
+                  {post.schedDate && <span style={{ fontSize:9, fontWeight:600, color:B.accent, marginLeft:"auto" }}>📅 {post.schedDate?.substring(5)} · {post.schedTime}</span>}
                 </div>
 
-                {/* ── Editable fields ── */}
-                {post._enabled && <div style={{ padding:"4px 16px 16px" }}>
-                  {/* Schedule row */}
-                  <div style={{ display:"flex", gap:8, marginBottom:12, background:B.bg, borderRadius:14, padding:"10px 12px" }}>
-                    <div style={{ flex:1 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>Data</label><input type="date" value={post.schedDate} onChange={e => updatePost("schedDate", e.target.value)} className="tinput" style={{ fontSize:12, background:B.bgCard }} /></div>
-                    <div style={{ width:85 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>Hora</label><input type="time" value={post.schedTime} onChange={e => updatePost("schedTime", e.target.value)} className="tinput" style={{ fontSize:12, background:B.bgCard }} /></div>
-                    <div style={{ width:95 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>Formato</label><select value={post.format} onChange={e => updatePost("format", e.target.value)} className="tinput" style={{ fontSize:12, background:B.bgCard }}><option>Feed</option><option>Stories</option><option>Reels</option><option>Carrossel</option></select></div>
-                  </div>
+                {/* Caption preview (always visible) */}
+                <div style={{ padding:"0 12px 10px" }}>
+                  <p style={{ fontSize:11, color:B.text, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp: isExpanded ? 999 : 3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{post.caption}</p>
+                </div>
 
-                  {/* Legenda */}
-                  <div style={{ marginBottom:12 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Legenda</label>
-                    </div>
-                    <textarea value={post.caption} onChange={e => updatePost("caption", e.target.value)} className="tinput" style={{ minHeight:80, resize:"vertical", fontSize:12, lineHeight:1.6, background:B.bg, borderRadius:12 }} />
-                  </div>
+                {/* Expand/collapse */}
+                <button onClick={() => updatePost("_expanded", !isExpanded)} style={{ width:"100%", padding:"6px 0", borderTop:"1px solid "+B.border, background:"transparent", border:"none", borderTop:"1px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:4 }}>
+                  {isExpanded ? "Recolher ▲" : "Editar ▼"}
+                </button>
 
-                  {/* Briefing */}
-                  <div style={{ marginBottom:post.scriptOrRoteiro ? 12 : 0 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.purple||"#8B5CF6"} strokeWidth="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
-                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Briefing do designer</label>
-                    </div>
-                    <textarea value={post.designBrief} onChange={e => updatePost("designBrief", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.6, background:B.bg, borderRadius:12 }} />
+                {/* Expanded editable fields */}
+                {isExpanded && post._enabled && <div style={{ padding:"10px 12px", borderTop:"1px solid "+B.border, background:B.bg }}>
+                  <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                    <div style={{ flex:1 }}><label style={{ fontSize:8, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Data</label><input type="date" value={post.schedDate} onChange={e => updatePost("schedDate", e.target.value)} className="tinput" style={{ fontSize:11, background:B.bgCard }} /></div>
+                    <div style={{ width:75 }}><label style={{ fontSize:8, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Hora</label><input type="time" value={post.schedTime} onChange={e => updatePost("schedTime", e.target.value)} className="tinput" style={{ fontSize:11, background:B.bgCard }} /></div>
+                    <div style={{ width:80 }}><label style={{ fontSize:8, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Formato</label><select value={post.format} onChange={e => updatePost("format", e.target.value)} className="tinput" style={{ fontSize:11, background:B.bgCard }}><option>Feed</option><option>Stories</option><option>Reels</option><option>Carrossel</option></select></div>
                   </div>
-
-                  {/* Roteiro (video only) */}
-                  {post.scriptOrRoteiro && <div>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>Roteiro</label>
-                    </div>
-                    <textarea value={post.scriptOrRoteiro} onChange={e => updatePost("scriptOrRoteiro", e.target.value)} className="tinput" style={{ minHeight:60, resize:"vertical", fontSize:12, lineHeight:1.6, background:B.bg, borderRadius:12 }} />
-                  </div>}
+                  <label style={{ fontSize:8, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Legenda</label>
+                  <textarea value={post.caption} onChange={e => updatePost("caption", e.target.value)} className="tinput" style={{ minHeight:70, resize:"vertical", fontSize:11, lineHeight:1.5, background:B.bgCard, borderRadius:10, marginBottom:6 }} />
+                  <label style={{ fontSize:8, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Briefing</label>
+                  <textarea value={post.designBrief} onChange={e => updatePost("designBrief", e.target.value)} className="tinput" style={{ minHeight:50, resize:"vertical", fontSize:11, lineHeight:1.5, background:B.bgCard, borderRadius:10, marginBottom:post.scriptOrRoteiro?6:0 }} />
+                  {post.scriptOrRoteiro && <><label style={{ fontSize:8, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Roteiro</label>
+                  <textarea value={post.scriptOrRoteiro} onChange={e => updatePost("scriptOrRoteiro", e.target.value)} className="tinput" style={{ minHeight:50, resize:"vertical", fontSize:11, lineHeight:1.5, background:B.bgCard, borderRadius:10 }} /></>}
                 </div>}
 
               </div>
             );
           })}
+          </div>
           <div style={{ height:80 }} />
         </>}
       </div>
