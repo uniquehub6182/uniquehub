@@ -1772,7 +1772,7 @@ function useToast() {
   const isError = toast && (toast.includes("Erro") || toast.includes("erro") || toast.includes("falh") || toast.includes("❌"));
   const isSuccess = toast && (toast.includes("✅") || toast.includes("✓") || toast.includes("Publicado") || toast.includes("criada") || toast.includes("Avançou"));
   const isGuide = toast && toast.includes("\n\n");
-  const ToastEl = toast ? <div className="toast-anim" onClick={()=>setToast(null)} style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%, -50%)", background: isError ? "rgba(239,68,68,0.95)" : isSuccess ? "rgba(16,185,129,0.95)" : "rgba(26,29,35,0.97)", backdropFilter:"blur(16px)", color:"#fff", padding: isGuide ? "20px 24px" : "16px 28px", borderRadius: isGuide ? 20 : 18, fontSize: isGuide ? 12 : 14, fontWeight: isGuide ? 500 : 700, zIndex:9999, boxShadow:"0 8px 40px rgba(0,0,0,0.4)", display:"flex", alignItems: isGuide ? "flex-start" : "center", gap:10, maxWidth: isGuide ? "88%" : "85%", textAlign: isGuide ? "left" : "center", letterSpacing:-0.2, border: isError ? "1px solid rgba(255,255,255,0.15)" : isSuccess ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(200,255,0,0.2)", whiteSpace: isGuide ? "pre-line" : "normal", lineHeight: isGuide ? 1.7 : 1.4, cursor:"pointer" }}><span style={{ fontSize: isGuide ? 24 : 20, flexShrink:0 }}>{isError ? "❌" : isSuccess ? "✅" : "📐"}</span><span>{toast.replace(/^[✅✓❌⚠️ℹ️📐]+\s*/, "")}</span></div> : null;
+  const ToastEl = toast ? <div className="toast-anim" onClick={()=>setToast(null)} style={{ position:"fixed", bottom:40, left:"50%", transform:"translateX(-50%)", background:"#1A1D23", backdropFilter:"blur(16px)", color:"#fff", padding: isGuide ? "14px 20px" : "12px 24px", borderRadius:14, fontSize: isGuide ? 12 : 13, fontWeight:600, zIndex:9999, boxShadow:"0 8px 40px rgba(0,0,0,0.4)", display:"flex", alignItems: isGuide ? "flex-start" : "center", gap:10, maxWidth:420, textAlign: isGuide ? "left" : "center", letterSpacing:-0.2, borderLeft: isError ? "3px solid #EF4444" : isSuccess ? "3px solid #BBF246" : "3px solid #3B82F6", whiteSpace: isGuide ? "pre-line" : "normal", lineHeight: isGuide ? 1.7 : 1.4, cursor:"pointer" }}><span style={{ fontSize: isGuide ? 24 : 20, flexShrink:0 }}>{isError ? "❌" : isSuccess ? "✅" : "📐"}</span><span>{toast.replace(/^[✅✓❌⚠️ℹ️📐]+\s*/, "")}</span></div> : null;
   return { toast, showToast, ToastEl };
 }
 
@@ -9899,13 +9899,22 @@ REGRAS TÉCNICAS:
                       {sel.scheduling?.date && <button onClick={async () => {
                         if (!hasApi || imgFiles.length === 0) {
                           updateStep("client", { ...sel.steps?.client, status:"approved", by:"Agendamento manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                          setTimeout(()=>advanceStage(sel),100);
+                          const stages3 = getStages(sel.type);
+                          const nextStage3 = stages3[stages3.indexOf("client") + 1] || "scheduled";
+                          setDemands(prev => prev.map(x => x.id === sel.id ? syncMilestones({...x, stage: nextStage3}, nextStage3) : x));
+                          setSel(prev => syncMilestones({...prev, stage: nextStage3}, nextStage3));
+                          if (sel.supaId) supaUpdateDemand(sel.supaId, { stage: nextStage3 });
+                          showToast("Agendamento salvo manualmente");
+                          return;
+                        }
+                        /* Check if time is valid for scheduling */
+                        if (!schedTs) {
+                          showToast("O horário agendado já passou. Atualize a data/hora na etapa de Legenda antes de programar.");
                           return;
                         }
                         /* Use doPublish for scheduling — it handles scheduled_posts insert */
                         const type = isStories ? "STORIES" : "FEED";
                         if (hasIG) await doPublish("instagram", type);
-                        /* Reset pubLoading so FB can proceed */
                         setPubLoading(false);
                         if (hasFB) await doPublish("facebook", type);
                       }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
@@ -10140,16 +10149,16 @@ REGRAS TÉCNICAS:
 
         {/* Action buttons — only for non-review/client stages (mobile only — desktop has fixed footer) */}
         {!isContentDesktop && !isCampaign && sel.stage !== "published" && sel.stage !== "scheduled" && sel.stage !== "review" && sel.stage !== "client" && <div style={{ display:"flex", gap:8, marginTop:8 }}>
-          <button onClick={() => advanceStage(sel)} className="pill full accent">
+{sel.stage !== "client" &&           <button onClick={() => advanceStage(sel)} className="pill full accent">
             Avançar → {STAGE_CFG[stages[stageIdx+1]]?.l || ""}
-          </button>
+          </button>}
         </div>}
 
         {/* Campaign action buttons (mobile only) */}
         {!isContentDesktop && isCampaign && sel.stage !== "completed" && <div style={{ display:"flex", gap:8, marginTop:12 }}>
-          <button onClick={() => advanceStage(sel)} className="pill full accent">
+{sel.stage !== "client" &&           <button onClick={() => advanceStage(sel)} className="pill full accent">
             Avançar → {STAGE_CFG[stages[stageIdx+1]]?.l || ""}
-          </button>
+          </button>}
         </div>}
         <div style={{ height:20 }} />
     </>);
