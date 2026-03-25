@@ -9051,7 +9051,7 @@ REGRAS TÉCNICAS:
             <div style={{ marginTop:8 }}>
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Horários recomendados · {["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date().getDay()]}</label>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                {(() => { const cObj = CDATA.find(c=>c.name===sel.client); const seg = cObj?.segment||cObj?.segmento||""; const bt = getBestTimesToPost(null, seg); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
+                {(() => { const cObj = CDATA.find(c=>c.name===sel?.client); const seg = cObj?.segment||cObj?.segmento||""; const bt = getBestTimesToPost(null, seg); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
                   <button key={t} onClick={()=>updateField("scheduling",{...sel.scheduling,time:t})} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${sel.scheduling?.time===t?B.accent:B.border}`, background:sel.scheduling?.time===t?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:sel.scheduling?.time===t?B.accent:B.text, transition:"all .15s" }}>
                     {t}{ti===0?" ⭐":""}
                   </button>
@@ -9868,7 +9868,7 @@ REGRAS TÉCNICAS:
                     </div>
                     {sel.steps?.client?.feedback && <Card style={{ background:`${(B.orange||"#F59E0B")}06`, border:`1px solid ${(B.orange||"#F59E0B")}20` }}>
                       <p style={{ fontSize:11, fontWeight:700, color:B.orange||"#F59E0B", marginBottom:6 }}>Feedback do cliente:</p>
-                      <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{sel.steps.client.feedback}</p>
+                      <p style={{ fontSize:13, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{sel.steps?.client?.feedback}</p>
                     </Card>}
                     <button onClick={() => { updateStep("client", { mode:undefined, status:undefined, feedback:undefined }); }} style={{ width:"100%", marginTop:12, padding:"12px 0", borderRadius:14, background:B.accent, color:B.textOnAccent||"#0D0D0D", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer" }}>Voltar para edição e reenviar</button>
                   </div>
@@ -10447,7 +10447,7 @@ REGRAS TÉCNICAS:
                             </div>}
                             {d.steps?.client?.status==="revision" && d.steps?.client?.note && <div style={{ display:"flex", alignItems:"flex-start", gap:5, marginBottom:4, padding:"6px 8px", borderRadius:8, background:"#F59E0B" + "08", border:"1px solid #F59E0B" + "25" }}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0,marginTop:1}}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                              <div><p style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", marginBottom:2 }}>Cliente pediu ajuste</p><p style={{ fontSize:9, color:"#78350F", lineHeight:1.3 }}>{d.steps.client.note.substring(0,80)}{d.steps.client.note.length>80?"...":""}</p></div>
+                              <div><p style={{ fontSize:8, fontWeight:700, color:"#F59E0B", textTransform:"uppercase", marginBottom:2 }}>Cliente pediu ajuste</p><p style={{ fontSize:9, color:"#78350F", lineHeight:1.3 }}>{d.steps?.client?.note?.substring(0,80)}{(d.steps?.client?.note?.length||0)>80?"...":""}</p></div>
                             </div>}
                             {d.scheduling?.date && <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:6 }}>
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -10694,7 +10694,7 @@ REGRAS TÉCNICAS:
             {/* Client response indicator */}
             {d.steps?.client?.status === "revision" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25` }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2.5" strokeLinecap="round"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.orange||"#F59E0B" }}>Cliente pediu edição</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps.client.feedback?.substring(0,60)}{(d.steps.client.feedback?.length||0)>60?"...":""}</p></div>
+              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.orange||"#F59E0B" }}>Cliente pediu edição</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps?.client?.feedback?.substring(0,60)}{(d.steps?.client?.feedback?.length||0)>60?"...":""}</p></div>
             </div>}
             {isScheduleExpired(d) && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:"#EF444408", border:"1.5px solid #EF444425" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -10702,11 +10702,11 @@ REGRAS TÉCNICAS:
               <button onClick={async(e)=>{e.stopPropagation();const cId=d.client_id||CDATA.find(c=>c.name===d.client)?.supaId;if(!cId){showToast("Cliente não vinculado");return;}const imgFiles=d.steps?.design?.files||d.steps?.production?.files||[];const imgUrls=imgFiles.filter(f=>f.url).map(f=>f.url);if(!imgUrls.length){showToast("Sem mídia");return;}const fullCap=(d.steps?.caption?.text||"")+(d.steps?.caption?.hashtags?"\n\n"+d.steps.caption.hashtags:"");const cl=CDATA.find(c=>(c.supaId||c.id)===cId);const mt=(d.format==="Reels"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));showToast("Publicando agora...");let ok=false;if(cl?.socials?.instagram?.oauth){const r=await publishToInstagram(cId,imgUrls,fullCap,mt);if(r?.error)showToast("Erro IG: "+r.error);else ok=true;}if(cl?.socials?.facebook?.oauth){const r=await publishToMeta(cId,imgUrls,fullCap,null,mt);if(r?.error)showToast("Erro FB: "+r.error);else ok=true;}if(ok){const stgs=getStages(d.type);const pubStg=stgs[stgs.indexOf("scheduled")+1]||"published";setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:pubStg},pubStg):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:pubStg});showToast("✅ Publicado!");}}} style={{padding:"6px 14px",borderRadius:8,background:"#EF4444",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>Publicar agora</button>
             </div>}
             {d.steps?.client?.status === "approved" && d.stage === "client" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${B.green}08`, border:`1.5px solid ${B.green}25` }}>
-              {IC.check}<div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Cliente aprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pronto para publicar · {d.steps.client.respondedBy||""}</p></div>
+              {IC.check}<div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Cliente aprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pronto para publicar · {d.steps?.client?.respondedBy||""}</p></div>
             </div>}
             {d.steps?.client?.status === "rejected" && <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, padding:"10px 12px", borderRadius:12, background:`${(B.red||"#FF6B6B")}08`, border:`1.5px solid ${(B.red||"#FF6B6B")}25` }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.red||"#FF6B6B" }}>Cliente reprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps.client.feedback?.substring(0,60)||""}</p></div>
+              <div style={{ flex:1 }}><p style={{ fontSize:12, fontWeight:700, color:B.red||"#FF6B6B" }}>Cliente reprovou</p><p style={{ fontSize:10, color:B.muted, marginTop:1 }}>{d.steps?.client?.feedback?.substring(0,60)||""}</p></div>
             </div>}
 
             {/* Stage progress */}
@@ -11266,7 +11266,7 @@ REGRAS TÉCNICAS:
                   <div style={{ marginBottom:14 }}>
                     <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Horários recomendados · {["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date().getDay()]}</label>
                     <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                    {(() => { const cObj = CDATA.find(c=>c.name===sel.client); const seg = cObj?.segment||cObj?.segmento||""; const bt = getBestTimesToPost(null, seg); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
+                    {(() => { const cObj = CDATA.find(c=>c.name===sel?.client); const seg = cObj?.segment||cObj?.segmento||""; const bt = getBestTimesToPost(null, seg); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
                       <button key={t} onClick={()=>setForm({...form,schedTime:t})} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${form.schedTime===t?"#BBF246":"rgba(0,0,0,0.08)"}`, background:form.schedTime===t?"#BBF24615":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:form.schedTime===t?"#1A1D23":"#666" }}>{t}{ti===0?" ⭐":""}</button>
                     )); })()}
                     </div>
