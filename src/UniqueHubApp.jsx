@@ -8532,7 +8532,7 @@ REGRAS TÉCNICAS:
       setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
       setSel(prev => syncMilestones({ ...prev, stage: next }, next));
       if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
-      showToast(`Avançou para: ${STAGE_CFG[next].l}`);
+      showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);
       supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
       /* ── Auto-publish when moving to "scheduled" ── */
       if (next === "scheduled" && d.scheduling?.date) {
@@ -9185,7 +9185,7 @@ REGRAS TÉCNICAS:
                   return (
                     <div style={{ marginBottom:8 }}>
                       <div style={{ position:"relative", borderRadius:12, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
-                        <img src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:12 }} />
+                        <img src={cur?.url} alt="" loading="lazy" style={{ width:"100%", maxHeight:160, objectFit:"contain", display:"block", borderRadius:12, background:"#f5f5f5" }} />
                         {imgFiles.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
                         {imgFiles.length > 1 && ci < imgFiles.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
                         {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:600, color:"#fff" }}>{ci+1} / {imgFiles.length}</div>}
@@ -9194,7 +9194,7 @@ REGRAS TÉCNICAS:
                       {imgFiles.length > 1 && <div style={{ display:"flex", gap:5, marginTop:6, overflowX:"auto" }}>
                         {imgFiles.map((f, ti) => (
                           <div key={ti} onClick={() => sc(ti)} style={{ width:44, height:44, borderRadius:6, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5, transition:"all .15s" }}>
-                            <img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            <img src={f.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                           </div>
                         ))}
                       </div>}
@@ -9209,7 +9209,7 @@ REGRAS TÉCNICAS:
                   const fUrl = f.url || null;
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
-                    {isImg && fUrl ? <img src={fUrl} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
                      isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
@@ -9221,9 +9221,42 @@ REGRAS TÉCNICAS:
                   </div>
                   );
                 })}
-                <input type="file" id="designUpload" multiple accept="image/*,video/*,.psd,.ai,.pdf,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
+                {/* Format-specific upload guidance */}
+                {(() => {
+                  const fmt = sel.format || "Feed";
+                  const isReels = fmt === "Reels" || fmt === "Shorts";
+                  const isFeed = fmt === "Feed";
+                  const isCarousel = fmt === "Carrossel";
+                  const isStories = fmt === "Stories";
+                  const existingFiles = (sel.steps?.design?.files||[]).filter(f => f.url);
+                  const existingImages = existingFiles.filter(f => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  const guidanceMap = {
+                    Feed: { icon:"🖼️", text:"Envie 1 imagem (JPG, PNG ou WebP). Tamanho ideal: 1080×1080 ou 1080×1350.", color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
+                    Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG ou WebP). Cada uma será 1 story. Tamanho: 1080×1920.`, color:"#F59E0B", warn: null },
+                    Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG ou WebP). Tamanho ideal: 1080×1080.`, color:"#8B5CF6", warn: null },
+                    Reels: { icon:"🎬", text:"Envie 1 vídeo (MP4, MOV) + 1 imagem de capa (JPG, PNG). Formato: 1080×1920.", color:"#EF4444", warn: null },
+                    Shorts: { icon:"🎬", text:"Envie 1 vídeo (MP4, MOV) + 1 imagem de capa (JPG, PNG). Formato: 1080×1920.", color:"#EF4444", warn: null },
+                  };
+                  const g = guidanceMap[fmt] || guidanceMap.Feed;
+                  return <>
+                    <div style={{ padding:"10px 12px", borderRadius:10, background:`${g.color}08`, border:`1px solid ${g.color}20`, marginBottom:6 }}>
+                      <p style={{ fontSize:11, fontWeight:600, color:g.color, display:"flex", alignItems:"center", gap:6 }}><span>{g.icon}</span>{g.text}</p>
+                    </div>
+                    {g.warn && <div style={{ padding:"8px 12px", borderRadius:8, background:"#EF444408", border:"1px solid #EF444420", marginBottom:6 }}>
+                      <p style={{ fontSize:10, fontWeight:600, color:"#EF4444" }}>⚠ {g.warn}</p>
+                    </div>}
+                  </>;
+                })()}
+                <input type="file" id="designUpload" multiple={sel.format !== "Feed"} accept={(sel.format==="Reels"||sel.format==="Shorts") ? "video/mp4,video/quicktime,video/webm,image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,image/gif"} style={{ display:"none" }} onChange={async (e)=>{
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
+                  /* Validate Feed: max 1 image */
+                  const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  if (sel.format === "Feed" && (existingImgs.length + files.length) > 1) {
+                    showToast("⚠ Feed permite apenas 1 imagem. Para mais imagens, use Carrossel.");
+                    e.target.value = "";
+                    return;
+                  }
                   showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
                   const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
                   const uploaded = results.filter(r => !r.error);
@@ -9235,8 +9268,15 @@ REGRAS TÉCNICAS:
                   }
                   e.target.value = "";
                 }} />
-                <button onClick={()=>document.getElementById("designUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} Selecionar arquivos
+                <button onClick={()=>{
+                  /* Feed: block if already has image */
+                  if (sel.format === "Feed") {
+                    const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                    if (existingImgs.length >= 1) { showToast("⚠ Feed permite apenas 1 imagem. Remova a atual ou mude para Carrossel."); return; }
+                  }
+                  document.getElementById("designUpload").click();
+                }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo + capa" : sel.format==="Feed" ? "Enviar imagem" : `Enviar imagens${sel.format==="Carrossel"?" (2-20)":""}`}
                 </button>
               </div>
               <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>
@@ -9248,10 +9288,10 @@ REGRAS TÉCNICAS:
               </div>
               {/* Thumbnail grid for images */}
               {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
-                <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(140px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
+                <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(100px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
-                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"4/5", border:`1px solid ${B.border}` }}>
-                      <img src={f.url} alt={f.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1/1", border:`1px solid ${B.border}` }}>
+                      <img src={f.url} alt={f.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     </a>
                   ))}
                 </div>
@@ -9289,7 +9329,7 @@ REGRAS TÉCNICAS:
                   const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fName);
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
-                    {isImg && fUrl ? <img src={fUrl} alt="" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
                      isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
@@ -9619,7 +9659,8 @@ REGRAS TÉCNICAS:
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                     {hasIG && !isStories && <button disabled={pubLoading} onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</>}</button>}
                     {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
-                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+                    {hasFB && !isStories && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+                    {hasFB && isStories && <button onClick={()=>doPublish("facebook","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> Publicar FB Story</button>}
                   </div>
                   {/* Manual posting helper for non-API networks */}
                   {(() => {
@@ -9657,13 +9698,24 @@ REGRAS TÉCNICAS:
                           setTimeout(()=>advanceStage(sel),100);
                           return;
                         }
-                        const platforms = [];
-                        if (hasIG) platforms.push("instagram");
-                        if (hasFB) platforms.push("facebook");
-                        for (const platform of platforms) {
-                          await doPublish(platform, isStories?"STORIES":"FEED");
+                        setPubLoading(true);
+                        const imgUrls = imgFiles.map(f => f.url);
+                        const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                        const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                        const clientId = clientObj.supaId || clientObj.id;
+                        const type = isStories ? "STORIES" : "FEED";
+                        showToast("Publicando...");
+                        let ok = false;
+                        if (hasIG) { const r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null); if (r?.error) showToast("Erro IG: " + r.error); else ok = true; }
+                        if (hasFB) { const r = await publishToMeta(clientId, imgUrls, fullCaption, null, type); if (r?.error) showToast("Erro FB: " + r.error); else ok = true; }
+                        if (ok) {
+                          updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                          updateStep("igPublished", { platform: hasIG && hasFB ? "both" : hasIG ? "instagram" : "facebook", type, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
+                          setTimeout(() => setDemandStage(sel, "published"), 200);
+                          showToast("✅ Publicado com sucesso!");
                         }
-                      }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#10B981", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                        setPubLoading(false);
+                      }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#10B981", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                         Postar agora
                       </button>
@@ -9673,13 +9725,13 @@ REGRAS TÉCNICAS:
                           setTimeout(()=>advanceStage(sel),100);
                           return;
                         }
-                        const platforms = [];
-                        if (hasIG) platforms.push("instagram");
-                        if (hasFB) platforms.push("facebook");
-                        for (const platform of platforms) {
-                          await doPublish(platform, isStories?"STORIES":"FEED");
-                        }
-                      }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                        /* Use doPublish for scheduling — it handles scheduled_posts insert */
+                        const type = isStories ? "STORIES" : "FEED";
+                        if (hasIG) await doPublish("instagram", type);
+                        /* Reset pubLoading so FB can proceed */
+                        setPubLoading(false);
+                        if (hasFB) await doPublish("facebook", type);
+                      }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         Programar · {sel.scheduling.date.split("-").reverse().join("/")} {sel.scheduling.time||""}
                       </button>}
