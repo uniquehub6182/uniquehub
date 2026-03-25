@@ -277,24 +277,34 @@ const supaUploadFile = async (file, demandId) => {
     const safeName = (compressed.name || file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
     const R2_THRESHOLD = 10 * 1024 * 1024; /* 10MB — route to R2 */
 
-    /* Route large files / videos to Cloudflare R2 */
+    /* Route large files / videos to Cloudflare R2 via presigned URL */
     if (compressed.size > R2_THRESHOLD || isVideo) {
       try {
+        /* Step 1: Get presigned URL from Edge Function */
         const r2Res = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${SUPA_KEY}`,
-            "x-file-name": safeName,
-            "x-content-type": compressed.type || file.type || "application/octet-stream",
+            "Content-Type": "application/json",
           },
-          body: compressed,
+          body: JSON.stringify({ fileName: safeName, contentType: compressed.type || file.type || "application/octet-stream" }),
         });
         const r2Data = await r2Res.json();
-        if (r2Data.url) {
-          console.log("R2 upload OK:", r2Data.url);
-          return { name: file.name, path: r2Data.key, url: r2Data.url, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
+        if (r2Data.signedUrl) {
+          /* Step 2: Upload file directly to R2 (browser → R2, no proxy) */
+          const uploadRes = await fetch(r2Data.signedUrl, {
+            method: "PUT",
+            headers: { "Content-Type": compressed.type || file.type || "application/octet-stream" },
+            body: compressed,
+          });
+          if (uploadRes.ok) {
+            console.log("R2 upload OK:", r2Data.publicUrl);
+            return { name: file.name, path: r2Data.key, url: r2Data.publicUrl, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
+          }
+          console.warn("R2 direct upload failed:", uploadRes.status, await uploadRes.text());
+        } else {
+          console.warn("R2 presign failed:", r2Data.error);
         }
-        console.warn("R2 upload failed, falling back to Supabase:", r2Data.error);
       } catch(r2Err) { console.warn("R2 error, falling back:", r2Err); }
     }
 
