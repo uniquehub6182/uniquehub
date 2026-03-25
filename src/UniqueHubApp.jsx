@@ -9567,35 +9567,40 @@ REGRAS TÉCNICAS:
                   const allF = sel.steps?.design?.files || [];
                   const vidFile = allF.find(f => /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
                   const coverFile = allF.find(f => f.isCover);
-                  if (!vidFile && !coverFile) return null;
                   return <div style={{ marginBottom:10 }}>
-                    <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
-                      {/* Video preview — phone frame */}
-                      {vidFile?.url && <div style={{ flex:1, maxWidth:220 }}>
-                        <p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", textTransform:"uppercase", marginBottom:4, letterSpacing:0.5 }}>Vídeo</p>
-                        <div style={{ borderRadius:16, overflow:"hidden", background:"#000", border:`2px solid ${B.border}`, aspectRatio:"9/16", position:"relative" }}>
-                          <video src={vidFile.url} controls playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                        </div>
-                        <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
-                          <span style={{ fontSize:10, color:B.muted, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{vidFile.name||"vídeo"}</span>
-                          {vidFile.size && <span style={{ fontSize:9, color:B.muted }}>{(vidFile.size/1048576).toFixed(0)}MB</span>}
-                          <button onClick={async () => { if (vidFile.path) await supaDeleteFile(vidFile.path); updateStep("design",{files:allF.filter((_,i)=>i!==allF.indexOf(vidFile))}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex", padding:2 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                        </div>
-                      </div>}
-                      {/* Cover preview */}
-                      {coverFile?.url && <div style={{ flex:0, width:120 }}>
-                        <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", marginBottom:4, letterSpacing:0.5 }}>Capa</p>
-                        <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${B.accent}40`, aspectRatio:"9/16", position:"relative" }}>
-                          <img src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                          <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"4px 6px", background:"linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
-                            <span style={{ fontSize:8, fontWeight:700, color:"#fff" }}>CAPA</span>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      {/* LEFT: Cover */}
+                      <div>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Capa do Reels</p>
+                        {coverFile?.url ? (
+                          <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.accent}40`, background:"#000" }}>
+                            <img src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            <button onClick={async () => { if (coverFile.path) await supaDeleteFile(coverFile.path); updateStep("design",{files:allF.filter(f=>!f.isCover)}); }} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                           </div>
-                        </div>
-                        <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
-                          <span style={{ fontSize:10, color:B.muted, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{coverFile.name||"capa"}</span>
-                          <button onClick={async () => { if (coverFile.path) await supaDeleteFile(coverFile.path); updateStep("design",{files:allF.filter(f=>!f.isCover)}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex", padding:2 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                        </div>
-                      </div>}
+                        ) : (
+                          <button onClick={()=>document.getElementById("designCoverUpload").click()} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${B.accent}40`, background:`${B.accent}04`, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <span style={{ fontSize:11, fontWeight:600, color:B.accent }}>Selecionar capa</span>
+                          </button>
+                        )}
+                        {coverFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{coverFile.name||"capa.jpg"}</p>}
+                      </div>
+                      {/* RIGHT: Video */}
+                      <div>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Vídeo</p>
+                        {vidFile?.url ? (
+                          <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.blue||"#3B82F6"}40`, background:"#000" }}>
+                            <video src={vidFile.url} controls playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            <button onClick={async () => { if (vidFile.path) await supaDeleteFile(vidFile.path); updateStep("design",{files:allF.filter((_,i)=>i!==allF.indexOf(vidFile))}); }} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                          </div>
+                        ) : (
+                          <button onClick={()=>{ if (!coverFile) { showToast("Selecione a capa primeiro"); return; } document.getElementById("designUpload").click(); }} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${!coverFile?"rgba(150,150,150,0.2)":(B.blue||"#3B82F6")+"40"}`, background:!coverFile?"rgba(150,150,150,0.02)":`${B.blue||"#3B82F6"}04`, cursor:!coverFile?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:!coverFile?0.4:1 }}>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                            <span style={{ fontSize:11, fontWeight:600, color:B.blue||"#3B82F6" }}>{!coverFile?"Selecione a capa primeiro":"Selecionar vídeo"}</span>
+                          </button>
+                        )}
+                        {vidFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{vidFile.name||"video.mp4"}{vidFile.size?` · ${(vidFile.size/1048576).toFixed(0)}MB`:""}</p>}
+                      </div>
                     </div>
                   </div>;
                 })()}
@@ -9676,18 +9681,15 @@ REGRAS TÉCNICAS:
                   }
                   e.target.value = "";
                 }} />
-                <button onClick={()=>{
+                {/* Upload buttons — only for non-Reels (Reels uses the grid preview above) */}
+                {sel.format !== "Reels" && sel.format !== "Shorts" && <button onClick={()=>{
                   if (sel.format === "Feed") {
                     const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
                     if (existingImgs.length >= 1) { showToast("⚠ Feed permite apenas 1 imagem. Remova a atual ou mude para Carrossel."); return; }
                   }
                   document.getElementById("designUpload").click();
-                }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${(sel.format==="Reels"||sel.format==="Shorts")?"#3B82F6":B.pink}40`, background:`${(sel.format==="Reels"||sel.format==="Shorts")?"#3B82F6":B.pink}04`, cursor:"pointer", color:(sel.format==="Reels"||sel.format==="Shorts")?"#3B82F6":B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {(sel.format==="Reels"||sel.format==="Shorts") ? <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Enviar vídeo</> : <>{IC.upload} {sel.format==="Feed" ? "Enviar imagem" : `Enviar imagens${sel.format==="Carrossel"?" (2-20)":""}`}</>}
-                </button>
-                {(sel.format==="Reels"||sel.format==="Shorts") && <button onClick={()=>document.getElementById("designCoverUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:12, border:`2px dashed ${B.accent}40`, background:`${B.accent}04`, cursor:"pointer", color:B.accent, fontSize:12, fontWeight:600, fontFamily:"inherit", marginTop:6 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  {(sel.steps?.design?.files||[]).some(f=>f.isCover) ? "Trocar capa do vídeo" : "Enviar capa do vídeo"}
+                }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.pink}40`, background:`${B.pink}04`, cursor:"pointer", color:B.pink, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
+                  {IC.upload} {sel.format==="Feed" ? "Enviar imagem" : `Enviar imagens${sel.format==="Carrossel"?" (2-20)":""}`}
                 </button>}
               </div>
               {uploadProgress && <div style={{ margin:"8px 0", padding:"10px 12px", borderRadius:10, background:`${B.accent}08`, border:`1px solid ${B.accent}20` }}>
