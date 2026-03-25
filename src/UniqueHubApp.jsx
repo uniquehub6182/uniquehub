@@ -286,6 +286,12 @@ const xhrUpload = (url, file, contentType) => new Promise((resolve, reject) => {
   xhr.send(file);
 });
 
+/* ── Global background tasks (persist across page navigation) ── */
+if (!window.__uh_bgTasks) window.__uh_bgTasks = [];
+const addBgTask = (type, label) => { const t = { id: Date.now(), type, label, pct: 0, status: "running", msg: "" }; window.__uh_bgTasks = [...window.__uh_bgTasks, t]; window.dispatchEvent(new Event("uh-bg-update")); return t.id; };
+const updateBgTask = (id, updates) => { window.__uh_bgTasks = window.__uh_bgTasks.map(t => t.id === id ? { ...t, ...updates } : t); window.dispatchEvent(new Event("uh-bg-update")); };
+const removeBgTask = (id) => { window.__uh_bgTasks = window.__uh_bgTasks.filter(t => t.id !== id); window.dispatchEvent(new Event("uh-bg-update")); };
+
 const supaUploadFile = async (file, demandId) => {
   if (!supabase) return { error: "Supabase offline" };
   try {
@@ -7837,11 +7843,13 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
-  const [bgTasks, setBgTasks] = useState([]); /* [{id, type:"upload"|"publish", label, pct, status:"running"|"done"|"error", msg}] */
-  const bgTaskRef = useRef([]);
-  const addBgTask = (type, label) => { const t = { id: Date.now(), type, label, pct: 0, status: "running", msg: "" }; bgTaskRef.current = [...bgTaskRef.current, t]; setBgTasks([...bgTaskRef.current]); return t.id; };
-  const updateBgTask = (id, updates) => { bgTaskRef.current = bgTaskRef.current.map(t => t.id === id ? { ...t, ...updates } : t); setBgTasks([...bgTaskRef.current]); };
-  const removeBgTask = (id) => { bgTaskRef.current = bgTaskRef.current.filter(t => t.id !== id); setBgTasks([...bgTaskRef.current]); };
+  /* Background tasks — use window-level so they persist across page navigation */
+  const [bgTasks, setBgTasks] = useState(() => window.__uh_bgTasks || []);
+  useEffect(() => {
+    const handler = () => setBgTasks([...(window.__uh_bgTasks || [])]);
+    window.addEventListener("uh-bg-update", handler);
+    return () => window.removeEventListener("uh-bg-update", handler);
+  }, []);
   const [calMonth, setCalMonth] = useState(null);
   const [calYear, setCalYear] = useState(null);
   const [sel, setSel] = useState(null);
@@ -10686,22 +10694,6 @@ REGRAS TÉCNICAS:
       })()}
 
       {/* Active filters summary */}
-      {/* ── Floating background tasks indicator ── */}
-      {bgTasks.length > 0 && <div style={{ position:"fixed", bottom:110, right:20, zIndex:9998, display:"flex", flexDirection:"column", gap:6, maxWidth:320 }}>
-        {bgTasks.map(t => (
-          <div key={t.id} style={{ background:"#1A1D23", borderRadius:14, padding:"10px 14px", boxShadow:"0 8px 30px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap:10, minWidth:240, border:t.status==="done"?"1px solid #BBF24640":t.status==="error"?"1px solid #EF444440":"1px solid rgba(255,255,255,0.08)" }}>
-            {t.status === "running" && <div style={{ width:20, height:20, borderRadius:10, border:"2.5px solid rgba(255,255,255,0.1)", borderTopColor:B.accent, animation:"spin 1s linear infinite", flexShrink:0 }} />}
-            {t.status === "done" && <div style={{ width:20, height:20, borderRadius:10, background:"#BBF24620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>}
-            {t.status === "error" && <div style={{ width:20, height:20, borderRadius:10, background:"#EF444420", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>}
-            <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:11, fontWeight:700, color:"#E2E8F0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.label}</p>
-              {t.status === "running" && t.pct > 0 && <div style={{ width:"100%", height:3, borderRadius:2, background:"rgba(255,255,255,0.08)", marginTop:4, overflow:"hidden" }}><div style={{ width:`${t.pct}%`, height:"100%", borderRadius:2, background:B.accent, transition:"width .3s" }} /></div>}
-              {t.msg && <p style={{ fontSize:9, color:t.status==="error"?"#EF4444":"#9CA3AF", marginTop:2 }}>{t.msg}</p>}
-            </div>
-            {t.status !== "running" && <button onClick={() => removeBgTask(t.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", display:"flex", padding:2 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
-          </div>
-        ))}
-      </div>}
       {!contained && (clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
         <span style={{ fontSize:10, color:B.muted }}>Filtros:</span>
         {clientFilter !== "all" && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
@@ -26084,6 +26076,32 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
 }
 
 /* ═══════════════════════ ROOT ═══════════════════════ */
+/* ── Global floating background tasks (persists across all pages) ── */
+function GlobalBgTasks() {
+  const [tasks, setTasks] = useState(window.__uh_bgTasks || []);
+  useEffect(() => {
+    const handler = () => setTasks([...(window.__uh_bgTasks || [])]);
+    window.addEventListener("uh-bg-update", handler);
+    return () => window.removeEventListener("uh-bg-update", handler);
+  }, []);
+  if (!tasks.length) return null;
+  return <div style={{ position:"fixed", bottom:110, right:20, zIndex:99998, display:"flex", flexDirection:"column", gap:6, maxWidth:320 }}>
+    {tasks.map(t => (
+      <div key={t.id} style={{ background:"#1A1D23", borderRadius:14, padding:"10px 14px", boxShadow:"0 8px 30px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap:10, minWidth:240, border:t.status==="done"?"1px solid #BBF24640":t.status==="error"?"1px solid #EF444440":"1px solid rgba(255,255,255,0.08)" }}>
+        {t.status === "running" && <div style={{ width:20, height:20, borderRadius:10, border:"2.5px solid rgba(255,255,255,0.1)", borderTopColor:"#BBF246", animation:"spin 1s linear infinite", flexShrink:0 }} />}
+        {t.status === "done" && <div style={{ width:20, height:20, borderRadius:10, background:"#BBF24620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>}
+        {t.status === "error" && <div style={{ width:20, height:20, borderRadius:10, background:"#EF444420", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>}
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#E2E8F0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.label}</p>
+          {t.status === "running" && t.pct > 0 && <div style={{ width:"100%", height:3, borderRadius:2, background:"rgba(255,255,255,0.08)", marginTop:4, overflow:"hidden" }}><div style={{ width:`${t.pct}%`, height:"100%", borderRadius:2, background:"#BBF246", transition:"width .3s" }} /></div>}
+          {t.msg && <p style={{ fontSize:9, color:t.status==="error"?"#EF4444":"#9CA3AF", marginTop:2 }}>{t.msg}</p>}
+        </div>
+        {t.status !== "running" && <button onClick={() => removeBgTask(t.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", display:"flex", padding:2 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+      </div>
+    ))}
+  </div>;
+}
+
 export default function App() {
   /* ── Static pages: Privacy & Terms ── */
   const pathname = window.location.pathname;
@@ -26721,6 +26739,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
     savePrefsToCloud={savePrefsToCloud}
   />}
     {showPWA && <PWAInstallPopup onDismiss={() => { setShowPWA(false); try { localStorage.setItem("uh_pwa_dismissed", "1"); } catch {} }} />}
+    <GlobalBgTasks />
     </>
   );
 }
