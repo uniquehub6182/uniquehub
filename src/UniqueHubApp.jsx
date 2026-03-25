@@ -25851,12 +25851,15 @@ export default function App() {
   /* Apply body background + transparent layers via injected <style> */
   React.useEffect(() => {
     let el = document.getElementById("uh-dynamic-bg");
-    if (!el) { el = document.createElement("style"); el.id = "uh-dynamic-bg"; document.head.appendChild(el); }
+    if (!el) { el = document.createElement("style"); el.id = "uh-dynamic-bg"; }
+    /* Always move to end of body so it overrides all other styles */
+    document.body.appendChild(el);
     if (B.transparent) {
       el.textContent = `
-        html, body, #root { background: ${B.bodyBg} !important; }
+        html, body, #root,
+        html.uh-desktop, html.uh-desktop body, html.uh-desktop #root { background: ${B.bodyBg} !important; }
         .app, .screen, .content { background: transparent !important; }
-        html.uh-desktop .app, html.uh-desktop .screen { background: transparent !important; }
+        html.uh-desktop .app, html.uh-desktop .screen, html.uh-desktop .content { background: transparent !important; }
         .desktop-dash { background: transparent !important; }
         .pg { background: transparent !important; }
         .card { background: ${B.glassCard || (dark ? "rgba(28,34,40,0.7)" : "rgba(255,255,255,0.55)")} !important;
@@ -26288,7 +26291,7 @@ input,textarea,select{font-size:16px !important}
 .overlay{position:fixed;inset:0;background:${dark?"rgba(0,0,0,0.6)":"rgba(25,33,38,0.4)"};backdrop-filter:blur(6px);z-index:100;animation:fadeIn .2s}
 /* ── Desktop Layout (class-based for maximum specificity) ── */
 .d-sidebar{display:none!important}
-html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:${B.bg}!important;transition:background .25s}
+html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:${B.transparent?"transparent":B.bg}!important;transition:background .25s}
 html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important;max-width:100%!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:${B.bg}!important;width:100%!important;box-sizing:border-box!important;transition:background .25s}
 html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important}
