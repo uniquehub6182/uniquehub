@@ -8095,7 +8095,7 @@ REGRAS TÉCNICAS:
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
 
-          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "280px 1fr 300px" : "1fr", gap:14 }}>
+          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "280px 1fr 300px" : "1fr", gap:14, alignItems:"stretch" }}>
 
             {/* ══ COL 1: CLIENTES ══ */}
             <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"16px" }}>
@@ -8157,9 +8157,11 @@ REGRAS TÉCNICAS:
                 </div>
               </div>
 
+              {/* Spacer to push CTA to bottom */}
+              <div style={{ flex:1 }} />
               {/* CTA */}
-              <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"16px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:15, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+              <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:14, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
                 Processar com a Munique A.I
               </button>
             </div>
