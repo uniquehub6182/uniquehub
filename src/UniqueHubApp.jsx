@@ -2632,6 +2632,7 @@ function LoginPage({ onAuth, onClientAuth }) {
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+        @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         .lcard { animation: cardUp 0.5s cubic-bezier(0.34,1.1,0.64,1) both; }
         .llogo { animation: logoIn 0.4s ease both; }
         .lf-wrap { position:relative; width:100%; }
@@ -7836,6 +7837,11 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bgTasks, setBgTasks] = useState([]); /* [{id, type:"upload"|"publish", label, pct, status:"running"|"done"|"error", msg}] */
+  const bgTaskRef = useRef([]);
+  const addBgTask = (type, label) => { const t = { id: Date.now(), type, label, pct: 0, status: "running", msg: "" }; bgTaskRef.current = [...bgTaskRef.current, t]; setBgTasks([...bgTaskRef.current]); return t.id; };
+  const updateBgTask = (id, updates) => { bgTaskRef.current = bgTaskRef.current.map(t => t.id === id ? { ...t, ...updates } : t); setBgTasks([...bgTaskRef.current]); };
+  const removeBgTask = (id) => { bgTaskRef.current = bgTaskRef.current.filter(t => t.id !== id); setBgTasks([...bgTaskRef.current]); };
   const [calMonth, setCalMonth] = useState(null);
   const [calYear, setCalYear] = useState(null);
   const [sel, setSel] = useState(null);
@@ -10680,6 +10686,22 @@ REGRAS TÉCNICAS:
       })()}
 
       {/* Active filters summary */}
+      {/* ── Floating background tasks indicator ── */}
+      {bgTasks.length > 0 && <div style={{ position:"fixed", bottom:110, right:20, zIndex:9998, display:"flex", flexDirection:"column", gap:6, maxWidth:320 }}>
+        {bgTasks.map(t => (
+          <div key={t.id} style={{ background:"#1A1D23", borderRadius:14, padding:"10px 14px", boxShadow:"0 8px 30px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap:10, minWidth:240, border:t.status==="done"?"1px solid #BBF24640":t.status==="error"?"1px solid #EF444440":"1px solid rgba(255,255,255,0.08)" }}>
+            {t.status === "running" && <div style={{ width:20, height:20, borderRadius:10, border:"2.5px solid rgba(255,255,255,0.1)", borderTopColor:B.accent, animation:"spin 1s linear infinite", flexShrink:0 }} />}
+            {t.status === "done" && <div style={{ width:20, height:20, borderRadius:10, background:"#BBF24620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>}
+            {t.status === "error" && <div style={{ width:20, height:20, borderRadius:10, background:"#EF444420", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>}
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:"#E2E8F0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.label}</p>
+              {t.status === "running" && t.pct > 0 && <div style={{ width:"100%", height:3, borderRadius:2, background:"rgba(255,255,255,0.08)", marginTop:4, overflow:"hidden" }}><div style={{ width:`${t.pct}%`, height:"100%", borderRadius:2, background:B.accent, transition:"width .3s" }} /></div>}
+              {t.msg && <p style={{ fontSize:9, color:t.status==="error"?"#EF4444":"#9CA3AF", marginTop:2 }}>{t.msg}</p>}
+            </div>
+            {t.status !== "running" && <button onClick={() => removeBgTask(t.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#9CA3AF", display:"flex", padding:2 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
+          </div>
+        ))}
+      </div>}
       {!contained && (clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
         <span style={{ fontSize:10, color:B.muted }}>Filtros:</span>
         {clientFilter !== "all" && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
@@ -11459,34 +11481,40 @@ REGRAS TÉCNICAS:
                 {(() => {
                   const doQpPublish = async (platforms) => {
                     if (qpLoading || !(qpForm._files||[]).length) return;
-                    setQpLoading(true);
-                    const caption = (qpForm.format==="Stories") ? "" : (qpForm.hashtags ? `${qpForm.caption}\n\n${qpForm.hashtags}` : qpForm.caption);
-                    const clientId = selClient.supaId||selClient.id;
-                    const fmt = (qpForm.format||"Feed").toUpperCase();
+                    /* Close modal immediately and run in background */
+                    const savedForm = { ...qpForm, _files: [...(qpForm._files||[])], coverUrl: qpForm.coverUrl };
+                    const savedClient = { ...selClient };
+                    setQuickPub(false);
+                    setQpForm({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
+                    const taskId = addBgTask("publish", `Publicando ${savedClient.name}...`);
+                    /* Run in background */
+                    (async () => {
+                    try {
+                    const caption = (savedForm.format==="Stories") ? "" : (savedForm.hashtags ? `${savedForm.caption}\n\n${savedForm.hashtags}` : savedForm.caption);
+                    const clientId = savedClient.supaId||savedClient.id;
+                    const fmt = (savedForm.format||"Feed").toUpperCase();
                     const isReels = fmt === "REELS";
-                    /* Upload files to Supabase Storage first */
-                    showToast("Enviando mídia...");
+                    updateBgTask(taskId, { msg: "Enviando mídia..." });
                     const publicUrls = [];
-                    for (const f of (qpForm._files||[])) {
+                    for (const f of (savedForm._files||[])) {
                       if (f.file) {
                         const url = await uploadToStorage(f.file, `quick-publish/${clientId}`);
                         if (url) publicUrls.push(url);
-                        else { showToast("Erro ao enviar arquivo: "+f.name); setQpLoading(false); return; }
+                        else { updateBgTask(taskId, { status:"error", msg:"Erro ao enviar "+f.name }); setTimeout(()=>removeBgTask(taskId),5000); return; }
                       }
                     }
-                    if (!publicUrls.length) { showToast("Nenhum arquivo enviado"); setQpLoading(false); return; }
+                    if (!publicUrls.length) { updateBgTask(taskId, { status:"error", msg:"Nenhum arquivo enviado" }); setTimeout(()=>removeBgTask(taskId),5000); return; }
                     /* Upload cover for Reels */
                     let coverPublicUrl = null;
-                    if (isReels && qpForm.coverUrl) {
-                      /* coverUrl is base64 — need to convert to file and upload */
+                    if (isReels && savedForm.coverUrl) {
                       try {
-                        const resp = await fetch(qpForm.coverUrl);
+                        const resp = await fetch(savedForm.coverUrl);
                         const blob = await resp.blob();
                         const coverFile = new File([blob], "cover.jpg", { type: blob.type || "image/jpeg" });
                         coverPublicUrl = await uploadToStorage(coverFile, `quick-publish/${clientId}/covers`);
                       } catch(e) { console.error("Cover upload error:", e); }
                     }
-                    showToast("Publicando...");
+                    updateBgTask(taskId, { msg: "Publicando..." });
                     let ok = false; let postId = null;
                     if (platforms.includes("ig")) {
                       const r = await publishToInstagram(clientId, publicUrls, caption, fmt, null, coverPublicUrl);
@@ -11500,34 +11528,36 @@ REGRAS TÉCNICAS:
                       /* Create demand in kanban as "published" */
                       const newDemand = {
                         id: "qp_"+Date.now(),
-                        title: (qpForm.caption||"Publicação rápida").substring(0,60),
+                        title: (savedForm.caption||"Publicação rápida").substring(0,60),
                         type: "social",
-                        format: qpForm.format||"Feed",
-                        client: selClient.name,
+                        format: savedForm.format||"Feed",
+                        client: savedClient.name,
                         client_id: clientId,
                         network: platforms.includes("ig")&&platforms.includes("fb")?"Instagram, Facebook":platforms.includes("ig")?"Instagram":"Facebook",
                         stage: "published",
                         priority: "média",
                         createdAt: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
                         steps: {
-                          design: { files: publicUrls.map((u,i)=>({name:(qpForm._files[i]?.name||"media"),url:u})), by:user?.name||"", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) },
-                          caption: { text:qpForm.caption||"", hashtags:qpForm.hashtags||"" },
+                          design: { files: publicUrls.map((u,i)=>({name:(savedForm._files[i]?.name||"media"),url:u})), by:user?.name||"", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) },
+                          caption: { text:savedForm.caption||"", hashtags:savedForm.hashtags||"" },
                           published: { publishedAt:new Date().toISOString(), metaPostId:postId||"", platform:platforms.join(",") }
                         }
                       };
                       setDemands(prev => [newDemand, ...prev]);
-                      /* Save to Supabase */
                       try { const r = await supaCreateDemand(newDemand); if (r?.id) newDemand.supaId = r.id; } catch {}
+                      updateBgTask(taskId, { status:"done", label:`✅ ${savedClient.name} publicado!`, msg:"" });
                       showToast("✅ Publicado com sucesso!");
-                      setQuickPub(false);
-                      setQpForm({client:"",caption:"",hashtags:"",imageUrl:"",platform:"both",_files:[],coverUrl:"",_coverPreview:""});
+                    } else {
+                      updateBgTask(taskId, { status:"error", label:"Erro na publicação", msg:"Verifique os logs" });
                     }
-                    setQpLoading(false);
+                    setTimeout(() => removeBgTask(taskId), 8000);
+                    } catch(e) { updateBgTask(taskId, { status:"error", msg:e.message }); setTimeout(()=>removeBgTask(taskId),8000); }
+                    })();
                   };
                   return <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {hasFB && hasIG && <button onClick={()=>doQpPublish(["fb","ig"])} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Enviando...":"Facebook + Instagram"}</button>}
-                    {hasFB && <button onClick={()=>doQpPublish(["fb"])} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#1877F2", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Enviando...":"Facebook"}</button>}
-                    {hasIG && <button onClick={()=>doQpPublish(["ig"])} disabled={qpLoading||!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#E1306C", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:(qpLoading||!(qpForm._files||[]).length)?0.4:1 }}>{qpLoading?"Enviando...":"Instagram"}</button>}
+                    {hasFB && hasIG && <button onClick={()=>doQpPublish(["fb","ig"])} disabled={!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"linear-gradient(135deg, #1877F2 0%, #E1306C 100%)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:!(qpForm._files||[]).length?0.4:1 }}>Facebook + Instagram</button>}
+                    {hasFB && <button onClick={()=>doQpPublish(["fb"])} disabled={!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#1877F2", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:!(qpForm._files||[]).length?0.4:1 }}>Facebook</button>}
+                    {hasIG && <button onClick={()=>doQpPublish(["ig"])} disabled={!(qpForm._files||[]).length} style={{ padding:"14px", borderRadius:14, border:"none", background:"#E1306C", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", opacity:!(qpForm._files||[]).length?0.4:1 }}>Instagram</button>}
                   </div>;
                 })()}
               </>}
