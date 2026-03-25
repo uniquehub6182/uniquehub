@@ -8155,25 +8155,39 @@ REGRAS TÉCNICAS:
             </div>
           </div>
 
-          {/* ── PREFERÊNCIAS (full width) ── */}
+          {/* ── PREFERÊNCIAS (full width, 2-col layout) ── */}
           <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px", marginTop:12 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:12 }}>
               <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>4</div>
               <p style={{ fontSize:13, fontWeight:700 }}>Preferências</p>
-              <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:10, color:B.muted }}>Emojis</span>
-                <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:40, height:22, borderRadius:11, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
-                  <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:2, left:ipEmojis?20:2, transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,0.15)" }} />
-                </button>
-              </div>
             </div>
-            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-              {[{k:"informativo",l:"📰 Informativo"},{k:"inspirador",l:"✨ Inspirador"},{k:"comico",l:"😂 Cômico"},{k:"serio",l:"🎯 Sério"},{k:"informal",l:"💬 Informal"},{k:"educativo",l:"📚 Educativo"},{k:"provocativo",l:"🔥 Provocativo"}].map(t => (
-                <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"5px 10px", borderRadius:8, border:ipTone===t.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipTone===t.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted }}>{t.l}</button>
-              ))}
-              {ipEmojis && <>{[{k:"pouco",l:"Sutil"},{k:"moderado",l:"Moderado"},{k:"muito",l:"Bastante"}].map(q => (
-                <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ padding:"5px 10px", borderRadius:8, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted }}>{"🎯 "+q.l}</button>
-              ))}</>}
+            <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "1fr auto" : "1fr", gap: isContentDesktop ? 24 : 12, alignItems:"start" }}>
+              {/* Tom */}
+              <div>
+                <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>Tom das legendas</p>
+                <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                  {[{k:"informativo",l:"📰 Informativo"},{k:"inspirador",l:"✨ Inspirador"},{k:"comico",l:"😂 Cômico"},{k:"serio",l:"🎯 Sério"},{k:"informal",l:"💬 Informal"},{k:"educativo",l:"📚 Educativo"},{k:"provocativo",l:"🔥 Provocativo"}].map(t => (
+                    <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"6px 12px", borderRadius:8, border:ipTone===t.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipTone===t.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted }}>{t.l}</button>
+                  ))}
+                </div>
+              </div>
+              {/* Emojis */}
+              <div style={{ minWidth: isContentDesktop ? 200 : "auto", padding:"12px 14px", borderRadius:12, background:B.bg, border:"1px solid "+B.border }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: ipEmojis ? 10 : 0 }}>
+                  <div>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.text }}>Emojis</p>
+                    <p style={{ fontSize:9, color:B.muted, marginTop:1 }}>{ipEmojis?"Ativado":"Desativado"}</p>
+                  </div>
+                  <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:40, height:22, borderRadius:11, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
+                    <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:2, left:ipEmojis?20:2, transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,0.15)" }} />
+                  </button>
+                </div>
+                {ipEmojis && <div style={{ display:"flex", gap:4 }}>
+                  {[{k:"pouco",l:"Sutil"},{k:"moderado",l:"Moderado"},{k:"muito",l:"Bastante"}].map(q => (
+                    <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ flex:1, padding:"5px 0", borderRadius:6, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted }}>{q.l}</button>
+                  ))}
+                </div>}
+              </div>
             </div>
           </div>
 
