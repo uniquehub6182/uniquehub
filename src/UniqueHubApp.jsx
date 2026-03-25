@@ -829,9 +829,33 @@ const publishToMeta = async (clientId, imageUrl, caption, platforms, mediaType =
 const uploadToStorage = async (file, folder = "quick-publish") => {
   if (!supabase) return null;
   try {
-    /* Compress images before upload */
-    const processed = await compressImage(file);
+    const isVideo = file.type?.startsWith("video/");
+    const processed = isVideo ? file : await compressImage(file);
     const safeName = (processed.name||"file").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const R2_THRESHOLD = 10 * 1024 * 1024;
+
+    /* Route large files / videos to R2 */
+    if (processed.size > R2_THRESHOLD || isVideo) {
+      try {
+        const r2Res = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: safeName, contentType: processed.type || "application/octet-stream" }),
+        });
+        const r2Data = await r2Res.json();
+        if (r2Data.signedUrl) {
+          const upRes = await fetch(r2Data.signedUrl, {
+            method: "PUT",
+            headers: { "Content-Type": processed.type || "application/octet-stream" },
+            body: processed,
+          });
+          if (upRes.ok) { console.log("R2 upload OK (quick):", r2Data.publicUrl); return r2Data.publicUrl; }
+          console.warn("R2 direct upload failed:", upRes.status);
+        }
+      } catch(r2Err) { console.warn("R2 error (quick), falling back:", r2Err); }
+    }
+
+    /* Supabase fallback */
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,4)}_${safeName}`;
     const { error } = await supabase.storage.from("demand-files").upload(path, processed, { upsert:true, cacheControl:"3600", contentType:processed.type||"application/octet-stream" });
     if (error) { console.error("Upload error:", error); return null; }
