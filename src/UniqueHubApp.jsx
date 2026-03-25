@@ -7938,13 +7938,14 @@ REDES SOCIAIS: ${ipNetworks.join(", ")} (TODOS os posts devem ter networks: [${i
 
 REGRAS OBRIGATÓRIAS DE HUMANIZAÇÃO:
 1. PROIBIDO usar frases clichê de IA: "você sabia que", "não perca", "confira já", "fique ligado", "vem comigo", "bora lá", "arrasta pra cima". Se sentir vontade de usar, reescreva.
-2. VARIE a estrutura: nem todo post começa com pergunta, nem todo post termina com CTA direto. Alterne entre: abrir com afirmação forte, contar uma história curta, provocar com dado/estatística, usar analogia do cotidiano.
-3. Escreva como brasileiro real fala: use contrações naturais ("tá", "pra", "né"), frases curtas misturadas com longas, ritmo de conversa.
-4. Cada legenda deve ter PERSONALIDADE DIFERENTE — se uma é direta e provocativa, a próxima pode ser reflexiva e leve. NÃO repita o mesmo padrão.
-5. CTAs devem ser variados e naturais: às vezes é uma pergunta genuína, às vezes um convite sutil, às vezes nem tem CTA explícito (e tá tudo bem).
-6. Hashtags: máximo 8-12, misture populares com nichadas, sem hashtags genéricas como #marketing #sucesso.
-7. Parágrafos curtos (1-3 linhas). Quebre o texto pra facilitar leitura no celular.
-8. O briefing do designer deve ser prático e visual — descreva EXATAMENTE o que o designer precisa criar, com referências de estilo, cores, elementos, textos na arte.
+2. NUNCA usar travessão longo (—) nas legendas. É marca registrada de texto gerado por IA. Use ponto final, vírgula, dois pontos ou quebra de linha. Isso é OBRIGATÓRIO.
+3. VARIE a estrutura: nem todo post começa com pergunta, nem todo post termina com CTA direto. Alterne entre: abrir com afirmação forte, contar uma história curta, provocar com dado/estatística, usar analogia do cotidiano.
+4. Escreva como brasileiro real fala: use contrações naturais ("tá", "pra", "né"), frases curtas misturadas com longas, ritmo de conversa.
+5. Cada legenda deve ter PERSONALIDADE DIFERENTE. Se uma é direta e provocativa, a próxima pode ser reflexiva e leve. NÃO repita o mesmo padrão.
+6. CTAs devem ser variados e naturais: às vezes é uma pergunta genuína, às vezes um convite sutil, às vezes nem tem CTA explícito (e tá tudo bem).
+7. Hashtags: máximo 8-12, misture populares com nichadas, sem hashtags genéricas como #marketing #sucesso.
+8. Parágrafos curtos (1-3 linhas). Quebre o texto pra facilitar leitura no celular.
+9. O briefing do designer deve ser prático e visual. Descreva EXATAMENTE o que o designer precisa criar, com referências de estilo, cores, elementos, textos na arte.
 
 Para CADA item do documento, gere um JSON com:
 - title: título curto (max 60 chars)
@@ -13396,6 +13397,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       navmenu: <svg {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
       sec: <svg {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
       about: <svg {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+      gamifyedit: <svg {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      servicosedit: <svg {...p}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg>,
+      payments: <svg {...p}><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
     };
     return icons[k] || icons.about;
   };
@@ -13405,7 +13409,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     ...(user?.supaRole==="admin"?[{ k:"permissions", l:"Permissões", desc:"Acesso por cargo" }]:[]),
 
     ...(user?.supaRole==="admin"?[{ k:"aiconfig", l:"Assistente IA", desc:"Chaves API e provedor" }]:[]),
-    ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas, pódio, serviços" }]:[]),
+    ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas e pódio" }]:[]),
+    ...(!isClientView && user?.supaRole==="admin"?[{ k:"servicosedit", l:"Catálogo de Serviços", desc:"Serviços extras oferecidos" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"payments", l:"Pagamentos", desc:"Pacotes, créditos, cursos pagos" }]:[]),
     { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" },
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
@@ -14668,7 +14673,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       } catch(e) { console.error("saveGamify exception:", e); showToast("Erro: " + e.message); }
     };
     const accent = B.accent;
-    const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"},{k:"services",l:"Serviços"},{k:"about",l:"Sobre"}];
+    const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"}];
     const defZones = [{name:"Estruturação",range:"0–10",color:"#EF4444",reward:"Boas-vindas + diagnóstico inicial"},{name:"Organização",range:"11–30",color:"#F59E0B",reward:"Relatório mensal detalhado"},{name:"Estratégica",range:"31–60",color:"#BBF246",reward:"Prioridade no atendimento"},{name:"Crescimento",range:"61–85",color:"#10B981",reward:"Consultoria estratégica mensal"},{name:"Escala",range:"86–100",color:"#3B82F6",reward:"Desconto no plano + destaque no portfólio"}];
     const defPodium = [{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}];
     const defMissions = [{title:"Aprovar posts pendentes",pts:3,pillar:"execucao"},{title:"Criar um evento no calendário",pts:2,pillar:"estrategia"},{title:"Acessar os relatórios de performance",pts:1,pillar:"crescimento"},{title:"Ler uma notícia no News",pts:0.5,pillar:"educacao"},{title:"Visitar a página Match4Biz",pts:1,pillar:"ecossistema"}];
@@ -14730,39 +14735,51 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           <button onClick={()=>saveGamify("gamify_missions", missions)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar missões</button>
         </>}
 
-        {gTab === "services" && <>
-          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Defina os serviços extras disponíveis para os clientes.</p>
-          {services.map((s,i) => (
-            <Card key={i} style={{ marginBottom:8 }}>
-              <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"flex-end" }}>
-                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Serviço</label><input value={s.l||""} onChange={e=>{const v=e.target.value;const ns=[...services];ns[i]={...ns[i],l:v};setGServices(ns);}} className="tinput" /></div>
-                <button onClick={()=>{const ns=[...services];ns.splice(i,1);setGServices(ns);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, marginBottom:2 }}>×</button>
-              </div>
-              <label style={{ fontSize:10, color:B.muted }}>Descrição</label>
-              <input value={s.d||""} onChange={e=>{const ns=[...services];ns[i]={...ns[i],d:e.target.value};setGServices(ns);}} className="tinput" style={{marginBottom:6}} placeholder="Ex: Landing page ou site institucional" />
-              <label style={{ fontSize:10, color:B.muted }}>Valor</label>
-              <input value={s.v||""} onChange={e=>{const ns=[...services];ns[i]={...ns[i],v:e.target.value};setGServices(ns);}} className="tinput" placeholder="Ex: A partir de R$ 2.500" />
-            </Card>
-          ))}
-          <button onClick={()=>setGServices([...services,{l:"",d:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar serviço</button>
-          <button onClick={()=>saveGamify("gamify_services", services)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar serviços</button>
         </>}
+      </SetPage>
+    );
+  }
 
-        {gTab === "about" && <>
-          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as informações exibidas na tela "Sobre" do app do cliente.</p>
-          {(gAbout || [{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}]).map((item,i) => (
-            <Card key={i} style={{ marginBottom:8 }}>
-              <div style={{ display:"flex", gap:8 }}>
-                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Label</label><input value={item.l||""} onChange={e=>{const v=e.target.value;const na=[...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}])];na[i]={...na[i],l:v};setGAbout(na);}} className="tinput" /></div>
-                <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Valor</label><input value={item.v||""} onChange={e=>{const v=e.target.value;const na=[...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}])];na[i]={...na[i],v:v};setGAbout(na);}} className="tinput" /></div>
-                <button onClick={()=>{const na=[...(gAbout||[])];na.splice(i,1);setGAbout(na);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, alignSelf:"flex-end", marginBottom:2 }}>×</button>
+  /* ═══ CATÁLOGO DE SERVIÇOS ═══ */
+  if (sub === "servicosedit") {
+    const accent = B.accent;
+    const defServices = [{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}];
+    const [svcList, setSvcList] = React.useState(gServices || defServices);
+    const [svcLoaded, setSvcLoaded] = React.useState(false);
+    React.useEffect(() => {
+      if (svcLoaded || !supabase) return;
+      setSvcLoaded(true);
+      supabase.from("app_settings").select("value").eq("key","gamify_services").maybeSingle().then(({data}) => {
+        if (data?.value) { try { const v = typeof data.value === "string" ? JSON.parse(data.value) : data.value; if (Array.isArray(v)) setSvcList(v); } catch {} }
+      });
+    }, []);
+    const saveSvc = async () => {
+      try {
+        await supabase.from("app_settings").upsert({ key: "gamify_services", value: svcList }, { onConflict: "key" });
+        if (setGServices) setGServices(svcList);
+        showToast("Serviços salvos ✓");
+      } catch(e) { showToast("Erro: " + e.message); }
+    };
+    return (
+      <SetPage title="Catálogo de Serviços">
+        <p style={{ fontSize:12, color:B.muted, marginBottom:14 }}>Defina os serviços extras disponíveis para os clientes. Estes aparecem no portal do cliente.</p>
+        {svcList.map((s,i) => (
+          <Card key={i} style={{ marginBottom:8 }}>
+            <div style={{ display:"flex", gap:8, alignItems:"flex-start" }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:10, color:B.muted }}>Serviço</label>
+                <input value={s.l||""} onChange={e=>{const ns=[...svcList];ns[i]={...ns[i],l:e.target.value};setSvcList(ns);}} className="tinput" placeholder="Nome do serviço" />
               </div>
-            </Card>
-          ))}
-          <button onClick={()=>setGAbout([...(gAbout||[{l:"Desenvolvido por",v:"Unique Marketing 360"},{l:"Localização",v:"Petrópolis, RJ — Brasil"},{l:"Website",v:"www.uniquemkt.com.br"},{l:"Versão do sistema",v:"1.0.0"},{l:"Última atualização",v:"01/03/2026"}]),{l:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar campo</button>
-          <button onClick={()=>saveGamify("gamify_about", gAbout||[])} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>Salvar informações</button>
-        </>}
-        </>}
+              <button onClick={()=>{const ns=[...svcList];ns.splice(i,1);setSvcList(ns);}} style={{ width:28, height:28, borderRadius:8, background:`${B.red||"#EF4444"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#EF4444", fontSize:14, fontWeight:900, marginTop:18 }}>×</button>
+            </div>
+            <label style={{ fontSize:10, color:B.muted, marginTop:6, display:"block" }}>Descrição</label>
+            <input value={s.d||""} onChange={e=>{const ns=[...svcList];ns[i]={...ns[i],d:e.target.value};setSvcList(ns);}} className="tinput" placeholder="Descrição curta" />
+            <label style={{ fontSize:10, color:B.muted, marginTop:6, display:"block" }}>Valor</label>
+            <input value={s.v||""} onChange={e=>{const ns=[...svcList];ns[i]={...ns[i],v:e.target.value};setSvcList(ns);}} className="tinput" placeholder="A partir de R$ 0,00" />
+          </Card>
+        ))}
+        <button onClick={()=>setSvcList([...svcList,{l:"",d:"",v:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar serviço</button>
+        <button onClick={saveSvc} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Salvar serviços</button>
       </SetPage>
     );
   }
@@ -14847,32 +14864,66 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ ABOUT ═══ */
-  if (sub === "about") return (
+  if (sub === "about") {
+    const isAdmin = user?.supaRole === "admin";
+    const defAboutItems = [
+      { l: "Desenvolvido por", v: "UniqueHub" },
+      { l: "Localização", v: "Rio de Janeiro, Brasil" },
+      { l: "Website", v: "www.uniquehub.com.br" },
+      { l: "Versão do sistema", v: "1.0.0" },
+      { l: "Última atualização", v: "25/03/2026" },
+    ];
+    const [editAbout, setEditAbout] = React.useState(false);
+    const [aboutItems, setAboutItems] = React.useState(aboutData || gAbout || defAboutItems);
+    const saveAboutFn = async () => {
+      try {
+        await supabase.from("app_settings").upsert({ key: "gamify_about", value: aboutItems }, { onConflict: "key" });
+        if (setGAbout) setGAbout(aboutItems);
+        if (setAboutData) setAboutData(aboutItems);
+        showToast("Informações salvas ✓");
+        setEditAbout(false);
+      } catch(e) { showToast("Erro: " + e.message); }
+    };
+    return (
     <SetPage title="Sobre">
       <Card style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12 }}>
         <Logo size={48} />
-        <p style={{ fontSize: 14, fontWeight: 700, marginTop: 8 }}>UniqueHub Agency</p>
+        <p style={{ fontSize: 14, fontWeight: 700, marginTop: 8 }}>UniqueHub</p>
         <p style={{ fontSize: 12, color: B.muted, marginTop: 4 }}>v1.0.0</p>
       </Card>
-      <Card style={{ marginBottom: 8 }}>
-        {(aboutData || [
-          { l: "Desenvolvido por", v: "Unique Marketing 360" },
-          { l: "Localização", v: "Petrópolis, RJ — Brasil" },
-          { l: "Website", v: "www.uniquemkt.com.br" },
-          { l: "Versão do sistema", v: "1.0.0 (build 2026.03)" },
-          { l: "Última atualização", v: "01/03/2026" },
-        ]).map((item, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
-            <span style={{ fontSize: 12, color: B.muted }}>{item.l}</span>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>{item.v}</span>
-          </div>
+      {!editAbout ? <>
+        <Card style={{ marginBottom: 8 }}>
+          {aboutItems.map((item, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
+              <span style={{ fontSize: 12, color: B.muted }}>{item.l}</span>
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{item.v}</span>
+            </div>
+          ))}
+        </Card>
+        {isAdmin && <button onClick={() => setEditAbout(true)} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>Editar informações</button>}
+      </> : <>
+        <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as informações exibidas na tela "Sobre" do app.</p>
+        {aboutItems.map((item,i) => (
+          <Card key={i} style={{ marginBottom:6 }}>
+            <div style={{ display:"flex", gap:8 }}>
+              <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Label</label><input value={item.l||""} onChange={e=>{const na=[...aboutItems];na[i]={...na[i],l:e.target.value};setAboutItems(na);}} className="tinput" /></div>
+              <div style={{ flex:1 }}><label style={{ fontSize:10, color:B.muted }}>Valor</label><input value={item.v||""} onChange={e=>{const na=[...aboutItems];na[i]={...na[i],v:e.target.value};setAboutItems(na);}} className="tinput" /></div>
+              <button onClick={()=>{const na=[...aboutItems];na.splice(i,1);setAboutItems(na);}} style={{ width:28, height:28, borderRadius:8, background:`${B.red||"#EF4444"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#EF4444", fontSize:14, fontWeight:900, alignSelf:"flex-end", marginBottom:2 }}>×</button>
+            </div>
+          </Card>
         ))}
-      </Card>
-      <Card>
-        <p style={{ fontSize: 11, color: B.muted, lineHeight: 1.6 }}>© 2025-2026 Unique Marketing 360. Todos os direitos reservados. Este software é propriedade exclusiva da Unique Marketing 360 e não pode ser reproduzido sem autorização prévia.</p>
+        <button onClick={()=>setAboutItems([...aboutItems,{l:"",v:""}])} style={{ width:"100%", padding:"8px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar campo</button>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={() => setEditAbout(false)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Cancelar</button>
+          <button onClick={saveAboutFn} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Salvar</button>
+        </div>
+      </>}
+      <Card style={{ marginTop:8 }}>
+        <p style={{ fontSize: 11, color: B.muted, lineHeight: 1.6 }}>© 2025-2026 Unique Marketing 360. Todos os direitos reservados.</p>
       </Card>
     </SetPage>
-  );
+    );
+  }
 
   /* ═══ APPROVALS ═══ */
   if (sub === "approvals") {
