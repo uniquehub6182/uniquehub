@@ -8204,9 +8204,6 @@ REGRAS TÉCNICAS:
 
         </>}
 
-
-        </>}
-
         {/* ═══ STEP 2: PROCESSING ═══ */}
         {ipStep === 2 && (
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"50vh", gap:16 }}>
