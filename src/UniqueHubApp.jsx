@@ -8528,7 +8528,11 @@ REGRAS TÉCNICAS:
   }, [initialDemandId, demands]);
 
   const filtered = demands.filter(d => {
-    if (filter !== "all" && d.type !== filter) return false;
+    if (filter === "posts" && d.type === "campaign") return false;
+    if (filter === "feed" && (d.format||"Feed") !== "Feed") return false;
+    if (filter === "reels" && (d.format||"") !== "Reels") return false;
+    if (filter === "stories" && (d.format||"") !== "Stories") return false;
+    if (filter === "carrossel" && (d.format||"") !== "Carrossel") return false;
     if (clientFilter !== "all" && d.client !== clientFilter) return false;
     if (dateFilter) {
       const [y, m, dy] = dateFilter.split("-");
@@ -10353,7 +10357,7 @@ REGRAS TÉCNICAS:
         </div>
         {/* Type tabs */}
         <div style={{ flex:1, display:"flex", gap:6 }}>
-          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"posts",l:"Posts"},{k:"reels",l:"Reels"},{k:"stories",l:"Stories"},{k:"carrossel",l:"Carrossel"},{k:"feed",l:"Feed"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
@@ -10407,7 +10411,7 @@ REGRAS TÉCNICAS:
       {/* Type tabs + Date filter row (mobile only) */}
       {!isContentDesktop && !contained && <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
         <div style={{ flex:1, display:"flex", gap:6, overflowX:"auto" }}>
-          {[{k:"all",l:"Todos"},{k:"social",l:"Posts"},{k:"campaign",l:"Campanhas"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"posts",l:"Posts"},{k:"reels",l:"Reels"},{k:"stories",l:"Stories"},{k:"carrossel",l:"Carrossel"},{k:"feed",l:"Feed"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap" }}>{f.l}</button>
           ))}
         </div>
