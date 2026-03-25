@@ -9539,19 +9539,21 @@ REGRAS TÉCNICAS:
                 })()}
                 {(sel.steps?.design?.files||[]).map((f,i) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || f.url || ''));
-                  if (isContentDesktop && isImg && f.url) return null; /* shown in carousel above */
+                  if (isContentDesktop && isImg && f.url && !f.isCover) return null; /* shown in carousel above */
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || f.url || '')) || f.type?.startsWith("video/");
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
+                  const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
+                  /* Skip individual rendering for Reels — handled by combined preview below */
+                  if (isReelsFmt) return null;
                   return (
                   <div key={i} style={{ marginBottom:6 }}>
-                    {isVid && fUrl && <video src={fUrl} controls playsInline style={{ width:"100%", maxHeight:300, borderRadius:12, background:"#000", marginBottom:4 }} />}
-                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:f.isCover?`${B.accent}06`:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink}06`, borderRadius:10, border:`1px solid ${f.isCover?B.accent:isVid?(B.blue||"#3B82F6"):(B.pink)}15` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
                     {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
                      isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6 }}>{fName}{f.isCover && <span style={{ fontSize:8, fontWeight:800, color:B.accent, background:`${B.accent}15`, padding:"2px 6px", borderRadius:4, flexShrink:0 }}>CAPA</span>}</p>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
                       {f.size && <p style={{ fontSize:9, color:B.muted }}>{f.size > 1048576 ? `${(f.size/1048576).toFixed(1)} MB` : `${(f.size/1024).toFixed(0)} KB`}</p>}
                     </div>
                     {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
@@ -9560,6 +9562,43 @@ REGRAS TÉCNICAS:
                   </div>
                   );
                 })}
+                {/* ── Reels/Shorts combined preview — phone mockup ── */}
+                {(sel.format === "Reels" || sel.format === "Shorts") && (() => {
+                  const allF = sel.steps?.design?.files || [];
+                  const vidFile = allF.find(f => /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
+                  const coverFile = allF.find(f => f.isCover);
+                  if (!vidFile && !coverFile) return null;
+                  return <div style={{ marginBottom:10 }}>
+                    <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
+                      {/* Video preview — phone frame */}
+                      {vidFile?.url && <div style={{ flex:1, maxWidth:220 }}>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", textTransform:"uppercase", marginBottom:4, letterSpacing:0.5 }}>Vídeo</p>
+                        <div style={{ borderRadius:16, overflow:"hidden", background:"#000", border:`2px solid ${B.border}`, aspectRatio:"9/16", position:"relative" }}>
+                          <video src={vidFile.url} controls playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        </div>
+                        <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
+                          <span style={{ fontSize:10, color:B.muted, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{vidFile.name||"vídeo"}</span>
+                          {vidFile.size && <span style={{ fontSize:9, color:B.muted }}>{(vidFile.size/1048576).toFixed(0)}MB</span>}
+                          <button onClick={async () => { if (vidFile.path) await supaDeleteFile(vidFile.path); updateStep("design",{files:allF.filter((_,i)=>i!==allF.indexOf(vidFile))}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex", padding:2 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        </div>
+                      </div>}
+                      {/* Cover preview */}
+                      {coverFile?.url && <div style={{ flex:0, width:120 }}>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", marginBottom:4, letterSpacing:0.5 }}>Capa</p>
+                        <div style={{ borderRadius:12, overflow:"hidden", border:`2px solid ${B.accent}40`, aspectRatio:"9/16", position:"relative" }}>
+                          <img src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"4px 6px", background:"linear-gradient(transparent, rgba(0,0,0,0.6))" }}>
+                            <span style={{ fontSize:8, fontWeight:700, color:"#fff" }}>CAPA</span>
+                          </div>
+                        </div>
+                        <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
+                          <span style={{ fontSize:10, color:B.muted, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{coverFile.name||"capa"}</span>
+                          <button onClick={async () => { if (coverFile.path) await supaDeleteFile(coverFile.path); updateStep("design",{files:allF.filter(f=>!f.isCover)}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex", padding:2 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        </div>
+                      </div>}
+                    </div>
+                  </div>;
+                })()}
                 {/* Format-specific upload guidance */}
                 {(() => {
                   const fmt = sel.format || "Feed";
