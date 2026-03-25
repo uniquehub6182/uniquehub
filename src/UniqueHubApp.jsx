@@ -8095,95 +8095,105 @@ REGRAS TÉCNICAS:
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
 
-          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "1fr 1fr 1fr" : "1fr", gap:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "280px 1fr 300px" : "1fr", gap:14 }}>
 
             {/* ══ COL 1: CLIENTES ══ */}
-            <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
-                <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>1</div>
-                <p style={{ fontSize:13, fontWeight:700 }}>Cliente</p>
-                {ipClient && <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
+            <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"16px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:12 }}>
+                <div style={{ width:24, height:24, borderRadius:8, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:900, color:B.accent }}>1</div>
+                <p style={{ fontSize:14, fontWeight:700 }}>Cliente</p>
+                {ipClient && <svg width="16" height="16" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
               </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:320, overflowY:"auto" }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                 {(CDATA||[]).filter(c => c.status === "ativo" || !c.status).map(c => {
                   const cid = c.supaId || c.id;
                   const sel = ipClient === cid;
-                  return <button key={cid} onClick={() => setIpClient(cid)} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", borderRadius:10, border:sel ? "2px solid "+B.accent : "1px solid "+B.border, background:sel ? B.accent+"08" : "transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-                    <Av name={c.name} src={c.logo||c.logo_url} sz={26} fs={10} />
-                    <p style={{ fontSize:12, fontWeight:sel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:sel?B.text:B.muted }}>{c.name}</p>
+                  return <button key={cid} onClick={() => setIpClient(cid)} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, border:sel ? "2px solid "+B.accent : "1px solid "+B.border, background:sel ? B.accent+"08" : "transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                    <Av name={c.name} src={c.logo||c.logo_url} sz={28} fs={10} />
+                    <p style={{ fontSize:13, fontWeight:sel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:sel?B.text:B.muted }}>{c.name}</p>
                   </button>;
                 })}
               </div>
             </div>
 
-            {/* ══ COL 2: PLANEJAMENTO + REDES ══ */}
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {/* ══ COL 2: PLANEJAMENTO + REDES + CTA ══ */}
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
               {/* Planejamento */}
-              <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-                  <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>2</div>
-                  <p style={{ fontSize:13, fontWeight:700 }}>Planejamento</p>
-                  {ipFile && <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
+              <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"16px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+                  <div style={{ width:24, height:24, borderRadius:8, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:900, color:B.accent }}>2</div>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Planejamento</p>
+                  {ipFile && <svg width="16" height="16" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
                 </div>
                 {ipFile ? (
-                  <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10, background:B.accent+"06", border:"1px solid "+B.accent+"20" }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <p style={{ flex:1, fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ipFile.name}</p>
-                    <button onClick={() => setIpFile(null)} style={{ width:20, height:20, borderRadius:6, background:B.bg, border:"1px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:B.accent+"06", border:"1px solid "+B.accent+"20" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ipFile.name}</p>
+                      <p style={{ fontSize:11, color:B.muted }}>{(ipFile.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                    <button onClick={() => setIpFile(null)} style={{ width:24, height:24, borderRadius:8, background:B.bg, border:"1px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"16px", borderRadius:10, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-                    <span style={{ fontSize:12, fontWeight:600, color:B.muted }}>Enviar arquivo (PDF, TXT, DOC)</span>
+                  <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"20px 16px", borderRadius:12, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                    <span style={{ fontSize:13, fontWeight:600, color:B.text }}>Enviar arquivo</span>
+                    <span style={{ fontSize:11, color:B.muted }}>PDF, TXT ou DOC</span>
                   </button>
                 )}
               </div>
 
               {/* Redes sociais */}
-              <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-                  <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>3</div>
-                  <p style={{ fontSize:13, fontWeight:700 }}>Redes sociais</p>
+              <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"16px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+                  <div style={{ width:24, height:24, borderRadius:8, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:900, color:B.accent }}>3</div>
+                  <p style={{ fontSize:14, fontWeight:700 }}>Redes sociais</p>
                 </div>
-                <p style={{ fontSize:11, color:B.muted, marginBottom:8 }}>Em quais redes os posts serão publicados?</p>
-                <div style={{ display:"flex", gap:6 }}>
-                  {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 14px", borderRadius:10, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={16} active={sel2} />{n}</button>; })}
+                <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>Em quais redes os posts serão publicados?</p>
+                <div style={{ display:"flex", gap:8 }}>
+                  {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 16px", borderRadius:12, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={18} active={sel2} />{n}</button>; })}
                 </div>
               </div>
+
+              {/* CTA */}
+              <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"16px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:15, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+                Processar com a Munique A.I
+              </button>
             </div>
 
             {/* ══ COL 3: PREFERÊNCIAS ══ */}
-            <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px", display:"flex", flexDirection:"column", gap:14 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>4</div>
-                <p style={{ fontSize:13, fontWeight:700 }}>Preferências</p>
+            <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"16px", display:"flex", flexDirection:"column" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14 }}>
+                <div style={{ width:24, height:24, borderRadius:8, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:900, color:B.accent }}>4</div>
+                <p style={{ fontSize:14, fontWeight:700 }}>Preferências</p>
               </div>
 
               {/* Tom */}
-              <div>
-                <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:6 }}>Qual tom usar nas legendas?</p>
-                <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+              <div style={{ marginBottom:16 }}>
+                <p style={{ fontSize:13, fontWeight:600, color:B.text, marginBottom:8 }}>Qual tom usar nas legendas?</p>
+                <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
                   {[{k:"informativo",l:"📰 Informativo"},{k:"inspirador",l:"✨ Inspirador"},{k:"comico",l:"😂 Cômico"},{k:"serio",l:"🎯 Sério"},{k:"informal",l:"💬 Informal"},{k:"educativo",l:"📚 Educativo"},{k:"provocativo",l:"🔥 Provocativo"}].map(t => (
-                    <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"5px 10px", borderRadius:8, border:ipTone===t.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipTone===t.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted }}>{t.l}</button>
+                    <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"7px 12px", borderRadius:10, border:ipTone===t.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipTone===t.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted }}>{t.l}</button>
                   ))}
                 </div>
               </div>
 
               {/* Emojis */}
-              <div style={{ borderTop:"1px solid "+B.border, paddingTop:12 }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:ipEmojis?8:0 }}>
-                  <p style={{ fontSize:11, fontWeight:700, color:B.muted }}>Usar emojis nas legendas?</p>
-                  <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:42, height:24, borderRadius:12, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
-                    <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:3, left:ipEmojis?21:3, transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,0.15)" }} />
+              <div style={{ borderTop:"1px solid "+B.border, paddingTop:14 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:ipEmojis?10:0 }}>
+                  <p style={{ fontSize:13, fontWeight:600, color:B.text }}>Usar emojis nas legendas?</p>
+                  <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:44, height:24, borderRadius:12, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
+                    <div style={{ width:20, height:20, borderRadius:10, background:"#fff", position:"absolute", top:2, left:ipEmojis?22:2, transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,0.15)" }} />
                   </button>
                 </div>
                 {ipEmojis && <>
-                  <p style={{ fontSize:10, color:B.muted, marginBottom:6 }}>Quantidade de emojis:</p>
-                  <div style={{ display:"flex", gap:4 }}>
+                  <p style={{ fontSize:12, color:B.muted, marginBottom:8 }}>Quantidade de emojis por legenda:</p>
+                  <div style={{ display:"flex", gap:6 }}>
                     {[{k:"pouco",l:"Sutil (1-2)"},{k:"moderado",l:"Moderado (3-4)"},{k:"muito",l:"Bastante (5+)"}].map(q => (
-                      <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ flex:1, padding:"6px 0", borderRadius:8, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted, textAlign:"center" }}>{q.l}</button>
+                      <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted, textAlign:"center" }}>{q.l}</button>
                     ))}
                   </div>
                 </>}
@@ -8192,11 +8202,9 @@ REGRAS TÉCNICAS:
 
           </div>
 
-          {/* ── CTA ── */}
-          <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:14, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:20 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
-            Processar com a Munique A.I
-          </button>
+        </>}
+
+
         </>}
 
         {/* ═══ STEP 2: PROCESSING ═══ */}
