@@ -806,29 +806,40 @@ const deleteFromMeta = async (clientId, postId) => {
 };
 
 /* ── Best Times to Post (analyze engagement patterns) ── */
-const getBestTimesToPost = (insights) => {
-  /* Default recommended times based on Brazilian market research */
-  const defaults = [
-    { day:"Segunda", times:["08:00","12:00","18:00"], best:"12:00" },
-    { day:"Terça", times:["08:00","12:00","19:00"], best:"12:00" },
-    { day:"Quarta", times:["08:00","12:00","19:00"], best:"19:00" },
-    { day:"Quinta", times:["08:00","12:00","19:00"], best:"12:00" },
-    { day:"Sexta", times:["08:00","13:00","17:00"], best:"13:00" },
-    { day:"Sábado", times:["10:00","14:00","20:00"], best:"10:00" },
-    { day:"Domingo", times:["10:00","15:00","20:00"], best:"15:00" },
-  ];
-  if (!insights) return defaults;
-  /* If we have online_followers data from Meta, use it */
-  try {
-    const onlineData = insights?.online_followers || insights?.page_fans_online;
-    if (onlineData && typeof onlineData === "object") {
-      return Object.entries(onlineData).map(([day, hours]) => {
-        const sorted = Object.entries(hours||{}).sort(([,a],[,b])=>b-a);
-        const topTimes = sorted.slice(0,3).map(([h])=>h.padStart(2,"0")+":00");
-        return { day, times:topTimes, best:topTimes[0]||"12:00" };
-      });
-    }
-  } catch {}
+const getBestTimesToPost = (insights, segment) => {
+  /* Segment-specific best times based on Brazilian market research */
+  const segMap = {
+    "imobili": [{ day:"Seg", t:["07:30","12:00","19:00"], b:"12:00" },{ day:"Ter", t:["07:30","12:00","19:00"], b:"19:00" },{ day:"Qua", t:["07:30","12:00","19:00"], b:"12:00" },{ day:"Qui", t:["07:30","12:00","20:00"], b:"20:00" },{ day:"Sex", t:["08:00","12:00","17:00"], b:"12:00" },{ day:"Sáb", t:["09:00","11:00","15:00"], b:"09:00" },{ day:"Dom", t:["10:00","16:00","20:00"], b:"10:00" }],
+    "saúde": [{ day:"Seg", t:["07:00","11:00","18:00"], b:"18:00" },{ day:"Ter", t:["07:00","11:00","19:00"], b:"11:00" },{ day:"Qua", t:["07:00","12:00","19:00"], b:"19:00" },{ day:"Qui", t:["07:00","11:00","18:00"], b:"11:00" },{ day:"Sex", t:["08:00","12:00","17:00"], b:"12:00" },{ day:"Sáb", t:["09:00","14:00","19:00"], b:"09:00" },{ day:"Dom", t:["10:00","15:00","20:00"], b:"15:00" }],
+    "gastro": [{ day:"Seg", t:["11:00","17:00","20:00"], b:"11:00" },{ day:"Ter", t:["11:00","17:00","20:00"], b:"17:00" },{ day:"Qua", t:["11:00","17:00","20:00"], b:"20:00" },{ day:"Qui", t:["11:00","17:00","20:00"], b:"17:00" },{ day:"Sex", t:["11:00","17:00","21:00"], b:"17:00" },{ day:"Sáb", t:["10:00","12:00","19:00"], b:"12:00" },{ day:"Dom", t:["10:00","12:00","19:00"], b:"12:00" }],
+    "moda": [{ day:"Seg", t:["09:00","12:00","19:00"], b:"19:00" },{ day:"Ter", t:["09:00","12:00","20:00"], b:"20:00" },{ day:"Qua", t:["09:00","12:00","19:00"], b:"19:00" },{ day:"Qui", t:["09:00","12:00","20:00"], b:"20:00" },{ day:"Sex", t:["10:00","14:00","19:00"], b:"19:00" },{ day:"Sáb", t:["10:00","14:00","20:00"], b:"14:00" },{ day:"Dom", t:["11:00","16:00","20:00"], b:"16:00" }],
+    "educa": [{ day:"Seg", t:["07:00","12:00","18:00"], b:"07:00" },{ day:"Ter", t:["07:00","12:00","18:00"], b:"18:00" },{ day:"Qua", t:["07:00","12:00","18:00"], b:"12:00" },{ day:"Qui", t:["07:00","12:00","18:00"], b:"07:00" },{ day:"Sex", t:["08:00","12:00","17:00"], b:"12:00" },{ day:"Sáb", t:["09:00","14:00","19:00"], b:"09:00" },{ day:"Dom", t:["10:00","15:00","20:00"], b:"20:00" }],
+    "tecnol": [{ day:"Seg", t:["08:00","12:00","18:00"], b:"12:00" },{ day:"Ter", t:["08:00","13:00","19:00"], b:"13:00" },{ day:"Qua", t:["09:00","12:00","19:00"], b:"19:00" },{ day:"Qui", t:["08:00","12:00","18:00"], b:"12:00" },{ day:"Sex", t:["09:00","14:00","17:00"], b:"14:00" },{ day:"Sáb", t:["10:00","15:00","20:00"], b:"10:00" },{ day:"Dom", t:["10:00","16:00","21:00"], b:"16:00" }],
+    "beleza": [{ day:"Seg", t:["09:00","13:00","19:00"], b:"19:00" },{ day:"Ter", t:["09:00","13:00","20:00"], b:"20:00" },{ day:"Qua", t:["09:00","12:00","19:00"], b:"19:00" },{ day:"Qui", t:["09:00","13:00","20:00"], b:"13:00" },{ day:"Sex", t:["10:00","14:00","19:00"], b:"19:00" },{ day:"Sáb", t:["10:00","14:00","20:00"], b:"14:00" },{ day:"Dom", t:["11:00","16:00","20:00"], b:"16:00" }],
+    "fitness": [{ day:"Seg", t:["06:00","11:00","18:00"], b:"06:00" },{ day:"Ter", t:["06:00","11:00","19:00"], b:"06:00" },{ day:"Qua", t:["06:00","11:00","18:00"], b:"18:00" },{ day:"Qui", t:["06:00","11:00","19:00"], b:"06:00" },{ day:"Sex", t:["06:00","12:00","17:00"], b:"06:00" },{ day:"Sáb", t:["07:00","10:00","16:00"], b:"07:00" },{ day:"Dom", t:["08:00","10:00","17:00"], b:"08:00" }],
+    "jurídic": [{ day:"Seg", t:["08:00","12:00","18:00"], b:"08:00" },{ day:"Ter", t:["08:00","12:00","18:00"], b:"12:00" },{ day:"Qua", t:["08:00","12:00","18:00"], b:"18:00" },{ day:"Qui", t:["08:00","12:00","18:00"], b:"12:00" },{ day:"Sex", t:["08:00","12:00","17:00"], b:"12:00" },{ day:"Sáb", t:["09:00","14:00","18:00"], b:"09:00" },{ day:"Dom", t:["10:00","15:00","19:00"], b:"15:00" }],
+  };
+  const norm = (arr) => arr.map(d => ({ day:d.day, times:d.t, best:d.b }));
+  const defaults = norm([{ day:"Seg", t:["08:00","12:00","18:00"], b:"12:00" },{ day:"Ter", t:["08:00","12:00","19:00"], b:"12:00" },{ day:"Qua", t:["08:00","12:00","19:00"], b:"19:00" },{ day:"Qui", t:["08:00","12:00","19:00"], b:"12:00" },{ day:"Sex", t:["08:00","13:00","17:00"], b:"13:00" },{ day:"Sáb", t:["10:00","14:00","20:00"], b:"10:00" },{ day:"Dom", t:["10:00","15:00","20:00"], b:"15:00" }]);
+  /* Try Meta insights first */
+  if (insights) {
+    try {
+      const onlineData = insights?.online_followers || insights?.page_fans_online;
+      if (onlineData && typeof onlineData === "object") {
+        return Object.entries(onlineData).map(([day, hours]) => {
+          const sorted = Object.entries(hours||{}).sort(([,a],[,b])=>b-a);
+          const topTimes = sorted.slice(0,3).map(([h])=>h.padStart(2,"0")+":00");
+          return { day, times:topTimes, best:topTimes[0]||"12:00" };
+        });
+      }
+    } catch {}
+  }
+  /* Then try segment match */
+  if (segment) {
+    const sl = segment.toLowerCase();
+    const key = Object.keys(segMap).find(k => sl.includes(k));
+    if (key) return norm(segMap[key]);
+  }
   return defaults;
 };
 
@@ -8817,6 +8828,33 @@ REGRAS TÉCNICAS:
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Público-alvo (opcional)</label>
               <input value={form.boostAudience||""} onChange={e=>setForm({...form,boostAudience:e.target.value})} placeholder="Ex: Mulheres 25-45, Petrópolis RJ, interesse em moda" className="tinput" style={{ marginBottom:12 }} />
             </>}
+          <label className="sl" style={{ display:"block", marginBottom:6 }}>Agendamento (opcional)</label>
+          <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+            <input type="date" value={form.schedDate||""} onChange={e=>setForm({...form,schedDate:e.target.value})} className="tinput" style={{ flex:1 }} />
+            <input type="time" value={form.schedTime||""} onChange={e=>setForm({...form,schedTime:e.target.value})} className="tinput" style={{ width:100 }} />
+          </div>
+          {(() => {
+            const clientObj = CDATA.find(c => c.name === form.client);
+            const segment = clientObj?.segment || clientObj?.segmento || "";
+            const bt = getBestTimesToPost(null, segment);
+            const today = new Date().getDay();
+            const dayIdx = today === 0 ? 6 : today - 1;
+            const dayData = bt[dayIdx] || bt[0];
+            return <div style={{ marginBottom:12 }}>
+              <p style={{ fontSize:9, fontWeight:600, color:B.muted, marginBottom:5, display:"flex", alignItems:"center", gap:4 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Melhores horários para hoje ({dayData.day}){segment ? ` · ${segment}` : ""}
+              </p>
+              <div style={{ display:"flex", gap:6 }}>
+                {dayData.times.map(t => (
+                  <button key={t} onClick={()=>setForm({...form,schedTime:t})} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${form.schedTime===t?B.accent:B.border}`, background:form.schedTime===t?`${B.accent}12`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:form.schedTime===t?700:500, color:form.schedTime===t?B.accent:B.muted, display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+                    {t}
+                    {t===dayData.best && <span style={{ fontSize:7, fontWeight:800, color:"#10B981", textTransform:"uppercase" }}>melhor</span>}
+                  </button>
+                ))}
+              </div>
+            </div>;
+          })()}
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Ideia / Briefing inicial</label>
           <textarea value={form.idea||""} onChange={e=>setForm({...form,idea:e.target.value})} placeholder="Descreva a ideia da demanda..." className="tinput" style={{ marginBottom:12, minHeight:80, resize:"vertical" }} />
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Prioridade</label>
@@ -9013,7 +9051,7 @@ REGRAS TÉCNICAS:
             <div style={{ marginTop:8 }}>
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Horários recomendados · {["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date().getDay()]}</label>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                {(() => { const bt = getBestTimesToPost(null); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
+                {(() => { const cObj = CDATA.find(c=>c.name===sel.client); const seg = cObj?.segment||cObj?.segmento||""; const bt = getBestTimesToPost(null, seg); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
                   <button key={t} onClick={()=>updateField("scheduling",{...sel.scheduling,time:t})} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${sel.scheduling?.time===t?B.accent:B.border}`, background:sel.scheduling?.time===t?`${B.accent}15`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:sel.scheduling?.time===t?B.accent:B.text, transition:"all .15s" }}>
                     {t}{ti===0?" ⭐":""}
                   </button>
@@ -10540,7 +10578,7 @@ REGRAS TÉCNICAS:
                 {d.stage==="caption"&&d.format==="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><div style={{padding:"16px 12px",borderRadius:10,background:(B.orange||"#F59E0B")+"06",border:"1.5px dashed "+(B.orange||"#F59E0B")+"30",textAlign:"center"}}><p style={{fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>🔒 Stories não suporta legenda</p><p style={{fontSize:9,color:B.muted,marginTop:4}}>Texto vai direto na arte. Avance para revisão.</p></div></div>}
                 {d.stage==="review"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>REVISÃO</p><p style={{fontSize:10,color:B.text}}>Verifique legenda, arte e informações.</p></div>}
                 {d.stage==="client"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>APROVAÇÃO DO CLIENTE</p><p style={{fontSize:10,color:B.text}}>Aguardando aprovação.</p></div>}
-                {d.stage==="scheduled"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>AGENDAMENTO</p><div style={{display:"flex",gap:6}}><input value={d.scheduling?.date||""} onChange={e=>updField("scheduling",{...d.scheduling,date:e.target.value})} placeholder="YYYY-MM-DD" className="tinput" style={{fontSize:10,flex:1}}/><input value={d.scheduling?.time||""} onChange={e=>updField("scheduling",{...d.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" style={{fontSize:10,flex:1}}/></div><div style={{marginTop:6}}><p style={{fontSize:8,fontWeight:700,color:B.muted,marginBottom:4}}>HORÁRIOS RECOMENDADOS</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(()=>{const bt=getBestTimesToPost(null);const td=new Date().getDay();const dd=bt[td===0?6:td-1];return(dd?.times||["12:00","18:00","20:00"]).map((t,ti)=><button key={t} onClick={e=>{e.stopPropagation();updField("scheduling",{...d.scheduling,time:t});}} style={{padding:"5px 10px",borderRadius:8,border:`1.5px solid ${d.scheduling?.time===t?B.accent:B.border}`,background:d.scheduling?.time===t?`${B.accent}15`:B.bgCard,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:d.scheduling?.time===t?B.accent:B.text}}>{t}{ti===0?" ⭐":""}</button>);})()}</div></div></div>}
+                {d.stage==="scheduled"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>AGENDAMENTO</p><div style={{display:"flex",gap:6}}><input value={d.scheduling?.date||""} onChange={e=>updField("scheduling",{...d.scheduling,date:e.target.value})} placeholder="YYYY-MM-DD" className="tinput" style={{fontSize:10,flex:1}}/><input value={d.scheduling?.time||""} onChange={e=>updField("scheduling",{...d.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" style={{fontSize:10,flex:1}}/></div><div style={{marginTop:6}}><p style={{fontSize:8,fontWeight:700,color:B.muted,marginBottom:4}}>HORÁRIOS RECOMENDADOS</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(()=>{const cObj2=CDATA.find(c=>c.name===d.client);const seg2=cObj2?.segment||cObj2?.segmento||"";const bt=getBestTimesToPost(null,seg2);const td=new Date().getDay();const dd=bt[td===0?6:td-1];return(dd?.times||["12:00","18:00","20:00"]).map((t,ti)=><button key={t} onClick={e=>{e.stopPropagation();updField("scheduling",{...d.scheduling,time:t});}} style={{padding:"5px 10px",borderRadius:8,border:`1.5px solid ${d.scheduling?.time===t?B.accent:B.border}`,background:d.scheduling?.time===t?`${B.accent}15`:B.bgCard,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:d.scheduling?.time===t?B.accent:B.text}}>{t}{ti===0?" ⭐":""}</button>);})()}</div></div></div>}
                 <div style={{display:"flex",gap:6}}>{canP&&<button onClick={()=>{mvK(d.id,stgs[sIdx-1]);setCStage(stgs[sIdx-1]);setExpandedId(d.id);}} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.muted}}>← {STAGE_CFG[stgs[sIdx-1]]?.l}</button>}{canN&&<button onClick={()=>{mvK(d.id,stgs[sIdx+1]);setCStage(stgs[sIdx+1]);setExpandedId(d.id);}} style={{flex:1,padding:"8px 12px",borderRadius:8,border:"none",background:STAGE_CFG[stgs[sIdx+1]]?.c||B.accent,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Avançar → {STAGE_CFG[stgs[sIdx+1]]?.l}</button>}</div>
                 <div style={{display:"flex",gap:6,marginTop:6}}><button onClick={()=>{setSel(d);}} style={{flex:1,padding:"7px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.text}}>Ver completo</button><button onClick={()=>{if(goTabProp){goTabProp("content",d.id);}else{setSel(d);}}} style={{padding:"7px 10px",borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.muted}}>Expandir ↗</button><button onClick={async()=>{if(!confirm('Excluir "'+d.title+'"?'))return;if(d.supaId)try{await supaDeleteDemand(d.supaId);}catch{}setDemands(p=>p.filter(x=>x.id!==d.id));showToast("Excluída ✓");}} style={{padding:"7px 10px",borderRadius:8,border:`1px solid ${B.red||"#EF4444"}20`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:600,color:B.red||"#EF4444"}}>{"🗑"}</button></div>
               </div>}
@@ -11228,7 +11266,7 @@ REGRAS TÉCNICAS:
                   <div style={{ marginBottom:14 }}>
                     <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Horários recomendados · {["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date().getDay()]}</label>
                     <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                    {(() => { const bt = getBestTimesToPost(null); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
+                    {(() => { const cObj = CDATA.find(c=>c.name===sel.client); const seg = cObj?.segment||cObj?.segmento||""; const bt = getBestTimesToPost(null, seg); const today = new Date().getDay(); const dayData = bt[today === 0 ? 6 : today - 1]; return (dayData?.times||["12:00","18:00","20:00"]).map((t,ti) => (
                       <button key={t} onClick={()=>setForm({...form,schedTime:t})} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${form.schedTime===t?"#BBF246":"rgba(0,0,0,0.08)"}`, background:form.schedTime===t?"#BBF24615":"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:form.schedTime===t?"#1A1D23":"#666" }}>{t}{ti===0?" ⭐":""}</button>
                     )); })()}
                     </div>
