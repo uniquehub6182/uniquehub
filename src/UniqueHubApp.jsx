@@ -3035,7 +3035,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         </div>
         {featured && (
           <div onClick={()=>goSub("news", featured.id)} style={{borderRadius:20,overflow:"hidden",cursor:"pointer",marginBottom:10,position:"relative",height:190}}>
-            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(featured.cat,0);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+            <img src={featured.photo || catPhoto(featured.cat,0)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(featured.cat,0);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} loading="lazy"/>
             <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.75) 100%)"}}/>
             <span style={{position:"absolute",top:12,left:12,background:catColor[featured.cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.8}}>{catLabel[featured.cat]||"Geral"}</span>
             <div style={{position:"absolute",bottom:14,left:14,right:14}}>
@@ -3047,7 +3047,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           {rest.map((a,i)=>(
             <div key={a.id||i} onClick={()=>goSub("news", a.id)} style={{borderRadius:16,overflow:"hidden",cursor:"pointer",position:"relative",height:110}}>
-              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(a.cat,i+1);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+              <img src={a.photo || catPhoto(a.cat,i+1)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto(a.cat,i+1);}} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} loading="lazy"/>
               <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%)"}}/>
               <span style={{position:"absolute",top:7,left:7,background:catColor[a.cat]||"#6366F1",color:"#fff",fontSize:7,fontWeight:800,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:0.5}}>{catLabel[a.cat]||"Geral"}</span>
               <p style={{position:"absolute",bottom:7,left:7,right:7,fontSize:10,fontWeight:700,color:"#fff",lineHeight:1.3,margin:0,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{a.title}</p>
@@ -3126,7 +3126,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               <div key={d.id||i} onClick={()=>goTab("content", d.id)} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
                 <div style={{position:"relative",height:140}}>
                   {imgFile
-                    ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} loading="lazy"/>
                     : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bg}ee,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
                         <span style={{fontSize:32,fontWeight:900,color:"rgba(255,255,255,0.2)",letterSpacing:-1}}>{initials}</span>
                       </div>
@@ -9227,7 +9227,7 @@ REGRAS TÉCNICAS:
                   const fUrl = f.url || null;
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.pink}06`, borderRadius:10, border:`1px solid ${B.pink}15` }}>
-                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} loading="lazy" /> :
                      isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.pink} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.pink, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
@@ -9347,7 +9347,7 @@ REGRAS TÉCNICAS:
                   const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fName);
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
-                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} /> :
+                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} loading="lazy" /> :
                      isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
                      <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>}
                     <div style={{ flex:1, minWidth:0 }}>
@@ -10905,7 +10905,7 @@ REGRAS TÉCNICAS:
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Título *</p><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título da demanda" className="tinput" /></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                  <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><select value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput"><option value="">Selecionar...</option>{CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
+                  <div style={{position:"relative"}}><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><div onClick={()=>setForm(p=>({...p,_clientOpen:!p._clientOpen,_clientSearch:""}))} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 8px",borderRadius:8,border:`1.5px solid ${form._clientOpen?B.accent:B.border}`,background:B.bgCard,cursor:"pointer",fontSize:10,fontWeight:form.client?600:400,color:form.client?B.text:B.muted}}>{form.client||"Selecionar..."}<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{marginLeft:"auto",transform:form._clientOpen?"rotate(180deg)":"none"}}><polyline points="6 9 12 15 18 9"/></svg></div>{form._clientOpen&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:50,marginTop:2,background:B.bgCard,borderRadius:10,border:`1.5px solid ${B.accent}30`,boxShadow:"0 6px 24px rgba(0,0,0,0.15)",maxHeight:180,overflowY:"auto"}}><div style={{padding:"4px 6px",borderBottom:`1px solid ${B.border}`}}><input autoFocus value={form._clientSearch||""} onChange={e=>setForm(p=>({...p,_clientSearch:e.target.value}))} placeholder="Buscar..." style={{width:"100%",padding:"4px 6px",borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",fontFamily:"inherit",fontSize:10,outline:"none",color:B.text}}/></div>{CDATA.filter(c=>!form._clientSearch||c.name.toLowerCase().includes((form._clientSearch||"").toLowerCase())).map(c=>(<div key={c.id} onClick={()=>setForm(p=>({...p,client:c.name,_clientOpen:false,_clientSearch:""}))} style={{padding:"5px 8px",cursor:"pointer",fontSize:10,fontWeight:form.client===c.name?700:500,color:B.text,background:form.client===c.name?`${B.accent}08`:"transparent"}} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background=form.client===c.name?`${B.accent}08`:"transparent"}>{c.name}</div>))}</div>}</div>
                 </div>
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Prioridade</p><div style={{display:"flex",gap:4}}>{[{k:"baixa",l:"Baixa",c:B.green||"#10B981"},{k:"média",l:"Média",c:B.orange||"#F59E0B"},{k:"alta",l:"Alta",c:B.red||"#EF4444"}].map(p=><button key={p.k} onClick={()=>setForm(pr=>({...pr,priority:p.k}))} style={{flex:1,padding:"7px 0",borderRadius:8,border:`1.5px solid ${(form.priority||"média")===p.k?p.c:B.border}`,background:(form.priority||"média")===p.k?`${p.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:(form.priority||"média")===p.k?700:500,color:(form.priority||"média")===p.k?p.c:B.muted}}>{p.l}</button>)}</div></div>
                 <div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}><p style={{fontSize:9,fontWeight:600,color:B.muted}}>Formato</p><button onClick={()=>showToast("📐 Dimensões Instagram:\n• Feed: 1:1 (1080×1080), 4:5 (1080×1350), 3:4 (1080×1440)\n• Stories/Reels: 9:16 (1080×1920)\n• Carrossel: 1:1 ou 4:5 (até 20 slides)\n\n📐 Dimensões Facebook:\n• Feed: 1200×630 ou 1080×1080\n• Stories: 1080×1920\n• Vídeo: 1280×720 mínimo")} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:3,color:B.muted,fontFamily:"inherit",fontSize:8,fontWeight:600}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Guia</button></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Instagram","Facebook"]}; const dimMap={Feed:"1:1",Stories:"9:16",Reels:"9:16",Carrossel:"1:1","Vídeo":"9:16",Shorts:"9:16"}; const allowed=compat[f]||["Instagram","Facebook"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,aspectRatio:dimMap[f]||"1:1",networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div>
@@ -11114,10 +11114,26 @@ REGRAS TÉCNICAS:
           <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
               <div>
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Cliente</label>
-                <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:14, width:"100%" }}>
-                  <option value="">Selecionar cliente...</option>
-                  {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
+                <div style={{ position:"relative", marginBottom:14 }}>
+                  <div onClick={()=>setForm(p=>({...p,_clientOpen:!p._clientOpen,_clientSearch:""}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:10, border:`1.5px solid ${form._clientOpen?"#BBF246":"rgba(0,0,0,0.08)"}`, background:"#fff", cursor:"pointer", transition:"all .15s" }}>
+                    {form.client ? <>
+                      <div style={{ width:22, height:22, borderRadius:7, background:"#BBF24615", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:800, color:"#BBF246", flexShrink:0 }}>{(form.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</div>
+                      <span style={{ fontSize:12, fontWeight:600, color:"#1A1D23", flex:1 }}>{form.client}</span>
+                    </> : <span style={{ fontSize:12, color:"#9CA3AF", flex:1 }}>Selecionar cliente...</span>}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" style={{ transform:form._clientOpen?"rotate(180deg)":"none", transition:"transform .15s" }}><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  {form._clientOpen && <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:50, marginTop:4, background:"#fff", borderRadius:12, border:"1.5px solid #BBF24630", boxShadow:"0 8px 32px rgba(0,0,0,0.15)", maxHeight:200, overflowY:"auto" }}>
+                    <div style={{ padding:"6px 8px", borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
+                      <input autoFocus value={form._clientSearch||""} onChange={e=>setForm(p=>({...p,_clientSearch:e.target.value}))} placeholder="Buscar..." style={{ width:"100%", padding:"5px 8px", borderRadius:6, border:"1px solid rgba(0,0,0,0.08)", background:"transparent", fontFamily:"inherit", fontSize:11, outline:"none", color:"#1A1D23" }} />
+                    </div>
+                    {CDATA.filter(c => !form._clientSearch || c.name.toLowerCase().includes((form._clientSearch||"").toLowerCase())).map(c => (
+                      <div key={c.id} onClick={()=>setForm(p=>({...p, client:c.name, _clientOpen:false, _clientSearch:""}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", cursor:"pointer", background:form.client===c.name?"#BBF24608":"transparent" }} onMouseEnter={e=>e.currentTarget.style.background="#BBF24608"} onMouseLeave={e=>e.currentTarget.style.background=form.client===c.name?"#BBF24608":"transparent"}>
+                        <div style={{ width:20, height:20, borderRadius:7, background:"#BBF24615", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, fontWeight:800, color:"#BBF246", flexShrink:0 }}>{(c.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</div>
+                        <span style={{ fontSize:11, fontWeight:form.client===c.name?700:500, color:"#1A1D23" }}>{c.name}</span>
+                      </div>
+                    ))}
+                  </div>}
+                </div>
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Título</label>
                 <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:14, width:"100%" }} />
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Redes</label>
