@@ -1299,7 +1299,8 @@ function getB(isDark, accent, prefs) {
   base.blockBg = p.blockBg || (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)");
   base.iconFill = p.iconFill || "outlined";
   base.liquidGlass = !!p.liquidGlass;
-  if (base.liquidGlass) {
+  base.hasBgImage = !!p.bgImage && p.bgImage !== "none";
+  base.transparent = base.liquidGlass || base.hasBgImage;  if (base.liquidGlass) {
     base.glassBg = isDark ? "rgba(15,20,25,0.65)" : "rgba(255,255,255,0.55)";
     base.glassCard = isDark ? "rgba(28,34,40,0.55)" : "rgba(255,255,255,0.45)";
     base.glassBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.6)";
@@ -22272,7 +22273,7 @@ function Match4BizPage({ onBack, clients, user }) {
     const st = getSt(m.status);
     const msgs = (m.messages || []).filter(msg => msg.from === "agency" || msg.type === "system");
     return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{background:B.liquidGlass?"transparent":B.bg,color:B.text}}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
         {ToastEl}
         <Head title="" onBack={()=>{setSelMatch(null);setView("list");}} right={
           <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -22467,7 +22468,7 @@ function Match4BizPage({ onBack, clients, user }) {
 
   /* ═══ MOBILE LIST VIEW ═══ */
   return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{background:B.liquidGlass?"transparent":B.bg,color:B.text}}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
       {ToastEl}
       <Head title="Match4Biz" onBack={onBack} />
       <div className="content" style={{padding:"0 16px"}}>
@@ -22895,7 +22896,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ EDIT MY PROFILE ═══ */
   if (showEditProfile) return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu perfil" title="Match4Biz" onBack={() => setShowEditProfile(false)} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
         <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
@@ -22921,7 +22922,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ NOT FOUND SCREEN ═══ */
   if (!loading && !myClient) return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"40px 20px", textAlign:"center" }}>
@@ -22939,7 +22940,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ TERMS SCREEN ═══ */
   if (!accepted) return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px 120px" }}>
@@ -23011,7 +23012,7 @@ function ClientMatch4Biz({ onBack, user }) {
     const circumference = 2 * Math.PI * 42;
     const offset = circumference - (sc / 100) * circumference;
     return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
         <Head title="" onBack={() => setShowProfile(null)} />
         <div className="content" style={{ padding:"0 16px" }}>
@@ -23170,7 +23171,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ MAIN VIEW ═══ */
   return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       {ToastEl}
       {BuyOverlay}
@@ -23475,7 +23476,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
   const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
 
   return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
       <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"12px 16px 120px" }}>
@@ -24243,7 +24244,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 `;
   const ClientStyleTag = () => <style dangerouslySetInnerHTML={{ __html: clientStyles }} />;
   const SubWrap = ({ title, children }) => (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <ClientStyleTag />
       <Head title={title} onBack={() => setSub(null)} />
       <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
@@ -24290,7 +24291,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     /* ── Pix QR code view ── */
     if (finView === "pix" && asaasPixData) return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <Head title="Pagar com Pix" onBack={() => { setFinView("main"); setAsaasPixData(null); }} />
         <div className="content" style={{ padding:"0 16px", textAlign:"center" }}>
           <Card style={{ padding:24 }}>
@@ -24306,7 +24307,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     /* ── Boleto view ── */
     if (finView === "boleto" && asaasBoletoData) return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <Head title="Boleto" onBack={() => { setFinView("main"); setAsaasBoletoData(null); }} />
         <div className="content" style={{ padding:"0 16px", textAlign:"center" }}>
           <Card style={{ padding:24 }}>
@@ -24320,7 +24321,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     if (finView === "plans") return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
         <div className="content" style={{ padding:"12px 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
@@ -24339,7 +24340,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     if (finView === "service") return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <Head title="Serviço Extra" onBack={() => setFinView("main")} />
         <div className="content" style={{ padding:"0 16px" }}>
           <Card style={{ textAlign:"center", padding:24 }}>
@@ -24354,7 +24355,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     if (finView === "contract") return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <div style={{ padding:"0 20px" }}><Head title="Contrato" onBack={() => setFinView("main")} /></div>
         <div className="content" style={{ padding:"0 16px 120px" }}>
           <Card><p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Termos de Serviço</p>
@@ -24373,7 +24374,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     return (
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
       <div className="content" style={{ padding:"12px 16px 120px" }}>
         <div style={{ borderRadius:20, overflow:"hidden", border:"none" }}>
@@ -24470,7 +24471,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const isApproved = d.steps?.client?.status === "approved";
     const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
     return (
-      <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         {ToastEl}
         <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", minWidth:0 }}>
           <div style={{ padding:"0 20px" }}><Head title={d.title} onBack={() => setSub(null)} /></div>
@@ -25011,7 +25012,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
     <div style={{ display: hasSub ? "none" : "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.liquidGlass?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
 
@@ -25562,7 +25563,7 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
   return (
     <div style={{ display:"flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
-    <div className={"app" + (B.liquidGlass ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
       {ToastEl}
       {/* ── NEWS TO POST: CLIENT PICKER ── */}
       {newsToPostArticle && !newsToPostLoading && <div style={{position:"fixed",inset:0,zIndex:99997,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)"}} onClick={()=>{setNewsToPostArticle(null);setNewsToPostClient(null);}}>
@@ -26239,17 +26240,17 @@ export default function App() {
 .btn-loading{opacity:0.6;pointer-events:none;cursor:wait}
 .toast-anim{animation:toastIn .3s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes toastIn{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
-html,body{font-family:'Figtree',sans-serif;background:${B.liquidGlass ? (dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)") : B.bg};margin:0;padding:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;overflow:hidden;background:${B.liquidGlass ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
+html,body{font-family:'Figtree',sans-serif;background:${B.transparent ? (dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)") : B.bg};margin:0;padding:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
 input,textarea,select{font-size:16px !important}
-.app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.liquidGlass ? "transparent" : B.bg}}
-.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.liquidGlass ? "transparent" : B.bg}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.liquidGlass ? "transparent" : B.bg}}
+.app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
+.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.transparent ? "transparent" : B.bg}}
 .pg{padding:16px 16px 120px;padding-top:${TOP}}
 .uh-glass .card{backdrop-filter:blur(24px) saturate(180%) !important;-webkit-backdrop-filter:blur(24px) saturate(180%) !important;border:1px solid rgba(255,255,255,0.5) !important;box-shadow:0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8) !important}
 .uh-glass.uh-dark .card{border:1px solid rgba(255,255,255,0.1) !important;box-shadow:0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06) !important}
 .uh-glass .bnav{backdrop-filter:blur(40px) saturate(200%) !important;-webkit-backdrop-filter:blur(40px) saturate(200%) !important;background:rgba(26,29,35,0.65) !important;border:1px solid rgba(255,255,255,0.15) !important}
 .uh-glass .toast-anim{backdrop-filter:blur(40px) saturate(200%) !important;-webkit-backdrop-filter:blur(40px) saturate(200%) !important;background:rgba(15,20,25,0.7) !important;border:1px solid rgba(255,255,255,0.1) !important}
-.card{padding:16px;border-radius:var(--uh-radius);background:${B.liquidGlass ? B.glassCard : (dark?"#1C2228":"#fff")};border:${B.liquidGlass ? "1px solid "+(dark?"rgba(255,255,255,0.1)":"rgba(255,255,255,0.5)") : "none"};box-shadow:${B.liquidGlass ? B.glassShadow : "0 1px 3px "+(dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)")};${B.liquidGlass ? "backdrop-filter:"+B.glassBlur+";-webkit-backdrop-filter:"+B.glassBlur+";" : ""}}
+.card{padding:16px;border-radius:var(--uh-radius);background:${B.transparent ? (B.glassCard || (dark?"rgba(28,34,40,0.7)":"rgba(255,255,255,0.65)")) : (dark?"#1C2228":"#fff")};border:${B.transparent ? "1px solid "+(dark?"rgba(255,255,255,0.1)":"rgba(255,255,255,0.5)") : "none"};box-shadow:${B.transparent ? (B.glassShadow || (dark?"0 8px 32px rgba(0,0,0,0.3)":"0 8px 32px rgba(0,0,0,0.08)")) : "0 1px 3px "+(dark?"rgba(0,0,0,0.3)":"rgba(25,33,38,0.06)")};${B.transparent ? "backdrop-filter:"+(B.glassBlur||"blur(24px) saturate(180%)")+";-webkit-backdrop-filter:"+(B.glassBlur||"blur(24px) saturate(180%)")+";" : ""}}
 .sl{font-size:10px;font-weight:600;color:${dark?"#8B9099":"#8B8F92"};text-transform:uppercase;letter-spacing:1px}
 .ani{animation:fadeUp .35s ease both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
