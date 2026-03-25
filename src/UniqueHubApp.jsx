@@ -8617,7 +8617,13 @@ REGRAS TÉCNICAS:
     setCreating(false); setCreateType(null); setForm({});
     showToast("✅ Demanda criada com sucesso!");
     /* Auto-scroll to top so user sees the new card in "Ideia" */
-    setTimeout(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, 200);
+    setTimeout(() => {
+      /* Try scrolling the kanban container first (desktop), then the page container, then window */
+      const kanban = document.querySelector('[class*="content-wide"]') || document.querySelector('.pg');
+      if (kanban) kanban.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.querySelector('.pg')?.scrollTo?.({ top: 0, behavior: "smooth" });
+    }, 300);
     if (result?.data) supaCreateNotificationForAll("demand_created", "Nova demanda criada", `${newD.title || newD.type} — ${newD.clientName || ""}`, "📋", null, user?.id);
   };
 
@@ -10825,19 +10831,8 @@ REGRAS TÉCNICAS:
           <DemandDetailBoundary onBack={()=>{setSel(null);setEditMode(false);setCreating(false);setCreateType(null);}}>
           <div style={{flex:1,overflowY:"auto",padding:0}}>
             {sel && detailInner}
-            {creating && <div style={{padding:16}}>{!createType ? (
+            {creating && <div style={{padding:16}}>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                <p style={{fontSize:11,color:B.muted,marginBottom:4}}>Que tipo de demanda?</p>
-                {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels",c:B.blue||"#3B82F6"},{k:"campaign",l:"Campanha",d:"Evento, ação, promoção",c:B.purple||"#8B5CF6"},{k:"video",l:"Vídeo",d:"Reels, TikTok, YouTube",c:B.orange||"#F59E0B"}].map(t=>(
-                  <div key={t.k} onClick={()=>setCreateType(t.k)} style={{padding:"12px 14px",borderRadius:12,border:`1.5px solid ${B.border}`,cursor:"pointer",background:B.bgCard}} onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor=B.border}>
-                    <p style={{fontSize:12,fontWeight:700,color:B.text}}>{t.l}</p>
-                    <p style={{fontSize:10,color:B.muted,marginTop:2}}>{t.d}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                <button onClick={()=>setCreateType(null)} style={{fontSize:10,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left",padding:0}}>← Trocar tipo</button>
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Título *</p><input value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Título da demanda" className="tinput" /></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                   <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><select value={form.client||""} onChange={e=>setForm(p=>({...p,client:e.target.value}))} className="tinput"><option value="">Selecionar...</option>{CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
@@ -10858,7 +10853,7 @@ REGRAS TÉCNICAS:
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Ideia</p><textarea value={form.idea||""} onChange={e=>setForm(p=>({...p,idea:e.target.value}))} placeholder="Descreva a ideia..." className="tinput" rows={3} style={{resize:"vertical"}} /></div>
                 <button onClick={handleCreate} style={{width:"100%",padding:"10px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D",opacity:(form.title&&form.client)?1:0.4}}>Criar Demanda</button>
               </div>
-            )}</div>}
+            </div>}
           </div>
           </DemandDetailBoundary>
         </div>
@@ -11047,20 +11042,6 @@ REGRAS TÉCNICAS:
           </div>
           {/* Drawer body */}
           <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
-            {!createType ? (
-              <div>
-                <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:16 }}>Que tipo de demanda?</p>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                  {[{k:"social",l:"Post",d:"Feed, stories, reels",c:"#3B82F6"},{k:"campaign",l:"Campanha",d:"Evento, ação",c:"#8B5CF6"}].map(t => (
-                    <div key={t.k} onClick={() => setCreateType(t.k)} style={{ padding:"16px", borderRadius:14, border:"1.5px solid rgba(0,0,0,0.06)", cursor:"pointer", transition:"all .15s", background:`${t.c}06` }} onMouseEnter={e=>e.currentTarget.style.borderColor=t.c} onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(0,0,0,0.06)"}>
-                      <div style={{ width:36, height:36, borderRadius:10, background:`${t.c}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10, color:t.c }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-                      <p style={{ fontSize:13, fontWeight:700, color:"#1A1D23" }}>{t.l}</p>
-                      <p style={{ fontSize:11, color:"#9CA3AF", marginTop:2 }}>{t.d}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
               <div>
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Cliente</label>
                 <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:14, width:"100%" }}>
@@ -11112,7 +11093,6 @@ REGRAS TÉCNICAS:
                 </div>
                 <button onClick={handleCreate} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#BBF246", border:"none", cursor:(form.title&&form.client)?"pointer":"not-allowed", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", opacity:(form.title&&form.client)?1:0.4 }}>Criar Demanda</button>
               </div>
-            )}
           </div>
         </div>
       </>}
