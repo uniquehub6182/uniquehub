@@ -8531,10 +8531,20 @@ REGRAS TÉCNICAS:
     if (filter !== "all" && d.type !== filter) return false;
     if (clientFilter !== "all" && d.client !== clientFilter) return false;
     if (dateFilter) {
-      const dDate = d.createdAt; /* format DD/MM */
       const [y, m, dy] = dateFilter.split("-");
-      const target = `${dy}/${m}`;
-      if (dDate !== target) return false;
+      const target = `${y}-${m}-${dy}`;
+      const targetDM = `${dy}/${m}`;
+      /* Prioriza data de publicação (scheduling.date), fallback para data de criação */
+      const schedDate = d.scheduling?.date || "";
+      if (schedDate && schedDate.includes("-")) {
+        if (schedDate !== target) return false;
+      } else if (schedDate && schedDate.includes("/")) {
+        const [dd2, mm2] = schedDate.split("/");
+        if (`${dd2}/${mm2}` !== targetDM) return false;
+      } else {
+        const dDate = d.createdAt;
+        if (dDate !== targetDM) return false;
+      }
     }
     return true;
   });
