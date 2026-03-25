@@ -8067,14 +8067,13 @@ REGRAS TÉCNICAS:
 
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
-    <div className="pg" style={{ paddingTop: TOP, background:B.bg, minHeight:"100vh" }}>
-      {ToastEl}
+    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, overflowY:"auto" }}>
+      <div style={{ maxWidth:860, margin:"0 auto", padding:"0 20px" }}>
       <Head title={`Munique A.I · Passo ${ipStep}/3`} onBack={resetImportPlan} right={ipStep === 3 ? <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:800, color:"#0D0D0D", display:"flex", alignItems:"center", gap:5 }}>{ipCreating ? <><div style={{ width:12, height:12, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {ipCreated}/{ipPosts.filter(p=>p._enabled).length}</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Criar {ipPosts.filter(p=>p._enabled).length} posts</>}</button> : null} />
 
       {/* Progress bar */}
       <div style={{ height:3, background:B.border, marginBottom:20 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
 
-      <div style={{ maxWidth:860, margin:"0 auto" }}>
         {/* ═══ STEP 1: SELECT CLIENT + UPLOAD ═══ */}
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
