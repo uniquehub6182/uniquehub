@@ -25878,7 +25878,7 @@ export default function App() {
       el.textContent = `
         html, body, #root,
         html.uh-desktop, html.uh-desktop body, html.uh-desktop #root { background: ${bgBlur ? "transparent" : B.bodyBg} !important; }
-        ${bgBlur ? `#root::before { content:""; position:fixed; inset:-${blurAmt + 5}px; z-index:-1; background:${B.bodyBg}; filter:blur(${blurAmt}px); -webkit-filter:blur(${blurAmt}px); }` : ""}
+        ${bgBlur ? `#root::before { content:""; position:fixed; inset:0; z-index:-1; background:${B.bodyBg}; filter:blur(${blurAmt}px); -webkit-filter:blur(${blurAmt}px); transform:scale(1.15); transform-origin:center; }` : ""}
         .app, .screen, .content { background: transparent !important; }
         html.uh-desktop .app, html.uh-desktop .screen, html.uh-desktop .content { background: transparent !important; }
         .desktop-dash { background: transparent !important; }
