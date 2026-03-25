@@ -8572,7 +8572,7 @@ REGRAS TÉCNICAS:
     setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: targetStage }, targetStage) : x));
     setSel(prev => syncMilestones({ ...prev, stage: targetStage }, targetStage));
     if (d.supaId) supaUpdateDemand(d.supaId, { stage: targetStage });
-    showToast(`Avançou para: ${STAGE_CFG[targetStage]?.l || targetStage}`);
+    showToast(`✅ Avançou para: ${STAGE_CFG[targetStage]?.l || targetStage}`);
   };
 
   const rejectToStage = (d, targetStage, feedbackNote) => {
@@ -8720,10 +8720,28 @@ REGRAS TÉCNICAS:
       <Head title="Novo Post" onBack={() => { setCreating(false); setCreateType(null); setForm({}); }} />
         <div>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
-          <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:12 }}>
-            <option value="">Selecionar cliente...</option>
-            {CDATA.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
+          <div style={{ position:"relative", marginBottom:12 }}>
+            <div onClick={()=>setForm(p=>({...p,_clientOpen:!p._clientOpen,_clientSearch:""}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, border:`1.5px solid ${form._clientOpen?B.accent:B.border}`, background:B.bgCard, cursor:"pointer", transition:"all .15s" }}>
+              {form.client ? <>
+                <div style={{ width:28, height:28, borderRadius:10, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color:B.accent, flexShrink:0 }}>{(form.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</div>
+                <span style={{ fontSize:13, fontWeight:600, color:B.text, flex:1 }}>{form.client}</span>
+              </> : <span style={{ fontSize:13, color:B.muted, flex:1 }}>Selecionar cliente...</span>}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ transform:form._clientOpen?"rotate(180deg)":"none", transition:"transform .15s" }}><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            {form._clientOpen && <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:50, marginTop:4, background:B.bgCard, borderRadius:14, border:`1.5px solid ${B.accent}30`, boxShadow:"0 8px 32px rgba(0,0,0,0.15)", maxHeight:220, overflowY:"auto" }}>
+              <div style={{ padding:"8px 10px", borderBottom:`1px solid ${B.border}` }}>
+                <input autoFocus value={form._clientSearch||""} onChange={e=>setForm(p=>({...p,_clientSearch:e.target.value}))} placeholder="Buscar cliente..." style={{ width:"100%", padding:"6px 10px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", fontFamily:"inherit", fontSize:12, outline:"none", color:B.text }} />
+              </div>
+              {CDATA.filter(c => !form._clientSearch || c.name.toLowerCase().includes((form._clientSearch||"").toLowerCase())).map(c => (
+                <div key={c.id} onClick={()=>setForm(p=>({...p, client:c.name, _clientOpen:false, _clientSearch:""}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", cursor:"pointer", background:form.client===c.name?`${B.accent}08`:"transparent", transition:"background .1s" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background=form.client===c.name?`${B.accent}08`:"transparent"}>
+                  <div style={{ width:26, height:26, borderRadius:9, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, color:B.accent, flexShrink:0 }}>{(c.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}</div>
+                  <span style={{ fontSize:12, fontWeight:form.client===c.name?700:500, color:B.text }}>{c.name}</span>
+                  {form.client===c.name && <span style={{ marginLeft:"auto", color:B.accent, display:"flex" }}>{IC.check}</span>}
+                </div>
+              ))}
+              {CDATA.filter(c => !form._clientSearch || c.name.toLowerCase().includes((form._clientSearch||"").toLowerCase())).length === 0 && <p style={{ padding:"12px", fontSize:11, color:B.muted, textAlign:"center" }}>Nenhum cliente encontrado</p>}
+            </div>}
+          </div>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Título da demanda</label>
           <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:12 }} />
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Redes sociais</label>
@@ -10762,8 +10780,8 @@ REGRAS TÉCNICAS:
                                       {igOk3&&<button disabled={inlinePublishing||imgF3.length===0} onClick={(e)=>{e.stopPropagation();doInlinePub3("instagram",isStories3?"STORIES":isReels3?"REELS":"FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":isStories3?"linear-gradient(45deg,#f09433,#dc2743)":"#E1306C",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF3.length===0?0.4:1}}>
                                         {inlinePublishing?"Publicando...":isStories3?"📲 Publicar Story":isReels3?"🎬 Publicar Reels":isCarousel3?`📸 Carrossel (${imgF3.length} imgs)`:"📸 Publicar no Feed"}
                                       </button>}
-                                      {fbOk3&&<button disabled={inlinePublishing||imgF3.length===0} onClick={(e)=>{e.stopPropagation();doInlinePub3("facebook","FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":"#1877F2",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF3.length===0?0.4:1}}>
-                                        {inlinePublishing?"Publicando...":"📘 Publicar no Facebook"}
+                                      {fbOk3&&<button disabled={inlinePublishing||imgF3.length===0} onClick={(e)=>{e.stopPropagation();doInlinePub3("facebook",isStories3?"STORIES":"FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":"#1877F2",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF3.length===0?0.4:1}}>
+                                        {inlinePublishing?"Publicando...":isStories3?"📘 FB Story":"📘 Publicar no Facebook"}
                                       </button>}
                                     </div>
                                     {!igOk3&&!fbOk3&&<p style={{fontSize:10,color:B.muted,textAlign:"center",marginTop:6}}>Conecte as redes sociais do cliente</p>}
@@ -10810,8 +10828,8 @@ REGRAS TÉCNICAS:
                                       {igOk&&<button disabled={inlinePublishing||imgF2.length===0} onClick={(e)=>{e.stopPropagation();doInlinePublish("instagram",isStories2?"STORIES":isReels2?"REELS":"FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":isStories2?"linear-gradient(45deg,#f09433,#dc2743)":"#E1306C",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF2.length===0?0.4:1}}>
                                         {inlinePublishing?"Publicando...":isStories2?"📲 Publicar Story":isReels2?"🎬 Publicar Reels":isCarousel2?`📸 Publicar Carrossel (${imgF2.length} imgs)`:"📸 Publicar no Feed"}
                                       </button>}
-                                      {fbOk&&<button disabled={inlinePublishing||imgF2.length===0} onClick={(e)=>{e.stopPropagation();doInlinePublish("facebook","FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":"#1877F2",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF2.length===0?0.4:1}}>
-                                        {inlinePublishing?"Publicando...":"📘 Publicar no Facebook"}
+                                      {fbOk&&<button disabled={inlinePublishing||imgF2.length===0} onClick={(e)=>{e.stopPropagation();doInlinePublish("facebook",isStories2?"STORIES":"FEED");}} style={{width:"100%",padding:"12px 0",borderRadius:12,background:inlinePublishing?"#ccc":"#1877F2",border:"none",cursor:inlinePublishing?"wait":"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff",opacity:imgF2.length===0?0.4:1}}>
+                                        {inlinePublishing?"Publicando...":isStories2?"📘 FB Story":"📘 Publicar no Facebook"}
                                       </button>}
                                     </div>
                                     {!igOk&&!fbOk&&<p style={{fontSize:10,color:B.muted,textAlign:"center",marginTop:6}}>Conecte as redes sociais do cliente primeiro</p>}
