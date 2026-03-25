@@ -8067,28 +8067,40 @@ REGRAS TÉCNICAS:
 
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
-    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, overflowY:"auto" }}>
-      <div style={{ maxWidth:860, margin:"0 auto", padding:"0 20px" }}>
-      <Head title={`Munique A.I · Passo ${ipStep}/3`} onBack={resetImportPlan} right={ipStep === 3 ? <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:800, color:"#0D0D0D", display:"flex", alignItems:"center", gap:5 }}>{ipCreating ? <><div style={{ width:12, height:12, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {ipCreated}/{ipPosts.filter(p=>p._enabled).length}</> : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Criar {ipPosts.filter(p=>p._enabled).length} posts</>}</button> : null} />
+    <div className={isContentDesktop ? "content-wide" : ""} style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, overflowY:"auto", paddingTop: TOP }}>
+      {/* CollapseHeader-style header */}
+      <div style={{ background:B.bgCard, borderRadius:"0 0 26px 26px", boxShadow:"0 4px 20px rgba(0,0,0,0.08)", marginBottom:24, padding: isContentDesktop ? "28px 28px 24px" : "20px 20px 22px" }}>
+        <button onClick={resetImportPlan} className="ib" style={{ border:`1.5px solid ${B.border}`, marginBottom:8 }}>{IC.back()}</button>
+        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+          <div>
+            <p style={{ fontSize:11, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1.5, marginBottom:4 }}>Inteligência Artificial</p>
+            <h1 style={{ fontSize:24, fontWeight:900, letterSpacing:"-0.5px" }}>Munique A.I</h1>
+          </div>
+          {ipStep === 3 && <button onClick={executeImportPlan} disabled={ipCreating} style={{ padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:800, color:"#0D0D0D", display:"flex", alignItems:"center", gap:6 }}>{ipCreating ? <><div style={{ width:14, height:14, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} /> {ipCreated}/{ipPosts.filter(p=>p._enabled).length}</> : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Criar {ipPosts.filter(p=>p._enabled).length} posts</>}</button>}
+        </div>
+        {/* Step indicator */}
+        <div style={{ display:"flex", gap:8, marginTop:16 }}>
+          {[{n:1,l:"Dados"},{n:2,l:"Processando"},{n:3,l:"Revisão"}].map(s => (
+            <div key={s.n} style={{ flex:1, display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:24, height:24, borderRadius:12, background: ipStep >= s.n ? B.accent : B.border, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, color: ipStep >= s.n ? "#0D0D0D" : B.muted, flexShrink:0, transition:"all .3s" }}>{ipStep > s.n ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> : s.n}</div>
+              <span style={{ fontSize:11, fontWeight: ipStep === s.n ? 700 : 500, color: ipStep >= s.n ? B.text : B.muted }}>{s.l}</span>
+              {s.n < 3 && <div style={{ flex:1, height:2, background: ipStep > s.n ? B.accent : B.border, borderRadius:1 }} />}
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* Progress bar */}
-      <div style={{ height:3, background:B.border, marginBottom:20 }}><div style={{ height:3, background:B.accent, width:(ipStep/3*100)+"%", transition:"width .3s ease", borderRadius:2 }} /></div>
+      <div style={{ padding:"0 20px" }}>
 
         {/* ═══ STEP 1: SELECT CLIENT + UPLOAD ═══ */}
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
 
-          {/* ── HERO ── */}
-          <div style={{ textAlign:"center", padding:"0 0 20px" }}>
-            <div style={{ width:48, height:48, borderRadius:14, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
-            </div>
-            <h2 style={{ fontSize:17, fontWeight:800, marginBottom:3, letterSpacing:"-0.3px" }}>A Munique vai criar seus posts</h2>
-            <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>Envie o planejamento e a IA gera legendas, briefings e programação</p>
-          </div>
+          {/* ── SECTIONS GRID ── */}
+          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "1fr 1fr" : "1fr", gap:14 }}>
 
           {/* ── SECTION 1: CLIENTE ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
+          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
               <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>1</div>
               <p style={{ fontSize:14, fontWeight:700 }}>Cliente</p>
@@ -8107,7 +8119,7 @@ REGRAS TÉCNICAS:
           </div>
 
           {/* ── SECTION 2: ARQUIVO ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
+          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
               <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>2</div>
               <p style={{ fontSize:14, fontWeight:700 }}>Planejamento</p>
@@ -8136,7 +8148,7 @@ REGRAS TÉCNICAS:
           </div>
 
           {/* ── SECTION 3: REDES SOCIAIS ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
+          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
               <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>3</div>
               <p style={{ fontSize:14, fontWeight:700 }}>Redes sociais</p>
@@ -8149,7 +8161,7 @@ REGRAS TÉCNICAS:
           </div>
 
           {/* ── SECTION 4: PREFERÊNCIAS ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:20 }}>
+          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", gridColumn: isContentDesktop ? "1 / -1" : "auto" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
               <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>4</div>
               <p style={{ fontSize:14, fontWeight:700 }}>Preferências</p>
@@ -8176,6 +8188,8 @@ REGRAS TÉCNICAS:
                 <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1.5px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted }}>{q.l}</button>
               ))}
             </div>}
+          </div>
+          {/* Close sections grid */}
           </div>
 
           {/* ── CTA ── */}
