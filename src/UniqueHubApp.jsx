@@ -1751,9 +1751,10 @@ const CollapseHeader = ({ icon, label, title, stats=[], onAdd, onBack, collapsed
 
 function useToast() {
   const [toast, setToast] = useState(null);
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
-  const isError = toast && (toast.includes("Erro") || toast.includes("erro") || toast.includes("falh"));
-  const ToastEl = toast ? <div className="toast-anim" style={{ position:"fixed", top:60, left:"50%", transform:"translateX(-50%)", background:isError?"#FF3B30":B.dark, color:"#fff", padding:"10px 20px", borderRadius:14, fontSize:13, fontWeight:600, zIndex:999, boxShadow:"0 4px 20px rgba(0,0,0,0.3)", display:"flex", alignItems:"center", gap:8, maxWidth:"90%", textAlign:"center" }}>{isError ? <span>❌</span> : <span style={{ color:B.accent }}>{IC.check}</span>}{toast}</div> : null;
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2800); };
+  const isError = toast && (toast.includes("Erro") || toast.includes("erro") || toast.includes("falh") || toast.includes("❌"));
+  const isSuccess = toast && (toast.includes("✅") || toast.includes("✓") || toast.includes("Publicado") || toast.includes("criada") || toast.includes("Avançou"));
+  const ToastEl = toast ? <div className="toast-anim" style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%, -50%)", background: isError ? "rgba(239,68,68,0.95)" : isSuccess ? "rgba(16,185,129,0.95)" : "rgba(26,29,35,0.95)", backdropFilter:"blur(12px)", color:"#fff", padding:"16px 28px", borderRadius:18, fontSize:14, fontWeight:700, zIndex:9999, boxShadow:"0 8px 40px rgba(0,0,0,0.35)", display:"flex", alignItems:"center", gap:10, maxWidth:"85%", textAlign:"center", letterSpacing:-0.2, border: isError ? "1px solid rgba(255,255,255,0.15)" : isSuccess ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(200,255,0,0.2)" }}><span style={{ fontSize:20 }}>{isError ? "❌" : isSuccess ? "✅" : "ℹ️"}</span>{toast.replace(/^[✅✓❌⚠️ℹ️]+\s*/, "")}</div> : null;
   return { toast, showToast, ToastEl };
 }
 
@@ -8598,15 +8599,13 @@ REGRAS TÉCNICAS:
 
   /* ── Create New Demand ── */
   const handleCreate = async () => {
-    if (!createType) return;
     const newD = {
-      id: Date.now(), type: createType, client: form.client || "Novo Cliente", title: form.title || "Nova demanda",
-      stage: createType === "campaign" ? "planning" : "idea", priority: form.priority || "média",
+      id: Date.now(), type: "social", client: form.client || "Novo Cliente", title: form.title || "Nova demanda",
+      stage: "idea", priority: form.priority || "média",
       network: (form.networks && form.networks.length > 0) ? form.networks.join(", ") : "Instagram", format: form.format || "Feed", aspectRatio: form.aspectRatio || "1:1", sponsored: form.sponsored || false,
       assignees: form.assignees || [user?.name || "Matheus"], createdAt: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
       steps: { idea: { by: user?.name || "Matheus", text: form.idea || "", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) } },
       scheduling: { date: form.schedDate || "", time: form.schedTime || "" }, traffic: { budget: form.budget || "" },
-      ...(createType === "campaign" ? { campaign: { desc: form.desc || "", refs: form.refs || "", dateStart: form.dateStart || "", dateEnd: form.dateEnd || "", location: form.location || "", needs: [], clientTeam: [], budget: form.budget || "", budgetBreakdown: [], milestones: [] } } : {}),
     };
     /* Find client ID for Supabase */
     const clientObj = CDATA.find(c => c.name === form.client);
@@ -8616,7 +8615,9 @@ REGRAS TÉCNICAS:
     else if (result?.err) { toastMsg = "Erro: " + result.err; }
     setDemands(prev => [newD, ...prev]);
     setCreating(false); setCreateType(null); setForm({});
-    showToast(toastMsg);
+    showToast("✅ Demanda criada com sucesso!");
+    /* Auto-scroll to top so user sees the new card in "Ideia" */
+    setTimeout(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, 200);
     if (result?.data) supaCreateNotificationForAll("demand_created", "Nova demanda criada", `${newD.title || newD.type} — ${newD.clientName || ""}`, "📋", null, user?.id);
   };
 
@@ -8710,23 +8711,7 @@ REGRAS TÉCNICAS:
   if (creating && !isContentDesktop && !contained) return (
     <div className="pg" style={{ paddingTop: TOP }}>
       {ToastEl}
-      <Head title={createType ? `Nova ${typeLabel(createType)}` : "Nova Demanda"} onBack={() => { if (createType) setCreateType(null); else setCreating(false); }} />
-      {!createType ? (
-        <div>
-          <p style={{ fontSize:13, color:B.muted, marginBottom:12 }}>Que tipo de demanda você quer criar?</p>
-          {[{k:"social",l:"Post para Rede Social",d:"Feed, stories, reels, carrossel",ic:IC.img,c:B.blue},
-            {k:"campaign",l:"Campanha Publicitária",d:"Evento, ação presencial ou online",ic:IC.target,c:B.purple},
-          ].map((t,i) => (
-            <Card key={t.k} delay={i*0.04} onClick={() => setCreateType(t.k)} style={{ marginTop: i?8:0, cursor:"pointer" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:44, height:44, borderRadius:14, background:`${t.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:t.c }}>{t.ic}</div>
-                <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:700 }}>{t.l}</p><p style={{ fontSize:11, color:B.muted }}>{t.d}</p></div>
-                {IC.chev()}
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
+      <Head title="Novo Post" onBack={() => { setCreating(false); setCreateType(null); setForm({}); }} />
         <div>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente</label>
           <select value={form.client||""} onChange={e=>setForm({...form,client:e.target.value})} className="tinput" style={{ marginBottom:12 }}>
@@ -8735,7 +8720,6 @@ REGRAS TÉCNICAS:
           </select>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Título da demanda</label>
           <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:12 }} />
-          {createType === "social" && <>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Redes sociais</label>
             <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
               {["Instagram","Facebook","TikTok","Threads","LinkedIn","YouTube","Twitter"].map(n=>{
@@ -8794,21 +8778,6 @@ REGRAS TÉCNICAS:
               <label className="sl" style={{ display:"block", marginBottom:6 }}>Público-alvo (opcional)</label>
               <input value={form.boostAudience||""} onChange={e=>setForm({...form,boostAudience:e.target.value})} placeholder="Ex: Mulheres 25-45, Petrópolis RJ, interesse em moda" className="tinput" style={{ marginBottom:12 }} />
             </>}
-          </>}
-          {createType === "campaign" && <>
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Descrição da campanha</label>
-            <textarea value={form.desc||""} onChange={e=>setForm({...form,desc:e.target.value})} placeholder="Do que se trata, objetivos..." className="tinput" style={{ marginBottom:12, minHeight:80, resize:"vertical" }} />
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Referências</label>
-            <input value={form.refs||""} onChange={e=>setForm({...form,refs:e.target.value})} placeholder="Campanhas de referência..." className="tinput" style={{ marginBottom:12 }} />
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-              <div><label className="sl" style={{ display:"block", marginBottom:6 }}>Data início</label><input type="date" value={form.dateStart||""} onChange={e=>setForm({...form,dateStart:e.target.value})} className="tinput" /></div>
-              <div><label className="sl" style={{ display:"block", marginBottom:6 }}>Data fim</label><input type="date" value={form.dateEnd||""} onChange={e=>setForm({...form,dateEnd:e.target.value})} className="tinput" /></div>
-            </div>
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Local</label>
-            <input value={form.location||""} onChange={e=>setForm({...form,location:e.target.value})} placeholder="Onde será a campanha" className="tinput" style={{ marginBottom:12 }} />
-            <label className="sl" style={{ display:"block", marginBottom:6 }}>Orçamento total</label>
-            <input value={form.budget||""} onChange={e=>setForm({...form,budget:e.target.value})} placeholder="R$ 5.000" className="tinput" style={{ marginBottom:12 }} />
-          </>}
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Ideia / Briefing inicial</label>
           <textarea value={form.idea||""} onChange={e=>setForm({...form,idea:e.target.value})} placeholder="Descreva a ideia da demanda..." className="tinput" style={{ marginBottom:12, minHeight:80, resize:"vertical" }} />
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Prioridade</label>
@@ -8819,7 +8788,6 @@ REGRAS TÉCNICAS:
           </div>
           <button onClick={handleCreate} className="pill full accent" style={{ opacity:(form.title&&form.client)?1:0.4 }}>Criar Demanda {IC.arrowR()}</button>
         </div>
-      )}
     </div>
   );
 
@@ -9670,15 +9638,14 @@ REGRAS TÉCNICAS:
                 /* ── STEP 1: Initial choice — send to client or not? ── */
                 if (!clientMode) return (
                   <div style={{ padding:12 }}>
-                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>Enviar para o cliente?</p>
-                    <p style={{ fontSize:11, color:B.muted, marginBottom:14, textAlign:"center", lineHeight:1.5 }}>Escolha se deseja enviar a demanda para aprovação do cliente ou publicar diretamente.</p>
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={() => updateStep("client", { mode:"sent_to_client", sentAt:new Date().toISOString() })} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>O que deseja fazer?</p>
+                    <p style={{ fontSize:11, color:B.muted, marginBottom:14, textAlign:"center", lineHeight:1.5 }}>Escolha uma das opções abaixo.</p>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      <button onClick={() => updateStep("client", { mode:"sent_to_client", sentAt:new Date().toISOString() })} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
-                        Sim, enviar
+                        Enviar para o cliente
                       </button>
                       <button onClick={async () => {
-                        /* Direct schedule: auto-publish to all connected platforms */
                         if (!hasApi || imgFiles.length === 0) {
                           updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
                           setTimeout(()=>advanceStage(sel),100);
@@ -9690,10 +9657,26 @@ REGRAS TÉCNICAS:
                         for (const platform of platforms) {
                           await doPublish(platform, isStories?"STORIES":"FEED");
                         }
-                      }} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.bgCard, color:B.text, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                        {schedTs ? "Agendar publicação" : "Publicar agora"}
+                      }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#10B981", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Postar agora
                       </button>
+                      {sel.scheduling?.date && <button onClick={async () => {
+                        if (!hasApi || imgFiles.length === 0) {
+                          updateStep("client", { ...sel.steps?.client, status:"approved", by:"Agendamento manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                          setTimeout(()=>advanceStage(sel),100);
+                          return;
+                        }
+                        const platforms = [];
+                        if (hasIG) platforms.push("instagram");
+                        if (hasFB) platforms.push("facebook");
+                        for (const platform of platforms) {
+                          await doPublish(platform, isStories?"STORIES":"FEED");
+                        }
+                      }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Programar · {sel.scheduling.date.split("-").reverse().join("/")} {sel.scheduling.time||""}
+                      </button>}
                     </div>
                   </div>
                 );
@@ -10312,7 +10295,7 @@ REGRAS TÉCNICAS:
                                   return <div key={j} style={{ width:20, height:20, borderRadius:10, background: mp ? "transparent" : `${cfg.c}25`, display:"flex", alignItems:"center", justifyContent:"center", marginLeft: j ? -5 : 0, border:"2px solid #fff", overflow:"hidden", zIndex:3-j, fontSize:7, fontWeight:800, color:cfg.c }}>{mp ? <img src={mp} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : a[0]}</div>;
                                 })}
                               </div>
-                              {d.network && <span style={{ fontSize:9, color:"#9CA3AF" }}>{d.network.split(", ")[0]}{d.aspectRatio && d.aspectRatio !== "1:1" ? ` · ${d.aspectRatio}` : ""}</span>}
+                              {d.network && <div style={{ display:"flex", alignItems:"center", gap:4 }}>{d.network.split(", ").map(n => <span key={n} style={{ display:"flex" }}><NetworkIcon name={n.trim()} sz={14} active={true} /></span>)}{d.aspectRatio && d.aspectRatio !== "1:1" ? <span style={{ fontSize:9, color:"#9CA3AF", marginLeft:2 }}>{d.aspectRatio}</span> : null}</div>}
                             </div>
                           </div>
                         );
@@ -10418,7 +10401,7 @@ REGRAS TÉCNICAS:
               const updStep=(sk,data)=>{const ns={...(d.steps||{}),[sk]:{...(d.steps?.[sk]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
               const updField=(fld,val)=>{setDemands(p=>p.map(x=>x.id===d.id?{...x,[fld]:val}:x));if(d.supaId){const sf=fld==="network"?"networks":fld;supaUpdateDemand(d.supaId,{[sf]:val});}};
               return(<div key={d.id} onDragOver={e=>{if(e.dataTransfer.types.includes("application/uh-drive-file")){e.preventDefault();e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=B.accent+"08";}}} onDragLeave={e=>{e.currentTarget.style.borderColor=isExp?cCfg.c:B.border;e.currentTarget.style.background=B.bgCard;}} onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(!raw)return;e.preventDefault();e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const nf=[...(d.steps?.design?.files||[]),{name:f.name,url:f.webViewLink||"",driveId:f.id,fromDrive:true}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});setExpandedId(d.id);if(cStage!=="design")setCStage("design");showToast("Anexado do Drive: "+f.name);}catch(err){console.error(err);}}} style={{background:B.bgCard,borderRadius:14,border:"1px solid "+(isExp?cCfg.c:B.border),overflow:"hidden",transition:"all .15s"}}>
-              <div onClick={()=>setExpandedId(isExp?null:d.id)} style={{padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10}}><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:8,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}12`,padding:"2px 6px",borderRadius:4}}>{d.priority||"média"}</span>{d.sponsored&&<span style={{fontSize:8,fontWeight:700,color:"#0081FB",background:"#0081FB12",padding:"2px 6px",borderRadius:4}}>🚀</span>}<span style={{fontSize:8,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"} · {d.format||"Feed"}{d.aspectRatio&&d.aspectRatio!=="1:1"?" · "+d.aspectRatio:""}</span>{d.network&&<span style={{fontSize:8,color:B.muted}}>· {d.network.split(", ")[0]}</span>}</div><p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{d.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{d.client||"Sem cliente"}{d.scheduling?.date?" · 📅 "+d.scheduling.date.split("-").reverse().join("/")+(d.scheduling.time?" "+d.scheduling.time:""):""}</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,marginTop:4,transform:isExp?"rotate(180deg)":"none",transition:"transform .15s"}}><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div onClick={()=>setExpandedId(isExp?null:d.id)} style={{padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:10}}><div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}><span style={{fontSize:8,fontWeight:700,color:pC,textTransform:"uppercase",background:`${pC}12`,padding:"2px 6px",borderRadius:4}}>{d.priority||"média"}</span>{d.sponsored&&<span style={{fontSize:8,fontWeight:700,color:"#0081FB",background:"#0081FB12",padding:"2px 6px",borderRadius:4}}>🚀</span>}<span style={{fontSize:8,color:B.muted}}>{d.type==="campaign"?"Campanha":d.type==="video"?"Vídeo":"Post"} · {d.format||"Feed"}{d.aspectRatio&&d.aspectRatio!=="1:1"?" · "+d.aspectRatio:""}</span>{d.network&&<span style={{display:"inline-flex",gap:3,alignItems:"center",marginLeft:2}}>{d.network.split(", ").map(n=><span key={n} style={{display:"flex"}}><NetworkIcon name={n.trim()} sz={12} active={true}/></span>)}</span>}</div><p style={{fontSize:12,fontWeight:700,color:B.text,lineHeight:1.3}}>{d.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{d.client||"Sem cliente"}{d.scheduling?.date?" · 📅 "+d.scheduling.date.split("-").reverse().join("/")+(d.scheduling.time?" "+d.scheduling.time:""):""}</p></div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{flexShrink:0,marginTop:4,transform:isExp?"rotate(180deg)":"none",transition:"transform .15s"}}><polyline points="6 9 12 15 18 9"/></svg></div>
               {isExp&&<div style={{padding:"0 12px 12px",borderTop:`1px solid ${B.border}`}}>
                 <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
@@ -11086,7 +11069,6 @@ REGRAS TÉCNICAS:
                 </select>
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Título</label>
                 <input value={form.title||""} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Carrossel novos produtos" className="tinput" style={{ marginBottom:14, width:"100%" }} />
-                {createType === "social" && <>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Redes</label>
                   <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
                     {["Instagram","Facebook"].map(n=>{const nets=form.networks||[];const sel2=nets.includes(n);return(<button key={n} onClick={()=>setForm({...form,networks:sel2?nets.filter(x=>x!==n):[...nets,n]})} style={{ padding:"6px 12px", borderRadius:10, border:`1.5px solid ${sel2?(NETWORK_CFG[n]?.c||"#BBF246"):"rgba(0,0,0,0.08)"}`, background:sel2?`${NETWORK_CFG[n]?.c||"#BBF246"}10`:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:sel2?(NETWORK_CFG[n]?.c||"#1A1D23"):"#9CA3AF" }}>{n}</button>);})}
@@ -11122,15 +11104,6 @@ REGRAS TÉCNICAS:
                     )); })()}
                     </div>
                   </div>
-                </>}
-                {createType === "campaign" && <>
-                  <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Descrição</label>
-                  <textarea value={form.desc||""} onChange={e=>setForm({...form,desc:e.target.value})} placeholder="Do que se trata..." className="tinput" style={{ marginBottom:14, minHeight:70, resize:"vertical", width:"100%" }} />
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-                    <div><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Início</label><input type="date" value={form.dateStart||""} onChange={e=>setForm({...form,dateStart:e.target.value})} className="tinput" style={{ width:"100%" }} /></div>
-                    <div><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Fim</label><input type="date" value={form.dateEnd||""} onChange={e=>setForm({...form,dateEnd:e.target.value})} className="tinput" style={{ width:"100%" }} /></div>
-                  </div>
-                </>}
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Briefing / Ideia</label>
                 <textarea value={form.idea||""} onChange={e=>setForm({...form,idea:e.target.value})} placeholder="Descreva a ideia..." className="tinput" style={{ marginBottom:14, minHeight:70, resize:"vertical", width:"100%" }} />
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Prioridade</label>
