@@ -1300,7 +1300,23 @@ function getB(isDark, accent, prefs) {
   base.iconFill = p.iconFill || "outlined";
   base.liquidGlass = !!p.liquidGlass;
   base.hasBgImage = !!p.bgImage && p.bgImage !== "none";
-  base.transparent = base.liquidGlass || base.hasBgImage;  if (base.liquidGlass) {
+  base.transparent = base.liquidGlass || base.hasBgImage;
+  /* Compute the actual body background */
+  const bgPresets = {
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    mesh1: "linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)",
+    mesh2: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 50%, #a6c1ee 100%)",
+    mesh3: "linear-gradient(135deg, #0c3547 0%, #1a6b6d 40%, #48c6ef 100%)",
+    mesh4: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    mesh5: "linear-gradient(135deg, #134e5e 0%, #71b280 100%)",
+    mesh6: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+  };
+  const bgKey = p.bgImage || "none";
+  const bgUrl = p.bgImageUrl || "";
+  if (bgKey === "custom" && bgUrl) base.bodyBg = `url(${bgUrl}) center/cover fixed no-repeat`;
+  else if (bgKey !== "none" && bgPresets[bgKey]) base.bodyBg = bgPresets[bgKey];
+  else if (base.liquidGlass) base.bodyBg = isDark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)";
+  else base.bodyBg = base.bg;  if (base.liquidGlass) {
     base.glassBg = isDark ? "rgba(15,20,25,0.65)" : "rgba(255,255,255,0.55)";
     base.glassCard = isDark ? "rgba(28,34,40,0.55)" : "rgba(255,255,255,0.45)";
     base.glassBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.6)";
@@ -13676,23 +13692,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       /* Immediately recalculate B so current render uses new values */
       const newAccent = THEME_MAP[p.theme] || "#BBF246";
       B = getB(p.dark, newAccent, p.pr);
-      /* Update body background immediately (don't wait for useEffect) */
-      const bgPresets = {
-        gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        mesh1: "linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)",
-        mesh2: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 50%, #a6c1ee 100%)",
-        mesh3: "linear-gradient(135deg, #0c3547 0%, #1a6b6d 40%, #48c6ef 100%)",
-        mesh4: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-        mesh5: "linear-gradient(135deg, #134e5e 0%, #71b280 100%)",
-        mesh6: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
-      };
-      const bgKey = p.pr.bgImage || "none";
-      const bgUrl = p.pr.bgImageUrl || "";
-      let bg;
-      if (bgKey === "custom" && bgUrl) bg = `url(${bgUrl}) center/cover fixed no-repeat`;
-      else if (bgKey !== "none" && bgPresets[bgKey]) bg = bgPresets[bgKey];
-      else if (B.liquidGlass) bg = p.dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)";
-      else bg = B.bg;
+      /* Update body background immediately */
+      document.documentElement.style.background = B.bodyBg;
+      document.body.style.background = B.bodyBg;
       document.documentElement.style.background = bg;
       document.body.style.background = bg;
       /* Trigger React state updates */
@@ -23929,8 +23931,9 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
-  /* Theme for client portal - set after uiPrefs is defined */
-  B = getB(false, "#BBF246");
+  /* Theme for client portal - read uiPrefs from localStorage to avoid overwriting global B */
+  const clientUiPrefs = (() => { try { return JSON.parse(localStorage.getItem("uh_uiprefs") || "{}"); } catch { return {}; } })();
+  B = getB(false, "#BBF246", clientUiPrefs);
   const canAccessFn = () => true;
   /* Load custom gamify data for client financeiro */
   const [gamifyData, setGamifyData] = useState(null);
@@ -25112,30 +25115,8 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const accentColor = themeColor === "custom" ? (uiPrefs.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
   B = getB(dark, accentColor, uiPrefs);
   React.useEffect(() => {
-    const bgPresets = {
-      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      mesh1: "linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)",
-      mesh2: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 50%, #a6c1ee 100%)",
-      mesh3: "linear-gradient(135deg, #0c3547 0%, #1a6b6d 40%, #48c6ef 100%)",
-      mesh4: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-      mesh5: "linear-gradient(135deg, #134e5e 0%, #71b280 100%)",
-      mesh6: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
-    };
-    const bgKey = uiPrefs?.bgImage || "none";
-    const bgUrl = uiPrefs?.bgImageUrl || "";
-    let bg;
-    if (bgKey === "custom" && bgUrl) {
-      bg = `url(${bgUrl}) center/cover fixed no-repeat`;
-    } else if (bgKey !== "none" && bgPresets[bgKey]) {
-      bg = bgPresets[bgKey];
-    } else if (B.liquidGlass) {
-      bg = dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)";
-    } else {
-      bg = B.bg;
-    }
-    document.documentElement.style.background = bg;
-    document.body.style.background = bg;
-    document.body.style.backgroundAttachment = bgKey === "custom" ? "fixed" : "";
+    document.documentElement.style.background = B.bodyBg;
+    document.body.style.background = B.bodyBg;
   }, [dark, uiPrefs, themeColor]);
   const [sub, setSub] = useState(() => {
     const fromHash = parseHash();
@@ -26240,7 +26221,7 @@ export default function App() {
 .btn-loading{opacity:0.6;pointer-events:none;cursor:wait}
 .toast-anim{animation:toastIn .3s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes toastIn{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
-html,body{font-family:'Figtree',sans-serif;background:${B.transparent ? (dark ? "linear-gradient(135deg, #0C111B 0%, #1A1040 50%, #0C111B 100%)" : "linear-gradient(135deg, #E8ECF4 0%, #D5DEF0 30%, #E0D4F0 60%, #E8ECF4 100%)") : B.bg};margin:0;padding:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
+html,body{font-family:'Figtree',sans-serif;background:${B.bodyBg};margin:0;padding:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
 input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
 .screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
