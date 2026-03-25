@@ -8095,100 +8095,86 @@ REGRAS TÉCNICAS:
         {ipStep === 1 && <>
           <input ref={ipFileRef} type="file" accept=".pdf,.txt,.doc,.docx" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if (f) setIpFile(f); e.target.value = ""; }} />
 
-          {/* ── SECTIONS GRID ── */}
-          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "1fr 1fr" : "1fr", gap:14 }}>
-
-          {/* ── SECTION 1: CLIENTE ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>1</div>
-              <p style={{ fontSize:14, fontWeight:700 }}>Cliente</p>
-              {ipClient && <svg width="16" height="16" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
+          <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "1fr 1fr" : "1fr", gap:12 }}>
+            {/* ── COL 1: CLIENTE ── */}
+            <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+                <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>1</div>
+                <p style={{ fontSize:13, fontWeight:700 }}>Cliente</p>
+                {ipClient && <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))", gap:4 }}>
+                {(CDATA||[]).filter(c => c.status === "ativo" || !c.status).map(c => {
+                  const cid = c.supaId || c.id;
+                  const sel = ipClient === cid;
+                  return <button key={cid} onClick={() => setIpClient(cid)} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 8px", borderRadius:10, border:sel ? "2px solid "+B.accent : "1px solid "+B.border, background:sel ? B.accent+"08" : "transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+                    <Av name={c.name} src={c.logo||c.logo_url} sz={24} fs={9} />
+                    <p style={{ fontSize:11, fontWeight:sel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:sel?B.text:B.muted }}>{c.name}</p>
+                  </button>;
+                })}
+              </div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:6 }}>
-              {(CDATA||[]).filter(c => c.status === "ativo" || !c.status).map(c => {
-                const cid = c.supaId || c.id;
-                const sel = ipClient === cid;
-                return <button key={cid} onClick={() => setIpClient(cid)} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", borderRadius:12, border:sel ? "2px solid "+B.accent : "1.5px solid "+B.border, background:sel ? B.accent+"08" : B.bg, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .15s" }}>
-                  <Av name={c.name} src={c.logo||c.logo_url} sz={30} fs={11} />
-                  <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:sel?700:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:sel?B.text:B.muted }}>{c.name}</p></div>
-                </button>;
-              })}
+
+            {/* ── COL 2: ARQUIVO + REDES ── */}
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {/* Planejamento */}
+              <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                  <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>2</div>
+                  <p style={{ fontSize:13, fontWeight:700 }}>Planejamento</p>
+                  {ipFile && <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
+                </div>
+                {ipFile ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, background:B.accent+"06", border:"1px solid "+B.accent+"20" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ipFile.name}</p>
+                    </div>
+                    <button onClick={() => setIpFile(null)} style={{ width:22, height:22, borderRadius:6, background:B.bg, border:"1px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"14px", borderRadius:10, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                    <span style={{ fontSize:12, fontWeight:600, color:B.muted }}>Enviar arquivo (PDF, TXT, DOC)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Redes sociais */}
+              <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
+                  <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>3</div>
+                  <p style={{ fontSize:13, fontWeight:700 }}>Redes sociais</p>
+                </div>
+                <div style={{ display:"flex", gap:6 }}>
+                  {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:8, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={14} active={sel2} />{n}</button>; })}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ── SECTION 2: ARQUIVO ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>2</div>
-              <p style={{ fontSize:14, fontWeight:700 }}>Planejamento</p>
-              {ipFile && <svg width="16" height="16" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
-            </div>
-            {ipFile ? (
-              <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, background:B.accent+"06", border:"1.5px solid "+B.accent+"20" }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ipFile.name}</p>
-                  <p style={{ fontSize:10, color:B.muted }}>{(ipFile.size / 1024).toFixed(0)} KB</p>
-                </div>
-                <button onClick={() => setIpFile(null)} style={{ width:28, height:28, borderRadius:8, background:B.bg, border:"1px solid "+B.border, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          {/* ── PREFERÊNCIAS (full width) ── */}
+          <div style={{ background:B.bgCard, borderRadius:16, border:"1px solid "+B.border, padding:"14px", marginTop:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+              <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>4</div>
+              <p style={{ fontSize:13, fontWeight:700 }}>Preferências</p>
+              <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:10, color:B.muted }}>Emojis</span>
+                <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:40, height:22, borderRadius:11, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
+                  <div style={{ width:18, height:18, borderRadius:9, background:"#fff", position:"absolute", top:2, left:ipEmojis?20:2, transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,0.15)" }} />
                 </button>
               </div>
-            ) : (
-              <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"24px 16px", borderRadius:14, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:6, transition:"border-color .2s" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-                <span style={{ fontSize:13, fontWeight:600, color:B.text }}>Toque para enviar arquivo</span>
-                <span style={{ fontSize:10, color:B.muted }}>PDF, TXT ou DOC</span>
-              </button>
-            )}
-          </div>
-
-          {/* ── SECTION 3: REDES SOCIAIS ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>3</div>
-              <p style={{ fontSize:14, fontWeight:700 }}>Redes sociais</p>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
             </div>
-            <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Em quais redes os posts serão publicados?</p>
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-              {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={16} active={sel2} />{n}</button>; })}
-            </div>
-          </div>
-
-          {/* ── SECTION 4: PREFERÊNCIAS ── */}
-          <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", gridColumn: isContentDesktop ? "1 / -1" : "auto" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
-              <div style={{ width:28, height:28, borderRadius:9, background:B.accent+"12", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:B.accent }}>4</div>
-              <p style={{ fontSize:14, fontWeight:700 }}>Preferências</p>
-            </div>
-
-            <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Tom das legendas</p>
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
               {[{k:"informativo",l:"📰 Informativo"},{k:"inspirador",l:"✨ Inspirador"},{k:"comico",l:"😂 Cômico"},{k:"serio",l:"🎯 Sério"},{k:"informal",l:"💬 Informal"},{k:"educativo",l:"📚 Educativo"},{k:"provocativo",l:"🔥 Provocativo"}].map(t => (
-                <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"7px 12px", borderRadius:10, border:ipTone===t.k?"2px solid "+B.accent:"1.5px solid "+B.border, background:ipTone===t.k?B.accent+"10":B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted, transition:"all .15s" }}>{t.l}</button>
+                <button key={t.k} onClick={() => setIpTone(t.k)} style={{ padding:"5px 10px", borderRadius:8, border:ipTone===t.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipTone===t.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipTone===t.k?700:500, color:ipTone===t.k?B.accent:B.muted }}>{t.l}</button>
               ))}
+              {ipEmojis && <>{[{k:"pouco",l:"Sutil"},{k:"moderado",l:"Moderado"},{k:"muito",l:"Bastante"}].map(q => (
+                <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ padding:"5px 10px", borderRadius:8, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted }}>{"🎯 "+q.l}</button>
+              ))}</>}
             </div>
-
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 0", borderTop:"1px solid "+B.border }}>
-              <div>
-                <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1 }}>Emojis</p>
-                <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{ipEmojis?"Incluir emojis nas legendas":"Legendas sem emojis"}</p>
-              </div>
-              <button onClick={() => setIpEmojis(!ipEmojis)} style={{ width:48, height:28, borderRadius:14, background:ipEmojis?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
-                <div style={{ width:22, height:22, borderRadius:11, background:"#fff", position:"absolute", top:3, left:ipEmojis?23:3, transition:"left .2s", boxShadow:"0 1px 4px rgba(0,0,0,0.15)" }} />
-              </button>
-            </div>
-            {ipEmojis && <div style={{ display:"flex", gap:6, paddingTop:6 }}>
-              {[{k:"pouco",l:"Sutil (1-2)"},{k:"moderado",l:"Moderado (2-4)"},{k:"muito",l:"Bastante (4-6)"}].map(q => (
-                <button key={q.k} onClick={() => setIpEmojiQty(q.k)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:ipEmojiQty===q.k?"2px solid "+B.accent:"1.5px solid "+B.border, background:ipEmojiQty===q.k?B.accent+"10":B.bg, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:ipEmojiQty===q.k?700:500, color:ipEmojiQty===q.k?B.accent:B.muted }}>{q.l}</button>
-              ))}
-            </div>}
-          </div>
-          {/* Close sections grid */}
           </div>
 
           {/* ── CTA ── */}
