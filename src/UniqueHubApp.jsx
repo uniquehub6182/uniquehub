@@ -269,6 +269,23 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
   });
 };
 
+/* Upload with XHR for progress tracking */
+const xhrUpload = (url, file, contentType) => new Promise((resolve, reject) => {
+  const xhr = new XMLHttpRequest();
+  xhr.open("PUT", url);
+  xhr.setRequestHeader("Content-Type", contentType);
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      window.__uh_upload_pct = pct;
+      window.dispatchEvent(new CustomEvent("uh-upload-progress", { detail: { pct, loaded: e.loaded, total: e.total } }));
+    }
+  };
+  xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve(true) : resolve(false);
+  xhr.onerror = () => reject(new Error("Upload network error"));
+  xhr.send(file);
+});
+
 const supaUploadFile = async (file, demandId) => {
   if (!supabase) return { error: "Supabase offline" };
   try {
@@ -291,17 +308,14 @@ const supaUploadFile = async (file, demandId) => {
         });
         const r2Data = await r2Res.json();
         if (r2Data.signedUrl) {
-          /* Step 2: Upload file directly to R2 (browser → R2, no proxy) */
-          const uploadRes = await fetch(r2Data.signedUrl, {
-            method: "PUT",
-            headers: { "Content-Type": compressed.type || file.type || "application/octet-stream" },
-            body: compressed,
-          });
-          if (uploadRes.ok) {
+          /* Step 2: Upload file directly to R2 with progress tracking */
+          const ct = compressed.type || file.type || "application/octet-stream";
+          const ok = await xhrUpload(r2Data.signedUrl, compressed, ct);
+          if (ok) {
             console.log("R2 upload OK:", r2Data.publicUrl);
             return { name: file.name, path: r2Data.key, url: r2Data.publicUrl, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
           }
-          console.warn("R2 direct upload failed:", uploadRes.status, await uploadRes.text());
+          console.warn("R2 direct upload failed");
         } else {
           console.warn("R2 presign failed:", r2Data.error);
         }
@@ -844,13 +858,10 @@ const uploadToStorage = async (file, folder = "quick-publish") => {
         });
         const r2Data = await r2Res.json();
         if (r2Data.signedUrl) {
-          const upRes = await fetch(r2Data.signedUrl, {
-            method: "PUT",
-            headers: { "Content-Type": processed.type || "application/octet-stream" },
-            body: processed,
-          });
-          if (upRes.ok) { console.log("R2 upload OK (quick):", r2Data.publicUrl); return r2Data.publicUrl; }
-          console.warn("R2 direct upload failed:", upRes.status);
+          const ct = processed.type || "application/octet-stream";
+          const ok = await xhrUpload(r2Data.signedUrl, processed, ct);
+          if (ok) { console.log("R2 upload OK (quick):", r2Data.publicUrl); return r2Data.publicUrl; }
+          console.warn("R2 direct upload failed");
         }
       } catch(r2Err) { console.warn("R2 error (quick), falling back:", r2Err); }
     }
@@ -8590,6 +8601,12 @@ REGRAS TÉCNICAS:
 
 
   const [pubLoading, setPubLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null); /* { pct:0-100 } or null */
+  useEffect(() => {
+    const handler = (e) => setUploadProgress({ pct: e.detail.pct, loaded: e.detail.loaded, total: e.detail.total });
+    window.addEventListener("uh-upload-progress", handler);
+    return () => window.removeEventListener("uh-upload-progress", handler);
+  }, []);
   const [qpForm, setQpForm] = useState({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
   const [qpLoading, setQpLoading] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
@@ -9575,8 +9592,10 @@ REGRAS TÉCNICAS:
                   }
                   const hasVideo = files.some(f => f.type?.startsWith("video/"));
                   const totalMB = (files.reduce((a,f)=>a+f.size,0)/1024/1024).toFixed(0);
-                  showToast(hasVideo ? `⏳ Enviando vídeo (${totalMB}MB)... aguarde, pode levar alguns minutos` : `Enviando ${files.length} arquivo${files.length>1?"s":""}...`, hasVideo ? 30000 : 5000);
+                  if (hasVideo) setUploadProgress({ pct: 0, loaded: 0, total: files.reduce((a,f)=>a+f.size,0) });
+                  showToast(hasVideo ? `⏳ Enviando vídeo (${totalMB}MB)...` : `Enviando ${files.length} arquivo${files.length>1?"s":""}...`, hasVideo ? 60000 : 5000);
                   const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                  setUploadProgress(null);
                   const uploaded = results.filter(r => !r.error);
                   const errors = results.filter(r => r.error);
                   if (errors.length) showToast(`❌ ${errors.map(e=>e.error).join("; ")}`);
@@ -9597,6 +9616,16 @@ REGRAS TÉCNICAS:
                   {IC.upload} {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo + capa" : sel.format==="Feed" ? "Enviar imagem" : `Enviar imagens${sel.format==="Carrossel"?" (2-20)":""}`}
                 </button>
               </div>
+              {uploadProgress && <div style={{ margin:"8px 0", padding:"10px 12px", borderRadius:10, background:`${B.accent}08`, border:`1px solid ${B.accent}20` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:B.accent }}>Enviando...</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:B.accent }}>{uploadProgress.pct}%</span>
+                </div>
+                <div style={{ width:"100%", height:6, borderRadius:3, background:`${B.accent}15`, overflow:"hidden" }}>
+                  <div style={{ width:`${uploadProgress.pct}%`, height:"100%", borderRadius:3, background:B.accent, transition:"width .3s ease" }} />
+                </div>
+                {uploadProgress.total > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{(uploadProgress.loaded/1024/1024).toFixed(1)}MB de {(uploadProgress.total/1024/1024).toFixed(0)}MB</p>}
+              </div>}
               <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>
             </> : sel.steps?.design?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
