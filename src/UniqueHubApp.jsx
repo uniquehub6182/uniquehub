@@ -8134,9 +8134,10 @@ REGRAS TÉCNICAS:
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"16px", borderRadius:10, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
-                    <span style={{ fontSize:12, fontWeight:600, color:B.muted }}>Enviar arquivo (PDF, TXT, DOC)</span>
+                  <button onClick={() => ipFileRef.current?.click()} style={{ width:"100%", padding:"28px 16px", borderRadius:12, border:"2px dashed "+B.border, background:B.bg, cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                    <span style={{ fontSize:13, fontWeight:600, color:B.text }}>Enviar arquivo</span>
+                    <span style={{ fontSize:11, color:B.muted }}>PDF, TXT ou DOC</span>
                   </button>
                 )}
               </div>
@@ -8147,11 +8148,17 @@ REGRAS TÉCNICAS:
                   <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>3</div>
                   <p style={{ fontSize:13, fontWeight:700 }}>Redes sociais</p>
                 </div>
-                <p style={{ fontSize:11, color:B.muted, marginBottom:8 }}>Em quais redes os posts serão publicados?</p>
-                <div style={{ display:"flex", gap:6 }}>
-                  {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 14px", borderRadius:10, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={16} active={sel2} />{n}</button>; })}
+                <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>Em quais redes os posts serão publicados?</p>
+                <div style={{ display:"flex", gap:8 }}>
+                  {["Instagram","Facebook"].map(n => { const sel2 = ipNetworks.includes(n); return <button key={n} onClick={()=>setIpNetworks(prev=>sel2?prev.filter(x=>x!==n).length?prev.filter(x=>x!==n):prev:[...prev,n])} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"10px 16px", borderRadius:12, border:sel2?`2px solid ${NETWORK_CFG[n]?.c||B.accent}`:`1.5px solid ${B.border}`, background:sel2?`${NETWORK_CFG[n]?.c||B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:sel2?700:500, color:sel2?(NETWORK_CFG[n]?.c||B.accent):B.muted }}><NetworkIcon name={n} sz={18} active={sel2} />{n}</button>; })}
                 </div>
               </div>
+
+              {/* CTA */}
+              <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:14, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
+                Processar com a Munique A.I
+              </button>
             </div>
 
             {/* ══ COL 3: PREFERÊNCIAS ══ */}
@@ -8192,11 +8199,6 @@ REGRAS TÉCNICAS:
 
           </div>
 
-          {/* ── CTA ── */}
-          <button disabled={!ipClient || !ipFile} onClick={processImportPlan} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:ipClient && ipFile ? B.accent : B.border, border:"none", cursor:ipClient && ipFile ? "pointer" : "default", fontFamily:"inherit", fontSize:14, fontWeight:800, color:ipClient && ipFile ? "#0D0D0D" : B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:20 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ipClient && ipFile?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/></svg>
-            Processar com a Munique A.I
-          </button>
         </>}
 
         {/* ═══ STEP 2: PROCESSING ═══ */}
