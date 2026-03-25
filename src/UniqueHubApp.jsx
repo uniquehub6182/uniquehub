@@ -8550,19 +8550,24 @@ REGRAS TÉCNICAS:
         const mediaType = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video")?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
         showToast(schedTs ? "Agendando publicação via Meta API..." : "Publicando agora (horário já passou)...");
         try {
-          let ok = false;
-          if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs); if (r?.error) showToast("Erro IG: "+r.error); else ok = true; }
-          if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType); if (r?.error) showToast("Erro FB: "+r.error); else ok = true; }
-          if (ok) {
+          let igOk = false, fbOk = false, igErr = "", fbErr = "";
+          if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs); if (r?.error) igErr = r.error; else igOk = true; }
+          if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType); if (r?.error) fbErr = r.error; else fbOk = true; }
+          if (igOk || fbOk) {
             const pubStage = stages[stages.indexOf("scheduled")+1] || "published";
-            if (!schedTs) { /* Publish immediately — move to published */
+            const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
+            const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
+            if (!schedTs) {
               setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({...x, stage:pubStage}, pubStage) : x));
               setSel(prev => syncMilestones({...prev, stage:pubStage}, pubStage));
               if (d.supaId) supaUpdateDemand(d.supaId, { stage:pubStage });
-              showToast("✅ Publicado com sucesso!");
+              showToast(errs.length ? `✅ Publicado no ${platforms}! (${errs.join("; ")})` : `✅ Publicado no ${platforms}!`);
             } else {
-              showToast("✅ Agendado! O Meta vai publicar automaticamente em "+d.scheduling.date+" às "+d.scheduling.time);
+              showToast(`✅ Agendado no ${platforms}! ${d.scheduling.date} às ${d.scheduling.time}`);
             }
+          } else {
+            const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
+            showToast(`Erro ao publicar: ${errs.join("; ") || "falha desconhecida"}`);
           }
         } catch(e) { showToast("Erro: "+e.message); }
       }
@@ -9750,14 +9755,20 @@ REGRAS TÉCNICAS:
                         const clientId = clientObj.supaId || clientObj.id;
                         const type = isStories ? "STORIES" : "FEED";
                         showToast("Publicando...");
-                        let ok = false;
-                        if (hasIG) { const r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null); if (r?.error) showToast("Erro IG: " + r.error); else ok = true; }
-                        if (hasFB) { const r = await publishToMeta(clientId, imgUrls, fullCaption, null, type); if (r?.error) showToast("Erro FB: " + r.error); else ok = true; }
-                        if (ok) {
+                        let igOk = false, fbOk = false, igErr = "", fbErr = "";
+                        if (hasIG) { const r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null); if (r?.error) igErr = r.error; else igOk = true; }
+                        if (hasFB) { const r = await publishToMeta(clientId, imgUrls, fullCaption, null, type); if (r?.error) fbErr = r.error; else fbOk = true; }
+                        if (igOk || fbOk) {
                           updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                          updateStep("igPublished", { platform: hasIG && hasFB ? "both" : hasIG ? "instagram" : "facebook", type, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
+                          updateStep("igPublished", { platform: igOk && fbOk ? "both" : igOk ? "instagram" : "facebook", type, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
                           setTimeout(() => setDemandStage(sel, "published"), 200);
-                          showToast("✅ Publicado com sucesso!");
+                          const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
+                          const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
+                          if (errs.length) showToast(`✅ Publicado no ${platforms}! (${errs.join("; ")})`);
+                          else showToast(`✅ Publicado no ${platforms}!`);
+                        } else {
+                          const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
+                          showToast(`Erro ao publicar: ${errs.join("; ") || "falha desconhecida"}`);
                         }
                         setPubLoading(false);
                       }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#10B981", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
