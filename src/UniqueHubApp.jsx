@@ -9495,8 +9495,8 @@ REGRAS TÉCNICAS:
                     Feed: { icon:"🖼️", text:`Envie 1 imagem (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
                     Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG ou WebP). Cada uma será 1 story. Dimensão: 9:16 (1080×1920).`, color:"#F59E0B", warn: null },
                     Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#8B5CF6", warn: null },
-                    Reels: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV, máx 50MB) + 1 imagem de capa. Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
-                    Shorts: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV, máx 50MB) + 1 imagem de capa. Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
+                    Reels: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV) + 1 imagem de capa. Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
+                    Shorts: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV) + 1 imagem de capa. Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
                   };
                   const g = guidanceMap[fmt] || guidanceMap.Feed;
                   return <>
@@ -9518,10 +9518,10 @@ REGRAS TÉCNICAS:
                     e.target.value = "";
                     return;
                   }
-                  /* Pre-validate file sizes (50MB Supabase limit) */
-                  const tooBig = files.filter(f => f.size > 50 * 1024 * 1024);
+                  /* Pre-validate file sizes (500MB max — R2 handles large files) */
+                  const tooBig = files.filter(f => f.size > 500 * 1024 * 1024);
                   if (tooBig.length) {
-                    showToast(`❌ ${tooBig.map(f=>`"${f.name}" (${(f.size/1024/1024).toFixed(0)}MB)`).join(", ")} excede o limite de 50MB. Comprima antes de enviar.`);
+                    showToast(`❌ ${tooBig.map(f=>`"${f.name}" (${(f.size/1024/1024).toFixed(0)}MB)`).join(", ")} excede o limite de 500MB.`);
                     e.target.value = "";
                     return;
                   }
