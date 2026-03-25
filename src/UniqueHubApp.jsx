@@ -10094,8 +10094,13 @@ REGRAS TÉCNICAS:
                     setDemands(prev => prev.map(x => x.id === sel.id ? { ...x, steps: combinedSteps } : x));
                     setSel(prev => ({ ...prev, steps: combinedSteps }));
                     if (sel.supaId) supaUpdateDemand(sel.supaId, { steps: combinedSteps });
-                    setTimeout(() => advanceStage(sel), 200);
-                    showToast(`✓ Agendado para ${sel.scheduling?.date} às ${sel.scheduling?.time}`);
+                    /* Move to scheduled stage WITHOUT triggering auto-publish */
+                    const stages2 = getStages(sel.type);
+                    const nextStage2 = stages2[stages2.indexOf("client") + 1] || "scheduled";
+                    setDemands(prev => prev.map(x => x.id === sel.id ? syncMilestones({...x, stage: nextStage2, steps: combinedSteps}, nextStage2) : x));
+                    setSel(prev => syncMilestones({...prev, stage: nextStage2, steps: combinedSteps}, nextStage2));
+                    if (sel.supaId) supaUpdateDemand(sel.supaId, { stage: nextStage2 });
+                    showToast(`✅ Agendado para ${sel.scheduling?.date} às ${sel.scheduling?.time}`);
                   } catch(e) { showToast(`Erro: ${e.message}`); }
                   setPubLoading(false);
                 } else {
