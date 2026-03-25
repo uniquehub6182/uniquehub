@@ -25852,6 +25852,16 @@ export default function App() {
     } catch { return {}; }
   });
 
+  /* Compute B in App so the <style> tag uses correct theme values */
+  const appAccent = themeColor === "custom" ? (uiPrefs?.customColor || "#BBF246") : (THEME_MAP[themeColor] || "#BBF246");
+  B = getB(dark, appAccent, uiPrefs);
+
+  /* Apply body background from B.bodyBg */
+  React.useEffect(() => {
+    document.documentElement.style.background = B.bodyBg;
+    document.body.style.background = B.bodyBg;
+  }, [dark, uiPrefs, themeColor]);
+
   /* Save visual prefs to Supabase (debounced) — includes dash+nav */
   const savePrefsTimer = React.useRef(null);
   const allPrefsRef = React.useRef({ dark: false, theme: "default", prefs: {}, dash: null, nav: null });
