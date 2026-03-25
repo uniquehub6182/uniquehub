@@ -13798,7 +13798,25 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             <input value={UP.bgImageUrl||""} onChange={e => updateUiPrefs({bgImageUrl:e.target.value})} placeholder="https://exemplo.com/imagem.jpg" className="tinput" style={{ flex:1, fontSize:12 }} />
             <button onClick={() => { if(UP.bgImageUrl) { setP("bgImage","custom"); } }} style={{ padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.textOnAccent }}>Aplicar</button>
           </div>
-          {UP.bgImage && UP.bgImage !== "none" && <button onClick={() => { setP("bgImage","none"); updateUiPrefs({bgImageUrl:""}); }} style={{ marginTop:8, padding:"8px 0", width:"100%", borderRadius:10, border:"1px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>Remover plano de fundo</button>}
+          {UP.bgImage && UP.bgImage !== "none" && <>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, padding:"8px 0", borderTop:"1px solid "+B.border }}>
+              <div>
+                <p style={{ fontSize:12, fontWeight:600, color:B.text }}>Desfoque no fundo</p>
+                <p style={{ fontSize:10, color:B.muted }}>Aplica blur na imagem de fundo</p>
+              </div>
+              <button onClick={() => setP("bgBlur", !UP.bgBlur)} style={{ width:44, height:24, borderRadius:12, background:UP.bgBlur?B.accent:"#ccc", border:"none", cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
+                <div style={{ width:20, height:20, borderRadius:10, background:"#fff", position:"absolute", top:2, left:UP.bgBlur?22:2, transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,0.15)" }} />
+              </button>
+            </div>
+            {UP.bgBlur && <div style={{ marginTop:6 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:10, color:B.muted }}>Intensidade</span>
+                <span style={{ fontSize:10, fontWeight:700, color:B.accent }}>{UP.bgBlurAmount || 10}px</span>
+              </div>
+              <input type="range" min={2} max={30} step={1} value={UP.bgBlurAmount || 10} onChange={e => setP("bgBlurAmount", Number(e.target.value))} style={{ width:"100%", accentColor:B.accent, height:4 }} />
+            </div>}
+            <button onClick={() => { setP("bgImage","none"); updateUiPrefs({bgImageUrl:"",bgBlur:false,bgBlurAmount:10}); }} style={{ marginTop:8, padding:"8px 0", width:"100%", borderRadius:10, border:"1px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>Remover plano de fundo</button>
+          </>}
         </Card>
 
         {/* Cards */}
@@ -25855,9 +25873,12 @@ export default function App() {
     /* Always move to end of body so it overrides all other styles */
     document.body.appendChild(el);
     if (B.transparent) {
+      const bgBlur = uiPrefs?.bgBlur;
+      const blurAmt = uiPrefs?.bgBlurAmount || 10;
       el.textContent = `
         html, body, #root,
-        html.uh-desktop, html.uh-desktop body, html.uh-desktop #root { background: ${B.bodyBg} !important; }
+        html.uh-desktop, html.uh-desktop body, html.uh-desktop #root { background: ${bgBlur ? "transparent" : B.bodyBg} !important; }
+        ${bgBlur ? `#root::before { content:""; position:fixed; inset:-${blurAmt + 5}px; z-index:-1; background:${B.bodyBg}; filter:blur(${blurAmt}px); -webkit-filter:blur(${blurAmt}px); }` : ""}
         .app, .screen, .content { background: transparent !important; }
         html.uh-desktop .app, html.uh-desktop .screen, html.uh-desktop .content { background: transparent !important; }
         .desktop-dash { background: transparent !important; }
