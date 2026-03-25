@@ -1079,8 +1079,8 @@ const supaLoadConversations = async (userId) => {
     const [convRes, memRes, msgsRes] = await Promise.all([
       supabase.from("conversations").select("*").in("id", convIds),
       supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", convIds),
-      /* Fetch last messages in ONE query — get recent messages and deduplicate by conversation */
-      supabase.from("messages").select("id,conversation_id,content,file_url,file_name,sender_id,created_at").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(convIds.length * 2),
+      /* Fetch last messages — get enough to cover all conversations */
+      supabase.from("messages").select("id,conversation_id,content,file_url,file_name,sender_id,created_at").in("conversation_id", convIds).order("created_at", { ascending: false }).limit(Math.max(convIds.length * 5, 50)),
     ]);
     const convs = convRes.data || [];
     const allMembers = memRes.data || [];
