@@ -8067,9 +8067,10 @@ REGRAS TÉCNICAS:
 
   /* ═══ IMPORT PLAN MODAL ═══ */
   const ImportPlanModal = importPlan ? (
-    <div className={isContentDesktop ? "content-wide" : ""} style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, overflowY:"auto", paddingTop: TOP }}>
+    <div style={{ position:"fixed", inset:0, zIndex:99998, background:B.bg, color:B.text, overflowY:"auto" }}>
+      <div style={{ maxWidth:1400, marginLeft:"auto", marginRight:"auto", padding:"0 24px", boxSizing:"border-box", minHeight:"100%", paddingTop: TOP }}>
       {/* CollapseHeader-style header */}
-      <div style={{ background:B.bgCard, borderRadius:"0 0 26px 26px", boxShadow:"0 4px 20px rgba(0,0,0,0.08)", marginBottom:24, padding: isContentDesktop ? "28px 28px 24px" : "20px 20px 22px" }}>
+      <div style={{ background:B.bgCard, borderRadius:"0 0 26px 26px", boxShadow:"0 4px 20px rgba(0,0,0,0.08)", marginBottom:20, padding: isContentDesktop ? "28px 28px 24px" : "20px 20px 22px" }}>
         <button onClick={resetImportPlan} className="ib" style={{ border:`1.5px solid ${B.border}`, marginBottom:8 }}>{IC.back()}</button>
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
           <div>
@@ -8089,8 +8090,6 @@ REGRAS TÉCNICAS:
           ))}
         </div>
       </div>
-
-      <div style={{ padding:"0 20px" }}>
 
         {/* ═══ STEP 1: SELECT CLIENT + UPLOAD ═══ */}
         {ipStep === 1 && <>
