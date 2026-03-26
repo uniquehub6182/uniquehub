@@ -24781,12 +24781,19 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       const schedTime = scheduling.time || demand.schedule_time;
       const hasFutureSchedule = status === "approved" && schedDate && (() => {
         const ts = getScheduledTimestamp({ date: schedDate, time: schedTime });
-        /* If we have a date but can't parse it, assume it's scheduled (safer than publishing accidentally) */
-        if (!ts && schedDate) {
-          console.log("[Schedule] Date exists but getScheduledTimestamp returned null. schedDate:", schedDate, "schedTime:", schedTime);
-          return true; /* err on the side of NOT publishing immediately */
+        if (ts) return true; /* Valid future timestamp */
+        /* If we couldn't get a timestamp, try to parse the date to see if it's really future */
+        if (schedDate && schedTime) {
+          let normDate = schedDate;
+          if (normDate.includes("/")) {
+            const p = normDate.split("/");
+            if (p.length === 2) normDate = `${new Date().getFullYear()}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
+            else if (p.length === 3) { const yr = p[2].length===4?p[2]:`20${p[2]}`; normDate = `${yr}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`; }
+          }
+          const dt = new Date(`${normDate}T${schedTime}:00`);
+          if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() + 600000) return true; /* > 10min future */
         }
-        return !!ts;
+        return false; /* Past or unparseable — publish immediately */
       })();
       const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : d.stage;
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage } : d));
@@ -24824,8 +24831,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           const schedTime = scheduling.time || demand.schedule_time;
           const schedTs = getScheduledTimestamp({ date: schedDate, time: schedTime });
           const schedLabel = schedDate ? `${schedDate} às ${schedTime||""}` : "";
-          /* If there's a schedule date, treat as future-scheduled (don't publish now) */
-          const isScheduledFuture = !!schedTs || !!schedDate;
+          /* Only treat as scheduled-future if getScheduledTimestamp returns a valid timestamp (>10min in future) */
+          const isScheduledFuture = !!schedTs;
           const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
@@ -25192,13 +25199,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               const isReelsFmt = (d.format||"").toLowerCase() === "reels" || (d.format||"").toLowerCase() === "shorts";
               /* For Reels: combine cover + video into one swipeable carousel */
               if (isReelsFmt && vidFiles.length > 0) {
-                const allSlides = [...imgFiles.filter(f=>f.isCover), ...imgFiles.filter(f=>!f.isCover), ...vidFiles];
+                const coverSlides = imgFiles.filter(f=>f.isCover);
+                const allSlides = [...(coverSlides.length > 0 ? coverSlides : imgFiles), ...vidFiles];
                 if (allSlides.length === 0) return null;
                 const ReelsCarousel = () => {
                   const [slide, setSlide] = React.useState(0);
                   const ref = React.useRef(null);
-                  const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; const s=Math.round(ref.current.scrollLeft/w); setSlide(s); };
-                  return <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20, position:"relative" }}>
+                  const scrollTo = (idx) => { if(ref.current) ref.current.scrollTo({ left: idx * ref.current.offsetWidth, behavior:"smooth" }); };
+                  const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; setSlide(Math.round(ref.current.scrollLeft/w)); };
+                  const coverCount = coverSlides.length || imgFiles.length;
+                  const isCover = slide < coverCount;
+                  return <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20 }}>
+                    {/* Top tabs: CAPA | VÍDEO */}
+                    <div style={{ display:"flex", borderBottom:`1px solid ${B.border||"rgba(0,0,0,0.06)"}` }}>
+                      <button onClick={()=>scrollTo(0)} style={{ flex:1, padding:"12px 0", background:isCover?`${B.accent}10`:"transparent", border:"none", borderBottom:isCover?`3px solid ${B.accent}`:"3px solid transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isCover?B.accent:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"all .2s" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Capa
+                      </button>
+                      <button onClick={()=>scrollTo(coverCount)} style={{ flex:1, padding:"12px 0", background:!isCover?`${B.blue||"#3B82F6"}10`:"transparent", border:"none", borderBottom:!isCover?`3px solid ${B.blue||"#3B82F6"}`:"3px solid transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:!isCover?(B.blue||"#3B82F6"):B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"all .2s" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                        Vídeo
+                        {isCover && <span style={{ fontSize:9, fontWeight:600, opacity:0.7 }}>→</span>}
+                      </button>
+                    </div>
+                    {/* Swipeable content */}
                     <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
                       {allSlides.map((f,i) => {
                         const isVid = /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/");
@@ -25207,22 +25231,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                                  : <img src={f.url} alt="" style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />}
                         </div>;
                       })}
-                    </div>
-                    {/* Dots + swipe hint */}
-                    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:6, padding:"10px 0" }}>
-                      {allSlides.map((_,i) => {
-                        const isVid = /\.(mp4|mov|webm|avi)$/i.test(allSlides[i]?.name||allSlides[i]?.url||"") || allSlides[i]?.type?.startsWith("video/");
-                        return <div key={i} style={{ display:"flex", alignItems:"center", gap:3 }}>
-                          <div style={{ width:slide===i?20:8, height:8, borderRadius:4, background:slide===i?B.accent:`${B.muted}30`, transition:"all .3s" }} />
-                          {slide===0 && i===1 && <span style={{ fontSize:9, color:B.muted, marginLeft:2 }}>
-                            {isVid?"← Arraste para ver o vídeo":"← Arraste"}
-                          </span>}
-                        </div>;
-                      })}
-                    </div>
-                    {/* Label overlay */}
-                    <div style={{ position:"absolute", top:10, left:10, padding:"3px 8px", borderRadius:6, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:"#fff" }}>{slide < imgFiles.length ? "CAPA" : "VÍDEO"}</span>
                     </div>
                   </Card>;
                 };
