@@ -269,6 +269,30 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
   });
 };
 
+/* ── Convert cloud sharing links to direct download URLs ── */
+const convertCloudLink = (url) => {
+  if (!url) return null;
+  const u = url.trim();
+  /* Google Drive: various formats */
+  let m = u.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  m = u.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  m = u.match(/docs\.google\.com\/uc\?.*id=([^&]+)/);
+  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  /* OneDrive / SharePoint */
+  if (u.includes("1drv.ms") || u.includes("onedrive.live.com") || u.includes("sharepoint.com")) {
+    return u.replace(/\?.*$/, "?download=1");
+  }
+  /* Dropbox */
+  if (u.includes("dropbox.com")) {
+    return u.replace("dl=0", "dl=1").replace("www.dropbox.com", "dl.dropboxusercontent.com");
+  }
+  /* Already a direct URL */
+  if (/^https?:\/\/.+\.(mp4|mov|webm|avi)/i.test(u)) return u;
+  return u;
+};
+
 /* Upload with XHR for progress tracking */
 const xhrUpload = (url, file, contentType) => new Promise((resolve, reject) => {
   const xhr = new XMLHttpRequest();
@@ -955,9 +979,9 @@ const getScheduledTimestamp = (scheduling) => {
 /* Helper: separate video and cover from design files for Reels */
 const separateMedia = (files) => {
   const all = (files || []).filter(f => f.url);
-  const vids = all.filter(f => /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
+  const vids = all.filter(f => f.isCloudLink || /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
   const cover = all.find(f => f.isCover);
-  const imgs = all.filter(f => !f.isCover && (/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg"))));
+  const imgs = all.filter(f => !f.isCover && !f.isCloudLink && (/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg"))));
   return { vids, imgs, videoUrl: vids[0]?.url||null, coverUrl: cover?.url || imgs[0]?.url||null, allUrls: all.map(f=>f.url) };
 };
 
@@ -9590,14 +9614,40 @@ REGRAS TÉCNICAS:
                         <p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Vídeo</p>
                         {vidFile?.url ? (
                           <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.blue||"#3B82F6"}40`, background:"#000" }}>
-                            <video src={vidFile.url} controls playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            {vidFile.isCloudLink ? (
+                              <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:12 }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                <span style={{ fontSize:10, color:"#3B82F6", fontWeight:600, textAlign:"center" }}>Link do vídeo</span>
+                                <span style={{ fontSize:8, color:"rgba(255,255,255,0.5)", textAlign:"center", wordBreak:"break-all", padding:"0 6px" }}>{vidFile.name||"Cloud link"}</span>
+                              </div>
+                            ) : (
+                              <video src={vidFile.url} controls playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            )}
                             <button onClick={async () => { if (vidFile.path) await supaDeleteFile(vidFile.path); updateStep("design",{files:allF.filter((_,i)=>i!==allF.indexOf(vidFile))}); }} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                           </div>
                         ) : (
-                          <button onClick={()=>{ if (!coverFile) { showToast("Selecione a capa primeiro"); return; } document.getElementById("designUpload").click(); }} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${!coverFile?"rgba(150,150,150,0.2)":(B.blue||"#3B82F6")+"40"}`, background:!coverFile?"rgba(150,150,150,0.02)":`${B.blue||"#3B82F6"}04`, cursor:!coverFile?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:!coverFile?0.4:1 }}>
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                            <span style={{ fontSize:11, fontWeight:600, color:B.blue||"#3B82F6" }}>{!coverFile?"Selecione a capa primeiro":"Selecionar vídeo"}</span>
-                          </button>
+                          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                            <button onClick={()=>{ if (!coverFile) { showToast("Selecione a capa primeiro"); return; } document.getElementById("designUpload").click(); }} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${!coverFile?"rgba(150,150,150,0.2)":(B.blue||"#3B82F6")+"40"}`, background:!coverFile?"rgba(150,150,150,0.02)":`${B.blue||"#3B82F6"}04`, cursor:!coverFile?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:!coverFile?0.4:1 }}>
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                              <span style={{ fontSize:11, fontWeight:600, color:B.blue||"#3B82F6" }}>{!coverFile?"Selecione a capa primeiro":"Enviar vídeo"}</span>
+                            </button>
+                            <p style={{ fontSize:9, color:B.muted, textAlign:"center" }}>ou</p>
+                            <input type="text" placeholder="Colar link do vídeo" className="tinput" disabled={!coverFile}
+                              style={{ fontSize:11, padding:"10px 12px", borderRadius:10, textAlign:"center", opacity:!coverFile?0.4:1 }}
+                              onPaste={(e) => {
+                                if (!coverFile) return;
+                                setTimeout(() => {
+                                  const val = e.target.value.trim();
+                                  if (!val) return;
+                                  const directUrl = convertCloudLink(val);
+                                  const source = val.includes("drive.google") ? "Google Drive" : val.includes("1drv.ms")||val.includes("onedrive") ? "OneDrive" : val.includes("dropbox") ? "Dropbox" : "Link direto";
+                                  updateStep("design", { files: [...allF, { name: `Vídeo (${source})`, url: directUrl, type:"video/mp4", isCloudLink: true }], by: user?.name||"", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                                  e.target.value = "";
+                                  showToast(`✅ Link convertido (${source})`);
+                                }, 100);
+                              }}
+                            />
+                          </div>
                         )}
                         {vidFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{vidFile.name||"video.mp4"}{vidFile.size?` · ${(vidFile.size/1048576).toFixed(0)}MB`:""}</p>}
                         <p style={{ fontSize:10, color:B.blue||"#3B82F6", marginTop:4, textAlign:"center", fontWeight:600 }}>MP4 ou MOV · 9:16 (1080×1920)</p>
@@ -11577,8 +11627,12 @@ REGRAS TÉCNICAS:
                           <p style={{ fontSize:9, fontWeight:700, color:"#3B82F6", textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Vídeo</p>
                           {currentFiles.length > 0 ? (
                             <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:"2px solid #3B82F640", background:"#000" }}>
-                              <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                              <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:12 }}>
+                                {currentFiles[0]?.isCloudLink ? (
+                                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                ) : (
+                                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                )}
                               </div>
                               <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"6px 8px", background:"linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
                                 <p style={{ fontSize:9, color:"#fff", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{currentFiles[0]?.name||"vídeo"}</p>
@@ -11587,10 +11641,28 @@ REGRAS TÉCNICAS:
                               <button onClick={() => setQpForm(p => ({...p, _files:[]}))} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                             </div>
                           ) : (
-                            <button onClick={()=>{ if(!qpForm._coverPreview){showToast("Selecione a capa primeiro");return;} document.getElementById("qpFileUpload").click(); }} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${!qpForm._coverPreview?"rgba(150,150,150,0.2)":"#3B82F640"}`, background:!qpForm._coverPreview?"rgba(150,150,150,0.02)":"#3B82F604", cursor:!qpForm._coverPreview?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:!qpForm._coverPreview?0.4:1 }}>
-                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                              <span style={{ fontSize:11, fontWeight:600, color:"#3B82F6" }}>{!qpForm._coverPreview?"Selecione a capa primeiro":"Selecionar vídeo"}</span>
-                            </button>
+                            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                              <button onClick={()=>{ if(!qpForm._coverPreview){showToast("Selecione a capa primeiro");return;} document.getElementById("qpFileUpload").click(); }} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${!qpForm._coverPreview?"rgba(150,150,150,0.2)":"#3B82F640"}`, background:!qpForm._coverPreview?"rgba(150,150,150,0.02)":"#3B82F604", cursor:!qpForm._coverPreview?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:!qpForm._coverPreview?0.4:1 }}>
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                                <span style={{ fontSize:11, fontWeight:600, color:"#3B82F6" }}>{!qpForm._coverPreview?"Selecione a capa primeiro":"Enviar vídeo"}</span>
+                              </button>
+                              <p style={{ fontSize:9, color:"#9CA3AF", textAlign:"center" }}>ou</p>
+                              <input type="text" placeholder="Colar link do vídeo" className="tinput" disabled={!qpForm._coverPreview}
+                                style={{ fontSize:11, padding:"10px 12px", borderRadius:10, textAlign:"center", opacity:!qpForm._coverPreview?0.4:1 }}
+                                onPaste={(e) => {
+                                  if (!qpForm._coverPreview) return;
+                                  setTimeout(() => {
+                                    const val = e.target.value.trim();
+                                    if (!val) return;
+                                    const directUrl = convertCloudLink(val);
+                                    const source = val.includes("drive.google") ? "Google Drive" : val.includes("1drv.ms")||val.includes("onedrive") ? "OneDrive" : val.includes("dropbox") ? "Dropbox" : "Link direto";
+                                    setQpForm(p => ({...p, _files:[{name:`Vídeo (${source})`, url:directUrl, isCloudLink:true}], _videoCloudUrl:directUrl}));
+                                    e.target.value = "";
+                                    showToast(`✅ Link convertido (${source})`);
+                                  }, 100);
+                                }}
+                              />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -11649,7 +11721,10 @@ REGRAS TÉCNICAS:
                     updateBgTask(taskId, { msg: "Enviando mídia..." });
                     const publicUrls = [];
                     for (const f of (savedForm._files||[])) {
-                      if (f.file) {
+                      if (f.isCloudLink && f.url) {
+                        /* Cloud link — no upload needed, use URL directly */
+                        publicUrls.push(f.url);
+                      } else if (f.file) {
                         const url = await uploadToStorage(f.file, `quick-publish/${clientId}`);
                         if (url) publicUrls.push(url);
                         else { updateBgTask(taskId, { status:"error", msg:"Erro ao enviar "+f.name }); setTimeout(()=>removeBgTask(taskId),5000); return; }
