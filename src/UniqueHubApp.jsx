@@ -12075,15 +12075,18 @@ REGRAS TÉCNICAS:
                       } catch(e) { console.error("Cover upload error:", e); }
                     }
                     updateBgTask(taskId, { msg: "Publicando..." });
-                    let ok = false; let postId = null;
+                    let igOk = false, fbOk = false, igErr = "", fbErr = "";
                     if (platforms.includes("ig")) {
+                      updateBgTask(taskId, { msg: "Publicando no Instagram..." });
                       const r = await publishToInstagram(clientId, publicUrls, caption, fmt, null, coverPublicUrl);
-                      if (r?.error) { updateBgTask(taskId, { msg: "Erro IG: "+r.error }); } else { ok = true; postId = r?.media_id || r?.post_id; }
+                      if (r?.error) { igErr = r.error; console.error("[QP] IG error:", r.error); } else { igOk = true; postId = r?.media_id || r?.post_id; }
                     }
                     if (platforms.includes("fb")) {
+                      updateBgTask(taskId, { msg: igOk ? "Instagram ✓ · Publicando no Facebook..." : "Publicando no Facebook..." });
                       const r = await publishToMeta(clientId, publicUrls, caption, null, fmt);
-                      if (r?.error) { updateBgTask(taskId, { msg: "Erro FB: "+r.error }); } else { ok = true; if (!postId) postId = r?.id || r?.post_id; }
+                      if (r?.error) { fbErr = r.error; console.error("[QP] FB error:", r.error); } else { fbOk = true; if (!postId) postId = r?.id || r?.post_id; }
                     }
+                    const ok = igOk || fbOk;
                     if (ok) {
                       /* Create demand in kanban as "published" */
                       const newDemand = {
@@ -12105,8 +12108,15 @@ REGRAS TÉCNICAS:
                       };
                       setDemands(prev => [newDemand, ...prev]);
                       try { const r = await supaCreateDemand(newDemand); if (r?.id) newDemand.supaId = r.id; } catch {}
-                      updateBgTask(taskId, { status:"done", label:`✅ ${savedClient.name} publicado!`, msg:"" });
-                      showToast("✅ Publicado com sucesso!");
+                      const okPlatforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
+                      const failPlatforms = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
+                      if (failPlatforms.length > 0) {
+                        updateBgTask(taskId, { status:"done", label:`⚠️ ${savedClient.name}`, msg:`✅ ${okPlatforms} · ❌ ${failPlatforms.join("; ")}` });
+                        showToast(`⚠️ Publicado em ${okPlatforms}, mas falhou: ${failPlatforms.join("; ")}`);
+                      } else {
+                        updateBgTask(taskId, { status:"done", label:`✅ ${savedClient.name} publicado!`, msg: okPlatforms });
+                        showToast(`✅ Publicado em ${okPlatforms}!`);
+                      }
                     } else {
                       updateBgTask(taskId, { status:"error", label:"Erro na publicação", msg:"Verifique os logs" });
                     }
