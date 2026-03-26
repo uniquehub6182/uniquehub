@@ -24770,38 +24770,36 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const respondDemand = async (demand, status, feedback) => {
     try {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
-      const updatePayload = { steps: JSON.stringify(steps) };
-      if (status === "approved") {
-        updatePayload.stage = "published";
-      }
-      await supabase.from("demands").update(updatePayload).eq("id", demand.id);
-      /* If approved AND has future schedule → go to "scheduled", NOT "published" */
+
+      /* Determine scheduling FIRST before any DB writes */
       const scheduling = demand.scheduling || {};
       const schedDate = scheduling.date || demand.schedule_date;
       const schedTime = scheduling.time || demand.schedule_time;
-      const hasFutureSchedule = status === "approved" && schedDate && (() => {
-        const ts = getScheduledTimestamp({ date: schedDate, time: schedTime });
-        if (ts) return true; /* Valid future timestamp */
-        /* Schedule exists but time passed — we'll auto-reschedule to +10min */
-        if (schedDate) return true; /* Always treat scheduled posts as scheduled */
-        return false;
-      })();
-      /* If schedule time already passed, auto-reschedule to 10 min from now */
+
       let autoRescheduled = false;
-      if (status === "approved" && schedDate && !getScheduledTimestamp({ date: schedDate, time: schedTime })) {
-        const now = new Date(Date.now() + 11 * 60000); /* 11 min from now (10 + 1 buffer) */
-        const newDate = now.toISOString().split("T")[0]; /* YYYY-MM-DD */
-        const newTime = now.toTimeString().substring(0, 5); /* HH:MM */
-        console.log("[AutoReschedule] Original:", schedDate, schedTime, "→ New:", newDate, newTime);
-        /* Update the demand's scheduling */
-        const updatedScheduling = { date: newDate, time: newTime };
-        await supabase.from("demands").update({ scheduling: updatedScheduling }).eq("id", demand.id);
-        setDemands(prev => prev.map(d2 => d2.id === demand.id ? { ...d2, scheduling: updatedScheduling } : d2));
-        autoRescheduled = true;
+      let useSchedDate = schedDate;
+      let useSchedTime = schedTime;
+
+      if (status === "approved" && schedDate) {
+        const ts = getScheduledTimestamp({ date: schedDate, time: schedTime });
+        if (!ts) {
+          /* Schedule time passed — auto-reschedule to +10min */
+          const now = new Date(Date.now() + 11 * 60000);
+          useSchedDate = now.toISOString().split("T")[0];
+          useSchedTime = now.toTimeString().substring(0, 5);
+          autoRescheduled = true;
+          console.log("[AutoReschedule] Original:", schedDate, schedTime, "→ New:", useSchedDate, useSchedTime);
+        }
       }
-      const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : d.stage;
-      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage } : d));
-      if (targetStage !== d.stage) await supabase.from("demands").update({ stage: targetStage }).eq("id", demand.id);
+
+      const hasFutureSchedule = status === "approved" && (getScheduledTimestamp({ date: useSchedDate, time: useSchedTime }) || autoRescheduled);
+      const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : demand.stage;
+
+      /* Single DB write with correct stage */
+      const updatePayload = { steps: JSON.stringify(steps), stage: targetStage };
+      if (autoRescheduled) updatePayload.scheduling = { date: useSchedDate, time: useSchedTime };
+      await supabase.from("demands").update(updatePayload).eq("id", demand.id);
+      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage, ...(autoRescheduled ? { scheduling: { date: useSchedDate, time: useSchedTime } } : {}) } : d));
 
       /* ── Award gamification points IMMEDIATELY after status change ── */
       const scoreClientId = demand.client_id || myClientId_inner;
@@ -24820,6 +24818,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
 
       /* ── Auto-publish via Meta API when client approves ── */
       if (status === "approved") {
+       try {
         const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.editing?.files||[])];
         const mediaInfo = separateMedia(files);
         const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
@@ -24830,18 +24829,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           const caption = demand.steps?.caption?.text || demand.title || "";
           const hashtags = demand.steps?.caption?.hashtags || "";
           const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption;
-          const scheduling2 = demand.scheduling || {};
-          let useSchedDate = scheduling2.date || demand.schedule_date;
-          let useSchedTime = scheduling2.time || demand.schedule_time;
-          /* If auto-rescheduled above, use the new time */
-          if (autoRescheduled) {
-            const now = new Date(Date.now() + 11 * 60000);
-            useSchedDate = now.toISOString().split("T")[0];
-            useSchedTime = now.toTimeString().substring(0, 5);
-          }
           const schedTs = getScheduledTimestamp({ date: useSchedDate, time: useSchedTime });
           const schedLabel = useSchedDate ? `${useSchedDate} às ${useSchedTime||""}` : "";
-          const isScheduledFuture = !!schedTs || autoRescheduled;
+          const isScheduledFuture = hasFutureSchedule;
           const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
@@ -24900,10 +24890,11 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
               else { showToast("✅ Publicado no Facebook!"); published = true; }
             } catch(e) { console.error("[Publish] FB error:", e); }
           }
-          if (!published) { showToast("Conteúdo aprovado! Publicação pendente pela agência."); }
+          if (!published && !isScheduledFuture) { showToast("✅ Aprovado! Publicação será feita pela agência."); }
         } else {
-          showToast("Conteúdo aprovado! Sem mídia para publicar automaticamente.");
+          showToast("✅ Conteúdo aprovado!");
         }
+       } catch(pubErr) { console.error("[AutoPublish] Error:", pubErr); showToast("✅ Aprovado! Publicação será feita pela agência."); }
       }
 
       if (status !== "approved") {
@@ -25176,8 +25167,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             {/* Approved banner */}
             {isApproved && <Card style={{ background:`${B.green}08`, border:`1.5px solid ${B.green}25`, textAlign:"center", padding:20, marginBottom:10 }}>
               <div style={{ width:48, height:48, borderRadius:24, background:`${B.green}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>{IC.check}</div>
-              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>{d.steps?.igPublished?.scheduled ? "Aprovado e agendado" : "Aprovado e publicado"}</p>
-              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{d.steps?.igPublished?.scheduledFor ? `Agendado para ${d.steps.igPublished.scheduledFor}` : (d.scheduling?.date || d.schedule_date) ? "Publicado imediatamente (horário agendado já passou)" : "Publicado pela agência."}</p>
+              <p style={{ fontSize:16, fontWeight:800, color:B.green }}>{(d.stage === "scheduled" || (d.scheduling?.date || d.schedule_date)) ? "✅ Aprovado e agendado" : "✅ Aprovado e publicado"}</p>
+              <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>{(() => {
+                const sd = d.scheduling?.date || d.schedule_date;
+                const st = d.scheduling?.time || d.schedule_time;
+                if (d.stage === "scheduled" && sd) {
+                  try { return `Será publicado em ${new Date(sd+"T"+(st||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}${st?` às ${st}`:""}`; }
+                  catch { return `Agendado para ${sd}${st?` às ${st}`:""}`; }
+                }
+                return "Publicado pela agência.";
+              })()}</p>
             </Card>}
             {/* Revision banner */}
             {isRejected && <Card style={{ background:`${(B.orange||"#F59E0B")}08`, border:`1.5px solid ${(B.orange||"#F59E0B")}25`, padding:16, marginBottom:10 }}>
