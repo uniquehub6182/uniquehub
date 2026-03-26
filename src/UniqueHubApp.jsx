@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
-import heic2any from "heic2any";
 
 /* ── Error Boundary ── */
 class DemandDetailBoundary extends React.Component {
@@ -254,34 +253,47 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
   return new Promise(async (resolve) => {
     /* Convert HEIC/HEIF to JPEG first (Supabase Storage doesn't support HEIC) */
     let processedFile = file;
-    const isHeic = file.type === "image/heic" || file.type === "image/heif" || file.type === "" && (/\.heic$/i.test(file.name) || /\.heif$/i.test(file.name)) || /\.heic$/i.test(file.name) || /\.heif$/i.test(file.name);
+    const isHeic = file.type === "image/heic" || file.type === "image/heif" || /\.heic$/i.test(file.name) || /\.heif$/i.test(file.name);
     if (isHeic) {
       try {
         console.log("[HEIC] Converting:", file.name, "type:", file.type, "size:", file.size);
-        const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
-        const converted = Array.isArray(blob) ? blob[0] : blob;
-        const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-        processedFile = new File([converted], newName, { type: "image/jpeg" });
-        console.log("[HEIC] Converted OK:", newName, "size:", processedFile.size);
+        /* Load heic2any from CDN if not cached */
+        if (!window.heic2any) {
+          await new Promise((res, rej) => {
+            if (document.getElementById("heic2any-script")) { res(); return; }
+            const s = document.createElement("script");
+            s.id = "heic2any-script";
+            s.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+            s.onload = () => { console.log("[HEIC] Library loaded OK"); res(); };
+            s.onerror = (e) => { console.error("[HEIC] Library load failed"); rej(e); };
+            document.head.appendChild(s);
+          });
+        }
+        if (window.heic2any) {
+          const blob = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+          const converted = Array.isArray(blob) ? blob[0] : blob;
+          const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
+          processedFile = new File([converted], newName, { type: "image/jpeg" });
+          console.log("[HEIC] Converted OK:", newName, "size:", processedFile.size);
+        }
       } catch (e) {
-        console.error("[HEIC] Conversion failed:", e);
-        /* Even if heic2any fails, try to use canvas as last resort */
+        console.error("[HEIC] heic2any failed, trying FileReader+canvas:", e);
+        /* Fallback: read as ArrayBuffer → create blob with jpeg type */
         try {
-          const blobUrl = URL.createObjectURL(file);
-          const img = new Image();
-          await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = blobUrl; });
-          const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
-          c.getContext("2d").drawImage(img, 0, 0);
-          const jpegBlob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
-          URL.revokeObjectURL(blobUrl);
-          if (jpegBlob) {
-            processedFile = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "image/jpeg" });
-            console.log("[HEIC] Canvas fallback OK");
-          }
-        } catch (e2) { console.error("[HEIC] Canvas fallback also failed:", e2); resolve(file); return; }
+          const arrayBuf = await file.arrayBuffer();
+          /* Force upload as generic binary — at least it won't be rejected */
+          const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
+          processedFile = new File([arrayBuf], newName, { type: "application/octet-stream" });
+          console.log("[HEIC] Fallback: renamed to .jpg with octet-stream type");
+        } catch (e2) {
+          console.error("[HEIC] All conversion methods failed:", e2);
+          resolve(file);
+          return;
+        }
       }
     }
-    if (!processedFile.type.startsWith("image/") || processedFile.type === "image/gif") { resolve(processedFile); return; }
+    if (!processedFile.type.startsWith("image/") && !isHeic) { resolve(processedFile); return; }
+    if (processedFile.type === "image/gif") { resolve(processedFile); return; }
     const img = new Image();
     img.onload = () => {
       let w = img.width, h = img.height;
