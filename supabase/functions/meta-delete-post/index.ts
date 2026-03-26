@@ -4,49 +4,75 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+const json = (d: unknown, s = 200) =>
+  new Response(JSON.stringify(d), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: s });
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { client_id, post_id, platform } = await req.json();
-    if (!client_id || !post_id) {
-      return new Response(JSON.stringify({ error: "client_id and post_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { client_id, post_id } = await req.json();
+    if (!client_id || !post_id) return json({ error: "client_id and post_id required" }, 400);
+
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    /* Try Facebook token first (app_settings → meta_token_{client_id}) */
+    let accessToken: string | null = null;
+    const { data: fbSetting } = await sb.from("app_settings").select("value").eq("key", `meta_token_${client_id}`).single();
+    if (fbSetting?.value) {
+      try {
+        const tk = JSON.parse(fbSetting.value);
+        accessToken = tk.page_token || tk.access_token;
+      } catch {}
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Get token for this client
-    const { data: tokenRow } = await supabase
-      .from("social_tokens")
-      .select("*")
-      .eq("client_id", client_id)
-      .maybeSingle();
-
-    if (!tokenRow) {
-      return new Response(JSON.stringify({ error: "No social token found for client" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const accessToken = tokenRow.page_access_token || tokenRow.access_token;
+    /* Fallback: try Instagram token */
     if (!accessToken) {
-      return new Response(JSON.stringify({ error: "No access token available" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: igSetting } = await sb.from("app_settings").select("value").eq("key", `ig_token_${client_id}`).single();
+      if (igSetting?.value) {
+        try {
+          const tk = JSON.parse(igSetting.value);
+          accessToken = tk.access_token;
+        } catch {}
+      }
     }
 
-    // Delete the post via Meta Graph API
+    /* Last fallback: social_tokens table */
+    if (!accessToken) {
+      const { data: tokenRow } = await sb.from("social_tokens").select("*").eq("client_id", client_id).maybeSingle();
+      accessToken = tokenRow?.page_access_token || tokenRow?.access_token || null;
+    }
+
+    if (!accessToken) return json({ error: "Nenhum token encontrado para este cliente. Reconecte as redes sociais." }, 400);
+
+    console.log(`[Delete] Attempting to delete post ${post_id} for client ${client_id}`);
+
+    /* Delete via Meta Graph API */
     const deleteUrl = `https://graph.facebook.com/v21.0/${post_id}?access_token=${accessToken}`;
     const deleteRes = await fetch(deleteUrl, { method: "DELETE" });
     const deleteData = await deleteRes.json();
 
+    console.log(`[Delete] Response:`, JSON.stringify(deleteData).substring(0, 300));
+
     if (deleteData.success === true || deleteData === true) {
-      return new Response(JSON.stringify({ success: true, post_id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    } else {
-      return new Response(JSON.stringify({ error: deleteData.error?.message || "Failed to delete post", details: deleteData }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return json({ success: true, post_id });
     }
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    /* If permission error, provide helpful message */
+    const errMsg = deleteData.error?.message || "Falha ao excluir";
+    const errCode = deleteData.error?.code;
+    if (errCode === 10 || errMsg.includes("permission")) {
+      return json({ 
+        error: "Permissão insuficiente. O token do Facebook não tem a permissão 'pages_manage_posts'. Reconecte o Facebook com as permissões necessárias.",
+        details: deleteData 
+      }, 400);
+    }
+
+    return json({ error: errMsg, details: deleteData }, 400);
+  } catch (e: any) {
+    console.error("[Delete] Error:", e.message);
+    return json({ error: e.message }, 500);
   }
 });
