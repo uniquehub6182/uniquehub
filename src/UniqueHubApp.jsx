@@ -10598,7 +10598,8 @@ REGRAS TÉCNICAS:
                           return;
                         }
                         /* Use doPublish for scheduling — it handles scheduled_posts insert */
-                        const type = isStories ? "STORIES" : "FEED";
+                        const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
+                        const type = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
                         if (hasIG) await doPublish("instagram", type);
                         setPubLoading(false);
                         if (hasFB) await doPublish("facebook", type);

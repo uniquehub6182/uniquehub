@@ -9,14 +9,17 @@ const H = {
 const json = (d: unknown, s = 200) =>
   new Response(JSON.stringify(d), { headers: { ...H, "Content-Type": "application/json" }, status: s });
 
-async function waitReady(id: string, token: string) {
-  for (let i = 0; i < 15; i++) {
+async function waitReady(id: string, token: string, isVideo = false) {
+  const maxAttempts = isVideo ? 60 : 15;
+  const baseDelay = isVideo ? 2000 : 300;
+  for (let i = 0; i < maxAttempts; i++) {
     const r = await fetch(`https://graph.instagram.com/v21.0/${id}?fields=status_code&access_token=${token}`);
     const d = await r.json();
     if (d.status_code === "FINISHED") return;
-    if (d.status_code === "ERROR") throw new Error("Instagram processing error");
-    await new Promise(r => setTimeout(r, i < 3 ? 300 : 500));
+    if (d.status_code === "ERROR") throw new Error("Instagram processing error: " + (d.status || "unknown"));
+    await new Promise(r => setTimeout(r, i < 3 ? baseDelay : (isVideo ? 3000 : 500)));
   }
+  throw new Error("Instagram processing timeout — video may still be processing");
 }
 
 async function publishInstagram(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
@@ -26,10 +29,22 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
   if (!tk.ig_user_id || !tk.access_token) throw new Error("Token inválido");
   const uid = tk.ig_user_id, at = tk.access_token;
   const type = (mediaType || "FEED").toUpperCase();
-  const carousel = urls.length > 1 && type !== "STORIES";
+  const carousel = urls.length > 1 && type !== "STORIES" && type !== "REELS";
 
   let cid: string;
-  if (carousel) {
+  if (type === "REELS") {
+    /* ── REELS: video upload via Instagram Content Publishing API ── */
+    const p = new URLSearchParams({ access_token: at, video_url: urls[0], media_type: "REELS" });
+    if (caption) p.append("caption", caption);
+    /* If there's a second URL, use it as cover image */
+    if (urls.length > 1 && urls[1]) p.append("cover_url", urls[1]);
+    console.log(`[IG Reels] Creating container with video: ${urls[0].substring(0, 80)}`);
+    const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+    const d = await r.json();
+    console.log(`[IG Reels] Container response:`, JSON.stringify(d).substring(0, 200));
+    if (d.error) throw new Error(d.error.message);
+    cid = d.id;
+  } else if (carousel) {
     const kids = await Promise.all(urls.map(async (url: string) => {
       const p = new URLSearchParams({ access_token: at, image_url: url, is_carousel_item: "true" });
       const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
@@ -54,7 +69,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
     cid = d.id;
   }
 
-  await waitReady(cid, at);
+  await waitReady(cid, at, type === "REELS");
   const pp = new URLSearchParams({ access_token: at, creation_id: cid });
   const pr = await fetch(`https://graph.instagram.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
   const pd = await pr.json();
