@@ -1002,7 +1002,7 @@ const separateMedia = (files) => {
   const all = (files || []).filter(f => f.url);
   const vids = all.filter(f => f.isCloudLink || /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"));
   const cover = all.find(f => f.isCover);
-  const imgs = all.filter(f => !f.isCover && !f.isCloudLink && (/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg"))));
+  const imgs = all.filter(f => !f.isCover && !f.isCloudLink && (/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||"") || (f.type?.startsWith("image/") && !f.type?.includes("svg"))));
   return { vids, imgs, videoUrl: vids[0]?.url||null, coverUrl: cover?.url || imgs[0]?.url||null, allUrls: all.map(f=>f.url) };
 };
 
@@ -3306,7 +3306,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
             const sn = stageName[d.stage]||d.stage;
             const bg = bgPalette[i % bgPalette.length];
             const allFiles = [...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
-            const imgFile = allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const imgFile = allFiles.find(f=>f?.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
             const initials = (d.client||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
             return (
               <div key={d.id||i} onClick={()=>goTab("content", d.id)} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
@@ -5169,7 +5169,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
     const fileIcon = (name) => {
       const ext = name.split(".").pop()?.toLowerCase();
-      if (["jpg","jpeg","png","gif","webp","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
+      if (["jpg","jpeg","png","gif","webp","heic","heif","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
       if (["mp4","mov","avi","mkv"].includes(ext)) return { ic: IC.vid, c: B.orange };
       if (["pdf"].includes(ext)) return { ic: IC.doc, c: B.red };
       if (["psd","ai","fig","xd"].includes(ext)) return { ic: IC.palette, c: B.purple };
@@ -5592,8 +5592,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         const f = viewClientFile;
         const fi = fileIcon(f.name);
         const ext = f.name.split(".").pop()?.toLowerCase();
-        const fExt = f.originalExt || (f.storagePath?.split(".").pop()?.toLowerCase()) || (/\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|pdf)(\?|$)/i.test(f.url||"") ? (f.url||"").match(/\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|pdf)/i)?.[1]?.toLowerCase() : "") || ext;
-        const imgExts = ["jpg","jpeg","png","gif","webp","svg","bmp"];
+        const fExt = f.originalExt || (f.storagePath?.split(".").pop()?.toLowerCase()) || (/\.(jpg|jpeg|png|gif|webp|heic|heif|svg|mp4|mov|webm|pdf)(\?|$)/i.test(f.url||"") ? (f.url||"").match(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg|mp4|mov|webm|pdf)/i)?.[1]?.toLowerCase() : "") || ext;
+        const imgExts = ["jpg","jpeg","png","gif","webp","heic","heif","svg","bmp"];
         const vidExts = ["mp4","mov","avi","mkv","webm"];
         const isImage = imgExts.includes(fExt) || (f.mimeType||"").startsWith("image/");
         const isVideo = vidExts.includes(fExt) || (f.mimeType||"").startsWith("video/");
@@ -5659,7 +5659,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 <p className="sl">{cat.icon} {cat.label}</p>
                 <span style={{ fontSize:10, color:B.muted }}>{catFiles.length} arquivo{catFiles.length>1?"s":""}</span>
               </div>
-              {catFiles.map(f => { const fi=fileIcon(f.name); const fExt2=f.originalExt||(f.storagePath?.split(".").pop()?.toLowerCase())||(/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(f.url||"")?(f.url||"").match(/\.(jpg|jpeg|png|gif|webp|svg)/i)?.[1]?.toLowerCase():""); const isImg2=["jpg","jpeg","png","gif","webp","svg","bmp"].includes(fExt2)||(f.mimeType||"").startsWith("image/"); const fmtSz2=(s)=>(!s||s==="0.0MB"?"—":s); return (
+              {catFiles.map(f => { const fi=fileIcon(f.name); const fExt2=f.originalExt||(f.storagePath?.split(".").pop()?.toLowerCase())||(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg)(\?|$)/i.test(f.url||"")?(f.url||"").match(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg)/i)?.[1]?.toLowerCase():""); const isImg2=["jpg","jpeg","png","gif","webp","heic","heif","svg","bmp"].includes(fExt2)||(f.mimeType||"").startsWith("image/"); const fmtSz2=(s)=>(!s||s==="0.0MB"?"—":s); return (
                 <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     {isImg2 && f.url ? <img src={f.url} alt="" style={{ width:38, height:38, borderRadius:10, objectFit:"cover", flexShrink:0 }} onError={e=>{e.target.onerror=null;e.target.style.display="none";e.target.nextSibling&&(e.target.nextSibling.style.display="flex");}} /> : null}
@@ -5677,7 +5677,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:20 }}>{LIB_CATS.find(c=>c.key===libCat)?.icon}</p><p style={{ fontSize:13, fontWeight:600, marginTop:6 }}>Nenhum arquivo nesta categoria</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{LIB_CATS.find(c=>c.key===libCat)?.desc}</p></Card>
         ) : filteredFiles.map(f => { const fi=fileIcon(f.name); return (
           <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
-            {f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"") && <img src={f.url} alt="" style={{ width:"100%", height:120, objectFit:"cover", borderRadius:8, marginBottom:8 }} onError={e=>{e.target.style.display="none"}}/>}
+            {f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"") && <img src={f.url} alt="" style={{ width:"100%", height:120, objectFit:"cover", borderRadius:8, marginBottom:8 }} onError={e=>{e.target.style.display="none"}}/>}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
               <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
@@ -7812,7 +7812,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
   const [cA,cB] = detailColors[client] || ["#1C2228","#C8FA5F"];
   const arrowSz = compact ? 28 : 36;
 
-  const imgFiles = (uploadedFiles||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+  const imgFiles = (uploadedFiles||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
   const vidFiles = (uploadedFiles||[]).filter(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
   const hasReal = imgFiles.length > 0 || vidFiles.length > 0;
 
@@ -9090,7 +9090,7 @@ REGRAS TÉCNICAS:
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
               <label className="sl" style={{ display:"block" }}>Formato</label>
-              <button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📐 Facebook:\n• Feed → 1200×630 ou 1080×1080\n• Stories → 1080×1920\n\n📎 Aceitos: JPG, PNG, WebP, MP4, MOV\n• Máx: 50MB por arquivo`)} style={{ background:`${B.accent}08`, border:`1px solid ${B.accent}20`, cursor:"pointer", display:"flex", alignItems:"center", gap:5, color:B.accent, fontFamily:"inherit", fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8 }} onMouseEnter={e=>{e.currentTarget.style.background=`${B.accent}15`;}} onMouseLeave={e=>{e.currentTarget.style.background=`${B.accent}08`;}}>
+              <button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📐 Facebook:\n• Feed → 1200×630 ou 1080×1080\n• Stories → 1080×1920\n\n📎 Aceitos: JPG, PNG, WebP, HEIC, MP4, MOV\n• Máx: 50MB por arquivo`)} style={{ background:`${B.accent}08`, border:`1px solid ${B.accent}20`, cursor:"pointer", display:"flex", alignItems:"center", gap:5, color:B.accent, fontFamily:"inherit", fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8 }} onMouseEnter={e=>{e.currentTarget.style.background=`${B.accent}15`;}} onMouseLeave={e=>{e.currentTarget.style.background=`${B.accent}08`;}}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 Guia de dimensões
               </button>
@@ -9320,7 +9320,7 @@ REGRAS TÉCNICAS:
 
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
               <label className="sl" style={{ display:"block" }}>Formato</label>
-              <button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📐 Facebook:\n• Feed → 1200×630 ou 1080×1080\n• Stories → 1080×1920\n\n📎 Aceitos: JPG, PNG, WebP, MP4, MOV\n• Máx: 50MB por arquivo`)} style={{ background:`${B.accent}08`, border:`1px solid ${B.accent}20`, cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:B.accent, fontFamily:"inherit", fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6 }}>
+              <button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📐 Facebook:\n• Feed → 1200×630 ou 1080×1080\n• Stories → 1080×1920\n\n📎 Aceitos: JPG, PNG, WebP, HEIC, MP4, MOV\n• Máx: 50MB por arquivo`)} style={{ background:`${B.accent}08`, border:`1px solid ${B.accent}20`, cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:B.accent, fontFamily:"inherit", fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 Guia
               </button>
@@ -9647,7 +9647,7 @@ REGRAS TÉCNICAS:
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {/* Desktop carousel for design images — skip for Reels (handled by grid below) */}
                 {isContentDesktop && sel.format !== "Reels" && sel.format !== "Shorts" && (() => {
-                  const imgFiles = (sel.steps?.design?.files||[]).filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  const imgFiles = (sel.steps?.design?.files||[]).filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg)$/i.test(f.name||""));
                   if (!imgFiles.length) return null;
                   const ci = sel._carouselIdx || 0;
                   const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, imgFiles.length - 1)) }));
@@ -9660,7 +9660,7 @@ REGRAS TÉCNICAS:
                         {imgFiles.length > 1 && ci < imgFiles.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
                         {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:600, color:"#fff" }}>{ci+1} / {imgFiles.length}</div>}
                         <a href={cur?.url} target="_blank" rel="noopener" style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:8, background:"rgba(255,255,255,0.85)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 6px rgba(0,0,0,0.1)" }} onClick={e=>e.stopPropagation()}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
-                        <button onClick={e=>{e.stopPropagation();const files=(sel.steps?.design?.files||[]).filter((_,fi)=>fi!==ci);updateStep("design",{files});if(ci>=files.filter(f=>/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).length)sc(Math.max(0,ci-1));showToast("Imagem removida");}} style={{ position:"absolute", top:8, left:8, width:28, height:28, borderRadius:8, background:"rgba(239,68,68,0.9)", display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", boxShadow:"0 2px 6px rgba(0,0,0,0.15)" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        <button onClick={e=>{e.stopPropagation();const files=(sel.steps?.design?.files||[]).filter((_,fi)=>fi!==ci);updateStep("design",{files});if(ci>=files.filter(f=>/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"")).length)sc(Math.max(0,ci-1));showToast("Imagem removida");}} style={{ position:"absolute", top:8, left:8, width:28, height:28, borderRadius:8, background:"rgba(239,68,68,0.9)", display:"flex", alignItems:"center", justifyContent:"center", border:"none", cursor:"pointer", boxShadow:"0 2px 6px rgba(0,0,0,0.15)" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                       </div>
                       {imgFiles.length > 1 && <div style={{ display:"flex", gap:5, marginTop:6, overflowX:"auto" }}>
                         {imgFiles.map((f, ti) => (
@@ -9673,7 +9673,7 @@ REGRAS TÉCNICAS:
                   );
                 })()}
                 {(sel.steps?.design?.files||[]).map((f,i) => {
-                  const isImg = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(typeof f === 'string' ? f : (f.name || f.url || ''));
+                  const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif|svg)$/i.test(typeof f === 'string' ? f : (f.name || f.url || ''));
                   if (isContentDesktop && isImg && f.url && !f.isCover) return null; /* shown in carousel above */
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(typeof f === 'string' ? f : (f.name || f.url || '')) || f.type?.startsWith("video/");
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
@@ -9719,7 +9719,7 @@ REGRAS TÉCNICAS:
                           </button>
                         )}
                         {coverFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{coverFile.name||"capa.jpg"}</p>}
-                        <p style={{ fontSize:10, color:B.accent, marginTop:4, textAlign:"center", fontWeight:600 }}>JPG, PNG ou WebP · 9:16</p>
+                        <p style={{ fontSize:10, color:B.accent, marginTop:4, textAlign:"center", fontWeight:600 }}>JPG, PNG, WebP ou HEIC · 9:16</p>
                       </div>
                       {/* RIGHT: Video */}
                       <div>
@@ -9758,12 +9758,12 @@ REGRAS TÉCNICAS:
                   const isCarousel = fmt === "Carrossel";
                   const isStories = fmt === "Stories";
                   const existingFiles = (sel.steps?.design?.files||[]).filter(f => f.url);
-                  const existingImages = existingFiles.filter(f => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  const existingImages = existingFiles.filter(f => /\.(jpg|jpeg|png|gif|webp|heic|heif|svg)$/i.test(f.name||""));
                   const dimPx = {"1:1":"1080×1080","4:5":"1080×1350","3:4":"1080×1440","9:16":"1080×1920","16:9":"1920×1080"}[ratio] || "1080×1080";
                   const guidanceMap = {
-                    Feed: { icon:"🖼️", text:`Envie 1 imagem (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
-                    Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG ou WebP). Cada uma será 1 story. Dimensão: 9:16 (1080×1920).`, color:"#F59E0B", warn: null },
-                    Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#8B5CF6", warn: null },
+                    Feed: { icon:"🖼️", text:`Envie 1 imagem (JPG, PNG, WebP ou HEIC). Dimensão: ${ratio} (${dimPx}).`, color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
+                    Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG, WebP ou HEIC). Cada uma será 1 story. Dimensão: 9:16 (1080×1920).`, color:"#F59E0B", warn: null },
+                    Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG, WebP ou HEIC). Dimensão: ${ratio} (${dimPx}).`, color:"#8B5CF6", warn: null },
                     Reels: { icon:"🎬", text:``, color:"#EF4444", warn: null, hide: true },
                     Shorts: { icon:"🎬", text:``, color:"#EF4444", warn: null, hide: true },
                   };
@@ -9781,7 +9781,7 @@ REGRAS TÉCNICAS:
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   /* Validate Feed: max 1 image */
-                  const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                  const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg)$/i.test(f.name||""));
                   if (sel.format === "Feed" && (existingImgs.length + files.length) > 1) {
                     showToast("⚠ Feed permite apenas 1 imagem. Para mais imagens, use Carrossel.");
                     e.target.value = "";
@@ -9867,7 +9867,7 @@ REGRAS TÉCNICAS:
                 {/* Upload buttons — only for non-Reels (Reels uses the grid preview above) */}
                 {sel.format !== "Reels" && sel.format !== "Shorts" && <button onClick={()=>{
                   if (sel.format === "Feed") {
-                    const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                    const existingImgs = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg)$/i.test(f.name||""));
                     if (existingImgs.length >= 1) { showToast("⚠ Feed permite apenas 1 imagem. Remova a atual ou mude para Carrossel."); return; }
                   }
                   document.getElementById("designUpload").click();
@@ -9901,9 +9901,9 @@ REGRAS TÉCNICAS:
                 </div>
               )}
               {/* Thumbnail grid for images */}
-              {sel.steps?.design?.files?.some(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+              {sel.steps?.design?.files?.some(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(100px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
-                  {sel.steps?.design?.files?.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
+                  {sel.steps?.design?.files?.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1/1", border:`1px solid ${B.border}` }}>
                       <img src={f.url} alt={f.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     </a>
@@ -9974,7 +9974,7 @@ REGRAS TÉCNICAS:
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
-                  const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(fName);
+                  const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(fName);
                   return (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
                     {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} loading="lazy" /> :
@@ -10168,7 +10168,7 @@ REGRAS TÉCNICAS:
               {/* ── Desktop: Full post preview ── */}
               {isContentDesktop && (() => {
                 const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-                const imgFiles = artFiles.filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||""));
+                const imgFiles = artFiles.filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
                 const vidFiles = artFiles.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
                 const coverFile = artFiles.find(f => f.isCover);
                 const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
@@ -10220,7 +10220,7 @@ REGRAS TÉCNICAS:
               {/* Mobile: original small thumbnails */}
               {!isContentDesktop && (() => {
                 const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-                const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                 const vidFiles = artFiles.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
                 return (imgFiles.length > 0 || vidFiles.length > 0) && <div style={{ marginBottom:10 }}>
                   <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:6 }}>🎨 Arte para revisão:</p>
@@ -10266,7 +10266,7 @@ REGRAS TÉCNICAS:
               {(() => {
                 const clientMode = sel.steps?.client?.mode;
                 const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-                const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
+                const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
                 const mediaInfo = separateMedia(allFiles);
                 const clientObj = CDATA.find(c => c.name === sel.client);
                 const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
@@ -10648,7 +10648,7 @@ REGRAS TÉCNICAS:
             {/* Publish buttons — show when there are uploaded images and connected social */}
             {(() => {
               const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-              const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
+              const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
               const mediaInfo = separateMedia(allFiles);
               const clientObj = CDATA.find(c => c.name === sel.client);
               const igConnected = clientObj?.socials?.instagram?.connected && clientObj?.socials?.instagram?.oauth;
@@ -11314,7 +11314,7 @@ REGRAS TÉCNICAS:
                 <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
                 {d.stage==="briefing"&&<div style={{marginBottom:8}}>{d.steps?.idea?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.idea.c}08`,border:`1px solid ${STAGE_CFG.idea.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea.c}}>{"💡"} Ideia:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.idea.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>BRIEFING</p><textarea value={d.steps?.briefing?.text||""} onChange={e=>updStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Instruções para o designer..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
-                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<img src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
+                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<img src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
                 {d.stage==="production"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>PRODUÇÃO — Gravar vídeo/conteúdo</p>{(d.steps?.production?.files||[]).map((f,fi)=>{const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:`${B.blue||"#3B82F6"}06`,border:`1px solid ${B.blue||"#3B82F6"}15`,marginBottom:4}}>{isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"🎬"} Enviar vídeo/material<input type="file" accept="video/*,image/*,.pdf" style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed2=await compressImage(file);showToast("Enviando...");const path="demands/"+(d.supaId||d.id)+"/production/"+Date.now()+"_"+compressed2.name.replace(/[^a-zA-Z0-9._-]/g,"_");const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed2,{upsert:true,cacheControl:"3600",contentType:compressed2.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.production?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("production",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro: "+(er.message||"falha"));}}/></label></div>}
                 {d.stage==="caption"&&d.format!=="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
                 {d.stage==="caption"&&d.format==="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><div style={{padding:"16px 12px",borderRadius:10,background:(B.orange||"#F59E0B")+"06",border:"1.5px dashed "+(B.orange||"#F59E0B")+"30",textAlign:"center"}}><p style={{fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>🔒 Stories não suporta legenda</p><p style={{fontSize:9,color:B.muted,marginTop:4}}>Texto vai direto na arte. Avance para revisão.</p></div></div>}
@@ -11388,7 +11388,7 @@ REGRAS TÉCNICAS:
           {/* ── Video preview with uploaded media ── */}
           {d.type === "video" && (() => {
             const vFiles = [...(d.steps?.design?.files||[]), ...(d.steps?.editing?.files||[]), ...(d.steps?.production?.files||[])];
-            const firstImg = vFiles.find(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const firstImg = vFiles.find(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
             const firstVid = vFiles.find(f => f.url && /\.(mp4|mov|webm)$/i.test(f.name||""));
             if (!firstImg && !firstVid) return null;
             return (
@@ -11474,7 +11474,7 @@ REGRAS TÉCNICAS:
             const stages = getStages(d.type);
             const stIdx = Math.max(0, stages.indexOf(d.stage));
             const allFiles = [...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[]),...(d.steps?.copy?.files||[])];
-            const imgF = allFiles.filter(f=>f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+            const imgF = allFiles.filter(f=>f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
             const caption = d.steps?.copy?.text || d.steps?.caption?.text || d.caption || "";
             const isFull = fullExpandedId === d.id;
             const stageLabels = {idea:"Ideia",briefing:"Briefing",design:"Design",copy:"Legenda",caption:"Legenda",review:"Revisão",client:"Cliente",production:"Produção",editing:"Edição",published:"Publicado",done:"Concluído",script:"Roteiro"};
@@ -11515,7 +11515,7 @@ REGRAS TÉCNICAS:
                       const done=si<stIdx;const active=si===stIdx;const future=si>stIdx;
                       const stepData=d.steps?.[stageKey]||{};
                       const stepFiles=(stepData.files||[]).filter(f=>f.url);
-                      const stepImgs=stepFiles.filter(f=>/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                      const stepImgs=stepFiles.filter(f=>/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                       const stepText=stepData.text||stepData.feedback||"";
                       const textFields=["idea","briefing","copy","caption","editing","script","review"];
                       const fileFields=["design","production","editing"];
@@ -11586,7 +11586,7 @@ REGRAS TÉCNICAS:
                             :stageKey==="client"&&stepData.mode==="sent_to_client"&&stepData.status==="approved"?
                               (() => {
                                 const allF3=[...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
-                                const imgF3=allF3.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                                const imgF3=allF3.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                                 const clientObj3=CDATA.find(c=>c.name===d.client);
                                 const igOk3=clientObj3?.socials?.instagram?.connected&&clientObj3?.socials?.instagram?.oauth&&(d.network||"").toLowerCase().includes("instagram");
                                 const fbOk3=clientObj3?.socials?.facebook?.connected&&clientObj3?.socials?.facebook?.oauth&&(d.network||"").toLowerCase().includes("facebook");
@@ -11633,7 +11633,7 @@ REGRAS TÉCNICAS:
                             :stageKey==="client"&&stepData.mode==="publish_direct"?
                               (() => {
                                 const allF2=[...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
-                                const imgF2=allF2.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                                const imgF2=allF2.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                                 const clientObj2=CDATA.find(c=>c.name===d.client);
                                 const igOk=clientObj2?.socials?.instagram?.connected&&clientObj2?.socials?.instagram?.oauth&&(d.network||"").toLowerCase().includes("instagram");
                                 const fbOk=clientObj2?.socials?.facebook?.connected&&clientObj2?.socials?.facebook?.oauth&&(d.network||"").toLowerCase().includes("facebook");
@@ -11695,7 +11695,7 @@ REGRAS TÉCNICAS:
                     {/* Right col — preview + info */}
                     <div style={{flex:"1 1 200px",minWidth:0,display:"flex",flexDirection:"column",gap:8}}>
                       {allFiles.length>0&&<div style={{borderRadius:14,overflow:"hidden",background:`linear-gradient(135deg,${B.muted}08,${B.muted}04)`}}>
-                        <img src={allFiles.find(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""))?.url} alt="" style={{width:"100%",maxHeight:220,objectFit:"cover",display:"block"}} onError={e=>{e.target.style.display="none"}}/>
+                        <img src={allFiles.find(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""))?.url} alt="" style={{width:"100%",maxHeight:220,objectFit:"cover",display:"block"}} onError={e=>{e.target.style.display="none"}}/>
                       </div>}
                       <div style={{padding:"10px 12px",borderRadius:12,background:`${B.muted}04`,border:`1px solid ${B.border}`}}>
                         <p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:6}}>DETALHES</p>
@@ -11705,7 +11705,7 @@ REGRAS TÉCNICAS:
                         {d.steps?.caption?.hashtags&&<p style={{fontSize:10,color:B.accent,marginTop:4}}>{d.steps.caption.hashtags}</p>}
                       </div>
                       {allFiles.length>1&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {allFiles.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).slice(1,5).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
+                        {allFiles.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"")).slice(1,5).map((f,fi)=><img key={fi} src={f.url} alt="" style={{width:48,height:48,borderRadius:8,objectFit:"cover",border:`1px solid ${B.border}`}}/>)}
                       </div>}
                     </div>{/* end right col */}
                     </div>{/* end 2-col flex */}
@@ -11750,7 +11750,7 @@ REGRAS TÉCNICAS:
                   <div style={{position:"relative"}}><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Cliente</p><div onClick={()=>setForm(p=>({...p,_clientOpen:!p._clientOpen,_clientSearch:""}))} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 8px",borderRadius:8,border:`1.5px solid ${form._clientOpen?B.accent:B.border}`,background:B.bgCard,cursor:"pointer",fontSize:10,fontWeight:form.client?600:400,color:form.client?B.text:B.muted}}>{form.client||"Selecionar..."}<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{marginLeft:"auto",transform:form._clientOpen?"rotate(180deg)":"none"}}><polyline points="6 9 12 15 18 9"/></svg></div>{form._clientOpen&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:50,marginTop:2,background:B.bgCard,borderRadius:10,border:`1.5px solid ${B.accent}30`,boxShadow:"0 6px 24px rgba(0,0,0,0.15)",maxHeight:180,overflowY:"auto"}}><div style={{padding:"4px 6px",borderBottom:`1px solid ${B.border}`}}><input autoFocus value={form._clientSearch||""} onChange={e=>setForm(p=>({...p,_clientSearch:e.target.value}))} placeholder="Buscar..." style={{width:"100%",padding:"4px 6px",borderRadius:6,border:`1px solid ${B.border}`,background:"transparent",fontFamily:"inherit",fontSize:10,outline:"none",color:B.text}}/></div>{CDATA.filter(c=>!form._clientSearch||c.name.toLowerCase().includes((form._clientSearch||"").toLowerCase())).map(c=>(<div key={c.id} onClick={()=>setForm(p=>({...p,client:c.name,_clientOpen:false,_clientSearch:""}))} style={{padding:"5px 8px",cursor:"pointer",fontSize:10,fontWeight:form.client===c.name?700:500,color:B.text,background:form.client===c.name?`${B.accent}08`:"transparent"}} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background=form.client===c.name?`${B.accent}08`:"transparent"}>{c.name}</div>))}</div>}</div>
                 </div>
                 <div><p style={{fontSize:9,fontWeight:600,color:B.muted,marginBottom:3}}>Prioridade</p><div style={{display:"flex",gap:4}}>{[{k:"baixa",l:"Baixa",c:B.green||"#10B981"},{k:"média",l:"Média",c:B.orange||"#F59E0B"},{k:"alta",l:"Alta",c:B.red||"#EF4444"}].map(p=><button key={p.k} onClick={()=>setForm(pr=>({...pr,priority:p.k}))} style={{flex:1,padding:"7px 0",borderRadius:8,border:`1.5px solid ${(form.priority||"média")===p.k?p.c:B.border}`,background:(form.priority||"média")===p.k?`${p.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:(form.priority||"média")===p.k?700:500,color:(form.priority||"média")===p.k?p.c:B.muted}}>{p.l}</button>)}</div></div>
-                <div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}><p style={{fontSize:9,fontWeight:600,color:B.muted}}>Formato</p><button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📐 Facebook:\n• Feed → 1200×630 ou 1080×1080\n• Stories → 1080×1920\n\n📎 Aceitos: JPG, PNG, WebP, MP4, MOV\n• Máx: 50MB por arquivo`)} style={{background:`${B.accent}08`,border:`1px solid ${B.accent}20`,cursor:"pointer",display:"flex",alignItems:"center",gap:3,color:B.accent,fontFamily:"inherit",fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:5}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Guia</button></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Instagram","Facebook"]}; const dimMap={Feed:"1:1",Stories:"9:16",Reels:"9:16",Carrossel:"1:1","Vídeo":"9:16",Shorts:"9:16"}; const allowed=compat[f]||["Instagram","Facebook"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,aspectRatio:(f==="Stories"||f==="Reels"||f==="Shorts"||f==="Vídeo")?"9:16":(p.aspectRatio||"1:1"),networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div>
+                <div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}><p style={{fontSize:9,fontWeight:600,color:B.muted}}>Formato</p><button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📐 Facebook:\n• Feed → 1200×630 ou 1080×1080\n• Stories → 1080×1920\n\n📎 Aceitos: JPG, PNG, WebP, HEIC, MP4, MOV\n• Máx: 50MB por arquivo`)} style={{background:`${B.accent}08`,border:`1px solid ${B.accent}20`,cursor:"pointer",display:"flex",alignItems:"center",gap:3,color:B.accent,fontFamily:"inherit",fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:5}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Guia</button></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{["Feed","Stories","Reels","Carrossel","Vídeo"].map(f=><button key={f} onClick={()=>{const compat={Feed:["Instagram","Facebook"],Stories:["Instagram","Facebook"],Reels:["Instagram","Facebook"],Carrossel:["Instagram","Facebook"],"Vídeo":["Instagram","Facebook"]}; const dimMap={Feed:"1:1",Stories:"9:16",Reels:"9:16",Carrossel:"1:1","Vídeo":"9:16",Shorts:"9:16"}; const allowed=compat[f]||["Instagram","Facebook"]; const kept=(form.networks||["Instagram"]).filter(n=>allowed.includes(n)); setForm(p=>({...p,format:f,aspectRatio:(f==="Stories"||f==="Reels"||f==="Shorts"||f==="Vídeo")?"9:16":(p.aspectRatio||"1:1"),networks:kept.length?kept:[allowed[0]]}));}} style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${(form.format||"Feed")===f?B.accent:B.border}`,background:(form.format||"Feed")===f?`${B.accent}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:(form.format||"Feed")===f?700:500,color:(form.format||"Feed")===f?B.accent:B.muted}}>{f}</button>)}</div>
                 {/* Dimension indicator */}
                 <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6,padding:"6px 10px",borderRadius:8,background:`${B.accent}06`,border:`1px solid ${B.accent}15`}}>
                   {(()=>{const r=form.aspectRatio||"1:1";const dims={"1:1":{w:10,h:10,px:"1080×1080"},"4:5":{w:8,h:10,px:"1080×1350"},"3:4":{w:9,h:12,px:"1080×1440"},"9:16":{w:7,h:12,px:"1080×1920"},"16:9":{w:12,h:7,px:"1920×1080"}};const d=dims[r]||dims["1:1"];return<><div style={{width:d.w,height:d.h,border:`1.5px solid ${B.accent}`,borderRadius:1}}/><span style={{fontSize:9,fontWeight:700,color:B.accent}}>{r}</span><span style={{fontSize:8,color:B.muted}}>({d.px})</span></>;})()}
@@ -13350,7 +13350,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
                           {/* Reply quote in bubble */}
                           {(m.reply_to || m._replyToMsg) && (() => { const rm = m._replyToMsg || msgs.find(x=>x.id===m.reply_to); return rm ? <div style={{ padding:"6px 10px", marginBottom:6, borderRadius:8, background:isMine?"rgba(0,0,0,0.08)":"rgba(0,0,0,0.04)", borderLeft:`3px solid ${B.accent}` }}><p style={{ fontSize:10, fontWeight:700, color:isMine?"rgba(0,0,0,0.6)":B.accent }}>{rm.profiles?.name||rm.sender_name||"Membro"}</p><p style={{ fontSize:11, color:isMine?"rgba(0,0,0,0.5)":B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{rm.content||"📎 Arquivo"}</p></div> : null; })()}
                           {isGroup && !isMine && <p style={{ fontSize:10, fontWeight:700, color:B.muted, marginBottom:2 }}>{senderName}{(() => { const pr = allProfiles.find(p=>p.id===m.sender_id); const rl = pr?.role; return rl === "cliente" ? <span style={{ fontSize:7, padding:"1px 4px", borderRadius:3, background:"#6366F115", color:"#6366F1", fontWeight:700, marginLeft:4, verticalAlign:"middle" }}>Cliente</span> : rl === "admin" ? <span style={{ fontSize:7, padding:"1px 4px", borderRadius:3, background:"#10B98115", color:"#10B981", fontWeight:700, marginLeft:4, verticalAlign:"middle" }}>Admin</span> : rl === "member" ? <span style={{ fontSize:7, padding:"1px 4px", borderRadius:3, background:"#F59E0B15", color:"#F59E0B", fontWeight:700, marginLeft:4, verticalAlign:"middle" }}>Equipe</span> : null; })()}</p>}
-                          {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" onClick={()=>setViewImage(m.file_url)} style={{ maxWidth:220, maxHeight:260, borderRadius:10, cursor:"pointer", objectFit:"cover" }} />
+                          {m.file_url && (m.file_type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(m.file_name||"")) ? <img src={m.file_url} alt="" onClick={()=>setViewImage(m.file_url)} style={{ maxWidth:220, maxHeight:260, borderRadius:10, cursor:"pointer", objectFit:"cover" }} />
                           : m.file_url && (m.file_type?.startsWith("audio") || /\.(webm|m4a|mp3|ogg|wav|aac)$/i.test(m.file_name||"")) ? <div style={{ minWidth:180, maxWidth:240 }}><AudioPlayer src={m.file_url} isMe={isMine} accent={B.accent} muted={B.muted} /></div>
                           : m.file_url && (m.file_type?.startsWith("video") || /\.(mp4|mov|avi|mkv)$/i.test(m.file_name||"")) ? <video controls src={m.file_url} style={{ maxWidth:"100%", borderRadius:12 }} />
                           : m.file_url ? <a href={m.file_url} target="_blank" rel="noopener" style={{ color:isMine?"#0D0D0D":B.accent, fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> {m.file_name||"Arquivo"}</a>
@@ -17324,7 +17324,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const getFileCat = (f) => catMap[f.category] || "other";
 
   /* Smart extension detection: checks name, originalExt, mimeType, url */
-  const IMG_EXTS = ["jpg","jpeg","png","gif","webp","svg","bmp","ico","tiff"];
+  const IMG_EXTS = ["jpg","jpeg","png","gif","webp","heic","heif","svg","bmp","ico","tiff"];
   const VID_EXTS = ["mp4","mov","avi","mkv","webm","m4v"];
   const getFileExt = (f) => {
     const fromName = f.name?.split(".").pop()?.toLowerCase();
@@ -17338,7 +17338,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     if (f.mimeType?.startsWith("video/")) return f.mimeType.split("/")[1];
     /* Last resort: check URL for common image patterns */
     const urlLower = (f.url||"").toLowerCase();
-    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)/i)[1];
+    if (/\.(jpg|jpeg|png|gif|webp|heic|heif|svg|bmp)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg|bmp)/i)[1];
     if (/\.(mp4|mov|webm|avi)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(mp4|mov|webm|avi)/i)[1];
     return fromName || "";
   };
@@ -17348,7 +17348,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
 
   const fileIcon = (name) => {
     const ext = name.split(".").pop()?.toLowerCase();
-    if (["jpg","jpeg","png","gif","webp","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
+    if (["jpg","jpeg","png","gif","webp","heic","heif","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
     if (["mp4","mov","avi","mkv"].includes(ext)) return { ic: IC.vid, c: B.orange };
     if (["pdf"].includes(ext)) return { ic: IC.doc, c: B.red };
     if (["psd","ai","fig","xd"].includes(ext)) return { ic: IC.palette, c: B.purple };
@@ -23664,7 +23664,7 @@ function ClientMatch4Biz({ onBack, user }) {
   const onTouchEnd = () => { const dx = dragX; setDragX(0); setTouchStartX(null); if (Math.abs(dx) > 80) { dx > 0 ? handleLike() : handlePass(); } };
 
   const sendChatMsg = async (text, type = "text") => { if (!chatMatch || (!text?.trim() && type === "text")) return; const msg = { from: myClient?.id, fromName: myClient?.name, text: text?.trim() || "", type, ts: new Date().toISOString() }; const msgs = [...(chatMatch.messages || []), msg]; try { await supabase.from("match4biz").update({ messages: msgs }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, messages: msgs } : m)); setChatMatch(p => ({ ...p, messages: msgs })); setChatInput(""); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100); };
-  const handleChatFile = async (e) => { const f = e.target.files?.[0]; if (!f || !supabase) return; const path = `m4b/${Date.now()}_${f.name}`; const { error } = await supabase.storage.from("demand-files").upload(path, f, { upsert: true }); if (error) { showToast("Erro no upload"); return; } const { data: u } = supabase.storage.from("demand-files").getPublicUrl(path); const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name); sendChatMsg(u.publicUrl, isImg ? "image" : "file"); e.target.value = ""; };
+  const handleChatFile = async (e) => { const f = e.target.files?.[0]; if (!f || !supabase) return; const path = `m4b/${Date.now()}_${f.name}`; const { error } = await supabase.storage.from("demand-files").upload(path, f, { upsert: true }); if (error) { showToast("Erro no upload"); return; } const { data: u } = supabase.storage.from("demand-files").getPublicUrl(path); const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name); sendChatMsg(u.publicUrl, isImg ? "image" : "file"); e.target.value = ""; };
   const dealAction = async (a) => { if (!chatMatch) return; const sm = { close: "deal_closed", noclose: "deal_rejected", help: "agency_help" }; const mm = { close: "\u{1F91D} Negócio fechado!", noclose: "\u274C Negócio não fechado", help: "\u{1F3E2} Pediu ajuda da agência" }; await sendChatMsg(mm[a], "system"); try { await supabase.from("match4biz").update({ status: sm[a] }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: sm[a] } : m)); setChatMatch(p => ({ ...p, status: sm[a] })); if (a === "close" && myClient) { try { await supaSetSetting(`client_m4b_seal_${myClient.id}`, "deal_maker"); } catch {} } showToast(a === "close" ? "Parabéns! \u{1F389}" : a === "help" ? "Agência notificada" : "Atualizado"); };
   const getPartner = (m) => { const pid = m.client_a_id === myClient?.id ? m.client_b_id : m.client_a_id; const pn = m.client_a_id === myClient?.id ? m.client_b_name : m.client_a_name; return { id: pid, name: pn, ...(allClients.find(c => c.id === pid) || {}) }; };
 
@@ -25143,7 +25143,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
        try {
         const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.editing?.files||[])];
         const mediaInfo = separateMedia(files);
-        const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
+        const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
         if (imgFiles.length > 0) {
           const isReels = (demand.format||"").toLowerCase() === "reels" || (demand.format||"").toLowerCase() === "shorts";
           const imgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.filter(f => !f.isCover).map(f => f.url);
@@ -25473,7 +25473,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const d = demands.find(x => x.id === demandId);
     if (!d) { setSub(null); return null; }
     const files = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])];
-    const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||""));
+    const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
     const vidFiles = files.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
     const caption = d.steps?.caption?.text || "";
     const hashtags = d.steps?.caption?.hashtags || "";
@@ -25737,7 +25737,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         {demands.slice(0,5).map((d) => {
           const st = d.steps?.client?.status; const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
           const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
-          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||""));
+          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
           return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:160, borderRadius:18, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
             <div style={{ height:110, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}15, ${C.card})`, position:"relative" }}>{!imgs[0]&&<div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}>{IC.content(stColor)}</div>}<div style={{ position:"absolute", bottom:8, left:8, right:8 }}><p style={{ fontSize:11, fontWeight:700, color:"#fff", textShadow:"0 1px 3px rgba(0,0,0,0.5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div></div>
             <div style={{ padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}><span style={{ fontSize:9, color:C.mut }}>{d.createdAt}</span><div style={{ display:"flex", alignItems:"center", gap:3 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:8, fontWeight:600, color:stColor }}>{stLabel}</span></div></div>
@@ -25943,7 +25943,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const inProd = demands.filter(d => !d.steps?.client?.mode && !d.steps?.client?.status);
 
     const DemandCard = ({ d }) => {
-      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
       const caption = d.steps?.caption?.text || "";
       const networks = d.networks || (d.network ? [d.network] : []);
       const schedDate = d.scheduling?.date || d.schedule_date;
