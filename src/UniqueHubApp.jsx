@@ -24782,19 +24782,23 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       const hasFutureSchedule = status === "approved" && schedDate && (() => {
         const ts = getScheduledTimestamp({ date: schedDate, time: schedTime });
         if (ts) return true; /* Valid future timestamp */
-        /* If we couldn't get a timestamp, try to parse the date to see if it's really future */
-        if (schedDate && schedTime) {
-          let normDate = schedDate;
-          if (normDate.includes("/")) {
-            const p = normDate.split("/");
-            if (p.length === 2) normDate = `${new Date().getFullYear()}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
-            else if (p.length === 3) { const yr = p[2].length===4?p[2]:`20${p[2]}`; normDate = `${yr}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`; }
-          }
-          const dt = new Date(`${normDate}T${schedTime}:00`);
-          if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() + 600000) return true; /* > 10min future */
-        }
-        return false; /* Past or unparseable — publish immediately */
+        /* Schedule exists but time passed — we'll auto-reschedule to +10min */
+        if (schedDate) return true; /* Always treat scheduled posts as scheduled */
+        return false;
       })();
+      /* If schedule time already passed, auto-reschedule to 10 min from now */
+      let autoRescheduled = false;
+      if (status === "approved" && schedDate && !getScheduledTimestamp({ date: schedDate, time: schedTime })) {
+        const now = new Date(Date.now() + 11 * 60000); /* 11 min from now (10 + 1 buffer) */
+        const newDate = now.toISOString().split("T")[0]; /* YYYY-MM-DD */
+        const newTime = now.toTimeString().substring(0, 5); /* HH:MM */
+        console.log("[AutoReschedule] Original:", schedDate, schedTime, "→ New:", newDate, newTime);
+        /* Update the demand's scheduling */
+        const updatedScheduling = { date: newDate, time: newTime };
+        await supabase.from("demands").update({ scheduling: updatedScheduling }).eq("id", demand.id);
+        setDemands(prev => prev.map(d2 => d2.id === demand.id ? { ...d2, scheduling: updatedScheduling } : d2));
+        autoRescheduled = true;
+      }
       const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : d.stage;
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage } : d));
       if (targetStage !== d.stage) await supabase.from("demands").update({ stage: targetStage }).eq("id", demand.id);
@@ -24826,13 +24830,18 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           const caption = demand.steps?.caption?.text || demand.title || "";
           const hashtags = demand.steps?.caption?.hashtags || "";
           const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption;
-          const scheduling = demand.scheduling || {};
-          const schedDate = scheduling.date || demand.schedule_date;
-          const schedTime = scheduling.time || demand.schedule_time;
-          const schedTs = getScheduledTimestamp({ date: schedDate, time: schedTime });
-          const schedLabel = schedDate ? `${schedDate} às ${schedTime||""}` : "";
-          /* Only treat as scheduled-future if getScheduledTimestamp returns a valid timestamp (>10min in future) */
-          const isScheduledFuture = !!schedTs;
+          const scheduling2 = demand.scheduling || {};
+          let useSchedDate = scheduling2.date || demand.schedule_date;
+          let useSchedTime = scheduling2.time || demand.schedule_time;
+          /* If auto-rescheduled above, use the new time */
+          if (autoRescheduled) {
+            const now = new Date(Date.now() + 11 * 60000);
+            useSchedDate = now.toISOString().split("T")[0];
+            useSchedTime = now.toTimeString().substring(0, 5);
+          }
+          const schedTs = getScheduledTimestamp({ date: useSchedDate, time: useSchedTime });
+          const schedLabel = useSchedDate ? `${useSchedDate} às ${useSchedTime||""}` : "";
+          const isScheduledFuture = !!schedTs || autoRescheduled;
           const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
@@ -24842,13 +24851,13 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           if (isScheduledFuture) {
             try {
               /* Normalize date to YYYY-MM-DD for ISO conversion */
-              let normDate = schedDate;
+              let normDate = useSchedDate;
               if (normDate.includes("/")) {
                 const p = normDate.split("/");
                 if (p.length === 2) normDate = `${new Date().getFullYear()}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
                 else if (p.length === 3) { const yr = p[2].length===4?p[2]:`20${p[2]}`; normDate = `${yr}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`; }
               }
-              const schedDateISO = new Date(`${normDate}T${schedTime||"12:00"}:00`).toISOString();
+              const schedDateISO = new Date(`${normDate}T${useSchedTime||"12:00"}:00`).toISOString();
               const platforms = [];
               if (networks.some(n => n.includes("instagram"))) platforms.push("instagram");
               if (networks.some(n => n.includes("facebook"))) platforms.push("facebook");
@@ -24860,7 +24869,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
                   demand_id: demand.id, created_by: demand.created_by || null
                 });
               }
-              showToast(`✅ Aprovado! Agendado para ${schedLabel}`);
+              showToast(autoRescheduled ? `✅ Aprovado! Reagendado para ${useSchedTime} (horário original já passou)` : `✅ Aprovado! Agendado para ${schedLabel}`);
             } catch(e) {
               console.error("[Schedule] Error:", e);
               showToast(`Aprovado! Erro ao agendar: ${e.message}`);
