@@ -767,8 +767,9 @@ const supaCreateNotification = async (userId, type, title, body, icon, link) => 
 const supaCreateNotificationForAll = async (type, title, body, icon, link, excludeUserId) => {
   if (!supabase) return;
   try {
-    const { data: profiles } = await supabase.from("profiles").select("id");
-    const users = (profiles || []);
+    /* Only notify collaborators (role != 'client'), not client portal users */
+    const { data: profiles } = await supabase.from("profiles").select("id, role").neq("role", "client");
+    const users = (profiles || []).filter(u => u.id !== excludeUserId);
     if (users.length === 0) return;
     const rows = users.map(u => ({ user_id: u.id, type, title, body: body || "", link: link || "" }));
     await supabase.from("notifications").insert(rows);
@@ -25074,6 +25075,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const { showToast, ToastEl } = useToast();
   const [demands, setDemands] = useState([]);
   const [demandsLoaded, setDemandsLoaded] = useState(false);
+  const [resolvedClient, setResolvedClient] = useState(null); /* { id, name } — the actual client record for this user */
   const [articles, setArticles] = useState([]);
   const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [clients, setClients] = useState([]);
@@ -25155,6 +25157,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           || (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
           || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
         if (!myClient) { console.warn("[Client] No matching client record for", user?.email); setDemandsLoaded(true); return; }
+        console.log("[Client] Resolved client:", myClient.name, "id:", myClient.id, "email:", myClient.contact_email);
+        setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email });
         /* Load demands for THIS client only */
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
         setDemands((clientDemands||[]).map(d => ({
@@ -25177,8 +25181,18 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     const refetch = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
-        const myClient = (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase() || (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
+        /* Use already-resolved client if available, otherwise re-resolve */
+        let myClient = resolvedClient;
+        if (!myClient) {
+          const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
+          const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
+          let linkedId = null;
+          try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
+          myClient = (linkedId ? (allClients||[]).find(c => c.id === linkedId) : null)
+            || (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
+            || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
+          if (myClient && !resolvedClient) setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email });
+        }
         if (!myClient) return;
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
         setDemands((clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, networks: d.networks||[], format: d.format, scheduling: typeof d.scheduling === "object" ? d.scheduling : {}, schedule_date: d.schedule_date, schedule_time: d.schedule_time, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" })));
@@ -25210,6 +25224,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
 
   /* ── Client ID for gamification (match by email first, then name) ── */
   const myClientId_inner = (() => { 
+    if (resolvedClient?.id) return resolvedClient.id;
     const cl = (clients||[]).find(c => 
       (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()
     ) || (clients||[]).find(c => 
@@ -26185,10 +26200,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
-      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={canAccessFn} forceMobile demands={demands} /> :
-      sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={user?.company||user?.name} /> :
+      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={canAccessFn} forceMobile demands={demands} /> :
+      sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
       sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
-      sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={user?.company||user?.name} /> :
+      sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "notes" ? <NotesPage onBack={() => setSub(null)} user={user} /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
@@ -26218,7 +26233,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ padding:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={user?.company||user?.name} canAccess={()=>true} forceMobile demands={demands} /></div>}
+          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} forceMobile demands={demands} /></div>}
           {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
