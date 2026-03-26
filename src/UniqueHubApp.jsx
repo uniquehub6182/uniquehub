@@ -273,7 +273,7 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
 const convertCloudLink = (url) => {
   if (!url) return null;
   const u = url.trim();
-  /* Google Drive: various formats → use usercontent domain with confirm=t to bypass virus scan */
+  /* Google Drive: various formats → use usercontent domain with confirm=t */
   let m = u.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
   m = u.match(/drive\.google\.com\/open\?id=([^&]+)/);
@@ -282,9 +282,11 @@ const convertCloudLink = (url) => {
   if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
   m = u.match(/docs\.google\.com\/uc\?.*id=([^&]+)/);
   if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
-  /* OneDrive / SharePoint */
-  if (u.includes("1drv.ms") || u.includes("onedrive.live.com") || u.includes("sharepoint.com")) {
-    return u.replace(/\?.*$/, "?download=1");
+  /* OneDrive / SharePoint — convert share link to direct download via API */
+  if (u.includes("1drv.ms") || u.includes("onedrive.live.com") || u.includes("sharepoint.com") || u.includes("my.sharepoint.com")) {
+    /* OneDrive sharing API: encode share URL as base64, use /content endpoint */
+    const base64 = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    return `https://api.onedrive.com/v1.0/shares/u!${base64}/root/content`;
   }
   /* Dropbox */
   if (u.includes("dropbox.com")) {
