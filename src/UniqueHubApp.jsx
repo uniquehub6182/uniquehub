@@ -8098,7 +8098,11 @@ REGRAS OBRIGATÓRIAS DE HUMANIZAÇÃO:
 6. CTAs devem ser variados e naturais: às vezes é uma pergunta genuína, às vezes um convite sutil, às vezes nem tem CTA explícito (e tá tudo bem).
 7. Hashtags: máximo 8-12, misture populares com nichadas, sem hashtags genéricas como #marketing #sucesso.
 8. Parágrafos curtos (1-3 linhas). Quebre o texto pra facilitar leitura no celular.
-9. O briefing do designer deve ser prático e visual. Descreva EXATAMENTE o que o designer precisa criar, com referências de estilo, cores, elementos, textos na arte.
+9. O briefing do designer DEVE incluir TEXTOS PARA A ARTE. Sempre sugira:
+   - TEXTO PRINCIPAL: frase curta e impactante (máx 8 palavras para Feed, pode ser maior para Carrossel)
+   - TEXTO COMPLEMENTAR: uma linha de apoio que reforça a mensagem principal (opcional para Feed, recomendado para Carrossel)
+   - CTA NA ARTE: texto do call-to-action visual (ex: "Saiba mais", "Peça já", "Link na bio")
+   Para posts Feed simples, seja OBJETIVO — poucos textos na arte para não poluir. Para Carrossel, pode ter mais texto por slide (1 título + 1-2 linhas por slide). Além dos textos, descreva estilo visual, cores, elementos e referências.
 
 Para CADA item do documento, gere um JSON com:
 - title: título curto (max 60 chars)
@@ -8109,7 +8113,7 @@ Para CADA item do documento, gere um JSON com:
 - schedTime: "10:00" (posts) ou "18:00" (vídeos)
 - caption: legenda humanizada seguindo TODAS as regras acima (SEM hashtags no final — hashtags vão em campo separado)
 - hashtags: string com todas as hashtags separadas por espaço (ex: "#marketing #redes #design"), NUNCA incluir hashtags dentro da caption
-- designBrief: briefing completo pro designer. Para Feed/Carrossel usar dimensão ${ipAspectRatio}. Para Reels/Stories usar 9:16 (1080×1920). SEMPRE mencionar a dimensão correta no briefing.
+- designBrief: briefing completo pro designer OBRIGATORIAMENTE com: 1) TEXTO PRINCIPAL para arte, 2) TEXTO COMPLEMENTAR (se aplicável), 3) CTA NA ARTE. Depois descreva estilo, cores, elementos visuais. Para Feed/Carrossel usar dimensão ${ipAspectRatio}. Para Reels/Stories usar 9:16 (1080×1920). SEMPRE mencionar a dimensão correta. Para Carrossel, indicar textos de cada slide.
 - scriptOrRoteiro: roteiro completo pra vídeos (gancho, desenvolvimento, CTA) ou "" pra posts
 
 REGRAS TÉCNICAS:
@@ -9561,6 +9565,51 @@ REGRAS TÉCNICAS:
                 <label className="sl" style={{ display:"block" }}>
                   {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
                 </label>
+              </div>
+              {/* ── Reference photos from Social Media for the designer ── */}
+              <div style={{ marginBottom:12, padding:12, borderRadius:12, background:`${B.blue||"#3B82F6"}06`, border:`1px solid ${B.blue||"#3B82F6"}15` }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.blue||"#3B82F6", display:"flex", alignItems:"center", gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Referências / Fotos para a arte
+                  </p>
+                  <label style={{ padding:"4px 10px", borderRadius:8, background:`${B.blue||"#3B82F6"}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.blue||"#3B82F6", display:"flex", alignItems:"center", gap:4 }}>
+                    {IC.upload} Enviar
+                    <input type="file" multiple accept="image/*" style={{ display:"none" }} onChange={async (e)=>{
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      showToast(`Enviando ${files.length} referência${files.length>1?"s":""}...`);
+                      const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                      const uploaded = results.filter(r => !r.error).map(r => ({ ...r, isReference: true }));
+                      if (uploaded.length > 0) {
+                        const refs = [...(sel.steps?.design?.references||[]), ...uploaded];
+                        updateStep("design", { references: refs });
+                        showToast(`${uploaded.length} referência${uploaded.length>1?"s":""} enviada${uploaded.length>1?"s":""}!`);
+                      }
+                      e.target.value = "";
+                    }} />
+                  </label>
+                </div>
+                <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>Fotos de referência, inspiração ou imagens que devem entrar no post. O designer pode visualizar e baixar.</p>
+                {(sel.steps?.design?.references||[]).length > 0 ? (
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(70px, 1fr))", gap:6 }}>
+                    {(sel.steps?.design?.references||[]).map((ref, ri) => (
+                      <div key={ri} style={{ position:"relative", borderRadius:8, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}` }}>
+                        <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        <a href={ref.url} download target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ position:"absolute", bottom:4, right:4, width:22, height:22, borderRadius:6, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </a>
+                        <button onClick={async () => { if (ref.path) await supaDeleteFile(ref.path); const refs = (sel.steps?.design?.references||[]).filter((_,i)=>i!==ri); updateStep("design", { references: refs }); showToast("Referência removida"); }} style={{ position:"absolute", top:4, right:4, width:18, height:18, borderRadius:4, background:"rgba(239,68,68,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding:"12px", borderRadius:8, border:`1.5px dashed ${B.blue||"#3B82F6"}25`, textAlign:"center" }}>
+                    <p style={{ fontSize:10, color:`${B.blue||"#3B82F6"}60` }}>Nenhuma referência adicionada ainda</p>
+                  </div>
+                )}
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {/* Desktop carousel for design images — skip for Reels (handled by grid below) */}
