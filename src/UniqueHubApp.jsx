@@ -273,13 +273,15 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
 const convertCloudLink = (url) => {
   if (!url) return null;
   const u = url.trim();
-  /* Google Drive: various formats */
+  /* Google Drive: various formats → use usercontent domain with confirm=t to bypass virus scan */
   let m = u.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
   m = u.match(/drive\.google\.com\/open\?id=([^&]+)/);
-  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
+  m = u.match(/drive\.google\.com\/uc\?.*id=([^&]+)/);
+  if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
   m = u.match(/docs\.google\.com\/uc\?.*id=([^&]+)/);
-  if (m) return `https://drive.google.com/uc?export=download&id=${m[1]}`;
+  if (m) return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download&confirm=t`;
   /* OneDrive / SharePoint */
   if (u.includes("1drv.ms") || u.includes("onedrive.live.com") || u.includes("sharepoint.com")) {
     return u.replace(/\?.*$/, "?download=1");
@@ -289,7 +291,7 @@ const convertCloudLink = (url) => {
     return u.replace("dl=0", "dl=1").replace("www.dropbox.com", "dl.dropboxusercontent.com");
   }
   /* Already a direct URL */
-  if (/^https?:\/\/.+\.(mp4|mov|webm|avi)/i.test(u)) return u;
+  if (/^https?:\/\/.+/i.test(u)) return u;
   return u;
 };
 
