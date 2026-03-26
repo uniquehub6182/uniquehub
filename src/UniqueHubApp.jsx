@@ -16868,45 +16868,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     <p style={{ fontSize:14, fontWeight:800, color:B.red }}>❌ Compromisso desmarcado</p>
                     {ev.rescheduledTo && <p style={{ fontSize:11, color:B.accent, marginTop:4 }}>📅 Reagendado para {ev.rescheduledTo.split("-").reverse().join("/")}</p>}
                   </div>}
-                  {/* Desmarcar button (desktop) */}
-                  {!ev.cancelled && <div style={{ marginTop:12 }}>
-                    {!cancelFlow || cancelFlow.eventId !== ev.id ? (
-                      <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:`${B.red}06`, border:`1.5px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Desmarcar
-                      </button>
-                    ) : cancelFlow.step === "ask" ? (
-                      <div style={{ textAlign:"center" }}>
-                        <p style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Deseja reagendar?</p>
-                        <div style={{ display:"flex", gap:8 }}>
-                          <button onClick={() => setCancelFlow(p => ({ ...p, step: "reschedule" }))} style={{ flex:1, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Sim</button>
-                          <button onClick={async () => {
-                            setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), cancelledBy: propUser?.name || "" } : e));
-                            if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
-                            setCancelFlow(null); showToast("Compromisso desmarcado");
-                          }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:`${B.red}10`, border:`1.5px solid ${B.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Não</button>
-                        </div>
-                        <button onClick={() => setCancelFlow(null)} style={{ marginTop:6, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, color:B.muted }}>Cancelar</button>
-                      </div>
-                    ) : (
-                      <div>
-                        <p style={{ fontSize:13, fontWeight:700, textAlign:"center", marginBottom:10 }}>Reagendar para quando?</p>
-                        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-                          <input type="date" value={cancelFlow.newDate} onChange={e => setCancelFlow(p => ({ ...p, newDate: e.target.value }))} className="tinput" style={{ flex:1 }} />
-                          <input type="time" value={cancelFlow.newTime || ev.time} onChange={e => setCancelFlow(p => ({ ...p, newTime: e.target.value }))} className="tinput" style={{ flex:1 }} />
-                        </div>
-                        <button disabled={!cancelFlow.newDate} onClick={async () => {
-                          setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), rescheduledTo: cancelFlow.newDate } : e));
-                          if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
-                          const newD = new Date(cancelFlow.newDate);
-                          const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: newD.getDate(), month: newD.getMonth(), year: newD.getFullYear(), time: cancelFlow.newTime || ev.time, cancelled: false, notes: ev.notes ? `${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
-                          const saved = await supaCreateEvent(newEvent); if (saved?.id) newEvent.supaId = saved.id;
-                          setEvents(p => [...p, newEvent]); setCancelFlow(null); setViewEvent(newEvent);
-                          showToast(`✅ Reagendado para ${cancelFlow.newDate.split("-").reverse().join("/")}`);
-                        }} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:cancelFlow.newDate?B.accent:`${B.muted}20`, border:"none", cursor:cancelFlow.newDate?"pointer":"not-allowed", fontFamily:"inherit", fontSize:12, fontWeight:700, color:cancelFlow.newDate?(B.textOnAccent||"#0D0D0D"):B.muted }}>Confirmar</button>
-                        <button onClick={() => setCancelFlow(p => ({ ...p, step: "ask" }))} style={{ width:"100%", marginTop:4, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, color:B.muted }}>← Voltar</button>
-                      </div>
-                    )}
-                  </div>}
+                  {/* Desmarcar dialog handled by header button + inline dialog above */}
                 </div>
               </>;
             })() : adding ? <>
