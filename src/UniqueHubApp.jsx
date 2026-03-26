@@ -10565,16 +10565,47 @@ REGRAS TÉCNICAS:
                           showToast("Agendamento salvo manualmente");
                           return;
                         }
-                        /* Check if time is valid for scheduling */
                         if (!schedTs) {
                           showToast("O horário agendado já passou. Atualize a data/hora na etapa de Legenda antes de programar.");
                           return;
                         }
-                        /* Use doPublish for scheduling — it handles scheduled_posts insert */
+                        /* ── Schedule for ALL platforms in one operation ── */
+                        setPubLoading(true);
                         const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
                         const type = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
-                        if (hasIG) await doPublish("instagram", type);
-                        if (hasFB) await doPublish("facebook", type);
+                        const caption2 = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
+                        const fullCaption2 = (!isStories && sel.steps?.caption?.hashtags) ? `${caption2}\n\n${sel.steps.caption.hashtags}` : caption2;
+                        let schedImgUrls = isReelsFmt && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                        if (isReelsFmt && mediaInfo.coverUrl) schedImgUrls = [mediaInfo.videoUrl, mediaInfo.coverUrl];
+                        const schedDate2 = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
+                        const clientId2 = clientObj.supaId || clientObj.id;
+                        const platforms2 = [];
+                        if (hasIG) platforms2.push("instagram");
+                        if (hasFB) platforms2.push("facebook");
+                        console.log("[Programar] Scheduling for:", platforms2.join(", "), "type:", type, "urls:", schedImgUrls.length, "cover:", mediaInfo.coverUrl ? "yes" : "no");
+                        try {
+                          for (const plat of platforms2) {
+                            const { error: insErr } = await supabase.from("scheduled_posts").insert({
+                              client_id: clientId2, platform: plat, media_type: type,
+                              image_urls: schedImgUrls, caption: fullCaption2,
+                              scheduled_at: schedDate2.toISOString(),
+                              demand_id: sel.supaId || sel.id, created_by: user?.id
+                            });
+                            if (insErr) console.error(`[Programar] Error inserting ${plat}:`, insErr.message);
+                            else console.log(`[Programar] ✅ ${plat} scheduled OK`);
+                          }
+                          const combinedSteps2 = {
+                            ...(sel.steps||{}),
+                            client: { ...(sel.steps?.client||{}), status:"approved", by:"Publicação agendada", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) },
+                            igPublished: { platforms: platforms2, type, scheduled:true, scheduledAt:schedDate2.toISOString(), date:new Date().toLocaleDateString("pt-BR") }
+                          };
+                          const stages4 = getStages(sel.type);
+                          const nextStage4 = stages4[stages4.indexOf("client") + 1] || "scheduled";
+                          setDemands(prev => prev.map(x => x.id === sel.id ? syncMilestones({...x, stage: nextStage4, steps: combinedSteps2}, nextStage4) : x));
+                          setSel(prev => syncMilestones({...prev, stage: nextStage4, steps: combinedSteps2}, nextStage4));
+                          if (sel.supaId) supaUpdateDemand(sel.supaId, { stage: nextStage4, steps: combinedSteps2 });
+                          showToast(`✅ Agendado para ${platforms2.join(" e ")} · ${sel.scheduling.date.split("-").reverse().join("/")} ${sel.scheduling.time}`);
+                        } catch(e) { showToast(`Erro: ${e.message}`); }
                         setPubLoading(false);
                       }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
