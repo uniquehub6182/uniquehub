@@ -9584,6 +9584,7 @@ REGRAS TÉCNICAS:
                           </button>
                         )}
                         {coverFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{coverFile.name||"capa.jpg"}</p>}
+                        <p style={{ fontSize:8, color:B.muted, marginTop:2, textAlign:"center" }}>JPG, PNG ou WebP · 9:16</p>
                       </div>
                       {/* RIGHT: Video */}
                       <div>
@@ -9600,6 +9601,7 @@ REGRAS TÉCNICAS:
                           </button>
                         )}
                         {vidFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{vidFile.name||"video.mp4"}{vidFile.size?` · ${(vidFile.size/1048576).toFixed(0)}MB`:""}</p>}
+                        <p style={{ fontSize:8, color:B.muted, marginTop:2, textAlign:"center" }}>MP4 ou MOV · 9:16 (1080×1920)</p>
                       </div>
                     </div>
                   </div>;
@@ -9619,14 +9621,14 @@ REGRAS TÉCNICAS:
                     Feed: { icon:"🖼️", text:`Envie 1 imagem (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#3B82F6", warn: existingImages.length >= 1 ? "Feed permite apenas 1 imagem. Para mais imagens, use o formato Carrossel." : null },
                     Stories: { icon:"📱", text:`Envie até 10 imagens (JPG, PNG ou WebP). Cada uma será 1 story. Dimensão: 9:16 (1080×1920).`, color:"#F59E0B", warn: null },
                     Carrossel: { icon:"📸", text:`Envie de 2 a 20 imagens (JPG, PNG ou WebP). Dimensão: ${ratio} (${dimPx}).`, color:"#8B5CF6", warn: null },
-                    Reels: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV) + 1 imagem de capa. Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
-                    Shorts: { icon:"🎬", text:`Envie 1 vídeo (MP4, MOV) + 1 imagem de capa. Dimensão: 9:16 (1080×1920).`, color:"#EF4444", warn: null },
+                    Reels: { icon:"🎬", text:``, color:"#EF4444", warn: null, hide: true },
+                    Shorts: { icon:"🎬", text:``, color:"#EF4444", warn: null, hide: true },
                   };
                   const g = guidanceMap[fmt] || guidanceMap.Feed;
                   return <>
-                    <div style={{ padding:"10px 12px", borderRadius:10, background:`${g.color}08`, border:`1px solid ${g.color}20`, marginBottom:6 }}>
+                    {!g.hide && <div style={{ padding:"10px 12px", borderRadius:10, background:`${g.color}08`, border:`1px solid ${g.color}20`, marginBottom:6 }}>
                       <p style={{ fontSize:11, fontWeight:600, color:g.color, display:"flex", alignItems:"center", gap:6 }}><span>{g.icon}</span>{g.text}</p>
-                    </div>
+                    </div>}
                     {g.warn && <div style={{ padding:"8px 12px", borderRadius:8, background:"#EF444408", border:"1px solid #EF444420", marginBottom:6 }}>
                       <p style={{ fontSize:10, fontWeight:600, color:"#EF4444" }}>⚠ {g.warn}</p>
                     </div>}
@@ -9702,7 +9704,7 @@ REGRAS TÉCNICAS:
                 </div>
                 {uploadProgress.total > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{(uploadProgress.loaded/1024/1024).toFixed(1)}MB de {(uploadProgress.total/1024/1024).toFixed(0)}MB</p>}
               </div>}
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>
+              {sel.format !== "Reels" && sel.format !== "Shorts" && <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>}
             </> : sel.steps?.design?.files?.length > 0 && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <Av name={sel.steps?.design?.by||"Designer"} sz={22} fs={9} />
