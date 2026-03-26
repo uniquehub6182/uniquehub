@@ -9801,8 +9801,16 @@ REGRAS TÉCNICAS:
                 <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.design?.by||"Designer"}</span>
                 <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.design?.date}</span>
               </div>
+              {/* Video player for Reels in caption stage */}
+              {sel.steps?.design?.files?.some(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"))) && (
+                <div style={{ marginBottom:8 }}>
+                  {sel.steps.design.files.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/"))).map((f,i) => (
+                    <video key={"v"+i} src={f.url} controls playsInline style={{ width:"100%", maxHeight:300, borderRadius:12, background:"#000", marginBottom:4 }} />
+                  ))}
+                </div>
+              )}
               {/* Thumbnail grid for images */}
-              {sel.steps?.design?.files.some(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+              {sel.steps?.design?.files.some(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(100px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1/1", border:`1px solid ${B.border}` }}>
@@ -10070,10 +10078,12 @@ REGRAS TÉCNICAS:
               {!isContentDesktop && (() => {
                 const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
                 const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
-                return imgFiles.length > 0 && <div style={{ marginBottom:10 }}>
+                const vidFiles = artFiles.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
+                return (imgFiles.length > 0 || vidFiles.length > 0) && <div style={{ marginBottom:10 }}>
                   <p style={{ fontSize:10, fontWeight:700, color:B.accent, marginBottom:6 }}>🎨 Arte para revisão:</p>
+                  {vidFiles.length > 0 && vidFiles.map((f,i) => <video key={"v"+i} src={f.url} controls playsInline style={{ width:"100%", maxHeight:300, borderRadius:12, background:"#000", marginBottom:6 }} />)}
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                    {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt={f.name} style={{ width:60, height:60, borderRadius:8, objectFit:"cover", border:`1px solid ${B.border}` }} />)}
+                    {imgFiles.filter(f=>!f.isCover).slice(0,4).map((f,i) => <img key={i} src={f.url} alt={f.name} style={{ width:60, height:60, borderRadius:8, objectFit:"cover", border:`1px solid ${B.border}` }} />)}
                     {imgFiles.length > 4 && <div style={{ width:60, height:60, borderRadius:8, background:B.bgCard, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:B.muted }}>+{imgFiles.length-4}</div>}
                   </div>
                 </div>;
@@ -25116,7 +25126,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const d = demands.find(x => x.id === demandId);
     if (!d) { setSub(null); return null; }
     const files = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])];
-    const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+    const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||""));
+    const vidFiles = files.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
     const caption = d.steps?.caption?.text || "";
     const hashtags = d.steps?.caption?.hashtags || "";
     const isPending = d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status;
@@ -25158,6 +25169,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               <Tag color={B.accent}>{d.format || d.type}</Tag>
               <span style={{ fontSize:10, color:B.muted }}>{d.createdAt}</span>
             </div></Card>}
+            {/* Video player for Reels */}
+            {vidFiles.length > 0 && <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20 }}>
+              {vidFiles.map((f,i) => <video key={i} src={f.url} controls playsInline style={{ width:"100%", maxHeight:"70vh", background:"#000" }} />)}
+            </Card>}
             {imgFiles.length > 0 && (() => {
               const CarouselView = () => {
                 const [slide, setSlide] = React.useState(0);
@@ -25328,7 +25343,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         {demands.slice(0,5).map((d) => {
           const st = d.steps?.client?.status; const stColor = st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
           const stLabel = st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
-          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+          const imgs = [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||""));
           return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ flexShrink:0, width:160, borderRadius:18, overflow:"hidden", cursor:"pointer", background:C.card, border:`1px solid ${C.brd}` }}>
             <div style={{ height:110, background:imgs[0]?`url(${imgs[0].url}) center/cover`:`linear-gradient(135deg, ${stColor}15, ${C.card})`, position:"relative" }}>{!imgs[0]&&<div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", opacity:0.3 }}>{IC.content(stColor)}</div>}<div style={{ position:"absolute", bottom:8, left:8, right:8 }}><p style={{ fontSize:11, fontWeight:700, color:"#fff", textShadow:"0 1px 3px rgba(0,0,0,0.5)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div></div>
             <div style={{ padding:"8px 10px", display:"flex", justifyContent:"space-between", alignItems:"center" }}><span style={{ fontSize:9, color:C.mut }}>{d.createdAt}</span><div style={{ display:"flex", alignItems:"center", gap:3 }}><div style={{ width:5, height:5, borderRadius:3, background:stColor }} /><span style={{ fontSize:8, fontWeight:600, color:stColor }}>{stLabel}</span></div></div>
