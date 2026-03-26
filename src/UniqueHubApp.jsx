@@ -9504,10 +9504,6 @@ REGRAS TÉCNICAS:
                 <label className="sl" style={{ display:"block" }}>
                   {(sel.format==="Reels"||sel.format==="Shorts") ? "Enviar vídeo criado" : "Enviar arte criada"}
                 </label>
-                <button onClick={()=>showToast(`📐 Dimensões por formato:\n\n• Feed 1:1 → 1080×1080\n• Feed 4:5 → 1080×1350\n• Feed 3:4 → 1080×1440\n• Stories/Reels → 9:16 (1080×1920)\n• Carrossel → 1:1 ou 4:5\n\n📎 Formatos aceitos:\n• Imagens: JPG, PNG, WebP\n• Vídeos: MP4, MOV, WebM\n• Máx: 100MB (img) / 500MB (vídeo)`)} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:B.muted, fontFamily:"inherit", fontSize:10, fontWeight:600, padding:"2px 6px", borderRadius:6 }} onMouseEnter={e=>e.currentTarget.style.color=B.accent} onMouseLeave={e=>e.currentTarget.style.color=B.muted}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                  Guia de dimensões
-                </button>
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {/* Desktop carousel for design images — skip for Reels (handled by grid below) */}
