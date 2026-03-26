@@ -19,6 +19,32 @@ class DemandDetailBoundary extends React.Component {
     return this.props.children;
   }
 }
+/* ── Sub-page Error Boundary (prevents black screen on crash) ── */
+class SubPageBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("[SubPage crash]", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement("div", { className: "app", style: { background: "#fff", color: "#1A1D23", display: "flex", flexDirection: "column" } },
+        React.createElement("div", { style: { padding: "20px 16px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 12 } },
+          React.createElement("button", { onClick: () => { this.setState({ hasError: false }); if (this.props.onBack) this.props.onBack(); }, style: { width: 36, height: 36, borderRadius: 10, border: "1px solid #eee", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "←"),
+          React.createElement("span", { style: { fontSize: 16, fontWeight: 700 } }, "Erro")
+        ),
+        React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 30, textAlign: "center" } },
+          React.createElement("div", null,
+            React.createElement("p", { style: { fontSize: 48, marginBottom: 16 } }, "⚠️"),
+            React.createElement("h3", { style: { fontSize: 18, fontWeight: 800, marginBottom: 8 } }, "Algo deu errado"),
+            React.createElement("p", { style: { fontSize: 13, color: "#888", lineHeight: 1.6, maxWidth: 300, margin: "0 auto 20px" } }, "Esta página encontrou um erro. Tente voltar e acessar novamente."),
+            React.createElement("p", { style: { fontSize: 10, color: "#ccc", fontFamily: "monospace", wordBreak: "break-all", marginBottom: 20 } }, String(this.state.error)),
+            React.createElement("button", { onClick: () => { this.setState({ hasError: false }); if (this.props.onBack) this.props.onBack(); }, style: { padding: "12px 28px", borderRadius: 14, background: "#BBF246", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#0D0D0D" } }, "← Voltar")
+          )
+        )
+      );
+    }
+    return this.props.children;
+  }
+}
 
 class SettingsBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -23623,9 +23649,10 @@ function ClientMatch4Biz({ onBack, user }) {
   const [credits, setCredits] = useState(0);
   const [customPkgs, setCustomPkgs] = useState(null);
   useEffect(() => {
+    if (!supabase) return;
     supabase.from("app_settings").select("value").eq("key","pay_credits").maybeSingle().then(({data}) => {
       if (data?.value) { try { setCustomPkgs(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
-    });
+    }).catch(() => {});
   }, []);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [matches, setMatches] = useState([]);
@@ -24003,6 +24030,20 @@ function ClientMatch4Biz({ onBack, user }) {
         </div>
         <button onClick={() => { setShowEditProfile(false); showToast("Perfil atualizado ✓"); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:profileComplete ? B.accent : B.border, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:profileComplete ? "#0D0D0D" : B.muted }}>{profileComplete ? "Salvar e voltar" : "Preencha missão e match ideal"}</button>
         <div style={{ height:30 }} />
+      </div>
+    </div>
+  );
+
+  /* ═══ LOADING SCREEN ═══ */
+  if (loading) return (
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
+      <div className="content" style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
+        <div style={{ textAlign:"center" }}>
+          <div style={{ width:40, height:40, border:`3px solid ${B.border}`, borderTopColor:B.accent, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 16px" }} />
+          <p style={{ fontSize:13, color:B.muted }}>Carregando...</p>
+          <style dangerouslySetInnerHTML={{__html:`@keyframes spin{to{transform:rotate(360deg)}}`}} />
+        </div>
       </div>
     </div>
   );
@@ -26197,6 +26238,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   return (<>
     {/* ═══ SUB-PAGES: rendered OUTSIDE .app to avoid nested position:fixed scroll issues ═══ */}
     {hasSub && (
+      <SubPageBoundary onBack={() => setSub(null)}>{
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
@@ -26214,7 +26256,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
       null
-    )}
+    }</SubPageBoundary>)}
     {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
     <div style={{ display: hasSub ? "none" : "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
