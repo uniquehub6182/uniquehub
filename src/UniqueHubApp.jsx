@@ -257,38 +257,42 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
     if (isHeic) {
       try {
         console.log("[HEIC] Converting:", file.name, "type:", file.type, "size:", file.size);
-        /* Load heic2any from CDN if not cached */
-        if (!window.heic2any) {
-          await new Promise((res, rej) => {
-            if (document.getElementById("heic2any-script")) { res(); return; }
-            const s = document.createElement("script");
-            s.id = "heic2any-script";
-            s.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
-            s.onload = () => { console.log("[HEIC] Library loaded OK"); res(); };
-            s.onerror = (e) => { console.error("[HEIC] Library load failed"); rej(e); };
-            document.head.appendChild(s);
-          });
+        /* Load heic2any via ESM dynamic import (handles WASM correctly) */
+        if (!window._heic2anyFn) {
+          const mod = await import(/* @vite-ignore */ "https://esm.sh/heic2any@0.0.4");
+          window._heic2anyFn = mod.default;
+          console.log("[HEIC] Library loaded via ESM OK");
         }
-        if (window.heic2any) {
-          const blob = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
-          const converted = Array.isArray(blob) ? blob[0] : blob;
-          const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-          processedFile = new File([converted], newName, { type: "image/jpeg" });
-          console.log("[HEIC] Converted OK:", newName, "size:", processedFile.size);
-        }
+        const blob = await window._heic2anyFn({ blob: file, toType: "image/jpeg", quality: 0.92 });
+        const converted = Array.isArray(blob) ? blob[0] : blob;
+        const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
+        processedFile = new File([converted], newName, { type: "image/jpeg" });
+        console.log("[HEIC] Converted OK:", newName, "size:", processedFile.size);
       } catch (e) {
-        console.error("[HEIC] heic2any failed, trying FileReader+canvas:", e);
-        /* Fallback: read as ArrayBuffer → create blob with jpeg type */
+        console.error("[HEIC] heic2any failed:", e?.message || e);
+        /* Fallback: try CDN script tag version */
         try {
-          const arrayBuf = await file.arrayBuffer();
-          /* Force upload as generic binary — at least it won't be rejected */
-          const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-          processedFile = new File([arrayBuf], newName, { type: "application/octet-stream" });
-          console.log("[HEIC] Fallback: renamed to .jpg with octet-stream type");
+          if (!window.heic2any) {
+            await new Promise((res, rej) => {
+              if (document.getElementById("heic2any-script")) { res(); return; }
+              const s = document.createElement("script");
+              s.id = "heic2any-script";
+              s.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+              s.onload = res; s.onerror = rej;
+              document.head.appendChild(s);
+            });
+          }
+          if (window.heic2any) {
+            const blob2 = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+            const converted2 = Array.isArray(blob2) ? blob2[0] : blob2;
+            processedFile = new File([converted2], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "image/jpeg" });
+            console.log("[HEIC] CDN fallback OK");
+          }
         } catch (e2) {
-          console.error("[HEIC] All conversion methods failed:", e2);
-          resolve(file);
-          return;
+          console.error("[HEIC] All methods failed:", e2?.message || e2);
+          /* Last resort: upload as octet-stream with .jpg extension */
+          const buf = await file.arrayBuffer();
+          processedFile = new File([buf], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "application/octet-stream" });
         }
       }
     }
