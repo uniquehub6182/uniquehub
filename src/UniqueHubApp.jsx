@@ -9573,8 +9573,9 @@ REGRAS TÉCNICAS:
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     Referências / Fotos para a arte
                   </p>
-                  <label style={{ padding:"4px 10px", borderRadius:8, background:`${B.blue||"#3B82F6"}12`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.blue||"#3B82F6", display:"flex", alignItems:"center", gap:4 }}>
-                    {IC.upload} Enviar
+                  <label style={{ padding:"5px 12px", borderRadius:8, background:B.blue||"#3B82F6", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:5 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Enviar fotos
                     <input type="file" multiple accept="image/*" style={{ display:"none" }} onChange={async (e)=>{
                       const files = Array.from(e.target.files);
                       if (!files.length) return;
@@ -9590,27 +9591,59 @@ REGRAS TÉCNICAS:
                     }} />
                   </label>
                 </div>
-                <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>Fotos de referência, inspiração ou imagens que devem entrar no post. O designer pode visualizar e baixar.</p>
+                <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>Fotos de referência, inspiração ou imagens que devem entrar no post. Clique para ampliar, use os botões para baixar.</p>
                 {(sel.steps?.design?.references||[]).length > 0 ? (
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(70px, 1fr))", gap:6 }}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                     {(sel.steps?.design?.references||[]).map((ref, ri) => (
-                      <div key={ri} style={{ position:"relative", borderRadius:8, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}` }}>
-                        <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                        <a href={ref.url} download target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ position:"absolute", bottom:4, right:4, width:22, height:22, borderRadius:6, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      <div key={ri} style={{ display:"flex", alignItems:"center", gap:10, padding:8, borderRadius:10, background:"#fff", border:`1px solid ${B.border}` }}>
+                        <div onClick={()=>setSel(prev=>({...prev,_refPreview:ref.url}))} style={{ width:56, height:56, borderRadius:8, overflow:"hidden", flexShrink:0, cursor:"pointer", border:`1px solid ${B.border}` }}>
+                          <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ref.name||`Referência ${ri+1}`}</p>
+                          <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>Clique na imagem para ampliar</p>
+                        </div>
+                        <a href={ref.url} download={ref.name||"referencia.jpg"} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ padding:"6px 10px", borderRadius:8, background:`${B.blue||"#3B82F6"}10`, border:`1px solid ${B.blue||"#3B82F6"}20`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", display:"flex", alignItems:"center", gap:4, flexShrink:0, textDecoration:"none" }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Baixar
                         </a>
-                        <button onClick={async () => { if (ref.path) await supaDeleteFile(ref.path); const refs = (sel.steps?.design?.references||[]).filter((_,i)=>i!==ri); updateStep("design", { references: refs }); showToast("Referência removida"); }} style={{ position:"absolute", top:4, right:4, width:18, height:18, borderRadius:4, background:"rgba(239,68,68,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <button onClick={async () => { if (ref.path) await supaDeleteFile(ref.path); const refs = (sel.steps?.design?.references||[]).filter((_,i)=>i!==ri); updateStep("design", { references: refs }); showToast("Referência removida"); }} style={{ width:28, height:28, borderRadius:8, background:"#EF444410", border:`1px solid #EF444420`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ padding:"12px", borderRadius:8, border:`1.5px dashed ${B.blue||"#3B82F6"}25`, textAlign:"center" }}>
-                    <p style={{ fontSize:10, color:`${B.blue||"#3B82F6"}60` }}>Nenhuma referência adicionada ainda</p>
-                  </div>
+                  <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6, padding:"20px 12px", borderRadius:10, border:`2px dashed ${B.blue||"#3B82F6"}25`, cursor:"pointer", textAlign:"center" }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={`${B.blue||"#3B82F6"}50`} strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <p style={{ fontSize:10, color:`${B.blue||"#3B82F6"}60`, fontWeight:600 }}>Clique para enviar fotos de referência</p>
+                    <input type="file" multiple accept="image/*" style={{ display:"none" }} onChange={async (e)=>{
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      showToast(`Enviando ${files.length} referência${files.length>1?"s":""}...`);
+                      const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
+                      const uploaded = results.filter(r => !r.error).map(r => ({ ...r, isReference: true }));
+                      if (uploaded.length > 0) {
+                        const refs = [...(sel.steps?.design?.references||[]), ...uploaded];
+                        updateStep("design", { references: refs });
+                        showToast(`${uploaded.length} referência${uploaded.length>1?"s":""} enviada${uploaded.length>1?"s":""}!`);
+                      }
+                      e.target.value = "";
+                    }} />
+                  </label>
                 )}
               </div>
+              {/* ── Lightbox for reference preview ── */}
+              {sel._refPreview && <div onClick={()=>setSel(prev=>({...prev,_refPreview:null}))} style={{ position:"fixed", inset:0, zIndex:99999, background:"rgba(0,0,0,0.85)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", backdropFilter:"blur(4px)" }}>
+                <img src={sel._refPreview} alt="" style={{ maxWidth:"90vw", maxHeight:"85vh", borderRadius:12, boxShadow:"0 20px 60px rgba(0,0,0,0.5)", objectFit:"contain" }} />
+                <a href={sel._refPreview} download target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ position:"absolute", bottom:30, left:"50%", transform:"translateX(-50%)", padding:"10px 24px", borderRadius:12, background:"#fff", color:"#1A1D23", fontFamily:"inherit", fontSize:13, fontWeight:700, textDecoration:"none", display:"flex", alignItems:"center", gap:8, boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Baixar imagem
+                </a>
+                <button onClick={e=>{e.stopPropagation();setSel(prev=>({...prev,_refPreview:null}));}} style={{ position:"absolute", top:20, right:20, width:40, height:40, borderRadius:20, background:"rgba(255,255,255,0.15)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>}
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {/* Desktop carousel for design images — skip for Reels (handled by grid below) */}
                 {isContentDesktop && sel.format !== "Reels" && sel.format !== "Shorts" && (() => {
@@ -9896,20 +9929,35 @@ REGRAS TÉCNICAS:
                 <div style={{ marginTop:10, padding:10, borderRadius:12, background:`${B.blue||"#3B82F6"}06`, border:`1px solid ${B.blue||"#3B82F6"}15` }}>
                   <p style={{ fontSize:11, fontWeight:700, color:B.blue||"#3B82F6", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    Referências / Fotos para a arte
+                    Referências ({(sel.steps?.design?.references||[]).length})
                   </p>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(70px, 1fr))", gap:6 }}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                     {(sel.steps?.design?.references||[]).map((ref, ri) => (
-                      <div key={ri} style={{ position:"relative", borderRadius:8, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}` }}>
-                        <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                        <a href={ref.url} download target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ position:"absolute", bottom:4, right:4, width:22, height:22, borderRadius:6, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      <div key={ri} style={{ display:"flex", alignItems:"center", gap:10, padding:8, borderRadius:10, background:"#fff", border:`1px solid ${B.border}` }}>
+                        <div onClick={()=>setSel(prev=>({...prev,_refPreview:ref.url}))} style={{ width:48, height:48, borderRadius:8, overflow:"hidden", flexShrink:0, cursor:"pointer", border:`1px solid ${B.border}` }}>
+                          <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        </div>
+                        <p style={{ flex:1, fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 }}>{ref.name||`Referência ${ri+1}`}</p>
+                        <a href={ref.url} download={ref.name||"referencia.jpg"} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ padding:"5px 10px", borderRadius:8, background:`${B.blue||"#3B82F6"}10`, border:`1px solid ${B.blue||"#3B82F6"}20`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", display:"flex", alignItems:"center", gap:4, flexShrink:0, textDecoration:"none" }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Baixar
                         </a>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+              {/* ── Lightbox for reference preview (read-only) ── */}
+              {sel._refPreview && <div onClick={()=>setSel(prev=>({...prev,_refPreview:null}))} style={{ position:"fixed", inset:0, zIndex:99999, background:"rgba(0,0,0,0.85)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", backdropFilter:"blur(4px)" }}>
+                <img src={sel._refPreview} alt="" style={{ maxWidth:"90vw", maxHeight:"85vh", borderRadius:12, boxShadow:"0 20px 60px rgba(0,0,0,0.5)", objectFit:"contain" }} />
+                <a href={sel._refPreview} download target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ position:"absolute", bottom:30, left:"50%", transform:"translateX(-50%)", padding:"10px 24px", borderRadius:12, background:"#fff", color:"#1A1D23", fontFamily:"inherit", fontSize:13, fontWeight:700, textDecoration:"none", display:"flex", alignItems:"center", gap:8, boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Baixar imagem
+                </a>
+                <button onClick={e=>{e.stopPropagation();setSel(prev=>({...prev,_refPreview:null}));}} style={{ position:"absolute", top:20, right:20, width:40, height:40, borderRadius:20, background:"rgba(255,255,255,0.15)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>}
             </>}
           </>)}
 
