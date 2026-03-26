@@ -101,15 +101,22 @@ serve(async (req) => {
       console.log("[FB Reels] Upload response:", JSON.stringify(uploadData).substring(0, 200));
       if (uploadData.error) throw new Error(`Upload: ${uploadData.error.message}`);
 
-      /* Step 3: Finish and publish */
+      /* Step 3: Finish */
       console.log(`[FB Reels] Step 3: Finishing...`);
-      const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId, video_state: "PUBLISHED" });
+      const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
       if (caption) finishParams.append("description", caption);
       if (urls.length > 1 && urls[1]) finishParams.append("thumb", urls[1]);
       const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
       const finishData = await finishRes.json();
       console.log("[FB Reels] Finish response:", JSON.stringify(finishData).substring(0, 200));
       if (finishData.error) throw new Error(`Finish: ${finishData.error.message}`);
+
+      /* Step 4: Explicitly publish (video_state in finish step doesn't work reliably) */
+      console.log(`[FB Reels] Step 4: Publishing video ${videoId}...`);
+      const pubParams = new URLSearchParams({ access_token: pageToken, published: "true" });
+      const pubRes = await fetch(`https://graph.facebook.com/v21.0/${videoId}`, { method: "POST", body: pubParams });
+      const pubData = await pubRes.json();
+      console.log("[FB Reels] Publish response:", JSON.stringify(pubData).substring(0, 200));
 
       return json({ success: true, media_id: videoId, message: "Reels publicado no Facebook!" });
 

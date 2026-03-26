@@ -138,12 +138,17 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
     });
 
     /* Step 3: Finish */
-    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId, video_state: "PUBLISHED" });
+    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
     if (caption) finishParams.append("description", caption);
     if (imageUrls.length > 1 && imageUrls[1]) finishParams.append("thumb", imageUrls[1]);
     const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
     const finishData = await finishRes.json();
     if (finishData.error) throw new Error(finishData.error.message);
+
+    /* Explicitly publish — video_state in finish step is unreliable */
+    await fetch(`https://graph.facebook.com/v21.0/${videoId}`, {
+      method: "POST", body: new URLSearchParams({ access_token: pageToken, published: "true" })
+    });
 
     return { success: true, media_id: videoId };
   }

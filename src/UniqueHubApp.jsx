@@ -10533,7 +10533,7 @@ REGRAS TÉCNICAS:
                               else { updateBgTask(taskId, { status:"error", msg: pData.error || "Proxy falhou" }); setTimeout(()=>removeBgTask(taskId),8000); return; }
                             }
                             updateBgTask(taskId, { msg: isReels ? "Processando vídeo na Meta..." : "Publicando..." });
-                            let igOk = false, fbOk = false, igErr = "", fbErr = "";
+                            let igOk = false, fbOk = false, igErr = "", fbErr = "", postId = null;
                             if (savedHasIG) { const r = await publishToInstagram(savedClientId, savedImgUrls, savedCaption, savedType, null, savedCoverUrl); if (r?.error) igErr = r.error; else igOk = true; }
                             if (savedHasFB) { const r = await publishToMeta(savedClientId, savedImgUrls, savedCaption, null, savedType); if (r?.error) fbErr = r.error; else fbOk = true; }
                             if (igOk || fbOk) {
@@ -12076,7 +12076,7 @@ REGRAS TÉCNICAS:
                       } catch(e) { console.error("Cover upload error:", e); }
                     }
                     updateBgTask(taskId, { msg: "Publicando..." });
-                    let igOk = false, fbOk = false, igErr = "", fbErr = "";
+                    let igOk = false, fbOk = false, igErr = "", fbErr = "", postId = null;
                     if (platforms.includes("ig")) {
                       updateBgTask(taskId, { msg: "Publicando no Instagram..." });
                       const r = await publishToInstagram(clientId, publicUrls, caption, fmt, null, coverPublicUrl);
