@@ -16622,6 +16622,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                       if(!ev||ev.day===d)return;
                       const oldDay=ev.day;
                       setEvents(prev=>prev.map(x=>(x.id===ev.id)?{...x,day:d}:x));
+                      setSelDay(d);
+                      setViewEvent(null);
                       if(ev.supaId) { try { await supabase.from("calendar_events").update({day:d}).eq("id",ev.supaId); } catch {} }
                       showToast(`📅 "${ev.title}" movido de ${oldDay} → ${d}`);
                     }catch(err){console.error("Drop error:",err);}
