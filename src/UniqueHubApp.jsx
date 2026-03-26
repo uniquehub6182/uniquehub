@@ -250,8 +250,30 @@ const supaBulkDeleteDemands = async (clientId) => {
 
 /* ── Supabase Storage: compress + upload files for demands ── */
 const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
-  return new Promise((resolve) => {
-    if (!file.type.startsWith("image/") || file.type === "image/gif") { resolve(file); return; }
+  return new Promise(async (resolve) => {
+    /* Convert HEIC/HEIF to JPEG first (Supabase Storage doesn't support HEIC) */
+    let processedFile = file;
+    const isHeic = file.type === "image/heic" || file.type === "image/heif" || /\.heic$/i.test(file.name) || /\.heif$/i.test(file.name);
+    if (isHeic) {
+      try {
+        /* Dynamically load heic2any if not already loaded */
+        if (!window.heic2any) {
+          await new Promise((res, rej) => {
+            const s = document.createElement("script");
+            s.src = "https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js";
+            s.onload = res; s.onerror = rej;
+            document.head.appendChild(s);
+          });
+        }
+        const blob = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+        const converted = Array.isArray(blob) ? blob[0] : blob;
+        processedFile = new File([converted], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "image/jpeg" });
+      } catch (e) {
+        console.error("[HEIC] Conversion failed:", e);
+        resolve(file); return;
+      }
+    }
+    if (!processedFile.type.startsWith("image/") || processedFile.type === "image/gif") { resolve(processedFile); return; }
     const img = new Image();
     img.onload = () => {
       let w = img.width, h = img.height;
@@ -259,13 +281,13 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
       const c = document.createElement("canvas"); c.width = w; c.height = h;
       c.getContext("2d").drawImage(img, 0, 0, w, h);
       c.toBlob((blob) => {
-        if (blob && blob.size < file.size) {
-          resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
-        } else { resolve(file); }
+        if (blob && blob.size < processedFile.size) {
+          resolve(new File([blob], processedFile.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+        } else { resolve(processedFile); }
       }, "image/jpeg", quality);
     };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => resolve(processedFile);
+    img.src = URL.createObjectURL(processedFile);
   });
 };
 
