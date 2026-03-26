@@ -862,17 +862,21 @@ const getMetaConnection = async (clientId) => {
 };
 
 const publishToMeta = async (clientId, imageUrl, caption, platforms, mediaType = "FEED", scheduledTime = null) => {
-  if (!supabase || !SUPA_URL) return null;
+  if (!supabase || !SUPA_URL) return { error: "Supabase offline" };
   try {
     const urls = Array.isArray(imageUrl) ? imageUrl : [imageUrl];
     const body = { client_id: clientId, image_url: urls[0], image_urls: urls, caption, media_type: mediaType };
     if (scheduledTime) body.scheduled_publish_time = scheduledTime;
+    console.log("[publishToMeta] Calling facebook-publish:", { clientId, mediaType, urls: urls.length });
     const res = await fetch(`${SUPA_URL}/functions/v1/facebook-publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
       body: JSON.stringify(body)
     });
-    return await res.json();
+    const data = await res.json();
+    console.log("[publishToMeta] Response:", JSON.stringify(data).substring(0, 300));
+    if (!res.ok && !data.error) data.error = `HTTP ${res.status}`;
+    return data;
   } catch(e) { console.error("publishToMeta error:", e); return { error: e.message }; }
 };
 
@@ -10269,6 +10273,7 @@ REGRAS TÉCNICAS:
                         const savedSelId = sel.supaId || sel.id;
                         const savedClient = sel.client;
                         const savedHasIG = hasIG, savedHasFB = hasFB;
+                        console.log("[PostarAgora] hasIG:", hasIG, "hasFB:", hasFB, "networks:", sel.network, "fbConnected:", fbConnected, "igConnected:", igConnected);
                         /* Close drawer and run in background */
                         setSel(null);
                         setPubLoading(false);
@@ -11777,11 +11782,11 @@ REGRAS TÉCNICAS:
                     let ok = false; let postId = null;
                     if (platforms.includes("ig")) {
                       const r = await publishToInstagram(clientId, publicUrls, caption, fmt, null, coverPublicUrl);
-                      if (r?.error) { showToast("Erro IG: "+r.error); } else { ok = true; postId = r?.media_id || r?.post_id; }
+                      if (r?.error) { updateBgTask(taskId, { msg: "Erro IG: "+r.error }); } else { ok = true; postId = r?.media_id || r?.post_id; }
                     }
                     if (platforms.includes("fb")) {
                       const r = await publishToMeta(clientId, publicUrls, caption, null, fmt);
-                      if (r?.error) { showToast("Erro FB: "+r.error); } else { ok = true; if (!postId) postId = r?.id || r?.post_id; }
+                      if (r?.error) { updateBgTask(taskId, { msg: "Erro FB: "+r.error }); } else { ok = true; if (!postId) postId = r?.id || r?.post_id; }
                     }
                     if (ok) {
                       /* Create demand in kanban as "published" */
