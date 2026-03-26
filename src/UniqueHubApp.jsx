@@ -16751,7 +16751,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               return <>
                 <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
                   <button onClick={()=>setViewEvent(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-                  <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800, color:B.text }}>{ev.title}</p><p style={{ fontSize:11, color:B.muted }}>{et.l} · {ev.time}</p></div>
+                  <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800, color:B.text }}>{ev.title}</p><p style={{ fontSize:11, color:B.muted }}>{et.l} · {ev.time}{ev.cancelled?" · ❌ Desmarcado":""}</p></div>
+                  {!ev.cancelled && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${B.red}30`, background:`${B.red}06`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.red, display:"flex", alignItems:"center", gap:5 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Desmarcar</button>}
                   <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{ width:32, height:32, borderRadius:8, border:"1px solid #FEE2E2", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
                 </div>
                 <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
@@ -16760,6 +16761,44 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${B.dark}12`, color:B.dark }}>{ev.time}</span>
                     {ev.meetingMode && <span style={{ fontSize:11, fontWeight:600, padding:"3px 10px", borderRadius:8, background:`${ev.meetingMode==="online"?B.blue:B.green}12`, color:ev.meetingMode==="online"?B.blue:B.green }}>{ev.meetingMode==="online"?"Online":"Presencial"}</span>}
                   </div>
+                  {/* Reagendar dialog - shows at top when triggered */}
+                  {cancelFlow && cancelFlow.eventId === ev.id && (
+                    <div style={{ padding:16, borderRadius:14, background:`${B.red}04`, border:`1.5px solid ${B.red}15`, marginBottom:16 }}>
+                      {cancelFlow.step === "ask" ? <>
+                        <p style={{ fontSize:14, fontWeight:700, textAlign:"center", marginBottom:4 }}>Deseja reagendar?</p>
+                        <p style={{ fontSize:11, color:B.muted, textAlign:"center", marginBottom:12 }}>O compromisso será desmarcado. Deseja definir uma nova data?</p>
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={() => setCancelFlow(p => ({ ...p, step: "reschedule" }))} style={{ flex:1, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Sim, reagendar</button>
+                          <button onClick={async () => {
+                            setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), cancelledBy: propUser?.name || "" } : e));
+                            if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
+                            setCancelFlow(null);
+                            showToast("Compromisso desmarcado");
+                          }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:`${B.red}10`, border:`1.5px solid ${B.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Apenas desmarcar</button>
+                        </div>
+                        <button onClick={() => setCancelFlow(null)} style={{ width:"100%", marginTop:6, padding:"6px 0", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, color:B.muted }}>Cancelar</button>
+                      </> : <>
+                        <p style={{ fontSize:14, fontWeight:700, textAlign:"center", marginBottom:10 }}>Reagendar para quando?</p>
+                        <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                          <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Nova data</label><input type="date" value={cancelFlow.newDate} onChange={e => setCancelFlow(p => ({ ...p, newDate: e.target.value }))} className="tinput" style={{ width:"100%" }} /></div>
+                          <div style={{ flex:1 }}><label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label><input type="time" value={cancelFlow.newTime || ev.time} onChange={e => setCancelFlow(p => ({ ...p, newTime: e.target.value }))} className="tinput" style={{ width:"100%" }} /></div>
+                        </div>
+                        <button disabled={!cancelFlow.newDate} onClick={async () => {
+                          setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), rescheduledTo: cancelFlow.newDate } : e));
+                          if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
+                          const newD = new Date(cancelFlow.newDate);
+                          const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: newD.getDate(), month: newD.getMonth(), year: newD.getFullYear(), time: cancelFlow.newTime || ev.time, cancelled: false, notes: ev.notes ? `${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
+                          const saved = await supaCreateEvent(newEvent);
+                          if (saved?.id) newEvent.supaId = saved.id;
+                          setEvents(p => [...p, newEvent]);
+                          setCancelFlow(null);
+                          setViewEvent(newEvent);
+                          showToast(`✅ Reagendado para ${cancelFlow.newDate.split("-").reverse().join("/")} às ${cancelFlow.newTime || ev.time}`);
+                        }} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:cancelFlow.newDate?B.accent:`${B.muted}20`, border:"none", cursor:cancelFlow.newDate?"pointer":"not-allowed", fontFamily:"inherit", fontSize:12, fontWeight:700, color:cancelFlow.newDate?(B.textOnAccent||"#0D0D0D"):B.muted }}>Confirmar reagendamento</button>
+                        <button onClick={() => setCancelFlow(p => ({ ...p, step: "ask" }))} style={{ width:"100%", marginTop:6, padding:"6px 0", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:10, color:B.muted }}>← Voltar</button>
+                      </>}
+                    </div>
+                  )}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 }}>
                     {[{l:"Criado por",v:ev.createdBy},{l:"Cliente",v:ev.client},{l:"Contato do cliente",v:ev.clientContact},{l:"Local",v:ev.location},{l:"Data",v:`${ev.day}/${(ev.month+1).toString().padStart(2,"0")}/${ev.year}`}].filter(x=>x.v).map((item,ii)=>(
                       <div key={ii} style={{ padding:"10px 12px", borderRadius:10, background:B.bg }}>
