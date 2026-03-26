@@ -8829,6 +8829,11 @@ REGRAS TÉCNICAS:
   const advanceStage = async (d) => {
     const stages = getStages(d.type);
     const idx = stages.indexOf(d.stage);
+    /* Block movement from locked stages */
+    if (d.stage === "scheduled" || d.stage === "published") {
+      showToast("⚠️ Não é possível mover — conteúdo já " + (d.stage === "scheduled" ? "agendado" : "publicado"));
+      return;
+    }
     if (idx < stages.length - 1) {
       const next = stages[idx + 1];
       setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
@@ -11177,14 +11182,14 @@ REGRAS TÉCNICAS:
           ? filtered.filter(d => d.stage === "client" && d.steps?.client?.status !== "revision" && d.steps?.client?.status !== "rejected")
           : filtered.filter(d => d.stage === cStage);
         const cCfg=STAGE_CFG[cStage]||{l:"Ideia",c:"#888"};
-        const mvK=(did,ns)=>{setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));const dd=demands.find(x=>x.id===did);if(dd?.supaId)supaUpdateDemand(dd.supaId,{stage:ns});showToast("\u2192 "+(STAGE_CFG[ns]?.l||ns));};
+        const mvK=(did,ns)=>{const dd=demands.find(x=>x.id===did);if(dd&&(dd.stage==="scheduled"||dd.stage==="published")){showToast("⚠️ Não é possível mover — conteúdo já "+(dd.stage==="scheduled"?"agendado":"publicado"));return;}setDemands(p=>p.map(x=>x.id===did?{...x,stage:ns}:x));if(dd?.supaId)supaUpdateDemand(dd.supaId,{stage:ns});showToast("\u2192 "+(STAGE_CFG[ns]?.l||ns));};
         return (<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden"}}>
           <div className="hscroll" style={{display:"flex",gap:4,padding:"6px 12px",overflowX:"auto",flexShrink:0,borderBottom:`1px solid ${B.border}`}}>
             {SO.filter(s => s !== "ajuste" || (scc["ajuste"]||0) > 0).map(s=>{const c2=STAGE_CFG[s]||{l:s,c:"#888"};const cnt=scc[s]||0;const act=cStage===s;return <button key={s} onClick={()=>setCStage(s)} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:act?`2px solid ${c2.c}`:`1.5px solid ${B.border}`,background:act?`${c2.c}12`:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:act?700:500,color:act?c2.c:B.muted,whiteSpace:"nowrap",flexShrink:0}}><span style={{width:6,height:6,borderRadius:3,background:c2.c,flexShrink:0}}/>{c2.l}{cnt>0&&<span style={{fontSize:9,fontWeight:700,color:act?c2.c:B.muted,background:act?`${c2.c}20`:`${B.muted}10`,padding:"1px 6px",borderRadius:10}}>{cnt}</span>}</button>;})}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
             {stIt.length===0&&<div style={{textAlign:"center",padding:"30px 0"}}><p style={{fontSize:12,fontWeight:600,color:B.muted,opacity:0.5}}>Nenhuma demanda em \"{cCfg.l}\"</p></div>}
-            {stIt.map(d=>{const pC=d.priority==="alta"?(B.red||"#EF4444"):d.priority==="média"?(B.orange||"#F59E0B"):(B.green||"#10B981");const isExp=expandedId===d.id;const stgs=getStages(d.type||"social");const sIdx=stgs.indexOf(d.stage);const canN=sIdx<stgs.length-1;const canP=sIdx>0;
+            {stIt.map(d=>{const pC=d.priority==="alta"?(B.red||"#EF4444"):d.priority==="média"?(B.orange||"#F59E0B"):(B.green||"#10B981");const isExp=expandedId===d.id;const stgs=getStages(d.type||"social");const sIdx=stgs.indexOf(d.stage);const canN=sIdx<stgs.length-1&&d.stage!=="scheduled"&&d.stage!=="published"&&d.stage!=="client";const canP=sIdx>0&&d.stage!=="scheduled"&&d.stage!=="published";
               const updStep=(sk,data)=>{const ns={...(d.steps||{}),[sk]:{...(d.steps?.[sk]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
               const updField=(fld,val)=>{setDemands(p=>p.map(x=>x.id===d.id?{...x,[fld]:val}:x));if(d.supaId){const sf=fld==="network"?"networks":fld;supaUpdateDemand(d.supaId,{[sf]:val});}};
               return(<div key={d.id} onDragOver={e=>{if(e.dataTransfer.types.includes("application/uh-drive-file")){e.preventDefault();e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.background=B.accent+"08";}}} onDragLeave={e=>{e.currentTarget.style.borderColor=isExp?cCfg.c:B.border;e.currentTarget.style.background=B.bgCard;}} onDrop={e=>{const raw=e.dataTransfer.getData("application/uh-drive-file");if(!raw)return;e.preventDefault();e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bgCard;try{const f=JSON.parse(raw);const nf=[...(d.steps?.design?.files||[]),{name:f.name,url:f.webViewLink||"",driveId:f.id,fromDrive:true}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});setExpandedId(d.id);if(cStage!=="design")setCStage("design");showToast("Anexado do Drive: "+f.name);}catch(err){console.error(err);}}} style={{background:B.bgCard,borderRadius:14,border:"1px solid "+(isExp?cCfg.c:B.border),overflow:"hidden",transition:"all .15s"}}>
@@ -11558,7 +11563,7 @@ REGRAS TÉCNICAS:
                                 );
                               })()
                             :si<stages.length-1?
-                              <button onClick={(e)=>{e.stopPropagation();const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
+                              <button onClick={(e)=>{e.stopPropagation();if(d.stage==="scheduled"||d.stage==="published"){showToast("⚠️ Não é possível mover");return;}const stages2=getStages(d.type);const idx2=stages2.indexOf(d.stage);if(idx2<stages2.length-1){const next=stages2[idx2+1];setDemands(p=>p.map(x=>x.id===d.id?syncMilestones({...x,stage:next},next):x));if(d.supaId)supaUpdateDemand(d.supaId,{stage:next});showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);supaCreateNotificationForAll("demand_updated",`Demanda avançou: ${STAGE_CFG[next].l}`,`${d.title||d.type}`,"\u{1F504}",null,user?.id);}}} style={{width:"100%",marginTop:8,padding:"8px 0",borderRadius:10,background:cfg.c,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>
                                 Avançar para {stageLabels[stages[si+1]]||"próxima"} →
                               </button>
                             :
@@ -11979,7 +11984,7 @@ REGRAS TÉCNICAS:
         const _stages = getStages(sel.type);
         const _stIdx = _stages.indexOf(sel.stage);
         const _canNext = _stIdx < _stages.length - 1 && sel.stage !== "scheduled" && sel.stage !== "published" && sel.stage !== "client";
-        const _canPrev = _stIdx > 0;
+        const _canPrev = _stIdx > 0 && sel.stage !== "scheduled" && sel.stage !== "published";
         return <>
         <div onClick={() => { setSel(null); setEditMode(false); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
         <div style={{ position:"fixed", top:0, right:0, bottom:0, width:600, maxWidth:"90vw", background:"#fff", zIndex:901, boxShadow:"-8px 0 40px rgba(0,0,0,0.15)", display:"flex", flexDirection:"column", animation:"slideInRight .25s ease both" }}>
