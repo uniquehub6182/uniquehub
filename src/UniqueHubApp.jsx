@@ -10132,8 +10132,11 @@ REGRAS TÉCNICAS:
                   if (imgFiles.length === 0) { showToast("Nenhuma mídia disponível"); return; }
                   setPubLoading(true);
                   const isReelsType = type === "REELS";
-                  const imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                  let imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
                   const pubCoverUrl = isReelsType ? mediaInfo.coverUrl : null;
+                  /* If video is a cloud link, proxy through R2 first */
+                  const vidFile = isReelsType && mediaInfo.vids[0];
+                  const isCloud = vidFile?.isCloudLink;
                   const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                   const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                   const clientId = clientObj.supaId || clientObj.id;
@@ -10178,6 +10181,18 @@ REGRAS TÉCNICAS:
                     const taskId = addBgTask("publish", `Publicando ${savedSel.client}...`);
                     (async () => {
                       try {
+                        /* Proxy cloud link through R2 if needed */
+                        if (isCloud && imgUrls[0]) {
+                          updateBgTask(taskId, { msg: "Baixando do cloud → R2..." });
+                          const proxyRes = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+                            method: "POST",
+                            headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ sourceUrl: imgUrls[0], fileName: "video.mp4" }),
+                          });
+                          const proxyData = await proxyRes.json();
+                          if (proxyData.publicUrl) { imgUrls = [proxyData.publicUrl]; }
+                          else { updateBgTask(taskId, { status:"error", msg: proxyData.error || "Proxy falhou" }); setTimeout(()=>removeBgTask(taskId),8000); return; }
+                        }
                         updateBgTask(taskId, { msg: isReelsType ? "Processando vídeo na Meta..." : "Publicando..." });
                         let r;
                         if (platform === "instagram") {
@@ -10249,8 +10264,9 @@ REGRAS TÉCNICAS:
                         }
                         setPubLoading(true);
                         const isReels = sel.format === "Reels" || sel.format === "Shorts";
-                        const savedImgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                        let savedImgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
                         const savedCoverUrl = isReels ? mediaInfo.coverUrl : null;
+                        const isCloudVid = isReels && mediaInfo.vids[0]?.isCloudLink;
                         const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                         const savedCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                         const savedClientId = clientObj.supaId || clientObj.id;
@@ -10264,6 +10280,18 @@ REGRAS TÉCNICAS:
                         const taskId = addBgTask("publish", `Publicando ${savedClient}...`);
                         (async () => {
                           try {
+                            /* Proxy cloud link through R2 if needed */
+                            if (isCloudVid && savedImgUrls[0]) {
+                              updateBgTask(taskId, { msg: "Baixando do cloud → R2..." });
+                              const pRes = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+                                method: "POST",
+                                headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+                                body: JSON.stringify({ sourceUrl: savedImgUrls[0], fileName: "video.mp4" }),
+                              });
+                              const pData = await pRes.json();
+                              if (pData.publicUrl) { savedImgUrls = [pData.publicUrl]; }
+                              else { updateBgTask(taskId, { status:"error", msg: pData.error || "Proxy falhou" }); setTimeout(()=>removeBgTask(taskId),8000); return; }
+                            }
                             updateBgTask(taskId, { msg: isReels ? "Processando vídeo na Meta..." : "Publicando..." });
                             let igOk = false, fbOk = false, igErr = "", fbErr = "";
                             if (savedHasIG) { const r = await publishToInstagram(savedClientId, savedImgUrls, savedCaption, savedType, null, savedCoverUrl); if (r?.error) igErr = r.error; else igOk = true; }
@@ -10470,8 +10498,9 @@ REGRAS TÉCNICAS:
                 if (pubLoading) return;
                 setPubLoading(true);
                 const isReelsType = type === "REELS";
-                const imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                let imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
                 const pubCoverUrl = isReelsType ? mediaInfo.coverUrl : null;
+                const isCloudVid2 = isReelsType && mediaInfo.vids[0]?.isCloudLink;
                 const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
                 const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
                 const clientId = clientObj.supaId || clientObj.id;
@@ -10512,6 +10541,18 @@ REGRAS TÉCNICAS:
                   const taskId = addBgTask("publish", `Publicando ${savedClient}...`);
                   (async () => {
                     try {
+                      /* Proxy cloud link through R2 if needed */
+                      if (isCloudVid2 && imgUrls[0]) {
+                        updateBgTask(taskId, { msg: "Baixando do cloud → R2..." });
+                        const pRes = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+                          method: "POST",
+                          headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({ sourceUrl: imgUrls[0], fileName: "video.mp4" }),
+                        });
+                        const pData = await pRes.json();
+                        if (pData.publicUrl) { imgUrls = [pData.publicUrl]; }
+                        else { updateBgTask(taskId, { status:"error", msg: pData.error || "Proxy falhou" }); setTimeout(()=>removeBgTask(taskId),8000); return; }
+                      }
                       updateBgTask(taskId, { msg: isReelsType ? "Processando vídeo na Meta..." : "Publicando..." });
                       let r;
                       if (platform === "instagram") {
@@ -11726,8 +11767,18 @@ REGRAS TÉCNICAS:
                     const publicUrls = [];
                     for (const f of (savedForm._files||[])) {
                       if (f.isCloudLink && f.url) {
-                        /* Cloud link — no upload needed, use URL directly */
-                        publicUrls.push(f.url);
+                        /* Cloud link — proxy through R2 (server downloads from cloud, uploads to R2) */
+                        updateBgTask(taskId, { msg: "Baixando do cloud → R2..." });
+                        try {
+                          const proxyRes = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+                            method: "POST",
+                            headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ sourceUrl: f.url, fileName: f.name || "video.mp4" }),
+                          });
+                          const proxyData = await proxyRes.json();
+                          if (proxyData.publicUrl) { publicUrls.push(proxyData.publicUrl); }
+                          else { updateBgTask(taskId, { status:"error", msg: proxyData.error || "Proxy falhou" }); setTimeout(()=>removeBgTask(taskId),5000); return; }
+                        } catch(proxyErr) { updateBgTask(taskId, { status:"error", msg: "Erro no proxy: " + proxyErr.message }); setTimeout(()=>removeBgTask(taskId),5000); return; }
                       } else if (f.file) {
                         const url = await uploadToStorage(f.file, `quick-publish/${clientId}`);
                         if (url) publicUrls.push(url);
