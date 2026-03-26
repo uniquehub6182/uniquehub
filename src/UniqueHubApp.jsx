@@ -9868,9 +9868,9 @@ REGRAS TÉCNICAS:
                 </div>
               )}
               {/* Thumbnail grid for images */}
-              {sel.steps?.design?.files.some(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
+              {sel.steps?.design?.files?.some(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")) && (
                 <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(100px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
-                  {sel.steps?.design?.files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
+                  {sel.steps?.design?.files?.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1/1", border:`1px solid ${B.border}` }}>
                       <img src={f.url} alt={f.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     </a>
@@ -9878,7 +9878,7 @@ REGRAS TÉCNICAS:
                 </div>
               )}
               <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {sel.steps?.design?.files.map((f,i)=>{
+                {(sel.steps?.design?.files||[]).map((f,i)=>{
                   const fName = typeof f === "string" ? f : (f.name || "arquivo");
                   const fUrl = f.url || null;
                   const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
