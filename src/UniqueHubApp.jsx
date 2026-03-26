@@ -16193,7 +16193,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
       id: Date.now(), type: eventType, title: form.title.trim(), time: form.time || "09:00",
       color: et?.c || B.blue, day: selDay, month: curMonth, year: curYear,
       createdBy: userName, createdById: propUser?.id || null, notes: form.notes || "",
-      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: isClientView ? "client" : (form.meetingScope || "internal"), participants: form.participants || [], client: isClientView ? clientFilter : (form.client || ""), clientContact: form.clientContact || "", location: form.location || "" }),
+      ...(eventType === "meeting" && { meetingMode: form.meetingMode || "online", meetingScope: isClientView ? "client" : (form.meetingScope || "internal"), participants: form.participants || [], client: isClientView ? clientFilter : (form.client || ""), clientContact: form.clientContact || "", location: form.location || "", equipment: form.equipment || [] }),
       ...(eventType === "recording" && { client: isClientView ? clientFilter : (form.client || ""), participants: form.participants || [], location: form.location || "", equipment: form.equipment || [] }),
       ...(eventType === "event" && { client: isClientView ? clientFilter : "", participants: form.participants || [], location: form.location || "" }),
       ...(eventType === "reminder" && { client: isClientView ? clientFilter : "" }),
@@ -16459,8 +16459,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           </Card>
         )}
 
-        {/* Equipment (recording only) — hidden for client */}
-        {!isClientView && eventType === "recording" && (
+        {/* Equipment (recording + meeting) — hidden for client */}
+        {!isClientView && (eventType === "recording" || eventType === "meeting") && (
           <Card style={{ marginBottom:8 }}>
             <label className="sl" style={{ display:"block", marginBottom:6 }}>Equipamentos</label>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
