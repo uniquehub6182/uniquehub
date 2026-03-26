@@ -8176,7 +8176,7 @@ REGRAS TÉCNICAS:
         setIpProgress("Processando com Gemini Flash...");
         const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + keys.gemini_key, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ role: "user", parts: isPdf ? [{ inlineData: { mimeType: "application/pdf", data: base64 } }, { text: prompt }] : [{ text: prompt + "\n\n" + textContent }] }], generationConfig: { maxOutputTokens: 8000 } })
+          body: JSON.stringify({ contents: [{ role: "user", parts: isPdf ? [{ inlineData: { mimeType: "application/pdf", data: base64 } }, { text: prompt }] : [{ text: prompt + "\n\n" + textContent }] }], generationConfig: { maxOutputTokens: 16000 } })
         });
         const d = await r.json();
         return d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -8189,7 +8189,7 @@ REGRAS TÉCNICAS:
         ] : [{ type: "text", text: prompt + "\n\nCONTEÚDO DO DOCUMENTO:\n" + textContent }] }];
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST", headers: { "Content-Type": "application/json", "x-api-key": keys.claude_key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages })
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 16000, messages })
         });
         const d = await r.json();
         console.log("[Munique] Claude response:", r.status, d?.error ? JSON.stringify(d.error) : "OK", "text length:", (d?.content?.[0]?.text||"").length);
@@ -8200,7 +8200,7 @@ REGRAS TÉCNICAS:
         setIpProgress("Processando com GPT-4o...");
         const r = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + keys.openai_key },
-          body: JSON.stringify({ model: "gpt-4o", max_tokens: 8000, messages: [{ role: "user", content: prompt + "\n\nCONTEÚDO:\n" + (textContent || "(PDF)") }] })
+          body: JSON.stringify({ model: "gpt-4o", max_tokens: 16000, messages: [{ role: "user", content: prompt + "\n\nCONTEÚDO:\n" + (textContent || "(PDF)") }] })
         });
         const d = await r.json();
         console.log("[Munique] OpenAI response:", r.status, d?.error ? JSON.stringify(d.error) : "OK");
@@ -8234,12 +8234,55 @@ REGRAS TÉCNICAS:
       setIpProgress("Organizando posts...");
       let posts = [];
       try {
-        const clean = aiText.replace(/```json|```/g, "").trim();
+        let clean = aiText.replace(/```json|```/g, "").trim();
         const startBracket = clean.indexOf("[");
         const endBracket = clean.lastIndexOf("]");
         if (startBracket !== -1 && endBracket !== -1) {
-          posts = JSON.parse(clean.substring(startBracket, endBracket + 1));
-        } else { posts = JSON.parse(clean); }
+          clean = clean.substring(startBracket, endBracket + 1);
+        }
+        /* Try direct parse first */
+        try {
+          posts = JSON.parse(clean);
+        } catch (firstErr) {
+          /* JSON repair: fix common AI output issues */
+          let repaired = clean;
+          /* Fix unescaped newlines inside strings */
+          repaired = repaired.replace(/(?<=:\s*")((?:[^"\\]|\\.)*)(?=")/gs, (m) => m.replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t"));
+          /* Fix trailing commas before } or ] */
+          repaired = repaired.replace(/,\s*([\]}])/g, "$1");
+          /* Fix unescaped quotes inside strings — replace inner double quotes with escaped */
+          repaired = repaired.replace(/"([^"]*?)"/g, (match, content) => {
+            /* Only fix if it looks like it has unescaped inner quotes */
+            if (content.includes('"') && !content.includes('\\"')) {
+              return '"' + content.replace(/"/g, '\\"') + '"';
+            }
+            return match;
+          });
+          try {
+            posts = JSON.parse(repaired);
+            console.log("[AI Parse] Repaired JSON successfully");
+          } catch (secondErr) {
+            /* Last resort: try to extract individual JSON objects */
+            const objectMatches = [];
+            let depth = 0, start = -1;
+            for (let i = 0; i < clean.length; i++) {
+              if (clean[i] === "{" && depth === 0) start = i;
+              if (clean[i] === "{") depth++;
+              if (clean[i] === "}") depth--;
+              if (depth === 0 && start !== -1) {
+                const objStr = clean.substring(start, i + 1);
+                try { objectMatches.push(JSON.parse(objStr)); } catch { /* skip malformed */ }
+                start = -1;
+              }
+            }
+            if (objectMatches.length > 0) {
+              posts = objectMatches;
+              console.log("[AI Parse] Extracted", posts.length, "objects individually");
+            } else {
+              throw firstErr; /* Re-throw original error */
+            }
+          }
+        }
       } catch(e) {
         console.error("Parse error:", e, aiText.substring(0, 200));
         showToast("Erro ao processar resposta da IA. Tente novamente.");
