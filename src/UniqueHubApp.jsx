@@ -9584,7 +9584,7 @@ REGRAS TÉCNICAS:
                           </button>
                         )}
                         {coverFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{coverFile.name||"capa.jpg"}</p>}
-                        <p style={{ fontSize:8, color:B.muted, marginTop:2, textAlign:"center" }}>JPG, PNG ou WebP · 9:16</p>
+                        <p style={{ fontSize:10, color:B.accent, marginTop:4, textAlign:"center", fontWeight:600 }}>JPG, PNG ou WebP · 9:16</p>
                       </div>
                       {/* RIGHT: Video */}
                       <div>
@@ -9601,7 +9601,7 @@ REGRAS TÉCNICAS:
                           </button>
                         )}
                         {vidFile && <p style={{ fontSize:9, color:B.muted, marginTop:4, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{vidFile.name||"video.mp4"}{vidFile.size?` · ${(vidFile.size/1048576).toFixed(0)}MB`:""}</p>}
-                        <p style={{ fontSize:8, color:B.muted, marginTop:2, textAlign:"center" }}>MP4 ou MOV · 9:16 (1080×1920)</p>
+                        <p style={{ fontSize:10, color:B.blue||"#3B82F6", marginTop:4, textAlign:"center", fontWeight:600 }}>MP4 ou MOV · 9:16 (1080×1920)</p>
                       </div>
                     </div>
                   </div>;
