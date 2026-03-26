@@ -23688,15 +23688,16 @@ function ClientMatch4Biz({ onBack, user }) {
       try {
         /* Try matching by contact_email first, then by name */
         let cl = null;
-        const { data: byEmail } = await supabase.from("clients").select("*").eq("contact_email", user.email).maybeSingle();
+        const { data: byEmailArr } = await supabase.from("clients").select("*").eq("contact_email", user.email).limit(1);
+        const byEmail = byEmailArr?.[0] || null;
         if (byEmail) { cl = byEmail; }
         else if (user.name) {
-          const { data: byName } = await supabase.from("clients").select("*").ilike("name", `%${user.name}%`).eq("status", "ativo").maybeSingle();
-          if (byName) cl = byName;
+          const { data: byNameArr } = await supabase.from("clients").select("*").ilike("name", `%${user.name}%`).eq("status", "ativo").limit(1);
+          if (byNameArr?.[0]) cl = byNameArr[0];
         }
         if (!cl && user.company) {
-          const { data: byCompany } = await supabase.from("clients").select("*").ilike("name", `%${user.company}%`).eq("status", "ativo").maybeSingle();
-          if (byCompany) cl = byCompany;
+          const { data: byCompanyArr } = await supabase.from("clients").select("*").ilike("name", `%${user.company}%`).eq("status", "ativo").limit(1);
+          if (byCompanyArr?.[0]) cl = byCompanyArr[0];
         }
         if (!cl) { setLoading(false); return; }
         setMyClient(cl);
@@ -24881,7 +24882,8 @@ function ClientOnboarding({ onComplete, onBack }) {
     1: { field:"_code", validate: (v) => v.trim().length >= 4 ? null : "O código precisa ter pelo menos 4 caracteres.", next: async (val) => {
       /* Validate access code against clients table */
       if (!supabase) { await addBot("Erro de conexão. Tente novamente.", 500); return "retry"; }
-      const { data: clientMatch } = await supabase.from("clients").select("id,name,access_code").eq("access_code", val.trim().toUpperCase()).maybeSingle();
+      const { data: clientMatchArr } = await supabase.from("clients").select("id,name,access_code").eq("access_code", val.trim().toUpperCase()).limit(1);
+      const clientMatch = clientMatchArr?.[0] || null;
       if (!clientMatch) { await addBot("Código inválido. Verifique com sua agência e tente novamente.", 600); return "retry"; }
       setValidatedClient(clientMatch);
       setData(prev => ({ ...prev, company: clientMatch.name }));
@@ -24954,8 +24956,10 @@ function ClientOnboarding({ onComplete, onBack }) {
         } else {
           /* Fallback: search by email or name */
           try {
-            const { data: existingByEmail } = await supabase.from("clients").select("id").eq("contact_email", data.email).maybeSingle();
-            const { data: existingByName } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).maybeSingle() : { data: null };
+            const { data: existingByEmailArr } = await supabase.from("clients").select("id").eq("contact_email", data.email).limit(1);
+            const existingByEmail = existingByEmailArr?.[0] || null;
+            const { data: existingByNameArr } = !existingByEmail ? await supabase.from("clients").select("id").ilike("name", data.company || data.name).limit(1) : { data: null };
+            const existingByName = existingByNameArr?.[0] || null;
             const existingClient = existingByEmail || existingByName;
             if (existingClient) {
               await supabase.from("clients").update({ contact_email: data.email, contact_name: data.name, contact_phone: data.phone, status: "ativo" }).eq("id", existingClient.id);
@@ -25175,8 +25179,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
       let clId = linkedId;
       if (!clId) {
-        const { data: cl } = await supabase.from("clients").select("id").eq("contact_email", user.email).maybeSingle();
-        clId = cl?.id;
+        const { data: clArr } = await supabase.from("clients").select("id").eq("contact_email", user.email).limit(1);
+        clId = clArr?.[0]?.id;
       }
       if (!clId) return;
       const { data: scores } = await supabase.from("client_scores").select("points").eq("client_id", clId);
