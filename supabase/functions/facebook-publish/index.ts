@@ -103,7 +103,7 @@ serve(async (req) => {
 
       /* Step 3: Finish and publish */
       console.log(`[FB Reels] Step 3: Finishing...`);
-      const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
+      const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId, video_state: "PUBLISHED" });
       if (caption) finishParams.append("description", caption);
       if (urls.length > 1 && urls[1]) finishParams.append("thumb", urls[1]);
       const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });

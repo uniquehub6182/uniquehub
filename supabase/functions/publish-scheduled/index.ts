@@ -138,7 +138,7 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
     });
 
     /* Step 3: Finish */
-    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
+    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId, video_state: "PUBLISHED" });
     if (caption) finishParams.append("description", caption);
     if (imageUrls.length > 1 && imageUrls[1]) finishParams.append("thumb", imageUrls[1]);
     const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
