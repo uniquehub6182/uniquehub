@@ -66,21 +66,52 @@ serve(async (req) => {
     console.log(`[FB Publish] page: ${pageId}, type: ${type}, urls: ${urls.length}, url[0]: ${(urls[0]||"").substring(0, 80)}`);
 
     if (type === "REELS") {
-      /* ── REELS/VIDEO: use /videos endpoint with file_url (Facebook downloads directly) ── */
+      /* ── REELS: 3-step upload with STREAMING (no memory buffering) ── */
       const videoUrl = urls[0];
       if (!videoUrl) throw new Error("No video URL for Reels");
 
-      const params = new URLSearchParams({ access_token: pageToken, file_url: videoUrl });
-      if (caption) params.append("description", caption);
-      if (urls.length > 1 && urls[1]) params.append("thumb", urls[1]);
+      /* Step 1: Initialize */
+      console.log(`[FB Reels] Step 1: Init upload`);
+      const initParams = new URLSearchParams({ upload_phase: "start", access_token: pageToken });
+      const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: initParams });
+      const initData = await initRes.json();
+      if (initData.error) throw new Error(`Init: ${initData.error.message}`);
+      const videoId = initData.video_id;
+      const uploadUrl = initData.upload_url;
+      if (!videoId || !uploadUrl) throw new Error("Missing video_id/upload_url");
+      console.log(`[FB Reels] Got video_id=${videoId}`);
 
-      console.log(`[FB Reels] POST /${pageId}/videos file_url=${videoUrl.substring(0, 60)}...`);
-      const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/videos`, { method: "POST", body: params });
-      const data = await res.json();
-      console.log("[FB Reels] Response:", JSON.stringify(data).substring(0, 400));
-      if (data.error) throw new Error(`FB Reels error: ${data.error.message} (code: ${data.error.code})`);
+      /* Step 2: Stream video directly (download→upload pipe, zero buffering) */
+      console.log(`[FB Reels] Step 2: Streaming from ${videoUrl.substring(0, 60)}...`);
+      const videoRes = await fetch(videoUrl);
+      if (!videoRes.ok) throw new Error(`Download failed: ${videoRes.status}`);
+      const fileSize = videoRes.headers.get("content-length") || "0";
 
-      return json({ success: true, media_id: data.id, message: "Reels publicado no Facebook!" });
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `OAuth ${pageToken}`,
+          "offset": "0",
+          "file_size": fileSize,
+          "Content-Type": "application/octet-stream",
+        },
+        body: videoRes.body, /* Stream directly — no memory buffering! */
+      });
+      const uploadData = await uploadRes.json();
+      console.log("[FB Reels] Upload response:", JSON.stringify(uploadData).substring(0, 200));
+      if (uploadData.error) throw new Error(`Upload: ${uploadData.error.message}`);
+
+      /* Step 3: Finish and publish */
+      console.log(`[FB Reels] Step 3: Finishing...`);
+      const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
+      if (caption) finishParams.append("description", caption);
+      if (urls.length > 1 && urls[1]) finishParams.append("thumb", urls[1]);
+      const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
+      const finishData = await finishRes.json();
+      console.log("[FB Reels] Finish response:", JSON.stringify(finishData).substring(0, 200));
+      if (finishData.error) throw new Error(`Finish: ${finishData.error.message}`);
+
+      return json({ success: true, media_id: videoId, message: "Reels publicado no Facebook!" });
 
     } else if (type === "STORIES") {
       /* ── STORIES ── */

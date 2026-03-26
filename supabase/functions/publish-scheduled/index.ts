@@ -111,22 +111,41 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
   if (!pageToken || !pageId) throw new Error("Token Facebook não encontrado");
 
   const type = (mediaType || "FEED").toUpperCase();
+  console.log(`[publishFacebook v3] type=${type} urls=${imageUrls.length} url0=${(imageUrls[0]||"").substring(0,60)}`);
 
   if (type === "REELS") {
-    /* ── REELS/VIDEO: use /videos endpoint with file_url (no memory needed) ── */
+    /* ── REELS: 3-step upload with STREAMING (no memory buffering) ── */
     const videoUrl = imageUrls[0];
     if (!videoUrl) throw new Error("No video URL for Reels");
-    console.log(`[FB Reels] POST /${pageId}/videos file_url`);
 
-    const params = new URLSearchParams({ access_token: pageToken, file_url: videoUrl });
-    if (caption) params.append("description", caption);
-    if (imageUrls.length > 1 && imageUrls[1]) params.append("thumb", imageUrls[1]);
-    const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/videos`, { method: "POST", body: params });
-    const data = await res.json();
-    console.log("[FB Reels] Response:", JSON.stringify(data).substring(0, 200));
-    if (data.error) throw new Error(data.error.message);
+    /* Step 1: Init */
+    const initParams = new URLSearchParams({ upload_phase: "start", access_token: pageToken });
+    const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: initParams });
+    const initData = await initRes.json();
+    if (initData.error) throw new Error(initData.error.message);
+    const videoId = initData.video_id;
+    const uploadUrl = initData.upload_url;
 
-    return { success: true, media_id: data.id };
+    /* Step 2: Stream video directly (pipe download→upload, zero buffering) */
+    console.log(`[FB Reels Sched] Streaming video...`);
+    const videoRes = await fetch(videoUrl);
+    if (!videoRes.ok) throw new Error(`Download failed: ${videoRes.status}`);
+    const fileSize = videoRes.headers.get("content-length") || "0";
+    await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Authorization": `OAuth ${pageToken}`, "offset": "0", "file_size": fileSize, "Content-Type": "application/octet-stream" },
+      body: videoRes.body, /* Stream — no memory buffering */
+    });
+
+    /* Step 3: Finish */
+    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
+    if (caption) finishParams.append("description", caption);
+    if (imageUrls.length > 1 && imageUrls[1]) finishParams.append("thumb", imageUrls[1]);
+    const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
+    const finishData = await finishRes.json();
+    if (finishData.error) throw new Error(finishData.error.message);
+
+    return { success: true, media_id: videoId };
   }
 
   /* ── FEED/default: photo post ── */
