@@ -10480,11 +10480,21 @@ REGRAS TÉCNICAS:
           {/* ── 8. PUBLICADO ── */}
           {renderSection("published", <>
             {sel.stage === "published" && <div style={{ textAlign:"center", padding:12 }}>
-              {(() => { const pubStep = Object.values(sel.steps||{}).find(s=>s.metaPostId); const metaId = pubStep?.metaPostId; return metaId ? (
-                <button onClick={async()=>{if(!confirm("Excluir publicação do Instagram/Facebook? Isso é irreversível."))return;const cId=sel.client_id||CDATA.find(c=>c.name===sel.client)?.supaId;if(!cId){showToast("Cliente não encontrado");return;}showToast("Excluindo publicação...");const r=await deleteFromMeta(cId,metaId);if(r?.success){showToast("Publicação excluída das redes sociais ✓");const ns={...sel.steps};Object.keys(ns).forEach(k=>{if(ns[k]?.metaPostId===metaId)ns[k]={...ns[k],metaPostId:"",deletedAt:new Date().toISOString()};});setDemands(p=>p.map(d=>d.id===sel.id?{...d,steps:ns}:d));if(sel.supaId)supaUpdateDemand(sel.supaId,{steps:ns});}else showToast("Erro: "+(r?.error||"falha ao excluir"));}} style={{ marginTop:8, padding:"10px 20px", borderRadius:12, background:`${B.red||"#EF4444"}10`, border:`1px solid ${B.red||"#EF4444"}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red||"#EF4444", display:"inline-flex", alignItems:"center", gap:6 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                  Excluir das redes sociais
-                </button>
+              {(() => { const pubStep = Object.values(sel.steps||{}).find(s=>s.metaPostId); const metaId = pubStep?.metaPostId; const fbPostId = pubStep?.fbPostId; const platform = pubStep?.platform || "";
+                const isIgOnly = metaId && !fbPostId && /^1[78]\d{10,}$/.test(metaId);
+                return metaId || fbPostId ? (
+                <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:6, alignItems:"center" }}>
+                  {/* FB delete button — only if we have a FB post ID */}
+                  {(fbPostId || !isIgOnly) && <button onClick={async()=>{if(!confirm("Excluir publicação do Facebook? Isso é irreversível."))return;const cId=sel.client_id||CDATA.find(c=>c.name===sel.client)?.supaId;if(!cId){showToast("Cliente não encontrado");return;}showToast("Excluindo publicação...");const delId=fbPostId||metaId;const r=await deleteFromMeta(cId,delId);if(r?.success){showToast("Publicação excluída do Facebook ✓");const ns={...sel.steps};Object.keys(ns).forEach(k=>{if(ns[k]?.metaPostId===metaId||ns[k]?.fbPostId===fbPostId)ns[k]={...ns[k],metaPostId:"",fbPostId:"",deletedAt:new Date().toISOString()};});setDemands(p=>p.map(d=>d.id===sel.id?{...d,steps:ns}:d));if(sel.supaId)supaUpdateDemand(sel.supaId,{steps:ns});}else{const errMsg=r?.error||"falha ao excluir";if(errMsg.includes("does not exist")||errMsg.includes("Unsupported"))showToast("Post não encontrado no Facebook. Pode já ter sido excluído.");else showToast("Erro: "+errMsg);}}} style={{ padding:"10px 20px", borderRadius:12, background:`${B.red||"#EF4444"}10`, border:`1px solid ${B.red||"#EF4444"}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red||"#EF4444", display:"inline-flex", alignItems:"center", gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    Excluir do Facebook
+                  </button>}
+                  {/* IG info — Instagram API doesn't support deleting posts */}
+                  {isIgOnly && <div style={{ padding:"10px 16px", borderRadius:12, background:`${B.muted}06`, border:`1px solid ${B.border}`, fontSize:11, color:B.muted, textAlign:"center", lineHeight:1.5 }}>
+                    <p style={{ fontWeight:700, marginBottom:4 }}>📸 Post publicado no Instagram</p>
+                    <p>A API do Instagram não permite excluir posts. Para remover, exclua diretamente pelo app do Instagram.</p>
+                  </div>}
+                </div>
               ) : null; })()}
               {sel.steps?.igPublished?.scheduled ? <>
                 <div style={{ width:48, height:48, borderRadius:24, background:"#F59E0B15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
