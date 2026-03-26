@@ -9643,9 +9643,9 @@ REGRAS TÉCNICAS:
                                 setTimeout(() => {
                                   const val = e.target.value.trim();
                                   if (!val) return;
-                                  const directUrl = convertCloudLink(val);
-                                  const source = val.includes("drive.google") ? "Google Drive" : val.includes("1drv.ms")||val.includes("onedrive") ? "OneDrive" : val.includes("dropbox") ? "Dropbox" : "Link direto";
-                                  updateStep("design", { files: [...allF, { name: `Vídeo (${source})`, url: directUrl, type:"video/mp4", isCloudLink: true }], by: user?.name||"", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
+                                  const source = val.includes("drive.google") ? "Google Drive" : val.includes("1drv.ms")||val.includes("onedrive")||val.includes("sharepoint") ? "OneDrive" : val.includes("dropbox") ? "Dropbox" : "Link direto";
+                                  /* Store original URL — server will resolve it */
+                                  updateStep("design", { files: [...allF, { name: `Vídeo (${source})`, url: val, originalUrl: val, type:"video/mp4", isCloudLink: true }], by: user?.name||"", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
                                   e.target.value = "";
                                   showToast(`✅ Link convertido (${source})`);
                                 }, 100);
@@ -11699,9 +11699,8 @@ REGRAS TÉCNICAS:
                                   setTimeout(() => {
                                     const val = e.target.value.trim();
                                     if (!val) return;
-                                    const directUrl = convertCloudLink(val);
-                                    const source = val.includes("drive.google") ? "Google Drive" : val.includes("1drv.ms")||val.includes("onedrive") ? "OneDrive" : val.includes("dropbox") ? "Dropbox" : "Link direto";
-                                    setQpForm(p => ({...p, _files:[{name:`Vídeo (${source})`, url:directUrl, isCloudLink:true}], _videoCloudUrl:directUrl}));
+                                    const source = val.includes("drive.google") ? "Google Drive" : val.includes("1drv.ms")||val.includes("onedrive")||val.includes("sharepoint") ? "OneDrive" : val.includes("dropbox") ? "Dropbox" : "Link direto";
+                                    setQpForm(p => ({...p, _files:[{name:`Vídeo (${source})`, url:val, originalUrl:val, isCloudLink:true}]}));
                                     e.target.value = "";
                                     showToast(`✅ Link convertido (${source})`);
                                   }, 100);

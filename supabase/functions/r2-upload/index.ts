@@ -42,12 +42,53 @@ async function generatePresignedPutUrl(endpoint: string, bucket: string, key: st
 }
 
 /* Proxy: download from cloud URL → upload to R2 (server-to-server, fast) */
+/* Convert cloud sharing links to direct download URLs (server-side) */
+async function resolveCloudUrl(url: string): Promise<string> {
+  /* OneDrive / 1drv.ms — use sharing API with proper base64 */
+  if (url.includes("1drv.ms") || url.includes("onedrive.live.com") || url.includes("sharepoint.com") || url.includes("my.sharepoint.com")) {
+    /* First resolve short URL to get the real sharing URL */
+    let shareUrl = url;
+    if (url.includes("1drv.ms")) {
+      const redirectResp = await fetch(url, { redirect: "manual" });
+      const location = redirectResp.headers.get("location");
+      if (location) shareUrl = location;
+    }
+    /* Encode for OneDrive sharing API */
+    const base64 = btoa(shareUrl).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const apiUrl = `https://api.onedrive.com/v1.0/shares/u!${base64}/root/content`;
+    console.log("OneDrive API URL:", apiUrl);
+    /* Try the API first */
+    const apiResp = await fetch(apiUrl, { redirect: "follow" });
+    if (apiResp.ok) return apiUrl; /* Will re-fetch in proxyToR2 */
+    console.log("OneDrive API failed:", apiResp.status, "trying download param...");
+    /* Fallback: modify the resolved URL to force download */
+    if (shareUrl.includes("onedrive.live.com")) {
+      return shareUrl.replace("onedrive.live.com/?", "onedrive.live.com/download?").replace("onedrive.live.com/redir?", "onedrive.live.com/download?");
+    }
+    /* SharePoint: change to download endpoint */
+    if (shareUrl.includes("sharepoint.com")) {
+      return shareUrl.replace("/onedrive.aspx?", "/download.aspx?");
+    }
+    return shareUrl;
+  }
+  /* Google Drive */
+  const gMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (gMatch) return `https://drive.usercontent.google.com/download?id=${gMatch[1]}&export=download&confirm=t`;
+  return url;
+}
+
 async function proxyToR2(sourceUrl: string, key: string, endpoint: string, bucket: string, accessKeyId: string, secretKey: string, publicUrl: string) {
-  console.log("Proxy: downloading from", sourceUrl);
-  const resp = await fetch(sourceUrl, { redirect: "follow" });
+  /* Resolve cloud links to direct download URLs */
+  const directUrl = await resolveCloudUrl(sourceUrl);
+  console.log("Proxy: downloading from", directUrl);
+  const resp = await fetch(directUrl, { redirect: "follow" });
   if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
+  const ct = resp.headers.get("content-type") || "video/mp4";
+  /* Check if we got HTML instead of a file (auth page) */
+  if (ct.includes("text/html")) {
+    throw new Error("Arquivo não público. Configure o compartilhamento como 'Qualquer pessoa com o link pode visualizar'.");
+  }
   const blob = await resp.blob();
-  const ct = blob.type || "video/mp4";
   console.log(`Proxy: downloaded ${(blob.size/1048576).toFixed(1)}MB, uploading to R2...`);
   const signedUrl = await generatePresignedPutUrl(endpoint, bucket, key, accessKeyId, secretKey, ct);
   const upResp = await fetch(signedUrl, { method: "PUT", headers: { "Content-Type": ct }, body: blob });
