@@ -10243,13 +10243,16 @@ REGRAS TÉCNICAS:
                   }
                 };
 
-                const publishButtons = () => (
-                  <>
+                const publishButtons = () => {
+                  const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
+                  const igType = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
+                  const fbType = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
+                  const igLabel = isReelsFmt ? "IG Reels" : isStories ? "IG Story" : imgFiles.length > 1 ? "IG Carrossel" : "IG Feed";
+                  const fbLabel = isReelsFmt ? "FB Reels" : isStories ? "FB Story" : "Facebook";
+                  return <>
                   <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                    {hasIG && !isStories && <button disabled={pubLoading} onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#E1306C", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</>}</button>}
-                    {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
-                    {hasFB && !isStories && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
-                    {hasFB && isStories && <button onClick={()=>doPublish("facebook","STORIES")} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> Publicar FB Story</button>}
+                    {hasIG && <button disabled={pubLoading} onClick={()=>doPublish("instagram", igType)} style={{ flex:1, padding:"10px 0", borderRadius:10, background: isStories ? "linear-gradient(45deg, #f09433, #e6683c, #dc2743)" : "#E1306C", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {igLabel}</>}</button>}
+                    {hasFB && <button disabled={pubLoading} onClick={()=>doPublish("facebook", fbType)} style={{ flex:1, padding:"10px 0", borderRadius:10, background:"#1877F2", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:5, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} {fbLabel}</>}</button>}
                   </div>
                   {/* Manual posting helper for non-API networks */}
                   {(() => {
@@ -10269,7 +10272,7 @@ REGRAS TÉCNICAS:
                     );
                   })()}
                   </>
-                );
+                };
 
                 /* ── STEP 1: Initial choice — send to client or not? ── */
                 if (!clientMode) return (
