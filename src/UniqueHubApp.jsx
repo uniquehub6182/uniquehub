@@ -16612,16 +16612,17 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                   onDragLeave={e=>{e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";e.currentTarget.style.outline=selected?`2px solid ${B.accent}`:"none";}}
                   onDrop={async e=>{
                     e.preventDefault();
+                    e.stopPropagation();
                     e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";
                     e.currentTarget.style.outline=selected?`2px solid ${B.accent}`:"none";
                     try {
-                      const evId=parseInt(e.dataTransfer.getData("text/event-id"));
+                      const evId=e.dataTransfer.getData("text/event-id");
                       if(!evId)return;
-                      const ev=allEvents.find(x=>x.id===evId);
+                      const ev=allEvents.find(x=>String(x.id)===evId || String(x.supaId)===evId);
                       if(!ev||ev.day===d)return;
                       const oldDay=ev.day;
-                      setEvents(prev=>prev.map(x=>x.id===evId?{...x,day:d}:x));
-                      if(ev.supaId) await supabase.from("calendar_events").update({day:d}).eq("id",ev.supaId);
+                      setEvents(prev=>prev.map(x=>(x.id===ev.id)?{...x,day:d}:x));
+                      if(ev.supaId) { try { await supabase.from("calendar_events").update({day:d}).eq("id",ev.supaId); } catch {} }
                       showToast(`📅 "${ev.title}" movido de ${oldDay} → ${d}`);
                     }catch(err){console.error("Drop error:",err);}
                   }}
@@ -16631,11 +16632,12 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     {dayEvs.length>3&&<span style={{fontSize:9,color:B.muted,fontWeight:600}}>+{dayEvs.length-3}</span>}
                   </div>
                   {dayEvs.slice(0,3).map((ev,ei)=><div key={ei}
-                    draggable
-                    onDragStart={e=>{e.dataTransfer.setData("text/event-id",String(ev.id));e.dataTransfer.effectAllowed="move";e.currentTarget.style.opacity="0.4";}}
+                    draggable="true"
+                    onDragStart={e=>{e.stopPropagation();e.dataTransfer.setData("text/event-id",String(ev.id));e.dataTransfer.effectAllowed="move";e.currentTarget.style.opacity="0.4";}}
                     onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
+                    onMouseDown={e=>e.stopPropagation()}
                     onClick={e=>{e.stopPropagation();setSelDay(d);setViewEvent(ev);}}
-                    style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:4,marginBottom:2,background:`${typeColor(ev.type)}15`,color:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"grab"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}</div>)}
+                    style={{fontSize:10,fontWeight:600,padding:"3px 6px",borderRadius:4,marginBottom:2,background:`${typeColor(ev.type)}15`,color:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"grab",userSelect:"none"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}</div>)}
                 </div>;
               })}
             </div>
