@@ -62,7 +62,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
   return { success: true, media_id: pd.id, media_type: carousel ? "CAROUSEL" : type };
 }
 
-async function publishFacebook(sb: any, clientId: string, imageUrl: string, caption: string) {
+async function publishFacebook(sb: any, clientId: string, imageUrls: string[], caption: string, mediaType?: string) {
   /* Try client_socials first, then fall back to meta_token */
   let pageToken: string | null = null;
   let pageId: string | null = null;
@@ -95,7 +95,42 @@ async function publishFacebook(sb: any, clientId: string, imageUrl: string, capt
 
   if (!pageToken || !pageId) throw new Error("Token Facebook não encontrado");
 
-  const params = new URLSearchParams({ access_token: pageToken, message: caption || "", url: imageUrl });
+  const type = (mediaType || "FEED").toUpperCase();
+
+  if (type === "REELS") {
+    /* ── REELS: 3-step upload ── */
+    const videoUrl = imageUrls[0];
+    if (!videoUrl) throw new Error("No video URL for Reels");
+    console.log(`[FB Reels] Starting scheduled Reels publish`);
+
+    const initParams = new URLSearchParams({ upload_phase: "start", access_token: pageToken });
+    const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: initParams });
+    const initData = await initRes.json();
+    if (initData.error) throw new Error(initData.error.message);
+    const videoId = initData.video_id;
+    const uploadUrl = initData.upload_url;
+
+    const videoRes = await fetch(videoUrl);
+    if (!videoRes.ok) throw new Error(`Failed to download video: ${videoRes.status}`);
+    const videoBuffer = await (await videoRes.blob()).arrayBuffer();
+
+    await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Authorization": `OAuth ${pageToken}`, "offset": "0", "file_size": String(videoBuffer.byteLength), "Content-Type": "application/octet-stream" },
+      body: videoBuffer,
+    });
+
+    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
+    if (caption) finishParams.append("description", caption);
+    const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
+    const finishData = await finishRes.json();
+    if (finishData.error) throw new Error(finishData.error.message);
+
+    return { success: true, media_id: videoId };
+  }
+
+  /* ── FEED/default: photo post ── */
+  const params = new URLSearchParams({ access_token: pageToken, message: caption || "", url: imageUrls[0] || "" });
   const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, { method: "POST", body: params });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message);
@@ -145,7 +180,7 @@ serve(async (req) => {
         if (post.platform === "instagram") {
           result = await publishInstagram(sb, post.client_id, urls, post.caption || "", post.media_type);
         } else {
-          result = await publishFacebook(sb, post.client_id, urls[0], post.caption || "");
+          result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
         }
 
         // Mark as published
