@@ -113,20 +113,20 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
   const type = (mediaType || "FEED").toUpperCase();
 
   if (type === "REELS") {
-    /* ── REELS: use file_url (no download needed, avoids WORKER_LIMIT) ── */
+    /* ── REELS/VIDEO: use /videos endpoint with file_url (no memory needed) ── */
     const videoUrl = imageUrls[0];
     if (!videoUrl) throw new Error("No video URL for Reels");
-    console.log(`[FB Reels] Publishing scheduled Reels with file_url`);
+    console.log(`[FB Reels] POST /${pageId}/videos file_url`);
 
     const params = new URLSearchParams({ access_token: pageToken, file_url: videoUrl });
     if (caption) params.append("description", caption);
     if (imageUrls.length > 1 && imageUrls[1]) params.append("thumb", imageUrls[1]);
-    const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: params });
+    const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/videos`, { method: "POST", body: params });
     const data = await res.json();
     console.log("[FB Reels] Response:", JSON.stringify(data).substring(0, 200));
     if (data.error) throw new Error(data.error.message);
 
-    return { success: true, media_id: data.id || data.video_id };
+    return { success: true, media_id: data.id };
   }
 
   /* ── FEED/default: photo post ── */

@@ -66,7 +66,7 @@ serve(async (req) => {
     console.log(`[FB Publish] page: ${pageId}, type: ${type}, urls: ${urls.length}, url[0]: ${(urls[0]||"").substring(0, 80)}`);
 
     if (type === "REELS") {
-      /* ── REELS: use file_url so Facebook downloads the video directly ── */
+      /* ── REELS/VIDEO: use /videos endpoint with file_url (Facebook downloads directly) ── */
       const videoUrl = urls[0];
       if (!videoUrl) throw new Error("No video URL for Reels");
 
@@ -74,13 +74,13 @@ serve(async (req) => {
       if (caption) params.append("description", caption);
       if (urls.length > 1 && urls[1]) params.append("thumb", urls[1]);
 
-      console.log(`[FB Reels] POST /${pageId}/video_reels file_url=${videoUrl.substring(0, 60)}...`);
-      const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: params });
+      console.log(`[FB Reels] POST /${pageId}/videos file_url=${videoUrl.substring(0, 60)}...`);
+      const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/videos`, { method: "POST", body: params });
       const data = await res.json();
       console.log("[FB Reels] Response:", JSON.stringify(data).substring(0, 400));
-      if (data.error) throw new Error(`FB Reels error: ${data.error.message} (code: ${data.error.code}, type: ${data.error.type})`);
+      if (data.error) throw new Error(`FB Reels error: ${data.error.message} (code: ${data.error.code})`);
 
-      return json({ success: true, media_id: data.id || data.video_id, message: "Reels publicado no Facebook!" });
+      return json({ success: true, media_id: data.id, message: "Reels publicado no Facebook!" });
 
     } else if (type === "STORIES") {
       /* ── STORIES ── */
