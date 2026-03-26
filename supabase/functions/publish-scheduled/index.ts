@@ -63,13 +63,40 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
 }
 
 async function publishFacebook(sb: any, clientId: string, imageUrl: string, caption: string) {
-  const { data: s } = await sb.from("app_settings").select("value").eq("key", `client_socials_${clientId}`).single();
-  if (!s?.value) throw new Error("Facebook não conectado");
-  const socials = JSON.parse(s.value);
-  const fb = socials.facebook;
-  if (!fb?.oauth?.page_token || !fb?.oauth?.page_id) throw new Error("Token Facebook não encontrado");
-  const params = new URLSearchParams({ access_token: fb.oauth.page_token, message: caption || "", url: imageUrl });
-  const r = await fetch(`https://graph.facebook.com/v21.0/${fb.oauth.page_id}/photos`, { method: "POST", body: params });
+  /* Try client_socials first, then fall back to meta_token */
+  let pageToken: string | null = null;
+  let pageId: string | null = null;
+
+  const { data: s1 } = await sb.from("app_settings").select("value").eq("key", `client_socials_${clientId}`).single();
+  if (s1?.value) {
+    try {
+      const socials = JSON.parse(s1.value);
+      const fb = socials.facebook;
+      if (fb?.oauth?.page_token && fb?.oauth?.page_id) {
+        pageToken = fb.oauth.page_token;
+        pageId = fb.oauth.page_id;
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  /* Fallback: try meta_token_${clientId} */
+  if (!pageToken || !pageId) {
+    const { data: s2 } = await sb.from("app_settings").select("value").eq("key", `meta_token_${clientId}`).single();
+    if (s2?.value) {
+      try {
+        const tk = JSON.parse(s2.value);
+        if (tk.page_token && tk.page_id) {
+          pageToken = tk.page_token;
+          pageId = tk.page_id;
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  if (!pageToken || !pageId) throw new Error("Token Facebook não encontrado");
+
+  const params = new URLSearchParams({ access_token: pageToken, message: caption || "", url: imageUrl });
+  const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, { method: "POST", body: params });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message);
   return { success: true, media_id: d.id || d.post_id };
@@ -97,8 +124,19 @@ serve(async (req) => {
     const results = [];
 
     for (const post of posts) {
-      // Mark as publishing
-      await sb.from("scheduled_posts").update({ status: "publishing" }).eq("id", post.id);
+      // Atomically mark as publishing — only if still pending (prevents duplicates from concurrent calls)
+      const { data: updated, error: upErr } = await sb
+        .from("scheduled_posts")
+        .update({ status: "publishing" })
+        .eq("id", post.id)
+        .eq("status", "pending")
+        .select("id")
+        .single();
+      
+      if (upErr || !updated) {
+        console.log(`[Scheduler] Post ${post.id} already picked up by another call, skipping`);
+        continue;
+      }
       
       try {
         const urls = (post.image_urls || []) as string[];

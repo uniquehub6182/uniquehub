@@ -8727,10 +8727,13 @@ REGRAS TÉCNICAS:
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
   /* ── Auto-publisher: calls publish-scheduled Edge Function every 60s ── */
   const autoPublishRef = useRef(false);
+  const demandsRef = useRef(demands);
+  useEffect(() => { demandsRef.current = demands; }, [demands]);
   useEffect(() => {
-    const hasScheduled = demands.some(d => d.stage === "scheduled");
-    if (!hasScheduled) return;
     const callScheduler = async () => {
+      /* Only call if there are scheduled demands */
+      const hasScheduled = demandsRef.current.some(d => d.stage === "scheduled");
+      if (!hasScheduled) return;
       if (autoPublishRef.current) return; /* prevent concurrent calls */
       autoPublishRef.current = true;
       try {
@@ -8760,11 +8763,10 @@ REGRAS TÉCNICAS:
       } catch(e) { console.error("Auto-publish scheduler error:", e); }
       autoPublishRef.current = false;
     };
-    /* Call immediately on mount and then every 60s */
-    callScheduler();
+    /* Check every 60s — stable timer, no re-creation on demands change */
     const timer = setInterval(callScheduler, 60000);
     return () => clearInterval(timer);
-  }, [demands]);
+  }, []);
 
   /* ── Auto-advance: move "scheduled" → "published" when scheduled time has passed ── */
   useEffect(() => {
@@ -8772,6 +8774,8 @@ REGRAS TÉCNICAS:
       const now = new Date();
       const expired = demands.filter(d => {
         if (d.stage !== "scheduled" || !d.scheduling?.date) return false;
+        /* Skip demands that have scheduled_posts entries — Edge Function handles those */
+        if (d.steps?.igPublished?.scheduled) return false;
         const sd = d.scheduling.date; const st = d.scheduling.time || "23:59";
         let dt;
         if (sd.includes("-")) dt = new Date(`${sd}T${st}:00`);
