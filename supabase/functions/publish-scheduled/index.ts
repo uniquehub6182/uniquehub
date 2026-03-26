@@ -113,35 +113,20 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
   const type = (mediaType || "FEED").toUpperCase();
 
   if (type === "REELS") {
-    /* ── REELS: 3-step upload ── */
+    /* ── REELS: use file_url (no download needed, avoids WORKER_LIMIT) ── */
     const videoUrl = imageUrls[0];
     if (!videoUrl) throw new Error("No video URL for Reels");
-    console.log(`[FB Reels] Starting scheduled Reels publish`);
+    console.log(`[FB Reels] Publishing scheduled Reels with file_url`);
 
-    const initParams = new URLSearchParams({ upload_phase: "start", access_token: pageToken });
-    const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: initParams });
-    const initData = await initRes.json();
-    if (initData.error) throw new Error(initData.error.message);
-    const videoId = initData.video_id;
-    const uploadUrl = initData.upload_url;
+    const params = new URLSearchParams({ access_token: pageToken, file_url: videoUrl });
+    if (caption) params.append("description", caption);
+    if (imageUrls.length > 1 && imageUrls[1]) params.append("thumb", imageUrls[1]);
+    const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: params });
+    const data = await res.json();
+    console.log("[FB Reels] Response:", JSON.stringify(data).substring(0, 200));
+    if (data.error) throw new Error(data.error.message);
 
-    const videoRes = await fetch(videoUrl);
-    if (!videoRes.ok) throw new Error(`Failed to download video: ${videoRes.status}`);
-    const videoBuffer = await (await videoRes.blob()).arrayBuffer();
-
-    await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Authorization": `OAuth ${pageToken}`, "offset": "0", "file_size": String(videoBuffer.byteLength), "Content-Type": "application/octet-stream" },
-      body: videoBuffer,
-    });
-
-    const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
-    if (caption) finishParams.append("description", caption);
-    const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
-    const finishData = await finishRes.json();
-    if (finishData.error) throw new Error(finishData.error.message);
-
-    return { success: true, media_id: videoId };
+    return { success: true, media_id: data.id || data.video_id };
   }
 
   /* ── FEED/default: photo post ── */
