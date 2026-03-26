@@ -11978,7 +11978,7 @@ REGRAS TÉCNICAS:
       {sel && isContentDesktop && detailInner && (() => {
         const _stages = getStages(sel.type);
         const _stIdx = _stages.indexOf(sel.stage);
-        const _canNext = _stIdx < _stages.length - 1 && sel.stage !== "scheduled" && sel.stage !== "published";
+        const _canNext = _stIdx < _stages.length - 1 && sel.stage !== "scheduled" && sel.stage !== "published" && sel.stage !== "client";
         const _canPrev = _stIdx > 0;
         return <>
         <div onClick={() => { setSel(null); setEditMode(false); }} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:900 }} />
