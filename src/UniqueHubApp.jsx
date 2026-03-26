@@ -9299,7 +9299,8 @@ REGRAS TÉCNICAS:
     };
 
     /* Role label for each stage */
-    const stageRole = { idea:"Head / CEO", briefing:"Social Media", design:"Designer / Criativo", caption:"Social Media", review:"Gerente", client:"Cliente", published:"—",
+    const isVideoFormat = sel?.format === "Reels" || sel?.format === "Shorts" || sel?.format === "Vídeo" || sel?.type === "video";
+    const stageRole = { idea:"Head / CEO", briefing:"Social Media", design: isVideoFormat ? "Designer / Audiovisual" : "Designer / Criativo", caption:"Social Media", review:"Gerente", client:"Cliente", published:"—",
       planning:"Head / CEO", creation:"Equipe", execution:"Equipe", completed:"—", production:"Audiovisual", editing:"Editor" };
     const stageIcon = { idea:IC.ideas, briefing:IC.doc, design:IC.img, caption:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
       review:IC.shield, client:IC.users, published:IC.check, planning:IC.ideas, creation:IC.img, execution:IC.target, completed:IC.check, production:IC.vid, editing:IC.vid };
@@ -9733,6 +9734,17 @@ REGRAS TÉCNICAS:
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>}
+              {/* ── Texto da capa do Reels (social media define, designer executa) ── */}
+              {(sel.format === "Reels" || sel.format === "Shorts" || sel.format === "Vídeo") && (
+                <div style={{ marginBottom:12, padding:12, borderRadius:12, background:`${B.accent}06`, border:`1px solid ${B.accent}20` }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+                    Texto para a capa do Reels
+                  </p>
+                  <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>O texto que vai aparecer na capa/thumbnail do vídeo. O designer vai criar a arte da capa com este texto.</p>
+                  <textarea value={sel.steps?.design?.coverText||""} onChange={e=>updateStep("design",{coverText:e.target.value})} placeholder="Ex: 5 dicas para aumentar suas vendas" className="tinput" style={{ fontSize:12, minHeight:50, resize:"vertical", lineHeight:1.5, borderColor:`${B.accent}30` }} />
+                </div>
+              )}
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {/* Desktop carousel for design images — skip for Reels (handled by grid below) */}
                 {isContentDesktop && sel.format !== "Reels" && sel.format !== "Shorts" && (() => {
@@ -10047,6 +10059,16 @@ REGRAS TÉCNICAS:
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>}
+              {/* ── Cover text read-only view ── */}
+              {sel.steps?.design?.coverText && (
+                <div style={{ marginTop:10, padding:10, borderRadius:12, background:`${B.accent}06`, border:`1px solid ${B.accent}20` }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.accent, marginBottom:4, display:"flex", alignItems:"center", gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+                    Texto da capa
+                  </p>
+                  <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps.design.coverText}</p>
+                </div>
+              )}
             </>}
           </>)}
 
