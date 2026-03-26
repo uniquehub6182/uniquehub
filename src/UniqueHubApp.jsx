@@ -279,6 +279,9 @@ const xhrUpload = (url, file, contentType) => new Promise((resolve, reject) => {
       const pct = Math.round((e.loaded / e.total) * 100);
       window.__uh_upload_pct = pct;
       window.dispatchEvent(new CustomEvent("uh-upload-progress", { detail: { pct, loaded: e.loaded, total: e.total } }));
+      /* Also update any running bgTask */
+      const runningTask = (window.__uh_bgTasks||[]).find(t => t.type === "upload" && t.status === "running");
+      if (runningTask) { updateBgTask(runningTask.id, { pct, msg: `${(e.loaded/1048576).toFixed(0)}MB de ${(e.total/1048576).toFixed(0)}MB` }); }
     }
   };
   xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve(true) : resolve(false);
@@ -9649,8 +9652,46 @@ REGRAS TÉCNICAS:
                   }
                   const hasVideo = files.some(f => f.type?.startsWith("video/"));
                   const totalMB = (files.reduce((a,f)=>a+f.size,0)/1024/1024).toFixed(0);
-                  if (hasVideo) setUploadProgress({ pct: 0, loaded: 0, total: files.reduce((a,f)=>a+f.size,0) });
-                  showToast(hasVideo ? `⏳ Enviando vídeo (${totalMB}MB)...` : `Enviando ${files.length} arquivo${files.length>1?"s":""}...`, hasVideo ? 60000 : 5000);
+
+                  if (hasVideo) {
+                    /* Run video upload in background — don't block the UI */
+                    const savedSelId = sel.supaId || sel.id;
+                    const savedSelName = sel.title || sel.client || "Demanda";
+                    const existingFiles = [...(sel.steps?.design?.files||[])];
+                    const taskId = addBgTask("upload", `Enviando vídeo (${totalMB}MB)...`);
+                    e.target.value = "";
+                    (async () => {
+                      try {
+                        const results = await Promise.all(files.map(file => supaUploadFile(file, savedSelId)));
+                        const uploaded = results.filter(r => !r.error);
+                        const errors = results.filter(r => r.error);
+                        if (uploaded.length > 0) {
+                          const newFiles = [...existingFiles, ...uploaded];
+                          const stepUpdate = { files: newFiles, by: user?.name||"", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) };
+                          /* Update local state */
+                          setDemands(prev => prev.map(d => {
+                            if ((d.supaId||d.id) === savedSelId) {
+                              const newSteps = { ...d.steps, design: { ...(d.steps?.design||{}), ...stepUpdate } };
+                              return { ...d, steps: newSteps };
+                            }
+                            return d;
+                          }));
+                          setSel(prev => prev && (prev.supaId||prev.id) === savedSelId ? { ...prev, steps: { ...prev.steps, design: { ...(prev.steps?.design||{}), ...stepUpdate } } } : prev);
+                          if (supabase) try { await supabase.from("demands").update({ steps: { design: stepUpdate } }).eq("id", savedSelId); } catch {}
+                          updateBgTask(taskId, { status:"done", label:`✅ Vídeo enviado!`, msg: savedSelName });
+                          if (errors.length) showToast(`⚠ ${errors.length} erro(s): ${errors.map(e=>e.error).join("; ")}`);
+                        } else {
+                          updateBgTask(taskId, { status:"error", label:"Erro no upload", msg: errors[0]?.error || "Falha" });
+                        }
+                      } catch(err) {
+                        updateBgTask(taskId, { status:"error", msg: err.message });
+                      }
+                      setTimeout(() => removeBgTask(taskId), 8000);
+                    })();
+                    return;
+                  }
+
+                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
                   const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
                   setUploadProgress(null);
                   const uploaded = results.filter(r => !r.error);
