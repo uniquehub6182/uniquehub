@@ -9336,11 +9336,11 @@ REGRAS TÉCNICAS:
             <div style={{ display:"flex", gap:10 }}>
               <div style={{ flex:1 }}>
                 <label className="sl" style={{ display:"block", marginBottom:4 }}>Data</label>
-                <input value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} placeholder="DD/MM" className="tinput" />
+                <input type="date" value={sel.scheduling?.date||""} onChange={e=>updateField("scheduling",{...sel.scheduling,date:e.target.value})} className="tinput" style={{ width:"100%" }} />
               </div>
               <div style={{ flex:1 }}>
                 <label className="sl" style={{ display:"block", marginBottom:4 }}>Horário</label>
-                <input value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} placeholder="18:00" className="tinput" />
+                <input type="time" value={sel.scheduling?.time||""} onChange={e=>updateField("scheduling",{...sel.scheduling,time:e.target.value})} className="tinput" style={{ width:"100%" }} />
               </div>
             </div>
             {/* Best times suggestion */}
@@ -10043,11 +10043,29 @@ REGRAS TÉCNICAS:
               {/* ── Desktop: Full post preview ── */}
               {isContentDesktop && (() => {
                 const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
-                const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+                const imgFiles = artFiles.filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||f.url||""));
+                const vidFiles = artFiles.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
+                const coverFile = artFiles.find(f => f.isCover);
+                const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
                 const ci = sel._carouselIdx || 0;
                 const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, imgFiles.length - 1)) }));
                 const cur = imgFiles[ci] || imgFiles[0];
                 return <>
+                  {/* Reels: side-by-side cover + video */}
+                  {isReelsFmt && (vidFiles.length > 0 || coverFile) && <div style={{ marginBottom:12 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                      {coverFile?.url && <div>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", marginBottom:4, textAlign:"center" }}>Capa</p>
+                        <div style={{ borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.accent}40`, background:"#000" }}><img src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>
+                      </div>}
+                      {vidFiles[0]?.url && <div>
+                        <p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", textTransform:"uppercase", marginBottom:4, textAlign:"center" }}>Vídeo</p>
+                        <div style={{ borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.blue||"#3B82F6"}40`, background:"#000" }}><video src={vidFiles[0].url} controls playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>
+                      </div>}
+                    </div>
+                  </div>}
+                  {/* Non-Reels video */}
+                  {!isReelsFmt && vidFiles.length > 0 && <div style={{ marginBottom:12 }}>{vidFiles.map((f,i) => <video key={i} src={f.url} controls playsInline style={{ width:"100%", maxHeight:400, borderRadius:14, background:"#000" }} />)}</div>}
                   {/* Carousel */}
                   {imgFiles.length > 0 && <div style={{ marginBottom:12 }}>
                     <div style={{ position:"relative", borderRadius:12, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
@@ -11903,7 +11921,7 @@ REGRAS TÉCNICAS:
                   <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Agendamento</label>
                   <div style={{ display:"flex", gap:8, marginBottom:8 }}>
                     <input type="date" value={form.schedDate||""} onChange={e=>setForm({...form,schedDate:e.target.value})} className="tinput" style={{ flex:1 }} />
-                    <input value={form.schedTime||""} onChange={e=>setForm({...form,schedTime:e.target.value})} placeholder="18:00" className="tinput" style={{ width:80 }} />
+                    <input type="time" value={form.schedTime||""} onChange={e=>setForm({...form,schedTime:e.target.value})} className="tinput" style={{ width:100 }} />
                   </div>
                   <div style={{ marginBottom:14 }}>
                     <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Horários recomendados · {["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"][new Date().getDay()]}</label>
