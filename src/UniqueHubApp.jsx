@@ -25188,10 +25188,48 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               <span style={{ fontSize:10, color:B.muted }}>{d.createdAt}</span>
             </div></Card>}
             {/* Video player for Reels */}
-            {vidFiles.length > 0 && <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20 }}>
-              {vidFiles.map((f,i) => <video key={i} src={f.url} controls playsInline style={{ width:"100%", maxHeight:"70vh", background:"#000" }} />)}
-            </Card>}
-            {imgFiles.length > 0 && (() => {
+            {(imgFiles.length > 0 || vidFiles.length > 0) && (() => {
+              const isReelsFmt = (d.format||"").toLowerCase() === "reels" || (d.format||"").toLowerCase() === "shorts";
+              /* For Reels: combine cover + video into one swipeable carousel */
+              if (isReelsFmt && vidFiles.length > 0) {
+                const allSlides = [...imgFiles.filter(f=>f.isCover), ...imgFiles.filter(f=>!f.isCover), ...vidFiles];
+                if (allSlides.length === 0) return null;
+                const ReelsCarousel = () => {
+                  const [slide, setSlide] = React.useState(0);
+                  const ref = React.useRef(null);
+                  const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; const s=Math.round(ref.current.scrollLeft/w); setSlide(s); };
+                  return <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20, position:"relative" }}>
+                    <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
+                      {allSlides.map((f,i) => {
+                        const isVid = /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/");
+                        return <div key={i} style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", background:"#000", minHeight:300 }}>
+                          {isVid ? <video src={f.url} controls playsInline style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />
+                                 : <img src={f.url} alt="" style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />}
+                        </div>;
+                      })}
+                    </div>
+                    {/* Dots + swipe hint */}
+                    <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:6, padding:"10px 0" }}>
+                      {allSlides.map((_,i) => {
+                        const isVid = /\.(mp4|mov|webm|avi)$/i.test(allSlides[i]?.name||allSlides[i]?.url||"") || allSlides[i]?.type?.startsWith("video/");
+                        return <div key={i} style={{ display:"flex", alignItems:"center", gap:3 }}>
+                          <div style={{ width:slide===i?20:8, height:8, borderRadius:4, background:slide===i?B.accent:`${B.muted}30`, transition:"all .3s" }} />
+                          {slide===0 && i===1 && <span style={{ fontSize:9, color:B.muted, marginLeft:2 }}>
+                            {isVid?"← Arraste para ver o vídeo":"← Arraste"}
+                          </span>}
+                        </div>;
+                      })}
+                    </div>
+                    {/* Label overlay */}
+                    <div style={{ position:"absolute", top:10, left:10, padding:"3px 8px", borderRadius:6, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)" }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:"#fff" }}>{slide < imgFiles.length ? "CAPA" : "VÍDEO"}</span>
+                    </div>
+                  </Card>;
+                };
+                return <ReelsCarousel />;
+              }
+              /* Non-Reels: original carousel for images only */
+              if (imgFiles.length === 0) return null;
               const CarouselView = () => {
                 const [slide, setSlide] = React.useState(0);
                 const ref = React.useRef(null);
