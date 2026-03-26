@@ -9510,9 +9510,9 @@ REGRAS TÉCNICAS:
                 </button>
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {/* Desktop carousel for design images */}
-                {isContentDesktop && (() => {
-                  const imgFiles = (sel.steps?.design?.files||[]).filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
+                {/* Desktop carousel for design images — skip for Reels (handled by grid below) */}
+                {isContentDesktop && sel.format !== "Reels" && sel.format !== "Shorts" && (() => {
+                  const imgFiles = (sel.steps?.design?.files||[]).filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(f.name||""));
                   if (!imgFiles.length) return null;
                   const ci = sel._carouselIdx || 0;
                   const sc = (n) => setSel(prev => ({ ...prev, _carouselIdx: Math.max(0, Math.min(n, imgFiles.length - 1)) }));
