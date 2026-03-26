@@ -971,7 +971,20 @@ const IG_SCOPES = "instagram_business_basic,instagram_business_content_publish,i
 const getScheduledTimestamp = (scheduling) => {
   if (!scheduling?.date || !scheduling?.time) return null;
   try {
-    const dt = new Date(`${scheduling.date}T${scheduling.time}:00`);
+    let dateStr = scheduling.date;
+    /* Handle DD/MM or DD/MM/YYYY format → convert to YYYY-MM-DD */
+    if (dateStr.includes("/")) {
+      const parts = dateStr.split("/");
+      if (parts.length === 2) {
+        /* DD/MM → add current year */
+        dateStr = `${new Date().getFullYear()}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
+      } else if (parts.length === 3) {
+        /* DD/MM/YYYY or MM/DD/YYYY */
+        const yr = parts[2].length === 4 ? parts[2] : `20${parts[2]}`;
+        dateStr = `${yr}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
+      }
+    }
+    const dt = new Date(`${dateStr}T${scheduling.time}:00`);
     if (isNaN(dt.getTime())) return null;
     const ts = Math.floor(dt.getTime() / 1000);
     /* Must be at least 10 min in the future */
@@ -24735,7 +24748,12 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       const schedTime = scheduling.time || demand.schedule_time;
       const hasFutureSchedule = status === "approved" && schedDate && (() => {
         const ts = getScheduledTimestamp({ date: schedDate, time: schedTime });
-        return !!ts; /* true if schedule is in the future */
+        /* If we have a date but can't parse it, assume it's scheduled (safer than publishing accidentally) */
+        if (!ts && schedDate) {
+          console.log("[Schedule] Date exists but getScheduledTimestamp returned null. schedDate:", schedDate, "schedTime:", schedTime);
+          return true; /* err on the side of NOT publishing immediately */
+        }
+        return !!ts;
       })();
       const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : d.stage;
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage } : d));
@@ -24773,7 +24791,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           const schedTime = scheduling.time || demand.schedule_time;
           const schedTs = getScheduledTimestamp({ date: schedDate, time: schedTime });
           const schedLabel = schedDate ? `${schedDate} às ${schedTime||""}` : "";
-          const isScheduledFuture = !!schedTs;
+          /* If there's a schedule date, treat as future-scheduled (don't publish now) */
+          const isScheduledFuture = !!schedTs || !!schedDate;
           const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
@@ -24782,7 +24801,14 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           /* ── SCHEDULED FUTURE: do NOT publish now, save to scheduled_posts ── */
           if (isScheduledFuture) {
             try {
-              const schedDateISO = new Date(`${schedDate}T${schedTime}:00`).toISOString();
+              /* Normalize date to YYYY-MM-DD for ISO conversion */
+              let normDate = schedDate;
+              if (normDate.includes("/")) {
+                const p = normDate.split("/");
+                if (p.length === 2) normDate = `${new Date().getFullYear()}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;
+                else if (p.length === 3) { const yr = p[2].length===4?p[2]:`20${p[2]}`; normDate = `${yr}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`; }
+              }
+              const schedDateISO = new Date(`${normDate}T${schedTime||"12:00"}:00`).toISOString();
               const platforms = [];
               if (networks.some(n => n.includes("instagram"))) platforms.push("instagram");
               if (networks.some(n => n.includes("facebook"))) platforms.push("facebook");
