@@ -269,6 +269,72 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
   });
 };
 
+/* ── Video compression using Canvas + MediaRecorder ── */
+const compressVideo = (file, onProgress) => new Promise((resolve) => {
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "auto";
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  video.onloadedmetadata = () => {
+    /* Target: max 1080p, ~4Mbps bitrate for social media */
+    const maxW = 1080, maxH = 1920;
+    let w = video.videoWidth, h = video.videoHeight;
+    if (w > maxW || h > maxH) {
+      const scale = Math.min(maxW / w, maxH / h);
+      w = Math.round(w * scale); h = Math.round(h * scale);
+    }
+    w = w % 2 === 0 ? w : w - 1; h = h % 2 === 0 ? h : h - 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const stream = canvas.captureStream(30);
+    /* Add audio track if present */
+    try {
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaElementSource(video);
+      const dest = audioCtx.createMediaStreamDestination();
+      source.connect(dest); source.connect(audioCtx.destination);
+      dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    } catch {}
+    const bitrate = Math.min(4000000, file.size * 8 / video.duration * 0.3);
+    const recorder = new MediaRecorder(stream, {
+      mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm",
+      videoBitsPerSecond: Math.max(bitrate, 1500000),
+    });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      URL.revokeObjectURL(url);
+      const blob = new Blob(chunks, { type: recorder.mimeType });
+      /* Only use compressed if actually smaller */
+      if (blob.size < file.size * 0.85) {
+        const ext = recorder.mimeType.includes("webm") ? "webm" : "mp4";
+        const compressed = new File([blob], file.name.replace(/\.\w+$/, `.${ext}`), { type: recorder.mimeType });
+        console.log(`Video compressed: ${(file.size/1048576).toFixed(0)}MB → ${(compressed.size/1048576).toFixed(0)}MB`);
+        resolve(compressed);
+      } else {
+        console.log("Compression not beneficial, using original");
+        resolve(file);
+      }
+    };
+    recorder.start(1000);
+    video.playbackRate = 4.0; /* 4x speed = 4x faster compression */
+    const draw = () => {
+      if (video.ended || video.paused) return;
+      ctx.drawImage(video, 0, 0, w, h);
+      if (onProgress && video.duration) onProgress(Math.round((video.currentTime / video.duration) * 100));
+      requestAnimationFrame(draw);
+    };
+    video.onplay = draw;
+    video.onended = () => { recorder.stop(); };
+    video.onerror = () => { resolve(file); };
+    video.play().catch(() => resolve(file));
+  };
+  video.onerror = () => resolve(file);
+});
+
 /* Upload with XHR for progress tracking */
 const xhrUpload = (url, file, contentType) => new Promise((resolve, reject) => {
   const xhr = new XMLHttpRequest();
@@ -299,7 +365,18 @@ const supaUploadFile = async (file, demandId) => {
   if (!supabase) return { error: "Supabase offline" };
   try {
     const isVideo = file.type.startsWith("video/");
-    const compressed = isVideo ? file : await compressImage(file);
+    let compressed;
+    if (isVideo && file.size > 20 * 1024 * 1024) {
+      /* Compress video if > 20MB */
+      const runningTask = (window.__uh_bgTasks||[]).find(t => t.type === "upload" && t.status === "running");
+      if (runningTask) updateBgTask(runningTask.id, { msg: "Comprimindo vídeo..." });
+      compressed = await compressVideo(file, (pct) => {
+        if (runningTask) updateBgTask(runningTask.id, { pct: Math.round(pct * 0.4), msg: `Comprimindo... ${pct}%` });
+      });
+      if (runningTask) updateBgTask(runningTask.id, { pct: 40, msg: "Enviando..." });
+    } else {
+      compressed = isVideo ? file : await compressImage(file);
+    }
     const safeName = (compressed.name || file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
     const R2_THRESHOLD = 10 * 1024 * 1024; /* 10MB — route to R2 */
 
@@ -853,7 +930,17 @@ const uploadToStorage = async (file, folder = "quick-publish") => {
   if (!supabase) return null;
   try {
     const isVideo = file.type?.startsWith("video/");
-    const processed = isVideo ? file : await compressImage(file);
+    let processed;
+    if (isVideo && file.size > 20 * 1024 * 1024) {
+      const runningTask = (window.__uh_bgTasks||[]).find(t => t.status === "running");
+      if (runningTask) updateBgTask(runningTask.id, { msg: "Comprimindo vídeo..." });
+      processed = await compressVideo(file, (pct) => {
+        if (runningTask) updateBgTask(runningTask.id, { pct: Math.round(pct * 0.4), msg: `Comprimindo... ${pct}%` });
+      });
+      if (runningTask) updateBgTask(runningTask.id, { pct: 40, msg: "Enviando..." });
+    } else {
+      processed = isVideo ? file : await compressImage(file);
+    }
     const safeName = (processed.name||"file").replace(/[^a-zA-Z0-9._-]/g, "_");
     const R2_THRESHOLD = 10 * 1024 * 1024;
 
