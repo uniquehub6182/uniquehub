@@ -11474,11 +11474,59 @@ REGRAS TÉCNICAS:
                   const currentFiles = qpForm._files || [];
                   const canAddMore = currentFiles.length < maxFiles;
                   return <>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>{isReels?"Vídeo":"Mídia"} {currentFiles.length>0?`(${currentFiles.length}${isCarrossel?`/${maxFiles}`:""})`:""}</label>
+                    {isReels ? <>
+                      {/* Reels: grid side-by-side — cover left, video right */}
+                      <input type="file" id="qpFileUpload" accept="video/*" style={{ display:"none" }} onChange={e => {
+                        const f = e.target.files?.[0]; if(!f) return;
+                        setQpForm(p => ({...p, _files:[{file:f, name:f.name, size:f.size, preview:null}]}));
+                        e.target.value = "";
+                      }} />
+                      <input type="file" id="qpCoverUpload" accept="image/*" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if(f){ const reader = new FileReader(); reader.onload = ev => setQpForm(p => ({...p, coverUrl: ev.target.result, _coverPreview: URL.createObjectURL(f)})); reader.readAsDataURL(f); } e.target.value=""; }} />
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+                        {/* LEFT: Cover */}
+                        <div>
+                          <p style={{ fontSize:9, fontWeight:700, color:"#BBF246", textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Capa do Reels</p>
+                          {qpForm._coverPreview ? (
+                            <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:"2px solid #BBF24640", background:"#000" }}>
+                              <img src={qpForm._coverPreview} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                              <button onClick={()=>setQpForm(p=>({...p,coverUrl:"",_coverPreview:""}))} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                            </div>
+                          ) : (
+                            <button onClick={()=>document.getElementById("qpCoverUpload").click()} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:"2px dashed #BBF24640", background:"#BBF24604", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8 }}>
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                              <span style={{ fontSize:11, fontWeight:600, color:"#BBF246" }}>Selecionar capa</span>
+                            </button>
+                          )}
+                        </div>
+                        {/* RIGHT: Video */}
+                        <div>
+                          <p style={{ fontSize:9, fontWeight:700, color:"#3B82F6", textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Vídeo</p>
+                          {currentFiles.length > 0 ? (
+                            <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:"2px solid #3B82F640", background:"#000" }}>
+                              <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                              </div>
+                              <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"6px 8px", background:"linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
+                                <p style={{ fontSize:9, color:"#fff", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{currentFiles[0]?.name||"vídeo"}</p>
+                                {currentFiles[0]?.size && <p style={{ fontSize:8, color:"rgba(255,255,255,0.6)" }}>{(currentFiles[0].size/1048576).toFixed(0)}MB</p>}
+                              </div>
+                              <button onClick={() => setQpForm(p => ({...p, _files:[]}))} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                            </div>
+                          ) : (
+                            <button onClick={()=>{ if(!qpForm._coverPreview){showToast("Selecione a capa primeiro");return;} document.getElementById("qpFileUpload").click(); }} style={{ width:"100%", aspectRatio:"9/16", borderRadius:14, border:`2px dashed ${!qpForm._coverPreview?"rgba(150,150,150,0.2)":"#3B82F640"}`, background:!qpForm._coverPreview?"rgba(150,150,150,0.02)":"#3B82F604", cursor:!qpForm._coverPreview?"not-allowed":"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, opacity:!qpForm._coverPreview?0.4:1 }}>
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                              <span style={{ fontSize:11, fontWeight:600, color:"#3B82F6" }}>{!qpForm._coverPreview?"Selecione a capa primeiro":"Selecionar vídeo"}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </> : <>
+                    {/* Non-Reels: original layout */}
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Mídia {currentFiles.length>0?`(${currentFiles.length}${isCarrossel?`/${maxFiles}`:""})`:""}</label>
                     {currentFiles.length > 0 && <div style={{ display:"flex", gap:6, marginBottom:8, overflowX:"auto" }}>
                       {currentFiles.map((f,i) => (
                         <div key={i} style={{ position:"relative", width:64, height:64, borderRadius:10, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)", flexShrink:0 }}>
-                          {f.preview ? <img src={f.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : f.name?.match(/\.(mp4|mov|webm)$/i) ? <div style={{ width:"100%", height:"100%", background:"#111", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></div> : <div style={{ width:"100%", height:"100%", background:"#F3F4F6", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#9CA3AF" }}>{f.name?.split(".").pop()}</div>}
+                          {f.preview ? <img src={f.preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"#F3F4F6", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, color:"#9CA3AF" }}>{f.name?.split(".").pop()}</div>}
                           <button onClick={() => setQpForm(p => ({...p, _files:(p._files||[]).filter((_,j)=>j!==i), imageUrl:i===0?"":p.imageUrl}))} style={{ position:"absolute", top:2, right:2, width:18, height:18, borderRadius:9, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                       ))}
@@ -11487,7 +11535,7 @@ REGRAS TÉCNICAS:
                       const files = Array.from(e.target.files).slice(0, maxFiles - currentFiles.length);
                       if (!files.length) return;
                       const newFiles = files.map(f => ({ file:f, name:f.name, size:f.size, preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null }));
-                      setQpForm(p => ({...p, _files: isFeed || isReels ? newFiles : [...(p._files||[]), ...newFiles].slice(0, maxFiles)}));
+                      setQpForm(p => ({...p, _files: isFeed ? newFiles : [...(p._files||[]), ...newFiles].slice(0, maxFiles)}));
                       if (newFiles.length && newFiles[0].preview) {
                         const reader = new FileReader(); reader.onload = ev => setQpForm(p => ({...p, imageUrl: ev.target.result})); reader.readAsDataURL(files[0]);
                       }
@@ -11497,9 +11545,6 @@ REGRAS TÉCNICAS:
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                       {uploadLabel}
                     </button>}
-                    {isReels && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6, marginTop:8 }}>Capa do vídeo</label>
-                    <input type="file" id="qpCoverUpload" accept="image/*" style={{ display:"none" }} onChange={e => { const f = e.target.files?.[0]; if(f){ const reader = new FileReader(); reader.onload = ev => setQpForm(p => ({...p, coverUrl: ev.target.result, _coverPreview: URL.createObjectURL(f)})); reader.readAsDataURL(f); } e.target.value=""; }} />
-                    {qpForm._coverPreview ? <div style={{ position:"relative", width:80, height:80, borderRadius:10, overflow:"hidden", marginBottom:8 }}><img src={qpForm._coverPreview} style={{ width:"100%", height:"100%", objectFit:"cover" }} /><button onClick={()=>setQpForm(p=>({...p,coverUrl:"",_coverPreview:""}))} style={{ position:"absolute", top:2, right:2, width:18, height:18, borderRadius:9, background:"rgba(0,0,0,0.6)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div> : <button onClick={()=>document.getElementById("qpCoverUpload").click()} style={{ width:"100%", padding:"10px", borderRadius:10, border:"1.5px dashed rgba(0,0,0,0.08)", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#9CA3AF", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Selecionar capa</button>}
                     </>}
                     {/* Caption — hidden for Stories */}
                     {!isStories && <><label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6, marginTop:6 }}>Legenda</label>
