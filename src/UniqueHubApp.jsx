@@ -16607,12 +16607,35 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 const d=i+1; const tdy=isToday(d); const selected=d===selDay;
                 const dayEvs=allEvents.filter(e=>e.day===d&&e.month===curMonth&&e.year===curYear);
                 const typeColor=t=>({meeting:B.blue,event:B.accent,reminder:B.orange,deadline:B.red,recording:B.purple||"#8B5CF6"}[t]||B.muted);
-                return <div key={d} onClick={()=>{setSelDay(d);setViewEvent(null);}} style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative",outline:selected?`2px solid ${B.accent}`:"none",outlineOffset:"-2px",borderRadius:selected?4:0}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";}}>
+                return <div key={d} onClick={()=>{setSelDay(d);setViewEvent(null);}}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.background=`${B.accent}20`;e.currentTarget.style.outline=`2px dashed ${B.accent}`;}}
+                  onDragLeave={e=>{e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";e.currentTarget.style.outline=selected?`2px solid ${B.accent}`:"none";}}
+                  onDrop={async e=>{
+                    e.preventDefault();
+                    e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";
+                    e.currentTarget.style.outline=selected?`2px solid ${B.accent}`:"none";
+                    try {
+                      const evId=parseInt(e.dataTransfer.getData("text/event-id"));
+                      if(!evId)return;
+                      const ev=allEvents.find(x=>x.id===evId);
+                      if(!ev||ev.day===d)return;
+                      const oldDay=ev.day;
+                      setEvents(prev=>prev.map(x=>x.id===evId?{...x,day:d}:x));
+                      if(ev.supaId) await supabase.from("calendar_events").update({day:d}).eq("id",ev.supaId);
+                      showToast(`📅 "${ev.title}" movido de ${oldDay} → ${d}`);
+                    }catch(err){console.error("Drop error:",err);}
+                  }}
+                  style={{minHeight:100,padding:"6px 8px",borderRight:`1px solid ${B.border}`,borderBottom:`1px solid ${B.border}`,cursor:"pointer",background:selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent",transition:"background .15s",position:"relative",outline:selected?`2px solid ${B.accent}`:"none",outlineOffset:"-2px",borderRadius:selected?4:0}} onMouseEnter={e=>{if(!selected)e.currentTarget.style.background=`${B.accent}06`;}} onMouseLeave={e=>{if(!selected)e.currentTarget.style.background=selected?`${B.accent}10`:tdy?`${B.accent}04`:"transparent";}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <span style={{fontSize:13,fontWeight:tdy||selected?800:500,color:selected?B.accent:tdy?B.accent:B.text,width:24,height:24,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:tdy&&!selected?`${B.accent}15`:"transparent"}}>{d}</span>
                     {dayEvs.length>3&&<span style={{fontSize:9,color:B.muted,fontWeight:600}}>+{dayEvs.length-3}</span>}
                   </div>
-                  {dayEvs.slice(0,3).map((ev,ei)=><div key={ei} style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:4,marginBottom:2,background:`${typeColor(ev.type)}15`,color:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}</div>)}
+                  {dayEvs.slice(0,3).map((ev,ei)=><div key={ei}
+                    draggable
+                    onDragStart={e=>{e.dataTransfer.setData("text/event-id",String(ev.id));e.dataTransfer.effectAllowed="move";e.currentTarget.style.opacity="0.4";}}
+                    onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
+                    onClick={e=>{e.stopPropagation();setSelDay(d);setViewEvent(ev);}}
+                    style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:4,marginBottom:2,background:`${typeColor(ev.type)}15`,color:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"grab"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}</div>)}
                 </div>;
               })}
             </div>
