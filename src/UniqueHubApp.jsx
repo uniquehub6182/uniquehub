@@ -257,43 +257,43 @@ const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
     if (isHeic) {
       try {
         console.log("[HEIC] Converting:", file.name, "type:", file.type, "size:", file.size);
-        /* Load heic2any via ESM dynamic import (handles WASM correctly) */
-        if (!window._heic2anyFn) {
-          const mod = await import(/* @vite-ignore */ "https://esm.sh/heic2any@0.0.4");
-          window._heic2anyFn = mod.default;
-          console.log("[HEIC] Library loaded via ESM OK");
+        /* Load libheif-js WASM bundle (supports HEVC/H.265 codec used by iPhones) */
+        if (!window._heifDecoder) {
+          const mod = await import(/* @vite-ignore */ "https://esm.sh/libheif-js@1.18.2/wasm-bundle");
+          const libheif = mod.default;
+          window._heifDecoder = new libheif.HeifDecoder();
+          console.log("[HEIC] libheif-js decoder ready");
         }
-        const blob = await window._heic2anyFn({ blob: file, toType: "image/jpeg", quality: 0.92 });
-        const converted = Array.isArray(blob) ? blob[0] : blob;
+        const buf = await file.arrayBuffer();
+        const data = new Uint8Array(buf);
+        const images = window._heifDecoder.decode(data);
+        if (!images || images.length === 0) throw new Error("No images decoded from HEIC");
+        const image = images[0];
+        const w = image.get_width();
+        const h = image.get_height();
+        console.log("[HEIC] Decoded:", w, "x", h);
+        /* Render to canvas → JPEG */
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        const imageData = ctx.createImageData(w, h);
+        await new Promise((res, rej) => {
+          image.display(imageData, (displayData) => {
+            if (!displayData) { rej(new Error("HEIC display failed")); return; }
+            ctx.putImageData(displayData, 0, 0);
+            res();
+          });
+        });
+        const jpegBlob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.92));
+        if (!jpegBlob) throw new Error("Canvas toBlob failed");
         const newName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-        processedFile = new File([converted], newName, { type: "image/jpeg" });
-        console.log("[HEIC] Converted OK:", newName, "size:", processedFile.size);
+        processedFile = new File([jpegBlob], newName, { type: "image/jpeg" });
+        console.log("[HEIC] Converted OK:", newName, processedFile.size, "bytes");
       } catch (e) {
-        console.error("[HEIC] heic2any failed:", e?.message || e);
-        /* Fallback: try CDN script tag version */
-        try {
-          if (!window.heic2any) {
-            await new Promise((res, rej) => {
-              if (document.getElementById("heic2any-script")) { res(); return; }
-              const s = document.createElement("script");
-              s.id = "heic2any-script";
-              s.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
-              s.onload = res; s.onerror = rej;
-              document.head.appendChild(s);
-            });
-          }
-          if (window.heic2any) {
-            const blob2 = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
-            const converted2 = Array.isArray(blob2) ? blob2[0] : blob2;
-            processedFile = new File([converted2], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "image/jpeg" });
-            console.log("[HEIC] CDN fallback OK");
-          }
-        } catch (e2) {
-          console.error("[HEIC] All methods failed:", e2?.message || e2);
-          /* Last resort: upload as octet-stream with .jpg extension */
-          const buf = await file.arrayBuffer();
-          processedFile = new File([buf], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "application/octet-stream" });
-        }
+        console.error("[HEIC] Conversion failed:", e?.message || e);
+        /* Last resort: rename to .jpg with octet-stream so at least upload doesn't fail */
+        const buf = await file.arrayBuffer();
+        processedFile = new File([buf], file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg"), { type: "application/octet-stream" });
       }
     }
     if (!processedFile.type.startsWith("image/") && !isHeic) { resolve(processedFile); return; }
