@@ -9777,7 +9777,7 @@ REGRAS TÉCNICAS:
                     </div>}
                   </>;
                 })()}
-                <input type="file" id="designUpload" multiple={sel.format !== "Feed" && sel.format !== "Reels" && sel.format !== "Shorts"} accept={(sel.format==="Reels"||sel.format==="Shorts") ? "video/mp4,video/quicktime,video/webm" : "image/jpeg,image/png,image/webp,image/gif"} style={{ display:"none" }} onChange={async (e)=>{
+                <input type="file" id="designUpload" multiple={sel.format !== "Feed" && sel.format !== "Reels" && sel.format !== "Shorts"} accept={(sel.format==="Reels"||sel.format==="Shorts") ? "video/mp4,video/quicktime,video/webm" : "image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"} style={{ display:"none" }} onChange={async (e)=>{
                   const files = Array.from(e.target.files);
                   if (!files.length) return;
                   /* Validate Feed: max 1 image */
@@ -9848,7 +9848,7 @@ REGRAS TÉCNICAS:
                   e.target.value = "";
                 }} />
                 {/* Cover image input for Reels */}
-                <input type="file" id="designCoverUpload" accept="image/jpeg,image/png,image/webp" style={{ display:"none" }} onChange={async (e)=>{
+                <input type="file" id="designCoverUpload" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" style={{ display:"none" }} onChange={async (e)=>{
                   const file = e.target.files?.[0];
                   if (!file) return;
                   showToast("Enviando capa...");
