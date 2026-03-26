@@ -24773,43 +24773,61 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           const schedTime = scheduling.time || demand.schedule_time;
           const schedTs = getScheduledTimestamp({ date: schedDate, time: schedTime });
           const schedLabel = schedDate ? `${schedDate} às ${schedTime||""}` : "";
-          const isScheduledFuture = !!schedTs; /* true = will be scheduled via API */
+          const isScheduledFuture = !!schedTs;
           const networks = (demand.networks || [demand.network || ""]).map(n => (n||"").toLowerCase());
           const clientId = demand.client_id || demand.id;
           const isStories = (demand.format||"").toLowerCase() === "stories";
+          const mediaType = isReels ? "REELS" : isStories ? "STORIES" : "FEED";
 
-          showToast(isScheduledFuture ? `Agendando para ${schedLabel}...` : "Publicando conteúdo...");
+          /* ── SCHEDULED FUTURE: do NOT publish now, save to scheduled_posts ── */
+          if (isScheduledFuture) {
+            try {
+              const schedDateISO = new Date(`${schedDate}T${schedTime}:00`).toISOString();
+              const platforms = [];
+              if (networks.some(n => n.includes("instagram"))) platforms.push("instagram");
+              if (networks.some(n => n.includes("facebook"))) platforms.push("facebook");
+              for (const plat of platforms) {
+                await supabase.from("scheduled_posts").insert({
+                  client_id: clientId, platform: plat, media_type: mediaType,
+                  image_urls: imgUrls, caption: fullCaption,
+                  scheduled_at: schedDateISO,
+                  demand_id: demand.id, created_by: demand.created_by || null
+                });
+              }
+              showToast(`✅ Aprovado! Agendado para ${schedLabel}`);
+            } catch(e) {
+              console.error("[Schedule] Error:", e);
+              showToast(`Aprovado! Erro ao agendar: ${e.message}`);
+            }
+            return;
+          }
+
+          /* ── NOT SCHEDULED: publish immediately ── */
+          showToast("Publicando conteúdo...");
           let published = false;
 
-          /* Try Instagram */
           if (networks.some(n => n.includes("instagram"))) {
             try {
-              const type = isReels ? "REELS" : isStories ? "STORIES" : "FEED";
-              console.log("[Publish] Calling publishToInstagram:", { clientId, imgUrls: imgUrls.length, type, schedTs, isReels });
-              const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, type, schedTs, coverUrl);
-              console.log("[Publish] Instagram result:", r);
-              if (r?.error) {
-                showToast(`Aprovado, mas erro ao publicar IG: ${r.error}`);
-              } else {
-                const pubSteps = { ...steps, igPublished: { platform:"instagram", type, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:isScheduledFuture, scheduledFor: schedLabel } };
+              const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, mediaType, null, coverUrl);
+              if (r?.error) { showToast(`Aprovado, mas erro ao publicar IG: ${r.error}`); }
+              else {
+                const pubSteps = { ...steps, igPublished: { platform:"instagram", type:mediaType, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false } };
                 await supabase.from("demands").update({ steps: JSON.stringify(pubSteps) }).eq("id", demand.id);
-                showToast(isScheduledFuture ? `✓ Agendado no Instagram para ${schedLabel}` : "✓ Aprovado e publicado no Instagram!");
+                showToast("✅ Publicado no Instagram!");
                 published = true;
               }
             } catch(e) { console.error("[Publish] IG error:", e); showToast("Aprovado, mas falha na publicação IG"); }
           }
-          /* Try Facebook */
           if (networks.some(n => n.includes("facebook"))) {
             try {
-              const fbType = isReels ? "REELS" : isStories ? "STORIES" : "FEED";
-              const r = await publishToMeta(clientId, imgUrls, fullCaption, null, fbType);
+              const r = await publishToMeta(clientId, imgUrls, fullCaption, null, mediaType);
               if (r?.error) { showToast(`Aprovado, mas erro ao publicar FB: ${r.error}`); }
               else { showToast("✅ Publicado no Facebook!"); published = true; }
             } catch(e) { console.error("[Publish] FB error:", e); }
           }
           if (!published) { showToast("Conteúdo aprovado! Publicação pendente pela agência."); }
         } else {
-          showToast("Conteúdo aprovado! Sem imagens para publicar automaticamente.");
+          showToast("Conteúdo aprovado! Sem mídia para publicar automaticamente.");
         }
       }
 
