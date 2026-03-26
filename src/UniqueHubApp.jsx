@@ -10117,20 +10117,33 @@ REGRAS TÉCNICAS:
                     } catch(e) { showToast(`Erro ao agendar: ${e.message}`); }
                     setPubLoading(false);
                   } else {
-                    /* ── IMMEDIATE: publish now ── */
-                    showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
-                    let r;
-                    if (platform === "instagram") {
-                      r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl);
-                    } else {
-                      r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
-                    }
-                    if (r?.error) { showToast(`Erro: ${r.error}`); setPubLoading(false); return; }
-                    updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
-                    setTimeout(() => setDemandStage(sel, "published"), 200);
-                    showToast("✅ Publicado!");
-                    setPubLoading(false);
+                    /* ── IMMEDIATE: publish in background ── */
+                    const savedSel = { ...sel, steps: { ...sel.steps } };
+                    const savedSelId = sel.supaId || sel.id;
+                    setSel(null); /* close drawer immediately */
+                    const taskId = addBgTask("publish", `Publicando ${savedSel.client}...`);
+                    (async () => {
+                      try {
+                        updateBgTask(taskId, { msg: isReelsType ? "Processando vídeo na Meta..." : "Publicando..." });
+                        let r;
+                        if (platform === "instagram") {
+                          r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl);
+                        } else {
+                          r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
+                        }
+                        if (r?.error) {
+                          updateBgTask(taskId, { status:"error", label:"Erro na publicação", msg:r.error });
+                        } else {
+                          setDemands(prev => prev.map(d => (d.supaId||d.id) === savedSelId ? syncMilestones({...d, stage:"published"}, "published") : d));
+                          if (supabase) supaUpdateDemand(savedSelId, { stage:"published" });
+                          updateBgTask(taskId, { status:"done", label:`✅ ${savedSel.client} publicado!`, msg:"" });
+                        }
+                      } catch(e) {
+                        updateBgTask(taskId, { status:"error", msg:e.message });
+                      }
+                      setTimeout(() => removeBgTask(taskId), 8000);
+                    })();
+                    return; /* don't setPubLoading(false) — we already closed */
                   }
                 };
 
@@ -10182,28 +10195,38 @@ REGRAS TÉCNICAS:
                         }
                         setPubLoading(true);
                         const isReels = sel.format === "Reels" || sel.format === "Shorts";
-                        const imgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
-                        const pubCoverUrl2 = isReels ? mediaInfo.coverUrl : null;
+                        const savedImgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
+                        const savedCoverUrl = isReels ? mediaInfo.coverUrl : null;
                         const caption = isStories ? "" : (sel.steps?.caption?.text || sel.title || "");
-                        const fullCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
-                        const clientId = clientObj.supaId || clientObj.id;
-                        const type = isStories ? "STORIES" : isReels ? "REELS" : "FEED";
-                        showToast(isReels ? "⏳ Publicando Reels... aguarde o processamento" : "Publicando...", isReels ? 30000 : 5000);
-                        let igOk = false, fbOk = false, igErr = "", fbErr = "";
-                        if (hasIG) { const r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl2); if (r?.error) igErr = r.error; else igOk = true; }
-                        if (hasFB) { const r = await publishToMeta(clientId, imgUrls, fullCaption, null, type); if (r?.error) fbErr = r.error; else fbOk = true; }
-                        if (igOk || fbOk) {
-                          updateStep("client", { ...sel.steps?.client, status:"approved", by:"Publicação direta", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                          updateStep("igPublished", { platform: igOk && fbOk ? "both" : igOk ? "instagram" : "facebook", type, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
-                          setTimeout(() => setDemandStage(sel, "published"), 200);
-                          const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
-                          const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
-                          if (errs.length) showToast(`✅ Publicado no ${platforms}! (${errs.join("; ")})`);
-                          else showToast(`✅ Publicado no ${platforms}!`);
-                        } else {
-                          const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
-                          showToast(`Erro ao publicar: ${errs.join("; ") || "falha desconhecida"}`);
-                        }
+                        const savedCaption = (!isStories && sel.steps?.caption?.hashtags) ? `${caption}\n\n${sel.steps.caption.hashtags}` : caption;
+                        const savedClientId = clientObj.supaId || clientObj.id;
+                        const savedType = isStories ? "STORIES" : isReels ? "REELS" : "FEED";
+                        const savedSelId = sel.supaId || sel.id;
+                        const savedClient = sel.client;
+                        const savedHasIG = hasIG, savedHasFB = hasFB;
+                        /* Close drawer and run in background */
+                        setSel(null);
+                        setPubLoading(false);
+                        const taskId = addBgTask("publish", `Publicando ${savedClient}...`);
+                        (async () => {
+                          try {
+                            updateBgTask(taskId, { msg: isReels ? "Processando vídeo na Meta..." : "Publicando..." });
+                            let igOk = false, fbOk = false, igErr = "", fbErr = "";
+                            if (savedHasIG) { const r = await publishToInstagram(savedClientId, savedImgUrls, savedCaption, savedType, null, savedCoverUrl); if (r?.error) igErr = r.error; else igOk = true; }
+                            if (savedHasFB) { const r = await publishToMeta(savedClientId, savedImgUrls, savedCaption, null, savedType); if (r?.error) fbErr = r.error; else fbOk = true; }
+                            if (igOk || fbOk) {
+                              setDemands(prev => prev.map(d => (d.supaId||d.id) === savedSelId ? syncMilestones({...d, stage:"published"}, "published") : d));
+                              if (supabase) supaUpdateDemand(savedSelId, { stage:"published" });
+                              const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
+                              updateBgTask(taskId, { status:"done", label:`✅ ${savedClient} publicado!`, msg:platforms });
+                            } else {
+                              const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
+                              updateBgTask(taskId, { status:"error", label:"Erro na publicação", msg:errs.join("; ") });
+                            }
+                          } catch(e) { updateBgTask(taskId, { status:"error", msg:e.message }); }
+                          setTimeout(() => removeBgTask(taskId), 8000);
+                        })();
+                        return;
                         setPubLoading(false);
                       }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#10B981", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -10429,18 +10452,30 @@ REGRAS TÉCNICAS:
                   } catch(e) { showToast(`Erro: ${e.message}`); }
                   setPubLoading(false);
                 } else {
-                  showToast(`Publicando ${isCarousel ? "carrossel" : type}...`);
-                  let r;
-                  if (platform === "instagram") {
-                    r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl);
-                  } else {
-                    r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
-                  }
-                  if (r?.error) { showToast(`Erro: ${r.error}`); setPubLoading(false); return; }
-                  updateStep("igPublished", { platform, type, mediaId:r.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false });
-                  setTimeout(() => setDemandStage(sel, "published"), 200);
-                  showToast("✅ Publicado!");
-                  setPubLoading(false);
+                  const savedSelId = sel.supaId || sel.id;
+                  const savedClient = sel.client;
+                  setSel(null);
+                  const taskId = addBgTask("publish", `Publicando ${savedClient}...`);
+                  (async () => {
+                    try {
+                      updateBgTask(taskId, { msg: isReelsType ? "Processando vídeo na Meta..." : "Publicando..." });
+                      let r;
+                      if (platform === "instagram") {
+                        r = await publishToInstagram(clientId, imgUrls, fullCaption, type, null, pubCoverUrl);
+                      } else {
+                        r = await publishToMeta(clientId, imgUrls, fullCaption, null, type);
+                      }
+                      if (r?.error) {
+                        updateBgTask(taskId, { status:"error", label:"Erro na publicação", msg:r.error });
+                      } else {
+                        setDemands(prev => prev.map(d => (d.supaId||d.id) === savedSelId ? syncMilestones({...d, stage:"published"}, "published") : d));
+                        if (supabase) supaUpdateDemand(savedSelId, { stage:"published" });
+                        updateBgTask(taskId, { status:"done", label:`✅ ${savedClient} publicado!`, msg:"" });
+                      }
+                    } catch(e) { updateBgTask(taskId, { status:"error", msg:e.message }); }
+                    setTimeout(() => removeBgTask(taskId), 8000);
+                  })();
+                  return;
                 }
               };
               return (
