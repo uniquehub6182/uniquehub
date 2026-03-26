@@ -12027,6 +12027,7 @@ REGRAS TÉCNICAS:
                 <label style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:8 }}>Publicar em</label>
                 {(() => {
                   const doQpPublish = async (platforms) => {
+                    console.log("[QP-DESKTOP] doQpPublish called with platforms:", platforms, "hasFB:", hasFB, "hasIG:", hasIG);
                     if (qpLoading || !(qpForm._files||[]).length) return;
                     /* Close modal immediately and run in background */
                     const savedForm = { ...qpForm, _files: [...(qpForm._files||[])], coverUrl: qpForm.coverUrl };
@@ -12082,8 +12083,10 @@ REGRAS TÉCNICAS:
                       if (r?.error) { igErr = r.error; console.error("[QP] IG error:", r.error); } else { igOk = true; postId = r?.media_id || r?.post_id; }
                     }
                     if (platforms.includes("fb")) {
+                      console.log("[QP-DESKTOP] >>> Calling FB publish now. clientId:", clientId, "fmt:", fmt, "urls:", publicUrls.length);
                       updateBgTask(taskId, { msg: igOk ? "Instagram ✓ · Publicando no Facebook..." : "Publicando no Facebook..." });
                       const r = await publishToMeta(clientId, publicUrls, caption, null, fmt);
+                      console.log("[QP-DESKTOP] <<< FB result:", JSON.stringify(r).substring(0, 200));
                       if (r?.error) { fbErr = r.error; console.error("[QP] FB error:", r.error); } else { fbOk = true; if (!postId) postId = r?.id || r?.post_id; }
                     }
                     const ok = igOk || fbOk;
