@@ -10621,12 +10621,26 @@ REGRAS TÉCNICAS:
                     {imgFiles.length} {imgFiles.length===1?"imagem":"imagens"} · {sel.client}
                   </p>
                   {imgFiles.length > 0 && <div style={{ display:"flex", gap:6, justifyContent:"center", marginBottom:10, flexWrap:"wrap" }}>
-                    {imgFiles.slice(0,4).map((f,i) => <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />)}
+                    {imgFiles.slice(0,4).map((f,i) => {
+                      const isVid = /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/");
+                      return isVid
+                        ? <video key={i} src={f.url} muted playsInline style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />
+                        : <img key={i} src={f.url} alt="" style={{ width:56, height:56, objectFit:"cover", borderRadius:8, border:`1px solid ${B.border}` }} />;
+                    })}
                   </div>}
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {hasIG && !isStories && <button disabled={pubLoading} onClick={()=>doPublish("instagram","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#E1306C", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {imgFiles.length>1?"IG Carrossel":"IG Feed"}</>}</button>}
-                    {hasIG && isStories && <button onClick={()=>doPublish("instagram","STORIES")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="1" fill="#fff"/></svg> Publicar IG Story</button>}
-                    {hasFB && <button onClick={()=>doPublish("facebook","FEED")} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} Facebook</button>}
+                    {hasIG && (() => {
+                      const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
+                      const igType = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
+                      const igLabel = isReelsFmt ? "IG Reels" : isStories ? "IG Story" : imgFiles.length > 1 ? "IG Carrossel" : "IG Feed";
+                      return <button disabled={pubLoading} onClick={()=>doPublish("instagram", igType)} style={{ flex:1, padding:"12px 0", borderRadius:12, background: isStories ? "linear-gradient(45deg, #f09433, #e6683c, #dc2743)" : "#E1306C", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/></svg> {schedTs?"Agendar":"Publicar"} {igLabel}</>}</button>;
+                    })()}
+                    {hasFB && (() => {
+                      const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
+                      const fbType = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
+                      const fbLabel = isReelsFmt ? "FB Reels" : isStories ? "FB Story" : "Facebook";
+                      return <button disabled={pubLoading} onClick={()=>doPublish("facebook", fbType)} style={{ flex:1, padding:"12px 0", borderRadius:12, background:"#1877F2", border:"none", cursor:pubLoading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:6, opacity:pubLoading?0.6:1 }}>{pubLoading?"Publicando...":<><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg> {schedTs?"Agendar":"Publicar"} {fbLabel}</>}</button>;
+                    })()}
                   </div>
                 </Card>
               );
