@@ -24729,7 +24729,17 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         updatePayload.stage = "published";
       }
       await supabase.from("demands").update(updatePayload).eq("id", demand.id);
-      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: status === "approved" ? "published" : d.stage } : d));
+      /* If approved AND has future schedule → go to "scheduled", NOT "published" */
+      const scheduling = demand.scheduling || {};
+      const schedDate = scheduling.date || demand.schedule_date;
+      const schedTime = scheduling.time || demand.schedule_time;
+      const hasFutureSchedule = status === "approved" && schedDate && (() => {
+        const ts = getScheduledTimestamp({ date: schedDate, time: schedTime });
+        return !!ts; /* true if schedule is in the future */
+      })();
+      const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : d.stage;
+      setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage } : d));
+      if (targetStage !== d.stage) await supabase.from("demands").update({ stage: targetStage }).eq("id", demand.id);
 
       /* ── Award gamification points IMMEDIATELY after status change ── */
       const scoreClientId = demand.client_id || myClientId_inner;
@@ -24749,9 +24759,12 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       /* ── Auto-publish via Meta API when client approves ── */
       if (status === "approved") {
         const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.editing?.files||[])];
-        const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name||""));
+        const mediaInfo = separateMedia(files);
+        const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
         if (imgFiles.length > 0) {
-          const imgUrls = imgFiles.map(f => f.url);
+          const isReels = (demand.format||"").toLowerCase() === "reels" || (demand.format||"").toLowerCase() === "shorts";
+          const imgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.filter(f => !f.isCover).map(f => f.url);
+          const coverUrl = isReels ? mediaInfo.coverUrl : null;
           const caption = demand.steps?.caption?.text || demand.title || "";
           const hashtags = demand.steps?.caption?.hashtags || "";
           const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption;
@@ -24771,9 +24784,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           /* Try Instagram */
           if (networks.some(n => n.includes("instagram"))) {
             try {
-              const type = isStories ? "STORIES" : "FEED";
-              console.log("[Publish] Calling publishToInstagram:", { clientId, imgUrls: imgUrls.length, type, schedTs });
-              const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, type, schedTs);
+              const type = isReels ? "REELS" : isStories ? "STORIES" : "FEED";
+              console.log("[Publish] Calling publishToInstagram:", { clientId, imgUrls: imgUrls.length, type, schedTs, isReels });
+              const r = await publishToInstagram(clientId, imgUrls, isStories ? "" : fullCaption, type, schedTs, coverUrl);
               console.log("[Publish] Instagram result:", r);
               if (r?.error) {
                 showToast(`Aprovado, mas erro ao publicar IG: ${r.error}`);
@@ -24788,7 +24801,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           /* Try Facebook */
           if (networks.some(n => n.includes("facebook"))) {
             try {
-              const fbType = isStories ? "STORIES" : "FEED";
+              const fbType = isReels ? "REELS" : isStories ? "STORIES" : "FEED";
               const r = await publishToMeta(clientId, imgUrls, fullCaption, null, fbType);
               if (r?.error) { showToast(`Aprovado, mas erro ao publicar FB: ${r.error}`); }
               else { showToast("✅ Publicado no Facebook!"); published = true; }
