@@ -23386,7 +23386,7 @@ function Match4BizPage({ onBack, clients, user }) {
     const st = getSt(m.status);
     const msgs = (m.messages || []).filter(msg => msg.from === "agency" || msg.type === "system");
     return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
         {ToastEl}
         <Head title="" onBack={()=>{setSelMatch(null);setView("list");}} right={
           <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -23581,7 +23581,7 @@ function Match4BizPage({ onBack, clients, user }) {
 
   /* ═══ MOBILE LIST VIEW ═══ */
   return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
       {ToastEl}
       <Head title="Match4Biz" onBack={onBack} />
       <div className="content" style={{padding:"0 16px"}}>
@@ -24011,7 +24011,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ EDIT MY PROFILE ═══ */
   if (showEditProfile) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu perfil" title="Match4Biz" onBack={() => setShowEditProfile(false)} collapsed={false} />
       <div className="content" style={{ padding:"0 16px" }}>
         <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
@@ -24037,7 +24037,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ LOADING SCREEN ═══ */
   if (loading) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
         <div style={{ textAlign:"center" }}>
@@ -24051,7 +24051,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ NOT FOUND SCREEN ═══ */
   if (!loading && !myClient) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"40px 20px", textAlign:"center" }}>
@@ -24069,7 +24069,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ TERMS SCREEN ═══ */
   if (!accepted) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"0 16px 120px" }}>
@@ -24141,7 +24141,7 @@ function ClientMatch4Biz({ onBack, user }) {
     const circumference = 2 * Math.PI * 42;
     const offset = circumference - (sc / 100) * circumference;
     return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
         <Head title="" onBack={() => setShowProfile(null)} />
         <div className="content" style={{ padding:"0 16px" }}>
@@ -24300,7 +24300,7 @@ function ClientMatch4Biz({ onBack, user }) {
 
   /* ═══ MAIN VIEW ═══ */
   return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       {ToastEl}
       {BuyOverlay}
@@ -24605,7 +24605,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
   const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
 
   return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
       <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:"12px 16px 120px" }}>
@@ -25443,7 +25443,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 `;
   const ClientStyleTag = () => <style dangerouslySetInnerHTML={{ __html: clientStyles }} />;
   const SubWrap = ({ title, children }) => (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <ClientStyleTag />
       <Head title={title} onBack={() => setSub(null)} />
       <div className="content" style={{ flex:1, overflow:"auto" }}>{children}</div>
@@ -25490,7 +25490,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     /* ── Pix QR code view ── */
     if (finView === "pix" && asaasPixData) return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <Head title="Pagar com Pix" onBack={() => { setFinView("main"); setAsaasPixData(null); }} />
         <div className="content" style={{ padding:"0 16px", textAlign:"center" }}>
           <Card style={{ padding:24 }}>
@@ -25506,7 +25506,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     /* ── Boleto view ── */
     if (finView === "boleto" && asaasBoletoData) return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <Head title="Boleto" onBack={() => { setFinView("main"); setAsaasBoletoData(null); }} />
         <div className="content" style={{ padding:"0 16px", textAlign:"center" }}>
           <Card style={{ padding:24 }}>
@@ -25520,7 +25520,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     if (finView === "plans") return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
         <div className="content" style={{ padding:"12px 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
@@ -25539,7 +25539,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     if (finView === "service") return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <Head title="Serviço Extra" onBack={() => setFinView("main")} />
         <div className="content" style={{ padding:"0 16px" }}>
           <Card style={{ textAlign:"center", padding:24 }}>
@@ -25554,7 +25554,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     if (finView === "contract") return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <div style={{ padding:"0 20px" }}><Head title="Contrato" onBack={() => setFinView("main")} /></div>
         <div className="content" style={{ padding:"0 16px 120px" }}>
           <Card><p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Termos de Serviço</p>
@@ -25573,7 +25573,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     );
 
     return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
       <div className="content" style={{ padding:"12px 16px 120px" }}>
         <div style={{ borderRadius:20, overflow:"hidden", border:"none" }}>
@@ -25671,7 +25671,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const isApproved = d.steps?.client?.status === "approved";
     const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
     return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         {ToastEl}
         <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", minWidth:0 }}>
           <div style={{ padding:"0 20px" }}><Head title={d.title} onBack={() => setSub(null)} /></div>
@@ -26264,7 +26264,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
     <div style={{ display: hasSub ? "none" : "flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
       <style dangerouslySetInnerHTML={{ __html: `
 
@@ -26790,7 +26790,7 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
   return (
     <div style={{ display:"flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
       {ToastEl}
       {/* ── NEWS TO POST: CLIENT PICKER ── */}
       {newsToPostArticle && !newsToPostLoading && <div style={{position:"fixed",inset:0,zIndex:99997,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)"}} onClick={()=>{setNewsToPostArticle(null);setNewsToPostClient(null);}}>
