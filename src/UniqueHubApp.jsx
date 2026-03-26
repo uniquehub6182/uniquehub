@@ -8861,38 +8861,7 @@ REGRAS TÉCNICAS:
     return () => clearInterval(timer);
   }, []);
 
-  /* ── Auto-advance: move "scheduled" → "published" when scheduled time has passed ── */
-  useEffect(() => {
-    const checkExpired = () => {
-      const now = new Date();
-      const expired = demands.filter(d => {
-        if (d.stage !== "scheduled" || !d.scheduling?.date) return false;
-        /* Skip demands that have scheduled_posts entries — Edge Function handles those */
-        if (d.steps?.igPublished?.scheduled) return false;
-        const sd = d.scheduling.date; const st = d.scheduling.time || "23:59";
-        let dt;
-        if (sd.includes("-")) dt = new Date(`${sd}T${st}:00`);
-        else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); dt = new Date(`${now.getFullYear()}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}T${st}:00`); }
-        else return false;
-        return !isNaN(dt) && dt < now;
-      });
-      if (expired.length > 0) {
-        const stages = getStages("social");
-        const pubStage = stages[stages.indexOf("scheduled") + 1] || "published";
-        setDemands(prev => prev.map(d => {
-          if (expired.find(e => e.id === d.id)) {
-            if (d.supaId) supaUpdateDemand(d.supaId, { stage: pubStage });
-            return { ...d, stage: pubStage };
-          }
-          return d;
-        }));
-        console.log(`[Auto] ${expired.length} demanda(s) movida(s) para ${pubStage}`);
-      }
-    };
-    checkExpired();
-    const timer = setInterval(checkExpired, 30000);
-    return () => clearInterval(timer);
-  }, [demands]);
+  /* ── checkExpired REMOVED — Edge Function publish-scheduled handles all stage transitions ── */
 
   /* ── Expiring content detection (5+ months old published with images) ── */
   const expiringDemands = demands.filter(d => {
@@ -10397,6 +10366,10 @@ REGRAS TÉCNICAS:
                   const isReelsType = type === "REELS";
                   let imgUrls = isReelsType && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.map(f => f.url);
                   const pubCoverUrl = isReelsType ? mediaInfo.coverUrl : null;
+                  /* For Reels scheduling, include cover URL so Edge Functions can use it */
+                  if (isReelsType && pubCoverUrl && schedTs) {
+                    imgUrls = [mediaInfo.videoUrl, pubCoverUrl];
+                  }
                   /* If video is a cloud link, proxy through R2 first */
                   const vidFile = isReelsType && mediaInfo.vids[0];
                   const isCloud = vidFile?.isCloudLink;
@@ -10601,8 +10574,8 @@ REGRAS TÉCNICAS:
                         const isReelsFmt = sel.format === "Reels" || sel.format === "Shorts";
                         const type = isReelsFmt ? "REELS" : isStories ? "STORIES" : "FEED";
                         if (hasIG) await doPublish("instagram", type);
-                        setPubLoading(false);
                         if (hasFB) await doPublish("facebook", type);
+                        setPubLoading(false);
                       }} disabled={pubLoading} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", color:"#fff", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:pubLoading?"wait":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:pubLoading?0.6:1 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         Programar · {sel.scheduling.date.split("-").reverse().join("/")} {sel.scheduling.time||""}
@@ -25258,8 +25231,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
         if (imgFiles.length > 0) {
           const isReels = (demand.format||"").toLowerCase() === "reels" || (demand.format||"").toLowerCase() === "shorts";
-          const imgUrls = isReels && mediaInfo.videoUrl ? [mediaInfo.videoUrl] : imgFiles.filter(f => !f.isCover).map(f => f.url);
           const coverUrl = isReels ? mediaInfo.coverUrl : null;
+          /* For Reels, include video URL + cover URL so Edge Functions have both */
+          const imgUrls = isReels && mediaInfo.videoUrl ? (coverUrl ? [mediaInfo.videoUrl, coverUrl] : [mediaInfo.videoUrl]) : imgFiles.filter(f => !f.isCover).map(f => f.url);
           const caption = demand.steps?.caption?.text || demand.title || "";
           const hashtags = demand.steps?.caption?.hashtags || "";
           const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption;
