@@ -9853,7 +9853,7 @@ REGRAS TÉCNICAS:
                 {uploadProgress.total > 0 && <p style={{ fontSize:9, color:B.muted, marginTop:4 }}>{(uploadProgress.loaded/1024/1024).toFixed(1)}MB de {(uploadProgress.total/1024/1024).toFixed(0)}MB</p>}
               </div>}
               {sel.format !== "Reels" && sel.format !== "Shorts" && <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, PSD, AI — múltiplos arquivos</p>}
-            </> : sel.steps?.design?.files?.length > 0 && <>
+            </> : (sel.steps?.design?.files?.length > 0 || sel.steps?.design?.references?.length > 0) && <>
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
                 <Av name={sel.steps?.design?.by||"Designer"} sz={22} fs={9} />
                 <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.design?.by||"Designer"}</span>
@@ -9891,6 +9891,25 @@ REGRAS TÉCNICAS:
                   </div>);
                 })}
               </div>
+              {/* ── Reference photos (read-only view for non-design stages) ── */}
+              {(sel.steps?.design?.references||[]).length > 0 && (
+                <div style={{ marginTop:10, padding:10, borderRadius:12, background:`${B.blue||"#3B82F6"}06`, border:`1px solid ${B.blue||"#3B82F6"}15` }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.blue||"#3B82F6", marginBottom:8, display:"flex", alignItems:"center", gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.blue||"#3B82F6"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Referências / Fotos para a arte
+                  </p>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(70px, 1fr))", gap:6 }}>
+                    {(sel.steps?.design?.references||[]).map((ref, ri) => (
+                      <div key={ri} style={{ position:"relative", borderRadius:8, overflow:"hidden", aspectRatio:"1", border:`1px solid ${B.border}` }}>
+                        <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        <a href={ref.url} download target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ position:"absolute", bottom:4, right:4, width:22, height:22, borderRadius:6, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>}
           </>)}
 
