@@ -13312,7 +13312,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
           </button>
         ))}
         {allProfiles.length === 0 && <p style={{ fontSize:13, color:B.muted, padding:20, textAlign:"center" }}>Nenhum membro ativo na equipe. Convide membros em Equipe e peça que acessem o link de convite.</p>}
-        <div style={{ height:60 }} />
+        <div style={{ height:100 }} />
       </div>
     </>
   ) : null;
@@ -13344,7 +13344,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
           );
         })}
         <button onClick={createGroup} className="pill full accent" style={{ marginTop:16 }}>Criar grupo ({groupMembers.length} selecionados)</button>
-        <div style={{ height:60 }} />
+        <div style={{ height:100 }} />
       </div>
     </>
   ) : null;
