@@ -3084,7 +3084,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   }, [activeCheckin]);
   const fmtTimer = (s) => { const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sec=s%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; };
 
-  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:totalRevenue,k:"financial"}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:totalRevenue,k:"financial"}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:activeCheckin?"rodando agora":"registro diário",val:activeCheckin?fmtTimer(checkinElapsed):"—",k:"checkin"} };
+  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:maskVal(totalRevenue),k:"financial",isFin:true}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:maskVal(totalRevenue),k:"financial",isFin:true}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:activeCheckin?"rodando agora":"registro diário",val:activeCheckin?fmtTimer(checkinElapsed):"—",k:"checkin"} };
   const PILLS = {
     home:      {l:"Home",        k:"home",      tab:true},
     conteudo:  {l:"Conteúdo",    k:"content",   tab:true,  badge:pendingApprovals},
@@ -3181,6 +3181,9 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   }, []);
   const [showPanelEditor, setShowPanelEditor] = useState(false);
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
+  const [hideFinancial, setHideFinancial] = useState(() => { try { return localStorage.getItem("uh_hide_financial") === "1"; } catch { return false; } });
+  const toggleHideFinancial = () => { setHideFinancial(p => { const v = !p; try { localStorage.setItem("uh_hide_financial", v ? "1" : "0"); } catch {} return v; }); };
+  const maskVal = (v) => hideFinancial ? "•••••" : v;
   const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
   /* ── Banner carrossel state ── */
   const [banners, setBanners] = useState(() => { try { const s = localStorage.getItem("uh_desktop_banners"); return s ? JSON.parse(s) : []; } catch { return []; } });
@@ -3961,6 +3964,10 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 {/* Linha 2: Cards LIME — metade dentro, metade fora do header */}
                 <div style={{display:"grid",gridTemplateColumns:`repeat(${metricCards.length},1fr)`,gap:12,marginBottom:-55,position:"relative",zIndex:3}}>
                   {metricCards.map((w,i)=><div key={i} onClick={()=>nav(w.k)} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                    {w.isFin && <button onClick={e=>{e.stopPropagation();toggleHideFinancial();}} style={{position:"absolute",top:10,right:10,background:"rgba(0,0,0,0.08)",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2}} title={hideFinancial?"Mostrar valores":"Ocultar valores"}>
+                      {hideFinancial ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+                    </button>}
                     <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.l}</div>
                     <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
                     <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:3,fontWeight:500}}>{w.sub}</div>
