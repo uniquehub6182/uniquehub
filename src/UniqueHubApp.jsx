@@ -25096,9 +25096,8 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
-  /* Theme for client portal - read uiPrefs from localStorage to avoid overwriting global B */
-  const clientUiPrefs = (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })();
-  B = getB(false, "#BBF246", clientUiPrefs);
+  /* Theme for client portal — initial B, will be overridden by useMemo below */
+  B = getB(dark, "#BBF246", (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })());
   const canAccessFn = () => true;
   /* Load custom gamify data for client financeiro */
   const [gamifyData, setGamifyData] = useState(null);
@@ -25117,7 +25116,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   /* Inject essential CSS globally for all sub-pages */
   React.useEffect(() => {
     const id = "uh-client-styles";
-    if (document.getElementById(id)) return;
+    const old = document.getElementById(id); if (old) old.remove();
     const s = document.createElement("style");
     s.id = id;
     s.textContent = `
@@ -25137,7 +25136,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
 `;
     document.head.appendChild(s);
     return () => { const el = document.getElementById(id); if (el) el.remove(); };
-  }, []);
+  }, [dark, B.bg, B.text, B.accent, B.bgCard, B.border, B.muted]);
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
   const [showClientNavEdit, setShowClientNavEdit] = useState(false);
