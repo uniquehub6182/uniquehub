@@ -26319,8 +26319,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
-    {/* Navbar always visible - outside hidden div */}
-    <nav className="bnav" style={{ overflow:"visible" }}>
+    {/* Navbar - hide when sub-page is active */}
+    {!hasSub && <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           return (
@@ -26333,8 +26333,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </button>
           );
         })}
-    </nav>
-    <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />
+    </nav>}
+    {!hasSub && <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"calc(14px + env(safe-area-inset-bottom,0px))", background:B.bg, zIndex:49 }} />}
     </>);
 }
 
