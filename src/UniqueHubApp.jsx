@@ -114,6 +114,8 @@ const PLAN_MAP_TO_DB = { "Traction": "traction", "Growth 360": "growth360", "Par
 const PLAN_MAP_FROM_DB = { "traction": "Traction", "growth360": "Growth 360", "partner": "Partner" };
 const PLAN_VALUES = { "Traction": "R$ 1.480", "Growth 360": "R$ 2.480", "Partner": "R$ 4.480" };
 /* Parse BRL "R$ 4.480" or "R$ 2.480,50" → number */
+/* Global financial mask — reads localStorage so it works across all components */
+const maskFin = (v) => { try { return localStorage.getItem("uh_hide_financial") === "1" ? "•••••" : v; } catch { return v; } };
 const parseBRL = (s) => {
   if (!s) return 0;
   const clean = String(s).replace(/[^\d.,]/g, "");
@@ -3364,7 +3366,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     </div>; }
     if(key==="resumo"&&isAdmin) return <div key="resumo"><div style={{padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Resumo</h3></div><div style={{display:"grid",gridTemplateColumns:isDesktop?"repeat(4,1fr)":"repeat(2,1fr)",gap:10}}>{[{label:"Clientes",value:totalClients,sub:`${activeClients} ativos`,icon:"👥",fin:false},{label:"Receita",value:totalRevenue,sub:"+12% vs mês ant.",icon:"💰",fin:true},{label:"Score",value:avgScore,sub:"satisfação média",icon:"⭐",fin:false},{label:"Pendentes",value:pendingApprovals,sub:"aguardando ação",icon:"⏳",fin:false}].filter(s => !s.fin || canFinancial).map((s,j)=><div key={j} style={{background:C.card,borderRadius:22,padding:"16px 14px",position:"relative",overflow:"hidden",border:`1px solid ${C.brd}`}}><div style={{position:"absolute",top:12,right:12,fontSize:20,opacity:0.12}}>{s.icon}</div><p style={{fontSize:9,color:C.mut,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{s.label}</p><p style={{fontSize:22,fontWeight:900,color:LIME,marginTop:4}}>{s.value}</p><p style={{fontSize:10,color:C.mut,marginTop:2}}>{s.sub}</p></div>)}</div></div>;
     if(key==="equipe"&&team&&team.length>0) return <div key="equipe"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Equipe</h3><span onClick={()=>goSub("team")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div><div style={{display:"flex",gap:10,overflowX:"auto",scrollbarWidth:"none",paddingBottom:4}}>{(team||[]).slice(0,6).map((m,i)=><div key={i} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:64}}><Av src={m.photo_url} name={m.name} sz={48} fs={18}/><p style={{fontSize:10,fontWeight:600,color:C.txt,textAlign:"center",lineHeight:1.2,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name?.split(" ")[0]}</p></div>)}</div></div>;
-    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av src={c.logo} name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"}{canFinancial ? ` · ${c.monthly||"—"}/mês` : ""}</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
+    if(key==="clientes"&&CDATA.length>0) return <div key="clientes"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"24px 0 12px"}}><h3 style={{fontSize:18,fontWeight:800,color:C.txt}}>Clientes</h3><span onClick={()=>goSub("clients")} style={{fontSize:13,color:C.mut,fontWeight:600,cursor:"pointer"}}>Ver todos</span></div>{CDATA.slice(0,3).map((c,i)=><div key={c.id||i} onClick={()=>goSub("clients")} style={{background:C.card,borderRadius:18,padding:"14px 16px",border:`1px solid ${C.brd}`,marginTop:i?8:0,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}><Av src={c.logo} name={c.name} sz={40} fs={15}/><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:C.txt}}>{c.name}</p><p style={{fontSize:11,color:C.mut}}>{c.plan||"—"}{canFinancial ? ` · ${maskVal(c.monthly||"—")}/mês` : ""}</p></div><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.mut} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>)}</div>;
     if(key==="posts") {
       const recentDemands = (demands||[]).slice(0,8);
       if(recentDemands.length===0) return null;
@@ -6068,7 +6070,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                         {socialCount>0&&<span style={{ fontSize:9, color:B.muted }}>{socialCount} rede{socialCount>1?"s":""}</span>}
                       </div>
                     </div>
-                    {isAdmin && canFinancial && <span style={{ fontSize:12, fontWeight:700, color:B.text, flexShrink:0 }}>{c.monthly}</span>}
+                    {isAdmin && canFinancial && <span style={{ fontSize:12, fontWeight:700, color:B.text, flexShrink:0 }}>{maskFin(c.monthly)}</span>}
                   </div>
                 );
               })}
@@ -6511,7 +6513,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
             </div>
             <div style={{ textAlign:"right" }}>
-              {isAdmin && canFinancial && <p style={{ fontSize:13, fontWeight:700 }}>{c.monthly}</p>}
+              {isAdmin && canFinancial && <p style={{ fontSize:13, fontWeight:700 }}>{maskFin(c.monthly)}</p>}
               {c.pending > 0 && <p style={{ fontSize:10, color:B.orange, fontWeight:600 }}>{c.pending} pendente{c.pending>1?"s":""}</p>}
             </div>
           </div>
@@ -7257,7 +7259,7 @@ function FinancialPage({ onBack, clients: propClients }) {
   const trialClients = CDATA.filter(c => c.status === "trial" || c.plan === "Trial").length;
   const ticketMedio = payingClients > 0 ? Math.round(totalRevReal / payingClients) : 0;
   const months = [
-    { m: "Mar 2026", revenue: `R$ ${totalRevReal.toLocaleString("pt-BR")}`, clients: CDATA.length, paying: payingClients, trial: trialClients, ticket: `R$ ${ticketMedio.toLocaleString("pt-BR")}`, growth: "—", expenses: "R$ 0", profit: `R$ ${totalRevReal.toLocaleString("pt-BR")}` },
+    { m: "Mar 2026", revenue: maskFin(`R$ ${totalRevReal.toLocaleString("pt-BR")}`), clients: CDATA.length, paying: payingClients, trial: trialClients, ticket: maskFin(`R$ ${ticketMedio.toLocaleString("pt-BR")}`), growth: "—", expenses: "R$ 0", profit: maskFin(`R$ ${totalRevReal.toLocaleString("pt-BR")}`) },
   ];
   const [sel, setSel] = useState(null);
   const cur = sel || months[0];
@@ -7329,12 +7331,12 @@ function FinancialPage({ onBack, clients: propClients }) {
       {isFinDesktop && <div style={{ width:240, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
         <div style={{ background:B.dark, borderRadius:16, padding:"16px 18px" }}>
           <div style={{ display:"flex", gap:16, marginBottom:10 }}>
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>R$ {totalRevReal.toLocaleString("pt-BR")}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Receita mensal</p></div>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{maskFin(`R$ ${totalRevReal.toLocaleString("pt-BR")}`)}</p><p style={{ fontSize:9, color:"rgba(255,255,255,0.5)" }}>Receita mensal</p></div>
           </div>
           <div style={{ display:"flex", gap:12 }}>
             <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.green }}>{payingClients}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Pagantes</p></div>
             <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:B.orange }}>{trialClients}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Trial</p></div>
-            <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>R$ {ticketMedio.toLocaleString("pt-BR")}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Ticket médio</p></div>
+            <div style={{ textAlign:"center" }}><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>{maskFin(`R$ ${ticketMedio.toLocaleString("pt-BR")}`)}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Ticket médio</p></div>
           </div>
         </div>
         <div style={{ flex:1, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
@@ -7376,7 +7378,7 @@ function FinancialPage({ onBack, clients: propClients }) {
           return <>
         <Card style={{ background: B.dark, color: "#fff", border: "none" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={{ color: B.accent, display: "flex" }}>{IC.dollar}</span><p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase" }}>FINANCEIRO — {cur.m.toUpperCase()}</p></div>
-          <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>R$ {revenue.toLocaleString("pt-BR")}</p>
+          <p style={{ fontSize: 32, fontWeight: 900, color: B.accent }}>{maskFin(`R$ ${revenue.toLocaleString("pt-BR")}`)}</p>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{monthPaid > 0 ? "Receita recebida" : "Receita prevista"}</p>
           <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
             <div><span style={{ fontSize: 14, fontWeight: 800, color: B.red }}>R$ {monthExp.toLocaleString("pt-BR")}</span><p style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Despesas</p></div>
@@ -7397,7 +7399,7 @@ function FinancialPage({ onBack, clients: propClients }) {
             <Card delay={0.02} style={{ marginTop:8 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
                 <span style={{ fontSize:11, fontWeight:600 }}>🎯 Meta mensal</span>
-                <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}% · R$ {fc.monthlyGoal.toLocaleString("pt-BR")}</span>
+                <span style={{ fontSize:11, fontWeight:800, color: pct >= 100 ? B.green : pct >= 70 ? B.orange : B.red }}>{pct}% · {maskFin(`R$ ${fc.monthlyGoal.toLocaleString("pt-BR")}`)}</span>
               </div>
               <div style={{ height:8, borderRadius:4, background:`${B.border}` }}>
                 <div style={{ height:"100%", borderRadius:4, background: pct >= 100 ? B.green : `linear-gradient(90deg, ${B.accent}, ${pct >= 70 ? B.green : B.orange})`, width:`${pct}%`, transition:"width .5s" }} />
