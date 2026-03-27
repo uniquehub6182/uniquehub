@@ -19174,6 +19174,23 @@ REGRAS:
     setSaved(p => p.includes(id) ? p.filter(x=>x!==id) : [...p, id]);
     showToast(saved.includes(id) ? "Removido dos salvos" : "Salvo para ler depois ✓");
   };
+  /* ── Like system ── */
+  const [allLikes, setAllLikes] = useState({});
+  useEffect(() => {
+    if (!supabase) return;
+    supaGetSetting("news_likes_all").then(v => { try { if (v) setAllLikes(JSON.parse(v)); } catch {} });
+  }, []);
+  const toggleLike = async (articleId) => {
+    const uid = user?.id || "anon";
+    const cur = allLikes[articleId] || [];
+    const liked = cur.includes(uid);
+    const next = liked ? cur.filter(x => x !== uid) : [...cur, uid];
+    const updated = { ...allLikes, [articleId]: next };
+    setAllLikes(updated);
+    if (supabase) await supaSetSetting("news_likes_all", JSON.stringify(updated));
+  };
+  const isLiked = (articleId) => (allLikes[articleId] || []).includes(user?.id || "anon");
+  const likeCount = (articleId) => (allLikes[articleId] || []).length;
 
   const saveArticle = async () => {
     if (!form.title?.trim()) return showToast("Informe o título");
@@ -19490,13 +19507,21 @@ REGRAS:
           ))}
         </Card>
         {a.tags && a.tags.length > 0 && (
-          <Card style={{ marginBottom:100 }}>
+          <Card style={{ marginBottom:12 }}>
             <p className="sl" style={{ marginBottom:6 }}>Tags</p>
             <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
               {a.tags.map((t,i) => <Tag key={i} color={catColor(a.cat)}>#{t}</Tag>)}
             </div>
           </Card>
         )}
+        {/* Like button */}
+        <Card style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <button onClick={() => toggleLike(a.supaId||a.id)} style={{ display:"flex", alignItems:"center", gap:8, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:600, color:isLiked(a.supaId||a.id) ? "#EF4444" : B.muted, padding:0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={isLiked(a.supaId||a.id)?"#EF4444":"none"} stroke={isLiked(a.supaId||a.id)?"#EF4444":"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            {isLiked(a.supaId||a.id) ? "Curtido" : "Curtir"}
+          </button>
+          {likeCount(a.supaId||a.id) > 0 && <span style={{ fontSize:12, color:B.muted }}>{likeCount(a.supaId||a.id)} curtida{likeCount(a.supaId||a.id)!==1?"s":""}</span>}
+        </Card>
         {!isClientView && <div style={{ display:"flex", gap:8 }}>
           <button onClick={()=>{setEditingArticle(true);setForm({title:a.title,summary:a.summary,body:a.body,cat:a.cat,source:a.source,sourceUrl:a.sourceUrl||"",readTime:a.readTime,pinned:a.pinned,tags:(a.tags||[]).join(", "),photo:a.photo||null});}} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -22494,10 +22519,10 @@ function NotesPage({ onBack, user }) {
   );
 
   return (
-    <div className={isNotesDesktop ? "content-wide" : ""} style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className={isNotesDesktop ? "content-wide" : ""} style={isNotesDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>} label="Produtividade" title="Notas" onBack={onBack} />
       {ToastEl}
-      <div style={{ display:"flex", flex:1, height:isNotesDesktop?"calc(100vh - 140px)":"calc(100vh - 120px)", overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:isNotesDesktop?16:8 }}>
+      <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:isNotesDesktop?16:0 }}>
         {isNotesDesktop ? (<>
           {NotesList()}
           {NoteEditor()}
