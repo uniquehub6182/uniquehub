@@ -25496,7 +25496,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       partner:{ name:"Partner", price:"R$ 4.480/mês", desc:"Grandes Contas & Business", features:["Tudo do Plano Growth 360°","Consultoria de Vendas & CRM","Produção de Campanhas Publicitárias","Desenvolvimento Web Contínuo (CRO)","Gestão Omnichannel","Acesso Direto ao Founder"] },
       enterprise:{ name:"Enterprise", price:"Sob consulta", desc:"Soluções corporativas", features:["Tudo do Partner","Equipe dedicada","SLA prioritário","Relatórios personalizados","Atendimento 24/7"] },
     };
+    const PLAN_RANK = { free:0, starter:1, traction:2, growth360:3, partner:4, enterprise:5 };
     const plan = PLAN_INFO[myClient.plan] || PLAN_INFO.free;
+    const myPlanRank = PLAN_RANK[myClient.plan] || 0;
     const monthlyVal = myClient.monthly_value ? `R$ ${Number(myClient.monthly_value).toLocaleString("pt-BR")}` : "Gratuito";
 
     /* Load Asaas payments */
@@ -25568,7 +25570,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               
               <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
               <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
-              {!isCurrent && <button onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient.name||""}) e tenho interesse no plano ${p.name} do UniqueHub. Gostaria de saber mais sobre o upgrade.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Solicitar upgrade</button>}
+              {!isCurrent && (() => { const thisRank = PLAN_RANK[k] || 0; const isUpgrade = thisRank > myPlanRank; const label = isUpgrade ? "Solicitar upgrade" : "Solicitar downgrade"; const action = isUpgrade ? "upgrade" : "downgrade"; return <button onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient.name||""}) e tenho interesse no plano ${p.name} do UniqueHub. Gostaria de saber mais sobre o ${action}.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:isUpgrade?B.accent:`${B.muted}20`, border:isUpgrade?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isUpgrade?"#0D0D0D":B.muted }}>{label}</button>; })()}
             </Card>;
           })}
         </div>
