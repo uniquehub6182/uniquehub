@@ -511,6 +511,7 @@ const mergeSupaDemand = (row) => {
     stage: row.stage || "idea", priority: row.priority || "média",
     network: Array.isArray(row.networks) ? row.networks.join(", ") : (row.networks || "Instagram"),
     format: row.format || "Feed",
+    aspectRatio: row.aspectRatio || row.aspect_ratio || "1:1",
     sponsored: row.sponsored || false,
     assignees: (() => {
       const byName = steps?.idea?.by;
