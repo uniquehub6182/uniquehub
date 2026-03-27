@@ -21702,7 +21702,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
     return (
       <div style={isAIDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={pgC} />
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 100px"}}>
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 16px",WebkitOverflowScrolling:"touch"}}>
         {ToastEl}
 
         {/* Search */}
@@ -21802,6 +21802,13 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
           </>}
         </>}
       </div>
+      {/* Fixed bottom "Nova conversa" button */}
+      <div style={{ padding:"12px 16px calc(env(safe-area-inset-bottom, 10px) + 10px)", background:B.bgCard, borderTop:`1px solid ${B.border}`, flexShrink:0 }}>
+        <button onClick={startNewChat} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.textOnAccent||"#0D0D0D", display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:`0 2px 12px ${B.accent}30` }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova conversa
+        </button>
+      </div>
       </div>
     );
   }
@@ -21810,44 +21817,51 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
   if (view === "chat" && messages.length === 0 && !loading) return (
     <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       {ToastEl}
-      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 10px) 16px 0`, display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexShrink:0 }}>
+      <div style={{ padding:`calc(env(safe-area-inset-top,0px) + 12px) 16px 12px`, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${B.border}`, background:B.bgCard, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={goBackToHistory} style={{ background:"none", border:"none", cursor:"pointer", display:"flex", color:B.text }}>{IC.back()}</button>
-          <h2 style={{ fontSize:18, fontWeight:800 }}>Nova conversa</h2>
+          <button onClick={goBackToHistory} style={{ width:34, height:34, borderRadius:10, border:`1px solid ${B.border}`, background:B.bg, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.text }}>{IC.back()}</button>
+          <div style={{ width:36, height:36, borderRadius:12, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", color:B.accent }}>{IC.ai(B.accent)}</div>
+          <div>
+            <p style={{ fontSize:15, fontWeight:700 }}>Assistente IA</p>
+            <p style={{ fontSize:10, color:B.muted, fontWeight:500 }}>Nova conversa</p>
+          </div>
         </div>
       </div>
 
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"0 16px", overflowY:"auto" }}>
-        <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
-          <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
+      <div style={{ flex:1, overflowY:"auto", padding:"20px 16px 16px", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ textAlign:"center", marginBottom:20 }}>
+          <div style={{ width:56, height:56, borderRadius:18, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
+            <span style={{ color:B.accent, transform:"scale(1.3)", display:"flex" }}>{IC.ai(B.accent)}</span>
+          </div>
+          <h3 style={{ fontSize:17, fontWeight:800, marginBottom:4 }}>Olá, {user?.name || user?.nick || "equipe"}!</h3>
+          <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>Escolha um atalho ou digite sua pergunta abaixo.</p>
         </div>
-        <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Olá, {user?.name || user?.nick || "equipe"}!</h3>
-        <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Como posso ajudar? Escolha um atalho ou digite sua pergunta.</p>
 
         {aiReady && ((activeProvider==="gemini"&&!aiKeys.gemini_key)||(activeProvider!=="gemini"&&!aiKeys.openai_key)) && (
-          <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:16, width:"100%", textAlign:"left" }}>
+          <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:14, textAlign:"left" }}>
             <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
             <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {activeProvider==="gemini"?"Gemini":activeProvider==="claude"?"Claude":"OpenAI"}.</p>
           </Card>
         )}
 
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, width:"100%" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
           {PRESETS.map((p, i) => (
-            <Card key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:12, textAlign:"left", border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard }}>
+            <div key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:"14px 12px", borderRadius:14, border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard, transition:"all .15s" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
-                <p style={{ fontSize:12, fontWeight:700 }}>{p.label}</p>
+                <div style={{ width:30, height:30, borderRadius:9, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
+                <p style={{ fontSize:11, fontWeight:700, lineHeight:1.3 }}>{p.label}</p>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
+        <div style={{ height:16 }} />
       </div>
 
-      <div style={{ padding:"12px 16px calc(env(safe-area-inset-bottom, 8px) + 8px)", display:"flex", gap:8, alignItems:"flex-end", flexShrink:0 }}>
+      <div style={{ padding:"10px 16px calc(env(safe-area-inset-bottom, 10px) + 10px)", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"flex-end", flexShrink:0 }}>
         <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
           placeholder="Pergunte qualquer coisa..."
-          className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12 }}
+          className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12, fontSize:14 }}
         />
         <button onClick={() => sendMessage(input)} disabled={!input.trim()} className="send-btn" style={{ opacity:input.trim()?1:0.4 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -21922,11 +21936,11 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
         </div>
       )}
 
-      <div style={{ padding:"8px 16px calc(env(safe-area-inset-bottom, 8px) + 8px)", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"flex-end" }}>
+      <div style={{ padding:"8px 16px calc(env(safe-area-inset-bottom, 10px) + 10px)", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"flex-end", flexShrink:0 }}>
         <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
           placeholder="Escreva sua mensagem..."
-          className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12, border:`1.5px solid ${B.border}` }}
+          className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12, fontSize:14, border:`1.5px solid ${B.border}` }}
         />
         <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading} className="send-btn" style={{ opacity:(input.trim()&&!loading)?1:0.4 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
