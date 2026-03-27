@@ -21705,12 +21705,12 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 16px",WebkitOverflowScrolling:"touch"}}>
         {ToastEl}
 
-        {/* Search */}
-        <div style={{ position:"relative", marginBottom:14 }}>
+        {/* Search — only show when there are conversations */}
+        {conversations.length > 0 && <div style={{ position:"relative", marginBottom:14 }}>
           <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</span>
           <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar conversas..." className="tinput" style={{ paddingLeft:42 }} />
           {searchQ && <button onClick={() => setSearchQ("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex" }}>{IC.x}</button>}
-        </div>
+        </div>}
 
         {/* Search results */}
         {showList && <>
@@ -21733,13 +21733,23 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
         {!showList && <>
           {/* Empty state */}
           {conversations.length === 0 && (
-            <div style={{ textAlign:"center", padding:"40px 20px" }}>
-              <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
-                <span style={{ color:B.accent, transform:"scale(1.5)", display:"flex" }}>{IC.ai(B.accent)}</span>
+            <div style={{ textAlign:"center", padding:"60px 20px 20px" }}>
+              <div style={{ width:56, height:56, borderRadius:18, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+                <span style={{ color:B.accent, transform:"scale(1.3)", display:"flex" }}>{IC.ai(B.accent)}</span>
               </div>
-              <h3 style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Nenhuma conversa ainda</h3>
-              <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:20 }}>Comece uma nova conversa com o assistente de IA!</p>
-              <button onClick={startNewChat} className="pill accent">Iniciar conversa</button>
+              <h3 style={{ fontSize:16, fontWeight:800, marginBottom:6 }}>Assistente IA</h3>
+              <p style={{ fontSize:12, color:B.muted, lineHeight:1.6, marginBottom:16 }}>Pergunte qualquer coisa sobre marketing, vendas, estratégia ou peça ideias para o seu negócio.</p>
+            </div>
+          )}
+          {/* Quick preset cards when empty */}
+          {conversations.length === 0 && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, padding:"0 4px" }}>
+              {PRESETS.slice(0,6).map((p, i) => (
+                <div key={i} onClick={() => { startNewChat(); setTimeout(() => setInput(p.prompt), 100); }} style={{ cursor:"pointer", padding:"12px 10px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ width:28, height:28, borderRadius:8, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
+                  <p style={{ fontSize:11, fontWeight:600, lineHeight:1.3 }}>{p.label}</p>
+                </div>
+              ))}
             </div>
           )}
 
@@ -21828,33 +21838,30 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
         </div>
       </div>
 
-      <div style={{ flex:1, overflowY:"auto", padding:"20px 16px 16px", WebkitOverflowScrolling:"touch" }}>
-        <div style={{ textAlign:"center", marginBottom:20 }}>
-          <div style={{ width:56, height:56, borderRadius:18, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
-            <span style={{ color:B.accent, transform:"scale(1.3)", display:"flex" }}>{IC.ai(B.accent)}</span>
+      <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 16px", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ textAlign:"center", marginBottom:16 }}>
+          <div style={{ width:48, height:48, borderRadius:16, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+            <span style={{ color:B.accent, transform:"scale(1.1)", display:"flex" }}>{IC.ai(B.accent)}</span>
           </div>
-          <h3 style={{ fontSize:17, fontWeight:800, marginBottom:4 }}>Olá, {user?.name || user?.nick || "equipe"}!</h3>
-          <p style={{ fontSize:12, color:B.muted, lineHeight:1.5 }}>Escolha um atalho ou digite sua pergunta abaixo.</p>
+          <h3 style={{ fontSize:16, fontWeight:800, marginBottom:3 }}>Olá, {user?.name?.split(" ")[0] || "equipe"}!</h3>
+          <p style={{ fontSize:11, color:B.muted }}>Escolha um atalho ou digite abaixo</p>
         </div>
 
         {aiReady && ((activeProvider==="gemini"&&!aiKeys.gemini_key)||(activeProvider!=="gemini"&&!aiKeys.openai_key)) && (
-          <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:14, textAlign:"left" }}>
+          <Card style={{ background:`${B.red}08`, border:`1.5px solid ${B.red}25`, marginBottom:12, textAlign:"left" }}>
             <p style={{ fontSize:12, color:B.red, fontWeight:600 }}>⚠️ Chave de API não configurada</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave {activeProvider==="gemini"?"Gemini":activeProvider==="claude"?"Claude":"OpenAI"}.</p>
+            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Vá em <strong>Configurações → Assistente IA</strong> para inserir sua chave.</p>
           </Card>
         )}
 
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
           {PRESETS.map((p, i) => (
-            <div key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:"14px 12px", borderRadius:14, border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard, transition:"all .15s" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ width:30, height:30, borderRadius:9, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
-                <p style={{ fontSize:11, fontWeight:700, lineHeight:1.3 }}>{p.label}</p>
-              </div>
+            <div key={i} onClick={() => { setSelPreset(i); setInput(p.prompt); setTimeout(()=>inputRef.current?.focus(),100); }} style={{ cursor:"pointer", padding:"12px 10px", borderRadius:12, border:`1.5px solid ${selPreset===i?B.accent:B.border}`, background:selPreset===i?`${B.accent}06`:B.bgCard, transition:"all .15s", display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ width:28, height:28, borderRadius:8, background:`${B.accent}08`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{p.icon}</div>
+              <p style={{ fontSize:11, fontWeight:600, lineHeight:1.3 }}>{p.label}</p>
             </div>
           ))}
         </div>
-        <div style={{ height:16 }} />
       </div>
 
       <div style={{ padding:"10px 16px calc(env(safe-area-inset-bottom, 10px) + 10px)", background:B.bgCard, borderTop:`1px solid ${B.border}`, display:"flex", gap:8, alignItems:"flex-end", flexShrink:0 }}>
