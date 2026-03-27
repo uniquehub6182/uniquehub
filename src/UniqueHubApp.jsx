@@ -21675,9 +21675,9 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
     const showList = filtered || null;
 
     return (
-      <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <div style={isAIDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       <CollapseHeader icon={IC.ai} label="Inteligência" title="Assistente IA" onBack={onBack} collapsed={pgC} />
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 100px"}}>
         {ToastEl}
 
         {/* Search */}
@@ -22123,8 +22123,8 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         </div>
 
         {/* Reply input */}
-        <div style={{ display:"flex", gap:8, padding:"12px 16px", borderTop:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard }}>
-          <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); sendReply(); }}} placeholder="Digite sua resposta..." className="tinput" style={{ flex:1, fontSize:13, padding:"10px 14px" }} disabled={sending} />
+        <div style={{ display:"flex", gap:8, padding:"12px 16px calc(env(safe-area-inset-bottom, 8px) + 12px)", borderTop:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard }}>
+          <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); sendReply(); }}} placeholder="Digite sua resposta..." className="tinput" style={{ flex:1, fontSize:14, padding:"12px 14px" }} disabled={sending} />
           <button onClick={sendReply} disabled={!reply.trim()||sending} style={{ width:42, height:42, borderRadius:12, background:reply.trim()?B.accent:B.border, border:"none", cursor:reply.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", boxShadow:reply.trim()?"0 2px 8px "+B.accent+"30":"none" }}>
             {sending ? <div style={{ width:16, height:16, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} />
             : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={reply.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
@@ -22137,10 +22137,10 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const TOP = forceMobile ? "env(safe-area-inset-top, 16px)" : 70;
 
   return (
-    <div className={isInboxDesktop ? "content-wide" : ""} style={{ paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
     <CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} />
     {ToastEl}
-    <div style={{ display:"flex", flex:1, height:isInboxDesktop?"calc(100vh - 140px)":"calc(100vh - 160px)", overflow:"hidden", borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
+    <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
       {isInboxDesktop ? (<>
         {ConvList()}
         {MsgThread()}
