@@ -13895,6 +13895,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const payLoadedRef = useRef(false);
   const gLoadedRef = useRef(false);
   const aboutLoadedRef = useRef(false);
+  /* Hooks for sub-pages (must be at top level for React rules) */
+  const [editAbout, setEditAbout] = useState(false);
+  const [aboutItems, setAboutItems] = useState(null);
+  const [svcListState, setSvcListState] = useState(null);
+  const [svcLoadedState, setSvcLoadedState] = useState(false);
   useEffect(() => {
     if (sub === "gamifyedit" && !gLoadedRef.current) {
       gLoadedRef.current = true;
@@ -13912,9 +13917,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     }
     if (sub === "about" && !aboutLoadedRef.current) {
       aboutLoadedRef.current = true;
-      supabase.from("app_settings").select("value").eq("key","gamify_about").maybeSingle().then(({data}) => {
-        if (data?.value) { try { setAboutData(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
-      });
+      if (supabase) supabase.from("app_settings").select("value").eq("key","gamify_about").limit(1).then(({data}) => {
+        const row = data?.[0];
+        if (row?.value) { try { setAboutData(typeof row.value === "string" ? JSON.parse(row.value) : row.value); } catch {} }
+      }).catch(() => {});
     }
     if (sub === "payments" && !payLoadedRef.current) {
       payLoadedRef.current = true;
@@ -15568,8 +15574,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "servicosedit") {
     const accent = B.accent;
     const defServices = [{l:"Criação de Site",d:"Landing page ou site institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"},{l:"Gestão de Tráfego",d:"Meta Ads + Google Ads",v:"A partir de R$ 1.500/mês"}];
-    const [svcList, setSvcList] = React.useState(gServices || defServices);
-    const [svcLoaded, setSvcLoaded] = React.useState(false);
+    const svcList = svcListState || gServices || defServices;
+    const setSvcList = (v) => setSvcListState(typeof v === 'function' ? v(svcListState || gServices || defServices) : v);
+    const svcLoaded = svcLoadedState;
+    const setSvcLoaded = setSvcLoadedState;
     React.useEffect(() => {
       if (svcLoaded || !supabase) return;
       setSvcLoaded(true);
@@ -15697,11 +15705,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       { l: "Versão do sistema", v: "1.0.0" },
       { l: "Última atualização", v: "25/03/2026" },
     ];
-    const [editAbout, setEditAbout] = React.useState(false);
-    const [aboutItems, setAboutItems] = React.useState(aboutData || gAbout || defAboutItems);
+    if (!aboutItems) setAboutItems(aboutData || gAbout || defAboutItems);
+    const currentAboutItems = aboutItems || aboutData || gAbout || defAboutItems;
     const saveAboutFn = async () => {
       try {
-        await supabase.from("app_settings").upsert({ key: "gamify_about", value: aboutItems }, { onConflict: "key" });
+        await supabase.from("app_settings").upsert({ key: "gamify_about", value: currentAboutItems }, { onConflict: "key" });
         if (setGAbout) setGAbout(aboutItems);
         if (setAboutData) setAboutData(aboutItems);
         showToast("Informações salvas ✓");
