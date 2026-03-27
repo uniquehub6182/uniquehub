@@ -21917,6 +21917,8 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const { showToast, ToastEl } = useToast();
   const CDATA = propClients || [];
   const [selClient, setSelClient] = useState(isClientView && CDATA.length ? (CDATA[0]?.supaId || CDATA[0]?.id) : null);
+  /* Auto-select first client when data arrives (client view) */
+  useEffect(() => { if (isClientView && !selClient && CDATA.length) setSelClient(CDATA[0]?.supaId || CDATA[0]?.id); }, [CDATA.length]);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selConv, setSelConv] = useState(null);
@@ -25104,6 +25106,9 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
 .sl{font-size:11px;font-weight:700;color:${B.muted};text-transform:uppercase;letter-spacing:0.5px}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;background:${B.bg}!important}
 html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-active #root{overflow:visible!important;overscroll-behavior:auto!important}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 `;
     document.head.appendChild(s);
     return () => { const el = document.getElementById(id); if (el) el.remove(); };
@@ -26261,7 +26266,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "notes" ? <NotesPage onBack={() => setSub(null)} user={user} /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
-      sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={clients} user={user} isClientView forceMobile /> :
+      sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients} user={user} isClientView forceMobile /> :
       sub === "reports" ? (() => { const myClients = clients.filter(c => (user?.company||user?.name||"").toLowerCase().includes((c.name||"").split(" ")[0].toLowerCase()) || (c.name||"").toLowerCase().includes((user?.company||user?.name||"").split(" ")[0].toLowerCase())); return <ReportsPage onBack={() => setSub(null)} clients={myClients.length ? myClients : clients.slice(0,1)} team={team} isClientView />; })() :
       sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_ui_prefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_ui_prefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
       sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
@@ -26884,7 +26889,7 @@ p,span,div,h1,h2,h3,h4{color:inherit}
 .pill.accent,.pill.full.accent{background:${B.accent}!important;color:${B.textOnAccent}!important;border-radius:var(--uh-radius)!important}
 .pill.outline{color:${B.text}!important;border-color:${B.border}!important}
 .pill{background:${B.dark}!important}
-.send-btn{background:${B.accent}!important;color:${B.textOnAccent}!important}
+.send-btn{background:${B.accent}!important;color:${B.textOnAccent||"#0D0D0D"}!important;width:44px;height:44px;border-radius:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px ${B.accent}30}
 .htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:var(--uh-radius-sm)!important}.htab.a{background:${B.accent}!important;color:${B.textOnAccent}!important;box-shadow:0 2px 8px ${B.accent}30!important}
 .ib{background:${B.bgCard}!important;color:${B.text}!important;border-color:${B.border}!important}
 .sheet{background:${B.bgCard}!important;border-radius:var(--uh-radius) var(--uh-radius) 0 0!important}
