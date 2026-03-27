@@ -3086,7 +3086,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   }, [activeCheckin]);
   const fmtTimer = (s) => { const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sec=s%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; };
 
-  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:maskVal(totalRevenue),k:"financial",isFin:true}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:maskVal(totalRevenue),k:"financial",isFin:true}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:activeCheckin?"rodando agora":"registro diário",val:activeCheckin?fmtTimer(checkinElapsed):"—",k:"checkin"} };
+  const WIDGETS = { investimento:{l:"Investimento",sub:"Tráfego / mês",val:maskFin(totalRevenue),k:"financial",isFin:true}, aprovacoes:{l:"Aprovações",sub:"Aguardando você",val:String(pendingApprovals).padStart(2,"0"),k:"content"}, clientes:{l:"Clientes",sub:`${activeClients} ativos`,val:totalClients,k:"clients"}, receita:{l:"Receita",sub:"+12% vs mês ant.",val:maskFin(totalRevenue),k:"financial",isFin:true}, score:{l:"Score",sub:"satisfação média",val:avgScore,k:"gamify"}, pendentes:{l:"Pendentes",sub:"aguardando ação",val:pendingApprovals,k:"content"}, match4biz:{l:"Match4Biz",sub:"matches ativos",val:"—",k:"match4biz"}, checkin:{l:"Check-in",sub:activeCheckin?"rodando agora":"registro diário",val:activeCheckin?fmtTimer(checkinElapsed):"—",k:"checkin"} };
   const PILLS = {
     home:      {l:"Home",        k:"home",      tab:true},
     conteudo:  {l:"Conteúdo",    k:"content",   tab:true,  badge:pendingApprovals},
@@ -3185,7 +3185,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [metricCount, setMetricCount] = useState(() => (dashCfg?.desktopMetricCount || 3));
   const [hideFinancial, setHideFinancial] = useState(() => { try { return localStorage.getItem("uh_hide_financial") === "1"; } catch { return false; } });
   const toggleHideFinancial = () => { setHideFinancial(p => { const v = !p; try { localStorage.setItem("uh_hide_financial", v ? "1" : "0"); } catch {} return v; }); };
-  const maskVal = (v) => hideFinancial ? "•••••" : v;
+  const maskVal = maskFin; /* alias for backward compat */
   const [bannerImg, setBannerImg] = useState(() => localStorage.getItem("uh_desktop_banner")||"");
   /* ── Banner carrossel state ── */
   const [banners, setBanners] = useState(() => { try { const s = localStorage.getItem("uh_desktop_banners"); return s ? JSON.parse(s) : []; } catch { return []; } });
