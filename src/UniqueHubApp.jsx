@@ -11062,10 +11062,8 @@ REGRAS TÉCNICAS:
       </div>}
 
       {/* ── SCROLLABLE CONTENT ── */}
-      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"auto":"auto", overflowX:contained?"auto":"hidden", padding:contained?"0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column", minHeight:0 }}>
-
-      {/* ── Desktop toolbar: Data | Clientes | Publicação Rápida ── */}
-      {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+      {/* Desktop toolbar OUTSIDE scroll container so dropdowns aren't clipped */}
+      {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:0, padding:"14px 16px 0" }}>
         {/* Date filter */}
         <div ref={dateFilterBtnRef} style={{ position:"relative" }}>
         <button onClick={() => { setShowCalendar(v => !v); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${dateFilter ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: dateFilter ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF" }}>
@@ -11083,8 +11081,8 @@ REGRAS TÉCNICAS:
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform:showClientPicker?"rotate(180deg)":"none", transition:"transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           {showClientPicker && <>
-            <div onClick={() => setShowClientPicker(false)} style={{ position:"fixed", inset:0, zIndex:49 }} />
-            <div style={{ position:"absolute", top:"100%", left:0, marginTop:6, width:280, background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border||"rgba(0,0,0,0.08)"}`, boxShadow:"0 8px 30px rgba(0,0,0,0.12)", zIndex:50, padding:6, maxHeight:300, overflowY:"auto" }}>
+            <div onClick={() => setShowClientPicker(false)} style={{ position:"fixed", inset:0, zIndex:99 }} />
+            <div style={{ position:"absolute", top:"100%", left:0, marginTop:6, width:280, background:B.bgCard||"#fff", borderRadius:14, border:`1px solid ${B.border||"rgba(0,0,0,0.08)"}`, boxShadow:"0 8px 30px rgba(0,0,0,0.12)", zIndex:100, padding:6, maxHeight:360, overflowY:"auto" }}>
             <div onClick={() => { setClientFilter("all"); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:clientFilter==="all"?`${B.accent}08`:"transparent", marginBottom:2 }}>
               <div style={{ width:28, height:28, borderRadius:14, background:`${B.muted||"#999"}10`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted||"#999"} strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
               <span style={{ fontSize:12, fontWeight:600 }}>Todos os clientes</span>
@@ -11140,6 +11138,9 @@ REGRAS TÉCNICAS:
         </div>}
         </div>
       </div>}
+
+      {/* ── SCROLLABLE CONTENT area ── */}
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"auto":"auto", overflowX:contained?"auto":"hidden", padding:contained?"0":isContentDesktop?"0 16px 0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column", minHeight:0 }}>
 
       {/* Client selector (mobile only) */}
       {!isContentDesktop && !contained && <div style={{ marginBottom:10 }}>
