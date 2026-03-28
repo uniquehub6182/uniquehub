@@ -6533,8 +6533,18 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 /* ═══════════════════════ ACADEMY PAGE ═══════════════════════ */
 function AcademyPage({ onBack, isClientView }) {
   const isAcadDesktop = useIsDesktop();
-  const [courses, setCourses] = useState(() => { try { const s = localStorage.getItem("uh_academy_courses"); return s ? JSON.parse(s) : []; } catch { return []; } });
-  const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} };
+  const [courses, setCourses] = useState([]);
+  const saveCourses = (c) => { setCourses(c); try { localStorage.setItem("uh_academy_courses", JSON.stringify(c)); } catch {} if (supabase) supaSetSetting("academy_courses", JSON.stringify(c)); };
+  /* Load courses from Supabase (cloud) with localStorage fallback */
+  useEffect(() => {
+    (async () => {
+      if (supabase) {
+        const cloud = await supaGetSetting("academy_courses");
+        if (cloud) { try { const parsed = JSON.parse(cloud); if (Array.isArray(parsed) && parsed.length > 0) { setCourses(parsed); try { localStorage.setItem("uh_academy_courses", cloud); } catch {} return; } } catch {} }
+      }
+      try { const s = localStorage.getItem("uh_academy_courses"); if (s) { const parsed = JSON.parse(s); if (Array.isArray(parsed)) setCourses(parsed); } } catch {}
+    })();
+  }, []);
   /* ── Paid course access management ── */
   const [purchasedIds, setPurchasedIds] = useState(() => { try { const s = localStorage.getItem("uh_academy_purchased"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [courseAccessMap, setCourseAccessMap] = useState({});
