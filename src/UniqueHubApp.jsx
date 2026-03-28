@@ -6586,9 +6586,10 @@ function AcademyPage({ onBack, isClientView }) {
     await supaSetSetting(`academy_access_${courseId}`, JSON.stringify(updated));
   };
   const [selCourse, setSelCourse] = useState(null);
-  const [selLesson, setSelLesson] = useState(null); /* must be at top — cannot be inside if block */
+  const [selLesson, setSelLesson] = useState(null); /* must be at top - cannot be inside if block */
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [catFilter, setCatFilter] = useState("all");
   const [form, setForm] = useState({});
   // Lesson builder state
   const [addingLesson, setAddingLesson] = useState(false);
@@ -6687,7 +6688,14 @@ function AcademyPage({ onBack, isClientView }) {
             {/* Course list */}
             <div style={{ flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
               <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}` }}>
-                <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.text }}>Cursos</p>
+                <p style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.text, marginBottom:8 }}>Cursos</p>
+                <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                  {["all", ...[...new Set(courses.map(c => c.category).filter(Boolean))]].map(cat => (
+                    <button key={cat} onClick={() => setCatFilter(cat)} style={{ padding:"4px 10px", borderRadius:8, border:catFilter===cat?"none":`1px solid ${B.border}`, background:catFilter===cat?(cat==="all"?B.accent:(CAT_COLORS[cat]||B.accent)):B.bg, color:catFilter===cat?"#0D0D0D":B.muted, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:catFilter===cat?700:500 }}>
+                      {cat === "all" ? "Todos" : cat}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div style={{ flex:1, overflowY:"auto", padding:"8px 10px" }}>
                 {courses.length===0 && <div style={{ textAlign:"center", padding:"30px 0" }}>
@@ -6695,6 +6703,7 @@ function AcademyPage({ onBack, isClientView }) {
                   <p style={{ fontSize:12, color:B.muted }}>Nenhum curso criado</p>
                 </div>}
                 {courses.map((cc,i) => {
+                  if (catFilter !== "all" && cc.category !== catFilter) return null;
                   const isSel = selCourse === i;
                   const catC = CAT_COLORS[cc.category] || B.accent;
                   return (
@@ -6751,9 +6760,12 @@ function AcademyPage({ onBack, isClientView }) {
                 </div> : lesson.videoUrl ? <a href={lesson.videoUrl} target="_blank" rel="noopener" style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", borderRadius:12, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, marginBottom:16, textDecoration:"none", color:B.blue, fontSize:13, fontWeight:600 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21"/></svg> Abrir conteúdo
                 </a> : null}
-                {lesson.desc && <div style={{ padding:16, borderRadius:12, background:B.bg, marginBottom:16 }}>
-                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Descrição</p>
-                  <p style={{ fontSize:13, lineHeight:1.7, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
+                {(lesson.content || lesson.desc) && <div style={{ padding:16, borderRadius:12, background:B.bg, marginBottom:16 }}>
+                  <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Conteúdo da Aula</p>
+                  {lesson.content
+                    ? <div style={{ fontSize:13, lineHeight:1.8, color:B.text }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                    : <p style={{ fontSize:13, lineHeight:1.7, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
+                  }
                 </div>}
                 <div style={{ display:"flex", gap:8, marginTop:12 }}>
                   {selLesson > 0 && <button onClick={()=>setSelLesson(selLesson-1)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text }}>← Aula anterior</button>}
@@ -7218,6 +7230,14 @@ function AcademyPage({ onBack, isClientView }) {
           {!isClientView && <button onClick={()=>{setForm({});setCreating(true);}} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0 }}>{IC.plus} Novo Curso</button>}
         </div>
       </Card>
+      {/* Category filter */}
+      {courses.length > 0 && <div style={{ display:"flex", gap:5, overflowX:"auto", marginBottom:12, paddingBottom:2, scrollbarWidth:"none" }} className="hscroll">
+        {["all", ...[...new Set(courses.map(c => c.category).filter(Boolean))]].map(cat => (
+          <button key={cat} onClick={() => setCatFilter(cat)} style={{ flexShrink:0, padding:"6px 14px", borderRadius:10, border:catFilter===cat?"none":`1.5px solid ${B.border}`, background:catFilter===cat?(cat==="all"?B.accent:(CAT_COLORS[cat]||B.accent)):B.bgCard, color:catFilter===cat?"#0D0D0D":B.muted, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:catFilter===cat?700:500 }}>
+            {cat === "all" ? "Todos" : cat}
+          </button>
+        ))}
+      </div>}
       {courses.length === 0 ? (
         <Card style={{ textAlign:"center", padding:32 }}>
           <div style={{ width:64, height:64, borderRadius:20, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px", color:B.accent }}>{IC.academy(B.accent)}</div>
@@ -7226,6 +7246,7 @@ function AcademyPage({ onBack, isClientView }) {
           {!isClientView && <button onClick={()=>{setForm({});setCreating(true);}} className="pill full accent" style={{ marginTop:16, padding:"12px 0" }}>Criar primeiro curso</button>}
         </Card>
       ) : courses.map((course, i) => {
+        if (catFilter !== "all" && course.category !== catFilter) return null;
         const c = CAT_COLORS[course.category] || B.accent;
         return (
           <Card key={course.id} delay={i*0.04} onClick={()=>setSelCourse(i)} style={{ marginTop:i?8:0, cursor:"pointer" }}>
