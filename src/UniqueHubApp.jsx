@@ -7124,7 +7124,7 @@ function AcademyPage({ onBack, isClientView }) {
 
     return (
       <div className="pg">{ToastEl}
-        <Head title="" onBack={()=>setSelCourse(null)} right={
+        <Head title="" onBack={()=>setSelCourse(null)} right={!isClientView ?
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={()=>{ setForm({ title:course.title, category:course.category, desc:course.desc, thumb:course.thumb, lessons:course.lessons||[] }); setEditing(selCourse); setSelCourse(null); }} className="ib" style={{ width:34, height:34 }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -7132,7 +7132,7 @@ function AcademyPage({ onBack, isClientView }) {
             <button onClick={()=>deleteCourse(selCourse)} className="ib" style={{ width:34, height:34, color:B.red }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
             </button>
-          </div>
+          </div> : null
         } />
         {course.thumb && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12 }}><img src={course.thumb} alt="capa" style={{ width:"100%", maxHeight:180, objectFit:"cover", display:"block" }} /></div>}
         <Card style={{ marginBottom:10, borderLeft:`4px solid ${c}` }}>
