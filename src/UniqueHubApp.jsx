@@ -26455,7 +26455,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
       {/* Dynamic accent cards from config */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
-        {clientCards.slice(0,2).map((ck,i) => {
+        {clientCards.slice(0,isDesktop?4:2).map((ck,i) => {
           const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% concluído`,action:()=>goTab("content")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
           return <div key={ck} onClick={cd.action} style={{background:LIME,borderRadius:22,padding:"14px 16px",position:"relative",overflow:"hidden",cursor:"pointer",minHeight:80}}>
@@ -26476,8 +26476,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
 
     {/* SECTIONS */}
-    <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:8 }}>
-      <div className={typeof window!=="undefined"&&window.innerWidth>=900?"d-dash-grid":""}>
+    <div style={{ display:"flex", flexDirection:"column", gap:isDesktop?20:8, marginTop:isDesktop?20:8, padding:isDesktop?"0 24px":0 }}>
+      <div className={isDesktop?"d-dash-grid":""}>
       {clientDashSections.map(sk => renderDashSection(sk))}
       </div>
     </div>
