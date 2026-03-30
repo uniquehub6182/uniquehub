@@ -30,26 +30,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       * { box-sizing: border-box; }
-      html, body {
+      html, body, #root {
         margin: 0; padding: 0;
-        width: 100%;
-        height: 100%;
+        width: 100%; height: 100%;
         overflow: hidden;
         overscroll-behavior: none;
-        background-color: #0F1419;
+        background-color: #000;
         -webkit-text-size-adjust: 100%;
-      }
-      #root {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background-color: #0F1419;
-        /* iOS PWA: extend root to cover home indicator safe area */
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
-      /* iOS PWA navbar spacer - painted by the app's navbar bg */
-      @supports (padding-bottom: env(safe-area-inset-bottom)) {
-        html, body { background-color: #000 !important; }
       }
       /* Desktop override */
       html.uh-desktop, html.uh-desktop body, html.uh-desktop #root {
@@ -57,9 +44,8 @@
         height: auto !important;
         min-height: 100vh;
         overscroll-behavior: auto !important;
+        background-color: #0F1419 !important;
       }
-      html.uh-desktop #root { padding-bottom: 0 !important; }
-      html.uh-desktop, html.uh-desktop body { background-color: #0F1419 !important; }
     </style>
     <script>
       /* Detect desktop immediately before React loads */
