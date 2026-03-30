@@ -6316,14 +6316,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 </div>}
                 {!confirmAction && profileTab==="financial" && canFinancial && <div>
                   {editClient ? (() => {
-                    const regPlans = payPlans || [{name:"Starter",monthlyPrice:"1480.00",planKey:"starter"},{name:"Growth 180°",monthlyPrice:"2480.00",planKey:"growth180"},{name:"Growth 360°",monthlyPrice:"3480.00",planKey:"growth360"}];
+                    const regPlans = payPlans || [{name:"Traction",monthlyPrice:"1480",planKey:"traction"},{name:"Growth 360°",monthlyPrice:"2480",planKey:"growth360"},{name:"Partner",monthlyPrice:"4480",planKey:"partner"}];
+                    const selPlanKey = PLAN_MAP_TO_DB[sel.plan] || sel.plan?.toLowerCase?.() || sel.plan;
                     return <>
                     <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Selecione o plano do cliente</p>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:8, marginBottom:14 }}>
                       {[{name:"Free",monthlyPrice:"0",planKey:"free"}, ...regPlans].map(p => {
-                        const isActive = sel.plan === p.planKey;
+                        const isActive = selPlanKey === p.planKey;
                         return (
-                          <button key={p.planKey} onClick={()=>setSel(prev=>({...prev, plan:p.planKey, monthly_value:p.monthlyPrice, monthly:`R$ ${Number(p.monthlyPrice).toLocaleString("pt-BR")}`}))} style={{ padding:"14px 16px", borderRadius:14, border:isActive?`2.5px solid ${B.accent}`:`1.5px solid ${B.border}`, background:isActive?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .15s", position:"relative" }}>
+                          <button key={p.planKey} onClick={()=>setSel(prev=>({...prev, plan:p.planKey, monthly_value:Number(p.monthlyPrice), monthly:`R$ ${Number(p.monthlyPrice).toLocaleString("pt-BR")}`}))} style={{ padding:"14px 16px", borderRadius:14, border:isActive?`2.5px solid ${B.accent}`:`1.5px solid ${B.border}`, background:isActive?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .15s", position:"relative" }}>
                             {isActive && <div style={{ position:"absolute", top:8, right:8, width:20, height:20, borderRadius:10, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>}
                             <p style={{ fontSize:14, fontWeight:800, color:B.text }}>{p.name}</p>
                             <p style={{ fontSize:12, fontWeight:600, color:B.accent, marginTop:4 }}>{Number(p.monthlyPrice) > 0 ? `R$ ${Number(p.monthlyPrice).toLocaleString("pt-BR")}/mês` : "Gratuito"}</p>
@@ -6332,7 +6333,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       })}
                     </div>
                     <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").update({plan:sel.plan,monthly_value:sel.monthly_value}).eq("id",cid);}catch(e){console.error(e);}}setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,plan:sel.plan,monthly_value:sel.monthly_value,monthly:sel.monthly}:c));setEditClient(false);showToast("Plano atualizado ✓");}} style={{ flex:1, padding:"12px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Salvar plano</button>
+                      <button onClick={async()=>{const cid=sel.supaId||sel.id;const dbPlan=PLAN_MAP_TO_DB[sel.plan]||sel.plan?.toLowerCase?.()||sel.plan;const mv=Number(sel.monthly_value)||0;if(supabase){try{await supabase.from("clients").update({plan:dbPlan,monthly_value:mv}).eq("id",cid);}catch(e){console.error(e);}}setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,plan:PLAN_MAP_FROM_DB[dbPlan]||dbPlan,monthly_value:mv,monthly:`R$ ${mv.toLocaleString("pt-BR")}`}:c));setSel(prev=>({...prev,plan:PLAN_MAP_FROM_DB[dbPlan]||dbPlan}));setEditClient(false);showToast("Plano atualizado ✓");}} style={{ flex:1, padding:"12px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Salvar plano</button>
                       <button onClick={()=>setEditClient(false)} style={{ padding:"12px 20px", borderRadius:12, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600 }}>Cancelar</button>
                     </div>
                   </>;
@@ -15782,7 +15783,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const PTABS = [{k:"credits",l:"Créditos Match4Biz"},{k:"courses",l:"Cursos Pagos"},{k:"plans",l:"Planos de Upgrade"}];
     const defCredits = [{name:"10 créditos",credits:10,price:"29.00"},{name:"30 créditos",credits:30,price:"69.00"},{name:"100 créditos",credits:100,price:"199.00"}];
     const defCourses = [{name:"Curso de exemplo",price:"97.00",courseId:""}];
-    const defPlans = [{name:"Starter",monthlyPrice:"480.00",planKey:"starter"},{name:"Growth 180°",monthlyPrice:"1280.00",planKey:"growth180"},{name:"Growth 360°",monthlyPrice:"2480.00",planKey:"growth360"}];
+    const defPlans = [{name:"Traction",monthlyPrice:"1480",planKey:"traction"},{name:"Growth 360°",monthlyPrice:"2480",planKey:"growth360"},{name:"Partner",monthlyPrice:"4480",planKey:"partner"}];
     const credits = payCredits || defCredits;
     const courses = payCourses || defCourses;
     const plans = payPlans || defPlans;
@@ -15839,7 +15840,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                 <button onClick={()=>{const np=[...plans];np.splice(i,1);setPayPlans(np);}} style={{ width:30, height:30, borderRadius:8, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:B.red||"#FF6B6B", fontSize:14, fontWeight:900, marginBottom:2 }}>×</button>
               </div>
               <label style={{ fontSize:10, color:B.muted, marginTop:6, display:"block" }}>Chave do plano (para identificação interna)</label>
-              <input value={p.planKey||""} onChange={e=>{const np=[...plans];np[i]={...np[i],planKey:e.target.value};setPayPlans(np);}} className="tinput" placeholder="Ex: growth180" />
+              <input value={p.planKey||""} onChange={e=>{const np=[...plans];np[i]={...np[i],planKey:e.target.value};setPayPlans(np);}} className="tinput" placeholder="Ex: growth360" />
             </Card>
           ))}
           <button onClick={()=>setPayPlans([...plans,{name:"",monthlyPrice:"",planKey:""}])} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px dashed ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>+ Adicionar plano</button>
