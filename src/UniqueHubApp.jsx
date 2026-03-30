@@ -25531,16 +25531,25 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     if (sub !== "financial" || !supabase) return;
     (async () => {
       /* ── 1. Refresh this client's record from Supabase (plan may have changed on desktop) ── */
-      const email = (user?.email || "").toLowerCase();
-      const company = (user?.company || "").toLowerCase();
       let freshClient = null;
-      if (email) {
-        const { data } = await supabase.from("clients").select("*").ilike("contact_email", email).limit(1);
+      /* Priority: resolvedClient (from linked_client_id), then email, then company name */
+      if (resolvedClient?.id) {
+        const { data } = await supabase.from("clients").select("*").eq("id", resolvedClient.id).limit(1);
         if (data?.[0]) freshClient = data[0];
       }
-      if (!freshClient && company) {
-        const { data } = await supabase.from("clients").select("*").ilike("name", company).limit(1);
-        if (data?.[0]) freshClient = data[0];
+      if (!freshClient) {
+        const email = (user?.email || "").toLowerCase();
+        if (email) {
+          const { data } = await supabase.from("clients").select("*").ilike("contact_email", email).limit(1);
+          if (data?.[0]) freshClient = data[0];
+        }
+      }
+      if (!freshClient) {
+        const company = (user?.company || "").toLowerCase();
+        if (company) {
+          const { data } = await supabase.from("clients").select("*").ilike("name", company).limit(1);
+          if (data?.[0]) freshClient = data[0];
+        }
       }
       if (freshClient) {
         setClients(prev => prev.map(c => (c.id === freshClient.id || c.supaId === freshClient.id)
@@ -25632,7 +25641,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         }
         if (!myClient) return;
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
-        setDemands((clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, networks: d.networks||[], format: d.format, scheduling: typeof d.scheduling === "object" ? d.scheduling : {}, schedule_date: d.schedule_date, schedule_time: d.schedule_time, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" })));
+        const mapped = (clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, networks: d.networks||[], format: d.format, scheduling: typeof d.scheduling === "object" ? d.scheduling : {}, schedule_date: d.schedule_date, schedule_time: d.schedule_time, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" }));
+        /* Only update state if data actually changed — prevents flickering re-renders */
+        setDemands(prev => { const newHash = JSON.stringify(mapped.map(d => d.id + d.stage + JSON.stringify(d.steps))); const oldHash = JSON.stringify(prev.map(d => d.id + d.stage + JSON.stringify(d.steps))); return newHash === oldHash ? prev : mapped; });
       } catch(e) { console.warn("Client demand refetch:", e); }
     };
     document.addEventListener("visibilitychange", refetch);
@@ -25842,7 +25853,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
   );
   const renderFinancialSub = () => {
-    const myClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
+    const myClient = (resolvedClient?.id ? clients.find(c => c.id === resolvedClient.id || c.supaId === resolvedClient.id) : null) || clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase()) || {};
     const PLAN_INFO = {
       free:{ name:"Free", price:"Grátis", desc:"Plano gratuito de entrada", features:["Acesso ao Hub do cliente","Aprovação de conteúdos","Chat com a agência","Relatórios básicos"] },
       starter:{ name:"Starter", price:"R$ 1.480/mês", desc:"Para quem está começando", features:["Social Media básico","Até 8 posts/mês","Stories semanais","Suporte via chat","Relatórios mensais"] },
@@ -26205,7 +26216,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const publishedThisMonth = demands.filter(d => (d.stage === "published" || d.stage === "completed")).length;
   const pendingApprovalCount = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
   const PLAN_POSTS = { free:8, starter:8, traction:16, growth360:20, partner:24, enterprise:30 };
-  const myPlanClient = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase());
+  const myPlanClient = (resolvedClient?.id ? clients.find(c => c.id === resolvedClient.id || c.supaId === resolvedClient.id) : null) || clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase());
   const targetPosts = PLAN_POSTS[myPlanClient?.plan] || 12;
   const completedPct = targetPosts > 0 ? Math.round((publishedThisMonth / targetPosts) * 100) : 0;
   const monthGoal = { label:`${monthNames[now.getMonth()].toUpperCase()} ${now.getFullYear()}`, pct:Math.min(completedPct,100), current:publishedThisMonth, total:targetPosts, unit:"posts" };
