@@ -25401,16 +25401,27 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
     const old = document.getElementById(id); if (old) old.remove();
     const s = document.createElement("style");
     s.id = id;
+    const UP = uiPrefs || {};
+    const fontMap = { system:"inherit", inter:"'Inter',sans-serif", figtree:"'Figtree',sans-serif", mono:"'SF Mono','Fira Code',monospace", serif:"Georgia,'Times New Roman',serif" };
+    const ff = fontMap[UP.fontFamily] || "'Figtree',sans-serif";
+    const rad = ({ sharp:"4px", round:"12px", pill:"20px" })[UP.cardRadius] || "16px";
+    const isGlass = B.liquidGlass;
+    const cardBg = isGlass ? (B.glassCard||"rgba(255,255,255,0.45)") : B.bgCard;
+    const cardBorder = isGlass ? (B.glassBorder||"rgba(255,255,255,0.6)") : `1px solid ${B.border}`;
+    const cardShadow = isGlass ? (B.glassShadow||"none") : (UP.cardStyle==="elevated"?"0 4px 16px rgba(0,0,0,0.1)":"0 1px 3px rgba(0,0,0,0.04)");
+    const cardBorderStyle = UP.cardStyle==="outlined" ? `2px solid ${B.border}` : cardBorder;
+    const cardBlur = isGlass ? `backdrop-filter:${B.glassBlur||"blur(24px)"};-webkit-backdrop-filter:${B.glassBlur||"blur(24px)"};` : "";
     s.textContent = `
+:root{--uh-radius:${rad}}
 .app,.screen{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
-.card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
+.card{background:${cardBg};box-shadow:${cardShadow};border:${cardBorderStyle};border-radius:${rad}!important;padding:16px!important;${cardBlur}}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
-.pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
-.htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:#0D0D0D!important;border-color:${B.accent}!important}
+.pill.accent{background:${B.accent}!important;color:${B.textOnAccent||"#0D0D0D"}!important;border-radius:10px!important}
+.htab{background:${B.bgCard}!important;color:${B.muted}!important;border-radius:10px!important;border:1px solid ${B.border};padding:6px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}.htab.a{background:${B.accent}!important;color:${B.textOnAccent||"#0D0D0D"}!important;border-color:${B.accent}!important}
 .ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${B.bgCard}!important;color:${B.text}!important;border:1px solid ${B.border}!important;cursor:pointer}
 .sl{font-size:11px;font-weight:700;color:${B.muted};text-transform:uppercase;letter-spacing:0.5px}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!important;background:${B.bg}!important}
+body{font-family:${ff}!important;background:${B.bodyBg||B.bg}!important}
 html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-active #root{overflow:visible!important;overscroll-behavior:auto!important}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes skPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
@@ -25418,7 +25429,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
 `;
     document.head.appendChild(s);
     return () => { const el = document.getElementById(id); if (el) el.remove(); };
-  }, [dark, B.bg, B.text, B.accent, B.bgCard, B.border, B.muted]);
+  }, [dark, themeColor, B.bg, B.text, B.accent, B.bgCard, B.border, B.muted, B.bodyBg, B.transparent, B.liquidGlass, JSON.stringify(uiPrefs)]);
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
   const [showClientNavEdit, setShowClientNavEdit] = useState(false);
