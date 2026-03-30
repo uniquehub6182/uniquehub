@@ -9350,15 +9350,39 @@ REGRAS TÉCNICAS:
       const cfg = STAGE_CFG[stageKey] || { l: stageKey, c: "#888" };
       /* Desktop: hide future stages, compact done stages */
       if (isContentDesktop && future) return null;
-      if (isContentDesktop && done) return (
-        <div key={stageKey} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", marginBottom:4, borderRadius:10, background:`${cfg.c}06` }}>
-          <div style={{ width:22, height:22, borderRadius:11, background:cfg.c, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+      /* Desktop done: compact header but SHOW media for design stage on video formats */
+      if (isContentDesktop && done) {
+        const showMediaPreview = stageKey === "design" && isVideoFormat;
+        const designFiles = sel.steps?.design?.files || [];
+        const dCover = designFiles.find(f => f.isCover);
+        const dVid = designFiles.find(f => /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/") || f.isCloudLink);
+        return (
+        <div key={stageKey} style={{ marginBottom:4, borderRadius:10, background:`${cfg.c}06`, padding:showMediaPreview?"10px 12px":"8px 12px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:22, height:22, borderRadius:11, background:cfg.c, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span style={{ fontSize:12, fontWeight:600, color:"#1A1D23" }}>{cfg.l}</span>
+            {sel.steps?.[stageKey]?.by && <span style={{ fontSize:10, color:"#9CA3AF", marginLeft:"auto" }}>{sel.steps[stageKey].by} · {sel.steps[stageKey].date||""}</span>}
           </div>
-          <span style={{ fontSize:12, fontWeight:600, color:"#1A1D23" }}>{cfg.l}</span>
-          {sel.steps?.[stageKey]?.by && <span style={{ fontSize:10, color:"#9CA3AF", marginLeft:"auto" }}>{sel.steps[stageKey].by} · {sel.steps[stageKey].date||""}</span>}
+          {showMediaPreview && (dCover || dVid) && (
+            <div style={{ display:"flex", gap:8, marginTop:8 }}>
+              {dCover?.url && <div style={{ width:60, height:106, borderRadius:8, overflow:"hidden", border:`1.5px solid ${B.accent}30`, background:"#000", flexShrink:0 }}>
+                <img src={dCover.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+              </div>}
+              {dVid?.url && <div style={{ width:60, height:106, borderRadius:8, overflow:"hidden", border:`1.5px solid ${B.blue||"#3B82F6"}30`, background:"#000", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                {dVid.isCloudLink ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                : <video src={dVid.url} style={{ width:"100%", height:"100%", objectFit:"cover" }} />}
+              </div>}
+              <div style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:2 }}>
+                {dCover && <span style={{ fontSize:10, color:B.muted }}>Capa: {dCover.name||"capa.jpg"}</span>}
+                {dVid && <span style={{ fontSize:10, color:B.muted }}>Vídeo: {dVid.name||"video.mp4"}</span>}
+              </div>
+            </div>
+          )}
         </div>
-      );
+        );
+      }
       return (
         <div key={stageKey} style={{ marginBottom:8, borderRadius:16, border:`1.5px solid ${active ? cfg.c : done ? `${cfg.c}30` : B.border}`, background: active ? `${cfg.c}06` : B.bgCard, padding:14, opacity: future ? 0.45 : 1, position:"relative", transition:"all .3s" }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: (done||active) ? 10 : 0 }}>
