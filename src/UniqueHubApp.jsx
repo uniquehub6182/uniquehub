@@ -13922,7 +13922,14 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   /* Gamify edit states (must be at top level for hooks rules) */
-  const [gTab, setGTab] = useState("zones");
+  const [gTab, setGTab] = useState("ranking");
+  const [gRankData, setGRankData] = useState(null);
+  const [gRankLoading, setGRankLoading] = useState(false);
+  const [gRankExpanded, setGRankExpanded] = useState(null);
+  const [gAddPtsClient, setGAddPtsClient] = useState(null);
+  const [gAddPtsVal, setGAddPtsVal] = useState("");
+  const [gAddPtsPillar, setGAddPtsPillar] = useState("execucao");
+  const [gAddPtsDesc, setGAddPtsDesc] = useState("");
   const [gZones, setGZones] = useState(null);
   const [gPodium, setGPodium] = useState(null);
   const [gMissions, setGMissions] = useState(null);
@@ -15552,7 +15559,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       } catch(e) { console.error("saveGamify exception:", e); showToast("Erro: " + e.message); }
     };
     const accent = B.accent;
-    const TABS = [{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"}];
+    const TABS = [{k:"ranking",l:"Ranking"},{k:"zones",l:"Zonas"},{k:"podium",l:"Pódio"},{k:"missions",l:"Missões"}];
     const defZones = [{name:"Estruturação",range:"0–10",color:"#EF4444",reward:"Boas-vindas + diagnóstico inicial"},{name:"Organização",range:"11–30",color:"#F59E0B",reward:"Relatório mensal detalhado"},{name:"Estratégica",range:"31–60",color:"#BBF246",reward:"Prioridade no atendimento"},{name:"Crescimento",range:"61–85",color:"#10B981",reward:"Consultoria estratégica mensal"},{name:"Escala",range:"86–100",color:"#3B82F6",reward:"Desconto no plano + destaque no portfólio"}];
     const defPodium = [{pos:"1° lugar",reward:"1 mês grátis + consultoria estratégica exclusiva",c:"#FFD700"},{pos:"2° lugar",reward:"50% desconto no próximo mês + relatório avançado",c:"#C0C0C0"},{pos:"3° lugar",reward:"Destaque no portfólio + badge premium",c:"#CD7F32"}];
     const defMissions = [{title:"Aprovar posts pendentes",pts:3,pillar:"execucao"},{title:"Criar um evento no calendário",pts:2,pillar:"estrategia"},{title:"Acessar os relatórios de performance",pts:1,pillar:"crescimento"},{title:"Ler uma notícia no News",pts:0.5,pillar:"educacao"},{title:"Visitar a página Match4Biz",pts:1,pillar:"ecossistema"}];
@@ -15567,6 +15574,147 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <div style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto" }}>
           {TABS.map(t => <button key={t.k} onClick={()=>setGTab(t.k)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${gTab===t.k?accent:B.border}`, background:gTab===t.k?`${accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:gTab===t.k?700:500, color:gTab===t.k?accent:B.muted, flexShrink:0 }}>{t.l}</button>)}
         </div>
+
+
+        {gTab === "ranking" && (() => {
+          /* ── Load ranking data on mount ── */
+          const loadRank = async () => {
+            setGRankLoading(true);
+            try {
+              const { data: scores } = await supabase.from("client_scores").select("*").order("created_at", { ascending: false });
+              const byClient = {};
+              (scores||[]).forEach(s => {
+                if (!byClient[s.client_id]) byClient[s.client_id] = { total:0, execucao:0, estrategia:0, educacao:0, ecossistema:0, crescimento:0, history:[], count:0 };
+                byClient[s.client_id].total += Number(s.points);
+                if (s.pillar) byClient[s.client_id][s.pillar] = (byClient[s.client_id][s.pillar]||0) + Number(s.points);
+                byClient[s.client_id].history.push(s);
+                byClient[s.client_id].count++;
+              });
+              setGRankData(byClient);
+            } catch(e) { console.error("Rank load:", e); }
+            setGRankLoading(false);
+          };
+          if (!gRankData && !gRankLoading) loadRank();
+          const cls = (propClients||[]).filter(c => c.name && c.status !== "inativo");
+          const ranked = cls.map(c => {
+            const s = gRankData?.[c.id] || gRankData?.[c.supaId] || { total:0, execucao:0, estrategia:0, educacao:0, ecossistema:0, crescimento:0, history:[], count:0 };
+            const cid = c.supaId || c.id;
+            return { ...c, cid, score: Math.min(100, Math.round(s.total)), ...s };
+          }).sort((a,b) => b.score - a.score);
+          const getZone = (s) => s >= 96 ? "Escala" : s >= 81 ? "Crescimento" : s >= 61 ? "Estratégica" : s >= 41 ? "Organização" : "Estruturação";
+          const zoneColor = (s) => s >= 96 ? "#3B82F6" : s >= 81 ? "#10B981" : s >= 61 ? "#BBF246" : s >= 41 ? "#F59E0B" : "#EF4444";
+          const pillarNames = { execucao:"Execução", estrategia:"Estratégia", educacao:"Educação", ecossistema:"Ecossistema", crescimento:"Crescimento" };
+          const resetClient = async (cid) => {
+            if (!confirm("Tem certeza que deseja zerar o score deste cliente?")) return;
+            try {
+              await supabase.from("client_scores").delete().eq("client_id", cid);
+              showToast("Score zerado ✓");
+              setGRankData(null);
+            } catch(e) { showToast("Erro: " + e.message); }
+          };
+          const resetAll = async () => {
+            if (!confirm("ATENÇÃO: Isso vai zerar o ranking de TODOS os clientes. Continuar?")) return;
+            if (!confirm("Última chance. Tem certeza absoluta?")) return;
+            try {
+              await supabase.from("client_scores").delete().neq("client_id", "___none___");
+              showToast("Ranking zerado ✓");
+              setGRankData(null);
+            } catch(e) { showToast("Erro: " + e.message); }
+          };
+          const addPoints = async (cid) => {
+            const pts = parseFloat(gAddPtsVal);
+            if (!pts || isNaN(pts)) { showToast("Informe os pontos"); return; }
+            try {
+              await supabase.from("client_scores").insert({ client_id: cid, points: pts, pillar: gAddPtsPillar, description: gAddPtsDesc || "Ajuste manual (admin)", action: "admin_adjust" });
+              showToast(`${pts > 0 ? "+" : ""}${pts} pontos adicionados ✓`);
+              setGAddPtsClient(null); setGAddPtsVal(""); setGAddPtsDesc("");
+              setGRankData(null);
+            } catch(e) { showToast("Erro: " + e.message); }
+          };
+          const unlockM4B = async (cid) => {
+            const month = new Date().toISOString().slice(0,7);
+            try {
+              const { data: existing } = await supabase.from("app_settings").select("value").eq("key","m4b_unlocks").maybeSingle();
+              let unlocks = {};
+              if (existing?.value) { try { unlocks = typeof existing.value === "string" ? JSON.parse(existing.value) : existing.value; } catch {} }
+              unlocks[cid + "_" + month] = true;
+              await supabase.from("app_settings").upsert({ key: "m4b_unlocks", value: unlocks }, { onConflict: "key" });
+              showToast("Match4Biz desbloqueado ✓");
+            } catch(e) { showToast("Erro: " + e.message); }
+          };
+          return <>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <p style={{ fontSize:11, color:B.muted }}>Ranking de {ranked.length} clientes ativos</p>
+              <div style={{ display:"flex", gap:6 }}>
+                <button onClick={()=>setGRankData(null)} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>↻ Atualizar</button>
+                <button onClick={resetAll} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.red||"#EF4444"}30`, background:`${B.red||"#EF4444"}08`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red||"#EF4444" }}>Zerar tudo</button>
+              </div>
+            </div>
+            {gRankLoading ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Carregando ranking...</p></Card> :
+            ranked.length === 0 ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:12,color:B.muted}}>Nenhum cliente ativo encontrado.</p></Card> :
+            ranked.map((c,i) => {
+              const expanded = gRankExpanded === c.cid;
+              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}°`;
+              return (
+                <Card key={c.cid} style={{ marginBottom:8, borderLeft:`3px solid ${zoneColor(c.score)}`, cursor:"pointer" }} onClick={()=>setGRankExpanded(expanded ? null : c.cid)}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ fontSize:i<3?22:14, width:32, textAlign:"center", flexShrink:0 }}>{medal}</span>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:700 }}>{c.name}</div>
+                      <div style={{ fontSize:11, color:B.muted }}>{getZone(c.score)} · {c.count} ações</div>
+                    </div>
+                    <div style={{ textAlign:"right" }}>
+                      <div style={{ fontSize:20, fontWeight:800, color:zoneColor(c.score) }}>{c.score}</div>
+                      <div style={{ fontSize:9, color:B.muted }}>pts</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ transform:expanded?"rotate(180deg)":"none", transition:"transform .2s" }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  {expanded && <>
+                    {/* Pillar breakdown */}
+                    <div style={{ marginTop:12, display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:4, textAlign:"center" }}>
+                      {Object.entries(pillarNames).map(([k,v]) => (
+                        <div key={k} style={{ padding:"6px 2px", borderRadius:8, background:B.bg, border:`1px solid ${B.border}` }}>
+                          <div style={{ fontSize:14, fontWeight:800 }}>{Math.min(100, Math.round(c[k]||0))}</div>
+                          <div style={{ fontSize:8, color:B.muted, marginTop:2 }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Recent actions */}
+                    {(c.history||[]).length > 0 && <>
+                      <div style={{ fontSize:10, fontWeight:700, color:B.muted, marginTop:12, marginBottom:6 }}>Últimas ações</div>
+                      {(c.history||[]).slice(0,5).map((h,hi) => (
+                        <div key={hi} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", borderBottom:hi<4?`1px solid ${B.border}00`:"none", fontSize:11 }}>
+                          <span style={{ color:B.muted }}>{h.description || h.action}</span>
+                          <span style={{ fontWeight:700, color:h.points > 0 ? (B.green||"#10B981") : (B.red||"#EF4444") }}>{h.points > 0 ? "+" : ""}{h.points}</span>
+                        </div>
+                      ))}
+                    </>}
+                    {/* Admin actions */}
+                    <div style={{ display:"flex", gap:6, marginTop:12, flexWrap:"wrap" }}>
+                      <button onClick={e=>{e.stopPropagation();setGAddPtsClient(c.cid);}} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${accent}30`, background:`${accent}10`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:accent }}>± Pontos</button>
+                      <button onClick={e=>{e.stopPropagation();unlockM4B(c.cid);}} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.blue||"#3B82F6"}30`, background:`${B.blue||"#3B82F6"}10`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.blue||"#3B82F6" }}>🔓 Match4Biz</button>
+                      <button onClick={e=>{e.stopPropagation();resetClient(c.cid);}} style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${B.red||"#EF4444"}30`, background:`${B.red||"#EF4444"}08`, cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700, color:B.red||"#EF4444" }}>Zerar score</button>
+                    </div>
+                    {/* Add points modal */}
+                    {gAddPtsClient === c.cid && <div onClick={e=>e.stopPropagation()} style={{ marginTop:10, padding:12, borderRadius:12, background:B.bg, border:`1px solid ${B.border}` }}>
+                      <div style={{ fontSize:11, fontWeight:700, marginBottom:8 }}>Adicionar/Remover Pontos</div>
+                      <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+                        <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted }}>Pontos</label><input type="number" value={gAddPtsVal} onChange={e=>setGAddPtsVal(e.target.value)} className="tinput" placeholder="Ex: 5 ou -3" style={{ textAlign:"center" }} /></div>
+                        <div style={{ flex:1 }}><label style={{ fontSize:9, color:B.muted }}>Pilar</label><select value={gAddPtsPillar} onChange={e=>setGAddPtsPillar(e.target.value)} className="tinput"><option value="execucao">Execução</option><option value="estrategia">Estratégia</option><option value="crescimento">Crescimento</option><option value="educacao">Educação</option><option value="ecossistema">Ecossistema</option></select></div>
+                      </div>
+                      <label style={{ fontSize:9, color:B.muted }}>Motivo (opcional)</label>
+                      <input value={gAddPtsDesc} onChange={e=>setGAddPtsDesc(e.target.value)} className="tinput" placeholder="Ex: Bônus por indicação" />
+                      <div style={{ display:"flex", gap:6, marginTop:8 }}>
+                        <button onClick={()=>setGAddPtsClient(null)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.muted }}>Cancelar</button>
+                        <button onClick={()=>addPoints(c.cid)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:"none", background:accent, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#0D0D0D" }}>Confirmar</button>
+                      </div>
+                    </div>}
+                  </>}
+                </Card>
+              );
+            })}
+          </>;
+        })()}
 
         {gTab === "zones" && <>
           <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as recompensas de cada zona de pontuação.</p>
