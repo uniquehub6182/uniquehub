@@ -12732,9 +12732,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       setConvs(prev => {
         const idx = prev.findIndex(c => c.id === nm.conversation_id);
         if (idx === -1) {
-          /* Only reload if this might be a conversation we're a member of (e.g. just added) */
-          if (myConvIdsRef.current && myConvIdsRef.current.size > 0 && !myConvIdsRef.current.has(nm.conversation_id)) return prev;
-          supaLoadConversations(user.id).then(fresh => { if(fresh?.length) { setConvs(fresh); myConvIdsRef.current = new Set(fresh.map(c => c.id)); } });
+          /* New conversation we don't know about yet — reload */
+          supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
           return prev;
         }
         const updated = [...prev];
@@ -12743,7 +12742,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       });
     }).on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_members", filter: `user_id=eq.${user.id}` }, () => {
       /* Someone added me to a new conversation/group — reload list and update ref */
-      supaLoadConversations(user.id).then(fresh => { if(fresh?.length) { setConvs(fresh); myConvIdsRef.current = new Set(fresh.map(c => c.id)); } });
+      supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
     }).on("broadcast", { event: "chat_update" }, ({ payload: p }) => {
       if (!p || p.sender_id === user.id) return;
       setConvs(prev => {
