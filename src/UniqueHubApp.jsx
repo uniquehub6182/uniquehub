@@ -20055,7 +20055,7 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile, isClientVi
 
   const addIdea = async () => {
     if (!form.title?.trim()) return showToast("Informe o título da ideia");
-    const ni = { id:Date.now(), title:form.title.trim(), desc:form.desc||"", author:"Matheus", date:new Date().toLocaleDateString("pt-BR"), votes:0, status:"pending", client:form.client||"Todos", tags:form.tags?.split(",").map(t=>t.trim()).filter(Boolean)||[], comments:[] };
+    const ni = { id:Date.now(), title:form.title.trim(), desc:form.desc||"", author:user?.name||"Matheus", date:new Date().toLocaleDateString("pt-BR"), votes:0, status:"pending", client:isClientView?(clientFilter||user?.company||user?.name||"Todos"):(form.client||"Todos"), tags:form.tags?.split(",").map(t=>t.trim()).filter(Boolean)||[], comments:[] };
     const saved = await supaCreateIdea(ni);
     if (saved) { ni.id = saved.id; ni.supaId = saved.id; }
     setIdeas(p=>[ni,...p]);
@@ -20083,7 +20083,7 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile, isClientVi
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Descrição</label>
         <textarea value={form.desc||""} onChange={e=>setForm(p=>({...p,desc:e.target.value}))} placeholder="Descreva a ideia em detalhes: objetivo, como executar, recursos necessários..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
       </Card>
-      <Card style={{ marginBottom:8 }}>
+      {!isClientView && <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente relacionado</label>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
           <button onClick={()=>setForm(p=>({...p,client:"Todos"}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${(form.client||"Todos")==="Todos"?B.accent:B.border}`, background:(form.client||"Todos")==="Todos"?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>Todos</button>
@@ -20091,7 +20091,7 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile, isClientVi
             <button key={c.id} onClick={()=>setForm(p=>({...p,client:c.name}))} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${form.client===c.name?B.accent:B.border}`, background:form.client===c.name?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600 }}>{c.name}</button>
           ))}
         </div>
-      </Card>
+      </Card>}
       <Card style={{ marginBottom:8 }}>
         <label className="sl" style={{ display:"block", marginBottom:4 }}>Tags (separar por vírgula)</label>
         <input value={form.tags||""} onChange={e=>setForm(p=>({...p,tags:e.target.value}))} placeholder="Ex: Reels, Instagram, Conteúdo" className="tinput" />
