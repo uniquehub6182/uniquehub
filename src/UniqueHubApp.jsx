@@ -4572,6 +4572,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [filter, setFilter] = useState("all");
   const isAdmin = user?.supaRole === "admin";
   const canFinancial = canAccessFn("financial") || canAccessFn("financial.view") || canAccessFn("clients.financial");
+  const [payPlans, setPayPlans] = useState(null);
+  useEffect(() => { if (!supabase) return; supabase.from("app_settings").select("value").eq("key","pay_plans").maybeSingle().then(({data}) => { if (data?.value) { try { setPayPlans(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} } }); }, []);
   const canSocials = canAccessFn("clients.socials") || isAdmin;
 
   const [sel, setSel] = useState(null);
@@ -6313,23 +6315,28 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   </div>
                 </div>}
                 {!confirmAction && profileTab==="financial" && canFinancial && <div>
-                  {editClient ? <>
-                    <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Editar informações financeiras</p>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-                      <div>
-                        <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Plano</p>
-                        <input value={sel.plan||""} onChange={e=>setSel(p=>({...p,plan:e.target.value}))} className="tinput" placeholder="Ex: Growth 360"/>
-                      </div>
-                      <div>
-                        <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Mensalidade</p>
-                        <input value={sel.monthly||""} onChange={e=>setSel(p=>({...p,monthly:e.target.value}))} className="tinput" placeholder="R$ 2.480"/>
-                      </div>
+                  {editClient ? (() => {
+                    const regPlans = payPlans || [{name:"Starter",monthlyPrice:"1480.00",planKey:"starter"},{name:"Growth 180°",monthlyPrice:"2480.00",planKey:"growth180"},{name:"Growth 360°",monthlyPrice:"3480.00",planKey:"growth360"}];
+                    return <>
+                    <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:8 }}>Selecione o plano do cliente</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:8, marginBottom:14 }}>
+                      {[{name:"Free",monthlyPrice:"0",planKey:"free"}, ...regPlans].map(p => {
+                        const isActive = sel.plan === p.planKey;
+                        return (
+                          <button key={p.planKey} onClick={()=>setSel(prev=>({...prev, plan:p.planKey, monthly_value:p.monthlyPrice, monthly:`R$ ${Number(p.monthlyPrice).toLocaleString("pt-BR")}`}))} style={{ padding:"14px 16px", borderRadius:14, border:isActive?`2.5px solid ${B.accent}`:`1.5px solid ${B.border}`, background:isActive?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"all .15s", position:"relative" }}>
+                            {isActive && <div style={{ position:"absolute", top:8, right:8, width:20, height:20, borderRadius:10, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>}
+                            <p style={{ fontSize:14, fontWeight:800, color:B.text }}>{p.name}</p>
+                            <p style={{ fontSize:12, fontWeight:600, color:B.accent, marginTop:4 }}>{Number(p.monthlyPrice) > 0 ? `R$ ${Number(p.monthlyPrice).toLocaleString("pt-BR")}/mês` : "Gratuito"}</p>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-                      <button onClick={async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").update({plan:sel.plan,monthly:sel.monthly}).eq("id",cid);}catch(e){}}setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,plan:sel.plan,monthly:sel.monthly}:c));setEditClient(false);showToast("Financeiro atualizado ✓");}} style={{ flex:1, padding:"10px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Salvar</button>
-                      <button onClick={()=>setEditClient(false)} style={{ padding:"10px 16px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>Cancelar</button>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").update({plan:sel.plan,monthly_value:sel.monthly_value}).eq("id",cid);}catch(e){console.error(e);}}setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,plan:sel.plan,monthly_value:sel.monthly_value,monthly:sel.monthly}:c));setEditClient(false);showToast("Plano atualizado ✓");}} style={{ flex:1, padding:"12px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Salvar plano</button>
+                      <button onClick={()=>setEditClient(false)} style={{ padding:"12px 20px", borderRadius:12, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600 }}>Cancelar</button>
                     </div>
-                  </> : <>
+                  </>;
+                  })() : <>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
                     <div style={{ padding:14, borderRadius:14, background:`${B.accent}10`, border:`1px solid ${B.accent}20` }}>
                       <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Plano</p>
@@ -6337,7 +6344,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     </div>
                     <div style={{ padding:14, borderRadius:14, background:`${B.green}10`, border:`1px solid ${B.green}20` }}>
                       <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Mensalidade</p>
-                      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:4 }}>{sel.monthly}</p>
+                      <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:4 }}>{sel.monthly_value ? `R$ ${Number(sel.monthly_value).toLocaleString("pt-BR")}` : sel.monthly || "—"}</p>
                     </div>
                     <div style={{ padding:14, borderRadius:14, background:`${B.orange}10`, border:`1px solid ${B.orange}20` }}>
                       <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Pendentes</p>
