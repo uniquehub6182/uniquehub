@@ -16669,8 +16669,28 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
 
   const toggleArr = (arr, val) => arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val];
 
+  /* ── Meeting limits per plan ── */
+  const MEETING_LIMITS = { partner: 2, enterprise: 2 }; /* All other plans = 1 */
+  const getMeetingLimit = () => {
+    if (!isClientView) return 999; /* Agency has no limit */
+    const cl = (propClients || []).find(c => c.name === clientFilter || c.contact_email === propUser?.email);
+    const plan = cl?.plan || "free";
+    return MEETING_LIMITS[plan] || 1;
+  };
+
   const saveEvent = async () => {
     if (!form.title?.trim()) return showToast("Informe o título do evento");
+    /* Check meeting limit for client users */
+    if (eventType === "meeting" && isClientView) {
+      const limit = getMeetingLimit();
+      const thisMonthMeetings = events.filter(e => e.type === "meeting" && e.month === curMonth && e.year === curYear);
+      if (thisMonthMeetings.length >= limit) {
+        const cl = (propClients || []).find(c => c.name === clientFilter || c.contact_email === propUser?.email);
+        const planName = cl?.plan || "seu plano";
+        showToast(`Limite de ${limit} reunião${limit > 1 ? "ões" : ""} por mês atingido (${planName})`);
+        return;
+      }
+    }
     const et = EVENT_TYPES.find(t=>t.k===eventType);
     const ne = {
       id: Date.now(), type: eventType, title: form.title.trim(), time: form.time || "09:00",
@@ -22332,7 +22352,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
               <div style={{ display:"flex", justifyContent:m.is_page?"flex-end":"flex-start" }}>
                 <div style={{ maxWidth:"75%", padding:"10px 14px", borderRadius:m.is_page?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.is_page?B.accent:B.bgCard, color:m.is_page?"#0D0D0D":B.text, border:m.is_page?"none":`1px solid ${B.border}`, boxShadow:m.is_page?"0 2px 8px "+B.accent+"20":"0 1px 4px rgba(0,0,0,0.04)" }}>
                   {!m.is_page && <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:3 }}>{m.from_name}</p>}
-                  <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{m.text}</p>
+                  <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{(() => { if (!m.text) return null; const urlRx = /(https?:\/\/[^\s<]+)/g; const parts = m.text.split(urlRx); return parts.map((part, pi) => urlRx.test(part) ? <a key={pi} href={part} target="_blank" rel="noopener noreferrer" style={{ color: m.is_page ? "#0D0D0D" : B.accent, textDecoration:"underline", wordBreak:"break-all" }}>{part.length > 50 ? part.substring(0,47)+"..." : part}</a> : part); })()}</p>
                   {m.attachments?.length > 0 && <div style={{ marginTop:6 }}>{m.attachments.map((a,ai) => a.url ? <img key={ai} src={a.url} style={{ maxWidth:"100%", borderRadius:10, marginTop:4 }} /> : <span key={ai} style={{ fontSize:10, color:B.muted }}>📎 {a.name||"Anexo"}</span>)}</div>}
                   <p style={{ fontSize:9, color:m.is_page?"#0D0D0D60":B.muted, textAlign:"right", marginTop:3 }}>{m.created_time ? new Date(m.created_time).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : ""}</p>
                 </div>
@@ -22357,7 +22377,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const TOP = forceMobile ? "env(safe-area-inset-top, 16px)" : 70;
 
   return (
-    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
+    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
     <CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} />
     {ToastEl}
     <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
