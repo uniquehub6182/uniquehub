@@ -26397,7 +26397,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${LIME} 0%,${LIME}80 100%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
-          <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {(user?.nick||user?.name||"Cliente").split(" ")[0]}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>Unique Marketing</div></div>
+          <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {(user?.nick||user?.name||"Cliente").split(" ")[0]}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>{resolvedClient?.name || user?.company || "Meu Portal"}</div></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
           <button onClick={()=>goTab("chat")} style={{width:48,height:48,borderRadius:"50%",background:H.btn,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={H.btnC} strokeWidth="2.2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
