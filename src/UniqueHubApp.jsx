@@ -25027,9 +25027,9 @@ function ClientGamification({ onBack, user, clients, demands }) {
               </div>
             </div>
           </div>
-          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:4 }}>Top 10 — Ranking</p>
-          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Apenas os 10 melhores clientes aparecem no ranking.</p>
-          {RANKING.slice(0,10).map((r,i) => <Card key={i} delay={i*0.03} style={{ marginBottom:6, background:r.isMe?`${B.accent}06`:B.bgCard, border:r.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
+          <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:B.muted, textTransform:"uppercase", marginTop:14, marginBottom:4 }}>Top 5 — Ranking</p>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Apenas os 5 melhores clientes aparecem no ranking.</p>
+          {RANKING.slice(0,5).map((r,i) => <Card key={i} delay={i*0.03} style={{ marginBottom:6, background:r.isMe?`${B.accent}06`:B.bgCard, border:r.isMe?`1.5px solid ${B.accent}30`:`1px solid ${B.border}` }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:28, height:28, borderRadius:"50%", background:i<3?["#FFD70020","#C0C0C020","#CD7F3220"][i]:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                 <span style={{ fontSize:11, fontWeight:900, color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:B.muted }}>{i+1}</span>
