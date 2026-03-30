@@ -6764,7 +6764,7 @@ function AcademyPage({ onBack, isClientView }) {
                 {(lesson.content || lesson.desc) && <div style={{ padding:16, borderRadius:12, background:B.bg, marginBottom:16 }}>
                   <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Conteúdo da Aula</p>
                   {lesson.content
-                    ? <div style={{ fontSize:13, lineHeight:1.8, color:B.text }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                    ? <div style={{ fontSize:13, lineHeight:1.8, color:B.text, wordBreak:"break-word", overflowWrap:"break-word", overflow:"hidden" }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
                     : <p style={{ fontSize:13, lineHeight:1.7, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
                   }
                 </div>}
@@ -7146,11 +7146,21 @@ function AcademyPage({ onBack, isClientView }) {
             <Card style={{ marginBottom:14, borderLeft:`3px solid ${c}` }}>
               <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Conteúdo da Aula</p>
               {lesson.content
-                ? <div style={{ fontSize:14, lineHeight:1.8, color:B.text }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                ? <div style={{ fontSize:14, lineHeight:1.8, color:B.text, wordBreak:"break-word", overflowWrap:"break-word", overflow:"hidden" }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
                 : <p style={{ fontSize:14, lineHeight:1.8, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
               }
             </Card>
           )}
+          {/* ── Responsive style overrides for lesson HTML content ── */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            .pg table, .pg td, .pg th { display:block !important; width:100% !important; }
+            .pg tr { display:flex !important; flex-wrap:wrap !important; width:100% !important; }
+            .pg td, .pg th { flex:1 1 100% !important; min-width:0 !important; padding:4px 0 !important; }
+            .pg [style*="display: flex"], .pg [style*="display:flex"] { flex-wrap:wrap !important; }
+            .pg [style*="display: grid"], .pg [style*="display:grid"] { display:block !important; }
+            .pg img { max-width:100% !important; height:auto !important; }
+            .pg pre, .pg code { white-space:pre-wrap !important; word-break:break-word !important; overflow-x:auto !important; max-width:100% !important; }
+          ` }} />
           {/* ── Lesson list (collapsible) ── */}
           <Card style={{ marginBottom:14, padding:"12px 14px" }}>
             <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Todas as Aulas</p>
