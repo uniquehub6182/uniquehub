@@ -186,6 +186,7 @@ const mergeSupaClient = (row, existing) => ({
   plan: PLAN_MAP_FROM_DB[row.plan] || "Traction",
   status: row.status || "ativo",
   monthly: row.monthly_value ? `R$ ${Number(row.monthly_value).toLocaleString("pt-BR")}` : "R$ 0",
+  monthly_value: row.monthly_value || 0,
   pending: existing?.pending || 0, score: row.score || 0,
   contact: row.contact_name || "", phone: row.contact_phone || "",
   email: row.contact_email || "", cnpj: row.cnpj || existing?.cnpj || "", address: row.address || existing?.address || "",
