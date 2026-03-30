@@ -28020,7 +28020,13 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
     const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
     if (isMobile && !isStandalone && !dismissed) setTimeout(() => setShowPWA(true), 1200);
   }} onClientAuth={(data) => {
-    if (data.mode === "login" && data.user) { setClientUser(data.user); }
+    if (data.mode === "login" && data.user) {
+      setClientUser(data.user);
+      const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+      const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
+      if (isMobile && !isStandalone && !dismissed) setTimeout(() => setShowPWA(true), 1200);
+    }
     if (data.mode === "register") { setClientUser({ registering: true }); }
   }} />}
       {clientUser && clientUser.registering && <ClientOnboarding onComplete={(u) => setClientUser(u)} onBack={() => setClientUser(null)} />}
