@@ -6099,7 +6099,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     </div>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
-                    <button onClick={()=>{setEditClient(true);setProfileTab("info");}} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Editar</button>
+                    <button onClick={()=>{setEditClient(true);if(profileTab!=="info"&&profileTab!=="financial")setProfileTab("info");}} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Editar</button>
                     {canAccessFn("clients.delete") && <button onClick={()=>setConfirmAction({type:"delete",title:"Excluir cliente?",msg:`Deseja excluir ${sel.name}? Essa ação não pode ser desfeita.`,action:async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").delete().eq("id",cid);}catch(e){}}setClients(p=>p.filter(c=>c.id!==sel.id&&c.supaId!==sel.supaId));setSel(null);showToast("Cliente excluído");}})} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#EF4444" }}>Excluir</button>}
                   </div>
                 </div>
@@ -6313,6 +6313,23 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   </div>
                 </div>}
                 {!confirmAction && profileTab==="financial" && canFinancial && <div>
+                  {editClient ? <>
+                    <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Editar informações financeiras</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+                      <div>
+                        <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Plano</p>
+                        <input value={sel.plan||""} onChange={e=>setSel(p=>({...p,plan:e.target.value}))} className="tinput" placeholder="Ex: Growth 360"/>
+                      </div>
+                      <div>
+                        <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:4 }}>Mensalidade</p>
+                        <input value={sel.monthly||""} onChange={e=>setSel(p=>({...p,monthly:e.target.value}))} className="tinput" placeholder="R$ 2.480"/>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                      <button onClick={async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").update({plan:sel.plan,monthly:sel.monthly}).eq("id",cid);}catch(e){}}setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,plan:sel.plan,monthly:sel.monthly}:c));setEditClient(false);showToast("Financeiro atualizado ✓");}} style={{ flex:1, padding:"10px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Salvar</button>
+                      <button onClick={()=>setEditClient(false)} style={{ padding:"10px 16px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600 }}>Cancelar</button>
+                    </div>
+                  </> : <>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:16 }}>
                     <div style={{ padding:14, borderRadius:14, background:`${B.accent}10`, border:`1px solid ${B.accent}20` }}>
                       <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase" }}>Plano</p>
@@ -6327,6 +6344,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       <p style={{ fontSize:18, fontWeight:900, color:B.text, marginTop:4 }}>{dInvoices.filter(i=>i.status==="pendente").length}</p>
                     </div>
                   </div>
+                  </>}
                   <p style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>Faturas</p>
                   {dInvoices.map((inv,ii)=>(
                     <div key={ii} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:`1px solid ${B.border}`, marginBottom:6 }}>
