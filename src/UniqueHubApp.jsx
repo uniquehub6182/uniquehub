@@ -7092,44 +7092,84 @@ function AcademyPage({ onBack, isClientView }) {
         );
       }
       const embed = getYTEmbed(lesson.videoUrl);
+      const totalLessons = (course.lessons||[]).length;
+      const progress = Math.round(((selLesson + 1) / totalLessons) * 100);
       return (
         <div className="pg">{ToastEl}
           <Head title="" onBack={()=>setSelLesson(null)} />
-          <Card style={{ marginBottom:10, borderLeft:`4px solid ${c}` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-              <div style={{ width:28, height:28, borderRadius:14, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <span style={{ fontSize:11, fontWeight:800, color:c }}>{selLesson+1}</span>
+          {/* ── Progress bar ── */}
+          <div style={{ display:"flex", gap:3, marginBottom:14 }}>
+            {(course.lessons||[]).map((_,li) => (
+              <div key={li} style={{ flex:1, height:3, borderRadius:2, background: li <= selLesson ? c : `${B.muted}15`, transition:"background .3s" }} />
+            ))}
+          </div>
+          {/* ── Lesson header ── */}
+          <div style={{ marginBottom:14 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+              <div style={{ width:36, height:36, borderRadius:12, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <span style={{ fontSize:14, fontWeight:900, color:c }}>{selLesson+1}</span>
               </div>
-              <h3 style={{ fontSize:16, fontWeight:800 }}>{lesson.title}</h3>
+              <div style={{ flex:1, minWidth:0 }}>
+                <h3 style={{ fontSize:17, fontWeight:800, margin:0, lineHeight:1.2 }}>{lesson.title}</h3>
+                <p style={{ fontSize:11, color:B.muted, marginTop:3 }}>Aula {selLesson+1} de {totalLessons}{lesson.duration ? ` · ${lesson.duration}` : ""}</p>
+              </div>
             </div>
-            {lesson.duration && <p style={{ fontSize:11, color:B.muted, marginLeft:36 }}>{lesson.duration}</p>}
-            {lesson.desc && <p style={{ fontSize:13, color:B.text, lineHeight:1.6, marginTop:8 }}>{lesson.desc}</p>}
-          </Card>
+          </div>
+          {/* ── Video player ── */}
           {embed ? (
-            <Card style={{ padding:0, overflow:"hidden", borderRadius:12, marginBottom:10 }}>
-              <div style={{ position:"relative", paddingBottom:"56.25%", height:0 }}>
+            <div style={{ borderRadius:16, overflow:"hidden", marginBottom:14, boxShadow:"0 4px 20px rgba(0,0,0,0.15)" }}>
+              <div style={{ position:"relative", paddingBottom:"56.25%", height:0, background:B.dark }}>
                 <iframe src={embed} title={lesson.title} style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", border:"none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
               </div>
-            </Card>
+            </div>
           ) : lesson.videoUrl && /\.(mp4|mov|webm|m4v|avi)$/i.test(lesson.videoUrl) ? (
-            <Card style={{ padding:0, overflow:"hidden", borderRadius:12, marginBottom:10, background:B.dark }}>
-              <video controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={e=>e.preventDefault()} src={lesson.videoUrl} style={{ width:"100%", maxHeight:300, display:"block" }} />
-            </Card>
+            <div style={{ borderRadius:16, overflow:"hidden", marginBottom:14, background:B.dark, boxShadow:"0 4px 20px rgba(0,0,0,0.15)" }}>
+              <video controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={e=>e.preventDefault()} src={lesson.videoUrl} style={{ width:"100%", display:"block" }} />
+            </div>
+          ) : lesson.videoUrl && /\.(pdf|doc|docx|ppt|pptx)$/i.test(lesson.videoUrl) ? (
+            <div style={{ borderRadius:16, overflow:"hidden", marginBottom:14, border:`1px solid ${B.border}` }}>
+              <iframe src={lesson.videoUrl} title={lesson.title} style={{ width:"100%", height:400, border:"none" }} />
+            </div>
           ) : lesson.videoUrl ? (
-            <Card style={{ marginBottom:10 }}>
-              <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, fontWeight:600, color:B.blue, textDecoration:"none" }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:`${B.blue}12`, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-                Abrir conteúdo
-              </a>
-            </Card>
-          ) : (
-            <Card style={{ marginBottom:10, textAlign:"center", padding:20 }}>
-              <p style={{ fontSize:12, color:B.muted }}>Sem vídeo vinculado a esta aula</p>
+            <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 18px", borderRadius:16, background:`${B.blue}08`, border:`1.5px solid ${B.blue}20`, marginBottom:14, textDecoration:"none" }}>
+              <div style={{ width:44, height:44, borderRadius:14, background:`${B.blue}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={B.blue}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
+              <div>
+                <p style={{ fontSize:14, fontWeight:700, color:B.blue, margin:0 }}>Abrir conteúdo</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Abre em uma nova aba</p>
+              </div>
+            </a>
+          ) : null}
+          {/* ── Lesson content / description ── */}
+          {(lesson.content || lesson.desc) && (
+            <Card style={{ marginBottom:14, borderLeft:`3px solid ${c}` }}>
+              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Conteúdo da Aula</p>
+              {lesson.content
+                ? <div style={{ fontSize:14, lineHeight:1.8, color:B.text }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                : <p style={{ fontSize:14, lineHeight:1.8, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
+              }
             </Card>
           )}
-          <div style={{ display:"flex", gap:8, marginTop:8 }}>
-            {selLesson > 0 && <button onClick={()=>setSelLesson(selLesson-1)} style={{ flex:1, padding:"12px 0", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text }}>← Anterior</button>}
-            {selLesson < (course.lessons||[]).length-1 && <button onClick={()=>setSelLesson(selLesson+1)} style={{ flex:1, padding:"12px 0", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark }}>Próxima →</button>}
+          {/* ── Lesson list (collapsible) ── */}
+          <Card style={{ marginBottom:14, padding:"12px 14px" }}>
+            <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Todas as Aulas</p>
+            {(course.lessons||[]).map((ll,li) => (
+              <div key={ll.id||li} onClick={()=>setSelLesson(li)} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 6px", borderRadius:10, cursor:"pointer", background: li === selLesson ? `${c}08` : "transparent", marginBottom:2 }}>
+                <div style={{ width:24, height:24, borderRadius:8, background: li <= selLesson ? c : `${B.muted}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {li < selLesson ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <span style={{ fontSize:10, fontWeight:800, color: li === selLesson ? "#fff" : B.muted }}>{li+1}</span>}
+                </div>
+                <span style={{ fontSize:12, fontWeight: li === selLesson ? 700 : 500, color: li === selLesson ? c : B.text, flex:1 }}>{ll.title}</span>
+                {ll.duration && <span style={{ fontSize:10, color:B.muted }}>{ll.duration}</span>}
+              </div>
+            ))}
+          </Card>
+          {/* ── Navigation ── */}
+          <div style={{ display:"flex", gap:8 }}>
+            {selLesson > 0 && <button onClick={()=>setSelLesson(selLesson-1)} style={{ flex:1, padding:"14px 0", borderRadius:14, border:`1.5px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text }}>← Aula anterior</button>}
+            {selLesson < totalLessons-1 && <button onClick={()=>setSelLesson(selLesson+1)} style={{ flex:1, padding:"14px 0", borderRadius:14, background:c, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff" }}>Próxima aula →</button>}
+            {selLesson === totalLessons-1 && <button onClick={()=>setSelLesson(null)} style={{ flex:1, padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>✓ Concluir curso</button>}
           </div>
         </div>
       );
