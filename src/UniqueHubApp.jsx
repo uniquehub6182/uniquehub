@@ -820,6 +820,21 @@ const supaMarkAllNotificationsRead = async (userId) => {
   if (!supabase || !userId) return;
   await supabase.from("notifications").update({ read: true }).eq("user_id", userId).eq("read", false);
 };
+/* Notify all client-portal users linked to a specific client */
+const supaNotifyClientUsers = async (clientId, type, title, body) => {
+  if (!supabase || !clientId) return;
+  try {
+    const { data: profiles } = await supabase.from("profiles").select("id").eq("role", "cliente");
+    if (!profiles?.length) return;
+    const extrasKeys = profiles.map(p => `client_extras_${p.id}`);
+    const { data: extras } = await supabase.from("app_settings").select("key,value").in("key", extrasKeys);
+    const linked = [];
+    (extras || []).forEach(e => { try { const v = typeof e.value === "string" ? JSON.parse(e.value) : e.value; if (v?.linked_client_id === clientId) { const uid = e.key.replace("client_extras_", ""); linked.push(uid); } } catch {} });
+    if (!linked.length) return;
+    const rows = linked.map(uid => ({ user_id: uid, type, title, body: body || "", link: "" }));
+    await supabase.from("notifications").insert(rows);
+  } catch (e) { console.warn("supaNotifyClientUsers:", e); }
+};
 
 /* ── Invoices (cobranças) ── */
 const supaLoadInvoices = async () => { if (!supabase) return []; try { const { data } = await supabase.from("invoices").select("*").order("due_date", { ascending: false }); return data || []; } catch { return []; } };
@@ -9193,6 +9208,7 @@ REGRAS TÉCNICAS:
           showToast("✅ Publicado no Instagram!");
         }
         supaCreateNotificationForAll("post_created", "Post publicado", `${selClient.name} — ${platform === "both" ? "FB + IG" : platform}`, "📝", null, user?.id);
+        supaNotifyClientUsers(clientId, "post_published", "🚀 Seu post foi publicado!", `${selClient.name} — ${platform === "both" ? "Facebook + Instagram" : platform}`);
         setQpLoading(false); setQuickPub(false); setQpForm({ client:"", caption:"", hashtags:"", imageUrl:"", platform:"both" });
       } catch(e) { showToast("Erro: " + e.message); setQpLoading(false); }
     };
@@ -10491,6 +10507,7 @@ REGRAS TÉCNICAS:
                         } else {
                           setDemands(prev => prev.map(d => (d.supaId||d.id) === savedSelId ? syncMilestones({...d, stage:"published"}, "published") : d));
                           if (supabase) supaUpdateDemand(savedSelId, { stage:"published" });
+                          supaNotifyClientUsers(savedSel.client_id, "post_published", "🚀 Seu post foi publicado!", savedSel.title || savedSel.type || "Novo post");
                           updateBgTask(taskId, { status:"done", label:`✅ ${savedSel.client} publicado!`, msg:"" });
                         }
                       } catch(e) {
@@ -10539,7 +10556,7 @@ REGRAS TÉCNICAS:
                     <p style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4, textAlign:"center" }}>O que deseja fazer?</p>
                     <p style={{ fontSize:11, color:B.muted, marginBottom:14, textAlign:"center", lineHeight:1.5 }}>Escolha uma das opções abaixo.</p>
                     <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      <button onClick={() => updateStep("client", { mode:"sent_to_client", sentAt:new Date().toISOString() })} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                      <button onClick={() => { updateStep("client", { mode:"sent_to_client", sentAt:new Date().toISOString() }); supaNotifyClientUsers(sel.client_id || sel.supaId, "post_for_approval", "📋 Novo conteúdo para aprovação", sel.title || sel.type || "Novo post"); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, color:B.textOnAccent, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
                         Enviar para o cliente
                       </button>
@@ -10589,6 +10606,7 @@ REGRAS TÉCNICAS:
                             if (igOk || fbOk) {
                               setDemands(prev => prev.map(d => (d.supaId||d.id) === savedSelId ? syncMilestones({...d, stage:"published"}, "published") : d));
                               if (supabase) supaUpdateDemand(savedSelId, { stage:"published" });
+                              supaNotifyClientUsers(savedSel.client_id, "post_published", "🚀 Seu post foi publicado!", savedSel.title || savedSel.type || "Novo post");
                               const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
                               updateBgTask(taskId, { status:"done", label:`✅ ${savedClient} publicado!`, msg:platforms });
                             } else {
@@ -10897,6 +10915,7 @@ REGRAS TÉCNICAS:
                       } else {
                         setDemands(prev => prev.map(d => (d.supaId||d.id) === savedSelId ? syncMilestones({...d, stage:"published"}, "published") : d));
                         if (supabase) supaUpdateDemand(savedSelId, { stage:"published" });
+                        supaNotifyClientUsers(sel.client_id, "post_published", "🚀 Seu post foi publicado!", sel.title || sel.type || "Novo post");
                         updateBgTask(taskId, { status:"done", label:`✅ ${savedClient} publicado!`, msg:"" });
                       }
                     } catch(e) { updateBgTask(taskId, { status:"error", msg:e.message }); }
@@ -11737,7 +11756,7 @@ REGRAS TÉCNICAS:
                               <div style={{marginTop:8}}>
                                 <p style={{fontSize:10,fontWeight:700,color:B.text,marginBottom:6,textAlign:"center"}}>Enviar para o cliente?</p>
                                 <div style={{display:"flex",gap:6}}>
-                                  <button onClick={(e)=>{e.stopPropagation();inlineUpdate({mode:"sent_to_client",sentAt:new Date().toISOString()});showToast("Enviado para aprovação do cliente");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.dark}}>
+                                  <button onClick={(e)=>{e.stopPropagation();inlineUpdate({mode:"sent_to_client",sentAt:new Date().toISOString()});supaNotifyClientUsers(d.client_id,"post_for_approval","📋 Novo conteúdo para aprovação",d.title||d.type||"Novo post");showToast("Enviado para aprovação do cliente");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.dark}}>
                                     📩 Enviar ao cliente
                                   </button>
                                   <button onClick={(e)=>{e.stopPropagation();inlineUpdate({mode:"publish_direct"});showToast("Modo: publicar direto");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"#1877F2",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>
@@ -13736,14 +13755,14 @@ function NotifsPage({ onBack, user, navigate }) {
   const unreadCount = notifs.filter(n => !n.read).length;
   const markRead = async (id) => { await supaMarkNotificationRead(id); setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n)); };
   const markAll = async () => { if (!user?.id) return; await supaMarkAllNotificationsRead(user.id); setNotifs(p => p.map(n => ({ ...n, read: true }))); showToast("Todas marcadas como lidas"); };
-  const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
-  const typeColor = { post_created:B.accent, post_approved:B.green, post_rejected:"#EF4444", demand_created:B.blue, demand_updated:"#F59E0B", member_joined:B.purple, member_approved:B.green, calendar_reminder:B.orange, checkin:B.cyan, system:B.muted, news_created:"#6366F1" };
+  const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", post_for_approval:"📋", post_published:"🚀", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
+  const typeColor = { post_created:B.accent, post_approved:B.green, post_rejected:"#EF4444", post_for_approval:B.orange||"#F59E0B", post_published:B.green, demand_created:B.blue, demand_updated:"#F59E0B", member_joined:B.purple, member_approved:B.green, calendar_reminder:B.orange, checkin:B.cyan, system:B.muted, news_created:"#6366F1" };
   const timeAgo = (d) => { const s = Math.floor((Date.now()-new Date(d).getTime())/1000); if(s<60) return "Agora"; if(s<3600) return Math.floor(s/60)+"min"; if(s<86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; };
 
   const TOP = 70;
   const grouped = {};
   notifs.forEach(n => { const t = n.type || "system"; if (!grouped[t]) grouped[t] = []; grouped[t].push(n); });
-  const typeLabel = { post_created:"Posts Criados", post_approved:"Posts Aprovados", post_rejected:"Posts Rejeitados", demand_created:"Demandas", demand_updated:"Demandas Atualizadas", member_joined:"Equipe", member_approved:"Equipe", calendar_reminder:"Calendário", checkin:"Check-in", system:"Sistema", news_created:"Notícias" };
+  const typeLabel = { post_created:"Posts Criados", post_approved:"Posts Aprovados", post_rejected:"Posts Rejeitados", post_for_approval:"Aprovação Pendente", post_published:"Posts Publicados", demand_created:"Demandas", demand_updated:"Demandas Atualizadas", member_joined:"Equipe", member_approved:"Equipe", calendar_reminder:"Calendário", checkin:"Check-in", system:"Sistema", news_created:"Notícias" };
 
   return (
     <div className={isNotifDesktop ? "content-wide" : "pg"} style={isNotifDesktop ? { paddingTop:TOP, minHeight:"100%" } : {}}>
