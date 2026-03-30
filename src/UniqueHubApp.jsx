@@ -12732,8 +12732,9 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       setConvs(prev => {
         const idx = prev.findIndex(c => c.id === nm.conversation_id);
         if (idx === -1) {
-          /* New conversation we don't know about yet — reload */
-          supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
+          /* Only reload if this might be a conversation we're a member of (e.g. just added) */
+          if (myConvIdsRef.current && myConvIdsRef.current.size > 0 && !myConvIdsRef.current.has(nm.conversation_id)) return prev;
+          supaLoadConversations(user.id).then(fresh => { if(fresh?.length) { setConvs(fresh); myConvIdsRef.current = new Set(fresh.map(c => c.id)); } });
           return prev;
         }
         const updated = [...prev];
@@ -12741,8 +12742,8 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
         return updated;
       });
     }).on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_members", filter: `user_id=eq.${user.id}` }, () => {
-      /* Someone added me to a new conversation/group — reload list */
-      supaLoadConversations(user.id).then(fresh => { if(fresh?.length) setConvs(fresh); });
+      /* Someone added me to a new conversation/group — reload list and update ref */
+      supaLoadConversations(user.id).then(fresh => { if(fresh?.length) { setConvs(fresh); myConvIdsRef.current = new Set(fresh.map(c => c.id)); } });
     }).on("broadcast", { event: "chat_update" }, ({ payload: p }) => {
       if (!p || p.sender_id === user.id) return;
       setConvs(prev => {
@@ -26579,6 +26580,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return () => document.documentElement.classList.remove('uh-client-sub-active');
   }, [hasSub]);
 
+  /* ── Block desktop access for client app (not yet implemented) ── */
+  if (isDesktop) return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#0D0D0D", color:"#fff", fontFamily:"Inter, system-ui, sans-serif", padding:32 }}>
+      <div style={{ textAlign:"center", maxWidth:420 }}>
+        <div style={{ width:80, height:80, borderRadius:20, background:"#C8FF0015", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px" }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+        <h1 style={{ fontSize:24, fontWeight:900, marginBottom:12, letterSpacing:"-0.02em" }}>Acesse pelo celular</h1>
+        <p style={{ fontSize:14, color:"rgba(255,255,255,0.5)", lineHeight:1.7, margin:0 }}>O Portal do Cliente UniqueHub foi otimizado para dispositivos móveis. Acesse pelo seu celular ou tablet para a melhor experiência.</p>
+        <div style={{ marginTop:28, padding:"14px 24px", borderRadius:14, background:"#C8FF0010", border:"1px solid #C8FF0025", display:"inline-block" }}>
+          <p style={{ fontSize:13, fontWeight:600, color:"#C8FF00", margin:0 }}>uniquehub.com.br</p>
+        </div>
+        <div style={{ marginTop:24 }}>
+          <button onClick={onLogout} style={{ padding:"10px 24px", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.5)" }}>Sair</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (<>
     {/* ═══ SUB-PAGES: rendered OUTSIDE .app to avoid nested position:fixed scroll issues ═══ */}
     {hasSub && (
@@ -26851,14 +26869,16 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [demandBadge, setDemandBadge] = useState(0);
 
   /* ── Load chat unread count (deferred to not block initial render) ── */
+  const myConvIdsRef = React.useRef(new Set());
   useEffect(() => {
     if (!supabase || !user?.id) return;
     let badgeTimer;
     const loadChatUnread = async () => {
       try {
         const { data: memberships } = await supabase.from("conversation_members").select("conversation_id, last_read_at").eq("user_id", user.id);
-        if (!memberships?.length) { setChatUnread(0); return; }
+        if (!memberships?.length) { setChatUnread(0); myConvIdsRef.current = new Set(); return; }
         const convIds = memberships.map(m => m.conversation_id);
+        myConvIdsRef.current = new Set(convIds);
         /* Single query: get all messages not from me, then filter in JS */
         const { data: msgs } = await supabase.from("messages").select("id, conversation_id, created_at").in("conversation_id", convIds).neq("sender_id", user.id).order("created_at", { ascending: false }).limit(200);
         if (!msgs?.length) { setChatUnread(0); return; }
@@ -26878,18 +26898,19 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     /* Realtime: new messages → recalculate + browser notification */
     requestNotifPermission();
     const chan = supabase.channel("nav-chat-badge").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-      if (payload.new.sender_id !== user.id) {
-        setChatUnread(c => c + 1);
-        /* Sound + Browser notification — respect mute, @mention overrides */
-        const mList = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
-        const convIsMuted = mList.includes(payload.new.conversation_id);
-        const mentionsMe = payload.new.content && user?.name && payload.new.content.includes(`@${user.name}`);
-        try { if (localStorage.getItem("uh_notif_sound") !== "off" && (!convIsMuted || mentionsMe)) playChatNotifSound(); } catch {}
-        if ((!convIsMuted || mentionsMe) && "Notification" in window && Notification.permission === "granted" && document.hidden) {
-          const senderName = payload.new.sender_name || "Alguém";
-          const content = mentionsMe ? `te mencionou: ${payload.new.content?.substring(0, 60)}` : (payload.new.content?.substring(0, 80) || "Nova mensagem");
-          new Notification(`UniqueHub — ${senderName}`, { body: content, icon: "/favicon.ico", tag: "uh-chat-" + payload.new.conversation_id });
-        }
+      if (payload.new.sender_id === user.id) return;
+      /* Only notify for conversations user is a member of */
+      if (!myConvIdsRef.current.has(payload.new.conversation_id)) return;
+      setChatUnread(c => c + 1);
+      /* Sound + Browser notification — respect mute, @mention overrides */
+      const mList = (() => { try { return JSON.parse(localStorage.getItem("uh_muted_convs")||"[]"); } catch { return []; } })();
+      const convIsMuted = mList.includes(payload.new.conversation_id);
+      const mentionsMe = payload.new.content && user?.name && payload.new.content.includes(`@${user.name}`);
+      try { if (localStorage.getItem("uh_notif_sound") !== "off" && (!convIsMuted || mentionsMe)) playChatNotifSound(); } catch {}
+      if ((!convIsMuted || mentionsMe) && "Notification" in window && Notification.permission === "granted" && document.hidden) {
+        const senderName = payload.new.sender_name || "Alguém";
+        const content = mentionsMe ? `te mencionou: ${payload.new.content?.substring(0, 60)}` : (payload.new.content?.substring(0, 80) || "Nova mensagem");
+        new Notification(`UniqueHub — ${senderName}`, { body: content, icon: "/favicon.ico", tag: "uh-chat-" + payload.new.conversation_id });
       }
     }).subscribe();
     /* Request notification permission on first load */
