@@ -25378,8 +25378,8 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   const [localUser, setLocalUser] = useState(userProp);
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
-  /* Theme for client portal — initial B, will be overridden by useMemo below */
-  B = getB(dark, THEME_MAP[themeColor] || "#BBF246", (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })());
+  /* Theme for client portal — initial B with default accent, overridden by useMemo after hooks */
+  B = getB(dark, "#BBF246", (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })());
   const canAccessFn = () => true;
   /* Load custom gamify data for client financeiro */
   const [gamifyData, setGamifyData] = useState(null);
