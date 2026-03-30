@@ -25379,7 +25379,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   useEffect(() => { setLocalUser(prev => ({ ...prev, ...userProp })); }, [userProp]);
   const user = localUser;
   /* Theme for client portal — initial B, will be overridden by useMemo below */
-  B = getB(dark, "#BBF246", (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })());
+  B = getB(dark, THEME_MAP[themeColor] || "#BBF246", (() => { try { return JSON.parse(localStorage.getItem("uh_ui_prefs") || "{}"); } catch { return {}; } })());
   const canAccessFn = () => true;
   /* Load custom gamify data for client financeiro */
   const [gamifyData, setGamifyData] = useState(null);
@@ -25448,7 +25448,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [headerC, setHeaderC] = useState(false);
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
-  B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
+  B = React.useMemo(() => getB(dark, THEME_MAP[themeColor] || "#BBF246", uiPrefs), [dark, themeColor, JSON.stringify(uiPrefs)]);
   React.useEffect(() => { if (!B.transparent) { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
