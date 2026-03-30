@@ -56,6 +56,23 @@
         if (window.innerWidth >= 900) document.documentElement.classList.add('uh-desktop');
         else document.documentElement.classList.remove('uh-desktop');
       });
+      /* iOS PWA: fix viewport height - Safari caches vh from browser mode */
+      (function fixIOSHeight() {
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        if (isIOS || isStandalone) {
+          function setH() {
+            var h = window.innerHeight;
+            document.documentElement.style.height = h + 'px';
+            document.body.style.height = h + 'px';
+            var root = document.getElementById('root');
+            if (root) root.style.height = h + 'px';
+          }
+          setH();
+          window.addEventListener('resize', setH);
+          window.addEventListener('orientationchange', function() { setTimeout(setH, 200); });
+        }
+      })();
     </script>
   </head>
   <body>
