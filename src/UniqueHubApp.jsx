@@ -25320,8 +25320,9 @@ function ClientOnboarding({ onComplete, onBack }) {
         }, { onConflict: "id" }); } catch(e) { console.warn("Profile upsert:", e); }
       }
       await addBot(`Conta criada com sucesso, ${data.name}! 🎉`, 600);
-      await addBot("Você já pode fazer login com seu e-mail e senha.", 800);
-      setTimeout(() => onBack(), 3000);
+      await addBot("Entrando no seu portal...", 800);
+      /* Auto-login: signUp already created a session, pass user directly to the app */
+      setTimeout(() => onComplete({ id: authData?.user?.id, name: data.name, email: data.email, photo: null, role: "cliente" }), 2000);
     } catch(e) {
       setError(e.message);
       setCreating(false);
