@@ -25488,10 +25488,29 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   useEffect(() => {
     if (sub !== "financial" || !supabase) return;
     (async () => {
-      const cl = clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase()) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase());
+      /* ── 1. Refresh this client's record from Supabase (plan may have changed on desktop) ── */
+      const email = (user?.email || "").toLowerCase();
+      const company = (user?.company || "").toLowerCase();
+      let freshClient = null;
+      if (email) {
+        const { data } = await supabase.from("clients").select("*").ilike("contact_email", email).limit(1);
+        if (data?.[0]) freshClient = data[0];
+      }
+      if (!freshClient && company) {
+        const { data } = await supabase.from("clients").select("*").ilike("name", company).limit(1);
+        if (data?.[0]) freshClient = data[0];
+      }
+      if (freshClient) {
+        setClients(prev => prev.map(c => (c.id === freshClient.id || c.supaId === freshClient.id)
+          ? { ...c, ...freshClient, supaId: freshClient.id, monthly_value: freshClient.monthly_value, plan: freshClient.plan, status: freshClient.status || "ativo", logo: freshClient.logo_url || freshClient.logo }
+          : c
+        ));
+      }
+      /* ── 2. Load Asaas payments ── */
+      const cl = freshClient || clients.find(c => (c.contact_email||"").toLowerCase() === email) || clients.find(c => (c.name||"").toLowerCase() === company);
       if (!cl?.asaas_customer_id) return;
       setAsaasLoading(true);
-      const result = await asaasCall("list_charges", { client_id: cl.supaId || cl.id });
+      const result = await asaasCall("list_charges", { client_id: cl.id });
       if (result?.data) setAsaasPayments(result.data);
       setAsaasLoading(false);
     })();
@@ -25591,7 +25610,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   /* Load clients + team for sub-pages */
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly: c.monthly, status: c.status || "ativo", logo: c.logo_url || c.logo }))); });
+    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly_value: c.monthly_value, status: c.status || "ativo", logo: c.logo_url || c.logo }))); });
     supaLoadTeam().then(rows => { if (rows) { setTeam(rows); rows.forEach(m => { if(m.photo){const img=new Image();img.src=m.photo;} }); } });
   }, []);
 
