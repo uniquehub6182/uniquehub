@@ -25481,6 +25481,9 @@ html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
 html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
+html.uh-desktop .desktop-dash{max-width:1000px!important;margin:0 auto!important}
+html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
+html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
@@ -26414,10 +26417,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   /* Clock + day (moved to renderHome scope below, no hooks here) */
   const todayStr = `${dayNamesG[now.getDay()]}, ${now.getDate()} de ${monthNames[now.getMonth()]}`;
 
-  return <>
+  return <div className={isDesktop?"desktop-dash":""} style={isDesktop?{maxWidth:1000,margin:"0 auto",paddingBottom:80}:{}}>
     {/* ═══ AGENCY-STYLE HEADER ═══ */}
-    <div style={{ margin:"-14px -16px 0", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:"calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
-      <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+    <div style={{ margin:isDesktop?"0":"-14px -16px 0", background:H.bg, borderRadius:isDesktop?"0 0 24px 24px":"0 0 40px 40px", paddingTop:isDesktop?"24px":"calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
+      <div style={{ padding:isDesktop?"0 32px":"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${LIME} 0%,${LIME}80 100%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
           <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {(user?.nick||user?.name||"Cliente").split(" ")[0]}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>{resolvedClient?.name || user?.company || "Meu Portal"}</div></div>
@@ -26428,7 +26431,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
       {/* Search bar */}
-      <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"0 18px", position:"relative" }}>
+      <div style={{ margin:isDesktop?"16px 32px 0":"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"0 18px", position:"relative" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0}}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input value={clientSearchQ} onChange={e=>setClientSearchQ(e.target.value)} placeholder="Buscar conteúdo, relatórios..." style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"inherit",fontSize:15,color:"#fff",padding:"14px 0"}} />
         {clientSearchQ && <button onClick={()=>setClientSearchQ("")} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
@@ -26438,7 +26441,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>}
       </div>
       {/* Appointments + Clock/Day — agency style */}
-      <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:"14px 24px 0" }}>
+      <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:isDesktop?"14px 32px 0":"14px 24px 0" }}>
         <div onClick={()=>goTab("content")} style={{ flex:1, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:`1px solid ${weekDemands.length>0?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)"}`, cursor:"pointer", transition:"all .15s", backdropFilter:"blur(8px)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:"rgba(255,255,255,0.35)"} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <div style={{flex:1}}><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
@@ -26454,7 +26457,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
       {/* Dynamic accent cards from config */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
+      <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr 1fr", gap:12, padding:isDesktop?"16px 32px 0":"16px 24px 0" }}>
         {clientCards.slice(0,isDesktop?4:2).map((ck,i) => {
           const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% concluído`,action:()=>goTab("content")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
@@ -26470,7 +26473,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     {/* Dynamic quick action pills from config */}
     <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
       <button onClick={()=>setShowDashEdit(true)} style={{width:38,height:38,borderRadius:"50%",background:C.pill||C.card,border:`1px solid ${C.brd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-      <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
+      <div style={{ display:"flex", gap:10, overflowX:isDesktop?"visible":"auto", flexWrap:isDesktop?"wrap":"nowrap", scrollbarWidth:"none", flex:1 }}>
         {clientPills.map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); }; return <div key={pk} onClick={nav} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill||C.card,border:`1px solid ${C.brd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}</div>; })}
       </div>
     </div>
@@ -26528,7 +26531,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
       </div></>;
     })()}
-  </>; }
+  </div>; }
 
       const renderContent = () => {
     const revision = demands.filter(d => d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected");
