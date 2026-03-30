@@ -25462,7 +25462,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
     const s = document.createElement("style");
     s.id = id;
     s.textContent = `
-.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
+.app,.screen{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
@@ -25810,7 +25810,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   /* ═══ CLIENT SUB-PAGES — wrapper with back button ═══ */
   /* Inject essential styles for sub-pages (they return early, bypassing main style tag) */
   const clientStyles = `
-.app,.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
+.app,.screen{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
@@ -27921,10 +27921,10 @@ export default function App() {
 .btn-loading{opacity:0.6;pointer-events:none;cursor:wait}
 .toast-anim{animation:toastIn .3s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes toastIn{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
-html,body{font-family:'Figtree',sans-serif;background:${B.bodyBg};margin:0;padding:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;color:${dark?"#E8EAED":"#192126"}}#root{width:100%;height:100%;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
+html,body{font-family:'Figtree',sans-serif;background:${B.bodyBg};margin:0;padding:0;width:100%;height:100%;min-height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;color:${dark?"#E8EAED":"#192126"}}#root{width:100%;height:100%;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
 input,textarea,select{font-size:16px !important}
-.app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
-.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
+.app{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
+.screen{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.transparent ? "transparent" : B.bg}}
 .pg{padding:16px 16px 120px;padding-top:${TOP}}
 .uh-glass .card{backdrop-filter:blur(24px) saturate(180%) !important;-webkit-backdrop-filter:blur(24px) saturate(180%) !important;border:1px solid rgba(255,255,255,0.5) !important;box-shadow:0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8) !important}
