@@ -25477,6 +25477,12 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
     s.textContent = `
 .app,.screen{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;background:${B.transparent?"transparent":B.bg}!important;color:${B.text}!important}
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
+html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:auto!important;min-height:100vh!important;overflow:visible!important;inset:auto!important}
+html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 80px!important}
+html.uh-desktop .d-sidebar{display:flex!important;flex-direction:column!important;width:240px!important;min-width:240px!important;height:100vh!important;position:sticky!important;top:0!important;border-right:1px solid ${B.border}!important;background:${B.bgCard}!important;z-index:20!important}
+html.uh-desktop .d-main{flex:1!important;min-width:0!important;max-width:calc(100% - 240px)!important}
+html.uh-desktop .d-main .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .bnav{display:none!important}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
 .pill.accent{background:${B.accent}!important;color:#0D0D0D!important;border-radius:10px!important}
@@ -26622,6 +26628,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     { k:"news", l:"Notícias", i:IC.news, isSub:true },
     { k:"ideas", l:"Ideias", i:IC.ideas, isSub:true },
     { k:"ai", l:"Assistente IA", i:IC.ai, isSub:true },
+    { k:"notes", l:"Bloco de Notas", i:(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, isSub:true },
+    { k:"inbox", l:"Inbox", i:IC.inbox, isSub:true },
     { k:"settings", l:"Configurações", i:IC.settings, isSub:true },
   ];
 
@@ -26637,27 +26645,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return () => document.documentElement.classList.remove('uh-client-sub-active');
   }, [hasSub]);
 
-  /* ── Block desktop access for client app (not yet implemented) ── */
-  if (isDesktop) return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh", background:"#0D0D0D", color:"#fff", fontFamily:"Inter, system-ui, sans-serif", padding:32 }}>
-      <div style={{ textAlign:"center", maxWidth:420 }}>
-        <div style={{ width:80, height:80, borderRadius:20, background:"#C8FF0015", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px" }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C8FF00" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-        <h1 style={{ fontSize:24, fontWeight:900, marginBottom:12, letterSpacing:"-0.02em" }}>Acesse pelo celular</h1>
-        <p style={{ fontSize:14, color:"rgba(255,255,255,0.5)", lineHeight:1.7, margin:0 }}>O Portal do Cliente UniqueHub foi otimizado para dispositivos móveis. Acesse pelo seu celular ou tablet para a melhor experiência.</p>
-        <div style={{ marginTop:28, padding:"14px 24px", borderRadius:14, background:"#C8FF0010", border:"1px solid #C8FF0025", display:"inline-block" }}>
-          <p style={{ fontSize:13, fontWeight:600, color:"#C8FF00", margin:0 }}>uniquehub.com.br</p>
-        </div>
-        <div style={{ marginTop:24 }}>
-          <button onClick={onLogout} style={{ padding:"10px 24px", borderRadius:10, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.5)" }}>Sair</button>
-        </div>
-      </div>
-    </div>
-  );
+  /* ── Desktop sidebar sections for client app ── */
+  const CLIENT_DESKTOP_SECTIONS = [
+    { label: null, keys: ["home","content","calendar","chat"] },
+    { label: "Ferramentas", keys: ["gamify","match4biz","ai","ideas"] },
+    { label: "Gestão", keys: ["financial","reports","library","academy","inbox"] },
+    { label: "Outros", keys: ["news","notes","settings"] },
+  ];
+  const handleClientDesktopNav = (k) => {
+    const mainTabs = ["home","content","calendar","chat","more"];
+    if (mainTabs.includes(k)) { setSub(null); setTab(k); }
+    else { setSub(k); }
+  };
+  const activeClientDesktopTab = sub || tab;
 
   return (<>
     {/* ═══ SUB-PAGES: rendered OUTSIDE .app to avoid nested position:fixed scroll issues ═══ */}
     {hasSub && (
-      <SubPageBoundary onBack={() => setSub(null)}>{
+      <SubPageBoundary onBack={() => setSub(null)}><div style={isDesktop ? { position:"relative", minHeight:"100vh" } : {}}>{
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
@@ -26675,9 +26680,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
       null
-    }</SubPageBoundary>)}
-    {/* ═══ MAIN DASHBOARD (hidden when sub-page is active) ═══ */}
-    <div style={{ display: hasSub ? "none" : "flex" }}>
+    }</div></SubPageBoundary>)}
+    {/* ═══ MAIN DASHBOARD (hidden when sub-page is active on mobile) ═══ */}
+    <div style={{ display: hasSub && !isDesktop ? "none" : "flex" }}>
+      {isDesktop && <DesktopSidebar
+        tabs={CLIENT_SIDEBAR_TABS}
+        activeTab={activeClientDesktopTab}
+        onTabChange={handleClientDesktopNav}
+        user={user}
+        logo={null}
+        title={resolvedClient?.name || user?.company || "Portal do Cliente"}
+        accentColor={B.accent}
+        onLogout={onLogout}
+        sections={CLIENT_DESKTOP_SECTIONS}
+      />}
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
@@ -26735,7 +26751,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
     {/* Navbar - hide when sub-page is active */}
-    {!hasSub && <nav className="bnav" style={{ overflow:"visible" }}>
+    {!hasSub && !isDesktop && <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
           const a = tab === t.k && !sub;
           return (
