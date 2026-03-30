@@ -67,23 +67,14 @@
         if (window.innerWidth >= 900) document.documentElement.classList.add('uh-desktop');
         else document.documentElement.classList.remove('uh-desktop');
       });
-      /* iOS PWA: continuously fix .app/.screen height to actual screen */
-      (function() {
-        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-        if (!isIOS && !window.navigator.standalone) return;
-        function fix() {
-          var h = window.innerHeight;
-          var els = document.querySelectorAll('.app,.screen');
-          for (var i = 0; i < els.length; i++) {
-            els[i].style.height = h + 'px';
-            els[i].style.bottom = 'auto';
-          }
-        }
-        /* Run repeatedly since React re-renders */
-        setInterval(fix, 500);
-        window.addEventListener('resize', fix);
-        document.addEventListener('DOMContentLoaded', fix);
-      })();
+      /* iOS fix: set html height to actual screen height */
+      function fixVH() {
+        if (document.documentElement.classList.contains('uh-desktop')) return;
+        document.documentElement.style.height = window.innerHeight + 'px';
+      }
+      fixVH();
+      window.addEventListener('resize', fixVH);
+      window.addEventListener('orientationchange', function(){ setTimeout(fixVH, 150); });
     </script>
   </head>
   <body>

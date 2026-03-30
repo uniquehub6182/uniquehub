@@ -27921,7 +27921,7 @@ export default function App() {
 .btn-loading{opacity:0.6;pointer-events:none;cursor:wait}
 .toast-anim{animation:toastIn .3s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes toastIn{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
-html,body{font-family:'Figtree',sans-serif;background:${B.bodyBg};margin:0;padding:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;color:${dark?"#E8EAED":"#192126"};overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}#root{width:100%;height:100%;min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
+html,body{font-family:'Figtree',sans-serif;background:${B.bodyBg};margin:0;padding:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;color:${dark?"#E8EAED":"#192126"}}#root{width:100%;height:100%;overflow:hidden;background:${B.transparent ? "transparent" : (dark?"#0F1419":"#F7F7F8")}}
 input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
 .screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
