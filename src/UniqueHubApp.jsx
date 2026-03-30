@@ -22230,7 +22230,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
 
   /* ── Conversation List Panel ── */
   const ConvList = () => (
-    <div style={{ flex:isInboxDesktop?"0 0 360px":"1", borderRight:isInboxDesktop?`1px solid ${B.border}`:"none", display:"flex", flexDirection:"column", height:"100%", background:isInboxDesktop?B.bg:"transparent" }}>
+    <div style={{ flex:isInboxDesktop?"0 0 360px":"1", borderRight:isInboxDesktop?`1px solid ${B.border}`:"none", display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden", background:isInboxDesktop?B.bg:"transparent" }}>
       {/* Client selector (agency only) */}
       {!isClientView && <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${B.border}` }}>
         <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Cliente</p>
@@ -22312,7 +22312,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
 
   /* ── Message Thread Panel ── */
   const MsgThread = () => (
-    <div style={{ flex:1, display:"flex", flexDirection:"column", height:"100%", background:isInboxDesktop?"#FAFAFA":"transparent" }}>
+    <div style={{ flex:1, display:"flex", flexDirection:"column", minHeight:0, overflow:"hidden", background:isInboxDesktop?"#FAFAFA":"transparent" }}>
       {!selConv ? (
         <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
           <div style={{ textAlign:"center" }}>
@@ -22325,7 +22325,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         </div>
       ) : (<>
         {/* Thread header */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard, zIndex:3 }}>
           {!isInboxDesktop && <button onClick={() => setSelConv(null)} style={{ width:32, height:32, borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>}
           <div style={{ width:40, height:40, borderRadius:"50%", background:selConv.platform==="instagram"?"linear-gradient(135deg, #F58529, #DD2A7B, #8134AF)":"#1877F2", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.1)" }}>
             {selConv.platform==="instagram"
@@ -22342,7 +22342,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         </div>
 
         {/* Messages */}
-        <div style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:6, background:`${B.bg}80` }}>
+        <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", padding:"16px", display:"flex", flexDirection:"column", gap:6, background:`${B.bg}80`, minHeight:0, WebkitOverflowScrolling:"touch" }}>
           {msgsLoading && <div style={{ textAlign:"center", padding:30 }}><div style={{ width:24, height:24, border:"2.5px solid "+B.border, borderTopColor:B.accent, borderRadius:"50%", animation:"spin .7s linear infinite", margin:"0 auto" }} /><p style={{ fontSize:11, color:B.muted, marginTop:8 }}>Carregando mensagens...</p></div>}
           {!msgsLoading && messages.length === 0 && <div style={{ textAlign:"center", padding:30, opacity:.5 }}><p style={{ fontSize:12, color:B.muted }}>Nenhuma mensagem carregada</p></div>}
           {messages.map((m, idx) => {
@@ -22350,7 +22350,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
             return <React.Fragment key={m.id}>
               {showDate && m.created_time && <div style={{ textAlign:"center", padding:"8px 0" }}><span style={{ fontSize:9, fontWeight:700, color:B.muted, background:B.bg, padding:"4px 12px", borderRadius:100, border:`1px solid ${B.border}` }}>{new Date(m.created_time).toLocaleDateString("pt-BR", { day:"2-digit", month:"short" })}</span></div>}
               <div style={{ display:"flex", justifyContent:m.is_page?"flex-end":"flex-start" }}>
-                <div style={{ maxWidth:"75%", padding:"10px 14px", borderRadius:m.is_page?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.is_page?B.accent:B.bgCard, color:m.is_page?"#0D0D0D":B.text, border:m.is_page?"none":`1px solid ${B.border}`, boxShadow:m.is_page?"0 2px 8px "+B.accent+"20":"0 1px 4px rgba(0,0,0,0.04)" }}>
+                <div style={{ maxWidth:"75%", padding:"10px 14px", overflow:"hidden", borderRadius:m.is_page?"18px 18px 4px 18px":"18px 18px 18px 4px", background:m.is_page?B.accent:B.bgCard, color:m.is_page?"#0D0D0D":B.text, border:m.is_page?"none":`1px solid ${B.border}`, boxShadow:m.is_page?"0 2px 8px "+B.accent+"20":"0 1px 4px rgba(0,0,0,0.04)" }}>
                   {!m.is_page && <p style={{ fontSize:9, fontWeight:700, color:B.muted, marginBottom:3 }}>{m.from_name}</p>}
                   <p style={{ fontSize:13, lineHeight:1.5, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{(() => { if (!m.text) return null; const urlRx = /(https?:\/\/[^\s<]+)/g; const parts = m.text.split(urlRx); return parts.map((part, pi) => urlRx.test(part) ? <a key={pi} href={part} target="_blank" rel="noopener noreferrer" style={{ color: m.is_page ? "#0D0D0D" : B.accent, textDecoration:"underline", wordBreak:"break-all" }}>{part.length > 50 ? part.substring(0,47)+"..." : part}</a> : part); })()}</p>
                   {m.attachments?.length > 0 && <div style={{ marginTop:6 }}>{m.attachments.map((a,ai) => a.url ? <img key={ai} src={a.url} style={{ maxWidth:"100%", borderRadius:10, marginTop:4 }} /> : <span key={ai} style={{ fontSize:10, color:B.muted }}>📎 {a.name||"Anexo"}</span>)}</div>}
@@ -22363,7 +22363,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         </div>
 
         {/* Reply input */}
-        <div style={{ display:"flex", gap:8, padding:"12px 16px calc(env(safe-area-inset-bottom, 8px) + 12px)", borderTop:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard }}>
+        <div style={{ display:"flex", gap:8, padding:"12px 16px calc(env(safe-area-inset-bottom, 16px) + 16px)", borderTop:`1px solid ${B.border}`, flexShrink:0, background:B.bgCard, zIndex:5 }}>
           <input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); sendReply(); }}} placeholder="Digite sua resposta..." className="tinput" style={{ flex:1, fontSize:14, padding:"12px 14px" }} disabled={sending} />
           <button onClick={sendReply} disabled={!reply.trim()||sending} style={{ width:42, height:42, borderRadius:12, background:reply.trim()?B.accent:B.border, border:"none", cursor:reply.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", boxShadow:reply.trim()?"0 2px 8px "+B.accent+"30":"none" }}>
             {sending ? <div style={{ width:16, height:16, border:"2px solid #0D0D0D", borderTopColor:"transparent", borderRadius:"50%", animation:"spin .6s linear infinite" }} />
@@ -22378,9 +22378,9 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
 
   return (
     <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
-    <CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} />
+    <div style={{ flexShrink:0 }}><CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} /></div>
     {ToastEl}
-    <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
+    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
       {isInboxDesktop ? (<>
         {ConvList()}
         {MsgThread()}
