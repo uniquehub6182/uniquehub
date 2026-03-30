@@ -13943,6 +13943,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [svcListState, setSvcListState] = useState(null);
   const [svcLoadedState, setSvcLoadedState] = useState(false);
   useEffect(() => {
+    if (svcLoadedState || !supabase) return;
+    setSvcLoadedState(true);
+    supabase.from("app_settings").select("value").eq("key","gamify_services").maybeSingle().then(({data}) => {
+      if (data?.value) { try { const v = typeof data.value === "string" ? JSON.parse(data.value) : data.value; if (Array.isArray(v)) setSvcListState(v); } catch {} }
+    });
+  }, []);
+  useEffect(() => {
     if (sub === "gamifyedit" && !gLoadedRef.current) {
       gLoadedRef.current = true;
       (async () => {
@@ -15620,13 +15627,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const setSvcList = (v) => setSvcListState(typeof v === 'function' ? v(svcListState || gServices || defServices) : v);
     const svcLoaded = svcLoadedState;
     const setSvcLoaded = setSvcLoadedState;
-    React.useEffect(() => {
-      if (svcLoaded || !supabase) return;
-      setSvcLoaded(true);
-      supabase.from("app_settings").select("value").eq("key","gamify_services").maybeSingle().then(({data}) => {
-        if (data?.value) { try { const v = typeof data.value === "string" ? JSON.parse(data.value) : data.value; if (Array.isArray(v)) setSvcList(v); } catch {} }
-      });
-    }, []);
     const saveSvc = async () => {
       try {
         await supabase.from("app_settings").upsert({ key: "gamify_services", value: svcList }, { onConflict: "key" });
