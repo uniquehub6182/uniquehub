@@ -501,7 +501,7 @@ const mergeSupaDemand = (row) => {
     steps = { idea: { by: (typeof row.created_by_name === "string" ? row.created_by_name : "Equipe"), text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } };
   }
   /* Ensure all step sub-objects exist */
-  ["idea","briefing","design","caption","review","client","production","editing"].forEach(k => {
+  ["idea","briefing","design","caption","review","client","editing"].forEach(k => {
     if (!steps[k] || typeof steps[k] !== "object") steps[k] = {};
     if (steps[k].files && !Array.isArray(steps[k].files)) steps[k].files = [];
   });
@@ -1817,7 +1817,7 @@ const CLIENTS_DATA_INIT = [
 /* ═══════════════════════ DEMAND / CONTENT DATA ═══════════════════════ */
 const SOCIAL_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
 const CAMPAIGN_STAGES = ["planning","creation","review","execution","completed"];
-const VIDEO_STAGES = ["idea","briefing","design","production","caption","review","client","scheduled","published"];
+const VIDEO_STAGES = ["idea","briefing","design","caption","review","client","scheduled","published"];
 const STAGE_CFG = {
   idea:{l:"Ideia",c:"#8B5CF6"},briefing:{l:"Briefing",c:"#3B82F6"},design:{l:"Criativo",c:"#EC4899"},
   caption:{l:"Legenda",c:"#F59E0B"},review:{l:"Revisão",c:"#06B6D4"},client:{l:"Cliente",c:"#10B981"},
@@ -10134,69 +10134,7 @@ REGRAS TÉCNICAS:
             </>}
           </>)}
 
-          {/* ── 3b. PRODUÇÃO (Vídeo — Audiovisual) ── */}
-          {sel.type === "video" && renderSection("production", <>
-            {sel.stage === "production" ? <>
-              {sel.steps?.briefing?.text && <div style={{ background:`${STAGE_CFG.briefing.c}08`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${STAGE_CFG.briefing.c}15` }}>
-                <p style={{ fontSize:10, fontWeight:700, color:STAGE_CFG.briefing.c, marginBottom:4 }}>📋 Briefing:</p>
-                <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.briefing?.text || "—"}</p>
-              </div>}
-              <label className="sl" style={{ display:"block", marginBottom:6 }}>Enviar material gravado</label>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {(sel.steps?.production?.files||[]).map((f,i) => {
-                  const fName = typeof f === "string" ? f : (f.name || "arquivo");
-                  const fUrl = f.url || null;
-                  const isVid = /\.(mp4|mov|avi|webm)$/i.test(fName);
-                  const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(fName);
-                  return (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
-                    {isImg && fUrl ? <img src={fUrl} alt="" loading="lazy" style={{ width:40, height:40, borderRadius:8, objectFit:"cover" }} loading="lazy" /> :
-                     isVid ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> :
-                     <span style={{ color:B.orange, display:"flex" }}>{IC.img}</span>}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
-                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024/1024).toFixed(1)} MB</p>}
-                    </div>
-                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
-                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.production?.files||[])]; nf.splice(i,1); updateStep("production",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
-                  </div>);
-                })}
-                <input type="file" id="productionUpload" multiple accept="video/*,image/*,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
-                  const files = Array.from(e.target.files);
-                  if (!files.length) return;
-                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
-                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
-                  const uploaded = results.filter(r => !r.error);
-                  if (uploaded.length > 0) {
-                    updateStep("production", { files: [...(sel.steps?.production?.files||[]), ...uploaded], by: user?.name||"Victoria", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
-                  }
-                  e.target.value = "";
-                }} />
-                <button onClick={()=>document.getElementById("productionUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.orange}40`, background:`${B.orange}04`, cursor:"pointer", color:B.orange, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} Selecionar vídeos / fotos
-                </button>
-              </div>
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>MP4, MOV, JPG, PNG, Premiere, After Effects</p>
-            </> : sel.steps?.production?.files?.length > 0 && <>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps?.production?.by||"Audiovisual"} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.production?.by||"Audiovisual"}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.production?.date}</span>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {sel.steps?.production?.files.map((f,i)=>{
-                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url || null;
-                  return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.orange}06`, borderRadius:10, border:`1px solid ${B.orange}15` }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                    <span style={{ fontSize:12, fontWeight:600, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</span>
-                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
-                  </div>);
-                })}
-              </div>
-            </>}
-          </>)}
-
+          
           {/* ── 3c. EDIÇÃO (Vídeo — Editor) ── */}
           {sel.type === "video" && renderSection("editing", <>
             {sel.stage === "editing" ? <>
@@ -11327,7 +11265,7 @@ REGRAS TÉCNICAS:
       </Card>}
       {/* ── KANBAN DESKTOP VIEW ── */}
       {isContentDesktop && (() => {
-        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","production","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
+        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
         const hasAjuste = filtered.some(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")) || (d.steps?.review?.status === "rejected" && ["design","caption"].includes(d.stage)));
@@ -11525,8 +11463,7 @@ REGRAS TÉCNICAS:
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
                 {d.stage==="briefing"&&<div style={{marginBottom:8}}>{d.steps?.idea?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.idea.c}08`,border:`1px solid ${STAGE_CFG.idea.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea.c}}>{"💡"} Ideia:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.idea.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>BRIEFING</p><textarea value={d.steps?.briefing?.text||""} onChange={e=>updStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Instruções para o designer..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
                 {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<img src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
-                {d.stage==="production"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>PRODUÇÃO — Gravar vídeo/conteúdo</p>{(d.steps?.production?.files||[]).map((f,fi)=>{const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:`${B.blue||"#3B82F6"}06`,border:`1px solid ${B.blue||"#3B82F6"}15`,marginBottom:4}}>{isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"🎬"} Enviar vídeo/material<input type="file" accept="video/*,image/*,.pdf" style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed2=await compressImage(file);showToast("Enviando...");const path="demands/"+(d.supaId||d.id)+"/production/"+Date.now()+"_"+compressed2.name.replace(/[^a-zA-Z0-9._-]/g,"_");const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed2,{upsert:true,cacheControl:"3600",contentType:compressed2.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.production?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("production",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro: "+(er.message||"falha"));}}/></label></div>}
-                {d.stage==="caption"&&d.format!=="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
+                                {d.stage==="caption"&&d.format!=="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
                 {d.stage==="caption"&&d.format==="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><div style={{padding:"16px 12px",borderRadius:10,background:(B.orange||"#F59E0B")+"06",border:"1.5px dashed "+(B.orange||"#F59E0B")+"30",textAlign:"center"}}><p style={{fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>🔒 Stories não suporta legenda</p><p style={{fontSize:9,color:B.muted,marginTop:4}}>Texto vai direto na arte. Avance para revisão.</p></div></div>}
                 {d.stage==="review"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>REVISÃO</p><p style={{fontSize:10,color:B.text}}>Verifique legenda, arte e informações.</p></div>}
                 {d.stage==="client"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>APROVAÇÃO DO CLIENTE</p><p style={{fontSize:10,color:B.text}}>Aguardando aprovação.</p></div>}
@@ -11728,7 +11665,7 @@ REGRAS TÉCNICAS:
                       const stepImgs=stepFiles.filter(f=>/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                       const stepText=stepData.text||stepData.feedback||"";
                       const textFields=["idea","briefing","copy","caption","editing","script","review"];
-                      const fileFields=["design","production","editing"];
+                      const fileFields=["design","editing"];
                       const inlineUpdate=(data)=>{const ns={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
                       const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);uploaded.push({name:f.name,url:u.publicUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
                       return(
