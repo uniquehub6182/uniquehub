@@ -25308,12 +25308,15 @@ function ClientOnboarding({ onComplete, onBack }) {
         /* Use validated client from access code — exact match, no searching needed */
         if (validatedClient?.id) {
           try {
-            await supabase.from("clients").update({
-              contact_email: data.email,
-              contact_name: data.name,
-              contact_phone: data.phone,
-              status: "ativo",
-            }).eq("id", validatedClient.id);
+            /* Only update contact info if client doesn't already have a contact email (avoid overwriting existing primary contact) */
+            const { data: currentClient } = await supabase.from("clients").select("contact_email").eq("id", validatedClient.id).single();
+            const updatePayload = { status: "ativo" };
+            if (!currentClient?.contact_email) {
+              updatePayload.contact_email = data.email;
+              updatePayload.contact_name = data.name;
+              updatePayload.contact_phone = data.phone;
+            }
+            await supabase.from("clients").update(updatePayload).eq("id", validatedClient.id);
           } catch(e) { console.warn("Client sync:", e); }
           console.log("[Onboarding] Synced with validated client:", validatedClient.id, validatedClient.name);
         } else {
@@ -25325,7 +25328,11 @@ function ClientOnboarding({ onComplete, onBack }) {
             const existingByName = existingByNameArr?.[0] || null;
             const existingClient = existingByEmail || existingByName;
             if (existingClient) {
-              await supabase.from("clients").update({ contact_email: data.email, contact_name: data.name, contact_phone: data.phone, status: "ativo" }).eq("id", existingClient.id);
+              /* Only update contact info if client doesn't already have a contact email */
+              const { data: curCl } = await supabase.from("clients").select("contact_email").eq("id", existingClient.id).single();
+              const updPayload = { status: "ativo" };
+              if (!curCl?.contact_email) { updPayload.contact_email = data.email; updPayload.contact_name = data.name; updPayload.contact_phone = data.phone; }
+              await supabase.from("clients").update(updPayload).eq("id", existingClient.id);
             } else {
               await supabase.from("clients").insert({ name: data.company || data.name, contact_name: data.name, contact_email: data.email, contact_phone: data.phone, status: "ativo", plan: "free", start_date: new Date().toISOString().split("T")[0], notes: `Cadastro via UniqueHub por ${data.name}` });
             }
