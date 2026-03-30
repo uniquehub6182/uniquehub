@@ -22115,7 +22115,10 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
         body: JSON.stringify({ action:"list", client_id: clientId })
       });
       const data = await res.json();
-      if (data.conversations) setConversations(data.conversations);
+      if (data.conversations) {
+        setConversations(data.conversations);
+        if (data.errors?.length) data.errors.forEach(e => console.warn("[Inbox]", e));
+      }
       else if (data.error) showToast("Erro: " + data.error);
     } catch(e) { showToast("Falha ao carregar conversas"); }
     setLoading(false);
