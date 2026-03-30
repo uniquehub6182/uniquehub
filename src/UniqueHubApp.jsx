@@ -2986,7 +2986,7 @@ function PWAInstallPopup({ onDismiss }) {
         {isIOS ? (
           <div style={{ background:"#F8F9FC", borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", marginBottom:10 }}>Como instalar no iPhone:</p>
-            <p style={{ fontSize:11, color:"#EF4444", fontWeight:600, marginBottom:10 }}>⚠ Abra este link no Safari para instalar corretamente.</p>
+            {/CriOS|FxiOS|OPiOS|EdgiOS/i.test(navigator.userAgent) && <p style={{ fontSize:11, color:"#EF4444", fontWeight:600, marginBottom:10 }}>⚠ Você está em outro navegador. Abra uniquehub.com.br no Safari para instalar corretamente.</p>}
             {[
               { icon: "share", text: 'Toque no ícone Compartilhar', sub: "⬆ na barra do Safari" },
               { icon: "plus", text: "Adicionar à Tela de Início", sub: "Role e selecione esta opção" },
@@ -26395,7 +26395,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
   return <>
     {/* ═══ AGENCY-STYLE HEADER ═══ */}
-    <div style={{ margin:"-14px -16px 0", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:16, paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
+    <div style={{ margin:"-14px -16px 0", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:"calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
       <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${LIME} 0%,${LIME}80 100%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
