@@ -25540,7 +25540,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [editCfg, setEditCfg] = useState(null);
   const CLIENT_CARDS_MAP = { meta:{l:"Meta do Mês"}, aprovacoes:{l:"Aprovações"}, growth:{l:"Growth Score"}, match:{l:"Match4Biz"} };
   const CLIENT_PILLS_MAP = { conteudo:{l:"Conteúdo",k:"content"}, relatorios:{l:"Relatórios",k:"reports"}, suporte:{l:"Suporte",k:"help"}, growth:{l:"Growth",k:"gamify"}, match:{l:"Match4Biz",k:"match4biz"}, calendario:{l:"Agenda",k:"calendar"}, biblioteca:{l:"Biblioteca",k:"library"}, noticias:{l:"Notícias",k:"news"}, ideias:{l:"Ideias",k:"ideas"}, ia:{l:"Assistente IA",k:"ai"}, config:{l:"Configurações",k:"settings"} };
-  const [clientCards, setClientCards] = useState(() => { try { const s = localStorage.getItem("uh_client_cards"); return s ? JSON.parse(s) : ["meta","aprovacoes"]; } catch { return ["meta","aprovacoes"]; } });
+  const [clientCards, setClientCards] = useState(() => { try { const s = localStorage.getItem("uh_client_cards"); return s ? JSON.parse(s) : ["meta","aprovacoes","growth","match"]; } catch { return ["meta","aprovacoes","growth","match"]; } });
   const [clientPills, setClientPills] = useState(() => { try { const s = localStorage.getItem("uh_client_pills"); return s ? JSON.parse(s) : ["conteudo","relatorios","suporte"]; } catch { return ["conteudo","relatorios","suporte"]; } });
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
   const [metricsSlide, setMetricsSlide] = useState(0);
@@ -26525,7 +26525,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6,marginBottom:16}}>
           {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).map(sk => <button key={sk} onClick={()=>{const s=[...ec.sections,sk];setEditCfg({...ec,sections:s});setEditSections(s);}} style={{padding:"7px 14px",borderRadius:10,border:`1.5px dashed ${C.brd}`,background:"transparent",fontSize:12,fontWeight:500,color:C.mut,cursor:"pointer",fontFamily:"inherit"}}>+ {CLIENT_SECTIONS[sk]}</button>)}
         </div>}
-        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
       </div></>;
     })()}
   </>; }
@@ -26680,7 +26680,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
       <div className="content" ref={scrollRef} onScroll={null}>
         {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
-        <div style={{ padding:"14px 16px 0" }}>
+        <div style={{ padding:isDesktop?0:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
           {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} forceMobile demands={demands} /></div>}
