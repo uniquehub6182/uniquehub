@@ -23833,9 +23833,15 @@ function Match4BizPage({ onBack, clients, user }) {
    ═══════════════════════════════════════════════════════════════════ */
 function ClientMatch4Biz({ onBack, user, clients, demands }) {
   /* ── M4B LOCK: locked by default, unlock when all monthly challenges completed ── */
-  const [m4bMissions, setM4bMissions] = useState([]);
+  const [m4bMissions, setM4bMissions] = useState([
+    { id:1, title:"Aprovar todos os posts pendentes", icon:"✅", done: false },
+    { id:2, title:"Acessar os relatórios de performance", icon:"📈", done: false },
+    { id:3, title:"Completar 1 curso na Academy", icon:"🎓", done: false },
+    { id:4, title:"Responder um briefing de campanha", icon:"📝", done: false },
+    { id:5, title:"Avaliar o Growth Score do mês", icon:"🏆", done: false },
+  ]);
   const [m4bUnlockFlag, setM4bUnlockFlag] = useState(false);
-  const [m4bLoading, setM4bLoading] = useState(true);
+  const [m4bLoading, setM4bLoading] = useState(false);
   const resolvedClientId = (() => {
     const rc = (clients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
             || (clients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase())
@@ -23844,32 +23850,27 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   })();
   const currentMonth = new Date().toISOString().slice(0,7); /* YYYY-MM */
   useEffect(() => {
-    if (!supabase) { setM4bLoading(false); return; }
+    if (!supabase) return;
     (async () => {
       try {
-        /* Load missions + unlock flag */
+        /* Single query for all needed keys */
         const keys = ["gamify_missions", "m4b_unlocks"];
+        if (resolvedClientId) keys.push("m4b_progress_" + resolvedClientId);
         const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
-        let missions = null, unlocks = null;
+        let missions = null, unlocks = null, progress = null;
         (data||[]).forEach(d => {
           try {
             const v = typeof d.value === "string" ? JSON.parse(d.value) : d.value;
             if (d.key === "gamify_missions") missions = v;
             if (d.key === "m4b_unlocks") unlocks = v;
+            if (d.key === "m4b_progress_" + resolvedClientId) progress = v;
           } catch {}
         });
-        /* Check explicit unlock for this client this month */
-        if (unlocks && resolvedClientId) {
-          const key = resolvedClientId + "_" + currentMonth;
-          if (unlocks[key]) setM4bUnlockFlag(true);
-        }
-        /* Build missions list */
+        /* Check explicit unlock */
+        if (unlocks && resolvedClientId && unlocks[resolvedClientId + "_" + currentMonth]) setM4bUnlockFlag(true);
+        /* Build missions */
         const pendingApprovals = (demands||[]).filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
-        const approvedThisMonth = (demands||[]).filter(d => {
-          if (d.steps?.client?.status !== "approved") return false;
-          const dt = d.steps?.client?.date || d.updatedAt || "";
-          return dt.startsWith && dt.startsWith(currentMonth.replace("-","/").slice(2));
-        }).length;
+        const approvedThisMonth = (demands||[]).filter(d => d.steps?.client?.status === "approved").length;
         const defaultM = [
           { id:1, title:"Aprovar todos os posts pendentes", icon:"✅", done: pendingApprovals === 0 && approvedThisMonth > 0 },
           { id:2, title:"Acessar os relatórios de performance", icon:"📈", done: false },
@@ -23877,31 +23878,13 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
           { id:4, title:"Responder um briefing de campanha", icon:"📝", done: false },
           { id:5, title:"Avaliar o Growth Score do mês", icon:"🏆", done: false },
         ];
-        /* Merge custom missions or use defaults */
-        let finalMissions;
-        if (missions && missions.length) {
-          finalMissions = missions.map((m,i) => ({ id:i+1, title:m.title, icon:m.icon||"⭐", done: false }));
-        } else {
-          finalMissions = defaultM;
-        }
-        /* Check per-mission completion from app_settings */
-        if (resolvedClientId) {
-          try {
-            const { data: progressData } = await supabase.from("app_settings").select("value").eq("key", "m4b_progress_" + resolvedClientId).maybeSingle();
-            if (progressData?.value) {
-              const prog = typeof progressData.value === "string" ? JSON.parse(progressData.value) : progressData.value;
-              if (prog.month === currentMonth && prog.done) {
-                prog.done.forEach(doneId => {
-                  const m = finalMissions.find(mm => mm.id === doneId);
-                  if (m) m.done = true;
-                });
-              }
-            }
-          } catch {}
+        let finalMissions = missions?.length ? missions.map((m,i) => ({ id:i+1, title:m.title, icon:m.icon||"⭐", done: false })) : defaultM;
+        /* Apply progress */
+        if (progress?.month === currentMonth && progress?.done) {
+          progress.done.forEach(doneId => { const m = finalMissions.find(mm => mm.id === doneId); if (m) m.done = true; });
         }
         setM4bMissions(finalMissions);
       } catch(e) { console.error("M4B lock check:", e); }
-      setM4bLoading(false);
     })();
   }, []);
   const m4bCompleted = m4bMissions.filter(m => m.done).length;
