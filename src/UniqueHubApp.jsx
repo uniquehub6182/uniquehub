@@ -14259,7 +14259,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas e pódio" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"servicosedit", l:"Catálogo de Serviços", desc:"Serviços extras oferecidos" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"payments", l:"Pagamentos", desc:"Pacotes, créditos, cursos pagos" }]:[]),
-    { k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" },
+    ...(!isClientView ? [{ k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" }] : []),
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
     ...(!isClientView ? [{ k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" }] : []),
@@ -25448,7 +25448,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [headerC, setHeaderC] = useState(false);
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
-  B = React.useMemo(() => getB(dark, THEME_MAP[themeColor] || "#BBF246", uiPrefs), [dark, themeColor, JSON.stringify(uiPrefs)]);
+  B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
   React.useEffect(() => { if (!B.transparent) { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
