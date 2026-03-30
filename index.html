@@ -30,15 +30,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       * { box-sizing: border-box; }
-      html, body, #root {
+      html {
         margin: 0; padding: 0;
-        width: 100%;
-        height: 100vh;
-        height: var(--app-height, 100vh);
+        width: 100%; height: 100%;
         overflow: hidden;
         overscroll-behavior: none;
         background: #0F1419;
         -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0; padding: 0;
+        width: 100%; height: 100%;
+        min-height: 100%;
+        min-height: -webkit-fill-available;
+        overflow: hidden;
+        overscroll-behavior: none;
+        background: #0F1419;
+      }
+      #root {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: #0F1419;
       }
       /* Desktop override */
       html.uh-desktop, html.uh-desktop body, html.uh-desktop #root {
@@ -49,19 +61,29 @@
       }
     </style>
     <script>
-      /* Set real viewport height as CSS variable - fixes iOS Safari 100vh bug */
-      function setAppHeight() {
-        document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
-      }
-      setAppHeight();
-      window.addEventListener('resize', setAppHeight);
-      window.addEventListener('orientationchange', function() { setTimeout(setAppHeight, 100); });
       /* Detect desktop immediately before React loads */
       if (window.innerWidth >= 900) document.documentElement.classList.add('uh-desktop');
       window.addEventListener('resize', function() {
         if (window.innerWidth >= 900) document.documentElement.classList.add('uh-desktop');
         else document.documentElement.classList.remove('uh-desktop');
       });
+      /* iOS PWA: continuously fix .app/.screen height to actual screen */
+      (function() {
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        if (!isIOS && !window.navigator.standalone) return;
+        function fix() {
+          var h = window.innerHeight;
+          var els = document.querySelectorAll('.app,.screen');
+          for (var i = 0; i < els.length; i++) {
+            els[i].style.height = h + 'px';
+            els[i].style.bottom = 'auto';
+          }
+        }
+        /* Run repeatedly since React re-renders */
+        setInterval(fix, 500);
+        window.addEventListener('resize', fix);
+        document.addEventListener('DOMContentLoaded', fix);
+      })();
     </script>
   </head>
   <body>
