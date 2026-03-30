@@ -501,7 +501,7 @@ const mergeSupaDemand = (row) => {
     steps = { idea: { by: (typeof row.created_by_name === "string" ? row.created_by_name : "Equipe"), text: row.description || "", date: row.created_at ? new Date(row.created_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : "" } };
   }
   /* Ensure all step sub-objects exist */
-  ["idea","briefing","design","caption","review","client","editing"].forEach(k => {
+  ["idea","briefing","design","caption","review","client"].forEach(k => {
     if (!steps[k] || typeof steps[k] !== "object") steps[k] = {};
     if (steps[k].files && !Array.isArray(steps[k].files)) steps[k].files = [];
   });
@@ -10134,67 +10134,6 @@ REGRAS TÉCNICAS:
             </>}
           </>)}
 
-          
-          {/* ── 3c. EDIÇÃO (Vídeo — Editor) ── */}
-          {sel.type === "video" && renderSection("editing", <>
-            {sel.stage === "editing" ? <>
-              {sel.steps?.production?.files?.length > 0 && <div style={{ background:`${B.orange}06`, padding:10, borderRadius:10, marginBottom:10, border:`1px solid ${B.orange}15` }}>
-                <p style={{ fontSize:10, fontWeight:700, color:B.orange, marginBottom:6 }}>🎬 Material gravado:</p>
-                {sel.steps?.production?.files.map((f,i)=>(<div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginTop:i?4:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.orange} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg><span style={{ fontSize:12, fontWeight:600 }}>{typeof f === "string" ? f : (f.name || "arquivo")}</span></div>))}
-              </div>}
-              <label className="sl" style={{ display:"block", marginBottom:4 }}>Notas de edição</label>
-              <textarea value={sel.steps?.editing?.text||""} onChange={e=>updateStep("editing",{text:e.target.value, by:user?.name||"Allan", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Cortes, transições, trilha sonora, legendas..." className="tinput" style={{ minHeight:80, resize:"vertical" }} />
-              <label className="sl" style={{ display:"block", marginBottom:6, marginTop:10 }}>Enviar vídeo editado</label>
-              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {(sel.steps?.editing?.files||[]).map((f,i) => {
-                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url || null;
-                  return (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fName}</p>
-                      {f.size && <p style={{ fontSize:9, color:B.muted }}>{(f.size/1024/1024).toFixed(1)} MB</p>}
-                    </div>
-                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }} onClick={e=>e.stopPropagation()}>{IC.download}</a>}
-                    <button onClick={async () => { if (f.path) await supaDeleteFile(f.path); const nf = [...(sel.steps?.editing?.files||[])]; nf.splice(i,1); updateStep("editing",{files:nf}); }} style={{ background:"none", border:"none", cursor:"pointer", color:B.red, display:"flex" }}>{IC.x}</button>
-                  </div>);
-                })}
-                <input type="file" id="editingUpload" multiple accept="video/*,.prproj,.aep" style={{ display:"none" }} onChange={async (e)=>{
-                  const files = Array.from(e.target.files);
-                  if (!files.length) return;
-                  showToast(`Enviando ${files.length} arquivo${files.length>1?"s":""}...`);
-                  const results = await Promise.all(files.map(file => supaUploadFile(file, sel.supaId || sel.id)));
-                  const uploaded = results.filter(r => !r.error);
-                  if (uploaded.length > 0) {
-                    updateStep("editing", { files: [...(sel.steps?.editing?.files||[]), ...uploaded], by: user?.name||"Allan", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) });
-                    showToast(`${uploaded.length} arquivo${uploaded.length>1?"s":""} enviado${uploaded.length>1?"s":""}!`);
-                  }
-                  e.target.value = "";
-                }} />
-                <button onClick={()=>document.getElementById("editingUpload").click()} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"14px", borderRadius:12, border:`2px dashed ${B.cyan}40`, background:`${B.cyan}04`, cursor:"pointer", color:B.cyan, fontSize:12, fontWeight:600, fontFamily:"inherit" }}>
-                  {IC.upload} Enviar vídeo editado
-                </button>
-              </div>
-            </> : sel.steps?.editing?.text && <>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <Av name={sel.steps?.editing?.by||"Editor"} sz={22} fs={9} />
-                <span style={{ fontSize:11, fontWeight:600 }}>{sel.steps?.editing?.by||"Editor"}</span>
-                <span style={{ fontSize:10, color:B.muted }}>{sel.steps?.editing?.date}</span>
-              </div>
-              <p style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-line" }}>{sel.steps?.editing?.text}</p>
-              {sel.steps?.editing?.files?.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:6 }}>
-                {sel.steps?.editing?.files.map((f,i)=>{
-                  const fName = typeof f === "string" ? f : (f.name || "arquivo"); const fUrl = f.url||null;
-                  return (<div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:`${B.cyan}06`, borderRadius:10, border:`1px solid ${B.cyan}15` }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.cyan} strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                    <span style={{ fontSize:12, fontWeight:600, flex:1 }}>{fName}</span>
-                    {fUrl && <a href={fUrl} target="_blank" rel="noopener" style={{ color:B.accent, display:"flex", cursor:"pointer" }}>{IC.download}</a>}
-                  </div>);
-                })}
-              </div>}
-            </>}
-          </>)}
-
           {/* ── 4. LEGENDA (Social Media) ── */}
           {renderSection("caption", <>
             {sel.stage === "caption" ? <>
@@ -11265,7 +11204,7 @@ REGRAS TÉCNICAS:
       </Card>}
       {/* ── KANBAN DESKTOP VIEW ── */}
       {isContentDesktop && (() => {
-        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","editing","caption","review","execution","client","ajuste","scheduled","published","completed"];
+        const KANBAN_STAGES = ["idea","planning","briefing","creation","design","caption","review","execution","client","ajuste","scheduled","published","completed"];
         const SOCIAL_BASE = ["idea","briefing","design","caption","review","client","scheduled","published"];
         const usedStages = new Set(filtered.map(d => d.stage));
         const hasAjuste = filtered.some(d => d.stage === "ajuste" || (d.stage === "client" && (d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected")) || (d.steps?.review?.status === "rejected" && ["design","caption"].includes(d.stage)));
@@ -11664,8 +11603,8 @@ REGRAS TÉCNICAS:
                       const stepFiles=(stepData.files||[]).filter(f=>f.url);
                       const stepImgs=stepFiles.filter(f=>/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                       const stepText=stepData.text||stepData.feedback||"";
-                      const textFields=["idea","briefing","copy","caption","editing","script","review"];
-                      const fileFields=["design","editing"];
+                      const textFields=["idea","briefing","copy","caption","script","review"];
+                      const fileFields=["design"];
                       const inlineUpdate=(data)=>{const ns={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
                       const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);uploaded.push({name:f.name,url:u.publicUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
                       return(
