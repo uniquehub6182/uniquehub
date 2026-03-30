@@ -25886,25 +25886,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     );
 
-    if (finView === "contract") return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-        <div style={{ padding:"0 20px" }}><Head title="Contrato" onBack={() => setFinView("main")} /></div>
-        <div className="content" style={{ padding:"0 16px 120px" }}>
-          <Card><p style={{ fontSize:14, fontWeight:800, marginBottom:12 }}>Termos de Serviço</p>
-            <p style={{ fontSize:12, lineHeight:1.8, color:B.muted }}>
-              Este contrato estabelece os termos de prestação de serviços entre a Unique Marketing 360 ("Agência") e o cliente contratante.{"\n\n"}
-              <strong style={{ color:B.text }}>1. Objeto</strong>{"\n"}O presente contrato tem por objeto a prestação de serviços de marketing digital conforme o plano contratado ({plan.name}).{"\n\n"}
-              <strong style={{ color:B.text }}>2. Vigência</strong>{"\n"}O contrato tem vigência conforme acordado entre as partes, sem fidelidade obrigatória, podendo ser cancelado com 30 dias de antecedência.{"\n\n"}
-              <strong style={{ color:B.text }}>3. Valores</strong>{"\n"}O valor mensal é de {monthlyVal}, com vencimento conforme acordado.{"\n\n"}
-              <strong style={{ color:B.text }}>4. Serviços inclusos</strong>{"\n"}{plan.features.join(", ")}.{"\n\n"}
-              <strong style={{ color:B.text }}>5. Responsabilidades do cliente</strong>{"\n"}Aprovar conteúdos no prazo, fornecer briefings e materiais solicitados, e manter comunicação ativa com a agência.{"\n\n"}
-              <strong style={{ color:B.text }}>6. Confidencialidade</strong>{"\n"}Ambas as partes se comprometem a manter sigilo sobre informações comerciais e estratégicas compartilhadas.
-            </p>
-          </Card>
-        </div>
-      </div>
-    );
-
     return (
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
@@ -25978,13 +25959,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </div>
           </Card>
         ))}
-        <Card style={{ marginTop:8, cursor:"pointer" }} onClick={() => setFinView("contract")}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:12, background:`${B.muted}10`, display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.library(B.muted)}</div>
-            <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:700 }}>Contrato</p><p style={{ fontSize:10, color:B.muted }}>Visualizar termos e condições</p></div>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </div>
-        </Card>
       </div>
     </div>
   );
