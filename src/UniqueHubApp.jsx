@@ -14386,8 +14386,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               <span style={{ display:"flex", color:accent }}>{setIcon(sub, accent)}</span>
               <h3 style={{ fontSize:16, fontWeight:800, margin:0 }}>{title}</h3>
             </div>}
-            <div ref={settingsPanelRef} onScroll={captureScroll} style={{ flex:1, overflowY:"auto", padding:sub?"20px 24px":"24px 28px" }}>
-              {sub ? <div style={{ maxWidth:wide?"none":600 }}>{children}</div> : children}
+            <div ref={settingsPanelRef} onScroll={captureScroll} style={{ flex:1, overflowY:"auto", padding:sub?"24px 32px":"24px 28px" }}>
+              {sub ? <div>{children}</div> : children}
             </div>
           </div>
         </div>
