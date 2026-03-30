@@ -25508,7 +25508,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
-  React.useEffect(() => { if (!B.transparent) { document.documentElement.style.background = B.bg; document.body.style.background = B.bg; document.documentElement.style.setProperty("--uh-body-bg", B.bg); } }, [dark, uiPrefs]);
+  React.useEffect(() => { if (!B.transparent) { document.documentElement.style.background = B.bg; document.documentElement.style.backgroundColor = B.bg; document.body.style.background = B.bg; document.body.style.backgroundColor = B.bg; document.documentElement.style.setProperty("--uh-body-bg", B.bg); const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
@@ -27617,8 +27617,13 @@ export default function App() {
     if (!B.transparent) {
       const bg = dark ? "#0F1419" : "#F7F7F8";
       document.documentElement.style.background = bg;
+      document.documentElement.style.backgroundColor = bg;
       document.body.style.background = bg;
+      document.body.style.backgroundColor = bg;
       document.documentElement.style.setProperty("--uh-body-bg", bg);
+      /* iOS PWA: also set meta theme-color dynamically */
+      const tc = document.querySelector('meta[name="theme-color"]');
+      if (tc) tc.setAttribute("content", bg);
     }
   }, [dark]);
 

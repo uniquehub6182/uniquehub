@@ -30,34 +30,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       * { box-sizing: border-box; }
-      html, body, #root {
+      html {
         margin: 0; padding: 0;
         width: 100%; height: 100%;
-        min-height: 100vh;
-        min-height: 100dvh;
-        min-height: -webkit-fill-available;
         overflow: hidden;
         overscroll-behavior: none;
         background: #0F1419;
-        /* iOS PWA: paint behind safe areas */
         -webkit-text-size-adjust: 100%;
       }
-      /* iOS PWA: force full coverage including home indicator zone */
-      @supports (padding-bottom: env(safe-area-inset-bottom)) {
-        html {
-          /* Extend background past safe area */
-          min-height: calc(100vh + env(safe-area-inset-bottom, 0px));
-          min-height: calc(100dvh + env(safe-area-inset-bottom, 0px));
-        }
-        body::after {
-          content: '';
-          position: fixed;
-          bottom: 0; left: 0; right: 0;
-          height: env(safe-area-inset-bottom, 0px);
-          background: var(--uh-body-bg, #0F1419);
-          z-index: 99999;
-          pointer-events: none;
-        }
+      body {
+        margin: 0; padding: 0;
+        width: 100%; height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+        background: #0F1419;
+        /* iOS PWA: fixed full-viewport body covers everything including home indicator */
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+      }
+      #root {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: #0F1419;
       }
       /* Desktop override — applied via JS class */
       html.uh-desktop, html.uh-desktop body, html.uh-desktop #root {
@@ -66,7 +60,9 @@
         min-height: 100vh;
         overscroll-behavior: auto !important;
       }
-      html.uh-desktop body::after { display: none !important; }
+      html.uh-desktop body {
+        position: static !important;
+      }
     </style>
     <script>
       /* Detect desktop immediately before React loads */
