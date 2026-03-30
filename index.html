@@ -32,10 +32,9 @@
       * { box-sizing: border-box; }
       html, body, #root {
         margin: 0; padding: 0;
-        width: 100%; height: 100%;
-        min-height: 100vh;
-        min-height: 100dvh;
-        min-height: -webkit-fill-available;
+        width: 100%;
+        height: 100vh;
+        height: var(--app-height, 100vh);
         overflow: hidden;
         overscroll-behavior: none;
         background: #0F1419;
@@ -50,29 +49,19 @@
       }
     </style>
     <script>
+      /* Set real viewport height as CSS variable - fixes iOS Safari 100vh bug */
+      function setAppHeight() {
+        document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+      }
+      setAppHeight();
+      window.addEventListener('resize', setAppHeight);
+      window.addEventListener('orientationchange', function() { setTimeout(setAppHeight, 100); });
       /* Detect desktop immediately before React loads */
       if (window.innerWidth >= 900) document.documentElement.classList.add('uh-desktop');
       window.addEventListener('resize', function() {
         if (window.innerWidth >= 900) document.documentElement.classList.add('uh-desktop');
         else document.documentElement.classList.remove('uh-desktop');
       });
-      /* iOS PWA: fix viewport height - Safari caches vh from browser mode */
-      (function fixIOSHeight() {
-        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-        if (isIOS || isStandalone) {
-          function setH() {
-            var h = window.innerHeight;
-            document.documentElement.style.height = h + 'px';
-            document.body.style.height = h + 'px';
-            var root = document.getElementById('root');
-            if (root) root.style.height = h + 'px';
-          }
-          setH();
-          window.addEventListener('resize', setH);
-          window.addEventListener('orientationchange', function() { setTimeout(setH, 200); });
-        }
-      })();
     </script>
   </head>
   <body>
