@@ -6099,7 +6099,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     </div>
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
-                    <button onClick={()=>setEditClient(true)} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Editar</button>
+                    <button onClick={()=>{setEditClient(true);setProfileTab("info");}} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Editar</button>
                     {canAccessFn("clients.delete") && <button onClick={()=>setConfirmAction({type:"delete",title:"Excluir cliente?",msg:`Deseja excluir ${sel.name}? Essa ação não pode ser desfeita.`,action:async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").delete().eq("id",cid);}catch(e){}}setClients(p=>p.filter(c=>c.id!==sel.id&&c.supaId!==sel.supaId));setSel(null);showToast("Cliente excluído");}})} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#EF4444" }}>Excluir</button>}
                   </div>
                 </div>
