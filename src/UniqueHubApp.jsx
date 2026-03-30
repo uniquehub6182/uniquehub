@@ -2429,6 +2429,11 @@ function LoginPage({ onAuth, onClientAuth }) {
       if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
       let profile = null;
       try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
+      /* ── Block deleted users (profile removed but auth still exists) ── */
+      if (!profile) {
+        setError("Esta conta foi removida. Entre em contato com a agência.");
+        await supabase.auth.signOut(); setLoginLoading(false); return;
+      }
       /* ── Block blocked users ── */
       if (profile?.blocked) {
         setError("Seu acesso foi bloqueado. Entre em contato com a agência.");
@@ -5833,9 +5838,17 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 </button>
                 <button onClick={async()=>{
                   if (!confirm(`Tem certeza que deseja remover o acesso de ${u.name||u.email}? Esta ação não pode ser desfeita.`)) return;
+                  /* Clean up related data */
+                  await supabase.from("xp_events").delete().eq("user_id", u.id);
+                  await supabase.from("checkins").delete().eq("user_id", u.id);
+                  await supabase.from("messages").delete().eq("sender_id", u.id);
+                  await supabase.from("conversation_members").delete().eq("user_id", u.id);
                   const { error } = await supabase.from("profiles").delete().eq("id", u.id);
                   if (!error) {
                     await supabase.from("app_settings").delete().eq("key", `client_extras_${u.id}`);
+                    /* Delete auth account so user can't log in anymore */
+                    const { error: rpcErr } = await supabase.rpc("delete_user_account", { target_user_id: u.id });
+                    if (rpcErr) console.error("delete_user_account:", rpcErr.message);
                     setClientUsers(prev => prev.filter(x => x.id !== u.id));
                     showToast("Acesso removido");
                   } else showToast("Erro: "+error.message);
@@ -6307,7 +6320,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                           <button onClick={async()=>{const nb=!u.blocked;const{error}=await supabase.from("profiles").update({blocked:nb}).eq("id",u.id);if(!error){setClientUsers(prev=>prev.map(x=>x.id===u.id?{...x,blocked:nb}:x));showToast(nb?"Bloqueado":"Desbloqueado");}else showToast("Erro: "+error.message);}} title={u.blocked?"Desbloquear":"Bloquear"} style={{ width:34, height:34, borderRadius:10, background:u.blocked?`${B.green}10`:`${B.orange||"#F59E0B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                             {u.blocked ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
                           </button>
-                          <button onClick={async()=>{if(!confirm(`Remover acesso de ${u.name||u.email}?`))return;const{error}=await supabase.from("profiles").delete().eq("id",u.id);if(!error){await supabase.from("app_settings").delete().eq("key",`client_extras_${u.id}`);setClientUsers(prev=>prev.filter(x=>x.id!==u.id));showToast("Removido");}else showToast("Erro: "+error.message);}} title="Remover" style={{ width:34, height:34, borderRadius:10, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <button onClick={async()=>{if(!confirm(`Remover acesso de ${u.name||u.email}? Esta ação não pode ser desfeita.`))return;await supabase.from("xp_events").delete().eq("user_id",u.id);await supabase.from("checkins").delete().eq("user_id",u.id);await supabase.from("messages").delete().eq("sender_id",u.id);await supabase.from("conversation_members").delete().eq("user_id",u.id);const{error}=await supabase.from("profiles").delete().eq("id",u.id);if(!error){await supabase.from("app_settings").delete().eq("key",`client_extras_${u.id}`);const{error:rpcErr}=await supabase.rpc("delete_user_account",{target_user_id:u.id});if(rpcErr)console.error("delete_user_account:",rpcErr.message);setClientUsers(prev=>prev.filter(x=>x.id!==u.id));showToast("Removido");}else showToast("Erro: "+error.message);}} title="Remover" style={{ width:34, height:34, borderRadius:10, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                           </button>
                         </div>
