@@ -2986,6 +2986,7 @@ function PWAInstallPopup({ onDismiss }) {
         {isIOS ? (
           <div style={{ background:"#F8F9FC", borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
             <p style={{ fontSize:12, fontWeight:700, color:"#1A1D23", marginBottom:10 }}>Como instalar no iPhone:</p>
+            <p style={{ fontSize:11, color:"#EF4444", fontWeight:600, marginBottom:10 }}>⚠ Abra este link no Safari para instalar corretamente.</p>
             {[
               { icon: "share", text: 'Toque no ícone Compartilhar', sub: "⬆ na barra do Safari" },
               { icon: "plus", text: "Adicionar à Tela de Início", sub: "Role e selecione esta opção" },
