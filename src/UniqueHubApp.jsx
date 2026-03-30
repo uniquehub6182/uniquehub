@@ -15767,7 +15767,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       </Card>
       {!editAbout ? <>
         <Card style={{ marginBottom: 8 }}>
-          {aboutItems.map((item, i) => (
+          {(aboutItems||[]).map((item, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: i ? `1px solid ${B.border}` : "none" }}>
               <span style={{ fontSize: 12, color: B.muted }}>{item.l}</span>
               <span style={{ fontSize: 12, fontWeight: 600 }}>{item.v}</span>
@@ -23781,16 +23781,16 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
           return dt.startsWith && dt.startsWith(currentMonth.replace("-","/").slice(2));
         }).length;
         const defaultM = [
-          { id:1, title:"Aprovar todos os posts pendentes", icon:"\u2705", done: pendingApprovals === 0 && approvedThisMonth > 0 },
-          { id:2, title:"Acessar os relatórios de performance", icon:"\uD83D\uDCC8", done: false },
-          { id:3, title:"Completar 1 curso na Academy", icon:"\uD83C\uDF93", done: false },
-          { id:4, title:"Responder um briefing de campanha", icon:"\uD83D\uDCDD", done: false },
-          { id:5, title:"Avaliar o Growth Score do mês", icon:"\uD83C\uDFC6", done: false },
+          { id:1, title:"Aprovar todos os posts pendentes", icon:"✅", done: pendingApprovals === 0 && approvedThisMonth > 0 },
+          { id:2, title:"Acessar os relatórios de performance", icon:"📈", done: false },
+          { id:3, title:"Completar 1 curso na Academy", icon:"🎓", done: false },
+          { id:4, title:"Responder um briefing de campanha", icon:"📝", done: false },
+          { id:5, title:"Avaliar o Growth Score do mês", icon:"🏆", done: false },
         ];
         /* Merge custom missions or use defaults */
         let finalMissions;
         if (missions && missions.length) {
-          finalMissions = missions.map((m,i) => ({ id:i+1, title:m.title, icon:m.icon||"\u2B50", done: false }));
+          finalMissions = missions.map((m,i) => ({ id:i+1, title:m.title, icon:m.icon||"⭐", done: false }));
         } else {
           finalMissions = defaultM;
         }
@@ -23819,58 +23819,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const m4bAllDone = m4bCompleted >= m4bTotal && m4bTotal > 0;
   const m4bUnlocked = m4bUnlockFlag || m4bAllDone;
 
-  /* ── Lock Screen ── */
-  if (!m4bLoading && !m4bUnlocked) {
-    const pct = Math.round((m4bCompleted / m4bTotal) * 100);
-    return (
-      <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:B.bg, zIndex:50, display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
-        {/* Header */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"calc(env(safe-area-inset-top,0px) + 16px) 20px 12px" }}>
-          <button onClick={onBack} style={{ width:38, height:38, borderRadius:"50%", background:B.card, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          </button>
-          <span style={{ fontWeight:700, fontSize:17, color:B.text }}>Match4Biz</span>
-        </div>
-        {/* Lock Content */}
-        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"0 24px 100px", textAlign:"center" }}>
-          {/* Lock Icon */}
-          <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          </div>
-          <h2 style={{ fontSize:22, fontWeight:800, color:B.text, margin:"0 0 8px", letterSpacing:"-0.5px" }}>Match4Biz Bloqueado</h2>
-          <p style={{ fontSize:14, color:B.muted, margin:"0 0 28px", lineHeight:1.6, maxWidth:320 }}>
-            Complete todos os desafios do mês para desbloquear o Match4Biz e conectar com outros clientes da agência.
-          </p>
-          {/* Progress */}
-          <div style={{ width:"100%", maxWidth:360, marginBottom:24 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:B.muted }}>Progresso do mês</span>
-              <span style={{ fontSize:12, fontWeight:800, color:B.accent }}>{m4bCompleted}/{m4bTotal}</span>
-            </div>
-            <div style={{ height:10, borderRadius:5, background:B.border, overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${pct}%`, borderRadius:5, background:`linear-gradient(90deg, ${B.accent}, #10B981)`, transition:"width .5s ease" }} />
-            </div>
-          </div>
-          {/* Challenges List */}
-          <div style={{ width:"100%", maxWidth:360 }}>
-            {m4bMissions.map(m => (
-              <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, background:B.card, border:`1px solid ${m.done ? B.accent+"30" : B.border}`, marginBottom:8 }}>
-                <span style={{ fontSize:22, flexShrink:0 }}>{m.icon}</span>
-                <span style={{ flex:1, fontSize:13, fontWeight:600, color:B.text, textAlign:"left" }}>{m.title}</span>
-                <div style={{ width:24, height:24, borderRadius:"50%", background:m.done ? B.accent : B.border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  {m.done ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg> : <span style={{ fontSize:10, color:B.muted }}>—</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* CTA to go to challenges */}
-          <button onClick={() => { onBack(); setTimeout(() => { try { document.querySelector('[data-sub="gamify"]')?.click(); } catch {} }, 200); }} style={{ marginTop:20, padding:"14px 28px", borderRadius:14, background:B.accent, color:"#0D0D0D", fontWeight:700, fontSize:14, border:"none", cursor:"pointer", fontFamily:"inherit" }}>
-            Ver meus desafios
-          </button>
-        </div>
-      </div>
-    );
-  }
+
 
   const [accepted, setAccepted] = useState(() => { try { return localStorage.getItem("uh_m4b_accepted") === "1"; } catch { return false; } });
   const [tab, setTab] = useState("discover");
@@ -24296,7 +24245,60 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   );
 
   /* ═══ TERMS SCREEN ═══ */
-  if (!accepted) return (
+  /* ── Lock Screen ── */
+  if (!m4bLoading && !m4bUnlocked) {
+    const pct = Math.round((m4bCompleted / m4bTotal) * 100);
+    return (
+      <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:B.bg, zIndex:50, display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
+        {/* Header */}
+        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"calc(env(safe-area-inset-top,0px) + 16px) 20px 12px" }}>
+          <button onClick={onBack} style={{ width:38, height:38, borderRadius:"50%", background:B.card, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <span style={{ fontWeight:700, fontSize:17, color:B.text }}>Match4Biz</span>
+        </div>
+        {/* Lock Content */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"0 24px 100px", textAlign:"center" }}>
+          {/* Lock Icon */}
+          <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <h2 style={{ fontSize:22, fontWeight:800, color:B.text, margin:"0 0 8px", letterSpacing:"-0.5px" }}>Match4Biz Bloqueado</h2>
+          <p style={{ fontSize:14, color:B.muted, margin:"0 0 28px", lineHeight:1.6, maxWidth:320 }}>
+            Complete todos os desafios do mês para desbloquear o Match4Biz e conectar com outros clientes da agência.
+          </p>
+          {/* Progress */}
+          <div style={{ width:"100%", maxWidth:360, marginBottom:24 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+              <span style={{ fontSize:12, fontWeight:700, color:B.muted }}>Progresso do mês</span>
+              <span style={{ fontSize:12, fontWeight:800, color:B.accent }}>{m4bCompleted}/{m4bTotal}</span>
+            </div>
+            <div style={{ height:10, borderRadius:5, background:B.border, overflow:"hidden" }}>
+              <div style={{ height:"100%", width:`${pct}%`, borderRadius:5, background:`linear-gradient(90deg, ${B.accent}, #10B981)`, transition:"width .5s ease" }} />
+            </div>
+          </div>
+          {/* Challenges List */}
+          <div style={{ width:"100%", maxWidth:360 }}>
+            {m4bMissions.map(m => (
+              <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, background:B.card, border:`1px solid ${m.done ? B.accent+"30" : B.border}`, marginBottom:8 }}>
+                <span style={{ fontSize:22, flexShrink:0 }}>{m.icon}</span>
+                <span style={{ flex:1, fontSize:13, fontWeight:600, color:B.text, textAlign:"left" }}>{m.title}</span>
+                <div style={{ width:24, height:24, borderRadius:"50%", background:m.done ? B.accent : B.border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {m.done ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg> : <span style={{ fontSize:10, color:B.muted }}>—</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* CTA to go to challenges */}
+          <button onClick={() => { onBack(); setTimeout(() => { try { document.querySelector('[data-sub="gamify"]')?.click(); } catch {} }, 200); }} style={{ marginTop:20, padding:"14px 28px", borderRadius:14, background:B.accent, color:"#0D0D0D", fontWeight:700, fontSize:14, border:"none", cursor:"pointer", fontFamily:"inherit" }}>
+            Ver meus desafios
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+    if (!accepted) return (
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
