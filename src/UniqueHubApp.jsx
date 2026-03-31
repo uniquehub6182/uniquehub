@@ -25548,6 +25548,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const CLIENT_DASH_VALID_KEYS = ["growth","news","posts","metricas","match","agenda"];
   const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
+  const [clientQuickBlocks, setClientQuickBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_qblocks"); return s ? JSON.parse(s) : ["content","ai","reports"]; } catch { return ["content","ai","reports"]; } });
+  const [clientPanels, setClientPanels] = useState(() => { try { const s = localStorage.getItem("uh_client_panels"); return s ? JSON.parse(s) : ["growth","news","posts"]; } catch { return ["growth","news","posts"]; } });
   const [editSections, setEditSections] = useState([]);
   const [editCfg, setEditCfg] = useState(null);
   const CLIENT_CARDS_MAP = { meta:{l:"Meta do Mês"}, aprovacoes:{l:"Aprovações"}, growth:{l:"Growth Score"}, match:{l:"Match4Biz"} };
@@ -26550,27 +26552,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </div>
           )}
         </div>
-        {/* ── FIXED SECTIONS (Conteúdos, IA, Relatórios) ── */}
+        {/* ── QUICK BLOCKS (3 customizable) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:20}}>
-            <div onClick={()=>goTab("content")} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{IC.content(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>Conteúdos</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Posts e aprovações</p></div></div>
-              <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div onClick={()=>setSub("ai")} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{IC.ai(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>Assistente IA</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Gere conteúdo com IA</p></div></div>
-              <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Expandir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
-            <div onClick={()=>setSub("reports")} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{IC.reports(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>Relatórios</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Performance das redes</p></div></div>
-              <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-            </div>
+            {clientQuickBlocks.slice(0,3).map((bk,bi) => {
+              const QB_MAP = {
+                content:{label:"Conteúdos",sub:"Posts e aprovações",icon:IC.content,action:()=>goTab("content")},
+                ai:{label:"Assistente IA",sub:"Gere conteúdo com IA",icon:IC.ai,action:()=>setSub("ai")},
+                reports:{label:"Relatórios",sub:"Performance das redes",icon:IC.reports,action:()=>setSub("reports")},
+                growth:{label:"Growth Score",sub:"Índice de crescimento",icon:IC.gamify,action:()=>setSub("gamify")},
+                match:{label:"Match4Biz",sub:"Networking entre clientes",icon:IC.match4biz||IC.clients,action:()=>setSub("match4biz")},
+                academy:{label:"Academy",sub:"Cursos e aprendizado",icon:IC.academy,action:()=>setSub("academy")},
+                library:{label:"Biblioteca",sub:"Arquivos e materiais",icon:IC.library,action:()=>setSub("library")},
+                ideas:{label:"Comunique-se",sub:"Envie ideias à agência",icon:IC.ideas,action:()=>setSub("ideas")},
+                financial:{label:"Financeiro",sub:"Plano e faturas",icon:IC.financial,action:()=>setSub("financial")},
+                news:{label:"Comunicados",sub:"Notícias e novidades",icon:IC.news,action:()=>setSub("news")},
+                calendar:{label:"Agenda",sub:"Reuniões e gravações",icon:IC.calendar,action:()=>setSub("calendar")},
+                help:{label:"Suporte",sub:"FAQ e ajuda",icon:IC.help,action:()=>setSub("help")},
+              };
+              const qb = QB_MAP[bk]; if(!qb) return null;
+              return <div key={bk} onClick={qb.action} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{qb.icon(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>{qb.label}</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>{qb.sub}</p></div></div>
+                <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+              </div>;
+            })}
           </div>
         </div>
-        {/* ── OPTIONAL SECTIONS (editable) ── */}
+        {/* ── FUNCTIONAL PANELS (3 large, customizable) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
-          <div className="d-dash-grid">
-            {clientDashSections.map(sk => renderDashSection(sk))}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"start"}}>
+            {clientPanels.slice(0,3).map(sk => <div key={sk} style={{minWidth:0,overflow:"hidden"}}>{renderDashSection(sk)}</div>)}
           </div>
         </div>
         {/* DASH EDIT overlay — desktop version (centered modal) */}
@@ -26580,7 +26591,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           const toggle = (arr, key, max) => { const idx = ec[arr].indexOf(key); let n; if (idx>=0) n=ec[arr].filter(x=>x!==key); else if(!max||ec[arr].length<max) n=[...ec[arr],key]; else return; setEditCfg({...ec,[arr]:n}); if(arr==="sections") setEditSections(n); };
           const moveSection = (i,dir) => { const s=[...ec.sections]; const j=i+dir; if(j<0||j>=s.length) return; [s[i],s[j]]=[s[j],s[i]]; setEditCfg({...ec,sections:s}); setEditSections(s); };
           const Chip = ({on,label,onTap,disabled}) => <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:disabled?"default":"pointer",fontFamily:"inherit",opacity:disabled?0.4:1}}>{label}</button>;
-          const saveCfg = () => { setClientCards(ec.cards); setClientPills(ec.pills); setClientDashSections(ec.sections); try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); localStorage.setItem("uh_client_dash",JSON.stringify(ec.sections)); supaSetSetting("client_portal_config",JSON.stringify({cards:ec.cards,pills:ec.pills,sections:ec.sections})); } catch {} setEditCfg(null); setEditSections([]); setShowDashEdit(false); };
+          const saveCfg = () => { setClientCards(ec.cards); setClientPills(ec.pills); setClientDashSections(ec.sections); if(ec.quickBlocks) setClientQuickBlocks(ec.quickBlocks); if(ec.panels) setClientPanels(ec.panels); try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); localStorage.setItem("uh_client_dash",JSON.stringify(ec.sections)); if(ec.quickBlocks) localStorage.setItem("uh_client_qblocks",JSON.stringify(ec.quickBlocks)); if(ec.panels) localStorage.setItem("uh_client_panels",JSON.stringify(ec.panels)); supaSetSetting("client_portal_config",JSON.stringify({cards:ec.cards,pills:ec.pills,sections:ec.sections,quickBlocks:ec.quickBlocks||clientQuickBlocks,panels:ec.panels||clientPanels})); } catch {} setEditCfg(null); setEditSections([]); setShowDashEdit(false); };
           return <><div onClick={()=>{setEditCfg(null);setShowDashEdit(false);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999}} />
           <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:480,maxHeight:"80vh",overflowY:"auto",background:C.card,borderRadius:24,zIndex:1000,padding:"24px 28px",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
@@ -26594,6 +26605,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos (máx 8)</p>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
               {Object.entries(CLIENT_PILLS_MAP).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k,8)} disabled={!ec.pills.includes(k)&&ec.pills.length>=8} />)}
+            </div>
+            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Blocos rápidos (3 abaixo do banner)</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+              {[["content","Conteúdos"],["ai","Assistente IA"],["reports","Relatórios"],["growth","Growth Score"],["match","Match4Biz"],["academy","Academy"],["library","Biblioteca"],["ideas","Comunique-se"],["financial","Financeiro"],["news","Comunicados"],["calendar","Agenda"],["help","Suporte"]].map(([k,l])=><Chip key={k} on={(ec.quickBlocks||clientQuickBlocks).includes(k)} label={l} onTap={()=>{const cur=ec.quickBlocks||[...clientQuickBlocks];const idx=cur.indexOf(k);let n;if(idx>=0)n=cur.filter(x=>x!==k);else if(cur.length<3)n=[...cur,k];else return;setEditCfg({...ec,quickBlocks:n});}} disabled={!(ec.quickBlocks||clientQuickBlocks).includes(k)&&(ec.quickBlocks||clientQuickBlocks).length>=3} />)}
+            </div>
+            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Painéis grandes (3 blocos funcionais)</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+              {[["growth","Growth Score"],["news","Comunicados"],["posts","Posts Recentes"],["metricas","Métricas"],["match","Match4Biz"],["agenda","Compromissos"],["academy","Academy"],["library","Biblioteca"],["ideas","Comunique-se"]].map(([k,l])=><Chip key={k} on={(ec.panels||clientPanels).includes(k)} label={l} onTap={()=>{const cur=ec.panels||[...clientPanels];const idx=cur.indexOf(k);let n;if(idx>=0)n=cur.filter(x=>x!==k);else if(cur.length<3)n=[...cur,k];else return;setEditCfg({...ec,panels:n});}} disabled={!(ec.panels||clientPanels).includes(k)&&(ec.panels||clientPanels).length>=3} />)}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
             <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Clique para ativar/desativar. Use as setas para reordenar.</p>
@@ -26610,7 +26629,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6,marginBottom:16}}>
               {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).map(sk => <button key={sk} onClick={()=>{const s=[...ec.sections,sk];setEditCfg({...ec,sections:s});setEditSections(s);}} style={{padding:"7px 14px",borderRadius:10,border:`1.5px dashed ${C.brd}`,background:"transparent",fontSize:12,fontWeight:500,color:C.mut,cursor:"pointer",fontFamily:"inherit"}}>+ {CLIENT_SECTIONS[sk]}</button>)}
             </div>}
-            <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+            <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT],quickBlocks:["content","ai","reports"],panels:["growth","news","posts"]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
           </div></>;
         })()}
       </div>
@@ -26729,7 +26748,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6,marginBottom:16}}>
           {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).map(sk => <button key={sk} onClick={()=>{const s=[...ec.sections,sk];setEditCfg({...ec,sections:s});setEditSections(s);}} style={{padding:"7px 14px",borderRadius:10,border:`1.5px dashed ${C.brd}`,background:"transparent",fontSize:12,fontWeight:500,color:C.mut,cursor:"pointer",fontFamily:"inherit"}}>+ {CLIENT_SECTIONS[sk]}</button>)}
         </div>}
-        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT],quickBlocks:["content","ai","reports"],panels:["growth","news","posts"]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
       </div></>;
     })()}
   </>; }
@@ -28026,7 +28045,7 @@ export default function App() {
             const _driveRaw = settingsMap["drive_config"];
             if (_driveRaw) { try { const dc = typeof _driveRaw === "string" ? JSON.parse(_driveRaw) : _driveRaw; localStorage.setItem("uh_drive_url", dc.url || ""); localStorage.setItem("uh_drive_type", dc.type || ""); } catch {} }
             const _cpRaw = settingsMap["client_portal_config"];
-            if (_cpRaw) { try { const cp = typeof _cpRaw === "string" ? JSON.parse(_cpRaw) : _cpRaw; if(cp.cards) localStorage.setItem("uh_client_cards", JSON.stringify(cp.cards)); if(cp.pills) localStorage.setItem("uh_client_pills", JSON.stringify(cp.pills)); if(cp.sections) localStorage.setItem("uh_client_dash", JSON.stringify(cp.sections)); } catch {} }
+            if (_cpRaw) { try { const cp = typeof _cpRaw === "string" ? JSON.parse(_cpRaw) : _cpRaw; if(cp.cards) localStorage.setItem("uh_client_cards", JSON.stringify(cp.cards)); if(cp.pills) localStorage.setItem("uh_client_pills", JSON.stringify(cp.pills)); if(cp.sections) localStorage.setItem("uh_client_dash", JSON.stringify(cp.sections)); if(cp.quickBlocks) localStorage.setItem("uh_client_qblocks", JSON.stringify(cp.quickBlocks)); if(cp.panels) localStorage.setItem("uh_client_panels", JSON.stringify(cp.panels)); } catch {} }
             const _eqRaw = settingsMap["equipments_config"];
             if (_eqRaw) { try { localStorage.setItem("uh_equipments", typeof _eqRaw === "string" ? _eqRaw : JSON.stringify(_eqRaw)); } catch {} }
           } catch(e) { console.warn("Agency visual configs load failed:", e); }
