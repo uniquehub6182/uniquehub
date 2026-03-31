@@ -25579,21 +25579,72 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
   React.useEffect(() => { if (!B.transparent) { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
-  const [dAiQ, setDAiQ] = useState("");
   const [dContentIdx, setDContentIdx] = useState(0);
   const [dEditMode, setDEditMode] = useState(false);
   const [dEditTypes, setDEditTypes] = useState([]);
   const [dEditComment, setDEditComment] = useState("");
-  const [dAiRes, setDAiRes] = useState("");
+  /* ── Dashboard AI Widget State ── */
+  const [dAiQ, setDAiQ] = useState("");
+  const [dAiMsgs, setDAiMsgs] = useState([]);
   const [dAiLoad, setDAiLoad] = useState(false);
-  const dAskAi = async (q) => {
-    if (!q.trim()||dAiLoad) return;
-    setDAiLoad(true); setDAiRes("");
+  const [dAiConvs, setDAiConvs] = useState([]);
+  const [dAiActiveChat, setDAiActiveChat] = useState(null);
+  const [dAiView, setDAiView] = useState("home");
+  const [dAiModel, setDAiModel] = useState("openai");
+  const [dAiKeys, setDAiKeys] = useState({});
+  const [dAiReady, setDAiReady] = useState(false);
+  const dAiScrollRef = React.useRef(null);
+  const dAiHistoryKey = `ai_history_${user?.id || "anon"}`;
+  React.useEffect(() => {
+    (async () => {
+      const k = await supaGetAIKeys(); setDAiKeys(k); setDAiModel(k.ai_provider || "openai");
+      const saved = await supaGetSetting(dAiHistoryKey);
+      if (saved) try { const p = JSON.parse(saved); if (Array.isArray(p)) setDAiConvs(p); } catch {}
+      setDAiReady(true);
+    })();
+  }, []);
+  React.useEffect(() => { if (dAiScrollRef.current) dAiScrollRef.current.scrollTop = dAiScrollRef.current.scrollHeight; }, [dAiMsgs, dAiLoad]);
+  const dAiSaveHistory = (chatId, msgs) => {
+    if (!msgs.length) return;
+    const title = msgs[0]?.content?.substring(0, 60) + (msgs[0]?.content?.length > 60 ? "..." : "");
+    const ts = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"})+" "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    setDAiConvs(prev => {
+      const exists = prev.find(cv => cv.id === chatId);
+      let updated;
+      if (exists) updated = prev.map(cv => cv.id === chatId ? { ...cv, messages: msgs, title, updatedAt: ts, model: dAiModel } : cv);
+      else updated = [{ id: chatId, title, messages: msgs, updatedAt: ts, model: dAiModel }, ...prev];
+      supaSetSetting(dAiHistoryKey, JSON.stringify(updated.slice(0, 50).map(cv => ({ ...cv, messages: (cv.messages||[]).slice(-30) })))).catch(() => {});
+      return updated;
+    });
+  };
+  const dAiSend = async (text) => {
+    if (!text.trim() || dAiLoad) return;
+    const k = dAiKeys; const prov = dAiModel;
+    const gKey = k.gemini_key, oKey = k.openai_key, cKey = k.claude_key;
+    if (prov === "gemini" && !gKey) { setDAiMsgs(p => [...p, {role:"assistant",content:"Chave Gemini não configurada."}]); return; }
+    if (prov === "claude" && !cKey) { setDAiMsgs(p => [...p, {role:"assistant",content:"Chave Claude não configurada."}]); return; }
+    if (prov === "openai" && !oKey) { setDAiMsgs(p => [...p, {role:"assistant",content:"Chave OpenAI não configurada."}]); return; }
+    const userMsg = { role: "user", content: text.trim() };
+    const newMsgs = [...dAiMsgs, userMsg];
+    setDAiMsgs(newMsgs); setDAiQ(""); setDAiLoad(true);
+    let chatId = dAiActiveChat; if (!chatId) { chatId = "chat_" + Date.now(); setDAiActiveChat(chatId); }
+    setDAiView("chat");
+    const sysPr = "Você é um assistente de marketing digital da agência. Responda sempre em português brasileiro de forma prática e direta. Use emojis quando apropriado.";
     try {
-      const gKey = await supaGetSetting("gemini_key"); if(!gKey){setDAiRes("Chave de IA não configurada. Configure em Configurações → Assistente IA.");setDAiLoad(false);return;} const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+gKey, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português brasileiro. Pergunta: "+q}]}]}) });
-      const data = await res.json();
-      setDAiRes(data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta");
-    } catch(e) { setDAiRes("Erro: "+e.message); }
+      let aiText = "";
+      if (prov === "gemini") {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+gKey, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ system_instruction:{parts:[{text:sysPr}]}, contents:newMsgs.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]})), generationConfig:{maxOutputTokens:2000} }) });
+        const data = await r.json(); aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
+      } else if (prov === "claude") {
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json","x-api-key":cKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}, body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,system:sysPr,messages:newMsgs.map(m=>({role:m.role,content:m.content}))}) });
+        const data = await r.json(); aiText = data?.content?.[0]?.text || "Sem resposta";
+      } else {
+        const r = await fetch("https://api.openai.com/v1/chat/completions", { method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+oKey}, body:JSON.stringify({model:"gpt-4o",messages:[{role:"system",content:sysPr},...newMsgs],max_tokens:2000}) });
+        const data = await r.json(); aiText = data?.choices?.[0]?.message?.content || "Sem resposta";
+      }
+      const finalMsgs = [...newMsgs, { role: "assistant", content: aiText }];
+      setDAiMsgs(finalMsgs); dAiSaveHistory(chatId, finalMsgs);
+    } catch(e) { setDAiMsgs(p => [...p, {role:"assistant",content:"Erro: "+e.message}]); }
     setDAiLoad(false);
   };
   /* ── Banners (shared from agency) ── */
@@ -26808,32 +26859,70 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
               /* ── AI WIDGET ── */
               if (pk === "ai") {
-                const quickPrompts = ["Crie uma legenda para post de produto","Ideia de Reels para engajamento","Estratégia de Stories para esta semana","Hashtags para Instagram"];
+                const AI_M = [{k:"openai",l:"GPT-4o",c:"#10A37F"},{k:"gemini",l:"Gemini 2.0",c:"#4285F4"},{k:"claude",l:"Claude Sonnet",c:"#D97706"}];
+                const curM = AI_M.find(m=>m.k===dAiModel)||AI_M[0];
+                const CLIENT_PRESETS = [
+                  {em:"💬",l:"Texto para WhatsApp",p:"Crie um texto comercial para enviar no WhatsApp para divulgar "},
+                  {em:"📞",l:"Script de vendas",p:"Crie um script de abordagem comercial por telefone ou WhatsApp para vender "},
+                  {em:"😤",l:"Responder cliente difícil",p:"Me ajude a responder um cliente difícil que está reclamando sobre "},
+                  {em:"🎁",l:"Promoção criativa",p:"Crie uma promoção criativa e atrativa para divulgar nas redes sociais. "},
+                  {em:"📝",l:"Proposta comercial",p:"Me ajude a montar uma proposta comercial para apresentar meus serviços. "},
+                  {em:"🔍",l:"Analisar concorrente",p:"Analise o concorrente e me dê insights sobre pontos fortes, fracos e oportunidades: "},
+                  {em:"😊",l:"Mensagem pós-venda",p:"Crie uma mensagem de pós-venda agradecendo e pedindo avaliação. "},
+                  {em:"💡",l:"Ideias de ação comercial",p:"Me dê ideias de ações comerciais para aumentar as vendas este mês. Meu segmento é "},
+                ];
                 return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  {/* Header */}
                   <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.ai(LIME)}<span style={{fontSize:14,fontWeight:700}}>Assistente IA</span></div>
-                    <span onClick={PACT[pk]} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Expandir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-                  </div>
-                  <div style={{flex:1,overflowY:"auto",padding:"14px",display:"flex",flexDirection:"column"}}>
-                    {/* Quick prompts */}
-                    <p style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Sugestões rápidas</p>
-                    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-                      {quickPrompts.map((q,i)=><button key={i} onClick={()=>{setDAiQ(q);dAskAi(q);}} style={{textAlign:"left",padding:"10px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:500,color:B.text,transition:"all .12s",display:"flex",alignItems:"center",gap:8}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.background=LIME+"08";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bg;}}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        {q}
-                      </button>)}
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {IC.ai(LIME)}<span style={{fontSize:14,fontWeight:700}}>Assistente IA</span>
+                      <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,background:curM.c+"15",color:curM.c}}>{curM.l}</span>
                     </div>
-                    {/* Response area */}
-                    {dAiLoad && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}><div style={{width:24,height:24,border:`2.5px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite"}}/><p style={{fontSize:11,color:B.muted}}>Gerando resposta...</p></div>}
-                    {dAiRes && !dAiLoad && <div style={{flex:1,background:B.bg,borderRadius:14,border:`1px solid ${B.border}`,padding:"14px 16px",overflowY:"auto"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><div style={{width:20,height:20,borderRadius:6,background:LIME,display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><span style={{fontSize:11,fontWeight:700,color:B.muted}}>Resposta da IA</span></div>
-                      <p style={{fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",color:B.text}}>{dAiRes}</p>
-                    </div>}
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      {dAiView==="chat"&&<button onClick={()=>{setDAiView("home");setDAiActiveChat(null);setDAiMsgs([]);}} style={{fontSize:11,fontWeight:600,color:B.muted,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>← Voltar</button>}
+                      <span onClick={()=>setSub("ai")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Expandir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                    </div>
                   </div>
+                  {/* HOME VIEW */}
+                  {dAiView==="home" && <div style={{flex:1,overflowY:"auto",minHeight:0}}>
+                    {/* Model selector */}
+                    <div style={{padding:"10px 14px 6px",display:"flex",gap:6}}>
+                      {AI_M.map(m=><button key={m.k} onClick={()=>{setDAiModel(m.k);supaSetSetting("ai_keys",JSON.stringify({...dAiKeys,ai_provider:m.k}));setDAiKeys(p=>({...p,ai_provider:m.k}));}} style={{flex:1,padding:"8px 0",borderRadius:10,border:dAiModel===m.k?`2px solid ${m.c}`:`1.5px solid ${B.border}`,background:dAiModel===m.k?m.c+"10":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:dAiModel===m.k?700:500,color:dAiModel===m.k?m.c:B.muted,transition:"all .12s"}}>{m.l}</button>)}
+                    </div>
+                    {/* Presets */}
+                    <div style={{padding:"6px 14px"}}>
+                      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Sugestões</p>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                        {CLIENT_PRESETS.map((p,i)=><button key={i} onClick={()=>{setDAiQ(p.p);setDAiView("chat");setDAiActiveChat(null);setDAiMsgs([]);}} style={{textAlign:"left",padding:"10px 12px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:500,color:B.text,display:"flex",alignItems:"center",gap:6,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}><span style={{fontSize:14}}>{p.em}</span><span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.l}</span></button>)}
+                      </div>
+                    </div>
+                    {/* Conversation history */}
+                    {dAiConvs.filter(cv=>!cv.model||cv.model===dAiModel).length>0 && <div style={{padding:"10px 14px 14px"}}>
+                      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Conversas recentes</p>
+                      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                        {dAiConvs.filter(cv=>!cv.model||cv.model===dAiModel).slice(0,5).map(cv=><div key={cv.id} onClick={()=>{setDAiActiveChat(cv.id);setDAiMsgs([...(cv.messages||[])]);setDAiView("chat");if(cv.model)setDAiModel(cv.model);}} style={{padding:"10px 12px",borderRadius:10,border:`1px solid ${B.border}`,background:B.bg,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+                          <div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cv.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{cv.updatedAt} · {(cv.messages||[]).length} msgs</p></div>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>)}
+                      </div>
+                    </div>}
+                  </div>}
+                  {/* CHAT VIEW */}
+                  {dAiView==="chat" && <div ref={dAiScrollRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
+                    {dAiMsgs.length===0 && !dAiLoad && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6,opacity:0.4}}>
+                      {IC.ai(B.muted)}<p style={{fontSize:12,color:B.muted}}>Digite sua pergunta abaixo</p>
+                    </div>}
+                    {dAiMsgs.map((m,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:m.role==="user"?"flex-end":"flex-start"}}>
+                      <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",background:m.role==="user"?LIME+"15":B.bg,border:`1px solid ${m.role==="user"?LIME+"30":B.border}`,fontSize:12,lineHeight:1.6,whiteSpace:"pre-wrap",color:B.text}}>{m.content}</div>
+                    </div>)}
+                    {dAiLoad && <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:B.bg,borderRadius:14,border:`1px solid ${B.border}`,alignSelf:"flex-start"}}>
+                      <div style={{width:16,height:16,border:`2px solid ${B.border}`,borderTopColor:curM.c,borderRadius:"50%",animation:"spin .7s linear infinite"}}/><span style={{fontSize:11,color:B.muted}}>Gerando...</span>
+                    </div>}
+                  </div>}
                   {/* Input bar */}
                   <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,display:"flex",gap:8,flexShrink:0}}>
-                    <input value={dAiQ} onChange={e=>setDAiQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();dAskAi(dAiQ);}}} placeholder="Pergunte algo à IA..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,fontFamily:"inherit",fontSize:13,color:B.text,outline:"none"}} />
-                    <button onClick={()=>dAskAi(dAiQ)} disabled={!dAiQ.trim()||dAiLoad} style={{width:40,height:40,borderRadius:12,background:dAiQ.trim()&&!dAiLoad?LIME:B.border,border:"none",cursor:dAiQ.trim()&&!dAiLoad?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dAiQ.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                    <input value={dAiQ} onChange={e=>setDAiQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();dAiSend(dAiQ);}}} placeholder="Pergunte algo à IA..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,fontFamily:"inherit",fontSize:13,color:B.text,outline:"none"}} />
+                    <button onClick={()=>dAiSend(dAiQ)} disabled={!dAiQ.trim()||dAiLoad} style={{width:40,height:40,borderRadius:12,background:dAiQ.trim()&&!dAiLoad?LIME:B.border,border:"none",cursor:dAiQ.trim()&&!dAiLoad?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dAiQ.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
                   </div>
                 </div>;
               }
