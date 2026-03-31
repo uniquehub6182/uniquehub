@@ -25542,7 +25542,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     if (!q.trim()||dAiLoad) return;
     setDAiLoad(true); setDAiRes("");
     try {
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDMHEl93maM3cJB_gN23e3mXcwuSosMbLI", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português brasileiro. Pergunta: "+q}]}]}) });
+      const gKey = await supaGetSetting("gemini_key"); if(!gKey){setDAiRes("Chave de IA não configurada. Configure em Configurações → Assistente IA.");setDAiLoad(false);return;} const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+gKey, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português brasileiro. Pergunta: "+q}]}]}) });
       const data = await res.json();
       setDAiRes(data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta");
     } catch(e) { setDAiRes("Erro: "+e.message); }
@@ -26749,7 +26749,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                   if (!q.trim()||dAiLoad) return;
                   setAiLoad(true); setAiRes("");
                   try {
-                    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDMHEl93maM3cJB_gN23e3mXcwuSosMbLI", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português. Pergunta: "+q}]}]}) });
+                    const gKey = await supaGetSetting("gemini_key"); if(!gKey){setDAiRes("Chave de IA não configurada. Configure em Configurações → Assistente IA.");setDAiLoad(false);return;} const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+gKey, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português Pergunta: "+q}]}]}) });
                     const data = await res.json();
                     const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
                     setAiRes(txt);
