@@ -25505,6 +25505,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   }, [dark, B.bg, B.text, B.accent, B.bgCard, B.border, B.muted]);
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
+  const subRef = React.useRef(null);
+  React.useEffect(() => { subRef.current = sub; }, [sub]);
   const [showClientNavEdit, setShowClientNavEdit] = useState(false);
   const CLIENT_ALL_TABS = [
     { k:"home", l:"Início", i:IC.home }, { k:"content", l:"Conteúdo", i:IC.content },
@@ -25675,7 +25677,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   useEffect(() => {
     if (!supabase || !user?.id) return;
     const refetch = async () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible" || subRef.current) return;
       try {
         /* Use already-resolved client if available, otherwise re-resolve */
         let myClient = resolvedClient;
@@ -25713,7 +25715,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   /* Load clients + team for sub-pages */
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly_value: c.monthly_value, status: c.status || "ativo", logo: c.logo_url || c.logo }))); });
+    supabase.from("clients").select("*").then(({ data }) => { if (data) setClients(prev => { const mapped = data.map(c => ({ ...c, supaId: c.id, name: c.name, plan: c.plan, monthly_value: c.monthly_value, status: c.status || "ativo", logo: c.logo_url || c.logo })); if (prev.length === mapped.length && prev.every((p,i) => p.supaId === mapped[i].supaId)) return prev; return mapped; }); });
     supaLoadTeam().then(rows => { if (rows) { setTeam(rows); rows.forEach(m => { if(m.photo){const img=new Image();img.src=m.photo;} }); } });
   }, []);
 
@@ -26277,15 +26279,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   useEffect(() => {
     if (!supabase || clientMetrics) return;
     (async () => {
-      /* Use linked_client_id first, then email, then name fallback */
-      const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
-      let linkedId = null;
-      try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
-      const myClient = (linkedId ? clients.find(c => (c.id === linkedId || c.supaId === linkedId)) : null)
-        || clients.find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
-        || clients.find(c => { const cf = (user?.company||user?.name||"").toLowerCase(); return (c.name||"").toLowerCase().includes(cf.split(" ")[0]) || cf.includes((c.name||"").split(" ")[0].toLowerCase()); });
-      if (!myClient) { console.warn("[Client Dashboard] No matching client for", user?.email, "linkedId:", linkedId, "clients:", clients.length); return; }
-      console.log("[Client Dashboard] Matched client:", myClient.name, myClient.id || myClient.supaId);
+      if (!resolvedClient?.id) return;
+      const myClient = resolvedClient;
+      console.log("[Client Dashboard] Matched client:", myClient.name, myClient.id);
       setMetricsLoading(true);
       try {
         const cid = myClient.supaId || myClient.id;
@@ -26301,7 +26297,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       } catch(e) { console.warn("Client metrics load error:", e); }
       setMetricsLoading(false);
     })();
-  }, [clients, user]);
+  }, [resolvedClient?.id]);
 
   const fmt = (n) => { if (!n && n !== 0) return "—"; if (n >= 1000000) return (n/1000000).toFixed(1)+"M"; if (n >= 1000) return (n/1000).toFixed(1)+"K"; return String(n); };
   const igT = clientMetrics?.igTotals || {};
