@@ -25517,6 +25517,8 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
 html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:auto!important;min-height:100vh!important;overflow:visible!important;inset:auto!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
 html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content-wide{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
 html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important;padding-left:32px!important;padding-right:32px!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
@@ -27276,21 +27278,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     };
 
     return <>
-      {pendingApproval.length > 0 && <div style={{ marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:16, fontWeight:800 }}>Aguardando aprovação ({pendingApproval.length})</p></div>
+      {pendingApproval.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:16, fontWeight:800 }}>Aguardando aprovação ({pendingApproval.length})</p></div>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
         {pendingApproval.map(d => <DemandCard key={d.id} d={d} />)}
+        </div>
       </div>}
-      {revision.length > 0 && <div style={{ marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:"#F59E0B" }} /><p style={{ fontSize:16, fontWeight:800 }}>Em edição ({revision.length})</p></div>
+      {revision.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:"#F59E0B" }} /><p style={{ fontSize:16, fontWeight:800 }}>Em edição ({revision.length})</p></div>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
         {revision.map(d => <DemandCard key={d.id} d={d} />)}
+        </div>
       </div>}
-      {approved.length > 0 && <div style={{ marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
+      {approved.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
         {approved.map(d => <DemandCard key={d.id} d={d} />)}
+        </div>
       </div>}
-      {inProd.length > 0 && <div style={{ marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}><div style={{ width:8, height:8, borderRadius:4, background:C.mut }} /><p style={{ fontSize:16, fontWeight:800, color:C.mut }}>Em produção ({inProd.length})</p></div>
+      {inProd.length > 0 && <div style={{ marginBottom:20 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:C.mut }} /><p style={{ fontSize:16, fontWeight:800, color:C.mut }}>Em produção ({inProd.length})</p></div>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
         {inProd.map(d => <DemandCard key={d.id} d={d} />)}
+        </div>
       </div>}
       {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:C.mut }}>{IC.content(C.mut)}</span><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:12, color:C.mut, marginTop:4 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p></Card>}
     </>;
@@ -27337,14 +27347,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
-      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={canAccessFn} forceMobile demands={demands} /> :
+      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={canAccessFn} demands={demands} /> :
       sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
       sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "notes" ? <NotesPage onBack={() => setSub(null)} user={user} /> :
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
-      sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients} user={user} isClientView forceMobile /> :
+      sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients} user={user} isClientView /> :
       sub === "reports" ? <ReportsPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients.slice(0,1)} team={team} isClientView /> :
       sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_ui_prefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_ui_prefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
       sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
@@ -27370,8 +27380,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ padding:isDesktop?0:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
-          {tab === "calendar" && <div style={{ margin:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} forceMobile demands={demands} /></div>}
-          {tab === "chat" && <div style={{ margin:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
+          {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
+          {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && <>
             {[
               {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify",navKey:null},
