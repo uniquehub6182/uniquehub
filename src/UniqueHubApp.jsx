@@ -4163,7 +4163,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
       <div style={{ padding:"0 24px 0", maxWidth:isDesktop?1400:"none", margin:isDesktop?"0 auto":"0" }}>
         <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18, flexWrap:isDesktop?"wrap":"nowrap" }}>
           <button onClick={()=>{ setEc(JSON.parse(JSON.stringify(cfg))); setShowEditor(true); }} style={{width:38,height:38,borderRadius:"50%",background:C.pill,border:`1px solid ${C.pbrd}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,color:LIME}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-          <div style={{ display:"flex", gap:10, overflowX:isDesktop?"visible":"auto", flexWrap:isDesktop?"wrap":"nowrap", scrollbarWidth:"none", flex:1 }}>
+          <div style={{ display:"flex", gap:10, overflowX:"auto", scrollbarWidth:"none", flex:1 }}>
             {[...cfg.pills].sort((a,b)=>(PILLS[a]?.l||"").localeCompare(PILLS[b]?.l||"","pt")).filter(pk => { const p=PILLS[pk]; return p && (p.k !== "financial" || canFinancial); }).map((pk,i)=>{const p=PILLS[pk];if(!p)return null;return<div key={i} onClick={()=>nav(p.k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill,border:`1px solid ${C.pbrd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:C.picn,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{pillIcon(pk)}</div>{p.l}{p.badge>0&&<span style={{background:"#FF3B30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:100}}>{p.badge}</span>}</div>;})}
           </div>
         </div>
@@ -26417,10 +26417,79 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   /* Clock + day (moved to renderHome scope below, no hooks here) */
   const todayStr = `${dayNamesG[now.getDay()]}, ${now.getDate()} de ${monthNames[now.getMonth()]}`;
 
-  return <div className={isDesktop?"desktop-dash":""} style={isDesktop?{maxWidth:1000,margin:"0 auto",paddingBottom:80}:{}}>
-    {/* ═══ AGENCY-STYLE HEADER ═══ */}
-    <div style={{ margin:isDesktop?"0":"-14px -16px 0", background:H.bg, borderRadius:isDesktop?"0 0 24px 24px":"0 0 40px 40px", paddingTop:isDesktop?"24px":"calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
-      <div style={{ padding:isDesktop?"0 32px":"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+  /* ═══ DESKTOP RENDER — replicates agency header pattern ═══ */
+  if (isDesktop) {
+    const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida!":`${completedPct}% concluído`,action:()=>goTab("content")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
+    const dCards = clientCards.slice(0,4).map(ck => CARD_DATA[ck]).filter(Boolean);
+    return (
+      <div className="desktop-dash" style={{minHeight:"100vh",background:B.transparent?"transparent":B.bg,paddingBottom:100,margin:0}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
+          <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
+            <div style={{display:"flex",gap:20}}>
+              <div style={{flexShrink:0,alignSelf:"flex-end",position:"relative",zIndex:4}}>
+                <div style={{width:140,height:140,borderRadius:"50%",overflow:"hidden",background:"#333",border:"5px solid #fff",marginBottom:-80}}>
+                  {user?.photo?<img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>:<div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:42,fontWeight:900,color:LIME}}>{initials}</div>}
+                </div>
+              </div>
+              <div style={{flex:1,display:"flex",flexDirection:"column",gap:16,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:20}}>
+                  <div style={{flexShrink:0}}><div style={{fontSize:24,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>Olá, {(user?.nick||user?.name||"Cliente").split(" ")[0]}!</div><div style={{fontSize:13,color:"rgba(255,255,255,0.4)",marginTop:2}}>{resolvedClient?.name||user?.company||"Meu Portal"}</div></div>
+                  <div style={{position:"relative",flex:1,maxWidth:420}}>
+                    <div style={{background:"rgba(255,255,255,0.07)",borderRadius:14,display:"flex",alignItems:"center",gap:10,padding:"13px 18px",border:"1px solid rgba(255,255,255,0.08)"}}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      <input value={clientSearchQ} onChange={e=>setClientSearchQ(e.target.value)} placeholder="Buscar conteúdo, relatórios..." style={{border:"none",background:"transparent",fontFamily:"inherit",fontSize:15,color:"#fff",outline:"none",flex:1}}/>
+                    </div>
+                  </div>
+                  {weekDemands.length > 0 && <div onClick={()=>goTab("content")} style={{flexShrink:0,display:"flex",alignItems:"center",gap:10,padding:"10px 18px",borderRadius:14,background:"rgba(0,0,0,0.6)",border:"1px solid rgba(255,255,255,0.15)",cursor:"pointer",whiteSpace:"nowrap"}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <div><p style={{fontSize:13,fontWeight:700,color:"#fff",lineHeight:1.1}}>{weekDemands.length} compromisso{weekDemands.length>1?"s":""}</p><p style={{fontSize:9,fontWeight:600,color:"rgba(255,255,255,0.45)",marginTop:1}}>esta semana</p></div>
+                  </div>}
+                  <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:14,marginLeft:"auto"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:3}}>
+                      {[cTime.h[0],cTime.h[1]].map((d,i)=><div key={"h"+i} style={{width:30,height:38,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+                      <span style={{fontSize:22,fontWeight:900,color:LIME,margin:"0 1px",animation:"blink 1s step-end infinite"}}>:</span>
+                      {[cTime.m[0],cTime.m[1]].map((d,i)=><div key={"m"+i} style={{width:30,height:38,borderRadius:6,background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#fff",fontFamily:"'SF Mono',monospace",position:"relative",overflow:"hidden"}}><span style={{position:"relative",zIndex:1}}>{d}</span><div style={{position:"absolute",top:0,left:0,right:0,height:"50%",background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(0,0,0,0.3)"}}/></div>)}
+                    </div>
+                    <div style={{textAlign:"right"}}><div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.5)"}}>{todayStr}</div></div>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexShrink:0}}>
+                    <button onClick={()=>goTab("chat")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></button>
+                    <button onClick={()=>setSub("notifications")} style={{width:42,height:42,borderRadius:"50%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>{pendingCount>0&&<span style={{position:"absolute",top:7,right:7,width:8,height:8,borderRadius:"50%",background:"#FF3B30"}}/>}</button>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:`repeat(${dCards.length},1fr)`,gap:12,marginBottom:-55,position:"relative",zIndex:3}}>
+                  {dCards.map((w,i)=><div key={i} onClick={w.action} style={{background:LIME,borderRadius:16,padding:"18px 20px",cursor:"pointer",transition:"transform .12s",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                    <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",textTransform:"uppercase",letterSpacing:0.5}}>{w.label}</div>
+                    <div style={{fontSize:28,fontWeight:900,color:"#0D0D0D",letterSpacing:"-1px",marginTop:4}}>{w.val}</div>
+                    <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:3,fontWeight:500}}>{w.sub}</div>
+                  </div>)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            {clientPills.map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); };
+              return <div key={pk} onClick={nav} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}}>
+                <div style={{width:24,height:24,borderRadius:7,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}
+              </div>; })}
+          </div>
+        </div>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 32px 0"}}>
+          <div className="d-dash-grid">
+            {clientDashSections.map(sk => renderDashSection(sk))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+
+  return <>
+    <div style={{ margin:"-14px -16px 0", background:H.bg, borderRadius:"0 0 40px 40px", paddingTop:"calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom:28, boxShadow:"0 6px 32px rgba(0,0,0,0.18)" }}>
+      <div style={{ padding:"14px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <div style={{ width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${LIME} 0%,${LIME}80 100%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:21, fontWeight:900, color:"#0D0D0D", flexShrink:0, overflow:"hidden" }}>{user?.photo ? <img src={user.photo} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/> : initials}</div>
           <div><div style={{ fontSize:22, fontWeight:800, color:H.txt, letterSpacing:"-0.4px", lineHeight:1.15 }}>Olá, {(user?.nick||user?.name||"Cliente").split(" ")[0]}</div><div style={{ fontSize:13, color:H.sub, fontWeight:500, marginTop:3 }}>{resolvedClient?.name || user?.company || "Meu Portal"}</div></div>
@@ -26431,7 +26500,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
       {/* Search bar */}
-      <div style={{ margin:isDesktop?"16px 32px 0":"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"0 18px", position:"relative" }}>
+      <div style={{ margin:"16px 24px 0", background:H.srch, borderRadius:16, display:"flex", alignItems:"center", gap:10, padding:"0 18px", position:"relative" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={H.srchT} strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0}}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input value={clientSearchQ} onChange={e=>setClientSearchQ(e.target.value)} placeholder="Buscar conteúdo, relatórios..." style={{flex:1,background:"transparent",border:"none",outline:"none",fontFamily:"inherit",fontSize:15,color:"#fff",padding:"14px 0"}} />
         {clientSearchQ && <button onClick={()=>setClientSearchQ("")} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
@@ -26441,7 +26510,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>}
       </div>
       {/* Appointments + Clock/Day — agency style */}
-      <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:isDesktop?"14px 32px 0":"14px 24px 0" }}>
+      <div style={{ display:"flex", alignItems:"stretch", gap:10, padding:"14px 24px 0" }}>
         <div onClick={()=>goTab("content")} style={{ flex:1, display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderRadius:14, background:"rgba(0,0,0,0.6)", border:`1px solid ${weekDemands.length>0?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)"}`, cursor:"pointer", transition:"all .15s", backdropFilter:"blur(8px)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:"rgba(255,255,255,0.35)"} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <div style={{flex:1}}><p style={{ fontSize:13, fontWeight:700, color:"#fff", lineHeight:1.1 }}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.45)", marginTop:1 }}>esta semana</p></div>
@@ -26457,7 +26526,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
       {/* Dynamic accent cards from config */}
-      <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr 1fr", gap:12, padding:isDesktop?"16px 32px 0":"16px 24px 0" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"16px 24px 0" }}>
         {clientCards.slice(0,isDesktop?4:2).map((ck,i) => {
           const CARD_DATA = { meta:{label:monthGoal.label,val:`${publishedThisMonth}/${targetPosts}`,sub:completedPct>=100?"Meta batida! 🎉":`${completedPct}% concluído`,action:()=>goTab("content")}, aprovacoes:{label:"APROVAÇÕES",val:String(pendingCount).padStart(2,"0"),sub:pendingCount>0?"Aguardando você":"Tudo aprovado",action:()=>goTab("content")}, growth:{label:"GROWTH SCORE",val:String(growthScore),sub:`Zona ${growthZone}`,action:()=>setSub("gamify")}, match:{label:"MATCH4BIZ",val:"—",sub:"Faça networking",action:()=>setSub("match4biz")} };
           const cd = CARD_DATA[ck]; if(!cd) return null;
@@ -26479,7 +26548,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
 
     {/* SECTIONS */}
-    <div style={{ display:"flex", flexDirection:"column", gap:isDesktop?20:8, marginTop:isDesktop?20:8, padding:isDesktop?"0 24px":0 }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:8 }}>
       <div className={isDesktop?"d-dash-grid":""}>
       {clientDashSections.map(sk => renderDashSection(sk))}
       </div>
@@ -26531,7 +26600,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
       </div></>;
     })()}
-  </div>; }
+  </>; }
 
       const renderContent = () => {
     const revision = demands.filter(d => d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected");
