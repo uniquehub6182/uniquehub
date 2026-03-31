@@ -26946,16 +26946,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 const catPhoto=(ct)=>({"trends":"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80","updates":"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","tips":"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80"}[ct]||"https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80");
                 const items = articles.length > 0 ? articles : [];
                 const a = dNewsOpen;
-                const toggleLike = async (artId) => {
-                  const uid = user?.id||"anon"; const cur = dNewsLikes[artId]||[];
-                  const liked = cur.includes(uid); const next = liked ? cur.filter(x=>x!==uid) : [...cur, uid];
-                  const updated = {...dNewsLikes, [artId]: next}; setDNewsLikes(updated);
-                  if (supabase) await supaSetSetting("news_likes_all", JSON.stringify(updated));
-                };
+                const toggleLike = async (artId) => { const uid = user?.id||"anon"; const cur = dNewsLikes[artId]||[]; const liked = cur.includes(uid); const next = liked ? cur.filter(x=>x!==uid) : [...cur, uid]; const updated = {...dNewsLikes, [artId]: next}; setDNewsLikes(updated); if (supabase) await supaSetSetting("news_likes_all", JSON.stringify(updated)); };
                 const isLiked = (artId) => (dNewsLikes[artId]||[]).includes(user?.id||"anon");
                 const likeCount = (artId) => (dNewsLikes[artId]||[]).length;
-                const shareArticle = (art) => { const url = art?.sourceUrl || window.location.href; const text = art?.title||"Artigo"; window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank"); };
+                const artUrl = (art) => art?.sourceUrl || (window.location.origin + "/#/news/" + (art?.supaId||art?.id||""));
+                const sUrl = (url) => encodeURIComponent(url || window.location.href);
+                const sTxt = (t) => encodeURIComponent(t || "");
                 return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  {/* Header */}
                   <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       {a && <button onClick={()=>setDNewsOpen(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",padding:0,color:B.text}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
@@ -26965,62 +26963,80 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                   </div>
                   {/* LIST VIEW */}
                   {!a && <div style={{flex:1,overflowY:"auto",minHeight:0}}>
-                    {items.length === 0 && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",height:"100%",flexDirection:"column",gap:8,opacity:0.4,padding:40}}>{IC.news(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum comunicado</p></div>}
-                    {items[0] && <div onClick={()=>setDNewsOpen(items[0])} style={{position:"relative",height:200,overflow:"hidden",cursor:"pointer"}}>
+                    {items.length===0 && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",height:"100%",flexDirection:"column",gap:8,opacity:0.4,padding:40}}>{IC.news(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum comunicado</p></div>}
+                    {items[0] && <div onClick={()=>setDNewsOpen(items[0])} style={{position:"relative",height:220,overflow:"hidden",cursor:"pointer"}}>
                       <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.8) 100%)"}}/>
-                      <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"4px 12px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[items[0].cat]||"Geral"}</span>
-                      <div style={{position:"absolute",bottom:12,left:12,right:12}}>
-                        <p style={{fontSize:16,fontWeight:800,color:"#fff",lineHeight:1.3}}>{items[0].title}</p>
-                        {items[0].summary&&<p style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4,lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{items[0].summary}</p>}
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.85) 100%)"}}/>
+                      <span style={{position:"absolute",top:14,left:14,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:10,fontWeight:800,padding:"5px 14px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[items[0].cat]||"Geral"}</span>
+                      <div style={{position:"absolute",bottom:16,left:16,right:16}}>
+                        <p style={{fontSize:17,fontWeight:900,color:"#fff",lineHeight:1.3,marginBottom:4}}>{items[0].title}</p>
+                        {items[0].summary&&<p style={{fontSize:12,color:"rgba(255,255,255,0.65)",lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{items[0].summary}</p>}
                         <div style={{display:"flex",alignItems:"center",gap:12,marginTop:8}}>
-                          <span style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{items[0].readTime||"3 min"}</span>
-                          {likeCount(items[0].supaId||items[0].id)>0&&<span style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>❤️ {likeCount(items[0].supaId||items[0].id)}</span>}
+                          <span style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{items[0].readTime||"3 min"} · {items[0].date||""}</span>
+                          {likeCount(items[0].supaId||items[0].id)>0&&<span style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>❤️ {likeCount(items[0].supaId||items[0].id)}</span>}
                         </div>
                       </div>
                     </div>}
-                    <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
-                      {items.slice(1,6).map((art,i) => <div key={art.id||i} onClick={()=>setDNewsOpen(art)} style={{display:"flex",gap:12,cursor:"pointer",padding:"8px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
-                        <div style={{width:80,height:60,borderRadius:10,overflow:"hidden",flexShrink:0}}>
+                    <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+                      {items.slice(1,8).map((art,i) => <div key={art.id||i} onClick={()=>setDNewsOpen(art)} style={{display:"flex",gap:12,cursor:"pointer",padding:"10px 12px",borderRadius:14,border:`1px solid ${B.border}`,background:B.bg,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.background=LIME+"06";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bg;}}>
+                        <div style={{width:72,height:56,borderRadius:10,overflow:"hidden",flexShrink:0}}>
                           <img src={art.photo||catPhoto(art.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                         </div>
                         <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                          <span style={{fontSize:9,fontWeight:700,color:catColor[art.cat]||"#6366F1",textTransform:"uppercase"}}>{catLabel[art.cat]||"Geral"}</span>
-                          <p style={{fontSize:13,fontWeight:700,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{art.title}</p>
-                          <div style={{display:"flex",gap:8,marginTop:3}}>
-                            <span style={{fontSize:10,color:B.muted}}>{art.readTime||"3 min"}</span>
-                            {likeCount(art.supaId||art.id)>0&&<span style={{fontSize:10,color:B.muted}}>❤️ {likeCount(art.supaId||art.id)}</span>}
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <span style={{fontSize:9,fontWeight:700,color:catColor[art.cat]||"#6366F1",textTransform:"uppercase"}}>{catLabel[art.cat]||"Geral"}</span>
+                            <span style={{fontSize:9,color:B.muted}}>{art.date||""}</span>
                           </div>
+                          <p style={{fontSize:13,fontWeight:700,lineHeight:1.3,marginTop:3,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{art.title}</p>
                         </div>
                       </div>)}
                     </div>
                   </div>}
                   {/* DETAIL VIEW */}
                   {a && <div style={{flex:1,overflowY:"auto",minHeight:0}}>
-                    {a.photo && <img src={a.photo} alt="" style={{width:"100%",height:160,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>}
-                    <div style={{padding:"14px 16px"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                        <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:8,background:(catColor[a.cat]||"#6366F1")+"15",color:catColor[a.cat]||"#6366F1"}}>{catLabel[a.cat]||"Geral"}</span>
-                        <span style={{fontSize:10,color:B.muted}}>{a.readTime||"3 min"} · {a.date||""}</span>
+                    {a.photo && <div style={{position:"relative",height:180,overflow:"hidden"}}>
+                      <img src={a.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.6) 100%)"}}/>
+                    </div>}
+                    <div style={{padding:"16px 18px 0"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                        <span style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:10,background:(catColor[a.cat]||"#6366F1")+"15",color:catColor[a.cat]||"#6366F1"}}>{catLabel[a.cat]||"Geral"}</span>
+                        <span style={{fontSize:11,color:B.muted}}>{a.readTime||"3 min"}</span>
+                        <span style={{fontSize:11,color:B.muted}}>{a.date||""}</span>
+                        {a.source && <span style={{fontSize:11,fontWeight:600,color:LIME,marginLeft:"auto"}}>{a.source} ↗</span>}
                       </div>
-                      <h3 style={{fontSize:18,fontWeight:900,lineHeight:1.3,marginBottom:8}}>{a.title}</h3>
-                      {a.summary && <p style={{fontSize:12,color:B.muted,lineHeight:1.5,marginBottom:12,paddingLeft:10,borderLeft:`3px solid ${LIME}`,fontStyle:"italic"}}>{a.summary}</p>}
-                      <div style={{fontSize:13,lineHeight:1.7,color:B.text}}>
-                        {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{marginBottom:12}}>{p}</p>)}
-                      </div>
-                      {a.tags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:12}}>
-                        {a.tags.map((t,ti)=><span key={ti} style={{fontSize:10,fontWeight:600,padding:"3px 10px",borderRadius:8,background:`${LIME}10`,color:LIME}}>#{t}</span>)}
-                      </div>}
+                      <h3 style={{fontSize:20,fontWeight:900,lineHeight:1.25,marginBottom:10,color:B.text}}>{a.title}</h3>
+                      {a.summary && <p style={{fontSize:13,color:B.muted,lineHeight:1.6,marginBottom:16,paddingLeft:12,borderLeft:`3px solid ${LIME}`,fontStyle:"italic"}}>{a.summary}</p>}
                     </div>
-                    {/* Like + Share bar */}
-                    <div style={{padding:"10px 16px",borderTop:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                      <button onClick={(e)=>{e.stopPropagation();toggleLike(a.supaId||a.id);}} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 14px",borderRadius:10,border:`1px solid ${isLiked(a.supaId||a.id)?"#EF4444":B.border}`,background:isLiked(a.supaId||a.id)?"#EF444410":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:isLiked(a.supaId||a.id)?"#EF4444":B.text}}>{isLiked(a.supaId||a.id)?"❤️":"🤍"} {likeCount(a.supaId||a.id)||"Curtir"}</button>
-                      <button onClick={(e)=>{e.stopPropagation();shareArticle(a);}} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 14px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.text}}>📤 WhatsApp</button>
-                      <button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(a.sourceUrl||window.location.href);}} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 14px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.text}}>🔗 Copiar</button>
+                    <div style={{padding:"0 18px 16px"}}>
+                      {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n\n").filter(Boolean).map((p,pi) => <p key={pi} style={{fontSize:14,lineHeight:1.8,marginBottom:14,color:B.text,fontWeight:p.length<50&&!p.startsWith("•")&&!p.startsWith("'")?700:400}}>{p}</p>)}
+                    </div>
+                    {a.tags?.length>0 && <div style={{padding:"0 18px 12px",display:"flex",flexWrap:"wrap",gap:6}}>
+                      {a.tags.map((t,ti)=><span key={ti} style={{fontSize:11,fontWeight:600,padding:"5px 12px",borderRadius:10,background:`${LIME}10`,color:LIME}}>#{t}</span>)}
+                    </div>}
+                    {/* Like bar */}
+                    <div style={{margin:"0 14px 10px",padding:"12px 16px",borderRadius:14,background:B.bg,border:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <button onClick={(e)=>{e.stopPropagation();toggleLike(a.supaId||a.id);}} style={{display:"flex",alignItems:"center",gap:8,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:isLiked(a.supaId||a.id)?"#EF4444":B.muted,padding:0}}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill={isLiked(a.supaId||a.id)?"#EF4444":"none"} stroke={isLiked(a.supaId||a.id)?"#EF4444":"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                        {isLiked(a.supaId||a.id)?"Curtido":"Curtir"}
+                      </button>
+                      {likeCount(a.supaId||a.id)>0&&<span style={{fontSize:12,color:B.muted}}>{likeCount(a.supaId||a.id)} curtida{likeCount(a.supaId||a.id)!==1?"s":""}</span>}
+                    </div>
+                    {/* Share bar */}
+                    <div style={{margin:"0 14px 16px",padding:"12px 16px",borderRadius:14,background:B.bg,border:`1px solid ${B.border}`}}>
+                      <p style={{fontSize:11,fontWeight:700,color:B.muted,marginBottom:8}}>Compartilhar</p>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <a href={"https://wa.me/?text="+sTxt(a.title+" — "+(a.summary||"").substring(0,100))+"%20"+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#25D366",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>WhatsApp</a>
+                        <a href={"https://www.facebook.com/sharer/sharer.php?u="+sUrl(artUrl(a))+"&quote="+sTxt(a.title)} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#4267B2",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>Facebook</a>
+                        <a href={"https://twitter.com/intent/tweet?text="+sTxt(a.title)+"&url="+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#000",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>X</a>
+                        <a href={"https://www.linkedin.com/sharing/share-offsite/?url="+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#0A66C2",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>LinkedIn</a>
+                        <button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(artUrl(a));}} style={{padding:"7px 14px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.text}}>🔗 Copiar link</button>
+                      </div>
                     </div>
                   </div>}
                 </div>;
               }
+
 
               /* ── DEFAULT WIDGET (uses renderDashSection inside container) ── */
               return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
