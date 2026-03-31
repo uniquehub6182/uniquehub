@@ -26473,12 +26473,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </div>
           </div>
         </div>
+        {/* ── SHORTCUTS ROW + COMPROMISSOS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-            {clientPills.map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); };
-              return <div key={pk} onClick={nav} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}}>
+            <button onClick={()=>setShowDashEdit(true)} style={{width:38,height:38,borderRadius:10,background:B.bgCard,border:`1px solid ${B.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+            {clientPills.slice(0,5).map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); };
+              return <div key={pk} onClick={nav} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
                 <div style={{width:24,height:24,borderRadius:7,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}
               </div>; })}
+            {/* Compromissos da semana */}
+            <div onClick={()=>goTab("content")} style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10,padding:"10px 18px",borderRadius:14,background:weekDemands.length>0?`${LIME}10`:B.bgCard,border:`1px solid ${weekDemands.length>0?LIME+"30":B.border}`,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:B.muted} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <div><p style={{fontSize:13,fontWeight:700,color:B.text,lineHeight:1.1}}>{weekDemands.length>0?`${weekDemands.length} compromisso${weekDemands.length>1?"s":""}`:"Sem compromissos"}</p><p style={{fontSize:9,fontWeight:600,color:B.muted,marginTop:1}}>esta semana</p></div>
+              {weekDemands.length>0 && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
+            </div>
           </div>
         </div>
         {/* ── BANNER CARROSSEL ── */}
