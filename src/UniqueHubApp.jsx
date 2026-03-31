@@ -3945,7 +3945,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     return (
       <div className="desktop-dash" style={{minHeight:"100vh",background:B.transparent?"transparent":B.bg,paddingBottom:100,margin:0}}>
         {/* ── HEADER ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
+        <div style={{padding:"0 32px 0"}}>
           <div style={{background:"#000",borderRadius:"0 0 24px 24px",padding:"24px 28px 25px",position:"relative",overflow:"visible"}}>
             <div style={{display:"flex",gap:20}}>
               {/* Avatar — coluna esquerda, ocupa toda altura, vaza pra baixo */}
