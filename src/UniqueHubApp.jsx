@@ -25583,6 +25583,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [dEditMode, setDEditMode] = useState(false);
   const [dEditTypes, setDEditTypes] = useState([]);
   const [dEditComment, setDEditComment] = useState("");
+  const [dNewsOpen, setDNewsOpen] = useState(null); /* article object being read inline */
+  const [dNewsLikes, setDNewsLikes] = useState({});
+  React.useEffect(() => { supaGetSetting("news_likes_all").then(v => { try { if (v) setDNewsLikes(JSON.parse(v)); } catch {} }); }, []);
   /* ── Dashboard AI Widget State ── */
   const [dAiQ, setDAiQ] = useState("");
   const [dAiMsgs, setDAiMsgs] = useState([]);
@@ -26942,6 +26945,89 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                     <input value={dAiQ} onChange={e=>setDAiQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();dAiSend(dAiQ);}}} placeholder="Pergunte algo à IA..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,fontFamily:"inherit",fontSize:13,color:B.text,outline:"none"}} />
                     <button onClick={()=>dAiSend(dAiQ)} disabled={!dAiQ.trim()||dAiLoad} style={{width:40,height:40,borderRadius:12,background:dAiQ.trim()&&!dAiLoad?LIME:B.border,border:"none",cursor:dAiQ.trim()&&!dAiLoad?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dAiQ.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
                   </div>
+                </div>;
+              }
+
+              /* ── NEWS WIDGET ── */
+              if (pk === "news") {
+                const catColor={"trends":"#7C3AED","updates":"#2563EB","tips":"#D97706","cases":"#059669","novidade":"#EC4899","branding":"#8B5CF6","ia":"#6366F1","geral":"#6366F1"};
+                const catLabel={"trends":"Tendência","updates":"Atualização","tips":"Dica","cases":"Case","novidade":"Novidade","branding":"Branding","ia":"IA","geral":"Geral"};
+                const catPhoto=(ct)=>({"trends":"https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&q=80","updates":"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&q=80","tips":"https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&q=80"}[ct]||"https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=600&q=80");
+                const items = articles.length > 0 ? articles : [];
+                const a = dNewsOpen;
+                const toggleLike = async (artId) => {
+                  const uid = user?.id||"anon"; const cur = dNewsLikes[artId]||[];
+                  const liked = cur.includes(uid); const next = liked ? cur.filter(x=>x!==uid) : [...cur, uid];
+                  const updated = {...dNewsLikes, [artId]: next}; setDNewsLikes(updated);
+                  if (supabase) await supaSetSetting("news_likes_all", JSON.stringify(updated));
+                };
+                const isLiked = (artId) => (dNewsLikes[artId]||[]).includes(user?.id||"anon");
+                const likeCount = (artId) => (dNewsLikes[artId]||[]).length;
+                const shareArticle = (art) => { const url = art?.sourceUrl || window.location.href; const text = art?.title||"Artigo"; window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank"); };
+                return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {a && <button onClick={()=>setDNewsOpen(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",padding:0,color:B.text}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
+                      {IC.news(LIME)}<span style={{fontSize:14,fontWeight:700}}>Comunicados</span>
+                    </div>
+                    <span onClick={()=>setSub("news")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver todos <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                  </div>
+                  {/* LIST VIEW */}
+                  {!a && <div style={{flex:1,overflowY:"auto",minHeight:0}}>
+                    {items.length === 0 && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",height:"100%",flexDirection:"column",gap:8,opacity:0.4,padding:40}}>{IC.news(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum comunicado</p></div>}
+                    {items[0] && <div onClick={()=>setDNewsOpen(items[0])} style={{position:"relative",height:200,overflow:"hidden",cursor:"pointer"}}>
+                      <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                      <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.8) 100%)"}}/>
+                      <span style={{position:"absolute",top:12,left:12,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:9,fontWeight:800,padding:"4px 12px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[items[0].cat]||"Geral"}</span>
+                      <div style={{position:"absolute",bottom:12,left:12,right:12}}>
+                        <p style={{fontSize:16,fontWeight:800,color:"#fff",lineHeight:1.3}}>{items[0].title}</p>
+                        {items[0].summary&&<p style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:4,lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{items[0].summary}</p>}
+                        <div style={{display:"flex",alignItems:"center",gap:12,marginTop:8}}>
+                          <span style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{items[0].readTime||"3 min"}</span>
+                          {likeCount(items[0].supaId||items[0].id)>0&&<span style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>❤️ {likeCount(items[0].supaId||items[0].id)}</span>}
+                        </div>
+                      </div>
+                    </div>}
+                    <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
+                      {items.slice(1,6).map((art,i) => <div key={art.id||i} onClick={()=>setDNewsOpen(art)} style={{display:"flex",gap:12,cursor:"pointer",padding:"8px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+                        <div style={{width:80,height:60,borderRadius:10,overflow:"hidden",flexShrink:0}}>
+                          <img src={art.photo||catPhoto(art.cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        </div>
+                        <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"center"}}>
+                          <span style={{fontSize:9,fontWeight:700,color:catColor[art.cat]||"#6366F1",textTransform:"uppercase"}}>{catLabel[art.cat]||"Geral"}</span>
+                          <p style={{fontSize:13,fontWeight:700,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{art.title}</p>
+                          <div style={{display:"flex",gap:8,marginTop:3}}>
+                            <span style={{fontSize:10,color:B.muted}}>{art.readTime||"3 min"}</span>
+                            {likeCount(art.supaId||art.id)>0&&<span style={{fontSize:10,color:B.muted}}>❤️ {likeCount(art.supaId||art.id)}</span>}
+                          </div>
+                        </div>
+                      </div>)}
+                    </div>
+                  </div>}
+                  {/* DETAIL VIEW */}
+                  {a && <div style={{flex:1,overflowY:"auto",minHeight:0}}>
+                    {a.photo && <img src={a.photo} alt="" style={{width:"100%",height:160,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>}
+                    <div style={{padding:"14px 16px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                        <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:8,background:(catColor[a.cat]||"#6366F1")+"15",color:catColor[a.cat]||"#6366F1"}}>{catLabel[a.cat]||"Geral"}</span>
+                        <span style={{fontSize:10,color:B.muted}}>{a.readTime||"3 min"} · {a.date||""}</span>
+                      </div>
+                      <h3 style={{fontSize:18,fontWeight:900,lineHeight:1.3,marginBottom:8}}>{a.title}</h3>
+                      {a.summary && <p style={{fontSize:12,color:B.muted,lineHeight:1.5,marginBottom:12,paddingLeft:10,borderLeft:`3px solid ${LIME}`,fontStyle:"italic"}}>{a.summary}</p>}
+                      <div style={{fontSize:13,lineHeight:1.7,color:B.text}}>
+                        {(a.body||"").replace(/^__PHOTO__:[^\n]*\n/,"").split("\n").filter(Boolean).map((p,pi) => <p key={pi} style={{marginBottom:12}}>{p}</p>)}
+                      </div>
+                      {a.tags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:12}}>
+                        {a.tags.map((t,ti)=><span key={ti} style={{fontSize:10,fontWeight:600,padding:"3px 10px",borderRadius:8,background:`${LIME}10`,color:LIME}}>#{t}</span>)}
+                      </div>}
+                    </div>
+                    {/* Like + Share bar */}
+                    <div style={{padding:"10px 16px",borderTop:`1px solid ${B.border}`,display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                      <button onClick={(e)=>{e.stopPropagation();toggleLike(a.supaId||a.id);}} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 14px",borderRadius:10,border:`1px solid ${isLiked(a.supaId||a.id)?"#EF4444":B.border}`,background:isLiked(a.supaId||a.id)?"#EF444410":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:isLiked(a.supaId||a.id)?"#EF4444":B.text}}>{isLiked(a.supaId||a.id)?"❤️":"🤍"} {likeCount(a.supaId||a.id)||"Curtir"}</button>
+                      <button onClick={(e)=>{e.stopPropagation();shareArticle(a);}} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 14px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.text}}>📤 WhatsApp</button>
+                      <button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(a.sourceUrl||window.location.href);}} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 14px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.text}}>🔗 Copiar</button>
+                    </div>
+                  </div>}
                 </div>;
               }
 
