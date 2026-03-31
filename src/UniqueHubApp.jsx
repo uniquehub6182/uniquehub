@@ -27382,8 +27382,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {tab === "content" && renderContent()}
           {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
           {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
-          {tab === "more" && <>
-            {[
+          {tab === "more" && (() => {
+            const moreItems = [
               {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify",navKey:null},
               {l:"Conteúdo",ic:IC.content,d:"Posts para aprovar",sub:null,tab:"content",navKey:"content"},
               {l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz",navKey:null},
@@ -27405,18 +27405,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               if (item.navKey && navTabKeys.includes(item.navKey)) return false;
               if (item.tab && navTabKeys.includes(item.tab)) return false;
               return true;
-            }).map((item,i) => (
-              <Card key={i} style={{ marginBottom:6, cursor:item.sub?"pointer":"default" }} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}}><div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
-                <div style={{ flex:1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted }}>{item.d}</p></div>
-                {(item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>}
+            });
+            return <><div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?12:0 }}>{moreItems.map((item,i) => (
+              <Card key={i} style={{ marginBottom:isDesktop?0:6, cursor:item.sub?"pointer":"default" }} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}}><div style={{ display:"flex", alignItems:isDesktop?"flex-start":"center", flexDirection:isDesktop?"column":"row", gap:isDesktop?8:12, textAlign:isDesktop?"center":"left" }}>
+                <div style={{ width:isDesktop?44:36, height:isDesktop?44:36, borderRadius:isDesktop?14:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent, margin:isDesktop?"0 auto":"0" }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
+                <div style={{ flex:isDesktop?"initial":1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
+                {!isDesktop && ((item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>)}
               </div></Card>
-            ))}
-            <button onClick={onLogout} style={{ width:"100%", marginTop:16, padding:"14px 0", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
-          </>}
+            ))}</div>
+            <button onClick={onLogout} style={{ width:isDesktop?"auto":"100%", marginTop:16, padding:"14px 24px", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
+          </>; })()}
         </div>
       </div>
-    </div>
     </div>
     </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
