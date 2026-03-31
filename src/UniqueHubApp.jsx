@@ -27419,6 +27419,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
     </div>
+    </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
     {/* Navbar - hide when sub-page is active */}
     {!hasSub && <nav className="bnav" style={{ overflow:"visible" }}>
