@@ -25517,9 +25517,8 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
 html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:auto!important;min-height:100vh!important;overflow:visible!important;inset:auto!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
 html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
-html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important}
+html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important;padding-left:32px!important;padding-right:32px!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
