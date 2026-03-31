@@ -798,8 +798,8 @@ const supaCreateNotification = async (userId, type, title, body, icon, link) => 
 const supaCreateNotificationForAll = async (type, title, body, icon, link, excludeUserId) => {
   if (!supabase) return;
   try {
-    /* Only notify collaborators (role != 'client'), not client portal users */
-    const { data: profiles } = await supabase.from("profiles").select("id, role").neq("role", "client");
+    /* Only notify collaborators (role != 'cliente'), not client portal users */
+    const { data: profiles } = await supabase.from("profiles").select("id, role").not("role", "eq", "cliente");
     const users = (profiles || []).filter(u => u.id !== excludeUserId);
     if (users.length === 0) return;
     const rows = users.map(u => ({ user_id: u.id, type, title, body: body || "", link: link || "" }));
