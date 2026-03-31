@@ -26704,14 +26704,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 const sorted = [...pending, ...allDemands.filter(d => !(d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status))];
                 const idx = Math.min(dContentIdx, sorted.length - 1);
                 const d = sorted[idx];
+                const netIcon = (n) => { const nl = (n||"").toLowerCase(); if(nl.includes("instagram")) return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>; if(nl.includes("facebook")) return <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>; if(nl.includes("tiktok")) return <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.88-2.88 2.89 2.89 0 012.88-2.88c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.3a6.34 6.34 0 0010.34 4.89 6.26 6.26 0 001.88-4.48V9.49a8.2 8.2 0 004.22 1.16V7.2a4.83 4.83 0 01-1-.51z"/></svg>; if(nl.includes("linkedin")) return <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>; return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>; };
                 return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
                   {/* Header */}
                   <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.content(LIME)}<span style={{fontSize:14,fontWeight:700}}>Conteúdos</span>{pending.length>0&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:8,background:LIME,color:"#0D0D0D"}}>{pending.length}</span>}</div>
                     <span onClick={()=>goTab("content")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver todos <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
                   </div>
-                  {/* Body — single post detail */}
-                  {!d ? <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>{IC.content(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum conteúdo</p></div> : <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+                  {/* Body — single scroll for everything */}
+                  {!d ? <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>{IC.content(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum conteúdo</p></div> : <div style={{flex:1,overflowY:"auto",minHeight:0}}>
                     {(() => {
                       const st=d.steps?.client?.status; const isPend=d.steps?.client?.mode==="sent_to_client"&&!st;
                       const isAppr=st==="approved"; const isRej=st==="rejected"||st==="revision";
@@ -26726,44 +26727,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                       const st2=d.scheduling?.time||d.schedule_time;
                       const isReels=(d.format||"").toLowerCase()==="reels"||(d.format||"").toLowerCase()==="shorts";
                       return <>
-                        {/* Status bar */}
-                        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",background:stColor+"08",borderBottom:`1px solid ${stColor}15`,flexShrink:0}}>
-                          <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <div style={{width:8,height:8,borderRadius:4,background:stColor}}/>
-                            <span style={{fontSize:12,fontWeight:700,color:stColor}}>{stLabel}</span>
+                        {/* Title + Status row */}
+                        <div style={{padding:"14px 16px 10px"}}>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                            <p style={{fontSize:15,fontWeight:800,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:10}}>{d.title||d.type}</p>
+                            <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,padding:"4px 10px",borderRadius:8,background:stColor+"12"}}>
+                              <div style={{width:7,height:7,borderRadius:4,background:stColor}}/>
+                              <span style={{fontSize:11,fontWeight:700,color:stColor}}>{stLabel}</span>
+                            </div>
                           </div>
-                          <div style={{display:"flex",gap:4}}>
-                            {(d.networks||[d.network]).filter(Boolean).map((n,i)=><span key={i} style={{fontSize:9,fontWeight:600,padding:"2px 8px",borderRadius:5,background:B.bg,border:`1px solid ${B.border}`,color:B.text}}>{n}</span>)}
-                            <span style={{fontSize:9,fontWeight:600,padding:"2px 8px",borderRadius:5,background:B.bg,border:`1px solid ${B.border}`,color:B.text}}>{d.format||d.type}</span>
+                          {/* Networks + Format + Schedule */}
+                          <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+                            {(d.networks||[d.network]).filter(Boolean).map((n,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,padding:"5px 10px",borderRadius:8,background:B.bg,border:`1px solid ${B.border}`,color:B.text}}>{netIcon(n)}{n}</span>)}
+                            <span style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,padding:"5px 10px",borderRadius:8,background:LIME+"10",border:`1px solid ${LIME}25`,color:LIME}}>{d.format||d.type}</span>
+                            {sd && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:11,fontWeight:600,padding:"5px 10px",borderRadius:8,background:B.bg,border:`1px solid ${B.border}`,color:B.text}}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                              {(() => { try { return new Date(sd+"T"+(st2||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+(st2?" "+st2:""); } catch { return sd; } })()}
+                            </span>}
                           </div>
                         </div>
-                        {/* Media — carousel or video */}
-                        <div style={{flexShrink:0}}>
+                        {/* Media — compact carousel or video */}
+                        <div style={{maxHeight:220,overflow:"hidden",margin:"0 14px",borderRadius:14,border:`1px solid ${B.border}`}}>
                           {isReels&&vidFiles.length>0 ? (() => {
                             const coverSlides=imgFiles.filter(f=>f.isCover);
                             const allSlides=[...(coverSlides.length>0?coverSlides:imgFiles),...vidFiles];
                             return <_ReelsCarousel allSlides={allSlides} coverCount={coverSlides.length||imgFiles.length} B={B} />;
                           })() : imgFiles.length>0 ? <_CarouselView imgFiles={imgFiles} B={B} /> : null}
                         </div>
-                        {/* Schedule info */}
-                        {sd && <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,background:LIME+"06",borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                          <span style={{fontSize:11,fontWeight:600,color:B.text}}>{(() => { try { return new Date(sd+"T"+(st2||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"long"})+(st2?" às "+st2:""); } catch { return sd+(st2?" às "+st2:""); } })()}</span>
-                        </div>}
-                        {/* Caption */}
-                        <div style={{padding:"12px 14px",flex:1}}>
-                          <p style={{fontSize:14,fontWeight:800,marginBottom:4}}>{d.title||d.type}</p>
-                          {caption && <p style={{fontSize:12,lineHeight:1.6,whiteSpace:"pre-wrap",color:B.text,opacity:0.8,maxHeight:120,overflowY:"auto"}}>{caption}</p>}
+                        {/* Caption — no inner scroll, flows with page */}
+                        {caption && <div style={{padding:"12px 16px 6px"}}>
+                          <p style={{fontSize:12,lineHeight:1.6,whiteSpace:"pre-wrap",color:B.text,opacity:0.8}}>{caption}</p>
                           {hashtags && <p style={{fontSize:11,color:LIME,marginTop:6}}>{hashtags}</p>}
-                        </div>
+                        </div>}
                         {/* Actions */}
-                        {isPend && <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,display:"flex",gap:8,flexShrink:0}}>
+                        {isPend && <div style={{padding:"10px 14px",display:"flex",gap:8}}>
                           <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"10px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar</button>
                           <button onClick={()=>{const fb=prompt("O que precisa ser alterado?");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
                           <button onClick={()=>respondDemand(d,"rejected","")} style={{padding:"10px 14px",borderRadius:10,background:"transparent",border:`1.5px solid ${B.red||"#FF6B6B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.red||"#FF6B6B"}}>Reprovar</button>
                         </div>}
-                        {isAppr && <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,textAlign:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:700,color:B.green}}>✅ {sd?"Aprovado e agendado":"Aprovado"}</span></div>}
-                        {isRej && <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,textAlign:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:600,color:B.orange||"#F59E0B"}}>A agência está trabalhando nas edições</span></div>}
+                        {isAppr && <div style={{padding:"12px 14px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:B.green}}>✅ {sd?"Aprovado e agendado":"Aprovado"}</span></div>}
+                        {isRej && <div style={{padding:"12px 14px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:600,color:B.orange||"#F59E0B"}}>A agência está trabalhando nas edições</span></div>}
                       </>;
                     })()}
                   </div>}
