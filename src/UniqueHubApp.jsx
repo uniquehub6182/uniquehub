@@ -25834,10 +25834,21 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     try {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
 
-      /* Determine scheduling FIRST before any DB writes */
-      const scheduling = demand.scheduling || {};
-      const schedDate = scheduling.date || demand.schedule_date;
-      const schedTime = scheduling.time || demand.schedule_time;
+      /* Always refetch fresh scheduling from Supabase to avoid stale data */
+      let freshScheduling = demand.scheduling || {};
+      let freshSchedDate = demand.schedule_date;
+      let freshSchedTime = demand.schedule_time;
+      if (supabase) {
+        const { data: freshDemand } = await supabase.from("demands").select("scheduling, schedule_date, schedule_time").eq("id", demand.id).single();
+        if (freshDemand) {
+          freshScheduling = typeof freshDemand.scheduling === "object" && freshDemand.scheduling ? freshDemand.scheduling : (typeof freshDemand.scheduling === "string" ? (() => { try { return JSON.parse(freshDemand.scheduling); } catch { return {}; } })() : {});
+          freshSchedDate = freshDemand.schedule_date;
+          freshSchedTime = freshDemand.schedule_time;
+        }
+      }
+      const schedDate = freshScheduling.date || freshSchedDate;
+      const schedTime = freshScheduling.time || freshSchedTime;
+      console.log("[respondDemand]", demand.title, "status:", status, "schedDate:", schedDate, "schedTime:", schedTime, "freshScheduling:", JSON.stringify(freshScheduling));
 
       let autoRescheduled = false;
       let useSchedDate = schedDate;
@@ -25857,10 +25868,17 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
 
       const hasFutureSchedule = status === "approved" && (getScheduledTimestamp({ date: useSchedDate, time: useSchedTime }) || autoRescheduled);
       const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : demand.stage) : demand.stage;
+      console.log("[respondDemand] hasFutureSchedule:", hasFutureSchedule, "autoRescheduled:", autoRescheduled, "targetStage:", targetStage, "useSchedDate:", useSchedDate, "useSchedTime:", useSchedTime);
 
       /* Single DB write with correct stage */
       const updatePayload = { steps: JSON.stringify(steps), stage: targetStage };
       if (autoRescheduled) updatePayload.scheduling = { date: useSchedDate, time: useSchedTime };
+      /* Ensure schedule_date and schedule_time columns are synced for publish-scheduled cron */
+      if (targetStage === "scheduled" && useSchedDate) {
+        updatePayload.schedule_date = useSchedDate;
+        updatePayload.schedule_time = useSchedTime || null;
+        if (!updatePayload.scheduling) updatePayload.scheduling = { date: useSchedDate, time: useSchedTime };
+      }
       await supabase.from("demands").update(updatePayload).eq("id", demand.id);
       setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, steps, stage: targetStage, ...(autoRescheduled ? { scheduling: { date: useSchedDate, time: useSchedTime } } : {}) } : d));
 
