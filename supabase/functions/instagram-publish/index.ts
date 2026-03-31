@@ -5,7 +5,7 @@ const json = (d: unknown, s=200) => new Response(JSON.stringify(d), { headers:{.
 
 async function waitReady(id: string, token: string) {
   for (let i = 0; i < 60; i++) {
-    const r = await fetch(`https://graph.instagram.com/v21.0/${id}?fields=status_code&access_token=${token}`);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${id}?fields=status_code&access_token=${token}`);
     const d = await r.json();
     if (d.status_code === "FINISHED") return;
     if (d.status_code === "ERROR") throw new Error("Instagram processing error: " + JSON.stringify(d));
@@ -22,11 +22,29 @@ serve(async (req) => {
     const urls: string[] = body.image_urls || (body.image_url ? [body.image_url] : []);
     if (!client_id || !urls.length) throw new Error("Missing client_id or media URLs");
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    /* Try ig_token first, then fallback to social_tokens table */
+    let uid = "", at = "";
     const { data: s } = await sb.from("app_settings").select("value").eq("key", `ig_token_${client_id}`).single();
-    if (!s?.value) throw new Error("Instagram não conectado");
-    const tk = JSON.parse(s.value);
-    if (!tk.ig_user_id || !tk.access_token) throw new Error("Token inválido");
-    const uid = tk.ig_user_id, at = tk.access_token;
+    if (s?.value) {
+      const tk = JSON.parse(s.value);
+      if (tk.ig_user_id && tk.access_token) { uid = tk.ig_user_id; at = tk.access_token; }
+    }
+    if (!uid || !at) {
+      /* Fallback: social_tokens table with page token */
+      const { data: st } = await sb.from("social_tokens").select("access_token,ig_user_id,page_id").eq("client_id", client_id).eq("platform", "meta").single();
+      if (st?.access_token && st?.page_id) {
+        /* Get page-specific token and IG business account */
+        const pRes = await fetch(`https://graph.facebook.com/v21.0/${st.page_id}?fields=access_token,instagram_business_account&access_token=${st.access_token}`);
+        const pData = await pRes.json();
+        if (pData.access_token && pData.instagram_business_account?.id) {
+          uid = pData.instagram_business_account.id;
+          at = pData.access_token;
+          /* Update ig_token cache for next time */
+          await sb.from("app_settings").upsert({ key: `ig_token_${client_id}`, value: JSON.stringify({ ig_user_id: uid, access_token: at, page_id: st.page_id }) }, { onConflict: "key" });
+        }
+      }
+    }
+    if (!uid || !at) throw new Error("Instagram não conectado — reconecte nas configurações");
     const type = (media_type || "FEED").toUpperCase();
     const carousel = urls.length > 1 && type !== "STORIES" && type !== "REELS";
     let cid: string;
@@ -37,7 +55,7 @@ serve(async (req) => {
       if (caption) p.append("caption", caption);
       if (cover_url) p.append("cover_url", cover_url);
       if (body.share_to_feed !== false) p.append("share_to_feed", "true");
-      const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+      const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       cid = d.id;
@@ -45,7 +63,7 @@ serve(async (req) => {
       /* ── CAROUSEL ── */
       const kids = await Promise.all(urls.map(async (url: string) => {
         const p = new URLSearchParams({ access_token: at, image_url: url, is_carousel_item: "true" });
-        const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+        const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
         const d = await r.json();
         if (d.error) throw new Error(d.error.message);
         return d.id as string;
@@ -53,7 +71,7 @@ serve(async (req) => {
       await Promise.all(kids.map(id => waitReady(id, at)));
       const p = new URLSearchParams({ access_token: at, media_type: "CAROUSEL", children: kids.join(",") });
       if (caption) p.append("caption", caption);
-      const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+      const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       cid = d.id;
@@ -62,13 +80,13 @@ serve(async (req) => {
       const results: string[] = [];
       for (const url of urls) {
         const p = new URLSearchParams({ access_token: at, image_url: url, media_type: "STORIES" });
-        const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+        const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
         const d = await r.json();
         if (d.error) throw new Error(d.error.message);
         const storyId = d.id;
         await waitReady(storyId, at);
         const pp = new URLSearchParams({ access_token: at, creation_id: storyId });
-        const pr = await fetch(`https://graph.instagram.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
+        const pr = await fetch(`https://graph.facebook.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
         const pd = await pr.json();
         if (pd.error) throw new Error(pd.error.message);
         results.push(pd.id);
@@ -78,7 +96,7 @@ serve(async (req) => {
       /* ── FEED ── */
       const p = new URLSearchParams({ access_token: at, image_url: urls[0] });
       if (caption) p.append("caption", caption);
-      const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+      const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       cid = d.id;
@@ -86,7 +104,7 @@ serve(async (req) => {
 
     await waitReady(cid, at);
     const pp = new URLSearchParams({ access_token: at, creation_id: cid });
-    const pr = await fetch(`https://graph.instagram.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
+    const pr = await fetch(`https://graph.facebook.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
     const pd = await pr.json();
     if (pd.error) throw new Error(pd.error.message);
     const label = type === "REELS" ? "Reels" : carousel ? "Carrossel" : type === "STORIES" ? "Story" : "Post";

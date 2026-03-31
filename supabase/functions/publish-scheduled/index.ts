@@ -13,7 +13,7 @@ async function waitReady(id: string, token: string, isVideo = false) {
   const maxAttempts = isVideo ? 60 : 15;
   const baseDelay = isVideo ? 2000 : 300;
   for (let i = 0; i < maxAttempts; i++) {
-    const r = await fetch(`https://graph.instagram.com/v21.0/${id}?fields=status_code&access_token=${token}`);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${id}?fields=status_code&access_token=${token}`);
     const d = await r.json();
     if (d.status_code === "FINISHED") return;
     if (d.status_code === "ERROR") throw new Error("Instagram processing error: " + (d.status || "unknown"));
@@ -23,11 +23,25 @@ async function waitReady(id: string, token: string, isVideo = false) {
 }
 
 async function publishInstagram(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
+  /* Try ig_token first, then fallback to social_tokens table */
+  let uid = "", at = "";
   const { data: s } = await sb.from("app_settings").select("value").eq("key", `ig_token_${clientId}`).single();
-  if (!s?.value) throw new Error("Instagram não conectado");
-  const tk = JSON.parse(s.value);
-  if (!tk.ig_user_id || !tk.access_token) throw new Error("Token inválido");
-  const uid = tk.ig_user_id, at = tk.access_token;
+  if (s?.value) {
+    try { const tk = JSON.parse(s.value); if (tk.ig_user_id && tk.access_token) { uid = tk.ig_user_id; at = tk.access_token; } } catch {}
+  }
+  if (!uid || !at) {
+    const { data: st } = await sb.from("social_tokens").select("access_token,ig_user_id,page_id").eq("client_id", clientId).eq("platform", "meta").single();
+    if (st?.access_token && st?.page_id) {
+      const pRes = await fetch(`https://graph.facebook.com/v21.0/${st.page_id}?fields=access_token,instagram_business_account&access_token=${st.access_token}`);
+      const pData = await pRes.json();
+      if (pData.access_token && pData.instagram_business_account?.id) {
+        uid = pData.instagram_business_account.id; at = pData.access_token;
+        await sb.from("app_settings").upsert({ key: `ig_token_${clientId}`, value: JSON.stringify({ ig_user_id: uid, access_token: at, page_id: st.page_id }) }, { onConflict: "key" });
+        console.log(`[IG] Updated ig_token cache for ${clientId} from social_tokens`);
+      }
+    }
+  }
+  if (!uid || !at) throw new Error("Instagram não conectado — reconecte nas configurações");
   const type = (mediaType || "FEED").toUpperCase();
   const carousel = urls.length > 1 && type !== "STORIES" && type !== "REELS";
 
@@ -39,7 +53,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
     /* If there's a second URL, use it as cover image */
     if (urls.length > 1 && urls[1]) p.append("cover_url", urls[1]);
     console.log(`[IG Reels] Creating container with video: ${urls[0].substring(0, 80)}`);
-    const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+    const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
     console.log(`[IG Reels] Container response:`, JSON.stringify(d).substring(0, 200));
     if (d.error) throw new Error(d.error.message);
@@ -47,7 +61,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
   } else if (carousel) {
     const kids = await Promise.all(urls.map(async (url: string) => {
       const p = new URLSearchParams({ access_token: at, image_url: url, is_carousel_item: "true" });
-      const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+      const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       return d.id as string;
@@ -55,7 +69,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
     await Promise.all(kids.map(id => waitReady(id, at)));
     const p = new URLSearchParams({ access_token: at, media_type: "CAROUSEL", children: kids.join(",") });
     if (caption) p.append("caption", caption);
-    const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+    const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
@@ -63,7 +77,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
     const p = new URLSearchParams({ access_token: at, image_url: urls[0] });
     if (type === "STORIES") p.append("media_type", "STORIES");
     if (caption && type !== "STORIES") p.append("caption", caption);
-    const r = await fetch(`https://graph.instagram.com/v21.0/${uid}/media`, { method: "POST", body: p });
+    const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
@@ -71,7 +85,7 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
 
   await waitReady(cid, at, type === "REELS");
   const pp = new URLSearchParams({ access_token: at, creation_id: cid });
-  const pr = await fetch(`https://graph.instagram.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
+  const pr = await fetch(`https://graph.facebook.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
   const pd = await pr.json();
   if (pd.error) throw new Error(pd.error.message);
   return { success: true, media_id: pd.id, media_type: carousel ? "CAROUSEL" : type };
