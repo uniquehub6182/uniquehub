@@ -26510,6 +26510,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             {clientDashSections.map(sk => renderDashSection(sk))}
           </div>
         </div>
+        {/* DASH EDIT overlay — desktop version (centered modal) */}
+        {showDashEdit && (() => {
+          const C = { txt:B.text, mut:B.muted, card:B.bgCard, brd:B.border };
+          const ec = editCfg || { cards:[...clientCards], pills:[...clientPills], sections:[...(editSections.length?editSections:clientDashSections)] };
+          const toggle = (arr, key, max) => { const idx = ec[arr].indexOf(key); let n; if (idx>=0) n=ec[arr].filter(x=>x!==key); else if(!max||ec[arr].length<max) n=[...ec[arr],key]; else return; setEditCfg({...ec,[arr]:n}); if(arr==="sections") setEditSections(n); };
+          const moveSection = (i,dir) => { const s=[...ec.sections]; const j=i+dir; if(j<0||j>=s.length) return; [s[i],s[j]]=[s[j],s[i]]; setEditCfg({...ec,sections:s}); setEditSections(s); };
+          const Chip = ({on,label,onTap,disabled}) => <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:disabled?"default":"pointer",fontFamily:"inherit",opacity:disabled?0.4:1}}>{label}</button>;
+          const saveCfg = () => { setClientCards(ec.cards); setClientPills(ec.pills); setClientDashSections(ec.sections); try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); localStorage.setItem("uh_client_dash",JSON.stringify(ec.sections)); supaSetSetting("client_portal_config",JSON.stringify({cards:ec.cards,pills:ec.pills,sections:ec.sections})); } catch {} setEditCfg(null); setEditSections([]); setShowDashEdit(false); };
+          return <><div onClick={()=>{setEditCfg(null);setShowDashEdit(false);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999}} />
+          <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:480,maxHeight:"80vh",overflowY:"auto",background:C.card,borderRadius:24,zIndex:1000,padding:"24px 28px",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+              <h3 style={{fontSize:18,fontWeight:800}}>Personalizar Dashboard</h3>
+              <button onClick={saveCfg} style={{background:LIME,color:"#0D0D0D",border:"none",borderRadius:10,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Salvar</button>
+            </div>
+            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cards do cabeçalho (máx 4)</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+              {Object.entries(CLIENT_CARDS_MAP).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k,4)} disabled={!ec.cards.includes(k)&&ec.cards.length>=4} />)}
+            </div>
+            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos (máx 5)</p>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+              {Object.entries(CLIENT_PILLS_MAP).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k,5)} disabled={!ec.pills.includes(k)&&ec.pills.length>=5} />)}
+            </div>
+            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
+            <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Clique para ativar/desativar. Use as setas para reordenar.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+              {ec.sections.map((sk,i) => <div key={sk} style={{display:"flex",alignItems:"center",gap:0,background:`${LIME}08`,borderRadius:12,overflow:"hidden",border:`1.5px solid ${LIME}30`}}>
+                <div style={{display:"flex",flexDirection:"column",borderRight:`1px solid ${C.brd}`}}>
+                  <button onClick={()=>moveSection(i,-1)} disabled={i===0} style={{width:36,height:28,background:"none",border:"none",cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?0.25:1,color:C.txt}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+                  <button onClick={()=>moveSection(i,1)} disabled={i===ec.sections.length-1} style={{width:36,height:28,background:"none",border:"none",cursor:i===ec.sections.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===ec.sections.length-1?0.25:1,color:C.txt}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+                </div>
+                <span style={{flex:1,padding:"12px 14px",fontSize:14,fontWeight:700}}>{CLIENT_SECTIONS[sk]||sk}</span>
+                <button onClick={()=>{const s=ec.sections.filter(x=>x!==sk);setEditCfg({...ec,sections:s});setEditSections(s);}} style={{width:36,height:56,background:"none",border:"none",borderLeft:`1px solid ${C.brd}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:C.mut}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>)}
+            </div>
+            {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6,marginBottom:16}}>
+              {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).map(sk => <button key={sk} onClick={()=>{const s=[...ec.sections,sk];setEditCfg({...ec,sections:s});setEditSections(s);}} style={{padding:"7px 14px",borderRadius:10,border:`1.5px dashed ${C.brd}`,background:"transparent",fontSize:12,fontWeight:500,color:C.mut,cursor:"pointer",fontFamily:"inherit"}}>+ {CLIENT_SECTIONS[sk]}</button>)}
+            </div>}
+            <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+          </div></>;
+        })()}
       </div>
     );
   }
