@@ -25518,7 +25518,6 @@ html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
 html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
-html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
 html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
@@ -28673,10 +28672,8 @@ input,textarea,select{font-size:16px !important}
 html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:${B.transparent?"transparent":B.bg}!important;transition:background .25s}
 html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important;max-width:100%!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:${B.bg}!important;width:100%!important;box-sizing:border-box!important;transition:background .25s}
-html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
 html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important}
-html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 0!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:var(--uh-radius)!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
