@@ -26684,38 +26684,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             })}
           </div>
         </div>
-        {/* ── FUNCTIONAL PANELS (3 large, embedded pages) ── */}
+        {/* ── FUNCTIONAL PANELS (3 large, customizable) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"start"}}>
-            {clientPanels.slice(0,3).map(pk => {
-              const PANEL_LABELS = {content:"Conteúdos",ai:"Assistente IA",reports:"Relatórios",growth:"Growth Score",news:"Comunicados",posts:"Posts Recentes",metricas:"Métricas",match:"Match4Biz",agenda:"Compromissos",academy:"Academy",library:"Biblioteca",ideas:"Comunique-se",financial:"Financeiro",calendar:"Agenda",help:"Suporte"};
-              const PANEL_ACTIONS = {content:()=>goTab("content"),ai:()=>setSub("ai"),reports:()=>setSub("reports"),growth:()=>setSub("gamify"),news:()=>setSub("news"),match:()=>setSub("match4biz"),academy:()=>setSub("academy"),library:()=>setSub("library"),ideas:()=>setSub("ideas"),financial:()=>setSub("financial"),calendar:()=>setSub("calendar"),help:()=>setSub("help"),posts:()=>goTab("content"),metricas:()=>setSub("reports"),agenda:()=>goTab("content")};
-              const panelContent = (() => {
-                if(pk==="content") return <div style={{padding:0}}>{renderContent()}</div>;
-                if(pk==="ai") return <AIPage onBack={null} user={user} isClientView forceMobile />;
-                if(pk==="reports") return <ReportsPage onBack={null} clients={resolvedClient?[resolvedClient]:clients.slice(0,1)} team={team} isClientView forceMobile />;
-                if(pk==="news") return <NewsPage onBack={null} user={user} isClientView forceMobile />;
-                if(pk==="calendar") return <CalendarPage onBack={null} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} forceMobile demands={demands} />;
-                if(pk==="library") return <LibraryPage onBack={null} clients={clients} isClientView clientFilter={resolvedClient?.name} />;
-                if(pk==="help") return <HelpPage onBack={null} />;
-                if(pk==="ideas") return <div style={{padding:16}}>{renderDashSection("ideas")}</div>;
-                if(pk==="match") return <div style={{padding:16}}>{renderDashSection("match")}</div>;
-                if(pk==="growth") return <div style={{padding:16}}>{renderDashSection("growth")}</div>;
-                if(pk==="metricas") return <div style={{padding:16}}>{renderDashSection("metricas")}</div>;
-                if(pk==="posts") return <div style={{padding:16}}>{renderDashSection("posts")}</div>;
-                if(pk==="agenda") return <div style={{padding:16}}>{renderDashSection("agenda")}</div>;
-                if(pk==="academy") return <div style={{padding:16}}>{renderDashSection("academy")}</div>;
-                if(pk==="financial") return <div style={{padding:16}}>{renderDashSection("financial")}</div>;
-                return null;
-              })();
-              return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,boxShadow:"0 2px 10px rgba(0,0,0,0.08)",overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
-                <div style={{padding:"8px 14px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,background:B.bg}}>
-                  <span style={{fontSize:13,fontWeight:700,color:B.text}}>{PANEL_LABELS[pk]||pk}</span>
-                  <span onClick={PANEL_ACTIONS[pk]} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
-                </div>
-                <div style={{flex:1,overflow:"auto",position:"relative",display:"flex",flexDirection:"column"}}>{panelContent}</div>
-              </div>;
-            })}
+            {clientPanels.slice(0,3).map(sk => <div key={sk} style={{minWidth:0,overflow:"hidden"}}>{renderDashSection(sk)}</div>)}
           </div>
         </div>
         {/* DASH EDIT overlay — desktop version (centered modal) */}
