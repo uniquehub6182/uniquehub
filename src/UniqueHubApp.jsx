@@ -26393,6 +26393,78 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>;
 
+    if (key === "content") return <div key="content">
+      <SH title="Conteúdos" action="Ver todos" onClick={()=>goTab("content")} />
+      {demands.length > 0 ? <div style={{display:"flex",flexDirection:"column",gap:8}}>{demands.slice(0,4).map(d => {
+        const st=d.steps?.client?.status; const stColor=st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
+        const stLabel=st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
+        const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
+        return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{cursor:"pointer",borderRadius:16,padding:"12px 14px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            {imgs[0]&&<div style={{width:48,height:48,borderRadius:10,overflow:"hidden",flexShrink:0}}><img src={imgs[0].url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/></div>}
+            <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||d.type}</p><p style={{fontSize:11,color:C.mut,marginTop:2}}>{d.createdAt} · {d.network||d.type}</p></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:6,height:6,borderRadius:3,background:stColor}}/><span style={{fontSize:10,fontWeight:600,color:stColor}}>{stLabel}</span></div>
+          </div>
+        </Card>;
+      })}</div> : <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:13,color:C.mut}}>Nenhum conteúdo ainda</p></Card>}
+    </div>;
+
+    if (key === "ai") return <div key="ai">
+      <SH title="Assistente IA" action="Abrir" onClick={()=>setSub("ai")} />
+      <div onClick={()=>setSub("ai")} style={{cursor:"pointer",borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #0f172a 0%, #1e1e2e 100%)",padding:"24px 20px",color:"#fff",position:"relative"}}>
+        <div style={{position:"absolute",top:-15,right:-15,width:100,height:100,borderRadius:"50%",background:"radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)",filter:"blur(20px)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:14,position:"relative",zIndex:1}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg, #8B5CF6, #06B6D4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.ai("#fff")}</div>
+          <div style={{flex:1}}><p style={{fontSize:17,fontWeight:800}}>Gere conteúdo com IA</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Legendas, ideias e estratégias para suas redes</p></div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
+    if (key === "reports") return <div key="reports">
+      <SH title="Relatórios" action="Ver tudo" onClick={()=>setSub("reports")} />
+      <div onClick={()=>setSub("reports")} style={{cursor:"pointer",borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #0D0D0D 0%, #1a2332 100%)",padding:"24px 20px",color:"#fff",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg, #3B82F6, #10B981)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.reports("#fff")}</div>
+          <div style={{flex:1}}><p style={{fontSize:17,fontWeight:800}}>Performance das redes</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Métricas de alcance, engajamento e crescimento</p></div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
+    if (key === "financial") return <div key="financial">
+      <SH title="Financeiro" action="Abrir" onClick={()=>setSub("financial")} />
+      <div onClick={()=>setSub("financial")} style={{cursor:"pointer",borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a0a 100%)",padding:"24px 20px",color:"#fff",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg, #F59E0B, #10B981)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.financial("#fff")}</div>
+          <div style={{flex:1}}><p style={{fontSize:17,fontWeight:800}}>Plano e faturas</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Seu plano, pagamentos e serviços contratados</p></div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
+    if (key === "calendar") return <div key="calendar">
+      <SH title="Agenda" action="Abrir" onClick={()=>setSub("calendar")} />
+      <div onClick={()=>setSub("calendar")} style={{cursor:"pointer",borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #0D0D0D 0%, #0a1a2e 100%)",padding:"24px 20px",color:"#fff",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg, #6366F1, #3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.calendar("#fff")}</div>
+          <div style={{flex:1}}><p style={{fontSize:17,fontWeight:800}}>Reuniões e gravações</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Calendário de compromissos com a agência</p></div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
+    if (key === "help") return <div key="help">
+      <SH title="Suporte" action="Abrir" onClick={()=>setSub("help")} />
+      <div onClick={()=>setSub("help")} style={{cursor:"pointer",borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",padding:"24px 20px",color:"#fff",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg, #10B981, #34D399)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.help("#fff")}</div>
+          <div style={{flex:1}}><p style={{fontSize:17,fontWeight:800}}>FAQ e ajuda</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Dúvidas frequentes e suporte da agência</p></div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
     if (key === "academy") return <div key="academy">
       <SH title="Academy" action="Acessar" onClick={()=>setSub("academy")} />
       <div onClick={()=>setSub("academy")} style={{ cursor:"pointer", borderRadius:20, overflow:"hidden", background:"linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", padding:"22px 20px", color:"#fff", position:"relative" }}>
@@ -26612,7 +26684,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </div>
             <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Painéis grandes (3 blocos funcionais)</p>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
-              {[["growth","Growth Score"],["news","Comunicados"],["posts","Posts Recentes"],["metricas","Métricas"],["match","Match4Biz"],["agenda","Compromissos"],["academy","Academy"],["library","Biblioteca"],["ideas","Comunique-se"]].map(([k,l])=><Chip key={k} on={(ec.panels||clientPanels).includes(k)} label={l} onTap={()=>{const cur=ec.panels||[...clientPanels];const idx=cur.indexOf(k);let n;if(idx>=0)n=cur.filter(x=>x!==k);else if(cur.length<3)n=[...cur,k];else return;setEditCfg({...ec,panels:n});}} disabled={!(ec.panels||clientPanels).includes(k)&&(ec.panels||clientPanels).length>=3} />)}
+              {[["content","Conteúdos"],["ai","Assistente IA"],["reports","Relatórios"],["growth","Growth Score"],["news","Comunicados"],["posts","Posts Recentes"],["metricas","Métricas"],["match","Match4Biz"],["agenda","Compromissos"],["academy","Academy"],["library","Biblioteca"],["ideas","Comunique-se"],["financial","Financeiro"],["calendar","Agenda"],["help","Suporte"]].map(([k,l])=><Chip key={k} on={(ec.panels||clientPanels).includes(k)} label={l} onTap={()=>{const cur=ec.panels||[...clientPanels];const idx=cur.indexOf(k);let n;if(idx>=0)n=cur.filter(x=>x!==k);else if(cur.length<3)n=[...cur,k];else return;setEditCfg({...ec,panels:n});}} disabled={!(ec.panels||clientPanels).includes(k)&&(ec.panels||clientPanels).length>=3} />)}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
             <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Clique para ativar/desativar. Use as setas para reordenar.</p>
