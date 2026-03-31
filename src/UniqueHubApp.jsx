@@ -19926,7 +19926,7 @@ REGRAS:
                       <button key={t.k} onClick={()=>setAiTone(t.k)} style={{ padding:"9px 14px", borderRadius:10, border:`1.5px solid ${aiTone===t.k?"#6366F1":B.border}`, background:aiTone===t.k?"#6366F112":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiTone===t.k?700:500 }}>{t.l}</button>
                     ))}
                   </div></div>
-                  <button onClick={aiGenerateArticle} disabled={aiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
+                  <button onClick={aiGenerateArticle} disabled={dAiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
                 </>}
                 {aiStep==="photo" && <>
                   <div style={{ textAlign:"center", marginBottom:16 }}>
@@ -25535,6 +25535,19 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
   React.useEffect(() => { if (!B.transparent) { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
+  const [dAiQ, setDAiQ] = useState("");
+  const [dAiRes, setDAiRes] = useState("");
+  const [dAiLoad, setDAiLoad] = useState(false);
+  const dAskAi = async (q) => {
+    if (!q.trim()||dAiLoad) return;
+    setDAiLoad(true); setDAiRes("");
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDMHEl93maM3cJB_gN23e3mXcwuSosMbLI", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português brasileiro. Pergunta: "+q}]}]}) });
+      const data = await res.json();
+      setDAiRes(data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta");
+    } catch(e) { setDAiRes("Erro: "+e.message); }
+    setDAiLoad(false);
+  };
   /* ── Banners (shared from agency) ── */
   const [clientBanners, setClientBanners] = useState(() => { try { const s = localStorage.getItem("uh_desktop_banners"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [clientBannerIdx, setClientBannerIdx] = useState(0);
@@ -26684,10 +26697,103 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             })}
           </div>
         </div>
-        {/* ── FUNCTIONAL PANELS (3 large, customizable) ── */}
+        {/* ── FUNCTIONAL PANELS (3 large, custom widgets) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"start"}}>
-            {clientPanels.slice(0,3).map(sk => <div key={sk} style={{minWidth:0,overflow:"hidden"}}>{renderDashSection(sk)}</div>)}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"stretch"}}>
+            {clientPanels.slice(0,3).map(pk => {
+              const PLBL = {content:"Conteúdos",ai:"Assistente IA",reports:"Relatórios",growth:"Growth Score",news:"Comunicados",posts:"Posts Recentes",metricas:"Métricas",match:"Match4Biz",agenda:"Compromissos",academy:"Academy",library:"Biblioteca",ideas:"Comunique-se",financial:"Financeiro",calendar:"Agenda",help:"Suporte"};
+              const PACT = {content:()=>goTab("content"),ai:()=>setSub("ai"),reports:()=>setSub("reports"),growth:()=>setSub("gamify"),news:()=>setSub("news"),match:()=>setSub("match4biz"),academy:()=>setSub("academy"),library:()=>setSub("library"),ideas:()=>setSub("ideas"),financial:()=>setSub("financial"),calendar:()=>setSub("calendar"),help:()=>setSub("help"),posts:()=>goTab("content"),metricas:()=>setSub("reports"),agenda:()=>goTab("content")};
+
+              /* ── CONTENT WIDGET ── */
+              if (pk === "content") {
+                const pending = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
+                const others = demands.filter(d => !(d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status)).slice(0, 4 - Math.min(pending.length, 2));
+                const shown = [...pending.slice(0,2), ...others];
+                return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.content(LIME)}<span style={{fontSize:14,fontWeight:700}}>{PLBL[pk]}</span>{pending.length>0&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:8,background:LIME,color:"#0D0D0D"}}>{pending.length} pendente{pending.length>1?"s":""}</span>}</div>
+                    <span onClick={PACT[pk]} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver todos <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:12}}>
+                    {shown.length === 0 && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,opacity:0.5}}>{IC.content(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum conteúdo</p></div>}
+                    {shown.map(d => {
+                      const st=d.steps?.client?.status; const isPend=d.steps?.client?.mode==="sent_to_client"&&!st;
+                      const stColor=st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):isPend?(B.orange||"#F59E0B"):B.muted;
+                      const stLabel=st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":isPend?"Pendente":"Produção";
+                      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
+                      const caption=d.steps?.caption?.text||"";
+                      return <div key={d.id} style={{borderRadius:16,border:`1px solid ${B.border}`,overflow:"hidden",background:B.bg}}>
+                        {imgs[0] && <div onClick={()=>setSub("demand_"+d.id)} style={{cursor:"pointer",position:"relative",height:140,overflow:"hidden"}}>
+                          <img src={imgs[0].url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          <span style={{position:"absolute",top:8,right:8,fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:6,background:stColor+"dd",color:"#fff"}}>{stLabel}</span>
+                          <div style={{position:"absolute",bottom:8,left:8,display:"flex",gap:4}}>{(d.networks||[d.network]).filter(Boolean).map((n,i)=><span key={i} style={{fontSize:8,fontWeight:600,padding:"2px 8px",borderRadius:5,background:"rgba(0,0,0,0.5)",color:"#fff",backdropFilter:"blur(4px)"}}>{n}</span>)}</div>
+                        </div>}
+                        <div style={{padding:"10px 12px"}}>
+                          <p onClick={()=>setSub("demand_"+d.id)} style={{fontSize:13,fontWeight:700,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||d.type}</p>
+                          {caption&&<p style={{fontSize:11,color:B.muted,marginTop:4,lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>}
+                          {isPend && <div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
+                            <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"7px 0",borderRadius:8,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar</button>
+                            <button onClick={()=>{const fb=prompt("Feedback (opcional):");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"7px 0",borderRadius:8,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
+                          </div>}
+                        </div>
+                      </div>;
+                    })}
+                  </div>
+                </div>;
+              }
+
+              /* ── AI WIDGET ── */
+              if (pk === "ai") {
+                const quickPrompts = ["Crie uma legenda para post de produto","Ideia de Reels para engajamento","Estratégia de Stories para esta semana","Hashtags para Instagram"];
+                const askAi = async (q) => {
+                  if (!q.trim()||dAiLoad) return;
+                  setAiLoad(true); setAiRes("");
+                  try {
+                    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDMHEl93maM3cJB_gN23e3mXcwuSosMbLI", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português. Pergunta: "+q}]}]}) });
+                    const data = await res.json();
+                    const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
+                    setAiRes(txt);
+                  } catch(e) { setAiRes("Erro: "+e.message); }
+                  setAiLoad(false);
+                };
+                return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.ai(LIME)}<span style={{fontSize:14,fontWeight:700}}>Assistente IA</span></div>
+                    <span onClick={PACT[pk]} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Expandir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",padding:"14px",display:"flex",flexDirection:"column"}}>
+                    {/* Quick prompts */}
+                    <p style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Sugestões rápidas</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+                      {quickPrompts.map((q,i)=><button key={i} onClick={()=>{setDAiQ(q);dAskAi(q);}} style={{textAlign:"left",padding:"10px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:500,color:B.text,transition:"all .12s",display:"flex",alignItems:"center",gap:8}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.background=LIME+"08";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=B.bg;}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        {q}
+                      </button>)}
+                    </div>
+                    {/* Response area */}
+                    {dAiLoad && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}><div style={{width:24,height:24,border:`2.5px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite"}}/><p style={{fontSize:11,color:B.muted}}>Gerando resposta...</p></div>}
+                    {dAiRes && !dAiLoad && <div style={{flex:1,background:B.bg,borderRadius:14,border:`1px solid ${B.border}`,padding:"14px 16px",overflowY:"auto"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><div style={{width:20,height:20,borderRadius:6,background:LIME,display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><span style={{fontSize:11,fontWeight:700,color:B.muted}}>Resposta da IA</span></div>
+                      <p style={{fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",color:B.text}}>{dAiRes}</p>
+                    </div>}
+                  </div>
+                  {/* Input bar */}
+                  <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,display:"flex",gap:8,flexShrink:0}}>
+                    <input value={dAiQ} onChange={e=>setDAiQ(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();dAskAi(dAiQ);}}} placeholder="Pergunte algo à IA..." style={{flex:1,padding:"10px 14px",borderRadius:12,border:`1px solid ${B.border}`,background:B.bg,fontFamily:"inherit",fontSize:13,color:B.text,outline:"none"}} />
+                    <button onClick={()=>dAskAi(dAiQ)} disabled={!dAiQ.trim()||dAiLoad} style={{width:40,height:40,borderRadius:12,background:dAiQ.trim()&&!dAiLoad?LIME:B.border,border:"none",cursor:dAiQ.trim()&&!dAiLoad?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dAiQ.trim()?"#0D0D0D":B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                  </div>
+                </div>;
+              }
+
+              /* ── DEFAULT WIDGET (uses renderDashSection inside container) ── */
+              return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                  <span style={{fontSize:14,fontWeight:700}}>{PLBL[pk]||pk}</span>
+                  <span onClick={PACT[pk]} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Abrir <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                </div>
+                <div style={{flex:1,overflowY:"auto",padding:"8px 14px"}}>{renderDashSection(pk)}</div>
+              </div>;
+            })}
           </div>
         </div>
         {/* DASH EDIT overlay — desktop version (centered modal) */}
