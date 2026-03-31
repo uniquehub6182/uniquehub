@@ -25633,7 +25633,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
         let linkedId = null;
         try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
-        const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
+        const { data: allClients } = await supabase.from("clients").select("id, name, contact_email, website");
         const myClient = (linkedId ? (allClients||[]).find(c => c.id === linkedId) : null)
           || (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
           || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
@@ -25665,7 +25665,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         /* Use already-resolved client if available, otherwise re-resolve */
         let myClient = resolvedClient;
         if (!myClient) {
-          const { data: allClients } = await supabase.from("clients").select("id, name, contact_email");
+          const { data: allClients } = await supabase.from("clients").select("id, name, contact_email, website");
           const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
           let linkedId = null;
           try { if (extrasRaw) { const ex = JSON.parse(extrasRaw); linkedId = ex.linked_client_id; } } catch {}
@@ -26539,9 +26539,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
               {Object.entries(CLIENT_CARDS_MAP).map(([k,v])=><Chip key={k} on={ec.cards.includes(k)} label={v.l} onTap={()=>toggle("cards",k,4)} disabled={!ec.cards.includes(k)&&ec.cards.length>=4} />)}
             </div>
-            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos (máx 5)</p>
+            <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Atalhos rápidos (máx 8)</p>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
-              {Object.entries(CLIENT_PILLS_MAP).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k,5)} disabled={!ec.pills.includes(k)&&ec.pills.length>=5} />)}
+              {Object.entries(CLIENT_PILLS_MAP).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k,8)} disabled={!ec.pills.includes(k)&&ec.pills.length>=8} />)}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Seções visíveis</p>
             <p style={{fontSize:11,color:C.mut,marginBottom:12}}>Clique para ativar/desativar. Use as setas para reordenar.</p>
