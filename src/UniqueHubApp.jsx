@@ -25693,11 +25693,11 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
         const mapped = (clientDemands||[]).map(d => ({ id: d.id, title: d.title, type: d.type, client: myClient.name, client_id: d.client_id, stage: d.stage, steps: typeof d.steps === "string" ? JSON.parse(d.steps) : (d.steps||{}), files: typeof d.files === "string" ? JSON.parse(d.files) : (d.files||[]), network: (d.networks||[])[0] || d.type, networks: d.networks||[], format: d.format, scheduling: typeof d.scheduling === "object" ? d.scheduling : {}, schedule_date: d.schedule_date, schedule_time: d.schedule_time, createdAt: d.created_at ? new Date(d.created_at).toLocaleDateString("pt-BR") : "" }));
         /* Only update state if data actually changed — prevents flickering re-renders */
-        setDemands(prev => { const newHash = JSON.stringify(mapped.map(d => d.id + d.stage + JSON.stringify(d.steps))); const oldHash = JSON.stringify(prev.map(d => d.id + d.stage + JSON.stringify(d.steps))); return newHash === oldHash ? prev : mapped; });
+        setDemands(prev => { if (prev.length !== mapped.length) return mapped; const newSig = mapped.map(d => d.id + "|" + d.stage + "|" + (d.steps?.client?.status||"") + "|" + (d.steps?.client?.mode||"")).join(","); const oldSig = prev.map(d => d.id + "|" + d.stage + "|" + (d.steps?.client?.status||"") + "|" + (d.steps?.client?.mode||"")).join(","); return newSig === oldSig ? prev : mapped; });
       } catch(e) { console.warn("Client demand refetch:", e); }
     };
     document.addEventListener("visibilitychange", refetch);
-    const interval = setInterval(() => { if (document.visibilityState === "visible") refetch(); }, 30000);
+    const interval = setInterval(() => { if (document.visibilityState === "visible") refetch(); }, 120000);
     return () => { document.removeEventListener("visibilitychange", refetch); clearInterval(interval); };
   }, [user?.id, user?.email]);
 
