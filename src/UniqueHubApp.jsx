@@ -9113,7 +9113,7 @@ REGRAS TÉCNICAS:
       if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
       showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);
       supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
-      /* ── Auto-publish when moving to "scheduled" ── */
+      /* ── When moving to "scheduled", create entries in scheduled_posts table for the cron to handle ── */
       if (next === "scheduled" && d.scheduling?.date) {
         const cId = d.client_id || CDATA.find(c => c.name === d.client)?.supaId;
         if (!cId) { showToast("Cliente não vinculado — agende manualmente"); return; }
@@ -9124,33 +9124,24 @@ REGRAS TÉCNICAS:
         const coverUrl = isReels ? media.coverUrl : null;
         if (imgUrls.length === 0) { showToast("Sem mídia para publicar — adicione imagens/vídeo primeiro"); return; }
         const fullCaption = (d.steps?.caption?.text||"") + (d.steps?.caption?.hashtags ? "\n\n"+d.steps.caption.hashtags : "");
-        const schedTs = getScheduledTimestamp(d.scheduling);
         const clientObj = CDATA.find(c => (c.supaId||c.id) === cId);
         const hasFB = clientObj?.socials?.facebook?.oauth;
         const hasIG = clientObj?.socials?.instagram?.oauth;
         if (!hasFB && !hasIG) { showToast("Cliente sem rede social conectada"); return; }
         const mediaType = isReels?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
-        showToast(schedTs ? "Agendando publicação via Meta API..." : "Publicando agora (horário já passou)...");
+        const schedDate = d.scheduling.date;
+        const schedTime = d.scheduling.time || "12:00";
+        const scheduledAt = new Date(`${schedDate}T${schedTime}:00`).toISOString();
+        const isPast = new Date(scheduledAt) <= new Date();
         try {
-          let igOk = false, fbOk = false, igErr = "", fbErr = "";
-          if (hasIG) { const r = await publishToInstagram(cId, imgUrls, fullCaption, mediaType, schedTs, coverUrl); if (r?.error) igErr = r.error; else igOk = true; }
-          if (hasFB) { const r = await publishToMeta(cId, imgUrls, fullCaption, null, mediaType, schedTs); if (r?.error) fbErr = r.error; else fbOk = true; }
-          if (igOk || fbOk) {
-            const pubStage = stages[stages.indexOf("scheduled")+1] || "published";
-            const platforms = [igOk && "Instagram", fbOk && "Facebook"].filter(Boolean).join(" e ");
-            const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
-            if (!schedTs) {
-              setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({...x, stage:pubStage}, pubStage) : x));
-              setSel(prev => syncMilestones({...prev, stage:pubStage}, pubStage));
-              if (d.supaId) supaUpdateDemand(d.supaId, { stage:pubStage });
-              showToast(errs.length ? `✅ Publicado no ${platforms}! (${errs.join("; ")})` : `✅ Publicado no ${platforms}!`);
-            } else {
-              showToast(`✅ Agendado no ${platforms}! ${d.scheduling.date} às ${d.scheduling.time}`);
-            }
-          } else {
-            const errs = [igErr && "IG: "+igErr, fbErr && "FB: "+fbErr].filter(Boolean);
-            showToast(`Erro ao publicar: ${errs.join("; ") || "falha desconhecida"}`);
+          const posts = [];
+          if (hasIG) posts.push({ client_id: cId, platform: "instagram", media_type: mediaType, image_urls: coverUrl ? [...imgUrls, coverUrl] : imgUrls, caption: fullCaption, scheduled_at: isPast ? new Date(Date.now() + 60000).toISOString() : scheduledAt, status: "pending", demand_id: d.id, created_by: user?.id || null });
+          if (hasFB) posts.push({ client_id: cId, platform: "facebook", media_type: mediaType, image_urls: imgUrls, caption: fullCaption, scheduled_at: isPast ? new Date(Date.now() + 60000).toISOString() : scheduledAt, status: "pending", demand_id: d.id, created_by: user?.id || null });
+          if (supabase && posts.length) {
+            const { error } = await supabase.from("scheduled_posts").insert(posts);
+            if (error) { showToast("Erro ao agendar: " + error.message); return; }
           }
+          showToast(isPast ? `📤 Publicação em ~1 min (horário já passou)` : `✅ Agendado para ${schedDate} às ${schedTime}`);
         } catch(e) { showToast("Erro: "+e.message); }
       }
     }
@@ -10784,7 +10775,7 @@ REGRAS TÉCNICAS:
                       {publishButtons()}
                     </div>}
                     {/* Skip client without API */}
-                    <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:"Aprovação manual", date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", marginTop:10, padding:"10px 0", borderRadius:10, background:"transparent", color:B.muted, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:600, cursor:"pointer" }}>✓ Marcar como aprovado manualmente</button>
+                    <button onClick={() => { updateStep("client", { ...sel.steps?.client, status:"approved", by:`Aprovação manual — ${user?.name||user?.email||"Admin"}`, date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}), respondedAt:new Date().toISOString(), respondedBy:user?.name||user?.email||"Admin" }); setTimeout(()=>advanceStage(sel),100); }} style={{ width:"100%", marginTop:10, padding:"10px 0", borderRadius:10, background:"transparent", color:B.muted, border:`1px solid ${B.border}`, fontFamily:"inherit", fontSize:11, fontWeight:600, cursor:"pointer" }}>✓ Marcar como aprovado manualmente</button>
                     <button onClick={() => updateStep("client", { mode:undefined })} style={{ width:"100%", marginTop:6, padding:"8px 0", borderRadius:10, background:"transparent", color:B.muted, border:"none", fontFamily:"inherit", fontSize:10, cursor:"pointer", textDecoration:"underline" }}>← Voltar</button>
                   </div>
                 );
