@@ -26746,8 +26746,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                             </span>}
                           </div>
                         </div>
-                        {/* Media — compact carousel or video */}
-                        <div style={{maxHeight:220,overflow:"hidden",margin:"0 14px",borderRadius:14,border:`1px solid ${B.border}`}}>
+                        {/* Media — full view carousel or video */}
+                        <div style={{margin:"0 14px",borderRadius:14,border:`1px solid ${B.border}`,overflow:"hidden"}}>
                           {isReels&&vidFiles.length>0 ? (() => {
                             const coverSlides=imgFiles.filter(f=>f.isCover);
                             const allSlides=[...(coverSlides.length>0?coverSlides:imgFiles),...vidFiles];
@@ -26763,7 +26763,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                         {isPend && <div style={{padding:"10px 14px",display:"flex",gap:8}}>
                           <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"10px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar</button>
                           <button onClick={()=>{const fb=prompt("O que precisa ser alterado?");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
-                          <button onClick={()=>respondDemand(d,"rejected","")} style={{padding:"10px 14px",borderRadius:10,background:"transparent",border:`1.5px solid ${B.red||"#FF6B6B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.red||"#FF6B6B"}}>Reprovar</button>
+                          <button onClick={()=>respondDemand(d,"rejected","")} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.red||"#FF6B6B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.red||"#FF6B6B"}}>Reprovar</button>
                         </div>}
                         {isAppr && <div style={{padding:"12px 14px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:B.green}}>✅ {sd?"Aprovado e agendado":"Aprovado"}</span></div>}
                         {isRej && <div style={{padding:"12px 14px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:600,color:B.orange||"#F59E0B"}}>A agência está trabalhando nas edições</span></div>}
