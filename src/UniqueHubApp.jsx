@@ -1634,6 +1634,48 @@ const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accen
   );
 };
 
+/* ── Stable carousel components (extracted to prevent re-mount on parent re-render) ── */
+const _ReelsCarousel = React.memo(({ allSlides, coverCount, B }) => {
+  const [slide, setSlide] = React.useState(0);
+  const ref = React.useRef(null);
+  const scrollTo = (idx) => { if(ref.current) ref.current.scrollTo({ left: idx * ref.current.offsetWidth, behavior:"smooth" }); };
+  const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; setSlide(Math.round(ref.current.scrollLeft/w)); };
+  const isCover = slide < coverCount;
+  return <div style={{ marginTop:8, borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}` }}>
+    <div style={{ display:"flex", borderBottom:`1px solid ${B.border||"rgba(0,0,0,0.06)"}` }}>
+      <button onClick={()=>scrollTo(0)} style={{ flex:1, padding:"12px 0", background:isCover?`${B.accent}10`:"transparent", border:"none", borderBottom:isCover?`3px solid ${B.accent}`:"3px solid transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isCover?B.accent:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Capa
+      </button>
+      <button onClick={()=>scrollTo(coverCount)} style={{ flex:1, padding:"12px 0", background:!isCover?`${B.blue||"#3B82F6"}10`:"transparent", border:"none", borderBottom:!isCover?`3px solid ${B.blue||"#3B82F6"}`:"3px solid transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:!isCover?(B.blue||"#3B82F6"):B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Vídeo {isCover && <span style={{ fontSize:9, fontWeight:600, opacity:0.7 }}>→</span>}
+      </button>
+    </div>
+    <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
+      {allSlides.map((f,i) => {
+        const isVid = /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/");
+        return <div key={i} style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", background:"#000", minHeight:300 }}>
+          {isVid ? <video src={f.url} controls playsInline style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />
+                 : <img src={f.url} alt="" style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />}
+        </div>;
+      })}
+    </div>
+  </div>;
+});
+const _CarouselView = React.memo(({ imgFiles, B }) => {
+  const [slide, setSlide] = React.useState(0);
+  const ref = React.useRef(null);
+  const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; setSlide(Math.round(ref.current.scrollLeft/w)); };
+  return <div style={{ marginTop:8, borderRadius:20, overflow:"hidden", background:B.bgCard, border:`1px solid ${B.border}`, padding:0 }}>
+    <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
+      {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", objectFit:"contain", background:"#000", maxHeight:"70vh" }} />)}
+    </div>
+    {imgFiles.length > 1 && <div style={{ display:"flex", justifyContent:"center", gap:6, padding:"10px 0" }}>
+      {imgFiles.map((_,i) => <div key={i} style={{ width:slide===i?20:8, height:8, borderRadius:4, background:slide===i?B.accent:`${B.muted}30`, transition:"all .3s" }} />)}
+    </div>}
+    {imgFiles.length > 1 && <p style={{ textAlign:"center", fontSize:11, color:B.muted, paddingBottom:10 }}>{slide+1} de {imgFiles.length} · Arraste para ver mais</p>}
+  </div>;
+});
+
 const IC = {
   home: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   feed: c => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
@@ -25553,7 +25595,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   /* ── Banners (shared from agency) ── */
   const [clientBanners, setClientBanners] = useState(() => { try { const s = localStorage.getItem("uh_desktop_banners"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [clientBannerIdx, setClientBannerIdx] = useState(0);
-  useEffect(() => { if (clientBanners.length <= 1) return; const iv = setInterval(() => setClientBannerIdx(p => (p + 1) % clientBanners.length), 5000); return () => clearInterval(iv); }, [clientBanners.length]);
+  useEffect(() => { if (clientBanners.length <= 1 || sub) return; const iv = setInterval(() => setClientBannerIdx(p => (p + 1) % clientBanners.length), 5000); return () => clearInterval(iv); }, [clientBanners.length, sub]);
   useEffect(() => { supaGetSetting("desktop_banners").then(raw => { if (raw) { try { const b = typeof raw === "string" ? JSON.parse(raw) : raw; if (Array.isArray(b) && b.length) { setClientBanners(b); try { localStorage.setItem("uh_desktop_banners", JSON.stringify(b)); } catch {} } } catch {} } }); }, []);
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
@@ -25699,7 +25741,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       } catch(e) { console.warn("Client demand refetch:", e); }
     };
     document.addEventListener("visibilitychange", refetch);
-    const interval = setInterval(() => { if (document.visibilityState === "visible") refetch(); }, 120000);
+    const interval = setInterval(() => { if (document.visibilityState === "visible" && !subRef.current) refetch(); }, 120000);
     return () => { document.removeEventListener("visibilitychange", refetch); clearInterval(interval); };
   }, [user?.id, user?.email]);
 
@@ -26153,57 +26195,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 const coverSlides = imgFiles.filter(f=>f.isCover);
                 const allSlides = [...(coverSlides.length > 0 ? coverSlides : imgFiles), ...vidFiles];
                 if (allSlides.length === 0) return null;
-                const ReelsCarousel = () => {
-                  const [slide, setSlide] = React.useState(0);
-                  const ref = React.useRef(null);
-                  const scrollTo = (idx) => { if(ref.current) ref.current.scrollTo({ left: idx * ref.current.offsetWidth, behavior:"smooth" }); };
-                  const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; setSlide(Math.round(ref.current.scrollLeft/w)); };
-                  const coverCount = coverSlides.length || imgFiles.length;
-                  const isCover = slide < coverCount;
-                  return <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20 }}>
-                    {/* Top tabs: CAPA | VÍDEO */}
-                    <div style={{ display:"flex", borderBottom:`1px solid ${B.border||"rgba(0,0,0,0.06)"}` }}>
-                      <button onClick={()=>scrollTo(0)} style={{ flex:1, padding:"12px 0", background:isCover?`${B.accent}10`:"transparent", border:"none", borderBottom:isCover?`3px solid ${B.accent}`:"3px solid transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isCover?B.accent:B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"all .2s" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        Capa
-                      </button>
-                      <button onClick={()=>scrollTo(coverCount)} style={{ flex:1, padding:"12px 0", background:!isCover?`${B.blue||"#3B82F6"}10`:"transparent", border:"none", borderBottom:!isCover?`3px solid ${B.blue||"#3B82F6"}`:"3px solid transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:!isCover?(B.blue||"#3B82F6"):B.muted, display:"flex", alignItems:"center", justifyContent:"center", gap:6, transition:"all .2s" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                        Vídeo
-                        {isCover && <span style={{ fontSize:9, fontWeight:600, opacity:0.7 }}>→</span>}
-                      </button>
-                    </div>
-                    {/* Swipeable content */}
-                    <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
-                      {allSlides.map((f,i) => {
-                        const isVid = /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/");
-                        return <div key={i} style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", background:"#000", minHeight:300 }}>
-                          {isVid ? <video src={f.url} controls playsInline style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />
-                                 : <img src={f.url} alt="" style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />}
-                        </div>;
-                      })}
-                    </div>
-                  </Card>;
-                };
-                return <ReelsCarousel />;
+                return <_ReelsCarousel allSlides={allSlides} coverCount={coverSlides.length || imgFiles.length} B={B} />;
               }
               /* Non-Reels: original carousel for images only */
               if (imgFiles.length === 0) return null;
-              const CarouselView = () => {
-                const [slide, setSlide] = React.useState(0);
-                const ref = React.useRef(null);
-                const onScroll = () => { if(!ref.current) return; const w=ref.current.offsetWidth; const s=Math.round(ref.current.scrollLeft/w); setSlide(s); };
-                return <Card style={{ marginTop:8, padding:0, overflow:"hidden", borderRadius:20 }}>
-                  <div ref={ref} onScroll={onScroll} style={{ display:"flex", overflowX:"auto", scrollSnapType:"x mandatory", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
-                    {imgFiles.map((f,i) => <img key={i} src={f.url} alt="" style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", objectFit:"contain", background:"#000", maxHeight:"70vh" }} />)}
-                  </div>
-                  {imgFiles.length > 1 && <div style={{ display:"flex", justifyContent:"center", gap:6, padding:"10px 0" }}>
-                    {imgFiles.map((_,i) => <div key={i} style={{ width:slide===i?20:8, height:8, borderRadius:4, background:slide===i?B.accent:`${B.muted}30`, transition:"all .3s" }} />)}
-                  </div>}
-                  {imgFiles.length > 1 && <p style={{ textAlign:"center", fontSize:11, color:B.muted, paddingBottom:10 }}>{slide+1} de {imgFiles.length} · Arraste para ver mais</p>}
-                </Card>;
-              };
-              return <CarouselView />;
+              return <_CarouselView imgFiles={imgFiles} B={B} />;
             })()}
             {caption && <Card style={{ marginTop:8 }}>
               <p className="sl" style={{ marginBottom:6 }}>Legenda</p>
