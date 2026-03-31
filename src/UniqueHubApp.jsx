@@ -25531,6 +25531,11 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
   React.useEffect(() => { if (!B.transparent) { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
+  /* ── Banners (shared from agency) ── */
+  const [clientBanners, setClientBanners] = useState(() => { try { const s = localStorage.getItem("uh_desktop_banners"); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [clientBannerIdx, setClientBannerIdx] = useState(0);
+  useEffect(() => { if (clientBanners.length <= 1) return; const iv = setInterval(() => setClientBannerIdx(p => (p + 1) % clientBanners.length), 5000); return () => clearInterval(iv); }, [clientBanners.length]);
+  useEffect(() => { supaGetSetting("desktop_banners").then(raw => { if (raw) { try { const b = typeof raw === "string" ? JSON.parse(raw) : raw; if (Array.isArray(b) && b.length) { setClientBanners(b); try { localStorage.setItem("uh_desktop_banners", JSON.stringify(b)); } catch {} } } catch {} } }); }, []);
   /* ── Clock for client dashboard ── */
   const [cTime, setCTime] = useState(() => { const n = new Date(); return { h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }; });
   useEffect(() => { if (tab !== "home" || sub) return; const iv = setInterval(() => { const n = new Date(); setCTime({ h: String(n.getHours()).padStart(2,"0"), m: String(n.getMinutes()).padStart(2,"0") }); }, 1000); return () => clearInterval(iv); }, [tab, sub]);
@@ -26476,6 +26481,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               </div>; })}
           </div>
         </div>
+        {/* ── BANNER CARROSSEL ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"12px 32px 0"}}>
+          {clientBanners.length > 0 && (
+            <div style={{position:"relative",width:"100%",height:120,borderRadius:14,overflow:"hidden"}}>
+              {clientBanners.map((b,i) => (
+                <div key={i} onClick={()=>b.link&&window.open(b.link,"_blank")} style={{position:"absolute",inset:0,opacity:clientBannerIdx===i?1:0,transition:"opacity .6s ease",cursor:b.link?"pointer":"default"}}>
+                  {b.type==="video" ? <video src={b.url} autoPlay muted loop playsInline style={{width:"100%",height:"100%",objectFit:"cover"}} /> : <img src={b.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />}
+                </div>
+              ))}
+              {clientBanners.length>1&&<div style={{position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",display:"flex",gap:6}}>
+                {clientBanners.map((_,i)=><button key={i} onClick={e=>{e.stopPropagation();setClientBannerIdx(i);}} style={{width:clientBannerIdx===i?20:8,height:8,borderRadius:4,background:clientBannerIdx===i?"#fff":"rgba(255,255,255,0.5)",border:"none",cursor:"pointer",transition:"all .3s",padding:0}} />)}
+              </div>}
+            </div>
+          )}
+        </div>
+        {/* ── SECTIONS ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 32px 0"}}>
           <div className="d-dash-grid">
             {clientDashSections.map(sk => renderDashSection(sk))}
