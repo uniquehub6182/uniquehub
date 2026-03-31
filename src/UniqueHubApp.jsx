@@ -25516,11 +25516,11 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
 html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:auto!important;min-height:100vh!important;overflow:visible!important;inset:auto!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
+html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
 html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .content-wide{max-width:1440px!important;margin:0 auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
 html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important}
-html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
 .tinput{background:${B.bgInput}!important;color:${B.text}!important;border:1px solid ${B.border}!important;border-radius:10px!important;font-size:16px!important;padding-top:10px!important;padding-bottom:10px!important;padding-right:14px!important;width:100%;box-sizing:border-box;font-family:inherit!important;outline:none}.tinput:focus{border-color:${B.accent}!important;box-shadow:0 0 0 3px ${B.accent}25!important}.tinput::placeholder{color:${B.muted}!important}
@@ -28673,9 +28673,10 @@ input,textarea,select{font-size:16px !important}
 html.uh-desktop,html.uh-desktop body,html.uh-desktop #root{overflow:auto!important;height:auto!important;min-height:100vh!important;overscroll-behavior:auto!important;background:${B.transparent?"transparent":B.bg}!important;transition:background .25s}
 html.uh-desktop .app{overflow:visible!important;position:relative!important;height:auto!important;min-height:100vh!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important;max-width:100%!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;max-width:100%!important;margin:0 auto!important;padding:0 0 120px!important;background:${B.bg}!important;width:100%!important;box-sizing:border-box!important;transition:background .25s}
+html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
 html.uh-desktop .screen{overflow:visible!important;position:relative!important;height:auto!important;padding:0!important;background:${B.transparent?"transparent":B.bg}!important;width:100%!important}
 html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .content-wide{max-width:1440px!important;margin:0 auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .card{transition:box-shadow .2s,transform .12s;border-radius:var(--uh-radius)!important}
 html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgba(25,33,38,0.08)"}!important;transform:translateY(-1px)}
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
