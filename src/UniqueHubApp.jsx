@@ -25581,6 +25581,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [clientSearchQ, setClientSearchQ] = useState("");
   const [dAiQ, setDAiQ] = useState("");
   const [dContentIdx, setDContentIdx] = useState(0);
+  const [dEditMode, setDEditMode] = useState(false);
+  const [dEditTypes, setDEditTypes] = useState([]);
+  const [dEditComment, setDEditComment] = useState("");
   const [dAiRes, setDAiRes] = useState("");
   const [dAiLoad, setDAiLoad] = useState(false);
   const dAskAi = async (q) => {
@@ -26760,10 +26763,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                           {hashtags && <p style={{fontSize:11,color:LIME,marginTop:6}}>{hashtags}</p>}
                         </div>}
                         {/* Actions */}
-                        {isPend && <div style={{padding:"10px 14px",display:"flex",gap:8}}>
+                        {isPend && !dEditMode && <div style={{padding:"10px 14px",display:"flex",gap:8}}>
                           <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"10px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar</button>
-                          <button onClick={()=>{const fb=prompt("O que precisa ser alterado?");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
+                          <button onClick={()=>setDEditMode(true)} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
                           <button onClick={()=>respondDemand(d,"rejected","")} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.red||"#FF6B6B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.red||"#FF6B6B"}}>Reprovar</button>
+                        </div>}
+                        {/* Edit mode panel */}
+                        {isPend && dEditMode && <div style={{padding:"12px 14px",borderTop:`1px solid ${B.border}`}}>
+                          <p style={{fontSize:13,fontWeight:700,marginBottom:10}}>O que precisa ser alterado?</p>
+                          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+                            {[{k:"arte",l:"Arte / Imagem",em:"🎨"},{k:"video",l:"Vídeo",em:"🎬"},{k:"legenda",l:"Legenda / Texto",em:"✍️"}].map(opt=>{
+                              const sel=dEditTypes.includes(opt.k);
+                              return <button key={opt.k} onClick={()=>setDEditTypes(prev=>sel?prev.filter(x=>x!==opt.k):[...prev,opt.k])} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:sel?`2px solid ${B.orange||"#F59E0B"}`:`1.5px solid ${B.border}`,background:sel?`${B.orange||"#F59E0B"}08`:"transparent",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                                <span style={{fontSize:16}}>{opt.em}</span>
+                                <span style={{fontSize:12,fontWeight:600,color:sel?(B.orange||"#F59E0B"):B.text,flex:1}}>{opt.l}</span>
+                                <div style={{width:20,height:20,borderRadius:6,border:sel?`2px solid ${B.orange||"#F59E0B"}`:`2px solid ${B.muted}40`,background:sel?(B.orange||"#F59E0B"):"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                  {sel&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                </div>
+                              </button>;
+                            })}
+                          </div>
+                          <textarea value={dEditComment} onChange={e=>setDEditComment(e.target.value)} placeholder="Descreva o que precisa mudar..." rows={2} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",fontFamily:"inherit",fontSize:12,color:B.text,outline:"none",resize:"vertical",boxSizing:"border-box"}} />
+                          <div style={{display:"flex",gap:8,marginTop:10}}>
+                            <button onClick={()=>{setDEditMode(false);setDEditTypes([]);setDEditComment("");}} style={{flex:1,padding:"10px 0",borderRadius:10,background:`${B.muted}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.muted}}>Cancelar</button>
+                            <button disabled={dEditTypes.length===0} onClick={()=>{const tl=dEditTypes.map(k=>({arte:"Arte/Imagem",video:"Vídeo",legenda:"Legenda"}[k])).join(", ");respondDemand(d,"revision",`[${tl}] ${dEditComment}`.trim());setDEditMode(false);setDEditTypes([]);setDEditComment("");}} style={{flex:1,padding:"10px 0",borderRadius:10,background:dEditTypes.length>0?(B.orange||"#F59E0B"):`${B.muted}20`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:dEditTypes.length>0?"#fff":B.muted}}>Enviar pedido</button>
+                          </div>
                         </div>}
                         {isAppr && <div style={{padding:"12px 14px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:B.green}}>✅ {sd?"Aprovado e agendado":"Aprovado"}</span></div>}
                         {isRej && <div style={{padding:"12px 14px",textAlign:"center"}}><span style={{fontSize:12,fontWeight:600,color:B.orange||"#F59E0B"}}>A agência está trabalhando nas edições</span></div>}
@@ -26772,12 +26796,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                   </div>}
                   {/* Navigation footer */}
                   {sorted.length>1 && <div style={{padding:"8px 14px",borderTop:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-                    <button onClick={()=>setDContentIdx(p=>Math.max(0,p-1))} disabled={idx<=0} style={{width:32,height:32,borderRadius:8,background:idx>0?B.bg:"transparent",border:`1px solid ${idx>0?B.border:"transparent"}`,cursor:idx>0?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx>0?1:0.3}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                    <button onClick={()=>{setDContentIdx(p=>Math.max(0,p-1));setDEditMode(false);setDEditTypes([]);setDEditComment("");}} disabled={idx<=0} style={{width:32,height:32,borderRadius:8,background:idx>0?B.bg:"transparent",border:`1px solid ${idx>0?B.border:"transparent"}`,cursor:idx>0?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx>0?1:0.3}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
                     <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                      {sorted.slice(0,8).map((_,i)=><div key={i} onClick={()=>setDContentIdx(i)} style={{width:idx===i?16:6,height:6,borderRadius:3,background:idx===i?LIME:B.muted+"40",cursor:"pointer",transition:"all .2s"}}/>)}
+                      {sorted.slice(0,8).map((_,i)=><div key={i} onClick={()=>{setDContentIdx(i);setDEditMode(false);setDEditTypes([]);setDEditComment("");}} style={{width:idx===i?16:6,height:6,borderRadius:3,background:idx===i?LIME:B.muted+"40",cursor:"pointer",transition:"all .2s"}}/>)}
                       {sorted.length>8&&<span style={{fontSize:9,color:B.muted}}>+{sorted.length-8}</span>}
                     </div>
-                    <button onClick={()=>setDContentIdx(p=>Math.min(sorted.length-1,p+1))} disabled={idx>=sorted.length-1} style={{width:32,height:32,borderRadius:8,background:idx<sorted.length-1?B.bg:"transparent",border:`1px solid ${idx<sorted.length-1?B.border:"transparent"}`,cursor:idx<sorted.length-1?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx<sorted.length-1?1:0.3}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+                    <button onClick={()=>{setDContentIdx(p=>Math.min(sorted.length-1,p+1));setDEditMode(false);setDEditTypes([]);setDEditComment("");}} disabled={idx>=sorted.length-1} style={{width:32,height:32,borderRadius:8,background:idx<sorted.length-1?B.bg:"transparent",border:`1px solid ${idx<sorted.length-1?B.border:"transparent"}`,cursor:idx<sorted.length-1?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx<sorted.length-1?1:0.3}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
                   </div>}
                 </div>;
               }
