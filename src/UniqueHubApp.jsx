@@ -26964,7 +26964,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                   {/* LIST VIEW */}
                   {!a && <div style={{flex:1,overflowY:"auto",minHeight:0}}>
                     {items.length===0 && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",height:"100%",flexDirection:"column",gap:8,opacity:0.4,padding:40}}>{IC.news(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum comunicado</p></div>}
-                    {items[0] && <div onClick={()=>setDNewsOpen(items[0])} style={{position:"relative",height:220,overflow:"hidden",cursor:"pointer"}}>
+                    {items[0] && <div onClick={()=>setDNewsOpen(items[0])} style={{position:"relative",height:220,overflow:"hidden",cursor:"pointer",margin:"0 12px",borderRadius:16}}>
                       <img src={items[0].photo||catPhoto(items[0].cat)} alt="" onError={e=>{e.target.onerror=null;e.target.src=catPhoto();}} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                       <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 20%,rgba(0,0,0,0.85) 100%)"}}/>
                       <span style={{position:"absolute",top:14,left:14,background:catColor[items[0].cat]||"#6366F1",color:"#fff",fontSize:10,fontWeight:800,padding:"5px 14px",borderRadius:100,textTransform:"uppercase"}}>{catLabel[items[0].cat]||"Geral"}</span>
@@ -27025,12 +27025,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                     {/* Share bar */}
                     <div style={{margin:"0 14px 16px",padding:"12px 16px",borderRadius:14,background:B.bg,border:`1px solid ${B.border}`}}>
                       <p style={{fontSize:11,fontWeight:700,color:B.muted,marginBottom:8}}>Compartilhar</p>
-                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                        <a href={"https://wa.me/?text="+sTxt(a.title+" — "+(a.summary||"").substring(0,100))+"%20"+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#25D366",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>WhatsApp</a>
-                        <a href={"https://www.facebook.com/sharer/sharer.php?u="+sUrl(artUrl(a))+"&quote="+sTxt(a.title)} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#4267B2",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>Facebook</a>
-                        <a href={"https://twitter.com/intent/tweet?text="+sTxt(a.title)+"&url="+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#000",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>X</a>
-                        <a href={"https://www.linkedin.com/sharing/share-offsite/?url="+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 14px",borderRadius:10,background:"#0A66C2",color:"#fff",fontSize:11,fontWeight:700,textDecoration:"none"}}>LinkedIn</a>
-                        <button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(artUrl(a));}} style={{padding:"7px 14px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.text}}>🔗 Copiar link</button>
+                      <div style={{display:"flex",gap:5,flexWrap:"nowrap"}}>
+                        <a href={"https://wa.me/?text="+sTxt(a.title+" — "+(a.summary||"").substring(0,100))+"%20"+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 10px",borderRadius:10,background:"#25D366",color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>WhatsApp</a>
+                        <a href={"https://www.facebook.com/sharer/sharer.php?u="+sUrl(artUrl(a))+"&quote="+sTxt(a.title)} target="_blank" rel="noopener" style={{padding:"7px 10px",borderRadius:10,background:"#4267B2",color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>Facebook</a>
+                        <a href={"https://twitter.com/intent/tweet?text="+sTxt(a.title)+"&url="+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 10px",borderRadius:10,background:"#000",color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>X</a>
+                        <a href={"https://www.linkedin.com/sharing/share-offsite/?url="+sUrl(artUrl(a))} target="_blank" rel="noopener" style={{padding:"7px 10px",borderRadius:10,background:"#0A66C2",color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>LinkedIn</a>
+                        <button onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(artUrl(a));}} style={{padding:"7px 10px",borderRadius:10,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.text,whiteSpace:"nowrap"}}>🔗 Copiar</button>
                       </div>
                     </div>
                   </div>}
