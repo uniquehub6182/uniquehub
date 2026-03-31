@@ -25481,7 +25481,7 @@ html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
 html.uh-desktop .pg{max-width:860px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
-html.uh-desktop .desktop-dash{max-width:1000px!important;margin:0 auto!important}
+html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important}
 html.uh-desktop .content>div:has(.desktop-dash){max-width:100%!important;padding:0!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
 .card{background:${B.bgCard};box-shadow:0 1px 3px rgba(0,0,0,0.04);border:1px solid ${B.border};border-radius:var(--uh-radius,16px)!important;padding:16px!important}
