@@ -26395,28 +26395,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     if (key === "content") return <div key="content">
       <SH title="Conteúdos" action="Ver todos" onClick={()=>goTab("content")} />
-      {demands.length > 0 ? <div style={{display:"flex",flexDirection:"column",gap:8}}>{demands.slice(0,4).map(d => {
-        const st=d.steps?.client?.status; const stColor=st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):d.steps?.client?.mode==="sent_to_client"?(B.orange||"#F59E0B"):C.mut;
-        const stLabel=st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":d.steps?.client?.mode==="sent_to_client"?"Análise":"Produção";
-        const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
-        return <Card key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{cursor:"pointer",borderRadius:16,padding:"12px 14px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            {imgs[0]&&<div style={{width:48,height:48,borderRadius:10,overflow:"hidden",flexShrink:0}}><img src={imgs[0].url} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/></div>}
-            <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||d.type}</p><p style={{fontSize:11,color:C.mut,marginTop:2}}>{d.createdAt} · {d.network||d.type}</p></div>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:6,height:6,borderRadius:3,background:stColor}}/><span style={{fontSize:10,fontWeight:600,color:stColor}}>{stLabel}</span></div>
+      {demands.length > 0 ? <div style={{display:"flex",flexDirection:"column",gap:12}}>{demands.slice(0,3).map(d => {
+        const st=d.steps?.client?.status; const isPending=d.steps?.client?.mode==="sent_to_client"&&!st;
+        const stColor=st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):isPending?(B.orange||"#F59E0B"):C.mut;
+        const stLabel=st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":isPending?"Aguardando aprovação":"Em produção";
+        const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
+        const caption=d.steps?.caption?.text||"";
+        const networks=d.networks||(d.network?[d.network]:[]);
+        return <Card key={d.id} style={{borderRadius:20,padding:0,overflow:"hidden",cursor:"pointer"}} onClick={()=>setSub("demand_"+d.id)}>
+          {/* Image preview */}
+          {imgs.length>0 ? <div style={{position:"relative",aspectRatio:"16/9",overflow:"hidden"}}>
+            <img src={imgs[0].url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            <div style={{position:"absolute",top:10,left:10,display:"flex",gap:4}}>
+              <span style={{fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:8,background:"rgba(0,0,0,0.55)",color:"#fff",backdropFilter:"blur(6px)"}}>{d.format||"Post"}{imgs.length>1?" · "+imgs.length:""}</span>
+            </div>
+            <span style={{position:"absolute",top:10,right:10,fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:8,background:stColor+"dd",color:"#fff"}}>{stLabel}</span>
+            {networks.length>0&&<div style={{position:"absolute",bottom:10,left:10,display:"flex",gap:4}}>
+              {networks.map((n,ni)=><span key={ni} style={{fontSize:9,fontWeight:600,padding:"3px 8px",borderRadius:6,background:"rgba(0,0,0,0.5)",color:"#fff",backdropFilter:"blur(6px)"}}>{n}</span>)}
+            </div>}
+          </div> : <div style={{height:60,background:"linear-gradient(135deg, "+stColor+"15, "+C.card+")",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}><span style={{opacity:0.3}}>{IC.content(stColor)}</span><span style={{position:"absolute",top:10,right:10,fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:8,background:stColor+"dd",color:"#fff"}}>{stLabel}</span></div>}
+          {/* Body */}
+          <div style={{padding:"12px 16px 14px"}}>
+            <p style={{fontSize:14,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||d.type}</p>
+            <p style={{fontSize:10,color:C.mut,marginTop:2}}>{d.client} · {d.createdAt}</p>
+            {caption&&<p style={{fontSize:12,marginTop:8,lineHeight:1.5,opacity:0.75,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>}
+            {/* Approve/Reject buttons for pending */}
+            {isPending&&<div style={{display:"flex",gap:8,marginTop:10}} onClick={e=>e.stopPropagation()}>
+              <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"8px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Aprovar</button>
+              <button onClick={()=>{const fb=prompt("Feedback (opcional):");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"8px 0",borderRadius:10,background:"transparent",border:"1.5px solid "+(B.orange||"#F59E0B"),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.orange||"#F59E0B",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar</button>
+            </div>}
           </div>
         </Card>;
-      })}</div> : <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:13,color:C.mut}}>Nenhum conteúdo ainda</p></Card>}
+      })}</div> : <Card style={{textAlign:"center",padding:30,borderRadius:20}}><span style={{display:"flex",justifyContent:"center",marginBottom:8,color:C.mut}}>{IC.content(C.mut)}</span><p style={{fontSize:14,fontWeight:700}}>Nenhum conteúdo ainda</p><p style={{fontSize:12,color:C.mut,marginTop:4}}>Quando a agência enviar posts, eles aparecerão aqui.</p></Card>}
     </div>;
 
     if (key === "ai") return <div key="ai">
-      <SH title="Assistente IA" action="Abrir" onClick={()=>setSub("ai")} />
-      <div onClick={()=>setSub("ai")} style={{cursor:"pointer",borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #0f172a 0%, #1e1e2e 100%)",padding:"24px 20px",color:"#fff",position:"relative"}}>
-        <div style={{position:"absolute",top:-15,right:-15,width:100,height:100,borderRadius:"50%",background:"radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)",filter:"blur(20px)"}}/>
-        <div style={{display:"flex",alignItems:"center",gap:14,position:"relative",zIndex:1}}>
-          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg, #8B5CF6, #06B6D4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.ai("#fff")}</div>
-          <div style={{flex:1}}><p style={{fontSize:17,fontWeight:800}}>Gere conteúdo com IA</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Legendas, ideias e estratégias para suas redes</p></div>
-          <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+      <SH title="Assistente IA" action="Expandir" onClick={()=>setSub("ai")} />
+      <div style={{borderRadius:20,overflow:"hidden",background:"linear-gradient(135deg, #0f172a 0%, #1e1e2e 100%)",color:"#fff",position:"relative"}}>
+        <div style={{position:"absolute",top:-15,right:-15,width:120,height:120,borderRadius:"50%",background:"radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)",filter:"blur(20px)"}}/>
+        <div style={{position:"absolute",bottom:-10,left:-10,width:80,height:80,borderRadius:"50%",background:"radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%)",filter:"blur(15px)"}}/>
+        <div style={{padding:"20px 20px 14px",position:"relative",zIndex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+            <div style={{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg, #8B5CF6, #06B6D4)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.ai("#fff")}</div>
+            <div><p style={{fontSize:15,fontWeight:800}}>Assistente IA</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:1}}>Gere legendas, ideias e estratégias</p></div>
+          </div>
+          {/* Quick action buttons */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+            {["Criar legenda","Ideia de post","Estratégia","Reels"].map(q=><button key={q} onClick={(e)=>{e.stopPropagation();setSub("ai");}} style={{padding:"6px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.8)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.borderColor="rgba(139,92,246,0.5)";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.06)";e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";}}>{q}</button>)}
+          </div>
+          {/* Input */}
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{flex:1,background:"rgba(255,255,255,0.08)",borderRadius:12,display:"flex",alignItems:"center",gap:8,padding:"10px 14px",border:"1px solid rgba(255,255,255,0.1)"}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <input placeholder="Pergunte algo à IA..." onClick={()=>setSub("ai")} readOnly style={{border:"none",background:"transparent",color:"#fff",fontSize:13,outline:"none",flex:1,cursor:"pointer",fontFamily:"inherit"}} />
+            </div>
+            <button onClick={()=>setSub("ai")} style={{width:38,height:38,borderRadius:10,background:"linear-gradient(135deg, #8B5CF6, #06B6D4)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+          </div>
         </div>
       </div>
     </div>;
