@@ -26239,8 +26239,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
   const nav = (k) => goTab(k);
 
   /* ═══ DASHBOARD CONFIG ═══ */
-  const CLIENT_SECTIONS = { growth:"Growth Score", news:"Comunicados", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz", agenda:"Compromissos" };
-  const CLIENT_DASH_DEFAULT = ["growth","news","posts","metricas","match"];
+  const CLIENT_SECTIONS = { growth:"Growth Score", news:"Comunicados", posts:"Posts Recentes", metricas:"Métricas", match:"Match4Biz", agenda:"Compromissos", academy:"Academy", library:"Biblioteca", ideas:"Comunique-se" };
+  const CLIENT_DASH_DEFAULT = ["growth","news","posts","metricas","match","academy"];
 
   const getZoneLabel = (s) => s >= 86 ? "Escala" : s >= 61 ? "Crescimento" : s >= 31 ? "Estratégica" : s >= 11 ? "Organização" : "Estruturação";
   const growthScore = realScore, growthZone = getZoneLabel(realScore);
@@ -26391,6 +26391,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>;
 
+    if (key === "academy") return <div key="academy">
+      <SH title="Academy" action="Acessar" onClick={()=>setSub("academy")} />
+      <div onClick={()=>setSub("academy")} style={{ cursor:"pointer", borderRadius:20, overflow:"hidden", background:"linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", padding:"22px 20px", color:"#fff", position:"relative" }}>
+        <div style={{ position:"absolute", top:-10, right:-10, width:100, height:100, borderRadius:"50%", background:"radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%)", filter:"blur(15px)" }} />
+        <div style={{ display:"flex", alignItems:"center", gap:14, position:"relative", zIndex:1 }}>
+          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #3B82F6, #06B6D4)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.academy("#fff")}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:17, fontWeight:800 }}>Cursos e aprendizado</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Aprenda com conteúdos exclusivos</p></div>
+          <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
+    if (key === "library") return <div key="library">
+      <SH title="Biblioteca" action="Acessar" onClick={()=>setSub("library")} />
+      <div onClick={()=>setSub("library")} style={{ cursor:"pointer", borderRadius:20, overflow:"hidden", background:"linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)", padding:"22px 20px", color:"#fff", position:"relative" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #F59E0B, #EF4444)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.library("#fff")}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:17, fontWeight:800 }}>Arquivos e materiais</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Manual de marca, assets e documentos</p></div>
+          <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
+    if (key === "ideas") return <div key="ideas">
+      <SH title="Comunique-se" action="Enviar ideia" onClick={()=>setSub("ideas")} />
+      <div onClick={()=>setSub("ideas")} style={{ cursor:"pointer", borderRadius:20, overflow:"hidden", background:"linear-gradient(135deg, #0D0D0D 0%, #1a0a2e 100%)", padding:"22px 20px", color:"#fff", position:"relative" }}>
+        <div style={{ position:"absolute", bottom:-10, right:-10, width:80, height:80, borderRadius:"50%", background:"radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%)", filter:"blur(15px)" }} />
+        <div style={{ display:"flex", alignItems:"center", gap:14, position:"relative", zIndex:1 }}>
+          <div style={{ width:52, height:52, borderRadius:16, background:"linear-gradient(135deg, #8B5CF6, #EC4899)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{IC.ideas("#fff")}</div>
+          <div style={{ flex:1 }}><p style={{ fontSize:17, fontWeight:800 }}>Envie ideias para a agência</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Sugira conteúdos, campanhas e melhorias</p></div>
+          <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+    </div>;
+
     if (key === "agenda") return <div key="agenda">
       <SH title="Compromissos da Semana" action="Ver conteúdo" onClick={()=>goTab("content")} />
       {weekDemands.length === 0 ? <Card style={{ borderRadius:20, padding:20, textAlign:"center" }}><p style={{ fontSize:13, color:C.mut }}>Nenhum conteúdo agendado esta semana</p></Card> :
@@ -26515,8 +26550,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </div>
           )}
         </div>
-        {/* ── SECTIONS ── */}
+        {/* ── FIXED SECTIONS (Conteúdos, IA, Relatórios) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 32px 0"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:20}}>
+            <div onClick={()=>goTab("content")} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{IC.content(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>Conteúdos</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Posts e aprovações</p></div></div>
+              <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div onClick={()=>setSub("ai")} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{IC.ai(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>Assistente IA</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Gere conteúdo com IA</p></div></div>
+              <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Expandir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+            <div onClick={()=>setSub("reports")} style={{background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:20,padding:"18px 20px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:12,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}>{IC.reports(LIME)}</div><div><p style={{fontSize:14,fontWeight:700,color:B.text}}>Relatórios</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Performance das redes</p></div></div>
+              <span style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4}}>Abrir <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+            </div>
+          </div>
+        </div>
+        {/* ── OPTIONAL SECTIONS (editable) ── */}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div className="d-dash-grid">
             {clientDashSections.map(sk => renderDashSection(sk))}
           </div>
