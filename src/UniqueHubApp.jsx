@@ -139,7 +139,7 @@ const supaCreateClient = async (c) => {
       name: c.name, contact_name: c.contact || null, contact_email: c.email || null,
       contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "traction",
       monthly_value: parseBRL(c.monthly),
-      status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null,
+      status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null, website: c.website || null,
     };
     const { data, error } = await supabase.from("clients").insert(payload).select().single();
     if (error) { console.error("Supa create client error:", error); return { data: null, err: error.message || error.code }; }
@@ -163,6 +163,7 @@ const supaUpdateClient = async (id, updates) => {
     if (updates.address !== undefined) payload.address = updates.address;
     if (updates.segment !== undefined) payload.segment = updates.segment;
     if (updates.notes !== undefined) payload.notes = updates.notes;
+    if (updates.website !== undefined) payload.website = updates.website;
     if (Object.keys(payload).length === 0) return null;
     const { data, error } = await supabase.from("clients").update(payload).eq("id", id).select().single();
     if (error) { console.error("Supa update client error:", error); return null; }
@@ -190,7 +191,7 @@ const mergeSupaClient = (row, existing) => ({
   pending: existing?.pending || 0, score: row.score || 0,
   contact: row.contact_name || "", phone: row.contact_phone || "",
   email: row.contact_email || "", cnpj: row.cnpj || existing?.cnpj || "", address: row.address || existing?.address || "",
-  segment: row.segment || existing?.segment || "", notes: row.notes || existing?.notes || "",
+  segment: row.segment || existing?.segment || "", website: row.website || existing?.website || "", notes: row.notes || existing?.notes || "",
   access_code: row.access_code || "",
   since: existing?.since || new Date(row.created_at).toLocaleDateString("pt-BR",{month:"2-digit",year:"numeric"}),
   socials: existing?.socials || { instagram:{connected:false}, facebook:{connected:false}, google:{connected:false}, tiktok:{connected:false}, linkedin:{connected:false}, youtube:{connected:false} },
@@ -5466,7 +5467,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           </Card>
           <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Dados da empresa</p>
           <Card>
-            {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Endereço",value:sel.address},{label:"Valor mensal",value:sel.monthly,fin:true},{label:"Cliente desde",value:sel.since}].filter(item => !item.fin || canFinancial).map((item,i)=>(
+            {[{label:"CNPJ",value:sel.cnpj},{label:"Segmento",value:sel.segment},{label:"Website",value:sel.website},{label:"Endereço",value:sel.address},{label:"Valor mensal",value:sel.monthly,fin:true},{label:"Cliente desde",value:sel.since}].filter(item => !item.fin || canFinancial).map((item,i)=>(
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop: i?`1px solid ${B.border}`:"none" }}>
                 <span style={{ fontSize:11, color:B.muted }}>{item.label}</span>
                 <span style={{ fontSize:13, fontWeight:600, textAlign:"right", maxWidth:"60%" }}>{item.value||"—"}</span>
@@ -5533,6 +5534,9 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Endereço</label>
             <input value={sel.address||""} onChange={e=>updateClient(sel.id,{address:e.target.value})} placeholder="Rua, nº, bairro, cidade" className="tinput" style={{ marginBottom:10 }} />
+
+            <label className="sl" style={{ display:"block", marginBottom:4 }}>Website</label>
+            <input value={sel.website||""} onChange={e=>updateClient(sel.id,{website:e.target.value})} placeholder="https://www.seusite.com.br" className="tinput" style={{ marginBottom:10 }} />
 
             <label className="sl" style={{ display:"block", marginBottom:4 }}>Cliente desde</label>
             <input value={sel.since||""} onChange={e=>updateClient(sel.id,{since:e.target.value})} placeholder="MM/AAAA" className="tinput" style={{ marginBottom:10 }} />
