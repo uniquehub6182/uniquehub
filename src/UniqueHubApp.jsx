@@ -25807,7 +25807,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   useEffect(() => {
     if (!supabase || articlesLoaded) return;
     supaLoadNews().then(rows => {
-      if (rows) setArticles(rows.map(r => ({ id:r.id, title:r.title, summary:r.summary, cat:r.category, date:r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "", photo: r.photo || (r.body?.startsWith("__PHOTO__:") ? r.body.split("\n")[0].replace("__PHOTO__:","") : null) })));
+      if (rows) setArticles(rows.map(r => ({ id:r.id, supaId:r.id, title:r.title, summary:r.summary, body:r.body, cat:r.category, tags:r.tags||[], source:r.source, sourceUrl:r.source_url||r.sourceUrl, readTime:r.read_time||r.readTime||"3 min", date:r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "", photo: r.photo || (r.body?.startsWith("__PHOTO__:") ? r.body.split("\n")[0].replace("__PHOTO__:","") : null), pinned:r.pinned })));
       setArticlesLoaded(true);
     }).catch(() => setArticlesLoaded(true));
   }, [articlesLoaded]);
