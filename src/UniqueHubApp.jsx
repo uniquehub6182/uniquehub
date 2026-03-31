@@ -13801,14 +13801,14 @@ function NotifsPage({ onBack, user, navigate }) {
   const unreadCount = notifs.filter(n => !n.read).length;
   const markRead = async (id) => { await supaMarkNotificationRead(id); setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n)); };
   const markAll = async () => { if (!user?.id) return; await supaMarkAllNotificationsRead(user.id); setNotifs(p => p.map(n => ({ ...n, read: true }))); showToast("Todas marcadas como lidas"); };
-  const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", post_for_approval:"📋", post_published:"🚀", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
-  const typeColor = { post_created:B.accent, post_approved:B.green, post_rejected:"#EF4444", post_for_approval:B.orange||"#F59E0B", post_published:B.green, demand_created:B.blue, demand_updated:"#F59E0B", member_joined:B.purple, member_approved:B.green, calendar_reminder:B.orange, checkin:B.cyan, system:B.muted, news_created:"#6366F1" };
+  const typeIcon = { post_created:"📝", post_approved:"✅", post_rejected:"❌", post_for_approval:"📋", post_published:"🚀", publish_failed:"🚨", token_health:"🔑", demand_created:"📋", demand_updated:"🔄", member_joined:"👋", member_approved:"🎉", calendar_reminder:"📅", checkin:"⏰", system:"💡", news_created:"📰" };
+  const typeColor = { post_created:B.accent, post_approved:B.green, post_rejected:"#EF4444", post_for_approval:B.orange||"#F59E0B", post_published:B.green, publish_failed:"#EF4444", token_health:"#F59E0B", demand_created:B.blue, demand_updated:"#F59E0B", member_joined:B.purple, member_approved:B.green, calendar_reminder:B.orange, checkin:B.cyan, system:B.muted, news_created:"#6366F1" };
   const timeAgo = (d) => { const s = Math.floor((Date.now()-new Date(d).getTime())/1000); if(s<60) return "Agora"; if(s<3600) return Math.floor(s/60)+"min"; if(s<86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; };
 
   const TOP = 70;
   const grouped = {};
   notifs.forEach(n => { const t = n.type || "system"; if (!grouped[t]) grouped[t] = []; grouped[t].push(n); });
-  const typeLabel = { post_created:"Posts Criados", post_approved:"Posts Aprovados", post_rejected:"Posts Rejeitados", post_for_approval:"Aprovação Pendente", post_published:"Posts Publicados", demand_created:"Demandas", demand_updated:"Demandas Atualizadas", member_joined:"Equipe", member_approved:"Equipe", calendar_reminder:"Calendário", checkin:"Check-in", system:"Sistema", news_created:"Notícias" };
+  const typeLabel = { post_created:"Posts Criados", post_approved:"Posts Aprovados", post_rejected:"Posts Rejeitados", post_for_approval:"Aprovação Pendente", post_published:"Posts Publicados", publish_failed:"Falha na Publicação", token_health:"Tokens de Rede Social", demand_created:"Demandas", demand_updated:"Demandas Atualizadas", member_joined:"Equipe", member_approved:"Equipe", calendar_reminder:"Calendário", checkin:"Check-in", system:"Sistema", news_created:"Notícias" };
 
   return (
     <div className={isNotifDesktop ? "content-wide" : "pg"} style={isNotifDesktop ? { paddingTop:TOP, minHeight:"100%" } : {}}>

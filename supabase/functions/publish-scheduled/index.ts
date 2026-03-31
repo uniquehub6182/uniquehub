@@ -243,6 +243,33 @@ serve(async (req) => {
           error: e.message,
         }).eq("id", post.id);
         results.push({ id: post.id, status: "failed", error: e.message });
+
+        /* ── Notify admins about the failure ── */
+        try {
+          let clientName = post.client_id;
+          let demandTitle = post.caption?.substring(0, 40) || "Post agendado";
+          /* Fetch client name */
+          const { data: cl } = await sb.from("clients").select("name").eq("id", post.client_id).single();
+          if (cl?.name) clientName = cl.name;
+          /* Fetch demand title if available */
+          if (post.demand_id) {
+            const { data: dm } = await sb.from("demands").select("title").eq("id", post.demand_id).single();
+            if (dm?.title) demandTitle = dm.title;
+          }
+          const platform = post.platform === "instagram" ? "Instagram" : "Facebook";
+          const errorMsg = (e.message || "Erro desconhecido").substring(0, 120);
+          const { data: teamUsers } = await sb.from("profiles").select("id, role").in("role", ["admin", "owner", "manager"]);
+          for (const u of (teamUsers || [])) {
+            await sb.from("notifications").insert({
+              user_id: u.id,
+              type: "publish_failed",
+              title: `❌ Falha na publicação — ${clientName}`,
+              body: `Post "${demandTitle}" falhou no ${platform}. Erro: ${errorMsg}`,
+              read: false,
+            });
+          }
+          console.log(`[Scheduler] Sent failure notifications to ${(teamUsers||[]).length} admins`);
+        } catch (notifErr) { console.error("[Scheduler] Failed to send failure notification:", notifErr); }
       }
     }
 
