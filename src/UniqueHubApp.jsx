@@ -25580,6 +25580,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   React.useEffect(() => { if (!B.transparent) { const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", B.bg); } }, [dark, uiPrefs]);
   const [clientSearchQ, setClientSearchQ] = useState("");
   const [dAiQ, setDAiQ] = useState("");
+  const [dContentIdx, setDContentIdx] = useState(0);
   const [dAiRes, setDAiRes] = useState("");
   const [dAiLoad, setDAiLoad] = useState(false);
   const dAskAi = async (q) => {
@@ -26698,39 +26699,83 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
               /* ── CONTENT WIDGET ── */
               if (pk === "content") {
-                const pending = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
-                const others = demands.filter(d => !(d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status)).slice(0, 4 - Math.min(pending.length, 2));
-                const shown = [...pending.slice(0,2), ...others];
+                const allDemands = demands;
+                const pending = allDemands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
+                const sorted = [...pending, ...allDemands.filter(d => !(d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status))];
+                const idx = Math.min(dContentIdx, sorted.length - 1);
+                const d = sorted[idx];
                 return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  {/* Header */}
                   <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.content(LIME)}<span style={{fontSize:14,fontWeight:700}}>{PLBL[pk]}</span>{pending.length>0&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:8,background:LIME,color:"#0D0D0D"}}>{pending.length} pendente{pending.length>1?"s":""}</span>}</div>
-                    <span onClick={PACT[pk]} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver todos <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.content(LIME)}<span style={{fontSize:14,fontWeight:700}}>Conteúdos</span>{pending.length>0&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:8,background:LIME,color:"#0D0D0D"}}>{pending.length}</span>}</div>
+                    <span onClick={()=>goTab("content")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver todos <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
                   </div>
-                  <div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:12}}>
-                    {shown.length === 0 && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,opacity:0.5}}>{IC.content(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum conteúdo</p></div>}
-                    {shown.map(d => {
+                  {/* Body — single post detail */}
+                  {!d ? <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>{IC.content(B.muted)}<p style={{fontSize:13,color:B.muted}}>Nenhum conteúdo</p></div> : <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>
+                    {(() => {
                       const st=d.steps?.client?.status; const isPend=d.steps?.client?.mode==="sent_to_client"&&!st;
-                      const stColor=st==="approved"?B.green:st==="rejected"||st==="revision"?(B.orange||"#F59E0B"):isPend?(B.orange||"#F59E0B"):B.muted;
-                      const stLabel=st==="approved"?"Aprovado":st==="rejected"?"Reprovado":st==="revision"?"Edição":isPend?"Pendente":"Produção";
-                      const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
+                      const isAppr=st==="approved"; const isRej=st==="rejected"||st==="revision";
+                      const stColor=isAppr?B.green:isRej?(B.orange||"#F59E0B"):isPend?(B.orange||"#F59E0B"):B.muted;
+                      const stLabel=isAppr?"Aprovado":isRej?"Edição solicitada":isPend?"Aguardando aprovação":"Em produção";
+                      const files=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])];
+                      const imgFiles=files.filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
+                      const vidFiles=files.filter(f=>f.url&&(/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"")||f.type?.startsWith("video/")));
                       const caption=d.steps?.caption?.text||"";
-                      return <div key={d.id} style={{borderRadius:16,border:`1px solid ${B.border}`,overflow:"hidden",background:B.bg}}>
-                        {imgs[0] && <div onClick={()=>setSub("demand_"+d.id)} style={{cursor:"pointer",position:"relative",height:140,overflow:"hidden"}}>
-                          <img src={imgs[0].url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                          <span style={{position:"absolute",top:8,right:8,fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:6,background:stColor+"dd",color:"#fff"}}>{stLabel}</span>
-                          <div style={{position:"absolute",bottom:8,left:8,display:"flex",gap:4}}>{(d.networks||[d.network]).filter(Boolean).map((n,i)=><span key={i} style={{fontSize:8,fontWeight:600,padding:"2px 8px",borderRadius:5,background:"rgba(0,0,0,0.5)",color:"#fff",backdropFilter:"blur(4px)"}}>{n}</span>)}</div>
-                        </div>}
-                        <div style={{padding:"10px 12px"}}>
-                          <p onClick={()=>setSub("demand_"+d.id)} style={{fontSize:13,fontWeight:700,cursor:"pointer",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||d.type}</p>
-                          {caption&&<p style={{fontSize:11,color:B.muted,marginTop:4,lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{caption}</p>}
-                          {isPend && <div style={{display:"flex",gap:6,marginTop:8}} onClick={e=>e.stopPropagation()}>
-                            <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"7px 0",borderRadius:8,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar</button>
-                            <button onClick={()=>{const fb=prompt("Feedback (opcional):");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"7px 0",borderRadius:8,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
-                          </div>}
+                      const hashtags=d.steps?.caption?.hashtags||"";
+                      const sd=d.scheduling?.date||d.schedule_date;
+                      const st2=d.scheduling?.time||d.schedule_time;
+                      const isReels=(d.format||"").toLowerCase()==="reels"||(d.format||"").toLowerCase()==="shorts";
+                      return <>
+                        {/* Status bar */}
+                        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",background:stColor+"08",borderBottom:`1px solid ${stColor}15`,flexShrink:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <div style={{width:8,height:8,borderRadius:4,background:stColor}}/>
+                            <span style={{fontSize:12,fontWeight:700,color:stColor}}>{stLabel}</span>
+                          </div>
+                          <div style={{display:"flex",gap:4}}>
+                            {(d.networks||[d.network]).filter(Boolean).map((n,i)=><span key={i} style={{fontSize:9,fontWeight:600,padding:"2px 8px",borderRadius:5,background:B.bg,border:`1px solid ${B.border}`,color:B.text}}>{n}</span>)}
+                            <span style={{fontSize:9,fontWeight:600,padding:"2px 8px",borderRadius:5,background:B.bg,border:`1px solid ${B.border}`,color:B.text}}>{d.format||d.type}</span>
+                          </div>
                         </div>
-                      </div>;
-                    })}
-                  </div>
+                        {/* Media — carousel or video */}
+                        <div style={{flexShrink:0}}>
+                          {isReels&&vidFiles.length>0 ? (() => {
+                            const coverSlides=imgFiles.filter(f=>f.isCover);
+                            const allSlides=[...(coverSlides.length>0?coverSlides:imgFiles),...vidFiles];
+                            return <_ReelsCarousel allSlides={allSlides} coverCount={coverSlides.length||imgFiles.length} B={B} />;
+                          })() : imgFiles.length>0 ? <_CarouselView imgFiles={imgFiles} B={B} /> : null}
+                        </div>
+                        {/* Schedule info */}
+                        {sd && <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,background:LIME+"06",borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          <span style={{fontSize:11,fontWeight:600,color:B.text}}>{(() => { try { return new Date(sd+"T"+(st2||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"long"})+(st2?" às "+st2:""); } catch { return sd+(st2?" às "+st2:""); } })()}</span>
+                        </div>}
+                        {/* Caption */}
+                        <div style={{padding:"12px 14px",flex:1}}>
+                          <p style={{fontSize:14,fontWeight:800,marginBottom:4}}>{d.title||d.type}</p>
+                          {caption && <p style={{fontSize:12,lineHeight:1.6,whiteSpace:"pre-wrap",color:B.text,opacity:0.8,maxHeight:120,overflowY:"auto"}}>{caption}</p>}
+                          {hashtags && <p style={{fontSize:11,color:LIME,marginTop:6}}>{hashtags}</p>}
+                        </div>
+                        {/* Actions */}
+                        {isPend && <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,display:"flex",gap:8,flexShrink:0}}>
+                          <button onClick={()=>respondDemand(d,"approved","")} style={{flex:1,padding:"10px 0",borderRadius:10,background:B.green,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar</button>
+                          <button onClick={()=>{const fb=prompt("O que precisa ser alterado?");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"10px 0",borderRadius:10,background:"transparent",border:`1.5px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button>
+                          <button onClick={()=>respondDemand(d,"rejected","")} style={{padding:"10px 14px",borderRadius:10,background:"transparent",border:`1.5px solid ${B.red||"#FF6B6B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.red||"#FF6B6B"}}>Reprovar</button>
+                        </div>}
+                        {isAppr && <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,textAlign:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:700,color:B.green}}>✅ {sd?"Aprovado e agendado":"Aprovado"}</span></div>}
+                        {isRej && <div style={{padding:"10px 14px",borderTop:`1px solid ${B.border}`,textAlign:"center",flexShrink:0}}><span style={{fontSize:12,fontWeight:600,color:B.orange||"#F59E0B"}}>A agência está trabalhando nas edições</span></div>}
+                      </>;
+                    })()}
+                  </div>}
+                  {/* Navigation footer */}
+                  {sorted.length>1 && <div style={{padding:"8px 14px",borderTop:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <button onClick={()=>setDContentIdx(p=>Math.max(0,p-1))} disabled={idx<=0} style={{width:32,height:32,borderRadius:8,background:idx>0?B.bg:"transparent",border:`1px solid ${idx>0?B.border:"transparent"}`,cursor:idx>0?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx>0?1:0.3}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                      {sorted.slice(0,8).map((_,i)=><div key={i} onClick={()=>setDContentIdx(i)} style={{width:idx===i?16:6,height:6,borderRadius:3,background:idx===i?LIME:B.muted+"40",cursor:"pointer",transition:"all .2s"}}/>)}
+                      {sorted.length>8&&<span style={{fontSize:9,color:B.muted}}>+{sorted.length-8}</span>}
+                    </div>
+                    <button onClick={()=>setDContentIdx(p=>Math.min(sorted.length-1,p+1))} disabled={idx>=sorted.length-1} style={{width:32,height:32,borderRadius:8,background:idx<sorted.length-1?B.bg:"transparent",border:`1px solid ${idx<sorted.length-1?B.border:"transparent"}`,cursor:idx<sorted.length-1?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",opacity:idx<sorted.length-1?1:0.3}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+                  </div>}
                 </div>;
               }
 
