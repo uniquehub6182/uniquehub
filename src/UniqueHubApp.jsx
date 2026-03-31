@@ -25635,7 +25635,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
         if (!myClient) { console.warn("[Client] No matching client record for", user?.email); setDemandsLoaded(true); return; }
         console.log("[Client] Resolved client:", myClient.name, "id:", myClient.id, "email:", myClient.contact_email);
-        setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email });
+        setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email, website: myClient.website });
         /* Load demands for THIS client only */
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
         setDemands((clientDemands||[]).map(d => ({
@@ -25668,7 +25668,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
           myClient = (linkedId ? (allClients||[]).find(c => c.id === linkedId) : null)
             || (allClients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
             || (allClients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
-          if (myClient && !resolvedClient) setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email });
+          if (myClient && !resolvedClient) setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email, website: myClient.website });
         }
         if (!myClient) return;
         const { data: clientDemands } = await supabase.from("demands").select("*").eq("client_id", myClient.id).order("created_at", { ascending: false });
@@ -26477,10 +26477,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{maxWidth:1440,margin:"0 auto",padding:"70px 32px 0"}}>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <button onClick={()=>setShowDashEdit(true)} style={{width:38,height:38,borderRadius:10,background:B.bgCard,border:`1px solid ${B.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-            {clientPills.slice(0,5).map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); };
+            {clientPills.slice(0,8).map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); };
               return <div key={pk} onClick={nav} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
                 <div style={{width:24,height:24,borderRadius:7,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}
               </div>; })}
+            {/* Visitar meu site */}
+            {resolvedClient?.website && <div onClick={()=>window.open(resolvedClient.website,"_blank")} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+              <div style={{width:24,height:24,borderRadius:7,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+              Visitar meu site
+              <span style={{fontSize:11,color:B.muted,marginLeft:4,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{resolvedClient.website.replace(/^https?:\/\//,"")}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+            </div>}
             {/* Compromissos da semana */}
             <div onClick={()=>goTab("content")} style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10,padding:"10px 18px",borderRadius:14,background:weekDemands.length>0?`${LIME}10`:B.bgCard,border:`1px solid ${weekDemands.length>0?LIME+"30":B.border}`,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:B.muted} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
