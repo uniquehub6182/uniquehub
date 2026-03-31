@@ -25856,7 +25856,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       }
 
       const hasFutureSchedule = status === "approved" && (getScheduledTimestamp({ date: useSchedDate, time: useSchedTime }) || autoRescheduled);
-      const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : "published") : demand.stage;
+      const targetStage = status === "approved" ? (hasFutureSchedule ? "scheduled" : demand.stage) : demand.stage;
 
       /* Single DB write with correct stage */
       const updatePayload = { steps: JSON.stringify(steps), stage: targetStage };
