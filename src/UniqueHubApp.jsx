@@ -26745,17 +26745,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               /* ── AI WIDGET ── */
               if (pk === "ai") {
                 const quickPrompts = ["Crie uma legenda para post de produto","Ideia de Reels para engajamento","Estratégia de Stories para esta semana","Hashtags para Instagram"];
-                const askAi = async (q) => {
-                  if (!q.trim()||dAiLoad) return;
-                  setAiLoad(true); setAiRes("");
-                  try {
-                    const gKey = await supaGetSetting("gemini_key"); if(!gKey){setDAiRes("Chave de IA não configurada. Configure em Configurações → Assistente IA.");setDAiLoad(false);return;} const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+gKey, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:"Você é um assistente de marketing digital. Responda de forma concisa e prática em português Pergunta: "+q}]}]}) });
-                    const data = await res.json();
-                    const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta";
-                    setAiRes(txt);
-                  } catch(e) { setAiRes("Erro: "+e.message); }
-                  setAiLoad(false);
-                };
                 return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
                   <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.ai(LIME)}<span style={{fontSize:14,fontWeight:700}}>Assistente IA</span></div>
