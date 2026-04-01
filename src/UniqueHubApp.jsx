@@ -24926,6 +24926,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
 
 
 function ClientGamification({ onBack, user, clients, demands }) {
+  const isGamDesktop = useIsDesktop();
   const [tab, setTab] = useState("score");
   const { showToast, ToastEl } = useToast();
   const [scoreData, setScoreData] = useState([]);
@@ -25048,12 +25049,80 @@ function ClientGamification({ onBack, user, clients, demands }) {
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
       <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"12px 16px 120px" }}>
+      <div className="content" style={{ padding:isGamDesktop?"0 16px 60px":"12px 16px 120px" }}>
+        <div style={isGamDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
+        {isGamDesktop && <div style={{height:16}} />}
         <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
           {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
         </div>
 
         {tab === "score" && <>
+          {isGamDesktop ? <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
+            {/* Left: Score card + Pillars */}
+            <div style={{flex:"1 1 55%",minWidth:0}}>
+              <div style={{ borderRadius:20, overflow:"hidden", background:"#0D0D0D", padding:"24px 24px 20px", color:"#fff", marginBottom:14 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                  <p style={{ fontSize:20, fontWeight:800, margin:0, color:"#fff" }}>Growth Score</p>
+                  <span onClick={()=>setTab("missions")} style={{ fontSize:13, color:"rgba(255,255,255,0.35)", fontWeight:600, cursor:"pointer" }}>Ver detalhes →</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+                      <span style={{ fontSize:52, fontWeight:900, color:B.accent }}>{score}</span>
+                      <span style={{ fontSize:14, color:"rgba(255,255,255,0.5)" }}>/100 pts</span>
+                    </div>
+                    <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginTop:4 }}>#{rank} de {totalClients} · Zona {zone}</p>
+                  </div>
+                  <div style={{ width:72, height:72, borderRadius:"50%", border:"3px solid "+B.accent, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ fontSize:28, fontWeight:900, color:B.accent }}>{score}</span>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:6, marginTop:18 }}>
+                  {PILLARS.map((p,i) => <div key={i} style={{ flex:1 }}>
+                    <div style={{ height:6, borderRadius:3, background:"rgba(255,255,255,0.08)" }}><div style={{ height:6, borderRadius:3, background:p.color, width:`${Math.max(p.score, 2)}%` }} /></div>
+                    <span style={{ fontSize:9, color:"rgba(255,255,255,0.4)", marginTop:4, display:"block", textAlign:"center" }}>{p.name.substring(0,4)}</span>
+                  </div>)}
+                </div>
+                {mPending > 0 && <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+                  <span style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>{IC.gamify("rgba(255,255,255,0.3)")} {mPending} missões pendentes</span>
+                </div>}
+              </div>
+              {/* Pillars */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+                {PILLARS.map((p,i) => <Card key={i}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <p style={{ fontSize:13, fontWeight:700 }}>{p.name}</p>
+                    <span style={{ fontSize:18, fontWeight:900, color:p.color }}>{p.score}</span>
+                  </div>
+                  <div style={{ height:6, borderRadius:3, background:`${p.color}15`, marginTop:8 }}>
+                    <div style={{ height:6, borderRadius:3, background:p.color, width:`${p.score}%`, transition:"width .5s" }} />
+                  </div>
+                  <p style={{ fontSize:10, color:B.muted, marginTop:6 }}>{p.desc}</p>
+                </Card>)}
+              </div>
+            </div>
+            {/* Right: Impacts + Zones */}
+            <div style={{flex:"1 1 45%",minWidth:0}}>
+              <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginBottom:14}}>
+                <p style={{ fontSize:12, fontWeight:700, letterSpacing:1, color:B.muted, textTransform:"uppercase", marginBottom:12 }}>O que impactou seu score</p>
+                {IMPACTS.length===0 ? <p style={{ fontSize:12, color:B.muted, textAlign:"center", padding:16 }}>Nenhuma ação registrada ainda. Comece aprovando conteúdos!</p> : IMPACTS.map((imp,i) => <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", borderBottom:i<IMPACTS.length-1?`1px solid ${B.border}`:"none" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ color:imp.color }}>{IC.check}</span><span style={{ fontSize:12 }}>{imp.text}</span></div>
+                  <span style={{ fontSize:13, fontWeight:700, color:B.green }}>{imp.pts}</span>
+                </div>)}
+              </div>
+              <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}}>
+                <p style={{ fontSize:12, fontWeight:700, letterSpacing:1, color:B.muted, textTransform:"uppercase", marginBottom:12 }}>Zonas de crescimento</p>
+                {ZONES.map((z,i) => <div key={i} style={{ padding:"10px 0", borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:5, background:z.color }} /><span style={{ fontSize:12, fontWeight:zone===z.name?800:500 }}>{z.name} ({z.range})</span></div>
+                    {zone===z.name && <Tag color={scoreColor}>Você</Tag>}
+                  </div>
+                  <p style={{ fontSize:10, color:B.muted, marginTop:3, marginLeft:18 }}>{z.desc}</p>
+                </div>)}
+              </div>
+            </div>
+          </div> : <>
+          {/* MOBILE SCORE */}
           <div style={{ borderRadius:20, overflow:"hidden", background:"#0D0D0D", padding:"20px 20px 18px", color:"#fff", marginBottom:12 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
               <p style={{ fontSize:18, fontWeight:800, margin:0, color:"#fff" }}>Growth Score</p>
@@ -25113,7 +25182,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
             <p style={{ fontSize:12, fontWeight:700, color:z.color }}>Recompensa: Zona {z.name}</p>
             <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{z.reward}</p>
           </Card>)}
-        </>}
+        </>}</>}
 
         {tab === "ranking" && <>
           <div style={{ borderRadius:24, overflow:"hidden", background:"linear-gradient(180deg, #0D0D0D 0%, #1A2332 100%)", padding:"28px 20px 0", color:"#fff", textAlign:"center", border:"none" }}>
@@ -25248,6 +25317,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
             ))}
           </Card>
         </>}
+        </div>
       </div>
     </div>
   );
