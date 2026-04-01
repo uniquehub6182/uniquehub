@@ -422,19 +422,20 @@ const supaUploadFile = async (file, demandId) => {
           body: JSON.stringify({ fileName: safeName, contentType: compressed.type || file.type || "application/octet-stream" }),
         });
         const r2Data = await r2Res.json();
+        console.log("[R2] presign response:", JSON.stringify(r2Data).slice(0,300));
         if (r2Data.signedUrl) {
-          /* Step 2: Upload file directly to R2 with progress tracking */
           const ct = compressed.type || file.type || "application/octet-stream";
+          console.log("[R2] uploading", (compressed.size/1048576).toFixed(1)+"MB to R2...");
           const ok = await xhrUpload(r2Data.signedUrl, compressed, ct);
           if (ok) {
-            console.log("R2 upload OK:", r2Data.publicUrl);
+            console.log("[R2] upload OK:", r2Data.publicUrl);
             return { name: file.name, path: r2Data.key, url: r2Data.publicUrl, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
           }
-          console.warn("R2 direct upload failed, status:", "see console");
+          console.error("[R2] XHR upload FAILED");
         } else {
-          console.warn("R2 presign failed:", r2Data.error);
+          console.error("[R2] presign failed:", r2Data.error || "no signedUrl in response");
         }
-      } catch(r2Err) { console.warn("R2 error, falling back:", r2Err); }
+      } catch(r2Err) { console.error("[R2] error:", r2Err.message || r2Err); }
     }
 
     /* Supabase Storage fallback — has 50MB server-side limit */
