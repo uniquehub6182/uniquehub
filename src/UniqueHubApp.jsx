@@ -12595,7 +12595,26 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       const memberIds = (membersRes.data || []).map(m => m.user_id).filter(id => id !== user.id);
       if (memberIds.length > 0) {
         const { data: profs } = await supabase.from("profiles").select("id, name, email, role, photo_url").in("id", memberIds);
-        setAllProfiles(profs || []);
+        /* If current user is a client, only show agency team + members of the same client */
+        if (user.role === "cliente" || user.role === "Cliente") {
+          const agencyTeam = (profs||[]).filter(p => p.role === "admin" || p.role === "member");
+          /* Find same-client users via linked_client_id */
+          let sameClientProfs = [];
+          try {
+            const { data: myExtras } = await supabase.from("app_settings").select("value").eq("key", "client_extras_" + user.id).single();
+            const myClientId = myExtras?.value ? JSON.parse(myExtras.value)?.linked_client_id : null;
+            if (myClientId) {
+              const { data: allExtras } = await supabase.from("app_settings").select("key, value").like("key", "client_extras_%");
+              const sameIds = (allExtras||[]).filter(e => { try { return JSON.parse(e.value)?.linked_client_id === myClientId; } catch { return false; } }).map(e => e.key.replace("client_extras_","")).filter(id => id !== user.id);
+              sameClientProfs = (profs||[]).filter(p => sameIds.includes(p.id));
+            }
+          } catch {}
+          const combined = [...agencyTeam, ...sameClientProfs];
+          const unique = combined.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
+          setAllProfiles(unique);
+        } else {
+          setAllProfiles(profs || []);
+        }
       } else {
         setAllProfiles([]);
       }
@@ -27411,7 +27430,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
-        {tab !== "home" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
+        {tab !== "home" && tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
         <div style={{ padding:isDesktop?0:"14px 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
