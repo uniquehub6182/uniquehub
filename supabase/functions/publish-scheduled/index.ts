@@ -238,13 +238,27 @@ serve(async (req) => {
         results.push({ id: post.id, status: "published" });
       } catch (e: any) {
         console.error(`[Scheduler] Failed post ${post.id}:`, e.message);
-        await sb.from("scheduled_posts").update({
-          status: "failed",
-          error: e.message,
-        }).eq("id", post.id);
-        results.push({ id: post.id, status: "failed", error: e.message });
+        const retryCount = (post.retry_count || 0) + 1;
+        const isTransient = e.message?.includes("processing error") || e.message?.includes("timeout") || e.message?.includes("transient");
+        if (isTransient && retryCount <= 3) {
+          /* Auto-retry: reschedule for 2 minutes later */
+          const retryAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+          await sb.from("scheduled_posts").update({
+            status: "pending",
+            error: `Retry ${retryCount}/3: ${e.message}`,
+            scheduled_at: retryAt,
+            retry_count: retryCount,
+          }).eq("id", post.id);
+          console.log(`[Scheduler] Auto-retry ${retryCount}/3 for post ${post.id} at ${retryAt}`);
+          results.push({ id: post.id, status: "retry", attempt: retryCount });
+        } else {
+          await sb.from("scheduled_posts").update({
+            status: "failed",
+            error: e.message,
+          }).eq("id", post.id);
+          results.push({ id: post.id, status: "failed", error: e.message });
 
-        /* ── Notify admins about the failure ── */
+          /* ── Notify admins about the failure ── */
         try {
           let clientName = post.client_id;
           let demandTitle = post.caption?.substring(0, 40) || "Post agendado";
@@ -270,6 +284,7 @@ serve(async (req) => {
           }
           console.log(`[Scheduler] Sent failure notifications to ${(teamUsers||[]).length} admins`);
         } catch (notifErr) { console.error("[Scheduler] Failed to send failure notification:", notifErr); }
+        }
       }
     }
 
