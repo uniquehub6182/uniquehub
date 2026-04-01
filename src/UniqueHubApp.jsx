@@ -27225,7 +27225,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 
     const DemandCard = ({ d }) => {
       const imgs=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
-      const caption = d.steps?.caption?.text || "";
       const networks = d.networks || (d.network ? [d.network] : []);
       const schedDate = d.scheduling?.date || d.schedule_date;
       const schedTime = d.scheduling?.time || d.schedule_time;
@@ -27234,76 +27233,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const isAppr = st === "approved";
       const isRev = st === "revision" || st === "rejected";
       const statusColor = isAppr ? B.green : isRev ? (B.orange||"#F59E0B") : isPend ? (B.orange||"#F59E0B") : B.muted;
-      const statusLabel = isAppr ? "Aprovado" : isRev ? "Edição solicitada" : isPend ? "Aguardando aprovação" : "Em produção";
 
-      return <Card onClick={()=>setSub("demand_"+d.id)} style={{ marginBottom:10, cursor:"pointer", position:"relative", overflow:"hidden", padding:0, borderRadius:18 }}>
-        {/* Done overlay */}
-        {isAppr && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.45)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:18 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 22px", borderRadius:100, background:B.green, color:"#fff" }}>{IC.check}<span style={{ fontSize:14, fontWeight:700 }}>Aprovado</span></div>
+      return <div onClick={()=>setSub("demand_"+d.id)} style={{ cursor:"pointer", borderRadius:14, overflow:"hidden", background:C.card||"#fff", border:`1px solid ${C.brd||"#F0F0F3"}`, transition:"box-shadow 0.2s, transform 0.15s", position:"relative" }}
+        onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,0.08)";e.currentTarget.style.transform="translateY(-2px)"}}
+        onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none"}}>
+        {/* Approved overlay */}
+        {isAppr && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.5)", backdropFilter:"blur(2px)", WebkitBackdropFilter:"blur(2px)", zIndex:2, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:14 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 16px", borderRadius:100, background:B.green, color:"#fff" }}>{IC.check}<span style={{ fontSize:12, fontWeight:700 }}>Aprovado</span></div>
         </div>}
 
-        {/* Image preview */}
-        {imgs.length > 0 ? <div style={{ position:"relative", aspectRatio:"16/9", overflow:"hidden", borderRadius:"18px 18px 0 0" }}>
+        {/* Thumbnail */}
+        {imgs.length > 0 ? <div style={{ position:"relative", height:isDesktop?120:140, overflow:"hidden" }}>
           <img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-          {/* Format badge */}
-          <div style={{ position:"absolute", top:10, left:10, display:"flex", gap:4 }}>
-            <span style={{ fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(6px)" }}>{d.format || "Post"}{imgs.length>1?` · ${imgs.length}`:""}</span>
+          {/* Format pill */}
+          <span style={{ position:"absolute", top:8, left:8, fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6, background:"rgba(0,0,0,0.6)", color:"#fff", backdropFilter:"blur(4px)", letterSpacing:0.3, textTransform:"uppercase" }}>{d.format || "Post"}{imgs.length>1?` · ${imgs.length}`:""}</span>
+          {/* Networks */}
+          <div style={{ position:"absolute", bottom:8, left:8, display:"flex", gap:3 }}>
+            {networks.slice(0,2).map((n,ni) => <span key={ni} style={{ fontSize:9, fontWeight:600, padding:"2px 7px", borderRadius:5, background:"rgba(0,0,0,0.55)", color:"#fff", backdropFilter:"blur(4px)" }}>{n}</span>)}
           </div>
-          {/* Status badge */}
-          <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${statusColor}dd`, color:"#fff" }}>{statusLabel}</span>
-          {/* Network icons */}
-          <div style={{ position:"absolute", bottom:10, left:10, display:"flex", gap:4 }}>
-            {networks.map((n,ni) => <div key={ni} style={{ padding:"4px 10px", borderRadius:8, background:"rgba(0,0,0,0.5)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", gap:4 }}>
-              <span style={{ fontSize:10, fontWeight:600, color:"#fff" }}>{n}</span>
-            </div>)}
-          </div>
-        </div> : <div style={{ height:80, background:`linear-gradient(135deg, ${statusColor}15, ${C.card})`, borderRadius:"18px 18px 0 0", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
-          <span style={{ color:statusColor, opacity:0.3 }}>{IC.content(statusColor)}</span>
-          <span style={{ position:"absolute", top:10, right:10, fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:`${statusColor}dd`, color:"#fff" }}>{statusLabel}</span>
+        </div> : <div style={{ height:50, background:`linear-gradient(135deg, ${statusColor}12, ${C.card})`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <span style={{ opacity:0.2 }}>{IC.content(statusColor)}</span>
         </div>}
 
-        {/* Body */}
-        <div style={{ padding:"12px 16px 14px" }}>
-          <p style={{ fontSize:15, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-          <p style={{ fontSize:11, color:C.mut, marginTop:2 }}>{d.client} · {d.createdAt}</p>
-          {caption && <p style={{ fontSize:12, marginTop:8, lineHeight:1.5, opacity:0.75, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
-          {/* Schedule + status row */}
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10, paddingTop:8, borderTop:`1px solid ${C.brd}`, flexWrap:"wrap" }}>
-            <div style={{ width:8, height:8, borderRadius:4, background:statusColor, flexShrink:0 }} />
-            <span style={{ fontSize:11, fontWeight:700 }}>{statusLabel}</span>
-            {schedDate && <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, color:C.mut, fontWeight:600, marginLeft:"auto" }}>📅 {(() => { try { return new Date(schedDate+"T"+(schedTime||"12:00")).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}) + (schedTime ? ` ${schedTime}` : ""); } catch { return schedDate; } })()}</span>}
+        {/* Info */}
+        <div style={{ padding:"10px 12px 10px" }}>
+          <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3 }}>{d.title}</p>
+          <p style={{ fontSize:10, color:C.mut, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.client}</p>
+          {/* Status + schedule */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:8, paddingTop:7, borderTop:`1px solid ${C.brd||"#F0F0F3"}` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+              <div style={{ width:6, height:6, borderRadius:3, background:statusColor, flexShrink:0 }} />
+              <span style={{ fontSize:10, fontWeight:600, color:statusColor }}>{isAppr?"Aprovado":isRev?"Edição":isPend?"Pendente":"Produção"}</span>
+            </div>
+            {schedDate && <span style={{ fontSize:9, color:C.mut, fontWeight:600 }}>{(() => { try { const dt=new Date(schedDate+"T"+(schedTime||"12:00")); return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+(schedTime?" "+schedTime:""); } catch { return schedDate; } })()}</span>}
           </div>
         </div>
-      </Card>;
+      </div>;
     };
 
-    return <>
-      {pendingApproval.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:16, fontWeight:800 }}>Aguardando aprovação ({pendingApproval.length})</p></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
-        {pendingApproval.map(d => <DemandCard key={d.id} d={d} />)}
+    /* Section renderer */
+    const Section = ({ icon, label, color, items }) => items.length === 0 ? null : (
+      <div style={{ marginBottom:24 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+          {typeof icon === "string" ? <div style={{ width:7, height:7, borderRadius:4, background:color, animation:color===(B.orange||"#F59E0B")?"skPulse 1.5s ease infinite":"none" }} /> : <span style={{ color }}>{icon}</span>}
+          <p style={{ fontSize:15, fontWeight:800, color:color||"inherit" }}>{label} ({items.length})</p>
         </div>
-      </div>}
-      {revision.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:"#F59E0B" }} /><p style={{ fontSize:16, fontWeight:800 }}>Em edição ({revision.length})</p></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
-        {revision.map(d => <DemandCard key={d.id} d={d} />)}
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"repeat(2,1fr)", gap:isDesktop?14:10 }}>
+          {items.map(d => <DemandCard key={d.id} d={d} />)}
         </div>
-      </div>}
-      {approved.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
-        {approved.map(d => <DemandCard key={d.id} d={d} />)}
-        </div>
-      </div>}
-      {inProd.length > 0 && <div style={{ marginBottom:20 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:C.mut }} /><p style={{ fontSize:16, fontWeight:800, color:C.mut }}>Em produção ({inProd.length})</p></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10 }}>
-        {inProd.map(d => <DemandCard key={d.id} d={d} />)}
-        </div>
-      </div>}
+      </div>
+    );
+
+    return <div style={{ paddingTop:isDesktop?20:10 }}>
+      <Section icon="dot" label="Aguardando aprovação" color={B.orange||"#F59E0B"} items={pendingApproval} />
+      <Section icon="dot" label="Em edição" color="#F59E0B" items={revision} />
+      <Section icon={IC.check} label="Aprovados" color={B.green} items={approved} />
+      <Section icon="dot" label="Em produção" color={C.mut} items={inProd} />
       {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:C.mut }}>{IC.content(C.mut)}</span><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:12, color:C.mut, marginTop:4 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p></Card>}
-    </>;
+    </div>;
   };
 
   const HEADERS = { home:{icon:IC.home,label:"Portal",title:"Meu Marketing"}, content:{icon:IC.content,label:"Aprovação",title:"Conteúdo"}, calendar:{icon:IC.calendar,label:"Eventos",title:"Agenda"}, chat:{icon:IC.chat,label:"Mensagens",title:"Chat"}, more:{icon:IC.settings,label:"Opções",title:"Mais"} };
