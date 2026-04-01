@@ -27427,6 +27427,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 .bnav .nb-item{color:${inactiveColor}!important}
 .bnav .nb-item.active{color:${UP.navTextColor||"#fff"}!important}
 :root{--uh-radius:${UP.cardRadius==="sharp"?"6px":UP.cardRadius==="pill"?"20px":"14px"}}
+${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:1100px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box}`:""}
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
