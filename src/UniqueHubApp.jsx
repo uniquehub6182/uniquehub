@@ -259,6 +259,21 @@ const supaUpdateDemand = async (id, updates) => {
     const map = { stage:1, title:1, priority:1, steps:1, scheduling:1, traffic:1, format:1, aspectRatio:1, networks:1, sponsored:1, description:1, client_id:1 };
     for (const k of Object.keys(updates)) { if (map[k] !== undefined) payload[k] = updates[k]; }
     if (Object.keys(payload).length === 0) return null;
+    /* SAFETY: Always merge steps with current DB state to prevent data loss */
+    if (payload.steps) {
+      try {
+        const { data: cur } = await supabase.from("demands").select("steps").eq("id", id).single();
+        const curSteps = typeof cur?.steps === "string" ? JSON.parse(cur.steps) : (cur?.steps || {});
+        /* Deep merge: preserve all existing step keys, only update changed ones */
+        const merged = { ...curSteps };
+        for (const k of Object.keys(payload.steps)) {
+          merged[k] = typeof payload.steps[k] === "object" && typeof curSteps[k] === "object" && !Array.isArray(payload.steps[k])
+            ? { ...curSteps[k], ...payload.steps[k] }
+            : payload.steps[k];
+        }
+        payload.steps = merged;
+      } catch (mergeErr) { console.warn("Steps merge fallback:", mergeErr); }
+    }
     const { error } = await supabase.from("demands").update(payload).eq("id", id);
     if (error) console.error("Supa update demand error:", error);
   } catch (e) { console.error(e); }
