@@ -25046,6 +25046,186 @@ function ClientGamification({ onBack, user, clients, demands }) {
   ];
   const scoreColor = score >= 81 ? "#10B981" : score >= 61 ? "#BBF246" : score >= 41 ? "#F59E0B" : "#EF4444";
   const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
+  const dCard = {background:B.bgCard||"#fff",borderRadius:20,padding:"20px 24px",boxShadow:"0 1px 4px rgba(0,0,0,0.04)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`};
+  const dTab = (active) => ({padding:"10px 22px",borderRadius:12,border:active?"none":`1px solid ${B.border||"rgba(0,0,0,0.08)"}`,background:active?B.accent:(B.bgCard||"#fff"),color:active?(B.textOnAccent||"#0D0D0D"):B.muted,fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .2s"});
+
+  if (isGamDesktop) return (
+    <div style={{background:B.bg,color:B.text,minHeight:"100vh",paddingBottom:80}}>
+      {ToastEl}
+      <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
+        <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
+        <div style={{height:16}} />
+        <div style={{display:"flex",gap:10,marginBottom:24}}>
+          {TABS_G.map(t=><button key={t.k} onClick={()=>setTab(t.k)} style={dTab(tab===t.k)}>{t.l}</button>)}
+        </div>
+
+        {tab==="score"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
+          <div>
+            <div style={{borderRadius:20,background:"#0D0D0D",padding:"28px 28px 22px",color:"#fff",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                <p style={{fontSize:20,fontWeight:800,margin:0}}>Growth Score</p>
+                <span onClick={()=>setTab("missions")} style={{fontSize:13,color:"rgba(255,255,255,0.35)",fontWeight:600,cursor:"pointer"}}>Ver detalhes →</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                    <span style={{fontSize:56,fontWeight:900,color:B.accent,lineHeight:1}}>{score}</span>
+                    <span style={{fontSize:14,color:"rgba(255,255,255,0.5)"}}>/ 100 pts</span>
+                  </div>
+                  <p style={{fontSize:13,color:"rgba(255,255,255,0.4)",marginTop:6}}>#{rank} de {totalClients} · Zona {zone}</p>
+                </div>
+                <div style={{width:80,height:80,borderRadius:"50%",border:`3px solid ${B.accent}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontSize:30,fontWeight:900,color:B.accent}}>{score}</span>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6,marginTop:20}}>
+                {PILLARS.map((p,i)=><div key={i} style={{flex:1}}>
+                  <div style={{height:6,borderRadius:3,background:"rgba(255,255,255,0.08)"}}><div style={{height:6,borderRadius:3,background:p.color,width:`${Math.max(p.score,2)}%`}}/></div>
+                  <span style={{fontSize:9,color:"rgba(255,255,255,0.4)",marginTop:4,display:"block",textAlign:"center"}}>{p.name.substring(0,4)}</span>
+                </div>)}
+              </div>
+              {mPending>0&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:16,paddingTop:14,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+                <span style={{fontSize:12,color:"rgba(255,255,255,0.3)"}}>{IC.gamify("rgba(255,255,255,0.3)")} {mPending} missões pendentes</span>
+              </div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {PILLARS.map((p,i)=><div key={i} style={{...dCard,padding:"16px 18px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <p style={{fontSize:13,fontWeight:700,margin:0}}>{p.name}</p>
+                  <span style={{fontSize:20,fontWeight:900,color:p.color}}>{p.score}</span>
+                </div>
+                <div style={{height:5,borderRadius:3,background:`${p.color}15`,marginTop:8}}><div style={{height:5,borderRadius:3,background:p.color,width:`${p.score}%`,transition:"width .5s"}}/></div>
+                <p style={{fontSize:10,color:B.muted,marginTop:6,lineHeight:1.4}}>{p.desc}</p>
+              </div>)}
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            <div style={dCard}>
+              <p style={{fontSize:11,fontWeight:700,letterSpacing:1.5,color:B.muted,textTransform:"uppercase",marginBottom:14}}>O que impactou seu score</p>
+              {IMPACTS.length===0?<p style={{fontSize:12,color:B.muted,textAlign:"center",padding:"20px 0"}}>Nenhuma ação registrada ainda. Comece aprovando conteúdos!</p>:IMPACTS.map((imp,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<IMPACTS.length-1?`1px solid ${B.border}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{color:imp.color}}>{IC.check}</span><span style={{fontSize:12}}>{imp.text}</span></div>
+                <span style={{fontSize:13,fontWeight:700,color:B.green}}>{imp.pts}</span>
+              </div>)}
+            </div>
+            <div style={dCard}>
+              <p style={{fontSize:11,fontWeight:700,letterSpacing:1.5,color:B.muted,textTransform:"uppercase",marginBottom:14}}>Zonas de crescimento</p>
+              {ZONES.map((z,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:10,height:10,borderRadius:5,background:z.color}}/><span style={{fontSize:12,fontWeight:zone===z.name?800:500}}>{z.name} ({z.range})</span></div>
+                  {zone===z.name&&<Tag color={scoreColor}>Você</Tag>}
+                </div>
+                <p style={{fontSize:10,color:B.muted,marginTop:3,marginLeft:18}}>{z.desc}</p>
+              </div>)}
+            </div>
+          </div>
+        </div>}
+
+        {tab==="ranking"&&<div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:24,alignItems:"start"}}>
+          <div style={{borderRadius:24,overflow:"hidden",background:"linear-gradient(180deg,#0D0D0D 0%,#1A2332 100%)",padding:"28px 20px 0",color:"#fff",textAlign:"center"}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",marginBottom:28}}>⭐ Top 3 do mês</p>
+            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",position:"relative",minHeight:240,padding:"0 4px"}}>
+              <div style={{position:"absolute",top:"20%",left:"50%",transform:"translateX(-50%)",width:120,height:120,borderRadius:"50%",background:`radial-gradient(circle,${B.accent}20 0%,transparent 70%)`,filter:"blur(30px)"}}/>
+              <div style={{flex:1,textAlign:"center",position:"relative",zIndex:1}}>
+                <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,#E8E8E8,#B0B0B0)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:18,fontWeight:900,color:"#fff",border:"3px solid #C0C0C0"}}>{(RANKING[1]?.name||"?")[0]}</div>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"#C0C0C0",display:"flex",alignItems:"center",justifyContent:"center",margin:"-10px auto 0",position:"relative",zIndex:2,fontSize:10,fontWeight:900,color:"#fff"}}>2</div>
+                <p style={{fontSize:10,fontWeight:600,marginTop:4,color:"rgba(255,255,255,0.6)"}}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{fontSize:18,fontWeight:900,marginTop:2,color:"#C0C0C0"}}>{RANKING[1]?.score||0}</p>
+                <div style={{width:"80%",height:40,background:"linear-gradient(180deg,#3A4454,#2A3444)",borderRadius:"8px 8px 0 0",margin:"8px auto 0"}}/>
+              </div>
+              <div style={{flex:1.2,textAlign:"center",position:"relative",zIndex:2}}>
+                <div style={{width:60,height:60,borderRadius:"50%",background:`linear-gradient(135deg,${B.accent},${B.accent}CC)`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:24,fontWeight:900,color:"#0D0D0D",border:`4px solid ${B.accent}`,boxShadow:`0 6px 25px ${B.accent}40`}}>{(RANKING[0]?.name||"?")[0]}</div>
+                <div style={{width:26,height:26,borderRadius:"50%",background:"#FFD700",display:"flex",alignItems:"center",justifyContent:"center",margin:"-12px auto 0",position:"relative",zIndex:2,fontSize:12,fontWeight:900,color:"#fff",border:"2px solid #DAA520"}}>1</div>
+                <p style={{fontSize:12,fontWeight:800,marginTop:4}}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{fontSize:24,fontWeight:900,color:B.accent,marginTop:2}}>{RANKING[0]?.score||0}</p>
+                <div style={{width:"80%",height:56,background:`linear-gradient(180deg,${B.accent},${B.accent}AA)`,borderRadius:"8px 8px 0 0",margin:"8px auto 0",boxShadow:`0 -4px 20px ${B.accent}30`}}/>
+              </div>
+              <div style={{flex:1,textAlign:"center",position:"relative",zIndex:1}}>
+                <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#E8C090,#B87333)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:16,fontWeight:900,color:"#fff",border:"3px solid #CD7F32"}}>{(RANKING[2]?.name||"?")[0]}</div>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"#CD7F32",display:"flex",alignItems:"center",justifyContent:"center",margin:"-10px auto 0",position:"relative",zIndex:2,fontSize:10,fontWeight:900,color:"#fff"}}>3</div>
+                <p style={{fontSize:10,fontWeight:600,marginTop:4,color:"rgba(255,255,255,0.6)"}}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{fontSize:18,fontWeight:900,marginTop:2,color:"#CD7F32"}}>{RANKING[2]?.score||0}</p>
+                <div style={{width:"80%",height:30,background:"linear-gradient(180deg,#3A4454,#2A3444)",borderRadius:"8px 8px 0 0",margin:"8px auto 0"}}/>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style={dCard}>
+              <p style={{fontSize:13,fontWeight:700,marginBottom:4}}>Top 5 — Ranking</p>
+              <p style={{fontSize:11,color:B.muted,marginBottom:12}}>Os 5 melhores clientes do mês.</p>
+              {RANKING.slice(0,5).map((r,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<4?`1px solid ${B.border}`:"none",background:r.isMe?`${B.accent}04`:"transparent",borderRadius:r.isMe?10:0,padding:r.isMe?"12px":"12px 0"}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:i<3?["#FFD70020","#C0C0C020","#CD7F3220"][i]:`${B.muted}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{fontSize:11,fontWeight:900,color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:B.muted}}>{i+1}</span>
+                </div>
+                <Av name={r.name} sz={36} fs={13}/>
+                <div style={{flex:1}}><p style={{fontSize:13,fontWeight:r.isMe?800:600}}>{r.name}{r.isMe?" (Você)":""}</p><p style={{fontSize:10,color:B.muted}}>Zona {r.zone}</p></div>
+                <div style={{textAlign:"right"}}><p style={{fontSize:18,fontWeight:900}}>{r.score}</p><p style={{fontSize:10,color:B.green,fontWeight:600}}>+{r.delta}</p></div>
+              </div>)}
+            </div>
+            <div style={{marginTop:16,...dCard,background:`${B.accent}04`,border:`1px solid ${B.accent}15`}}>
+              <p style={{fontSize:13,fontWeight:700}}>{score===0?"O ranking começa do zero!":"Você está na posição #"+rank}</p>
+              <p style={{fontSize:11,color:B.muted,marginTop:4}}>{score===0?"Aprove conteúdos e complete missões para subir.":"Complete missões para subir de posição."}</p>
+            </div>
+          </div>
+        </div>}
+
+        {tab==="missions"&&<div>
+          <div style={{borderRadius:20,background:"linear-gradient(165deg,#0D0D0D 0%,#1A1D23 50%,#0D0D0D 100%)",padding:"28px 32px",color:"#fff",marginBottom:20,maxWidth:700,margin:"0 auto 20px",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase"}}>Missões do mês</p>
+            <div style={{display:"flex",justifyContent:"space-around",marginTop:14}}>
+              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:900,color:B.green}}>{mDone}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>concluídas</p></div>
+              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:900}}>{mPending}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>pendentes</p></div>
+              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:900,color:B.accent}}>+{mPts}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>pts disponíveis</p></div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,maxWidth:900,margin:"0 auto"}}>
+            {MISSIONS.map((m,i)=><div key={i} style={{...dCard,padding:"16px 20px",display:"flex",alignItems:"center",gap:14,opacity:m.done?0.5:1}}>
+              <div style={{width:40,height:40,borderRadius:12,background:m.done?`${B.green}15`:`${B.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {m.done?<span style={{color:B.green}}>{IC.check}</span>:<span style={{fontSize:12,fontWeight:800,color:B.accent}}>+{m.pts}</span>}
+              </div>
+              <div style={{flex:1}}><p style={{fontSize:13,fontWeight:600,textDecoration:m.done?"line-through":"none"}}>{m.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{m.done?"Concluída":"Complete para ganhar pontos"}</p></div>
+              <span style={{fontSize:14,fontWeight:700,color:m.done?B.green:B.accent}}>+{m.pts}</span>
+            </div>)}
+          </div>
+        </div>}
+
+        {tab==="info"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,alignItems:"start"}}>
+          <div>
+            <div style={{...dCard,padding:0,overflow:"hidden",marginBottom:16}}>
+              <div style={{background:B.dark||"#111",padding:"28px 24px",color:"#fff",textAlign:"center"}}><p style={{fontSize:22,fontWeight:900,marginTop:0}}>Growth Score</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Seu índice de crescimento de marketing</p></div>
+            </div>
+            <div style={dCard}>
+              <p style={{fontSize:16,fontWeight:800,marginBottom:10}}>O que é o Growth Score?</p>
+              <p style={{fontSize:13,color:B.muted,lineHeight:1.7}}>O Growth Score é um sistema de pontuação de <b style={{color:B.text}}>0 a 100</b> que mede o nível de maturidade e engajamento do seu marketing digital.</p>
+              <p style={{fontSize:16,fontWeight:800,marginTop:18,marginBottom:10}}>Os 5 Pilares</p>
+              {PILLARS.map((p,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<PILLARS.length-1?`1px solid ${B.border}`:"none",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><p style={{fontSize:13,fontWeight:700}}>{p.name}</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>{p.desc}</p></div>
+                <span style={{fontSize:13,fontWeight:700,color:B.accent,flexShrink:0}}>{p.weight}</span>
+              </div>)}
+            </div>
+          </div>
+          <div>
+            <div style={dCard}>
+              <p style={{fontSize:14,fontWeight:800,marginBottom:12}}>Como você ganha pontos</p>
+              <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${B.border}`}}>
+                <div style={{display:"flex",padding:"8px 12px",background:B.dark||"#111",color:"#fff"}}><span style={{flex:1,fontSize:11,fontWeight:700}}>Ação</span><span style={{width:50,fontSize:11,fontWeight:700,textAlign:"center"}}>Pontos</span><span style={{width:70,fontSize:11,fontWeight:700,textAlign:"right"}}>Pilar</span></div>
+                {SCORING.map((s,i)=><div key={i} style={{display:"flex",padding:"10px 12px",borderBottom:i<SCORING.length-1?`1px solid ${B.border}`:"none",alignItems:"center"}}><span style={{flex:1,fontSize:11}}>{s.action}</span><span style={{width:50,fontSize:12,fontWeight:700,color:s.c,textAlign:"center"}}>{s.pts}</span><span style={{width:70,textAlign:"right"}}><Tag color={s.c}>{s.pillar}</Tag></span></div>)}
+              </div>
+            </div>
+            <div style={{...dCard,marginTop:16}}>
+              <p style={{fontSize:14,fontWeight:800,marginBottom:8}}>Penalizações</p>
+              {PENALTIES.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<PENALTIES.length-1?`1px solid ${B.border}`:"none"}}><span style={{fontSize:14,fontWeight:900,color:B.red||"#FF6B6B",width:40}}>{p.pts}</span><span style={{fontSize:12}}>{p.action}</span></div>)}
+            </div>
+            <div style={{...dCard,marginTop:16}}>
+              <p style={{fontSize:14,fontWeight:800,marginBottom:8}}>Perguntas frequentes</p>
+              {[{q:"Quando o score é atualizado?",a:"Em tempo real."},{q:"Posso perder pontos?",a:"Sim. Inatividade e atrasos reduzem seu score."},{q:"Como chego na Zona Escala?",a:"Mantenha missões em dia e participe ativamente."},{q:"O ranking é justo?",a:"Sim! Todos começam do zero."}].map((faq,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<3?`1px solid ${B.border}`:"none"}}><p style={{fontSize:12,fontWeight:700}}>{faq.q}</p><p style={{fontSize:11,color:B.muted,marginTop:3,lineHeight:1.5}}>{faq.a}</p></div>)}
+            </div>
+          </div>
+        </div>}
+      </div>
+    </div>
+  );
+
+  /* ══ MOBILE RETURN (below) ══ */
 
   return (
     <div className={isGamDesktop?"":"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text, ...(isGamDesktop?{minHeight:"100vh",paddingBottom:80}:{}) }}>
