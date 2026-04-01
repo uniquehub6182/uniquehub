@@ -438,8 +438,8 @@ const supaUploadFile = async (file, demandId) => {
     }
 
     /* Supabase Storage fallback (or primary for small files) */
-    const maxSize = 50 * 1024 * 1024;
-    if (compressed.size > maxSize) return { error: `Arquivo muito grande (${(compressed.size/1024/1024).toFixed(0)}MB). Tente novamente em instantes.` };
+    const maxSize = 200 * 1024 * 1024;
+    if (compressed.size > maxSize) return { error: `Arquivo muito grande (${(compressed.size/1024/1024).toFixed(0)}MB). Máximo: 200MB` };
     const path = `${demandId}/${Date.now()}_${safeName}`;
     const { data, error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600", contentType: compressed.type || file.type || "application/octet-stream" });
     if (error) { console.error("Upload error:", error.message); return { error: error.message }; }
@@ -450,8 +450,8 @@ const supaUploadFile = async (file, demandId) => {
 const supaUploadClientFile = async (file, clientId) => {
   if (!supabase) return { error: "Supabase offline" };
   try {
-    const maxSize = 100 * 1024 * 1024;
-    if (file.size > maxSize) return { error: `Arquivo muito grande (${(file.size/1024/1024).toFixed(0)}MB). Máximo: 100MB` };
+    const maxSize = 200 * 1024 * 1024;
+    if (file.size > maxSize) return { error: `Arquivo muito grande (${(file.size/1024/1024).toFixed(0)}MB). Máximo: 200MB` };
     const safeName = file.name.replace(/\s+/g, "_");
     const path = `client_${clientId}/${Date.now()}_${safeName}`;
     /* Try demand-files bucket first (already exists), fallback gracefully */
