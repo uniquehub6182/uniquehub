@@ -25046,14 +25046,14 @@ function ClientGamification({ onBack, user, clients, demands }) {
   const TABS_G = [{k:"score",l:"Meu Score"},{k:"ranking",l:"Ranking"},{k:"missions",l:"Missões"},{k:"info",l:"Como Funciona?"}];
 
   return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={isGamDesktop?"":"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text, ...(isGamDesktop?{minHeight:"100vh",paddingBottom:80}:{}) }}>
       {ToastEl}
-      <div className={isGamDesktop?"sub-content":"content"} style={{ padding:isGamDesktop?"0 16px 60px":"12px 16px 120px", ...(isGamDesktop?{flex:1,overflowY:"auto"}:{}) }}>
-        <div style={isGamDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
+      <div className={isGamDesktop?"":"content"} style={{ padding:isGamDesktop?"0 16px 60px":"12px 16px 120px" }}>
+        <div style={isGamDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 16px"}:{}}>
         <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
         {isGamDesktop && <div style={{height:16}} />}
-        <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
-          {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
+        <div style={{ display:"flex", gap:isGamDesktop?10:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:isGamDesktop?24:14 }}>
+          {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:isGamDesktop?"10px 24px":"8px 16px", borderRadius:12, border:tab===t.k?"none":(isGamDesktop?`1px solid ${B.border||"rgba(0,0,0,0.06)"}`:`1.5px solid ${B.border}`), background:tab===t.k?B.accent:(isGamDesktop?(B.bgCard||"#fff"):"transparent"), color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:isGamDesktop?13:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0, boxShadow:isGamDesktop&&!tab===t.k?"0 1px 3px rgba(0,0,0,0.04)":"none", transition:"all 0.2s" }}>{t.l}</button>)}
         </div>
 
         {tab === "score" && <>
@@ -25184,7 +25184,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
           </Card>)}
         </>}</>}
 
-        {tab === "ranking" && <>
+        {tab === "ranking" && <div style={isGamDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"24px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
           <div style={{ borderRadius:24, overflow:"hidden", background:"linear-gradient(180deg, #0D0D0D 0%, #1A2332 100%)", padding:"28px 20px 0", color:"#fff", textAlign:"center", border:"none" }}>
             <p style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", marginBottom:28 }}>⭐ Top 3 do mês</p>
             <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative", minHeight:260, padding:"0 4px" }}>
@@ -25242,9 +25242,9 @@ function ClientGamification({ onBack, user, clients, demands }) {
               <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{p.reward}</p>
             </Card>
           ))}
-        </>}
+        </div>}
 
-        {tab === "missions" && <>
+        {tab === "missions" && <div style={isGamDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"24px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
           <div style={{ borderRadius:20, overflow:"hidden", background:`linear-gradient(165deg, #0D0D0D 0%, #1A1D23 50%, #0D0D0D 100%)`, padding:"24px 20px", color:"#fff", marginBottom:4, border:"1px solid rgba(255,255,255,0.06)" }}>
               <p style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,0.3)", textTransform:"uppercase" }}>Missões do mês</p>
               <div style={{ display:"flex", justifyContent:"space-around", marginTop:12 }}>
@@ -25269,9 +25269,9 @@ function ClientGamification({ onBack, user, clients, demands }) {
             <p style={{ fontSize:14, fontWeight:700 }}>Complete todas as missões</p>
             <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Ganhe <span style={{ color:B.accent, fontWeight:700 }}>+{mPts} pontos</span> e suba para a <b>Zona Crescimento</b></p>
           </Card>
-        </>}
+        </div>}
 
-        {tab === "info" && <>
+        {tab === "info" && <div style={isGamDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"24px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
           <Card style={{ padding:0, overflow:"hidden" }}><div style={{ background:B.dark||"#111", padding:"24px 20px", color:"#fff", textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, marginTop:8 }}>Growth Score</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Seu índice de crescimento de marketing</p></div></Card>
           <Card style={{ marginTop:8 }}>
             <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>O que é o Growth Score?</p>
@@ -25316,7 +25316,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
               <div key={i} style={{ padding:"10px 0", borderBottom:i<3?`1px solid ${B.border}`:"none" }}><p style={{ fontSize:13, fontWeight:700 }}>{faq.q}</p><p style={{ fontSize:11, color:B.muted, marginTop:4, lineHeight:1.5 }}>{faq.a}</p></div>
             ))}
           </Card>
-        </>}
+        </div>}
         </div>
       </div>
     </div>
