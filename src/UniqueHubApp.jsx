@@ -27472,7 +27472,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 onMouseEnter={e=>{if(isDesktop){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.08)";e.currentTarget.style.borderColor=B.accent||"#C8FF00"}}}
                 onMouseLeave={e=>{if(isDesktop){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=B.border||"rgba(0,0,0,0.06)"}}}>
                 <div style={{ width:isDesktop?48:36, height:isDesktop?48:36, borderRadius:isDesktop?14:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent, margin:isDesktop?"0 auto":"0" }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
-                <div style={{ flex:isDesktop?"initial":1 }}><p style={{ fontSize:13, fontWeight:700 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
+                <div style={{ flex:isDesktop?"initial":1, textAlign:isDesktop?"center":"left" }}><p style={{ fontSize:13, fontWeight:700 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
                 {!isDesktop && ((item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>)}
               </div>
             ))}</div>
