@@ -26392,6 +26392,83 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>
       </div>
     );
+    const _isDk = typeof window !== "undefined" && window.innerWidth > 900;
+    const _dC = {background:B.bgCard||"#fff",borderRadius:20,boxShadow:"0 1px 4px rgba(0,0,0,0.04)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`};
+
+    if (_isDk) return (
+    <div style={{ background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 }}>
+      <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
+      <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
+      <div style={{padding:"16px 0 80px"}}>
+        {/* Plan Card - unified panel */}
+        <div style={{..._dC,padding:0,overflow:"hidden"}}>
+          <div style={{background:"linear-gradient(135deg,#0D0D0D 0%,#141820 100%)",padding:"28px 36px",color:"#fff"}}>
+            <p style={{fontSize:10,fontWeight:600,letterSpacing:1.5,color:"rgba(255,255,255,0.4)",textTransform:"uppercase"}}>Seu plano</p>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+              <p style={{fontSize:28,fontWeight:900,color:"#fff"}}>{plan.name}</p>
+              <span style={{fontSize:12,color:B.accent,fontWeight:700,padding:"4px 14px",borderRadius:8,background:B.accent+"15"}}>{plan.desc}</span>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+            <div style={{padding:"24px 36px",borderRight:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${B.border}`}}><span style={{fontSize:13,color:B.muted}}>Valor mensal</span><span style={{fontSize:15,fontWeight:700,color:B.accent}}>{monthlyVal}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${B.border}`}}><span style={{fontSize:13,color:B.muted}}>Status</span><Tag color={B.green}>Ativo</Tag></div>
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0"}}><span style={{fontSize:13,color:B.muted}}>Plano sem fidelidade</span><span style={{fontSize:13,fontWeight:600}}>Início imediato</span></div>
+            </div>
+            <div style={{padding:"24px 36px"}}>
+              <p style={{fontSize:14,fontWeight:800,marginBottom:10}}>O que inclui</p>
+              {plan.features.map((item,i) => <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0"}}><span style={{color:B.green}}>{IC.check}</span><span style={{fontSize:13}}>{item}</span></div>)}
+            </div>
+          </div>
+        </div>
+        {/* Faturas + Upgrade side by side */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16,alignItems:"start"}}>
+          <div style={{..._dC,padding:"24px 28px"}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginBottom:14}}>Faturas</p>
+            {!myClient.asaas_customer_id ? (
+              <div style={{textAlign:"center",padding:"16px 0"}}><p style={{fontSize:13,fontWeight:600,color:B.muted}}>Integração Asaas não configurada</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>A agência precisa vincular seu cadastro ao Asaas para habilitar pagamentos online.</p></div>
+            ) : asaasLoading ? (
+              <p style={{fontSize:13,color:B.muted,textAlign:"center",padding:"16px 0"}}>Carregando faturas...</p>
+            ) : asaasPayments.length === 0 ? (
+              <div style={{textAlign:"center",padding:"16px 0"}}><p style={{fontSize:13,fontWeight:600,color:B.muted}}>Nenhuma fatura encontrada</p><button onClick={loadAsaasPayments} style={{marginTop:10,padding:"8px 20px",borderRadius:10,background:`${B.accent}10`,border:`1.5px solid ${B.accent}30`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.accent}}>Verificar novamente</button></div>
+            ) : asaasPayments.map((p,i) => (
+              <div key={p.id} style={{padding:"12px 0",borderBottom:i<asaasPayments.length-1?`1px solid ${B.border}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div><p style={{fontSize:13,fontWeight:600}}>{p.description||"Fatura"}</p><p style={{fontSize:11,color:B.muted}}>Venc: {new Date(p.dueDate+"T12:00").toLocaleDateString("pt-BR")} · R$ {Number(p.value).toLocaleString("pt-BR",{minimumFractionDigits:2})}</p></div>
+                  <Tag color={statusColor(p.status)}>{statusLabel(p.status)}</Tag>
+                </div>
+                {(p.status==="PENDING"||p.status==="OVERDUE")&&<div style={{display:"flex",gap:6,marginTop:8}}>
+                  {(p.billingType==="PIX"||p.billingType==="UNDEFINED")&&<button onClick={()=>{getPixQR(p.id);setFinView("pix");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:`${B.green}10`,border:`1.5px solid ${B.green}30`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.green}}>Pix</button>}
+                  {(p.billingType==="BOLETO"||p.billingType==="UNDEFINED")&&<button onClick={()=>{getBoleto(p.id);setFinView("boleto");}} style={{flex:1,padding:"8px 0",borderRadius:10,background:`${B.blue||"#3B82F6"}10`,border:`1.5px solid ${B.blue||"#3B82F6"}30`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.blue||"#3B82F6"}}>Boleto</button>}
+                  {p.invoiceUrl&&<button onClick={()=>window.open(p.invoiceUrl,"_blank")} style={{flex:1,padding:"8px 0",borderRadius:10,background:`${B.accent}10`,border:`1.5px solid ${B.accent}30`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.accent}}>Pagar</button>}
+                </div>}
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{..._dC,padding:"24px 28px",background:`${B.accent}04`,textAlign:"center"}}>
+              <p style={{fontSize:15,fontWeight:700}}>Quer mais resultados?</p>
+              <p style={{fontSize:12,color:B.muted,marginTop:4,lineHeight:1.5}}>Faça upgrade e tenha acesso a tráfego pago, produção audiovisual e muito mais.</p>
+              <button onClick={()=>setFinView("plans")} style={{marginTop:12,padding:"12px 28px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.textOnAccent||"#0D0D0D"}}>Ver planos</button>
+            </div>
+            <div style={{..._dC,padding:"24px 28px",marginTop:16}}>
+              <p style={{fontSize:11,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginBottom:12}}>Serviços extras</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {(gamifyData?.gamify_services||[{l:"Criação de Site",d:"Landing page ou institucional",v:"A partir de R$ 2.500"},{l:"Logotipo / Branding",d:"Identidade visual completa",v:"A partir de R$ 1.800"},{l:"Ensaio Fotográfico",d:"Fotos profissionais para redes",v:"A partir de R$ 800"},{l:"Vídeo Institucional",d:"Produção audiovisual completa",v:"A partir de R$ 3.000"}]).map((s,i)=><div key={i} onClick={()=>setFinView("service")} style={{padding:"14px",borderRadius:12,border:`1px solid ${B.border}`,cursor:"pointer",transition:"all .2s"}}>
+                  <p style={{fontSize:13,fontWeight:700}}>{s.l}</p>
+                  <p style={{fontSize:10,color:B.muted,marginTop:2}}>{s.d}</p>
+                  <p style={{fontSize:11,fontWeight:700,color:B.accent,marginTop:6}}>{s.v}</p>
+                </div>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+    );
+
+    /* ── MOBILE RETURN (below) ── */
 
     return (
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
