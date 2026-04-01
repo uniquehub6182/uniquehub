@@ -25535,9 +25535,9 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
 .content{flex:1;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain}
 html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:auto!important;min-height:100vh!important;overflow:visible!important;inset:auto!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
-html.uh-desktop .content>div{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .content-wide{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
-html.uh-desktop .pg{max-width:1440px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content>div{max-width:1100px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content-wide{max-width:1100px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .pg{max-width:1100px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
 html.uh-desktop .desktop-dash{max-width:1440px!important;margin:0 auto!important;padding-left:32px!important;padding-right:32px!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
@@ -27427,7 +27427,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 .bnav .nb-item{color:${inactiveColor}!important}
 .bnav .nb-item.active{color:${UP.navTextColor||"#fff"}!important}
 :root{--uh-radius:${UP.cardRadius==="sharp"?"6px":UP.cardRadius==="pill"?"20px":"14px"}}
-${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash){max-width:1100px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box}`:""}
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
