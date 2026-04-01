@@ -27476,7 +27476,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 {!isDesktop && ((item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>)}
               </div>
             ))}</div>
-            <button onClick={onLogout} style={{ width:isDesktop?"auto":"100%", marginTop:16, padding:"14px 24px", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
           </div>; })()}
           </div>}
         </div>
