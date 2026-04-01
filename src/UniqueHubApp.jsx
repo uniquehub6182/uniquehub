@@ -10121,7 +10121,7 @@ REGRAS TÉCNICAS:
                             return d;
                           }));
                           setSel(prev => prev && (prev.supaId||prev.id) === savedSelId ? { ...prev, steps: { ...prev.steps, design: { ...(prev.steps?.design||{}), ...stepUpdate } } } : prev);
-                          if (supabase) try { await supabase.from("demands").update({ steps: { design: stepUpdate } }).eq("id", savedSelId); } catch {}
+                          if (supabase) try { const{data:cur}=await supabase.from("demands").select("steps").eq("id",savedSelId).single();const merged={...(typeof cur?.steps==="string"?JSON.parse(cur.steps):(cur?.steps||{})),design:{...((typeof cur?.steps==="string"?JSON.parse(cur.steps):(cur?.steps||{})).design||{}),...stepUpdate}};await supabase.from("demands").update({steps:merged}).eq("id",savedSelId); } catch {}
                           updateBgTask(taskId, { status:"done", label:`✅ Vídeo enviado!`, msg: savedSelName });
                           if (errors.length) showToast(`⚠ ${errors.length} erro(s): ${errors.map(e=>e.error).join("; ")}`);
                         } else {
