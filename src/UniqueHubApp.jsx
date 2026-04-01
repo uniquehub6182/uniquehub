@@ -25163,56 +25163,60 @@ function ClientGamification({ onBack, user, clients, demands }) {
           </div>
         </div>}
 
-        {tab==="missions"&&<div>
-          <div style={{borderRadius:20,background:"linear-gradient(165deg,#0D0D0D 0%,#1A1D23 50%,#0D0D0D 100%)",padding:"28px 32px",color:"#fff",marginBottom:20,maxWidth:700,margin:"0 auto 20px",border:"1px solid rgba(255,255,255,0.06)"}}>
-            <p style={{fontSize:11,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase"}}>Missões do mês</p>
-            <div style={{display:"flex",justifyContent:"space-around",marginTop:14}}>
-              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:900,color:B.green}}>{mDone}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>concluídas</p></div>
-              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:900}}>{mPending}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>pendentes</p></div>
-              <div style={{textAlign:"center"}}><p style={{fontSize:28,fontWeight:900,color:B.accent}}>+{mPts}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>pts disponíveis</p></div>
+        {tab==="missions"&&<div style={{...dCard,padding:0,overflow:"hidden"}}>
+          {/* Header */}
+          <div style={{background:"linear-gradient(135deg,#0D0D0D 0%,#141820 100%)",padding:"28px 36px",color:"#fff"}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",marginBottom:16}}>Missões do mês</p>
+            <div style={{display:"flex",gap:40}}>
+              <div><p style={{fontSize:32,fontWeight:900,color:B.green}}>{mDone}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:2}}>concluídas</p></div>
+              <div><p style={{fontSize:32,fontWeight:900}}>{mPending}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:2}}>pendentes</p></div>
+              <div><p style={{fontSize:32,fontWeight:900,color:B.accent}}>+{mPts}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginTop:2}}>pts disponíveis</p></div>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,maxWidth:900,margin:"0 auto"}}>
-            {MISSIONS.map((m,i)=><div key={i} style={{...dCard,padding:"16px 20px",display:"flex",alignItems:"center",gap:14,opacity:m.done?0.5:1}}>
-              <div style={{width:40,height:40,borderRadius:12,background:m.done?`${B.green}15`:`${B.accent}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                {m.done?<span style={{color:B.green}}>{IC.check}</span>:<span style={{fontSize:12,fontWeight:800,color:B.accent}}>+{m.pts}</span>}
-              </div>
-              <div style={{flex:1}}><p style={{fontSize:13,fontWeight:600,textDecoration:m.done?"line-through":"none"}}>{m.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{m.done?"Concluída":"Complete para ganhar pontos"}</p></div>
-              <span style={{fontSize:14,fontWeight:700,color:m.done?B.green:B.accent}}>+{m.pts}</span>
-            </div>)}
+          {/* Mission Items */}
+          <div style={{padding:"24px 36px"}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginBottom:16}}>Suas missões</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {MISSIONS.map((m,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:14,padding:"16px 18px",borderRadius:14,background:m.done?`${B.green}06`:"rgba(0,0,0,0.015)",border:m.done?`1.5px solid ${B.green}20`:`1.5px solid ${B.border||"rgba(0,0,0,0.06)"}`,opacity:m.done?0.6:1}}>
+                <div style={{width:40,height:40,borderRadius:12,background:m.done?`${B.green}12`:`${B.accent}08`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  {m.done?<span style={{color:B.green}}>{IC.check}</span>:<span style={{fontSize:12,fontWeight:800,color:B.accent}}>+{m.pts}</span>}
+                </div>
+                <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:600,textDecoration:m.done?"line-through":"none"}}>{m.title}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{m.done?"Concluída":"Complete para ganhar pontos"}</p></div>
+                <span style={{fontSize:14,fontWeight:700,color:m.done?B.green:B.accent,flexShrink:0}}>+{m.pts}</span>
+              </div>)}
+            </div>
           </div>
         </div>}
 
-        {tab==="info"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,alignItems:"start"}}>
-          <div>
-            <div style={{...dCard,padding:0,overflow:"hidden",marginBottom:16}}>
-              <div style={{background:B.dark||"#111",padding:"28px 24px",color:"#fff",textAlign:"center"}}><p style={{fontSize:22,fontWeight:900,marginTop:0}}>Growth Score</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Seu índice de crescimento de marketing</p></div>
-            </div>
-            <div style={dCard}>
+        {tab==="info"&&<div style={{...dCard,padding:0,overflow:"hidden"}}>
+          {/* Header */}
+          <div style={{background:"linear-gradient(135deg,#0D0D0D 0%,#141820 100%)",padding:"28px 36px",color:"#fff",textAlign:"center"}}>
+            <p style={{fontSize:22,fontWeight:900}}>Growth Score</p>
+            <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Seu índice de crescimento de marketing</p>
+          </div>
+          {/* Content: 2 columns */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+            {/* Left: Explanation + Pillars */}
+            <div style={{padding:"24px 36px",borderRight:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}}>
               <p style={{fontSize:16,fontWeight:800,marginBottom:10}}>O que é o Growth Score?</p>
               <p style={{fontSize:13,color:B.muted,lineHeight:1.7}}>O Growth Score é um sistema de pontuação de <b style={{color:B.text}}>0 a 100</b> que mede o nível de maturidade e engajamento do seu marketing digital.</p>
-              <p style={{fontSize:16,fontWeight:800,marginTop:18,marginBottom:10}}>Os 5 Pilares</p>
+              <p style={{fontSize:11,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginTop:20,marginBottom:12}}>Os 5 pilares</p>
               {PILLARS.map((p,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<PILLARS.length-1?`1px solid ${B.border}`:"none",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div><p style={{fontSize:13,fontWeight:700}}>{p.name}</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>{p.desc}</p></div>
                 <span style={{fontSize:13,fontWeight:700,color:B.accent,flexShrink:0}}>{p.weight}</span>
               </div>)}
             </div>
-          </div>
-          <div>
-            <div style={dCard}>
+            {/* Right: Scoring + Penalties + FAQ */}
+            <div style={{padding:"24px 36px"}}>
               <p style={{fontSize:14,fontWeight:800,marginBottom:12}}>Como você ganha pontos</p>
               <div style={{borderRadius:12,overflow:"hidden",border:`1px solid ${B.border}`}}>
                 <div style={{display:"flex",padding:"8px 12px",background:B.dark||"#111",color:"#fff"}}><span style={{flex:1,fontSize:11,fontWeight:700}}>Ação</span><span style={{width:50,fontSize:11,fontWeight:700,textAlign:"center"}}>Pontos</span><span style={{width:70,fontSize:11,fontWeight:700,textAlign:"right"}}>Pilar</span></div>
                 {SCORING.map((s,i)=><div key={i} style={{display:"flex",padding:"10px 12px",borderBottom:i<SCORING.length-1?`1px solid ${B.border}`:"none",alignItems:"center"}}><span style={{flex:1,fontSize:11}}>{s.action}</span><span style={{width:50,fontSize:12,fontWeight:700,color:s.c,textAlign:"center"}}>{s.pts}</span><span style={{width:70,textAlign:"right"}}><Tag color={s.c}>{s.pillar}</Tag></span></div>)}
               </div>
-            </div>
-            <div style={{...dCard,marginTop:16}}>
-              <p style={{fontSize:14,fontWeight:800,marginBottom:8}}>Penalizações</p>
-              {PENALTIES.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<PENALTIES.length-1?`1px solid ${B.border}`:"none"}}><span style={{fontSize:14,fontWeight:900,color:B.red||"#FF6B6B",width:40}}>{p.pts}</span><span style={{fontSize:12}}>{p.action}</span></div>)}
-            </div>
-            <div style={{...dCard,marginTop:16}}>
-              <p style={{fontSize:14,fontWeight:800,marginBottom:8}}>Perguntas frequentes</p>
-              {[{q:"Quando o score é atualizado?",a:"Em tempo real."},{q:"Posso perder pontos?",a:"Sim. Inatividade e atrasos reduzem seu score."},{q:"Como chego na Zona Escala?",a:"Mantenha missões em dia e participe ativamente."},{q:"O ranking é justo?",a:"Sim! Todos começam do zero."}].map((faq,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<3?`1px solid ${B.border}`:"none"}}><p style={{fontSize:12,fontWeight:700}}>{faq.q}</p><p style={{fontSize:11,color:B.muted,marginTop:3,lineHeight:1.5}}>{faq.a}</p></div>)}
+              <p style={{fontSize:14,fontWeight:800,marginTop:20,marginBottom:8}}>Penalizações</p>
+              {PENALTIES.map((p,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<PENALTIES.length-1?`1px solid ${B.border}`:"none"}}><span style={{fontSize:14,fontWeight:900,color:B.red||"#FF6B6B",width:40}}>{p.pts}</span><span style={{fontSize:12}}>{p.action}</span></div>)}
+              <p style={{fontSize:14,fontWeight:800,marginTop:20,marginBottom:8}}>Perguntas frequentes</p>
+              {[{q:"Quando o score é atualizado?",a:"Em tempo real."},{q:"Posso perder pontos?",a:"Sim. Inatividade e atrasos reduzem seu score."},{q:"Como chego na Zona Escala?",a:"Mantenha missões em dia e participe ativamente."},{q:"O ranking é justo?",a:"Sim! Todos começam do zero."}].map((faq,i)=><div key={i} style={{padding:"8px 0",borderBottom:i<3?`1px solid ${B.border}`:"none"}}><p style={{fontSize:12,fontWeight:700}}>{faq.q}</p><p style={{fontSize:11,color:B.muted,marginTop:2,lineHeight:1.5}}>{faq.a}</p></div>)}
             </div>
           </div>
         </div>}
