@@ -25115,51 +25115,51 @@ function ClientGamification({ onBack, user, clients, demands }) {
           </div>
         </div>}
 
-        {tab==="ranking"&&<div style={{display:"grid",gridTemplateColumns:"420px 1fr",gap:24,alignItems:"start"}}>
-          <div style={{borderRadius:24,overflow:"hidden",background:"linear-gradient(180deg,#0D0D0D 0%,#1A2332 100%)",padding:"28px 20px 0",color:"#fff",textAlign:"center"}}>
-            <p style={{fontSize:11,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",marginBottom:28}}>⭐ Top 3 do mês</p>
-            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",position:"relative",minHeight:240,padding:"0 4px"}}>
+        {tab==="ranking"&&<div style={{...dCard,padding:0,overflow:"hidden"}}>
+          {/* Podium Header */}
+          <div style={{background:"linear-gradient(135deg,#0D0D0D 0%,#141820 100%)",padding:"28px 36px 0",color:"#fff",textAlign:"center"}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",marginBottom:24}}>⭐ Top 3 do mês</p>
+            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",position:"relative",minHeight:200,maxWidth:500,margin:"0 auto"}}>
               <div style={{position:"absolute",top:"20%",left:"50%",transform:"translateX(-50%)",width:120,height:120,borderRadius:"50%",background:`radial-gradient(circle,${B.accent}20 0%,transparent 70%)`,filter:"blur(30px)"}}/>
               <div style={{flex:1,textAlign:"center",position:"relative",zIndex:1}}>
-                <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,#E8E8E8,#B0B0B0)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:18,fontWeight:900,color:"#fff",border:"3px solid #C0C0C0"}}>{(RANKING[1]?.name||"?")[0]}</div>
+                <div style={{width:50,height:50,borderRadius:"50%",background:"linear-gradient(135deg,#E8E8E8,#B0B0B0)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:18,fontWeight:900,color:"#fff",border:"3px solid #C0C0C0"}}>{(RANKING[1]?.name||"?")[0]}</div>
                 <div style={{width:22,height:22,borderRadius:"50%",background:"#C0C0C0",display:"flex",alignItems:"center",justifyContent:"center",margin:"-10px auto 0",position:"relative",zIndex:2,fontSize:10,fontWeight:900,color:"#fff"}}>2</div>
                 <p style={{fontSize:10,fontWeight:600,marginTop:4,color:"rgba(255,255,255,0.6)"}}>{RANKING[1]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
-                <p style={{fontSize:18,fontWeight:900,marginTop:2,color:"#C0C0C0"}}>{RANKING[1]?.score||0}</p>
-                <div style={{width:"80%",height:40,background:"linear-gradient(180deg,#3A4454,#2A3444)",borderRadius:"8px 8px 0 0",margin:"8px auto 0"}}/>
+                <p style={{fontSize:18,fontWeight:900,color:"#C0C0C0"}}>{RANKING[1]?.score||0}</p>
+                <div style={{width:"70%",height:36,background:"linear-gradient(180deg,#3A4454,#2A3444)",borderRadius:"8px 8px 0 0",margin:"6px auto 0"}}/>
               </div>
               <div style={{flex:1.2,textAlign:"center",position:"relative",zIndex:2}}>
-                <div style={{width:60,height:60,borderRadius:"50%",background:`linear-gradient(135deg,${B.accent},${B.accent}CC)`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:24,fontWeight:900,color:"#0D0D0D",border:`4px solid ${B.accent}`,boxShadow:`0 6px 25px ${B.accent}40`}}>{(RANKING[0]?.name||"?")[0]}</div>
+                <div style={{width:64,height:64,borderRadius:"50%",background:`linear-gradient(135deg,${B.accent},${B.accent}CC)`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:24,fontWeight:900,color:"#0D0D0D",border:`4px solid ${B.accent}`,boxShadow:`0 6px 25px ${B.accent}40`}}>{(RANKING[0]?.name||"?")[0]}</div>
                 <div style={{width:26,height:26,borderRadius:"50%",background:"#FFD700",display:"flex",alignItems:"center",justifyContent:"center",margin:"-12px auto 0",position:"relative",zIndex:2,fontSize:12,fontWeight:900,color:"#fff",border:"2px solid #DAA520"}}>1</div>
-                <p style={{fontSize:12,fontWeight:800,marginTop:4}}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
-                <p style={{fontSize:24,fontWeight:900,color:B.accent,marginTop:2}}>{RANKING[0]?.score||0}</p>
-                <div style={{width:"80%",height:56,background:`linear-gradient(180deg,${B.accent},${B.accent}AA)`,borderRadius:"8px 8px 0 0",margin:"8px auto 0",boxShadow:`0 -4px 20px ${B.accent}30`}}/>
+                <p style={{fontSize:13,fontWeight:800,marginTop:4}}>{RANKING[0]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
+                <p style={{fontSize:24,fontWeight:900,color:B.accent}}>{RANKING[0]?.score||0}</p>
+                <div style={{width:"70%",height:52,background:`linear-gradient(180deg,${B.accent},${B.accent}AA)`,borderRadius:"8px 8px 0 0",margin:"6px auto 0",boxShadow:`0 -4px 20px ${B.accent}30`}}/>
               </div>
               <div style={{flex:1,textAlign:"center",position:"relative",zIndex:1}}>
-                <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#E8C090,#B87333)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:16,fontWeight:900,color:"#fff",border:"3px solid #CD7F32"}}>{(RANKING[2]?.name||"?")[0]}</div>
+                <div style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#E8C090,#B87333)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",fontSize:16,fontWeight:900,color:"#fff",border:"3px solid #CD7F32"}}>{(RANKING[2]?.name||"?")[0]}</div>
                 <div style={{width:22,height:22,borderRadius:"50%",background:"#CD7F32",display:"flex",alignItems:"center",justifyContent:"center",margin:"-10px auto 0",position:"relative",zIndex:2,fontSize:10,fontWeight:900,color:"#fff"}}>3</div>
                 <p style={{fontSize:10,fontWeight:600,marginTop:4,color:"rgba(255,255,255,0.6)"}}>{RANKING[2]?.name?.split(" ").slice(0,2).join(" ")||"—"}</p>
-                <p style={{fontSize:18,fontWeight:900,marginTop:2,color:"#CD7F32"}}>{RANKING[2]?.score||0}</p>
-                <div style={{width:"80%",height:30,background:"linear-gradient(180deg,#3A4454,#2A3444)",borderRadius:"8px 8px 0 0",margin:"8px auto 0"}}/>
+                <p style={{fontSize:18,fontWeight:900,color:"#CD7F32"}}>{RANKING[2]?.score||0}</p>
+                <div style={{width:"70%",height:24,background:"linear-gradient(180deg,#3A4454,#2A3444)",borderRadius:"8px 8px 0 0",margin:"6px auto 0"}}/>
               </div>
             </div>
           </div>
-          <div>
-            <div style={dCard}>
-              <p style={{fontSize:13,fontWeight:700,marginBottom:4}}>Top 5 — Ranking</p>
-              <p style={{fontSize:11,color:B.muted,marginBottom:12}}>Os 5 melhores clientes do mês.</p>
-              {RANKING.slice(0,5).map((r,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<4?`1px solid ${B.border}`:"none",background:r.isMe?`${B.accent}04`:"transparent",borderRadius:r.isMe?10:0,padding:r.isMe?"12px":"12px 0"}}>
-                <div style={{width:28,height:28,borderRadius:"50%",background:i<3?["#FFD70020","#C0C0C020","#CD7F3220"][i]:`${B.muted}10`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <span style={{fontSize:11,fontWeight:900,color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:B.muted}}>{i+1}</span>
-                </div>
-                <Av name={r.name} sz={36} fs={13}/>
-                <div style={{flex:1}}><p style={{fontSize:13,fontWeight:r.isMe?800:600}}>{r.name}{r.isMe?" (Você)":""}</p><p style={{fontSize:10,color:B.muted}}>Zona {r.zone}</p></div>
-                <div style={{textAlign:"right"}}><p style={{fontSize:18,fontWeight:900}}>{r.score}</p><p style={{fontSize:10,color:B.green,fontWeight:600}}>+{r.delta}</p></div>
-              </div>)}
-            </div>
-            <div style={{marginTop:16,...dCard,background:`${B.accent}04`,border:`1px solid ${B.accent}15`}}>
-              <p style={{fontSize:13,fontWeight:700}}>{score===0?"O ranking começa do zero!":"Você está na posição #"+rank}</p>
-              <p style={{fontSize:11,color:B.muted,marginTop:4}}>{score===0?"Aprove conteúdos e complete missões para subir.":"Complete missões para subir de posição."}</p>
-            </div>
+          {/* Ranking List */}
+          <div style={{padding:"24px 36px",borderBottom:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginBottom:16}}>Top 5 — Ranking do mês</p>
+            {RANKING.slice(0,5).map((r,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:6,borderRadius:14,background:r.isMe?`${B.accent}06`:(i%2===0?"rgba(0,0,0,0.015)":"transparent"),border:r.isMe?`1.5px solid ${B.accent}20`:"1.5px solid transparent"}}>
+              <div style={{width:30,height:30,borderRadius:"50%",background:i<3?["#FFD70015","#C0C0C015","#CD7F3215"][i]:`${B.muted}08`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <span style={{fontSize:12,fontWeight:900,color:i<3?["#FFD700","#C0C0C0","#CD7F32"][i]:B.muted}}>{i+1}</span>
+              </div>
+              <Av name={r.name} sz={38} fs={14}/>
+              <div style={{flex:1}}><p style={{fontSize:14,fontWeight:r.isMe?800:600}}>{r.name}{r.isMe?" (Você)":""}</p><p style={{fontSize:10,color:B.muted}}>Zona {r.zone}</p></div>
+              <div style={{textAlign:"right"}}><p style={{fontSize:20,fontWeight:900}}>{r.score}</p><p style={{fontSize:10,color:B.green,fontWeight:600}}>+{r.delta}</p></div>
+            </div>)}
+          </div>
+          {/* Footer: Motivation */}
+          <div style={{padding:"20px 36px",display:"flex",alignItems:"center",justifyContent:"space-between",background:`${B.accent}03`}}>
+            <div><p style={{fontSize:14,fontWeight:700}}>{score===0?"O ranking começa do zero!":"Você está na posição #"+rank}</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>{score===0?"Aprove conteúdos e complete missões para subir.":"Complete missões para subir."}</p></div>
+            <button onClick={()=>setTab("missions")} style={{padding:"10px 20px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent||"#0D0D0D"}}>Ver missões →</button>
           </div>
         </div>}
 
