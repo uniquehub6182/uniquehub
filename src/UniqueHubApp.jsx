@@ -430,16 +430,17 @@ const supaUploadFile = async (file, demandId) => {
             console.log("R2 upload OK:", r2Data.publicUrl);
             return { name: file.name, path: r2Data.key, url: r2Data.publicUrl, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
           }
-          console.warn("R2 direct upload failed");
+          console.warn("R2 direct upload failed, status:", "see console");
         } else {
           console.warn("R2 presign failed:", r2Data.error);
         }
       } catch(r2Err) { console.warn("R2 error, falling back:", r2Err); }
     }
 
-    /* Supabase Storage fallback (or primary for small files) */
+    /* Supabase Storage fallback — has 50MB server-side limit */
     const maxSize = 200 * 1024 * 1024;
     if (compressed.size > maxSize) return { error: `Arquivo muito grande (${(compressed.size/1024/1024).toFixed(0)}MB). Máximo: 200MB` };
+    if (compressed.size > 50 * 1024 * 1024) return { error: `Upload para Cloudflare R2 falhou. Arquivo de ${(compressed.size/1024/1024).toFixed(0)}MB excede o limite do Supabase (50MB). Verifique a configuração CORS do bucket R2.` };
     const path = `${demandId}/${Date.now()}_${safeName}`;
     const { data, error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600", contentType: compressed.type || file.type || "application/octet-stream" });
     if (error) { console.error("Upload error:", error.message); return { error: error.message }; }
