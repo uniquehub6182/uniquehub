@@ -25090,7 +25090,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
                 </div>}
               </div>
               {/* Pillars */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isGamDesktop?"repeat(3,1fr)":"repeat(2,1fr)",gap:12}}>
                 {PILLARS.map((p,i) => <Card key={i}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <p style={{ fontSize:13, fontWeight:700 }}>{p.name}</p>
@@ -25187,7 +25187,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </>}</>}
 
         {tab === "ranking" && <div style={isGamDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"24px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
-          <div style={{ borderRadius:24, overflow:"hidden", background:"linear-gradient(180deg, #0D0D0D 0%, #1A2332 100%)", padding:"28px 20px 0", color:"#fff", textAlign:"center", border:"none" }}>
+          <div style={{ borderRadius:24, overflow:"hidden", background:"linear-gradient(180deg, #0D0D0D 0%, #1A2332 100%)", padding:"28px 20px 0", color:"#fff", textAlign:"center", border:"none", ...(isGamDesktop?{maxWidth:700,margin:"0 auto"}:{}) }}>
             <p style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", marginBottom:28 }}>⭐ Top 3 do mês</p>
             <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", position:"relative", minHeight:260, padding:"0 4px" }}>
               {/* Glow behind 1st */}
@@ -25247,7 +25247,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </div>}
 
         {tab === "missions" && <div style={isGamDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"24px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
-          <div style={{ borderRadius:20, overflow:"hidden", background:`linear-gradient(165deg, #0D0D0D 0%, #1A1D23 50%, #0D0D0D 100%)`, padding:"24px 20px", color:"#fff", marginBottom:4, border:"1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ borderRadius:20, overflow:"hidden", background:`linear-gradient(165deg, #0D0D0D 0%, #1A1D23 50%, #0D0D0D 100%)`, padding:"24px 20px", color:"#fff", marginBottom:4, ...(isGamDesktop?{maxWidth:800,margin:"0 auto 4px"}:{}), border:"1px solid rgba(255,255,255,0.06)" }}>
               <p style={{ fontSize:11, fontWeight:700, letterSpacing:2, color:"rgba(255,255,255,0.3)", textTransform:"uppercase" }}>Missões do mês</p>
               <div style={{ display:"flex", justifyContent:"space-around", marginTop:12 }}>
                 <div style={{ textAlign:"center" }}><p style={{ fontSize:24, fontWeight:900, color:B.green }}>{mDone}</p><p style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>concluídas</p></div>
@@ -25274,7 +25274,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </div>}
 
         {tab === "info" && <div style={isGamDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"24px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
-          <Card style={{ padding:0, overflow:"hidden" }}><div style={{ background:B.dark||"#111", padding:"24px 20px", color:"#fff", textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, marginTop:8 }}>Growth Score</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Seu índice de crescimento de marketing</p></div></Card>
+          <Card style={{ padding:0, overflow:"hidden", ...(isGamDesktop?{maxWidth:800,margin:"0 auto"}:{}) }}><div style={{ background:B.dark||"#111", padding:"24px 20px", color:"#fff", textAlign:"center" }}><p style={{ fontSize:20, fontWeight:900, marginTop:8 }}>Growth Score</p><p style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>Seu índice de crescimento de marketing</p></div></Card>
           <Card style={{ marginTop:8 }}>
             <p style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>O que é o Growth Score?</p>
             <p style={{ fontSize:12, color:B.muted, lineHeight:1.7 }}>O Growth Score é um sistema de pontuação de <b style={{ color:B.text }}>0 a 100</b> que mede o nível de maturidade e engajamento do seu marketing digital. Quanto maior seu score, mais otimizado está seu marketing.</p>
