@@ -25075,64 +25075,58 @@ function ClientGamification({ onBack, user, clients, demands }) {
         </div>
 
         {tab==="score"&&<>
-          <div style={{display:"grid",gridTemplateColumns:"280px 1fr 280px",gap:20,alignItems:"start"}}>
-            {/* Left: Impacts */}
-            <div style={dCard}>
-              <p style={{fontSize:11,fontWeight:700,letterSpacing:1.5,color:B.muted,textTransform:"uppercase",marginBottom:14}}>O que impactou seu score</p>
-              {IMPACTS.length===0?<p style={{fontSize:12,color:B.muted,textAlign:"center",padding:"20px 0"}}>Nenhuma ação registrada ainda. Comece aprovando conteúdos!</p>:IMPACTS.map((imp,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<IMPACTS.length-1?`1px solid ${B.border}`:"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{color:imp.color}}>{IC.check}</span><span style={{fontSize:11}}>{imp.text}</span></div>
-                <span style={{fontSize:12,fontWeight:700,color:B.green}}>{imp.pts}</span>
-              </div>)}
+          {/* Hero Score Card - full width */}
+          <div style={{borderRadius:24,background:"linear-gradient(135deg,#0D0D0D 0%,#1A1D23 100%)",padding:"36px 40px 28px",color:"#fff",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:-40,right:-40,width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,${B.accent}08 0%,transparent 70%)`}}/>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{flex:1}}>
+                <p style={{fontSize:12,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",marginBottom:12}}>Seu Growth Score</p>
+                <div style={{display:"flex",alignItems:"baseline",gap:10}}>
+                  <span style={{fontSize:72,fontWeight:900,color:B.accent,lineHeight:1}}>{score}</span>
+                  <span style={{fontSize:16,color:"rgba(255,255,255,0.4)"}}>/ 100</span>
+                </div>
+                <p style={{fontSize:14,color:"rgba(255,255,255,0.5)",marginTop:8}}>Posição <b style={{color:"#fff"}}>#{rank}</b> de {totalClients} · <span style={{color:scoreColor}}>{zone}</span></p>
+              </div>
+              <div style={{display:"flex",gap:24,alignItems:"center"}}>
+                {mPending>0&&<div style={{textAlign:"center"}}><p style={{fontSize:24,fontWeight:900,color:B.accent}}>{mPending}</p><p style={{fontSize:10,color:"rgba(255,255,255,0.35)"}}>missões<br/>pendentes</p></div>}
+                <div style={{width:100,height:100,borderRadius:"50%",border:`4px solid ${B.accent}`,display:"flex",alignItems:"center",justifyContent:"center",background:`${B.accent}08`}}>
+                  <span style={{fontSize:36,fontWeight:900,color:B.accent}}>{score}</span>
+                </div>
+              </div>
             </div>
-            {/* Center: Big Score Card */}
-            <div style={{borderRadius:20,background:"#0D0D0D",padding:"32px 32px 24px",color:"#fff"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-                <p style={{fontSize:22,fontWeight:800,margin:0}}>Growth Score</p>
-                <span onClick={()=>setTab("missions")} style={{fontSize:13,color:"rgba(255,255,255,0.35)",fontWeight:600,cursor:"pointer"}}>Ver detalhes →</span>
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                    <span style={{fontSize:64,fontWeight:900,color:B.accent,lineHeight:1}}>{score}</span>
-                    <span style={{fontSize:16,color:"rgba(255,255,255,0.5)"}}>/ 100 pts</span>
-                  </div>
-                  <p style={{fontSize:14,color:"rgba(255,255,255,0.4)",marginTop:8}}>#{rank} de {totalClients} · Zona {zone}</p>
-                </div>
-                <div style={{width:90,height:90,borderRadius:"50%",border:`3px solid ${B.accent}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontSize:34,fontWeight:900,color:B.accent}}>{score}</span>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8,marginTop:24}}>
-                {PILLARS.map((p,i)=><div key={i} style={{flex:1}}>
-                  <div style={{height:7,borderRadius:4,background:"rgba(255,255,255,0.08)"}}><div style={{height:7,borderRadius:4,background:p.color,width:`${Math.max(p.score,2)}%`}}/></div>
-                  <span style={{fontSize:10,color:"rgba(255,255,255,0.45)",marginTop:5,display:"block",textAlign:"center"}}>{p.name.substring(0,4)}</span>
-                </div>)}
-              </div>
-              {mPending>0&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:18,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-                <span style={{fontSize:12,color:"rgba(255,255,255,0.3)"}}>{IC.gamify("rgba(255,255,255,0.3)")} {mPending} missões pendentes</span>
-              </div>}
-            </div>
-            {/* Right: Zones */}
-            <div style={dCard}>
-              <p style={{fontSize:11,fontWeight:700,letterSpacing:1.5,color:B.muted,textTransform:"uppercase",marginBottom:14}}>Zonas de crescimento</p>
-              {ZONES.map((z,i)=><div key={i} style={{padding:"10px 0",borderBottom:i<ZONES.length-1?`1px solid ${B.border}`:"none"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:10,height:10,borderRadius:5,background:z.color}}/><span style={{fontSize:12,fontWeight:zone===z.name?800:500}}>{z.name} ({z.range})</span></div>
-                  {zone===z.name&&<Tag color={scoreColor}>Você</Tag>}
-                </div>
+            <div style={{display:"flex",gap:8,marginTop:24}}>
+              {PILLARS.map((p,i)=><div key={i} style={{flex:1}}>
+                <div style={{height:6,borderRadius:3,background:"rgba(255,255,255,0.06)"}}><div style={{height:6,borderRadius:3,background:p.color,width:`${Math.max(p.score,3)}%`}}/></div>
+                <span style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginTop:5,display:"block",textAlign:"center"}}>{p.name}</span>
               </div>)}
             </div>
           </div>
-          {/* Pillars row below */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginTop:16}}>
-            {PILLARS.map((p,i)=><div key={i} style={{...dCard,padding:"16px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <p style={{fontSize:13,fontWeight:700,margin:0}}>{p.name}</p>
-                <span style={{fontSize:20,fontWeight:900,color:p.color}}>{p.score}</span>
-              </div>
-              <div style={{height:5,borderRadius:3,background:`${p.color}15`,marginTop:8}}><div style={{height:5,borderRadius:3,background:p.color,width:`${p.score}%`,transition:"width .5s"}}/></div>
-              <p style={{fontSize:10,color:B.muted,marginTop:6,lineHeight:1.4}}>{p.desc}</p>
+          {/* 5 Pillar Cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginTop:20}}>
+            {PILLARS.map((p,i)=><div key={i} style={{...dCard,padding:"18px 16px",textAlign:"center"}}>
+              <span style={{fontSize:28,fontWeight:900,color:p.color,display:"block"}}>{p.score}</span>
+              <p style={{fontSize:13,fontWeight:700,margin:"6px 0 4px"}}>{p.name}</p>
+              <div style={{height:4,borderRadius:2,background:`${p.color}15`,margin:"0 auto",width:"80%"}}><div style={{height:4,borderRadius:2,background:p.color,width:`${p.score}%`,transition:"width .5s"}}/></div>
+              <p style={{fontSize:9,color:B.muted,marginTop:8,lineHeight:1.4}}>{p.desc}</p>
             </div>)}
+          </div>
+          {/* Impacts + Zones - 2 equal columns */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:20}}>
+            <div style={dCard}>
+              <p style={{fontSize:12,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginBottom:14}}>O que impactou seu score</p>
+              {IMPACTS.length===0?<div style={{textAlign:"center",padding:"24px 0"}}><span style={{fontSize:28,display:"block",marginBottom:8}}>📊</span><p style={{fontSize:12,color:B.muted}}>Nenhuma ação registrada ainda.</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>Aprove conteúdos, crie eventos ou acesse relatórios para ganhar pontos!</p></div>:IMPACTS.map((imp,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<IMPACTS.length-1?`1px solid ${B.border}`:"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{color:imp.color}}>{IC.check}</span><span style={{fontSize:12}}>{imp.text}</span></div>
+                <span style={{fontSize:13,fontWeight:700,color:B.green}}>{imp.pts}</span>
+              </div>)}
+            </div>
+            <div style={dCard}>
+              <p style={{fontSize:12,fontWeight:700,letterSpacing:1,color:B.muted,textTransform:"uppercase",marginBottom:14}}>Zonas de crescimento</p>
+              {ZONES.map((z,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",marginBottom:i<ZONES.length-1?6:0,borderRadius:12,background:zone===z.name?`${z.color}08`:"transparent",border:zone===z.name?`1px solid ${z.color}20`:"1px solid transparent"}}>
+                <div style={{width:12,height:12,borderRadius:6,background:z.color,flexShrink:0}}/>
+                <div style={{flex:1}}><p style={{fontSize:13,fontWeight:zone===z.name?800:500}}>{z.name}</p><p style={{fontSize:10,color:B.muted}}>{z.range}</p></div>
+                {zone===z.name&&<Tag color={scoreColor}>Você</Tag>}
+              </div>)}
+            </div>
           </div>
         </>}
 
