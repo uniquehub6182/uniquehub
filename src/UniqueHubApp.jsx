@@ -27430,8 +27430,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
-        {tab !== "home" && tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
         <div style={{ padding:isDesktop?0:"14px 16px 0" }}>
+          {tab !== "home" && tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
           {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
