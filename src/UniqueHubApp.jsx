@@ -27343,21 +27343,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </Card>;
     };
 
-    const secBlock = (label, color, icon, items) => items.length===0 ? null : <div style={{ marginBottom:20 }}>
+    const secBlock = (label, color, icon, items, isFirst) => items.length===0 ? null : <div style={{ marginBottom:20, ...(!isFirst && isDesktop ? { paddingTop:20, borderTop:"1px solid "+(C.brd||"#F0F0F3") } : {}) }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
         {icon || <div style={{ width:8, height:8, borderRadius:4, background:color, animation:color===(B.orange||"#F59E0B")?"skPulse 1.5s ease infinite":"none" }} />}
         <p style={{ fontSize:16, fontWeight:800, color:icon?color:"inherit" }}>{label} ({items.length})</p>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(3,1fr)":"1fr", gap:isDesktop?16:10, alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?14:10, alignItems:"start" }}>
         {items.map(d => cardFor(d))}
       </div>
     </div>;
 
+    const sections = [
+      pendingApproval.length>0 && ["Aguardando aprovação", B.orange||"#F59E0B", null, pendingApproval],
+      revision.length>0 && ["Em edição", "#F59E0B", null, revision],
+      approved.length>0 && ["Aprovados", B.green, <span style={{ color:B.green }}>{IC.check}</span>, approved],
+      inProd.length>0 && ["Em produção", C.mut, null, inProd],
+    ].filter(Boolean);
+
     return <div style={{ paddingTop:isDesktop?20:10 }}>
-      {secBlock("Aguardando aprovação", B.orange||"#F59E0B", null, pendingApproval)}
-      {secBlock("Em edição", "#F59E0B", null, revision)}
-      {secBlock("Aprovados", B.green, <span style={{ color:B.green }}>{IC.check}</span>, approved)}
-      {secBlock("Em produção", C.mut, null, inProd)}
+      {sections.map((s, i) => secBlock(s[0], s[1], s[2], s[3], i===0))}
       {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><span style={{ display:"flex", justifyContent:"center", marginBottom:10, color:C.mut }}>{IC.content(C.mut)}</span><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p><p style={{ fontSize:12, color:C.mut, marginTop:4 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p></Card>}
     </div>;
   };
@@ -27436,7 +27440,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {tab === "home" && renderHome()}
           {tab !== "home" && <div style={isDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
             {tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
-            {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}}>{renderContent()}</div> : renderContent())}
+            {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:16}}>{renderContent()}</div> : renderContent())}
             {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
             {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && (() => {
