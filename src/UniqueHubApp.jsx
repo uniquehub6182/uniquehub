@@ -13201,7 +13201,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
       window.open(`https://meet.jit.si/${roomId}${params}`, '_blank', 'noopener');
     };
     return (
-      <div className={contained?"chat-contained-conv":""} style={{ position:contained?"absolute":chatIsDesktop?"relative":"fixed", top:contained?0:chatIsDesktop?"auto":vpTop, left:contained?0:chatIsDesktop?"auto":0, right:contained?0:chatIsDesktop?"auto":0, bottom:contained?0:"auto", height:contained?"100%":chatIsDesktop?"calc(100vh - 120px)":vpHeight, zIndex:contained?10:chatIsDesktop?1:100, display:"flex", flexDirection:"column", background:contained?B.bgCard:chatIsDesktop?(B.bgCard):B.bg, overflow:"hidden", ...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",borderRadius:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}) }}>
+      <div className={contained?"chat-contained-conv":""} style={{ position:contained?"absolute":chatIsDesktop?"relative":"fixed", top:contained?0:chatIsDesktop?"auto":vpTop, left:contained?0:chatIsDesktop?"auto":0, right:contained?0:chatIsDesktop?"auto":0, bottom:contained?0:"auto", height:contained?"100%":chatIsDesktop?"calc(100vh - 120px)":vpHeight, zIndex:contained?10:chatIsDesktop?1:100, display:"flex", flexDirection:"column", background:contained?B.bgCard:chatIsDesktop?(B.bgCard):B.bg, overflow:"hidden", ...(chatIsDesktop?{width:"100%",borderRadius:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}) }}>
         {ToastEl}
         <input ref={fileRef} type="file" style={{ display:"none" }} onChange={handleFileUpload} accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.heic,.heif" />
 
@@ -13709,7 +13709,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   return (
     <div className={contained?"chat-contained-list":""} style={{ position:contained?"relative":chatIsDesktop?"relative":"fixed", top:contained?"auto":chatIsDesktop?"auto":0, bottom:contained?"auto":chatIsDesktop?"auto":0, left:contained?"auto":chatIsDesktop?"auto":"0", right:contained?"auto":chatIsDesktop?"auto":"0", zIndex:contained?1:chatIsDesktop?1:50, display:"flex", flexDirection:"column", background:contained?B.bgCard:chatIsDesktop?"transparent":B.bgCard, minHeight:contained?"auto":chatIsDesktop?"calc(100vh - 120px)":"auto", height:contained?"100%":"auto", overflow:contained?"auto":"visible" }}>
       {NewChatModal}{NewGroupModal}
-      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{maxWidth:1100,margin:"0 auto",width:"100%",boxSizing:"border-box",padding:"0 16px 20px"}:{})}}>
+      <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",...(chatIsDesktop?{width:"100%",boxSizing:"border-box",padding:"0 0 20px"}:{})}}>
         {ToastEl}
         {!chatIsDesktop && !contained && <CollapseHeader icon={IC.chat} label="Equipe" title="Chat" collapsed={pgC} />}
         <div style={chatIsDesktop?{background:B.bgCard,borderRadius:20,padding:"16px 16px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}}>
