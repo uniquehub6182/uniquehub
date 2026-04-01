@@ -206,6 +206,8 @@ const supaLoadDemands = async () => {
   try {
     const { data, error } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
     if (error) { console.error("Supa demands error:", error); return null; }
+    /* Fix double-encoded steps (stored as string instead of JSON object) */
+    if (data) data.forEach(d => { if (typeof d.steps === "string") { try { d.steps = JSON.parse(d.steps); } catch {} } });
     return data;
   } catch (e) { console.error("Supa demands catch:", e); return null; }
 };
