@@ -27437,9 +27437,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {tab !== "home" && <div style={isDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
             {tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
             {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}}>{renderContent()}</div> : renderContent())}
-            {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0", ...(isDesktop?{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`}:{}) }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
+            {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
             {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
-          {tab === "more" && (() => { const cardWrap = isDesktop ? {background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`} : {};
+          {tab === "more" && (() => {
             const moreItems = [
               {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify",navKey:null},
               {l:"Conteúdo",ic:IC.content,d:"Posts para aprovar",sub:null,tab:"content",navKey:"content"},
@@ -27463,7 +27463,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               if (item.tab && navTabKeys.includes(item.tab)) return false;
               return true;
             });
-            return <div style={cardWrap}><div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?12:0 }}>{moreItems.map((item,i) => (
+            return <><div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?12:0 }}>{moreItems.map((item,i) => (
               <Card key={i} style={{ marginBottom:isDesktop?0:6, cursor:item.sub?"pointer":"default" }} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}}><div style={{ display:"flex", alignItems:isDesktop?"flex-start":"center", flexDirection:isDesktop?"column":"row", gap:isDesktop?8:12, textAlign:isDesktop?"center":"left" }}>
                 <div style={{ width:isDesktop?44:36, height:isDesktop?44:36, borderRadius:isDesktop?14:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent, margin:isDesktop?"0 auto":"0" }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
                 <div style={{ flex:isDesktop?"initial":1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
@@ -27471,7 +27471,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               </div></Card>
             ))}</div>
             <button onClick={onLogout} style={{ width:isDesktop?"auto":"100%", marginTop:16, padding:"14px 24px", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
-          </div>; })()}
+          </>; })()}
           </div>}
         </div>
       </div>
