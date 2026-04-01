@@ -22,6 +22,31 @@ async function waitReady(id: string, token: string, isVideo = false) {
   throw new Error("Instagram processing timeout — video may still be processing");
 }
 
+async function proxyToR2IfNeeded(fileUrl: string, sb: any): Promise<string> {
+  /* If already on R2, return as-is */
+  if (fileUrl.includes("r2.dev") || fileUrl.includes("r2.cloudflarestorage")) return fileUrl;
+  /* If on Supabase Storage, proxy through R2 for better CDN performance */
+  if (fileUrl.includes("supabase.co/storage")) {
+    try {
+      const filename = fileUrl.split("/").pop() || `file_${Date.now()}`;
+      const ext = filename.split(".").pop()?.toLowerCase() || "bin";
+      const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : "application/octet-stream";
+      const r2Res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/r2-upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: filename, contentType: ct, sourceUrl: fileUrl }),
+      });
+      const r2Data = await r2Res.json();
+      if (r2Data.publicUrl) {
+        console.log(`[R2 Proxy] ${filename} → ${r2Data.publicUrl}`);
+        return r2Data.publicUrl;
+      }
+      console.warn("[R2 Proxy] Failed, using original URL:", r2Data.error);
+    } catch (e) { console.warn("[R2 Proxy] Error:", e.message); }
+  }
+  return fileUrl;
+}
+
 async function publishInstagram(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
   /* Try ig_token first, then fallback to social_tokens table */
   let uid = "", at = "";
@@ -48,11 +73,13 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
   let cid: string;
   if (type === "REELS") {
     /* ── REELS: video upload via Instagram Content Publishing API ── */
-    const p = new URLSearchParams({ access_token: at, video_url: urls[0], media_type: "REELS" });
+    /* Proxy video and cover through R2 CDN for reliable Instagram processing */
+    const videoUrl = await proxyToR2IfNeeded(urls[0], sb);
+    const coverUrl = urls.length > 1 && urls[1] ? await proxyToR2IfNeeded(urls[1], sb) : null;
+    const p = new URLSearchParams({ access_token: at, video_url: videoUrl, media_type: "REELS" });
     if (caption) p.append("caption", caption);
-    /* If there's a second URL, use it as cover image */
-    if (urls.length > 1 && urls[1]) p.append("cover_url", urls[1]);
-    console.log(`[IG Reels] Creating container with video: ${urls[0].substring(0, 80)}`);
+    if (coverUrl) p.append("cover_url", coverUrl);
+    console.log(`[IG Reels] Creating container with video: ${videoUrl.substring(0, 80)}${coverUrl ? " + cover: " + coverUrl.substring(0, 60) : ""}`);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
     console.log(`[IG Reels] Container response:`, JSON.stringify(d).substring(0, 200));

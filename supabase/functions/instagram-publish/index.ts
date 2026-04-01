@@ -14,6 +14,25 @@ async function waitReady(id: string, token: string) {
   throw new Error("Media processing timeout");
 }
 
+async function proxyToR2IfNeeded(fileUrl: string): Promise<string> {
+  if (fileUrl.includes("r2.dev") || fileUrl.includes("r2.cloudflarestorage")) return fileUrl;
+  if (fileUrl.includes("supabase.co/storage")) {
+    try {
+      const filename = fileUrl.split("/").pop() || `file_${Date.now()}`;
+      const ext = filename.split(".").pop()?.toLowerCase() || "bin";
+      const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : "application/octet-stream";
+      const r2Res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/r2-upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: filename, contentType: ct, sourceUrl: fileUrl }),
+      });
+      const r2Data = await r2Res.json();
+      if (r2Data.publicUrl) { console.log(`[R2 Proxy] ${filename} → ${r2Data.publicUrl}`); return r2Data.publicUrl; }
+    } catch (e) { console.warn("[R2 Proxy]", e.message); }
+  }
+  return fileUrl;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   try {
@@ -51,9 +70,11 @@ serve(async (req) => {
 
     if (type === "REELS") {
       /* ── REELS: video_url required, optional cover_url ── */
-      const p = new URLSearchParams({ access_token: at, media_type: "REELS", video_url: urls[0] });
+      const videoUrl = await proxyToR2IfNeeded(urls[0]);
+      const proxiedCover = cover_url ? await proxyToR2IfNeeded(cover_url) : null;
+      const p = new URLSearchParams({ access_token: at, media_type: "REELS", video_url: videoUrl });
       if (caption) p.append("caption", caption);
-      if (cover_url) p.append("cover_url", cover_url);
+      if (proxiedCover) p.append("cover_url", proxiedCover);
       if (body.share_to_feed !== false) p.append("share_to_feed", "true");
       const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
