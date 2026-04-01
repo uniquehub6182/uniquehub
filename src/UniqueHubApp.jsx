@@ -27467,15 +27467,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               if (item.tab && navTabKeys.includes(item.tab)) return false;
               return true;
             });
-            return <><div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?12:0 }}>{moreItems.map((item,i) => (
-              <Card key={i} style={{ marginBottom:isDesktop?0:6, cursor:item.sub?"pointer":"default" }} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}}><div style={{ display:"flex", alignItems:isDesktop?"flex-start":"center", flexDirection:isDesktop?"column":"row", gap:isDesktop?8:12, textAlign:isDesktop?"center":"left" }}>
-                <div style={{ width:isDesktop?44:36, height:isDesktop?44:36, borderRadius:isDesktop?14:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent, margin:isDesktop?"0 auto":"0" }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
-                <div style={{ flex:isDesktop?"initial":1 }}><p style={{ fontSize:13, fontWeight:600 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
+            return <div style={isDesktop?{marginTop:16}:{}}><div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?12:0 }}>{moreItems.map((item,i) => (
+              <div key={i} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}} style={{ padding:isDesktop?"20px 16px":"12px 16px", borderRadius:isDesktop?16:12, background:isDesktop?(B.bgCard||"#fff"):"transparent", border:isDesktop?`1px solid ${B.border||"rgba(0,0,0,0.06)"}`:"none", borderBottom:isDesktop?"none":`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, cursor:(item.sub||item.tab)?"pointer":"default", transition:"all 0.2s", display:"flex", alignItems:isDesktop?"flex-start":"center", flexDirection:isDesktop?"column":"row", gap:isDesktop?10:12, textAlign:isDesktop?"center":"left" }}
+                onMouseEnter={e=>{if(isDesktop){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.08)";e.currentTarget.style.borderColor=B.accent||"#C8FF00"}}}
+                onMouseLeave={e=>{if(isDesktop){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=B.border||"rgba(0,0,0,0.06)"}}}>
+                <div style={{ width:isDesktop?48:36, height:isDesktop?48:36, borderRadius:isDesktop?14:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent, margin:isDesktop?"0 auto":"0" }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
+                <div style={{ flex:isDesktop?"initial":1 }}><p style={{ fontSize:13, fontWeight:700 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
                 {!isDesktop && ((item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>)}
-              </div></Card>
+              </div>
             ))}</div>
             <button onClick={onLogout} style={{ width:isDesktop?"auto":"100%", marginTop:16, padding:"14px 24px", borderRadius:14, background:`${(B.red||"#FF6B6B")}08`, border:`1px solid ${(B.red||"#FF6B6B")}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.red||"#FF6B6B" }}>Sair da conta</button>
-          </>; })()}
+          </div>; })()}
           </div>}
         </div>
       </div>
