@@ -22471,16 +22471,18 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const TOP = forceMobile ? "env(safe-area-inset-top, 16px)" : 70;
 
   return (
-    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
+    <div className="" style={isInboxDesktop ? { background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
+    <div style={isInboxDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 32px",display:"flex",flexDirection:"column",minHeight:"calc(100vh - 80px)"}:{}}>
     <div style={{ flexShrink:0 }}><CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} /></div>
     {ToastEl}
-    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, marginTop:isInboxDesktop?0:8, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
+    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, marginTop:isInboxDesktop?16:8, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", ...(isInboxDesktop?{minHeight:500}:{}) }}>
       {isInboxDesktop ? (<>
         {ConvList()}
         {MsgThread()}
       </>) : (
         selConv ? MsgThread() : ConvList()
       )}
+    </div>
     </div>
     </div>
   );
