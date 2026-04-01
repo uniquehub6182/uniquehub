@@ -26140,7 +26140,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       console.log("[respondDemand] hasFutureSchedule:", hasFutureSchedule, "autoRescheduled:", autoRescheduled, "targetStage:", targetStage, "useSchedDate:", useSchedDate, "useSchedTime:", useSchedTime);
 
       /* Single DB write with correct stage */
-      const updatePayload = { steps: JSON.stringify(steps), stage: targetStage };
+      const updatePayload = { steps: steps, stage: targetStage };
       if (autoRescheduled) updatePayload.scheduling = { date: useSchedDate, time: useSchedTime };
       /* Ensure schedule_date and schedule_time columns are synced for publish-scheduled cron */
       if (targetStage === "scheduled" && useSchedDate) {
@@ -26228,7 +26228,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
               if (r?.error) { showToast(`Aprovado, mas erro ao publicar IG: ${r.error}`); }
               else {
                 const pubSteps = { ...steps, igPublished: { platform:"instagram", type:mediaType, mediaId:r?.media_id, date:new Date().toLocaleDateString("pt-BR"), scheduled:false } };
-                await supabase.from("demands").update({ steps: JSON.stringify(pubSteps) }).eq("id", demand.id);
+                await supabase.from("demands").update({ steps: pubSteps }).eq("id", demand.id);
                 showToast("✅ Publicado no Instagram!");
                 published = true;
               }
