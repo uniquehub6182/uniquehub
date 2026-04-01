@@ -27222,160 +27222,169 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const renderContent = () => {
     const revision = demands.filter(d => d.steps?.client?.status === "revision" || d.steps?.client?.status === "rejected");
     const inProd = demands.filter(d => !d.steps?.client?.mode && !d.steps?.client?.status);
-    const published = demands.filter(d => ["published","completed"].includes(d.stage));
 
     /* helpers */
     const getImgs = (d) => [...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[]),...(d.steps?.editing?.files||[])].filter(f=>f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
     const getNets = (d) => d.networks || (d.network ? [d.network] : []);
-    const getSchedLabel = (d) => { const sd=d.scheduling?.date||d.schedule_date; const st=d.scheduling?.time||d.schedule_time; if(!sd) return null; try { const dt=new Date(sd+"T"+(st||"12:00")); return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+(st?" · "+st:""); } catch { return sd; } };
+    const fmtSched = (d) => { const sd=d.scheduling?.date||d.schedule_date; const st=d.scheduling?.time||d.schedule_time; if(!sd) return null; try { const dt=new Date(sd+"T"+(st||"12:00")); return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+(st?" · "+st:""); } catch { return sd; } };
+    const netGrad = (n) => { const nl=n.toLowerCase(); if(nl.includes("instagram")) return "linear-gradient(135deg,#833AB4,#E1306C,#FCAF45)"; if(nl.includes("facebook")) return "#1877F2"; if(nl.includes("tiktok")) return "#000"; return B.accent||"#C8FF00"; };
+    const netColor = (n) => { const nl=n.toLowerCase(); return (nl.includes("facebook")||nl.includes("instagram")||nl.includes("tiktok"))?"#fff":"#000"; };
 
-    /* ── STAT CARD ── */
-    const StatCard = ({ icon, label, count, color, bg }) => (
-      <div style={{ flex:1, display:"flex", alignItems:"center", gap:14, padding:"16px 20px", borderRadius:16, background:bg, border:"1px solid "+color+"18", transition:"transform 0.2s", cursor:"default" }}
-        onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
-        onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-        <div style={{ width:44, height:44, borderRadius:13, background:color+"18", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          <span style={{ color, display:"flex" }}>{icon}</span>
-        </div>
-        <div>
-          <p style={{ fontSize:26, fontWeight:900, color, lineHeight:1, letterSpacing:"-0.02em" }}>{count}</p>
-          <p style={{ fontSize:11, fontWeight:600, color:C.mut, marginTop:3, textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</p>
-        </div>
-      </div>
-    );
+    /* ── PIPELINE BAR ── */
+    const Pipeline = () => {
+      const steps = [
+        { l:"Em produção", c:C.mut||"#9CA3AF", n:inProd.length, ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+        { l:"Aguardando você", c:B.orange||"#F59E0B", n:pendingApproval.length, ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, pulse:true },
+        { l:"Aprovados", c:B.green||"#22C55E", n:approved.length, ic:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> },
+      ];
+      return <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:32, background:C.card||"#fff", borderRadius:16, padding:6, border:"1px solid "+(C.brd||"#F0F0F3") }}>
+        {steps.map((s,i) => <React.Fragment key={i}>
+          {i>0 && <svg width="20" height="20" viewBox="0 0 20 20" style={{ flexShrink:0, color:C.brd||"#E0E0E0" }}><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+          <div style={{ flex:1, display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderRadius:12, background:s.n>0?s.c+"10":"transparent", transition:"all 0.2s", cursor:"default" }}>
+            <div style={{ width:32, height:32, borderRadius:10, background:s.n>0?s.c+"20":C.brd||"#F0F0F3", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:s.n>0?s.c:(C.mut||"#9CA3AF"), animation:s.pulse&&s.n>0?"skPulse 2s ease infinite":"none" }}>{s.ic}</div>
+            <div style={{ minWidth:0 }}>
+              <p style={{ fontSize:20, fontWeight:900, color:s.n>0?s.c:(C.mut||"#9CA3AF"), lineHeight:1, letterSpacing:"-0.03em" }}>{s.n}</p>
+              <p style={{ fontSize:10, fontWeight:600, color:C.mut||"#9CA3AF", marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{s.l}</p>
+            </div>
+          </div>
+        </React.Fragment>)}
+      </div>;
+    };
 
-    /* ── PENDING CARD (horizontal, with inline actions) ── */
-    const PendingCard = ({ d }) => {
+    /* ── SPOTLIGHT CARD (pending — image as hero with glass overlay) ── */
+    const SpotlightCard = ({ d }) => {
       const imgs = getImgs(d);
       const nets = getNets(d);
-      const schedLabel = getSchedLabel(d);
+      const schedLabel = fmtSched(d);
       const caption = d.steps?.caption?.text || "";
-      return <div style={{ display:"flex", borderRadius:16, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), borderLeft:"4px solid "+(B.orange||"#F59E0B"), transition:"all 0.25s cubic-bezier(.4,0,.2,1)", cursor:"pointer", position:"relative" }}
-        onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 8px 30px rgba(0,0,0,0.08)";e.currentTarget.style.transform="translateY(-2px)"}}
-        onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none"}}>
-        {/* Thumbnail */}
-        {imgs.length>0 ? <div onClick={()=>setSub("demand_"+d.id)} style={{ width:isDesktop?200:120, flexShrink:0, position:"relative", overflow:"hidden" }}>
-          <img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", minHeight:isDesktop?150:110 }} />
-          <div style={{ position:"absolute", top:8, left:8, display:"flex", gap:4 }}>
-            <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6, background:"rgba(0,0,0,0.6)", color:"#fff", backdropFilter:"blur(4px)", textTransform:"uppercase", letterSpacing:0.3 }}>{d.format||"Post"}{imgs.length>1?" · "+imgs.length:""}</span>
-          </div>
-          {imgs.length>1 && <div style={{ position:"absolute", bottom:0, left:0, right:0, display:"flex", gap:2, padding:"0 4px 4px" }}>
-            {imgs.slice(1,4).map((im,ii) => <div key={ii} style={{ width:36, height:36, borderRadius:6, overflow:"hidden", border:"2px solid #fff", flexShrink:0 }}><img src={im.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/></div>)}
-            {imgs.length>4 && <div style={{ width:36, height:36, borderRadius:6, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid #fff" }}><span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>+{imgs.length-4}</span></div>}
-          </div>}
-        </div> : <div onClick={()=>setSub("demand_"+d.id)} style={{ width:isDesktop?200:120, flexShrink:0, background:"linear-gradient(135deg, "+(B.orange||"#F59E0B")+"10, "+C.card+")", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <span style={{ opacity:0.15 }}>{IC.content(B.orange||"#F59E0B")}</span>
-        </div>}
+      const [hov, setHov] = React.useState(false);
+      return <div
+        onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+        style={{ borderRadius:20, overflow:"hidden", position:"relative", cursor:"pointer", transition:"all 0.35s cubic-bezier(.4,0,.2,1)", boxShadow:hov?"0 12px 40px rgba(0,0,0,0.15)":"0 2px 12px rgba(0,0,0,0.06)", transform:hov?"translateY(-4px) scale(1.01)":"none" }}>
 
-        {/* Content */}
-        <div style={{ flex:1, padding:isDesktop?"16px 20px":"12px 14px", display:"flex", flexDirection:"column", justifyContent:"center", minWidth:0 }} onClick={()=>setSub("demand_"+d.id)}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-            {nets.map((n,ni) => <span key={ni} style={{ fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:5, background:n.toLowerCase().includes("instagram")?"linear-gradient(135deg,#833AB4,#FD1D1D,#FCAF45)":n.toLowerCase().includes("facebook")?"#1877F2":(B.accent||"#C8FF00"), color:n.toLowerCase().includes("facebook")||n.toLowerCase().includes("instagram")?"#fff":"#000", textTransform:"uppercase", letterSpacing:0.3 }}>{n}</span>)}
-          </div>
-          <p style={{ fontSize:isDesktop?16:14, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3, color:C.text||"#1A1D23" }}>{d.title}</p>
-          <p style={{ fontSize:11, color:C.mut, marginTop:3 }}>{d.client}{schedLabel ? " · "+schedLabel : ""}</p>
-          {caption && isDesktop && <p style={{ fontSize:12, marginTop:8, lineHeight:1.5, color:C.mut, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
+        {/* Background image */}
+        {imgs.length>0 ? <img src={imgs[0].url} alt="" style={{ width:"100%", height:isDesktop?280:200, objectFit:"cover", display:"block" }} />
+        : <div style={{ width:"100%", height:isDesktop?280:200, background:"linear-gradient(135deg, "+(B.orange||"#F59E0B")+"20, "+(C.card||"#fff")+")", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ opacity:0.15, transform:"scale(2)" }}>{IC.content(B.orange||"#F59E0B")}</span></div>}
+
+        {/* Top badges */}
+        <div style={{ position:"absolute", top:14, left:14, display:"flex", gap:6, zIndex:3 }}>
+          <span style={{ fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:"rgba(0,0,0,0.5)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)", color:"#fff", letterSpacing:0.3 }}>{d.format||"Post"}{imgs.length>1?" · "+imgs.length+" fotos":""}</span>
+          {nets.map((n,ni) => <span key={ni} style={{ fontSize:10, fontWeight:700, padding:"4px 12px", borderRadius:8, background:netGrad(n), color:netColor(n) }}>{n}</span>)}
         </div>
 
-        {/* Actions */}
-        <div style={{ display:"flex", flexDirection:isDesktop?"column":"row", alignItems:"center", justifyContent:"center", gap:8, padding:isDesktop?"16px 20px":"10px 12px", borderLeft:"1px solid "+(C.brd||"#F0F0F3"), flexShrink:0 }}>
-          <button onClick={(e)=>{e.stopPropagation();respondDemand(d,"approved","")}} style={{ padding:isDesktop?"10px 28px":"8px 16px", borderRadius:12, background:B.green, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", gap:6, transition:"all 0.15s", whiteSpace:"nowrap" }}
-            onMouseEnter={e=>e.currentTarget.style.transform="scale(1.04)"}
-            onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Aprovar
-          </button>
-          <button onClick={(e)=>{e.stopPropagation();const fb=prompt("Por que está solicitando edição? (obrigatório)");if(!fb||!fb.trim()){if(fb!==null)showToast("É necessário informar o motivo");return;}respondDemand(d,"revision",fb.trim())}} style={{ padding:isDesktop?"10px 28px":"8px 16px", borderRadius:12, background:"transparent", border:"1.5px solid "+(B.orange||"#F59E0B"), cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.orange||"#F59E0B", display:"flex", alignItems:"center", gap:6, transition:"all 0.15s", whiteSpace:"nowrap" }}
-            onMouseEnter={e=>e.currentTarget.style.transform="scale(1.04)"}
-            onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            Editar
+        {/* Glass info overlay — always visible at bottom */}
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)", padding:"50px 20px 18px", zIndex:2 }}>
+          <p style={{ fontSize:isDesktop?18:15, fontWeight:800, color:"#fff", lineHeight:1.3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6 }}>
+            <p style={{ fontSize:11, color:"rgba(255,255,255,0.7)", fontWeight:500 }}>{d.client}</p>
+            {schedLabel && <><span style={{ color:"rgba(255,255,255,0.3)" }}>·</span><span style={{ fontSize:11, color:"rgba(255,255,255,0.7)", fontWeight:500 }}>{schedLabel}</span></>}
+          </div>
+        </div>
+
+        {/* Hover action overlay */}
+        <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", zIndex:4, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, opacity:hov?1:0, transition:"opacity 0.25s ease", pointerEvents:hov?"auto":"none" }}>
+          {caption && <p style={{ fontSize:13, color:"rgba(255,255,255,0.85)", maxWidth:400, textAlign:"center", lineHeight:1.5, marginBottom:4, display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{caption}</p>}
+          <div style={{ display:"flex", gap:10 }}>
+            <button onClick={(e)=>{e.stopPropagation();respondDemand(d,"approved","")}} style={{ padding:"12px 32px", borderRadius:14, background:B.green||"#22C55E", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", gap:8, transition:"transform 0.15s", boxShadow:"0 4px 15px rgba(34,197,94,0.4)" }}
+              onMouseEnter={e=>e.currentTarget.style.transform="scale(1.06)"}
+              onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Aprovar
+            </button>
+            <button onClick={(e)=>{e.stopPropagation();const fb=prompt("Por que está solicitando edição? (obrigatório)");if(!fb||!fb.trim()){if(fb!==null)showToast("É necessário informar o motivo");return;}respondDemand(d,"revision",fb.trim())}} style={{ padding:"12px 32px", borderRadius:14, background:"rgba(255,255,255,0.15)", backdropFilter:"blur(8px)", border:"1.5px solid rgba(255,255,255,0.3)", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:800, color:"#fff", display:"flex", alignItems:"center", gap:8, transition:"transform 0.15s" }}
+              onMouseEnter={e=>e.currentTarget.style.transform="scale(1.06)"}
+              onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Solicitar edição
+            </button>
+          </div>
+          <button onClick={(e)=>{e.stopPropagation();setSub("demand_"+d.id)}} style={{ padding:"8px 20px", borderRadius:10, background:"transparent", border:"1px solid rgba(255,255,255,0.2)", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.7)", marginTop:2, transition:"all 0.15s" }}
+            onMouseEnter={e=>{e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor="rgba(255,255,255,0.5)"}}
+            onMouseLeave={e=>{e.currentTarget.style.color="rgba(255,255,255,0.7)";e.currentTarget.style.borderColor="rgba(255,255,255,0.2)"}}>
+            Ver detalhes completos
           </button>
         </div>
       </div>;
     };
 
-    /* ── COMPACT CARD (for approved, in-prod, published) ── */
-    const CompactCard = ({ d, statusColor, statusLabel }) => {
+    /* ── MINI CARD (for approved/in-prod) ── */
+    const MiniCard = ({ d, stColor, stLabel }) => {
       const imgs = getImgs(d);
-      const nets = getNets(d);
-      const schedLabel = getSchedLabel(d);
-      const isAppr = d.steps?.client?.status === "approved";
-      return <div onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), borderLeft:"3px solid "+statusColor, cursor:"pointer", transition:"all 0.2s cubic-bezier(.4,0,.2,1)", position:"relative", opacity:isAppr?0.75:1 }}
-        onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.opacity="1"}}
-        onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";e.currentTarget.style.opacity=isAppr?"0.75":"1"}}>
-        {/* Thumbnail */}
-        {imgs.length>0 ? <div style={{ height:100, overflow:"hidden", position:"relative" }}>
-          <img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-          <span style={{ position:"absolute", top:6, left:6, fontSize:8, fontWeight:700, padding:"2px 7px", borderRadius:5, background:"rgba(0,0,0,0.6)", color:"#fff", backdropFilter:"blur(4px)", textTransform:"uppercase", letterSpacing:0.3 }}>{d.format||"Post"}</span>
-        </div> : <div style={{ height:40, background:"linear-gradient(135deg, "+statusColor+"10, "+(C.card||"#fff")+")" }} />}
-        {/* Info */}
+      const isAppr = stLabel === "Aprovado";
+      const [hov, setHov] = React.useState(false);
+      return <div onClick={()=>setSub("demand_"+d.id)}
+        onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+        style={{ borderRadius:14, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), cursor:"pointer", transition:"all 0.25s cubic-bezier(.4,0,.2,1)", boxShadow:hov?"0 6px 20px rgba(0,0,0,0.08)":"none", transform:hov?"translateY(-2px)":"none", opacity:isAppr&&!hov?0.7:1, position:"relative" }}>
+        {imgs.length>0 ? <div style={{ height:isDesktop?110:90, overflow:"hidden", position:"relative" }}>
+          <img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", transition:"transform 0.4s", transform:hov?"scale(1.05)":"none" }} />
+          {isAppr && <div style={{ position:"absolute", inset:0, background:"rgba(34,197,94,0.15)" }} />}
+        </div> : <div style={{ height:40, background:"linear-gradient(135deg, "+stColor+"10, "+(C.card||"#fff")+")" }} />}
         <div style={{ padding:"8px 10px 10px" }}>
           <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3 }}>{d.title}</p>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:6 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <div style={{ width:6, height:6, borderRadius:3, background:statusColor }} />
-              <span style={{ fontSize:9, fontWeight:700, color:statusColor, textTransform:"uppercase", letterSpacing:0.3 }}>{statusLabel}</span>
-            </div>
-            {schedLabel && <span style={{ fontSize:9, color:C.mut, fontWeight:600 }}>{schedLabel}</span>}
+          <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:5 }}>
+            <div style={{ width:6, height:6, borderRadius:3, background:stColor }} />
+            <span style={{ fontSize:9, fontWeight:700, color:stColor, textTransform:"uppercase", letterSpacing:"0.04em" }}>{stLabel}</span>
           </div>
         </div>
       </div>;
     };
 
-    /* ── SECTION WRAPPER ── */
-    const ContentSection = ({ icon, label, color, bg, children, count }) => (
-      <div style={{ marginBottom:28, borderRadius:20, padding:isDesktop?"20px 24px":"16px", background:bg||"transparent" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
-          <div style={{ width:8, height:8, borderRadius:4, background:color, flexShrink:0, animation:color===(B.orange||"#F59E0B")?"skPulse 1.5s ease infinite":"none" }} />
-          <p style={{ fontSize:16, fontWeight:800, color:color||"inherit" }}>{label}</p>
-          <span style={{ fontSize:12, fontWeight:700, color, background:color+"14", padding:"2px 10px", borderRadius:100 }}>{count}</span>
+    /* ── SECTION ── */
+    const Sec = ({ label, color, count, children, bg }) => count===0 ? null : (
+      <div style={{ marginBottom:28 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16, padding:bg?"0 4px":0 }}>
+          <div style={{ width:3, height:20, borderRadius:2, background:color }} />
+          <p style={{ fontSize:15, fontWeight:800 }}>{label}</p>
+          <span style={{ fontSize:11, fontWeight:700, color, background:color+"12", padding:"3px 10px", borderRadius:100, lineHeight:1 }}>{count}</span>
         </div>
         {children}
       </div>
     );
 
     return <div style={{ paddingTop:isDesktop?24:12 }}>
-      {/* ── STAT CARDS ── */}
-      {isDesktop && <div style={{ display:"flex", gap:14, marginBottom:28 }}>
-        <StatCard icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} label="Aguardando" count={pendingApproval.length} color={B.orange||"#F59E0B"} bg={(B.orange||"#F59E0B")+"08"} />
-        <StatCard icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>} label="Aprovados" count={approved.length} color={B.green} bg={B.green+"08"} />
-        <StatCard icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.49 8.49l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.49-8.49l2.83-2.83"/></svg>} label="Em produção" count={inProd.length} color={B.accent||"#C8FF00"} bg={(B.accent||"#C8FF00")+"08"} />
+      {/* Pipeline */}
+      {isDesktop && <Pipeline />}
+
+      {/* ── PENDING — Spotlight Cards ── */}
+      {pendingApproval.length > 0 && <div style={{ marginBottom:32 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:18 }}>
+          <div style={{ width:3, height:20, borderRadius:2, background:B.orange||"#F59E0B" }} />
+          <p style={{ fontSize:15, fontWeight:800 }}>Aguardando sua aprovação</p>
+          <span style={{ fontSize:11, fontWeight:700, color:B.orange||"#F59E0B", background:(B.orange||"#F59E0B")+"12", padding:"3px 10px", borderRadius:100, lineHeight:1 }}>{pendingApproval.length}</span>
+          <div style={{ flex:1 }} />
+          <p style={{ fontSize:11, color:C.mut, fontWeight:500 }}>Passe o mouse para aprovar</p>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?(pendingApproval.length===1?"1fr":pendingApproval.length===2?"1fr 1fr":"repeat(3,1fr)"):"1fr", gap:16 }}>
+          {pendingApproval.map(d => <SpotlightCard key={d.id} d={d} />)}
+        </div>
       </div>}
 
-      {/* ── PENDING APPROVAL ── */}
-      {pendingApproval.length > 0 && <ContentSection label="Aguardando sua aprovação" color={B.orange||"#F59E0B"} bg={(B.orange||"#F59E0B")+"06"} count={pendingApproval.length}>
-        <div style={{ display:"flex", flexDirection:"column", gap:isDesktop?12:10 }}>
-          {pendingApproval.map(d => <PendingCard key={d.id} d={d} />)}
-        </div>
-      </ContentSection>}
-
       {/* ── REVISION ── */}
-      {revision.length > 0 && <ContentSection label="Em edição" color="#F59E0B" count={revision.length}>
+      <Sec label="Em edição" color="#F59E0B" count={revision.length}>
         <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"repeat(2,1fr)", gap:12 }}>
-          {revision.map(d => <CompactCard key={d.id} d={d} statusColor="#F59E0B" statusLabel="Edição" />)}
+          {revision.map(d => <MiniCard key={d.id} d={d} stColor="#F59E0B" stLabel="Edição" />)}
         </div>
-      </ContentSection>}
+      </Sec>
 
       {/* ── APPROVED ── */}
-      {approved.length > 0 && <ContentSection icon={IC.check} label="Aprovados" color={B.green} bg={B.green+"06"} count={approved.length}>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"repeat(2,1fr)", gap:12 }}>
-          {approved.map(d => <CompactCard key={d.id} d={d} statusColor={B.green} statusLabel="Aprovado" />)}
+      <Sec label="Aprovados" color={B.green||"#22C55E"} count={approved.length}>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(5,1fr)":"repeat(2,1fr)", gap:12 }}>
+          {approved.map(d => <MiniCard key={d.id} d={d} stColor={B.green||"#22C55E"} stLabel="Aprovado" />)}
         </div>
-      </ContentSection>}
+      </Sec>
 
       {/* ── IN PRODUCTION ── */}
-      {inProd.length > 0 && <ContentSection label="Em produção" color={C.mut} count={inProd.length}>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"repeat(2,1fr)", gap:12 }}>
-          {inProd.map(d => <CompactCard key={d.id} d={d} statusColor={C.mut} statusLabel="Produção" />)}
+      <Sec label="Em produção" color={C.mut||"#9CA3AF"} count={inProd.length}>
+        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(5,1fr)":"repeat(2,1fr)", gap:12 }}>
+          {inProd.map(d => <MiniCard key={d.id} d={d} stColor={C.mut||"#9CA3AF"} stLabel="Produção" />)}
         </div>
-      </ContentSection>}
+      </Sec>
 
-      {/* ── EMPTY STATE ── */}
-      {demands.length===0 && demandsLoaded && <div style={{ textAlign:"center", padding:60, borderRadius:20, background:C.card, border:"1px dashed "+(C.brd||"#E0E0E0") }}>
-        <div style={{ width:64, height:64, borderRadius:20, background:(B.accent||"#C8FF00")+"12", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}><span style={{ color:B.accent, opacity:0.5 }}>{IC.content(B.accent)}</span></div>
-        <p style={{ fontSize:16, fontWeight:800 }}>Nenhum conteúdo ainda</p>
-        <p style={{ fontSize:13, color:C.mut, marginTop:6, maxWidth:300, margin:"6px auto 0" }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p>
+      {/* ── EMPTY ── */}
+      {demands.length===0 && demandsLoaded && <div style={{ textAlign:"center", padding:"80px 20px", borderRadius:24, background:"linear-gradient(135deg, "+(C.card||"#fff")+", "+(B.accent||"#C8FF00")+"08)", border:"1px dashed "+(C.brd||"#E0E0E0") }}>
+        <div style={{ width:72, height:72, borderRadius:22, background:(B.accent||"#C8FF00")+"12", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}><span style={{ color:B.accent||"#C8FF00", opacity:0.5, transform:"scale(1.5)", display:"flex" }}>{IC.content(B.accent||"#C8FF00")}</span></div>
+        <p style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.02em" }}>Nenhum conteúdo ainda</p>
+        <p style={{ fontSize:13, color:C.mut, marginTop:8, maxWidth:320, margin:"8px auto 0", lineHeight:1.5 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p>
       </div>}
     </div>;
   };
