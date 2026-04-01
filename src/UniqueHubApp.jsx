@@ -27427,10 +27427,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 .bnav .nb-item{color:${inactiveColor}!important}
 .bnav .nb-item.active{color:${UP.navTextColor||"#fff"}!important}
 :root{--uh-radius:${UP.cardRadius==="sharp"?"6px":UP.cardRadius==="pill"?"20px":"14px"}}
+${isDesktop?`html.uh-desktop .uh-client-page{max-width:1100px!important;margin-left:auto!important;margin-right:auto!important;padding-left:20px!important;padding-right:20px!important}`:""}
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
-        <div style={{ padding:isDesktop?0:"14px 16px 0", ...(isDesktop && tab !== "home" ? { maxWidth:1100, margin:"0 auto", width:"100%", boxSizing:"border-box", paddingLeft:20, paddingRight:20 } : {}) }}>
+        <div className={isDesktop && tab !== "home" ? "uh-client-page" : ""} style={{ padding:isDesktop?0:"14px 16px 0" }}>
           {tab !== "home" && tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
