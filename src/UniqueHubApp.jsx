@@ -25536,6 +25536,7 @@ function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
 html.uh-desktop .app,html.uh-desktop .screen{position:relative!important;height:auto!important;min-height:100vh!important;overflow:visible!important;inset:auto!important}
 html.uh-desktop .content{overflow:visible!important;height:auto!important;max-height:none!important;padding:0 0 120px!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important}
 html.uh-desktop .content>div{max-width:1580px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
+html.uh-desktop .content>div.uh-client-page{max-width:1504px!important}
 html.uh-desktop .content-wide{max-width:1580px!important;margin-left:auto!important;margin-right:auto!important;padding-left:32px!important;padding-right:32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .pg{max-width:1580px!important;margin:0 auto!important;padding:20px 32px!important;width:100%!important;box-sizing:border-box!important}
 html.uh-desktop .bnav{position:fixed!important;bottom:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:100!important}
@@ -27430,7 +27431,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
-        <div style={{ padding:isDesktop?0:"14px 16px 0" }}>
+        <div className={isDesktop && tab !== "home" ? "uh-client-page" : ""} style={{ padding:isDesktop?0:"14px 16px 0" }}>
           {tab !== "home" && tab !== "chat" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
           {tab === "home" && renderHome()}
           {tab === "content" && renderContent()}
