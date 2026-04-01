@@ -25048,9 +25048,9 @@ function ClientGamification({ onBack, user, clients, demands }) {
   return (
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       {ToastEl}
-      <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
       <div className="content" style={{ padding:isGamDesktop?"0 16px 60px":"12px 16px 120px" }}>
         <div style={isGamDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
+        <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
         {isGamDesktop && <div style={{height:16}} />}
         <div style={{ display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:14 }}>
           {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:"8px 16px", borderRadius:12, border:tab===t.k?"none":`1.5px solid ${B.border}`, background:tab===t.k?B.accent:"transparent", color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>)}
