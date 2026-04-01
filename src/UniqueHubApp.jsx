@@ -25539,6 +25539,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   }, [dark, B.bg, B.text, B.accent, B.bgCard, B.border, B.muted]);
   const [tab, setTab] = useState("home");
   const [sub, setSub] = useState(null);
+  const [phonePost, setPhonePost] = useState(null);
   const subRef = React.useRef(null);
   React.useEffect(() => { subRef.current = sub; }, [sub]);
   const [showClientNavEdit, setShowClientNavEdit] = useState(false);
@@ -27227,130 +27228,225 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const getNets = (d) => d.networks || (d.network ? [d.network] : []);
     const fmtSched = (d) => { const sd=d.scheduling?.date||d.schedule_date; const st=d.scheduling?.time||d.schedule_time; if(!sd) return null; try { const dt=new Date(sd+"T"+(st||"12:00")); return dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+(st?" "+st:""); } catch { return sd; } };
 
-    /* ── CSS for hover effects (no useState needed) ── */
-    const contentCSS = `
-.gc{border-radius:16px;overflow:hidden;position:relative;cursor:pointer;background:${C.card||"#fff"};border:1px solid ${C.brd||"#F0F0F3"};transition:all .3s cubic-bezier(.4,0,.2,1)}
-.gc:hover{box-shadow:0 16px 48px rgba(0,0,0,.14);transform:translateY(-4px)}
-.gc .gc-img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
-.gc:hover .gc-img{transform:scale(1.06)}
-.gc .gc-actions{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;opacity:0;transition:opacity .25s;pointer-events:none}
-.gc:hover .gc-actions{opacity:1;pointer-events:auto}
-.gc .gc-btn{padding:12px 0;border-radius:14px;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;width:180px;transition:transform .15s}
-.gc .gc-btn:hover{transform:scale(1.05)}
-.gc .gc-btn-approve{background:${B.green||"#22C55E"};color:#fff;box-shadow:0 4px 20px rgba(34,197,94,.35)}
-.gc .gc-btn-edit{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.25)!important}
-.gc .gc-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-12deg);z-index:3;padding:8px 24px;border-radius:10px;border:2.5px solid rgba(34,197,94,.5);display:flex;align-items:center;gap:6px}
+    /* Auto-select first pending if none selected */
+    const selPost = phonePost && pendingApproval.find(d=>d.id===phonePost.id) ? phonePost : pendingApproval[0] || null;
+    const selImgs = selPost ? getImgs(selPost) : [];
+    const selNets = selPost ? getNets(selPost) : [];
+    const selCaption = selPost ? (selPost.steps?.caption?.text || "") : "";
+    const selSched = selPost ? fmtSched(selPost) : null;
+
+    /* CSS */
+    const iphoneCSS = `
+@keyframes iphoneGlow{0%,100%{box-shadow:0 0 60px rgba(200,255,0,.08),0 30px 80px rgba(0,0,0,.35)}50%{box-shadow:0 0 80px rgba(200,255,0,.14),0 30px 80px rgba(0,0,0,.35)}}
+.iphone-wrap{animation:iphoneGlow 4s ease infinite}
+.side-card{border-radius:14px;overflow:hidden;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);border:2px solid transparent}
+.side-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.side-card.active{border-color:${B.accent||"#C8FF00"};box-shadow:0 0 0 3px ${B.accent||"#C8FF00"}30}
+.phone-btn{border:none;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;font-weight:800;border-radius:14px}
+.phone-btn:hover{transform:scale(1.04)}
+.phone-btn:active{transform:scale(0.97)}
     `;
 
-    return <div style={{ paddingTop:isDesktop?20:10 }}>
-      <style dangerouslySetInnerHTML={{ __html: contentCSS }} />
-
-      {/* ── STATUS PILLS ── */}
-      {isDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
-        {pendingApproval.length>0 && <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"6px 14px", borderRadius:100, background:(B.orange||"#F59E0B")+"0A", border:"1px solid "+(B.orange||"#F59E0B")+"18" }}><div style={{ width:7, height:7, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 2s ease infinite" }} /><span style={{ fontSize:12, fontWeight:700, color:B.orange||"#F59E0B" }}>{pendingApproval.length}</span><span style={{ fontSize:11, fontWeight:600, color:C.mut }}>pendentes</span></div>}
-        {approved.length>0 && <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"6px 14px", borderRadius:100, background:(B.green||"#22C55E")+"0A", border:"1px solid "+(B.green||"#22C55E")+"18" }}><div style={{ width:7, height:7, borderRadius:4, background:B.green||"#22C55E" }} /><span style={{ fontSize:12, fontWeight:700, color:B.green||"#22C55E" }}>{approved.length}</span><span style={{ fontSize:11, fontWeight:600, color:C.mut }}>aprovados</span></div>}
-        {inProd.length>0 && <div style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"6px 14px", borderRadius:100, background:(C.mut||"#9CA3AF")+"0A", border:"1px solid "+(C.mut||"#9CA3AF")+"18" }}><div style={{ width:7, height:7, borderRadius:4, background:C.mut||"#9CA3AF" }} /><span style={{ fontSize:12, fontWeight:700, color:C.mut||"#9CA3AF" }}>{inProd.length}</span><span style={{ fontSize:11, fontWeight:600, color:C.mut }}>em produção</span></div>}
-      </div>}
-
-      {/* ── PENDING ── */}
-      {pendingApproval.length>0 && <div style={{ marginBottom:32 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}><div style={{ width:3, height:18, borderRadius:2, background:B.orange||"#F59E0B" }} /><p style={{ fontSize:15, fontWeight:800 }}>Aguardando aprovação</p><span style={{ fontSize:11, fontWeight:700, color:B.orange||"#F59E0B", background:(B.orange||"#F59E0B")+"12", padding:"3px 10px", borderRadius:100 }}>{pendingApproval.length}</span></div>
+    /* ── SIDE CARD ── */
+    const SideCard = (d, stColor, stLabel, clickable) => {
+      const imgs = getImgs(d);
+      const isActive = selPost && selPost.id === d.id;
+      return <div key={d.id} className={"side-card"+(isActive?" active":"")} onClick={()=>clickable?setPhonePost(d):setSub("demand_"+d.id)} style={{ background:C.card||"#fff", marginBottom:10, border:isActive?"2px solid "+(B.accent||"#C8FF00"):"2px solid "+(C.brd||"#F0F0F3") }}>
+        {imgs.length>0 && <div style={{ height:80, overflow:"hidden" }}><img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>}
+        <div style={{ padding:"8px 10px 10px" }}>
+          <p style={{ fontSize:11, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3 }}>{d.title}</p>
+          <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
+            <div style={{ width:6, height:6, borderRadius:3, background:stColor }} />
+            <span style={{ fontSize:9, fontWeight:700, color:stColor, textTransform:"uppercase", letterSpacing:".04em" }}>{stLabel}</span>
+          </div>
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"repeat(2,1fr)", gap:isDesktop?14:10 }}>
-          {pendingApproval.map(d => {
-            const imgs=getImgs(d); const nets=getNets(d); const schedLabel=fmtSched(d);
-            return <div key={d.id} className="gc" style={{ aspectRatio:"4/5" }} onClick={()=>setSub("demand_"+d.id)}>
-              {imgs.length>0 ? <img className="gc-img" src={imgs[0].url} alt="" style={{ position:"absolute", inset:0 }} />
-              : <div style={{ position:"absolute", inset:0, background:"linear-gradient(160deg, "+(B.orange||"#F59E0B")+"12, "+(C.card||"#fff")+")", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ opacity:.12, transform:"scale(2.5)" }}>{IC.content(B.orange||"#F59E0B")}</span></div>}
-              {/* Top badges */}
-              <div style={{ position:"absolute", top:10, left:10, display:"flex", gap:4, zIndex:3 }}>
-                {nets.slice(0,2).map((n,ni) => {const nl=n.toLowerCase(); return <div key={ni} style={{ width:26, height:26, borderRadius:8, background:nl.includes("instagram")?"linear-gradient(135deg,#833AB4,#E1306C,#FCAF45)":nl.includes("facebook")?"#1877F2":"rgba(0,0,0,.5)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  {nl.includes("instagram")?<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                  :nl.includes("facebook")?<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                  :<span style={{ fontSize:9, fontWeight:700, color:"#fff" }}>{n.slice(0,2)}</span>}
-                </div>;})}
-              </div>
-              <span style={{ position:"absolute", top:10, right:10, fontSize:9, fontWeight:700, padding:"4px 10px", borderRadius:7, background:"rgba(0,0,0,.45)", backdropFilter:"blur(6px)", color:"#fff", zIndex:3 }}>{d.format||"Post"}{imgs.length>1?" · "+imgs.length:""}</span>
-              {/* Bottom gradient */}
-              <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"50px 14px 14px", background:"linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.3) 60%, transparent 100%)", zIndex:2 }}>
-                <p style={{ fontSize:14, fontWeight:800, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-                {schedLabel && <p style={{ fontSize:10, color:"rgba(255,255,255,.5)", marginTop:3 }}>{schedLabel}</p>}
-              </div>
-              {/* Status bar */}
-              <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:B.orange||"#F59E0B", zIndex:6 }} />
-              {/* Hover actions */}
-              <div className="gc-actions" onClick={e=>e.stopPropagation()}>
-                <button className="gc-btn gc-btn-approve" onClick={()=>respondDemand(d,"approved","")}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg> Aprovar</button>
-                <button className="gc-btn gc-btn-edit" onClick={()=>{const fb=prompt("Motivo da edição (obrigatório):");if(!fb||!fb.trim()){if(fb!==null)showToast("Informe o motivo");return;}respondDemand(d,"revision",fb.trim())}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Solicitar edição</button>
-                <span onClick={()=>setSub("demand_"+d.id)} style={{ fontSize:11, color:"rgba(255,255,255,.45)", cursor:"pointer", marginTop:4 }}>Ver detalhes →</span>
-              </div>
-            </div>;
-          })}
-        </div>
-      </div>}
+      </div>;
+    };
 
-      {/* ── APPROVED ── */}
-      {approved.length>0 && <div style={{ marginBottom:32 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}><div style={{ width:3, height:18, borderRadius:2, background:B.green||"#22C55E" }} /><p style={{ fontSize:15, fontWeight:800 }}>Aprovados</p><span style={{ fontSize:11, fontWeight:700, color:B.green||"#22C55E", background:(B.green||"#22C55E")+"12", padding:"3px 10px", borderRadius:100 }}>{approved.length}</span></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(5,1fr)":"repeat(2,1fr)", gap:isDesktop?12:10 }}>
-          {approved.map(d => {
-            const imgs=getImgs(d);
-            return <div key={d.id} className="gc" onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14 }}>
-              {imgs.length>0 ? <div style={{ height:isDesktop?110:90, overflow:"hidden" }}><img className="gc-img" src={imgs[0].url} alt="" /></div>
-              : <div style={{ height:40, background:"linear-gradient(135deg, "+(B.green||"#22C55E")+"10, "+(C.card||"#fff")+")" }} />}
-              <div style={{ padding:"8px 10px 10px" }}>
-                <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-                <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:5 }}><div style={{ width:6, height:6, borderRadius:3, background:B.green||"#22C55E" }} /><span style={{ fontSize:9, fontWeight:700, color:B.green||"#22C55E", textTransform:"uppercase", letterSpacing:".04em" }}>Aprovado</span></div>
-              </div>
-              <div style={{ position:"absolute", inset:0, background:"rgba(34,197,94,.1)", borderRadius:14, pointerEvents:"none" }} />
-              <div className="gc-stamp"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green||"#22C55E"} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg><span style={{ fontSize:13, fontWeight:800, color:B.green||"#22C55E", letterSpacing:.5 }}>APROVADO</span></div>
-            </div>;
-          })}
-        </div>
-      </div>}
+    /* ── MOBILE FALLBACK ── */
+    if (!isDesktop) {
+      return <div style={{ paddingTop:10 }}>
+        {pendingApproval.length>0 && <div style={{ marginBottom:20 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 1.5s ease infinite" }} /><p style={{ fontSize:16, fontWeight:800 }}>Aguardando aprovação ({pendingApproval.length})</p></div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+            {pendingApproval.map(d => { const imgs=getImgs(d); return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14, overflow:"hidden", background:C.card, border:"1px solid "+(C.brd||"#F0F0F3"), cursor:"pointer" }}>
+              {imgs.length>0 && <div style={{ height:100, overflow:"hidden" }}><img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>}
+              <div style={{ padding:"8px 10px" }}><p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div>
+            </div>; })}
+          </div>
+        </div>}
+        {approved.length>0 && <div style={{ marginBottom:20 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}><span style={{ color:B.green }}>{IC.check}</span><p style={{ fontSize:16, fontWeight:800, color:B.green }}>Aprovados ({approved.length})</p></div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+            {approved.map(d => { const imgs=getImgs(d); return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14, overflow:"hidden", background:C.card, border:"1px solid "+(C.brd||"#F0F0F3"), cursor:"pointer", opacity:.7 }}>
+              {imgs.length>0 && <div style={{ height:100, overflow:"hidden" }}><img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>}
+              <div style={{ padding:"8px 10px" }}><p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div>
+            </div>; })}
+          </div>
+        </div>}
+        {inProd.length>0 && <div style={{ marginBottom:20 }}>
+          <p style={{ fontSize:16, fontWeight:800, color:C.mut, marginBottom:12 }}>Em produção ({inProd.length})</p>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+            {inProd.map(d => { const imgs=getImgs(d); return <div key={d.id} onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14, overflow:"hidden", background:C.card, border:"1px solid "+(C.brd||"#F0F0F3"), cursor:"pointer" }}>
+              {imgs.length>0 && <div style={{ height:100, overflow:"hidden" }}><img src={imgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>}
+              <div style={{ padding:"8px 10px" }}><p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p></div>
+            </div>; })}
+          </div>
+        </div>}
+        {demands.length===0 && demandsLoaded && <Card style={{ textAlign:"center", padding:40 }}><p style={{ fontSize:14, fontWeight:700 }}>Nenhum conteúdo ainda</p></Card>}
+      </div>;
+    }
 
-      {/* ── REVISION ── */}
-      {revision.length>0 && <div style={{ marginBottom:32 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}><div style={{ width:3, height:18, borderRadius:2, background:"#EAB308" }} /><p style={{ fontSize:15, fontWeight:800 }}>Em edição</p><span style={{ fontSize:11, fontWeight:700, color:"#EAB308", background:"#EAB30812", padding:"3px 10px", borderRadius:100 }}>{revision.length}</span></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(5,1fr)":"repeat(2,1fr)", gap:isDesktop?12:10 }}>
-          {revision.map(d => {
-            const imgs=getImgs(d);
-            return <div key={d.id} className="gc" onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14 }}>
-              {imgs.length>0 ? <div style={{ height:isDesktop?110:90, overflow:"hidden" }}><img className="gc-img" src={imgs[0].url} alt="" /></div>
-              : <div style={{ height:40, background:"linear-gradient(135deg, #EAB30810, "+(C.card||"#fff")+")" }} />}
-              <div style={{ padding:"8px 10px 10px" }}>
-                <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-                <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:5 }}><div style={{ width:6, height:6, borderRadius:3, background:"#EAB308" }} /><span style={{ fontSize:9, fontWeight:700, color:"#EAB308", textTransform:"uppercase", letterSpacing:".04em" }}>Edição</span></div>
-              </div>
-            </div>;
-          })}
-        </div>
-      </div>}
+    /* ══════════════════════════════════════════════════
+       DESKTOP — iPhone Approval Studio
+       ══════════════════════════════════════════════════ */
+    return <div style={{ paddingTop:20 }}>
+      <style dangerouslySetInnerHTML={{ __html: iphoneCSS }} />
 
-      {/* ── IN PRODUCTION ── */}
-      {inProd.length>0 && <div style={{ marginBottom:32 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}><div style={{ width:3, height:18, borderRadius:2, background:C.mut||"#9CA3AF" }} /><p style={{ fontSize:15, fontWeight:800 }}>Em produção</p><span style={{ fontSize:11, fontWeight:700, color:C.mut||"#9CA3AF", background:(C.mut||"#9CA3AF")+"12", padding:"3px 10px", borderRadius:100 }}>{inProd.length}</span></div>
-        <div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(5,1fr)":"repeat(2,1fr)", gap:isDesktop?12:10 }}>
-          {inProd.map(d => {
-            const imgs=getImgs(d);
-            return <div key={d.id} className="gc" onClick={()=>setSub("demand_"+d.id)} style={{ borderRadius:14 }}>
-              {imgs.length>0 ? <div style={{ height:isDesktop?110:90, overflow:"hidden" }}><img className="gc-img" src={imgs[0].url} alt="" /></div>
-              : <div style={{ height:40, background:"linear-gradient(135deg, "+(C.mut||"#9CA3AF")+"10, "+(C.card||"#fff")+")" }} />}
-              <div style={{ padding:"8px 10px 10px" }}>
-                <p style={{ fontSize:12, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.title}</p>
-                <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:5 }}><div style={{ width:6, height:6, borderRadius:3, background:C.mut||"#9CA3AF" }} /><span style={{ fontSize:9, fontWeight:700, color:C.mut||"#9CA3AF", textTransform:"uppercase", letterSpacing:".04em" }}>Produção</span></div>
-              </div>
-            </div>;
-          })}
-        </div>
-      </div>}
+      {/* ── 3-COLUMN LAYOUT ── */}
+      <div style={{ display:"flex", gap:28, alignItems:"flex-start", minHeight:"70vh" }}>
 
-      {/* ── EMPTY ── */}
-      {demands.length===0 && demandsLoaded && <div style={{ textAlign:"center", padding:"80px 20px", borderRadius:24, border:"1px dashed "+(C.brd||"#E0E0E0") }}>
-        <div style={{ width:80, height:80, borderRadius:24, background:(B.accent||"#C8FF00")+"0A", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}><span style={{ color:B.accent||"#C8FF00", opacity:.3, transform:"scale(2)", display:"flex" }}>{IC.content(B.accent||"#C8FF00")}</span></div>
+        {/* ── LEFT: Pendentes ── */}
+        <div style={{ width:240, flexShrink:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14 }}>
+            <div style={{ width:8, height:8, borderRadius:4, background:B.orange||"#F59E0B", animation:"skPulse 2s ease infinite" }} />
+            <p style={{ fontSize:13, fontWeight:800 }}>Pendentes</p>
+            <span style={{ fontSize:11, fontWeight:700, color:B.orange||"#F59E0B", background:(B.orange||"#F59E0B")+"12", padding:"2px 8px", borderRadius:100 }}>{pendingApproval.length}</span>
+          </div>
+          <div style={{ maxHeight:"calc(100vh - 260px)", overflowY:"auto", paddingRight:4 }}>
+            {pendingApproval.map(d => SideCard(d, B.orange||"#F59E0B", "Pendente", true))}
+            {pendingApproval.length===0 && <div style={{ padding:"30px 16px", textAlign:"center", borderRadius:14, border:"1px dashed "+(C.brd||"#E0E0E0") }}>
+              <p style={{ fontSize:12, fontWeight:600, color:C.mut }}>Nenhum post pendente</p>
+            </div>}
+          </div>
+
+          {/* Revisão abaixo */}
+          {revision.length>0 && <>
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:24, marginBottom:14 }}>
+              <div style={{ width:8, height:8, borderRadius:4, background:"#EAB308" }} />
+              <p style={{ fontSize:13, fontWeight:800 }}>Em edição</p>
+              <span style={{ fontSize:11, fontWeight:700, color:"#EAB308", background:"#EAB30812", padding:"2px 8px", borderRadius:100 }}>{revision.length}</span>
+            </div>
+            {revision.map(d => SideCard(d, "#EAB308", "Edição", false))}
+          </>}
+        </div>
+
+        {/* ── CENTER: iPhone ── */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start" }}>
+          {/* Title */}
+          <div style={{ textAlign:"center", marginBottom:20 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:C.mut, textTransform:"uppercase", letterSpacing:"0.1em" }}>{selPost?"Toque para aprovar":"Selecione um post"}</p>
+          </div>
+
+          {/* iPhone Frame */}
+          <div className="iphone-wrap" style={{ width:320, borderRadius:52, background:"linear-gradient(145deg, #2A2A2E 0%, #1A1A1E 50%, #0D0D0F 100%)", padding:10, position:"relative" }}>
+            {/* Frame highlights */}
+            <div style={{ position:"absolute", top:0, left:20, right:20, height:1, background:"linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent)" }} />
+            <div style={{ position:"absolute", right:0, top:40, bottom:40, width:1, background:"linear-gradient(180deg, transparent, rgba(255,255,255,.08), transparent)" }} />
+
+            {/* Screen */}
+            <div style={{ borderRadius:44, overflow:"hidden", background:C.bg||"#F8F9FA", position:"relative" }}>
+              {/* Dynamic Island */}
+              <div style={{ position:"absolute", top:10, left:"50%", transform:"translateX(-50%)", width:100, height:28, borderRadius:20, background:"#000", zIndex:10 }} />
+
+              {/* Screen content */}
+              {selPost ? <>
+                {/* Post image */}
+                <div style={{ width:"100%", aspectRatio:"4/5", overflow:"hidden", position:"relative" }}>
+                  {selImgs.length>0
+                    ? <img src={selImgs[0].url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+(B.orange||"#F59E0B")+"15, "+(C.card||"#fff")+")", display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ opacity:.15, transform:"scale(2)" }}>{IC.content(B.orange)}</span></div>}
+
+                  {/* Image count */}
+                  {selImgs.length>1 && <div style={{ position:"absolute", top:46, right:12, padding:"4px 10px", borderRadius:20, background:"rgba(0,0,0,.5)", backdropFilter:"blur(6px)", fontSize:10, fontWeight:700, color:"#fff" }}>{selImgs.length} fotos</div>}
+
+                  {/* Bottom gradient overlay */}
+                  <div style={{ position:"absolute", bottom:0, left:0, right:0, height:80, background:"linear-gradient(to top, rgba(0,0,0,.5), transparent)" }} />
+                </div>
+
+                {/* Info area */}
+                <div style={{ padding:"14px 16px 10px" }}>
+                  {/* Networks */}
+                  <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                    {selNets.map((n,ni) => {const nl=n.toLowerCase(); return <div key={ni} style={{ display:"flex", alignItems:"center", gap:4, padding:"3px 10px", borderRadius:8, background:nl.includes("instagram")?"linear-gradient(135deg,#833AB4,#E1306C,#FCAF45)":nl.includes("facebook")?"#1877F2":"#000" }}>
+                      {nl.includes("instagram")?<svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                      :nl.includes("facebook")?<svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      :<span style={{ fontSize:9, fontWeight:700, color:"#fff" }}>{n}</span>}
+                      <span style={{ fontSize:9, fontWeight:700, color:"#fff" }}>{n}</span>
+                    </div>;})}
+                  </div>
+
+                  <p style={{ fontSize:15, fontWeight:800, lineHeight:1.3, color:"#1A1D23" }}>{selPost.title}</p>
+                  <p style={{ fontSize:10, color:"#9CA3AF", marginTop:3 }}>{selPost.client}{selSched?" · "+selSched:""}</p>
+                  {selCaption && <p style={{ fontSize:11, color:"#6B7280", marginTop:8, lineHeight:1.5, display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{selCaption}</p>}
+
+                  {/* Action buttons */}
+                  <div style={{ display:"flex", gap:10, marginTop:14, paddingTop:12, borderTop:"1px solid "+(C.brd||"#F0F0F3") }}>
+                    <button className="phone-btn" onClick={()=>respondDemand(selPost,"approved","")} style={{ flex:1, padding:"14px 0", background:B.green||"#22C55E", color:"#fff", fontSize:14 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Aprovar
+                    </button>
+                    <button className="phone-btn" onClick={()=>{const fb=prompt("Motivo da edição (obrigatório):");if(!fb||!fb.trim()){if(fb!==null)showToast("Informe o motivo");return;}respondDemand(selPost,"revision",fb.trim())}} style={{ flex:1, padding:"14px 0", background:"transparent", border:"1.5px solid "+(B.orange||"#F59E0B"), color:B.orange||"#F59E0B", fontSize:14 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      Editar
+                    </button>
+                  </div>
+
+                  {/* Detail link */}
+                  <div onClick={()=>setSub("demand_"+selPost.id)} style={{ textAlign:"center", marginTop:10, padding:"6px 0", cursor:"pointer" }}>
+                    <span style={{ fontSize:11, color:C.mut, fontWeight:600 }}>Ver detalhes completos →</span>
+                  </div>
+                </div>
+              </> : <>
+                {/* Empty phone state */}
+                <div style={{ padding:"80px 30px", textAlign:"center" }}>
+                  <div style={{ width:60, height:60, borderRadius:18, background:(B.accent||"#C8FF00")+"12", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>{IC.content(B.accent||"#C8FF00")}</div>
+                  <p style={{ fontSize:16, fontWeight:800, color:"#1A1D23" }}>Tudo em dia!</p>
+                  <p style={{ fontSize:12, color:"#9CA3AF", marginTop:6, lineHeight:1.5 }}>Nenhum post aguardando aprovação.</p>
+                </div>
+              </>}
+
+              {/* Home indicator */}
+              <div style={{ padding:"6px 0 8px", display:"flex", justifyContent:"center" }}>
+                <div style={{ width:120, height:4, borderRadius:2, background:"#D1D5DB" }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Instruction below phone */}
+          {pendingApproval.length>0 && <p style={{ textAlign:"center", marginTop:16, fontSize:11, color:C.mut, fontWeight:500, fontStyle:"italic" }}>Selecione um post à esquerda para pré-visualizar e aprovar</p>}
+        </div>
+
+        {/* ── RIGHT: Aprovados + Produção ── */}
+        <div style={{ width:240, flexShrink:0 }}>
+          {/* Approved */}
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green||"#22C55E"} strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <p style={{ fontSize:13, fontWeight:800, color:B.green||"#22C55E" }}>Aprovados</p>
+            <span style={{ fontSize:11, fontWeight:700, color:B.green||"#22C55E", background:(B.green||"#22C55E")+"12", padding:"2px 8px", borderRadius:100 }}>{approved.length}</span>
+          </div>
+          <div style={{ maxHeight:"calc(50vh - 130px)", overflowY:"auto", paddingRight:4, marginBottom:24 }}>
+            {approved.map(d => SideCard(d, B.green||"#22C55E", "Aprovado", false))}
+            {approved.length===0 && <div style={{ padding:"20px 16px", textAlign:"center", borderRadius:14, border:"1px dashed "+(C.brd||"#E0E0E0") }}><p style={{ fontSize:12, fontWeight:600, color:C.mut }}>Nenhum aprovado</p></div>}
+          </div>
+
+          {/* In production */}
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:14 }}>
+            <div style={{ width:8, height:8, borderRadius:4, background:C.mut||"#9CA3AF" }} />
+            <p style={{ fontSize:13, fontWeight:800 }}>Em produção</p>
+            <span style={{ fontSize:11, fontWeight:700, color:C.mut||"#9CA3AF", background:(C.mut||"#9CA3AF")+"12", padding:"2px 8px", borderRadius:100 }}>{inProd.length}</span>
+          </div>
+          <div style={{ maxHeight:"calc(50vh - 130px)", overflowY:"auto", paddingRight:4 }}>
+            {inProd.map(d => SideCard(d, C.mut||"#9CA3AF", "Produção", false))}
+            {inProd.length===0 && <div style={{ padding:"20px 16px", textAlign:"center", borderRadius:14, border:"1px dashed "+(C.brd||"#E0E0E0") }}><p style={{ fontSize:12, fontWeight:600, color:C.mut }}>Nenhum em produção</p></div>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── EMPTY STATE ── */}
+      {demands.length===0 && demandsLoaded && <div style={{ textAlign:"center", padding:"80px 20px" }}>
         <p style={{ fontSize:18, fontWeight:800 }}>Nenhum conteúdo ainda</p>
-        <p style={{ fontSize:13, color:C.mut, marginTop:8, maxWidth:300, margin:"8px auto 0", lineHeight:1.5 }}>Quando a agência enviar posts para aprovação, eles aparecerão aqui.</p>
+        <p style={{ fontSize:13, color:C.mut, marginTop:8 }}>Quando a agência enviar posts, eles aparecerão aqui.</p>
       </div>}
     </div>;
   };
