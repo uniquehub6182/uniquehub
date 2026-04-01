@@ -27427,7 +27427,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
 .bnav .nb-item{color:${inactiveColor}!important}
 .bnav .nb-item.active{color:${UP.navTextColor||"#fff"}!important}
 :root{--uh-radius:${UP.cardRadius==="sharp"?"6px":UP.cardRadius==="pill"?"20px":"14px"}}
-${isDesktop?`html.uh-desktop .uh-client-page{max-width:1100px!important;margin-left:auto!important;margin-right:auto!important;padding-left:20px!important;padding-right:20px!important}`:""}
+${isDesktop?`html.uh-desktop .content>div.uh-client-page{max-width:1100px!important;padding-left:20px!important;padding-right:20px!important}`:""}
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
