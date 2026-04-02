@@ -27547,6 +27547,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
 
+    {/* ONBOARDING CHECKLIST — Item 15 */}
+    {(() => {
+      const checks = [
+        { id:"profile", label:"Completar perfil", done: !!(user?.name && user?.email) },
+        { id:"approve", label:"Aprovar primeiro post", done: demands.some(d=>d.steps?.client?.status==="approved") },
+        { id:"reports", label:"Acessar relatórios", done: !!localStorage.getItem("uh_visited_reports") },
+        { id:"growth", label:"Ver Growth Score", done: !!localStorage.getItem("uh_visited_growth") },
+        { id:"chat", label:"Enviar mensagem no chat", done: !!localStorage.getItem("uh_sent_chat") },
+      ];
+      const done = checks.filter(c=>c.done).length;
+      const dismissed = localStorage.getItem("uh_onboarding_done");
+      if (done >= 5 || dismissed) return null;
+      return <div style={{marginTop:16,padding:"20px 24px",borderRadius:16,background:"linear-gradient(135deg,"+B.accent+"06,"+B.accent+"02)",border:"1.5px solid "+B.accent+"20"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div><p style={{fontSize:14,fontWeight:800,margin:0}}>🚀 Primeiros passos</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>{done}/5 concluídos</p></div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:80,height:6,borderRadius:3,background:B.accent+"15"}}><div style={{width:done*20+"%",height:6,borderRadius:3,background:B.accent,transition:"width .5s"}}/></div><button onClick={()=>{localStorage.setItem("uh_onboarding_done","1");location.reload();}} style={{fontSize:10,color:B.muted,background:"none",border:"none",cursor:"pointer"}}>✕</button></div>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          {checks.map(ch=><div key={ch.id} style={{flex:1,padding:"10px 12px",borderRadius:10,background:ch.done?B.green+"10":B.bgCard,border:"1px solid "+(ch.done?B.green+"25":B.border||"rgba(0,0,0,0.06)"),textAlign:"center"}}>
+            <span style={{fontSize:14,display:"block"}}>{ch.done?"✅":"⭕"}</span>
+            <p style={{fontSize:10,fontWeight:600,color:ch.done?B.green:B.text,marginTop:4}}>{ch.label}</p>
+          </div>)}
+        </div>
+      </div>;
+    })()}
+
     {/* QUICK METRICS — Item 5 */}
     {(() => {
       const publishedCount = demands.filter(d=>["published","completed"].includes(d.stage)).length;
@@ -27565,6 +27591,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         </div>)}
       </div>;
     })()}
+
+    {/* MEETING SCHEDULER — Item 19 */}
+    <div style={{marginTop:16,padding:"18px 22px",borderRadius:16,background:B.bgCard||"#fff",border:"1px solid "+(B.border||"rgba(0,0,0,0.06)"),display:"flex",alignItems:"center",gap:16,cursor:"pointer",transition:"all .2s"}} onClick={()=>{const msg=encodeURIComponent("Olá! Sou "+(user?.name||"cliente")+" da "+(resolvedClient?.name||"empresa")+" e gostaria de agendar uma reunião de "+["estratégia","aprovação de conteúdo","brainstorm","acompanhamento"][Math.floor(Math.random()*4)]+".");window.open("https://wa.me/552122159867?text="+msg,"_blank");}}>
+      <div style={{width:44,height:44,borderRadius:12,background:"#6366F115",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <div style={{flex:1}}><p style={{fontSize:13,fontWeight:700,margin:0}}>Agendar reunião</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>Marque um horário com a equipe criativa</p></div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
 
     {/* TESTIMONIAL WIDGET — Item 20 */}
     {(() => {
