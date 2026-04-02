@@ -224,13 +224,13 @@ serve(async (req) => {
         }
       } catch (e: any) {
         console.error(`[Scheduler] Failed post ${post.id}:`, e.message);
-        const retryCount = (post.retry_count || 0) + 1;
         const isTransient = e.message?.includes("processing error") || e.message?.includes("timeout") || e.message?.includes("transient");
-        if (isTransient && retryCount <= 3) {
+        const alreadyRetried = (post.error || "").includes("Retry");
+        if (isTransient && !alreadyRetried) {
           const retryAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-          await sb.from("scheduled_posts").update({ status: "pending", error: `Retry ${retryCount}/3: ${e.message}`, scheduled_at: retryAt, retry_count: retryCount }).eq("id", post.id);
-          console.log(`[Scheduler] Auto-retry ${retryCount}/3 for post ${post.id}`);
-          results.push({ id: post.id, status: "retry", attempt: retryCount });
+          await sb.from("scheduled_posts").update({ status: "pending", error: `Retry: ${e.message}`, scheduled_at: retryAt }).eq("id", post.id);
+          console.log(`[Scheduler] Auto-retry for post ${post.id}`);
+          results.push({ id: post.id, status: "retry" });
         } else {
           await sb.from("scheduled_posts").update({ status: "failed", error: e.message }).eq("id", post.id);
           results.push({ id: post.id, status: "failed", error: e.message });
