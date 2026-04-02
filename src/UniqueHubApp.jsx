@@ -28550,6 +28550,21 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
   return (
     <div style={{ display:"flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
+    {/* EXPRESS REQUEST ALERT BANNER */}
+    {(() => {
+      const [exA, setExA] = React.useState([]);
+      const [exD, setExD] = React.useState(() => { try { return JSON.parse(sessionStorage.getItem("uh_ex_dismissed")||"[]"); } catch { return []; } });
+      React.useEffect(() => { if (!supabase) return; supabase.from("demands").select("id,title,description,created_at,client_id,priority").eq("stage","idea").order("created_at",{ascending:false}).limit(20).then(({data}) => { setExA((data||[]).filter(d => d.description?.includes("[SOLICITA") && !exD.includes(d.id))); }); }, []);
+      if (exA.length === 0) return null;
+      return <div style={{position:"fixed",top:16,right:16,zIndex:9999,display:"flex",flexDirection:"column",gap:8,maxWidth:380}}>
+        {exA.slice(0,3).map(a => { const isU = a.description?.includes("URGENTE"); return <div key={a.id} style={{padding:"14px 18px",borderRadius:16,background:isU?"linear-gradient(135deg,#EF4444,#DC2626)":"linear-gradient(135deg,#F59E0B,#D97706)",color:"#fff",boxShadow:"0 8px 30px rgba(0,0,0,0.3)",animation:"slideInRight .4s ease",display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:24}}>{isU?"🚨":"⚡"}</span>
+          <div style={{flex:1}}><p style={{fontSize:12,fontWeight:800,margin:0}}>{isU?"SOLICITAÇÃO URGENTE":"SOLICITAÇÃO EXPRESS"}</p><p style={{fontSize:11,opacity:0.9,marginTop:2}}>{a.title?.slice(0,40)}</p><p style={{fontSize:9,opacity:0.7,marginTop:2}}>{a.created_at?new Date(a.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):""}</p></div>
+          <button onClick={()=>{const nd=[...exD,a.id];setExD(nd);sessionStorage.setItem("uh_ex_dismissed",JSON.stringify(nd));setExA(p=>p.filter(x=>x.id!==a.id));}} style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.2)",border:"none",cursor:"pointer",color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>; })}
+        <style dangerouslySetInnerHTML={{__html:"@keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}"}} />
+      </div>;
+    })()}
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
       {ToastEl}
       {/* ── NEWS TO POST: CLIENT PICKER ── */}
