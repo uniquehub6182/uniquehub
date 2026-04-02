@@ -24476,11 +24476,13 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   );
 
   /* ═══ TERMS SCREEN ═══ */
+  const _m4dk = typeof window !== "undefined" && window.innerWidth > 900;
   /* ── Lock Screen ── */
   if (!m4bLoading && !m4bUnlocked) {
     const pct = Math.round((m4bCompleted / m4bTotal) * 100);
     return (
-      <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:B.bg, zIndex:50, display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
+      <div style={{ ...(_m4dk?{background:B.bg,minHeight:"100vh",paddingBottom:80,fontFamily:"'Figtree',sans-serif"}:{position:"fixed",top:0,left:0,right:0,bottom:0,background:B.bg,zIndex:50,display:"flex",flexDirection:"column",fontFamily:"'Figtree',sans-serif"}) }}>
+        <div style={_m4dk?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"calc(env(safe-area-inset-top,0px) + 16px) 20px 12px" }}>
           <button onClick={onBack} style={{ width:38, height:38, borderRadius:"50%", background:B.card, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
@@ -24525,6 +24527,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
             Ver meus desafios
           </button>
         </div>
+      </div>
       </div>
     );
   }
@@ -24760,7 +24763,6 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   ) : null;
 
   /* ═══ MAIN VIEW ═══ */
-  const _m4dk = typeof window !== "undefined" && window.innerWidth > 900;
 
   return (
     <div className={_m4dk?"":"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text, ...(_m4dk?{minHeight:"100vh",paddingBottom:80}:{}) }}>
