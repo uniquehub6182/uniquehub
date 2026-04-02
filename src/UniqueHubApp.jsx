@@ -27547,6 +27547,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
 
+    {/* QUICK METRICS — Item 5 */}
+    {(() => {
+      const publishedCount = demands.filter(d=>["published","completed"].includes(d.stage)).length;
+      const thisMonth = demands.filter(d=>{const da=d.steps?.design?.date||d.created_at||"";return da.includes&&da.includes(new Date().toISOString().slice(0,7))&&["published","completed"].includes(d.stage);}).length;
+      const approvedCount = demands.filter(d=>d.steps?.client?.status==="approved").length;
+      if (publishedCount === 0) return null;
+      return <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginTop:16}}>
+        {[
+          {label:"Publicados",val:publishedCount,color:B.green,icon:"📊"},
+          {label:"Este mês",val:thisMonth,color:B.accent,icon:"📅"},
+          {label:"Aprovados",val:approvedCount,color:"#3B82F6",icon:"✅"},
+          {label:"Em produção",val:demands.filter(d=>!["published","completed"].includes(d.stage)).length,color:B.orange||"#F59E0B",icon:"⚡"}
+        ].map((m,i)=><div key={i} style={{padding:"14px 16px",borderRadius:14,background:B.bgCard||"#fff",border:"1px solid "+(B.border||"rgba(0,0,0,0.06)"),boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><span style={{fontSize:14}}>{m.icon}</span><span style={{fontSize:10,fontWeight:600,color:B.muted,textTransform:"uppercase",letterSpacing:0.5}}>{m.label}</span></div>
+          <p style={{fontSize:24,fontWeight:900,color:m.color,margin:0}}>{m.val}</p>
+        </div>)}
+      </div>;
+    })()}
+
     {/* TESTIMONIAL WIDGET — Item 20 */}
     {(() => {
       const clientSince = resolvedClient?.created_at || resolvedClient?.since;
