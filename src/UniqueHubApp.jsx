@@ -27778,7 +27778,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         <div style={{ padding:isDesktop?0:"0 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab !== "home" && <div style={isDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
-            {tab !== "chat" && tab !== "calendar" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
+            {tab !== "chat" && tab !== "calendar" && <div style={isDesktop?{}:{margin:"0 -16px"}}><CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} /></div>}
             {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:16}}>{renderContent()}</div> : renderContent())}
             {tab === "calendar" && <div style={{ margin:isDesktop?0:"-14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
             {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
