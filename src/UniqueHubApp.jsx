@@ -27528,6 +27528,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
 
+    {/* APPROVAL TIMELINE — Stories strip */}
+    {pendingApproval.length > 0 && <div style={{marginTop:16}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:B.orange||"#F59E0B",animation:"skPulse 2s ease infinite"}}/>
+          <p style={{fontSize:13,fontWeight:700,margin:0}}>Aguardando sua aprovação</p>
+          <span style={{fontSize:11,color:B.muted,fontWeight:600}}>({pendingApproval.length})</span>
+        </div>
+        <button onClick={()=>goTab("content")} style={{fontSize:12,fontWeight:600,color:B.accent,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>Ver todos →</button>
+      </div>
+      <div style={{display:"flex",gap:14,overflowX:"auto",paddingBottom:8,scrollbarWidth:"none"}}>
+        {pendingApproval.slice(0,10).map((d,i)=>{
+          const files=d.steps?.design?.files||d.steps?.production?.files||[];
+          const img=files.find(f=>f.url&&(f.url.endsWith(".jpg")||f.url.endsWith(".jpeg")||f.url.endsWith(".png")||f.url.endsWith(".webp")))?.url;
+          const vid=files.find(f=>f.url&&(f.url.endsWith(".mp4")||f.url.endsWith(".mov")))?.url;
+          const thumb=img||(vid?files.find(f=>f.url&&!f.url.endsWith(".mp4")&&!f.url.endsWith(".mov"))?.url:null);
+          const cap=d.steps?.caption?.text||"";
+          const isVideo=d.format==="Reels"||d.format==="Vídeo"||d.type==="video";
+          return <div key={d.id} onClick={()=>{goTab("content");setTimeout(()=>{try{const el=document.querySelector(`[data-demand-id="${d.id}"]`);if(el)el.click();}catch{}},500);}} style={{flexShrink:0,width:180,cursor:"pointer",borderRadius:16,overflow:"hidden",background:B.bgCard||"#fff",border:`1.5px solid ${B.border||"rgba(0,0,0,0.06)"}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",transition:"all .2s"}}>
+            <div style={{height:200,background:thumb?`url(${thumb}) center/cover`:`linear-gradient(135deg,${B.accent}20,${B.accent}08)`,position:"relative",display:"flex",alignItems:"flex-end"}}>
+              {isVideo&&<div style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"2px 6px",fontSize:9,fontWeight:700,color:"#fff"}}>▶ REELS</div>}
+              <div style={{width:"100%",padding:"8px 10px",background:"linear-gradient(transparent,rgba(0,0,0,0.7))",color:"#fff"}}>
+                <p style={{fontSize:11,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Post"}</p>
+              </div>
+            </div>
+            <div style={{padding:"10px 12px"}}>
+              <p style={{fontSize:10,color:B.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cap.substring(0,50)||"Sem legenda"}</p>
+              <div style={{display:"flex",gap:6,marginTop:8}}>
+                <button onClick={(e)=>{e.stopPropagation();respondDemand(d,"approved","");}} style={{flex:1,padding:"7px 0",borderRadius:8,background:B.green||"#22C55E",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>Aprovar</button>
+                <button onClick={(e)=>{e.stopPropagation();const fb=prompt("Feedback:");if(fb!==null)respondDemand(d,"revision",fb);}} style={{flex:1,padding:"7px 0",borderRadius:8,background:"transparent",border:`1px solid ${B.orange||"#F59E0B"}`,cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.orange||"#F59E0B"}}>Editar</button>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>}
+
     {/* SECTIONS */}
     <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:8 }}>
       <div className={isDesktop?"d-dash-grid":""}>
