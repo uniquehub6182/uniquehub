@@ -26159,9 +26159,30 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [exprUrg, setExprUrg] = useState("normal");
   const [exprDate, setExprDate] = useState("");
   const [exprRef, setExprRef] = useState("");
-  const [moodboard, setMoodboard] = useState(() => { try { return JSON.parse(localStorage.getItem("uh_moodboard")||"[]"); } catch { return []; } });
-  const saveMoodboard = (list) => { setMoodboard(list); localStorage.setItem("uh_moodboard", JSON.stringify(list)); };
-  const addMoodboardItem = () => { const url = prompt("Cole o link da referência (Instagram, site, imagem):"); if (!url?.trim()) return; const item = { id: Date.now(), url: url.trim(), note: "", added: new Date().toISOString() }; saveMoodboard([item, ...moodboard]); showToast("Referência salva ✓"); };
+  const [moodboard, setMoodboard] = useState([]);
+  const [showMoodboardModal, setShowMoodboardModal] = useState(false);
+  const [mbLink, setMbLink] = useState("");
+  const [mbNote, setMbNote] = useState("");
+  const [mbCat, setMbCat] = useState("referência");
+  useEffect(() => {
+    const cid = resolvedClient?.supaId || resolvedClient?.id;
+    if (!cid || !supabase) return;
+    supabase.from("app_settings").select("*").eq("key","moodboard_"+cid).then(({data}) => {
+      if (data?.[0]?.value) try { setMoodboard(JSON.parse(data[0].value)); } catch {}
+    });
+  }, [resolvedClient]);
+  const saveMoodboard = async (list) => {
+    setMoodboard(list);
+    const cid = resolvedClient?.supaId || resolvedClient?.id;
+    if (cid && supabase) await supabase.from("app_settings").upsert({ key:"moodboard_"+cid, value:JSON.stringify(list) },{ onConflict:"key" });
+  };
+  const addMoodboardItem = () => {
+    if (!mbLink.trim()) { showToast("Cole um link"); return; }
+    const item = { id: Date.now(), url: mbLink.trim(), note: mbNote.trim(), category: mbCat, added: new Date().toISOString(), by: user?.name || "Cliente" };
+    saveMoodboard([item, ...moodboard]);
+    showToast("Referência salva ✓");
+    setMbLink(""); setMbNote(""); setMbCat("referência"); setShowMoodboardModal(false);
+  };
   const [showNPS, setShowNPS] = useState(false);
   const [npsScore, setNpsScore] = useState(null);
   const [npsFeedback, setNpsFeedback] = useState("");
@@ -27232,10 +27253,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             </div>;
           })()}
 
-          {/* Item 9: Moodboard */}
+          {/* Item 9: Moodboard — Mural de Inspirações */}
           <div style={{marginBottom:16}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:16}}>💡</span><p style={{fontSize:13,fontWeight:700,margin:0}}>Mural de Inspirações ({moodboard.length})</p></div><button onClick={addMoodboardItem} style={{fontSize:12,fontWeight:700,color:B.accent,background:B.accent+"10",border:"1.5px solid "+B.accent+"25",borderRadius:10,padding:"6px 14px",cursor:"pointer",fontFamily:"inherit"}}>+ Adicionar</button></div>
-            {moodboard.length===0?<div style={{padding:"20px",borderRadius:14,background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),textAlign:"center"}}><p style={{fontSize:12,color:B.muted}}>Salve referências visuais para inspirar a equipe criativa</p></div>:<div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8,scrollbarWidth:"none"}}>{moodboard.slice(0,8).map(item=><div key={item.id} style={{flexShrink:0,width:140,borderRadius:12,overflow:"hidden",background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),cursor:"pointer"}} onClick={()=>window.open(item.url,"_blank")}><div style={{height:80,background:"linear-gradient(135deg,"+B.accent+"15,"+B.accent+"05)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:9,color:B.muted,padding:8,wordBreak:"break-all"}}>{item.url.replace(/https?:\/\//,"").slice(0,35)}</span></div><div style={{padding:"6px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:9,color:B.muted}}>{new Date(item.added).toLocaleDateString("pt-BR")}</span><button onClick={e=>{e.stopPropagation();saveMoodboard(moodboard.filter(m=>m.id!==item.id));}} style={{fontSize:10,color:B.red||"#EF4444",background:"none",border:"none",cursor:"pointer"}}>✕</button></div></div>)}</div>}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>💡</span><p style={{fontSize:14,fontWeight:800,margin:0}}>Mural de Inspirações</p><span style={{fontSize:11,color:B.muted,background:B.accent+"10",borderRadius:6,padding:"2px 8px",fontWeight:600}}>{moodboard.length}</span></div>
+              <button onClick={()=>setShowMoodboardModal(true)} style={{fontSize:12,fontWeight:700,color:"#0D0D0D",background:B.accent,border:"none",borderRadius:10,padding:"8px 18px",cursor:"pointer",fontFamily:"inherit"}}>+ Adicionar</button>
+            </div>
+            {moodboard.length===0 ? <div style={{padding:"30px 20px",borderRadius:16,background:B.bgCard,border:"1.5px dashed "+(B.border||"#ddd"),textAlign:"center"}}>
+              <span style={{fontSize:32,display:"block",marginBottom:8}}>🎨</span>
+              <p style={{fontSize:13,fontWeight:700,marginBottom:4}}>Nenhuma referência salva</p>
+              <p style={{fontSize:11,color:B.muted,maxWidth:300,margin:"0 auto"}}>Salve links de posts, sites e imagens que te inspiram. A equipe criativa vai usar como direção!</p>
+            </div> :
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+              {moodboard.map(item=>{const catIcon={"referência":"🎨","concorrente":"🔍","campanha":"📢","estilo":"✨","produto":"📦"}[item.category]||"🔗";return <div key={item.id} style={{borderRadius:14,overflow:"hidden",background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),cursor:"pointer",transition:"transform .15s"}} onClick={()=>window.open(item.url,"_blank")} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
+                <div style={{height:100,background:"linear-gradient(135deg,"+B.accent+"12,"+B.accent+"04)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:12}}>
+                  <span style={{fontSize:28,marginBottom:4}}>{catIcon}</span>
+                  <span style={{fontSize:9,color:B.muted,textAlign:"center",wordBreak:"break-all",maxHeight:30,overflow:"hidden"}}>{item.url.replace(/https?:\/\//,"").slice(0,40)}</span>
+                </div>
+                <div style={{padding:"10px 12px",borderTop:"1px solid "+(B.border||"#ddd")}}>
+                  {item.note && <p style={{fontSize:11,fontWeight:600,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.note}</p>}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:9,color:B.accent,fontWeight:600}}>{item.category||"referência"}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:9,color:B.muted}}>{new Date(item.added).toLocaleDateString("pt-BR")}</span>
+                      <button onClick={e=>{e.stopPropagation();saveMoodboard(moodboard.filter(m=>m.id!==item.id));}} style={{fontSize:10,color:B.red||"#EF4444",background:"none",border:"none",cursor:"pointer",padding:0}}>✕</button>
+                    </div>
+                  </div>
+                </div>
+              </div>;})}
+            </div>}
           </div>
         </div>
         {/* ── FUNCTIONAL PANELS (3 large, custom widgets) ── */}
@@ -28119,6 +28165,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
+
+    {/* MOODBOARD MODAL */}
+    {showMoodboardModal && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowMoodboardModal(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{width:440,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"24px 28px",color:"#fff"}}>
+          <p style={{fontSize:11,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.35)",textTransform:"uppercase"}}>Mural de inspirações</p>
+          <p style={{fontSize:20,fontWeight:800,marginTop:4}}>Adicionar referência</p>
+        </div>
+        <div style={{padding:"24px 28px"}}>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Link da referência</label><input value={mbLink} onChange={e=>setMbLink(e.target.value)} className="tinput" placeholder="https://instagram.com/p/... ou qualquer URL" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Observação (opcional)</label><input value={mbNote} onChange={e=>setMbNote(e.target.value)} className="tinput" placeholder="Ex: Gostei da paleta de cores desse post" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
+          <div style={{marginBottom:20}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:6}}>Categoria</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["referência","🎨"],["concorrente","🔍"],["campanha","📢"],["estilo","✨"],["produto","📦"]].map(([k,ic])=><button key={k} onClick={()=>setMbCat(k)} style={{padding:"6px 14px",borderRadius:10,border:mbCat===k?"1.5px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:mbCat===k?B.accent+"15":"transparent",fontSize:11,fontWeight:mbCat===k?700:500,color:mbCat===k?B.accent:B.muted,cursor:"pointer",fontFamily:"inherit"}}>{ic} {k}</button>)}</div></div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setShowMoodboardModal(false)} style={{flex:1,padding:"13px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
+            <button onClick={addMoodboardItem} style={{flex:1,padding:"13px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:800,color:"#0D0D0D"}}>Salvar referência</button>
+          </div>
+        </div>
+      </div>
+    </div>}
 
     {/* FAB - Express Content Request (component level) */}
     {tab === "home" && isDesktop && <div onClick={()=>setShowExpressReq(true)} style={{position:"fixed",bottom:100,right:32,width:56,height:56,borderRadius:"50%",background:B.accent,boxShadow:"0 4px 20px rgba(200,255,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:900,transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>}
