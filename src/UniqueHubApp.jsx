@@ -22676,9 +22676,9 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     const isMetric = slide.type === "metrics" || slide.type === "highlight";
     const isCta = slide.type === "cta";
     const fs = fullscreen; // fullscreen mode
-    const sz = (d, m, s) => fs ? d * 1.4 : (isPDesktop ? d : s || m); // font size helper
+    const sz = (d, m, s) => fs ? Math.round(d * 1.15) : (isPDesktop ? d : s || m); // font size helper
     return (
-      <div style={{ width:"100%", aspectRatio:fs?"auto":(isPDesktop?"16/9":"4/3"), height:fs?"100%":"auto", background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:20, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", padding:fs?"80px 140px":(isPDesktop?"60px 80px":"40px 30px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
+      <div style={{ width:"100%", aspectRatio:fs?"auto":(isPDesktop?"16/9":"4/3"), height:fs?"100%":"auto", maxHeight:fs?"100%":"none", background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:20, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", padding:fs?"60px 10vw":(isPDesktop?"60px 80px":"40px 30px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
         <div style={{ position:"absolute", top:-100, right:-100, width:fs?500:300, height:fs?500:300, borderRadius:"50%", background:`${LIME}08`, filter:"blur(80px)" }} />
         <div style={{ position:"absolute", bottom:-50, left:-50, width:fs?400:200, height:fs?400:200, borderRadius:"50%", background:`${LIME}05`, filter:"blur(60px)" }} />
         <div style={{ position:"absolute", top:fs?32:isPDesktop?24:16, right:fs?40:isPDesktop?32:20, fontSize:fs?16:12, color:"rgba(255,255,255,0.3)", fontWeight:600 }}>{idx+1}/{total}</div>
@@ -22686,10 +22686,10 @@ function PresentationsPage({ onBack, clients, user, demands }) {
         {idx === 0 ? (<>
           <div style={{ fontSize:sz(14,11), fontWeight:700, color:LIME, letterSpacing:2, textTransform:"uppercase", marginBottom:fs?24:16 }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || "Cliente"}</div>
           <div style={{ fontSize:sz(36,24), fontWeight:900, color:"#fff", textAlign:"center", lineHeight:1.2, marginBottom:fs?20:12 }}>{slide.title}</div>
-          <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.6)", textAlign:"center", lineHeight:1.5, maxWidth:fs?900:600, whiteSpace:"pre-line" }}>{slide.body}</div>
+          <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.6)", textAlign:"center", lineHeight:1.5, maxWidth:fs?700:600, whiteSpace:"pre-line" }}>{slide.body}</div>
         </>) : isCta ? (<>
           <div style={{ fontSize:sz(32,22), fontWeight:900, color:LIME, textAlign:"center", lineHeight:1.2, marginBottom:fs?24:16 }}>{slide.title}</div>
-          <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.7)", textAlign:"center", lineHeight:1.6, maxWidth:fs?900:600, whiteSpace:"pre-line" }}>{slide.body}</div>
+          <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.7)", textAlign:"center", lineHeight:1.6, maxWidth:fs?700:600, whiteSpace:"pre-line" }}>{slide.body}</div>
         </>) : (<>
           <div style={{ alignSelf:"flex-start", marginBottom:fs?40:isPDesktop?32:20, width:"100%" }}>
             <div style={{ display:"inline-block", background:`${LIME}15`, borderRadius:8, padding:fs?"8px 18px":"6px 14px", marginBottom:fs?16:12 }}>
@@ -22708,7 +22708,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     const slides = currentPres.slides || [];
     const slide = slides[slideIdx] || {};
     return (
-      <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#000", display:"flex", flexDirection:"column" }}>
+      <div style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column" }}>
         <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>{renderSlide(slide, slideIdx, slides.length)}</div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:16, padding:"16px 0", background:"rgba(0,0,0,0.9)" }}>
           <button disabled={slideIdx<=0} onClick={()=>setSlideIdx(i=>i-1)} style={{ width:44, height:44, borderRadius:12, border:"none", background:slideIdx>0?LIME:"rgba(255,255,255,0.1)", color:slideIdx>0?"#000":"rgba(255,255,255,0.3)", cursor:slideIdx>0?"pointer":"default", fontFamily:"inherit", fontSize:18, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
