@@ -12546,7 +12546,11 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   const selConvRef = useRef(null);
   useEffect(() => { selConvRef.current = selConv; }, [selConv]);
   const [msgs, setMsgs] = useState([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => {
+    const ctx = localStorage.getItem("uh_chat_context");
+    if (ctx) { localStorage.removeItem("uh_chat_context"); return "Sobre o post: " + ctx + " — "; }
+    return "";
+  });
   const [search, setSearch] = useState("");
   const [showAttach, setShowAttach] = useState(false);
   const [pendingFile, setPendingFile] = useState(null); /* {file, preview, name, type} */
@@ -17636,7 +17640,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                       {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-6:0, zIndex:3-j }}><Av name={name} sz={26} fs={9} /></div>)}
                     </div>}
                     {isDem && ev.priority && <div style={{ width:6, height:6, borderRadius:3, background: ev.priority==="alta"?"#EF4444":ev.priority==="média"?"#F59E0B":"#10B981", flexShrink:0 }} title={ev.priority} />}
-                    {isDem && isClientView && ev.stage==="client" && <div style={{display:"flex",gap:4,flexShrink:0}}>
+                    {isDem && isClientView && (ev.stage==="client"||ev.stageLabel==="Aprovação") && <div style={{display:"flex",gap:4,flexShrink:0}}>
                       <button onClick={(e)=>{e.stopPropagation();const d=(propDemands||[]).find(dd=>dd.id===ev.demandId);if(d&&supabase){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const merged={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"approved",date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:merged,stage:"scheduled"}).eq("id",d.id).then(()=>showToast("✅ Aprovado!"));});}}} style={{padding:"6px 12px",borderRadius:8,background:B.green||"#22C55E",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>Aprovar</button>
                       <button onClick={(e)=>{e.stopPropagation();const fb=prompt("Feedback:");if(fb!==null){const d=(propDemands||[]).find(dd=>dd.id===ev.demandId);if(d&&supabase){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const merged={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"revision",feedback:fb,date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:merged}).eq("id",d.id).then(()=>showToast("Pedido de edição enviado"));});}}}} style={{padding:"6px 10px",borderRadius:8,background:"transparent",border:"1px solid "+(B.orange||"#F59E0B"),cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.orange||"#F59E0B"}}>Editar</button>
                     </div>}
@@ -27332,7 +27336,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                             <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,padding:"4px 10px",borderRadius:8,background:stColor+"12"}}>
                               <div style={{width:7,height:7,borderRadius:4,background:stColor}}/>
                               <span style={{fontSize:11,fontWeight:700,color:stColor}}>{stLabel}</span>
-                              <button onClick={(e)=>{e.stopPropagation();goTab("chat");setTimeout(()=>{try{const inp=document.querySelector('input[placeholder*="Mensagem"],textarea[placeholder*="Mensagem"]');if(inp){inp.focus();inp.value="Sobre o post: "+d.title+" — ";inp.dispatchEvent(new Event("input",{bubbles:true}));}}catch{}},800);}} style={{marginLeft:8,padding:"3px 8px",borderRadius:6,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"inline-flex",alignItems:"center",gap:3}}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
+                              <button onClick={(e)=>{e.stopPropagation();localStorage.setItem("uh_chat_context",d.title);goTab("chat");}} style={{marginLeft:8,padding:"3px 8px",borderRadius:6,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"inline-flex",alignItems:"center",gap:3}}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
                             </div>
                           </div>
                           {/* Networks + Format + Schedule */}
@@ -27950,7 +27954,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       if (isExp) return <div key={d.id} style={{ borderRadius:18, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), boxShadow:"0 8px 30px rgba(0,0,0,0.1)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:6, height:6, borderRadius:3, background:stC }} /><span style={{ fontSize:11, fontWeight:700, color:stC }}>{stL}</span></div>
-          <button onClick={(e)=>{e.stopPropagation();goTab("chat");setTimeout(()=>{try{const inp=document.querySelector('input[placeholder*="Mensagem"],textarea[placeholder*="Mensagem"]');if(inp){inp.focus();inp.value="Sobre o post: "+d.title+" — ";inp.dispatchEvent(new Event("input",{bubbles:true}));}}catch{}},800);}} style={{marginTop:4,padding:"4px 10px",borderRadius:8,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"flex",alignItems:"center",gap:4}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
+          <button onClick={(e)=>{e.stopPropagation();localStorage.setItem("uh_chat_context",d.title);goTab("chat");}} style={{marginTop:4,padding:"4px 10px",borderRadius:8,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"flex",alignItems:"center",gap:4}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
           <button onClick={()=>setExpandedDemandId(null)} style={{ width:28, height:28, borderRadius:8, border:"1px solid "+(C.brd||"#F0F0F3"), background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut||"#888"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div style={{ margin:"8px 10px 0", borderRadius:12, overflow:"hidden", background:"#000", position:"relative" }}>
