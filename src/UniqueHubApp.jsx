@@ -4661,8 +4661,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
-  const [npsData, setNpsData] = useState([]);
-  const [npsLoading, setNpsLoading] = useState(false);
   const [clientIdeas, setClientIdeas] = useState([]);
   const [clientIdeasLoaded, setClientIdeasLoaded] = useState(null); /* client id that was loaded */
   const [clientUsers, setClientUsers] = useState([]);
@@ -4782,15 +4780,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   };
   /* Load ideas for selected client when ideas tab is opened */
   useEffect(() => {
-    if (profileTab === "nps" && sel && supabase) {
-      setNpsLoading(true);
-      const cid = sel.supaId || sel.id;
-      const cname = sel.name || "";
-      supabase.from("app_settings").select("*").like("key", "nps_%").order("key",{ascending:false}).then(({data}) => {
-        const parsed = (data||[]).map(d => { try { return {...JSON.parse(d.value), key:d.key}; } catch { return null; } }).filter(Boolean).filter(d => d.key?.includes(cid) || (cname && d.client?.toLowerCase()===cname.toLowerCase()));
-        setNpsData(parsed); setNpsLoading(false);
-      });
-    }
     if (profileTab !== "ideas" || !sel || !supabase) return;
     if (clientIdeasLoaded === sel.name) return;
     supaLoadIdeas().then(rows => {
@@ -5515,7 +5504,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
       </div>
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
-        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"access",l:"Acessos",admin:true},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"nps",l:"Satisfação"},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
+        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"access",l:"Acessos",admin:true},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
           <button key={t.k} onClick={()=>{setProfileTab(t.k);setViewClientFile(null);}} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
         ))}
       </div>
@@ -6082,29 +6071,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         </>)}
       </>}
 
-      {profileTab === "nps" && (() => {
-        const avg = npsData.length > 0 ? (npsData.reduce((a,d)=>a+d.score,0)/npsData.length).toFixed(1) : "—";
-        const cat = n => n >= 9 ? "Promotor" : n >= 7 ? "Neutro" : "Detrator";
-        const col = n => n >= 9 ? B.green : n >= 7 ? "#F59E0B" : B.red || "#EF4444";
-        return <>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-            <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.accent}}>{avg}</p><p style={{fontSize:10,color:B.muted}}>NPS Médio</p></Card>
-            <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.green}}>{npsData.filter(d=>d.score>=9).length}</p><p style={{fontSize:10,color:B.muted}}>Promotores</p></Card>
-            <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.red||"#EF4444"}}>{npsData.filter(d=>d.score<=6).length}</p><p style={{fontSize:10,color:B.muted}}>Detratores</p></Card>
-          </div>
-          {npsLoading ? <p style={{fontSize:12,color:B.muted,textAlign:"center",padding:20}}>Carregando...</p> :
-          npsData.length === 0 ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:32,marginBottom:8}}>📋</p><p style={{fontSize:13,fontWeight:700}}>Nenhuma avaliação ainda</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>O cliente receberá a pesquisa de satisfação mensalmente no portal</p></Card> :
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {npsData.map((d,i) => <Card key={i} style={{padding:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:36,height:36,borderRadius:10,background:col(d.score)+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:col(d.score)}}>{d.score}</div>
-                <div style={{flex:1}}><p style={{fontSize:12,fontWeight:700}}>{cat(d.score)}</p><p style={{fontSize:10,color:B.muted}}>{d.date ? new Date(d.date).toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) : ""}</p></div>
-              </div>
-              {d.feedback && <p style={{fontSize:12,color:B.text,marginTop:8,padding:"10px 12px",borderRadius:10,background:B.bg,border:"1px solid "+B.border,lineHeight:1.5,fontStyle:"italic"}}>"{d.feedback}"</p>}
-            </Card>)}
-          </div>}
-        </>;
-      })()}
       {profileTab === "actions" && <>
         {[
           { l:"Ver conteúdos", ic:IC.content, c:B.accent, desc:"Demandas e posts do cliente", act:()=>onNavigate?.("content") },
@@ -6236,7 +6202,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
               {/* Tabs */}
               <div style={{ display:"flex", gap:4, padding:"12px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
-                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"access",l:"Acessos"},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"},{k:"nps",l:"Satisfação"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).filter(t=>t.k!=="access"||isAdmin).map(t=>(
+                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"access",l:"Acessos"},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).filter(t=>t.k!=="access"||isAdmin).map(t=>(
                   <button key={t.k} onClick={()=>setProfileTab(t.k)} style={{ padding:"6px 14px", borderRadius:100, border:profileTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, background:profileTab===t.k?B.accent:"transparent", color:profileTab===t.k?"#0D0D0D":B.muted }}>{t.l}</button>
                 ))}
               </div>
@@ -6547,27 +6513,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     </div>
                   ))}
                 </div>}
-
-                {/* NPS SATISFAÇÃO — desktop */}
-                {!confirmAction && profileTab==="nps" && <div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-                    <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.accent}}>{npsData.length > 0 ? (npsData.reduce((a,x)=>a+x.score,0)/npsData.length).toFixed(1) : "—"}</p><p style={{fontSize:10,color:B.muted}}>NPS Médio</p></Card>
-                    <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.green}}>{npsData.filter(x=>x.score>=9).length}</p><p style={{fontSize:10,color:B.muted}}>Promotores</p></Card>
-                    <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.red||"#EF4444"}}>{npsData.filter(x=>x.score<=6).length}</p><p style={{fontSize:10,color:B.muted}}>Detratores</p></Card>
-                  </div>
-                  {npsLoading ? <p style={{fontSize:12,color:B.muted,textAlign:"center",padding:20}}>Carregando...</p> :
-                  npsData.length === 0 ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:32,marginBottom:8}}>📋</p><p style={{fontSize:13,fontWeight:700}}>Nenhuma avaliação ainda</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>O cliente receberá a pesquisa de satisfação mensalmente no portal</p></Card> :
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {npsData.map((nd,i) => <Card key={i} style={{padding:14}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{width:36,height:36,borderRadius:10,background:(nd.score>=9?B.green:nd.score>=7?"#F59E0B":B.red||"#EF4444")+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:nd.score>=9?B.green:nd.score>=7?"#F59E0B":B.red||"#EF4444"}}>{nd.score}</div>
-                        <div style={{flex:1}}><p style={{fontSize:12,fontWeight:700}}>{nd.score>=9?"Promotor":nd.score>=7?"Neutro":"Detrator"}</p><p style={{fontSize:10,color:B.muted}}>{nd.date ? new Date(nd.date).toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) : ""}</p></div>
-                      </div>
-                      {nd.feedback && <p style={{fontSize:12,color:B.text,marginTop:8,padding:"10px 12px",borderRadius:10,background:B.bg,border:"1px solid "+B.border,lineHeight:1.5,fontStyle:"italic"}}>"{nd.feedback}"</p>}
-                    </Card>)}
-                  </div>}
-                </div>}
-
               </div>
             </> : (
               <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -12546,11 +12491,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   const selConvRef = useRef(null);
   useEffect(() => { selConvRef.current = selConv; }, [selConv]);
   const [msgs, setMsgs] = useState([]);
-  const [input, setInput] = useState(() => {
-    const ctx = localStorage.getItem("uh_chat_context");
-    if (ctx) { localStorage.removeItem("uh_chat_context"); return "Sobre o post: " + ctx + " — "; }
-    return "";
-  });
+  const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
   const [showAttach, setShowAttach] = useState(false);
   const [pendingFile, setPendingFile] = useState(null); /* {file, preview, name, type} */
@@ -12951,7 +12892,6 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
 
   const sendMsg = async () => {
     if (!input.trim() || !selConv) return;
-    try{localStorage.setItem("uh_sent_chat","1");}catch{}
     const text = input.trim();
     const _replyToMsg = replyTo;
     setInput("");
@@ -16724,7 +16664,6 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const [curYear, setCurYear] = useState(today.getFullYear());
   const [selDay, setSelDay] = useState(today.getDate());
   const [viewEvent, setViewEvent] = useState(null);
-  const [viewDemand, setViewDemand] = useState(null);
   const [cancelFlow, setCancelFlow] = useState(null); /* null | {eventId, step:"ask"|"reschedule", newDate:"", newTime:""} */
   const [adding, setAdding] = useState(false);
   const [eventType, setEventType] = useState(null);
@@ -17327,24 +17266,6 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>}
             </div>;
           })()}
-          {/* ── Demand preview modal ── */}
-          {viewDemand && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setViewDemand(null)}>
-            <div onClick={e=>e.stopPropagation()} style={{width:500,maxHeight:"80vh",overflowY:"auto",background:B.bgCard||"#fff",borderRadius:24,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-              {(()=>{const d=viewDemand;const files=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])];const img=files.find(f=>f.url&&/\.(jpg|jpeg|png|webp)$/i.test(f.url))?.url;const caption=d.steps?.caption?.text||d.description||"";const isPend=d.steps?.client?.mode==="sent_to_client"&&!d.steps?.client?.status;const stL=d.steps?.client?.status==="approved"?"Aprovado":d.steps?.client?.status==="revision"?"Edição solicitada":isPend?"Aguardando aprovação":"Em produção";const stC=d.steps?.client?.status==="approved"?B.green:isPend?(B.orange||"#F59E0B"):B.muted;return <>
-                {img?<div style={{height:280,background:"url("+img+") center/cover",borderRadius:"24px 24px 0 0"}}/>:<div style={{height:100,background:"linear-gradient(135deg,"+B.accent+"15,"+B.accent+"05)",borderRadius:"24px 24px 0 0",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:B.muted,fontSize:11}}>Sem arte</span></div>}
-                <div style={{padding:"20px 24px"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}><h3 style={{fontSize:18,fontWeight:800,margin:0}}>{d.title||"Post"}</h3><span style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:8,background:stC+"15",color:stC}}>{stL}</span></div>
-                  {d.format&&<div style={{display:"flex",gap:6,marginBottom:12}}><span style={{fontSize:10,padding:"3px 8px",borderRadius:6,background:B.accent+"10",color:B.accent,fontWeight:600}}>{d.format}</span>{(d.networks||[]).map((n,i)=><span key={i} style={{fontSize:10,padding:"3px 8px",borderRadius:6,background:B.border||"#eee",color:B.muted,fontWeight:600}}>{n}</span>)}</div>}
-                  {caption&&<div style={{padding:"12px 14px",borderRadius:12,background:B.bg,border:"1px solid "+(B.border||"#ddd"),marginBottom:16,maxHeight:120,overflowY:"auto"}}><p style={{fontSize:12,lineHeight:1.6,margin:0,whiteSpace:"pre-wrap"}}>{caption.slice(0,300)}</p></div>}
-                  {d.scheduling?.date&&<p style={{fontSize:11,color:B.muted,marginBottom:12}}>Agendado: {d.scheduling.date} {d.scheduling.time||""}</p>}
-                  <div style={{display:"flex",gap:10}}>
-                    <button onClick={()=>setViewDemand(null)} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Fechar</button>
-                    {isPend&&isClientView&&<><button onClick={()=>{if(supabase&&d.id){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const m={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"approved",date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:m,stage:"scheduled"}).eq("id",d.id).then(()=>{showToast("Aprovado!");setViewDemand(null);});});}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:B.green||"#22C55E",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff"}}>Aprovar</button><button onClick={()=>{const fb=prompt("Feedback:");if(fb!==null&&supabase&&d.id){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const m={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"revision",feedback:fb,date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:m}).eq("id",d.id).then(()=>{showToast("Edição enviada");setViewDemand(null);});});}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.orange||"#F59E0B"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button></>}
-                  </div>
-                </div>
-              </>;})()}
-            </div>
-          </div>}
           {/* ── Event detail panel (expanded mode) ── */}
           {viewEvent && (() => {
             const ev = viewEvent; const et = etCfg(ev.type);
@@ -17638,7 +17559,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 const isDem = ev.isDemand;
                 const demColor = isDem ? (ev.color || B.accent) : et.c;
                 return (
-                  <div key={ev.id} onClick={()=>{ if (isDem) { const dd=(propDemands||[]).find(x=>x.id===ev.demandId); setViewDemand(dd||ev); } else setViewEvent(ev); }} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:demColor, marginBottom:6, background:"transparent", transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${demColor}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div key={ev.id} onClick={()=>{ if (!isDem) setViewEvent(ev); }} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:demColor, marginBottom:6, background:"transparent", transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${demColor}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     {isDem ? <div style={{ width:40, height:40, borderRadius:12, background:`${demColor}15`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:11, fontWeight:800, color:demColor }}>{(ev.client||"?")[0]}</div>
                     : <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c, flexShrink:0 }}>{et.icon}</div>}
                     <div style={{ flex:1, minWidth:0 }}>
@@ -17659,10 +17580,6 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                       {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-6:0, zIndex:3-j }}><Av name={name} sz={26} fs={9} /></div>)}
                     </div>}
                     {isDem && ev.priority && <div style={{ width:6, height:6, borderRadius:3, background: ev.priority==="alta"?"#EF4444":ev.priority==="média"?"#F59E0B":"#10B981", flexShrink:0 }} title={ev.priority} />}
-                    {isDem && isClientView && (ev.stage==="client"||ev.stageLabel==="Aprovação") && <div style={{display:"flex",gap:4,flexShrink:0}}>
-                      <button onClick={(e)=>{e.stopPropagation();const d=(propDemands||[]).find(dd=>dd.id===ev.demandId);if(d&&supabase){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const merged={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"approved",date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:merged,stage:"scheduled"}).eq("id",d.id).then(()=>showToast("✅ Aprovado!"));});}}} style={{padding:"6px 12px",borderRadius:8,background:B.green||"#22C55E",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>Aprovar</button>
-                      <button onClick={(e)=>{e.stopPropagation();const fb=prompt("Feedback:");if(fb!==null){const d=(propDemands||[]).find(dd=>dd.id===ev.demandId);if(d&&supabase){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const merged={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"revision",feedback:fb,date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:merged}).eq("id",d.id).then(()=>showToast("Pedido de edição enviado"));});}}}} style={{padding:"6px 10px",borderRadius:8,background:"transparent",border:"1px solid "+(B.orange||"#F59E0B"),cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.orange||"#F59E0B"}}>Editar</button>
-                    </div>}
                   </div>
                 );
               })}
@@ -17761,7 +17678,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
         const isDem = ev.isDemand;
         const demColor = isDem ? (ev.color || B.accent) : et.c;
         return (
-          <Card key={ev.id} delay={i*0.03} onClick={()=>{ if (isDem) { const dd=(propDemands||[]).find(x=>x.id===ev.demandId); setViewDemand(dd||ev); } else setViewEvent(ev); }} style={{ marginTop:i?6:0, borderLeft:`4px solid ${demColor}`, cursor:"pointer" }}>
+          <Card key={ev.id} delay={i*0.03} onClick={()=>{ if (!isDem) setViewEvent(ev); }} style={{ marginTop:i?6:0, borderLeft:`4px solid ${demColor}`, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               {isDem ? <div style={{ width:40, height:40, borderRadius:12, background:`${demColor}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:demColor, flexShrink:0 }}>{(ev.client||"?")[0]}</div>
               : <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c }}>{et.icon}</div>}
@@ -21715,7 +21632,6 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
 
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
-    try{localStorage.setItem("uh_sent_chat","1");}catch{}
     const openaiKey = aiKeys.openai_key;
     const geminiKey = aiKeys.gemini_key;
     const claudeKey = aiKeys.claude_key;
@@ -22555,18 +22471,16 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const TOP = forceMobile ? "env(safe-area-inset-top, 16px)" : 70;
 
   return (
-    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: 70, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
-    <div style={isInboxDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 32px",display:"flex",flexDirection:"column",minHeight:"calc(100vh - 80px)"}:{}}>
+    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
     <div style={{ flexShrink:0 }}><CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} /></div>
     {ToastEl}
-    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, marginTop:isInboxDesktop?16:8, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", ...(isInboxDesktop?{height:"calc(100vh - 200px)"}:{}) }}>
+    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, marginTop:isInboxDesktop?0:8, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
       {isInboxDesktop ? (<>
         {ConvList()}
         {MsgThread()}
       </>) : (
         selConv ? MsgThread() : ConvList()
       )}
-    </div>
     </div>
     </div>
   );
@@ -22912,18 +22826,16 @@ function NotesPage({ onBack, user }) {
   );
 
   return (
-    <div className={isNotesDesktop ? "content-wide" : ""} style={isNotesDesktop ? { paddingTop: 70, minHeight:"100%" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
-      <div style={isNotesDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
+    <div className={isNotesDesktop ? "content-wide" : ""} style={isNotesDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>} label="Produtividade" title="Notas" onBack={onBack} />
       {ToastEl}
-      <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:isNotesDesktop?16:0, minHeight:isNotesDesktop?500:"auto" }}>
+      <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:isNotesDesktop?16:0 }}>
         {isNotesDesktop ? (<>
           {NotesList()}
           {NoteEditor()}
         </>) : (
           selNote ? NoteEditor() : NotesList()
         )}
-      </div>
       </div>
     </div>
   );
@@ -24560,13 +24472,11 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   );
 
   /* ═══ TERMS SCREEN ═══ */
-  const _m4dk = typeof window !== "undefined" && window.innerWidth > 900;
   /* ── Lock Screen ── */
   if (!m4bLoading && !m4bUnlocked) {
     const pct = Math.round((m4bCompleted / m4bTotal) * 100);
     return (
-      <div style={{ ...(_m4dk?{background:B.bg,minHeight:"100vh",paddingBottom:80,fontFamily:"'Figtree',sans-serif"}:{position:"fixed",top:0,left:0,right:0,bottom:0,background:B.bg,zIndex:50,display:"flex",flexDirection:"column",fontFamily:"'Figtree',sans-serif"}) }}>
-        <div style={_m4dk?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
+      <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:B.bg, zIndex:50, display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"calc(env(safe-area-inset-top,0px) + 16px) 20px 12px" }}>
           <button onClick={onBack} style={{ width:38, height:38, borderRadius:"50%", background:B.card, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
@@ -24611,7 +24521,6 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
             Ver meus desafios
           </button>
         </div>
-      </div>
       </div>
     );
   }
@@ -24847,15 +24756,13 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   ) : null;
 
   /* ═══ MAIN VIEW ═══ */
-
   return (
-    <div className={_m4dk?"":"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text, ...(_m4dk?{minHeight:"100vh",paddingBottom:80}:{}) }}>
+    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       {ToastEl}
       {BuyOverlay}
-      <div style={_m4dk?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className={_m4dk?"":"content"} style={_m4dk?{padding:"12px 0 80px"}:{ padding:"12px 16px 120px" }}>
+      <div className="content" style={{ padding:"12px 16px 120px" }}>
         {/* Tabs + actions row */}
         <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
           <div style={{ flex:1, display:"flex", gap:0, background:B.bgCard, borderRadius:14, padding:3, border:"1px solid "+B.border }}>
@@ -25029,7 +24936,6 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
           </>)}
         </>)}
         <div style={{ height:30 }} />
-      </div>
       </div>
     </div>
   );
@@ -25904,8 +25810,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     return () => { const el = document.getElementById(id); if (el) el.remove(); };
   }, [dark, B.bg, B.text, B.accent, B.bgCard, B.border, B.muted]);
   const [tab, setTab] = useState("home");
-  const [sub, setSub_] = useState(null);
-  const setSub = (s) => { if(s==="reports")try{localStorage.setItem("uh_visited_reports","1")}catch{}; if(s==="gamify")try{localStorage.setItem("uh_visited_growth","1")}catch{}; setSub_(s); };
+  const [sub, setSub] = useState(null);
   const [expandedDemandId, setExpandedDemandId] = useState(null);
   const subRef = React.useRef(null);
   React.useEffect(() => { subRef.current = sub; }, [sub]);
@@ -26180,46 +26085,6 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   }, []);
 
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
-  const [showExpressReq, setShowExpressReq] = useState(false);
-  const [exprType, setExprType] = useState("feed");
-  const [exprDesc, setExprDesc] = useState("");
-  const [exprUrg, setExprUrg] = useState("normal");
-  const [exprDate, setExprDate] = useState("");
-  const [exprRef, setExprRef] = useState("");
-  const [moodboard, setMoodboard] = useState([]);
-  const [showMoodboardModal, setShowMoodboardModal] = useState(false);
-  const [mbLink, setMbLink] = useState("");
-  const [mbNote, setMbNote] = useState("");
-  const [mbCat, setMbCat] = useState("referência");
-  useEffect(() => {
-    const cid = resolvedClient?.supaId || resolvedClient?.id;
-    if (!cid || !supabase) return;
-    supabase.from("app_settings").select("*").eq("key","moodboard_"+cid).then(({data}) => {
-      if (data?.[0]?.value) try { setMoodboard(JSON.parse(data[0].value)); } catch {}
-    });
-  }, [resolvedClient]);
-  const saveMoodboard = async (list) => {
-    setMoodboard(list);
-    const cid = resolvedClient?.supaId || resolvedClient?.id;
-    if (cid && supabase) await supabase.from("app_settings").upsert({ key:"moodboard_"+cid, value:JSON.stringify(list) },{ onConflict:"key" });
-  };
-  const addMoodboardItem = () => {
-    if (!mbLink.trim()) { showToast("Cole um link"); return; }
-    const item = { id: Date.now(), url: mbLink.trim(), note: mbNote.trim(), category: mbCat, added: new Date().toISOString(), by: user?.name || "Cliente" };
-    saveMoodboard([item, ...moodboard]);
-    showToast("Referência salva ✓");
-    setMbLink(""); setMbNote(""); setMbCat("referência"); setShowMoodboardModal(false);
-  };
-  const [showNPS, setShowNPS] = useState(false);
-  const [npsScore, setNpsScore] = useState(null);
-  const [npsFeedback, setNpsFeedback] = useState("");
-  const [npsSent, setNpsSent] = useState(false);
-  useEffect(() => {
-    const lastNPS = localStorage.getItem("uh_nps_last");
-    const now = new Date();
-    const monthKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-    if (lastNPS !== monthKey) { setTimeout(() => setShowNPS(true), 10000); }
-  }, []);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
 
   /* ── Client ID for gamification (match by email first, then name) ── */
@@ -27242,75 +27107,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             })}
           </div>
         </div>
-        {/* ═══ NEW CLIENT FEATURES (desktop path) ═══ */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
-          {/* Item 15: Onboarding */}
-          {(()=>{const checks=[{id:"profile",label:"Completar perfil",done:!!(user?.name&&user?.email)},{id:"approve",label:"Aprovar primeiro post",done:demands.some(d=>d.steps?.client?.status==="approved")},{id:"reports",label:"Acessar relatórios",done:!!localStorage.getItem("uh_visited_reports")},{id:"growth",label:"Ver Growth Score",done:!!localStorage.getItem("uh_visited_growth")},{id:"chat",label:"Enviar mensagem",done:!!localStorage.getItem("uh_sent_chat")}];const done=checks.filter(c=>c.done).length;if(done>=5||localStorage.getItem("uh_onboarding_done"))return null;return <div style={{padding:"18px 22px",borderRadius:16,background:B.accent+"06",border:"1.5px solid "+B.accent+"20",marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><p style={{fontSize:14,fontWeight:800,margin:0}}>🚀 Primeiros passos</p><p style={{fontSize:11,color:B.muted,marginTop:2}}>{done}/5 concluídos</p></div><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:80,height:6,borderRadius:3,background:B.accent+"15"}}><div style={{width:done*20+"%",height:6,borderRadius:3,background:B.accent}}/></div><button onClick={()=>{localStorage.setItem("uh_onboarding_done","1");location.reload();}} style={{fontSize:10,color:B.muted,background:"none",border:"none",cursor:"pointer"}}>✕</button></div></div>
-            <div style={{display:"flex",gap:10}}>{checks.map(ch=><div key={ch.id} style={{flex:1,padding:"10px 12px",borderRadius:10,background:ch.done?B.green+"10":B.bgCard,border:"1px solid "+(ch.done?B.green+"25":B.border||"#ddd"),textAlign:"center"}}><span style={{fontSize:14,display:"block"}}>{ch.done?"✅":"⭕"}</span><p style={{fontSize:10,fontWeight:600,color:ch.done?B.green:B.text,marginTop:4}}>{ch.label}</p></div>)}</div>
-          </div>;})()}
-          {/* Item 5: Quick Metrics */}
-          {(()=>{const pc=demands.filter(d=>["published","completed"].includes(d.stage)).length;if(pc===0)return null;return <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
-            {[{label:"Publicados",val:pc,color:B.green,icon:"📊"},{label:"Este mês",val:demands.filter(d=>{const da=d.created_at||"";return da.includes(new Date().toISOString().slice(0,7))&&["published","completed"].includes(d.stage);}).length,color:B.accent,icon:"📅"},{label:"Aprovados",val:demands.filter(d=>d.steps?.client?.status==="approved").length,color:"#3B82F6",icon:"✅"},{label:"Em produção",val:demands.filter(d=>!["published","completed"].includes(d.stage)).length,color:B.orange||"#F59E0B",icon:"⚡"}].map((m,i)=><div key={i} style={{padding:"18px 20px",borderRadius:16,background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",border:"none",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:-10,right:-10,width:60,height:60,borderRadius:"50%",background:m.color+"10"}}/><span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:1}}>{m.label}</span><p style={{fontSize:28,fontWeight:900,color:m.color,margin:"6px 0 0"}}>{m.val}</p></div>)}
-          </div>;})()}
-          {/* Item 11: Smart Insights */}
-          {(() => {
-            const published = demands.filter(d=>["published","completed"].includes(d.stage));
-            if (published.length < 2) return null;
-            const insights = [];
-            const thisMonth = published.filter(d=>(d.created_at||"").includes(new Date().toISOString().slice(0,7))).length;
-            const lastMonth = published.filter(d=>{const m=new Date();m.setMonth(m.getMonth()-1);return (d.created_at||"").includes(m.toISOString().slice(0,7));}).length;
-            if (thisMonth > lastMonth && lastMonth > 0) insights.push({icon:"📈",text:"Este mês tem "+Math.round((thisMonth/lastMonth-1)*100)+"% mais publicações que o mês passado!",color:B.green});
-            if (thisMonth < lastMonth && lastMonth > 0) insights.push({icon:"⚠️",text:"Este mês tem menos publicações que o anterior. Vamos acelerar?",color:B.orange||"#F59E0B"});
-            const reels = published.filter(d=>d.format==="Reels").length;
-            const feeds = published.filter(d=>d.format==="Feed").length;
-            if (reels > feeds) insights.push({icon:"🎬",text:"Reels representam "+Math.round(reels/published.length*100)+"% dos seus conteúdos. Ótimo para alcance!",color:"#6366F1"});
-            const pending = demands.filter(d=>d.steps?.client?.mode==="sent_to_client"&&!d.steps?.client?.status).length;
-            if (pending > 0) insights.push({icon:"⏰",text:pending+" post"+(pending>1?"s":"")+" aguardando sua aprovação. Aprove para não atrasar o cronograma!",color:B.orange||"#F59E0B"});
-            if (growthScore >= 70) insights.push({icon:"🚀",text:"Growth Score em "+growthScore+"! Você está na zona de crescimento acelerado.",color:B.green});
-            if (insights.length === 0) return null;
-            return <div style={{marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:14}}>🤖</span><p style={{fontSize:12,fontWeight:700,margin:0,color:B.muted}}>Insights da IA</p></div>
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {insights.slice(0,3).map((ins,i)=><div key={i} style={{padding:"12px 16px",borderRadius:12,background:ins.color+"08",border:"1px solid "+ins.color+"20",display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:18}}>{ins.icon}</span>
-                  <p style={{fontSize:12,fontWeight:500,color:B.text,margin:0,lineHeight:1.4}}>{ins.text}</p>
-                </div>)}
-              </div>
-            </div>;
-          })()}
-
-          {/* Item 9: Moodboard — Mural de Inspirações */}
-          <div style={{marginBottom:16}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>💡</span><p style={{fontSize:14,fontWeight:800,margin:0}}>Mural de Inspirações</p><span style={{fontSize:11,color:B.muted,background:B.accent+"10",borderRadius:6,padding:"2px 8px",fontWeight:600}}>{moodboard.length}</span></div>
-              <button onClick={()=>setShowMoodboardModal(true)} style={{fontSize:12,fontWeight:700,color:"#0D0D0D",background:B.accent,border:"none",borderRadius:10,padding:"8px 18px",cursor:"pointer",fontFamily:"inherit"}}>+ Adicionar</button>
-            </div>
-            {moodboard.length===0 ? <div style={{padding:"30px 20px",borderRadius:16,background:B.bgCard,border:"1.5px dashed "+(B.border||"#ddd"),textAlign:"center"}}>
-              <div style={{marginBottom:8}}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.5" strokeLinecap="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17H8v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z"/></svg></div>
-              <p style={{fontSize:13,fontWeight:700,marginBottom:4}}>Nenhuma referência salva</p>
-              <p style={{fontSize:11,color:B.muted,maxWidth:300,margin:"0 auto"}}>Salve links de posts, sites e imagens que te inspiram. A equipe criativa vai usar como direção!</p>
-            </div> :
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-              {moodboard.map(item=>{const catSvg={referência:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M3 20c0-3.87 3.13-7 7-7h1"/><path d="M21 12l-3 3-3-3"/></svg>,concorrente:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,campanha:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>,estilo:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>,produto:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>};const catIcon=catSvg[item.category]||<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>;return <div key={item.id} style={{borderRadius:14,overflow:"hidden",background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),cursor:"pointer",transition:"transform .15s"}} onClick={()=>window.open(item.url,"_blank")} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
-                <div style={{height:100,background:"linear-gradient(135deg,"+B.accent+"12,"+B.accent+"04)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:12}}>
-                  <div style={{marginBottom:4}}>{catIcon}</div>
-                  <span style={{fontSize:9,color:B.muted,textAlign:"center",wordBreak:"break-all",maxHeight:30,overflow:"hidden"}}>{item.url.replace(/https?:\/\//,"").slice(0,40)}</span>
-                </div>
-                <div style={{padding:"10px 12px",borderTop:"1px solid "+(B.border||"#ddd")}}>
-                  {item.note && <p style={{fontSize:11,fontWeight:600,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.note}</p>}
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span style={{fontSize:9,color:B.accent,fontWeight:600}}>{item.category||"referência"}</span>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize:9,color:B.muted}}>{new Date(item.added).toLocaleDateString("pt-BR")}</span>
-                      <button onClick={e=>{e.stopPropagation();saveMoodboard(moodboard.filter(m=>m.id!==item.id));}} style={{fontSize:10,color:B.red||"#EF4444",background:"none",border:"none",cursor:"pointer",padding:0}}>✕</button>
-                    </div>
-                  </div>
-                </div>
-              </div>;})}
-            </div>}
-          </div>
-        </div>
         {/* ── FUNCTIONAL PANELS (3 large, custom widgets) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16,alignItems:"stretch"}}>
@@ -27355,7 +27151,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                             <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,padding:"4px 10px",borderRadius:8,background:stColor+"12"}}>
                               <div style={{width:7,height:7,borderRadius:4,background:stColor}}/>
                               <span style={{fontSize:11,fontWeight:700,color:stColor}}>{stLabel}</span>
-                              <button onClick={(e)=>{e.stopPropagation();localStorage.setItem("uh_chat_context",d.title);goTab("chat");}} style={{marginLeft:8,padding:"3px 8px",borderRadius:6,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"inline-flex",alignItems:"center",gap:3}}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
                             </div>
                           </div>
                           {/* Networks + Format + Schedule */}
@@ -27792,13 +27587,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const isRev = st === "revision" || st === "rejected";
       const stC = isAppr ? B.green : isRev ? (B.orange||"#F59E0B") : isPend ? (B.orange||"#F59E0B") : B.muted;
       const stL = isAppr ? "Aprovado" : isRev ? "Edição solicitada" : isPend ? "Aguardando aprovação" : "Em produção";
-
       const isExp = isDesktop && expandedDemandId === d.id;
 
       if (isExp) return <div key={d.id} style={{ borderRadius:18, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), boxShadow:"0 8px 30px rgba(0,0,0,0.1)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:6, height:6, borderRadius:3, background:stC }} /><span style={{ fontSize:11, fontWeight:700, color:stC }}>{stL}</span></div>
-          <button onClick={(e)=>{e.stopPropagation();localStorage.setItem("uh_chat_context",d.title);goTab("chat");}} style={{marginTop:4,padding:"4px 10px",borderRadius:8,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"flex",alignItems:"center",gap:4}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
           <button onClick={()=>setExpandedDemandId(null)} style={{ width:28, height:28, borderRadius:8, border:"1px solid "+(C.brd||"#F0F0F3"), background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut||"#888"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div style={{ margin:"8px 10px 0", borderRadius:12, overflow:"hidden", background:"#000", position:"relative" }}>
@@ -28019,62 +27812,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
-
-    {/* MOODBOARD MODAL */}
-    {showMoodboardModal && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowMoodboardModal(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{width:440,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"24px 28px",color:"#fff"}}>
-          <p style={{fontSize:11,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.35)",textTransform:"uppercase"}}>Mural de inspirações</p>
-          <p style={{fontSize:20,fontWeight:800,marginTop:4}}>Adicionar referência</p>
-        </div>
-        <div style={{padding:"24px 28px"}}>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Link da referência</label><input value={mbLink} onChange={e=>setMbLink(e.target.value)} className="tinput" placeholder="https://instagram.com/p/... ou qualquer URL" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Observação (opcional)</label><input value={mbNote} onChange={e=>setMbNote(e.target.value)} className="tinput" placeholder="Ex: Gostei da paleta de cores desse post" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
-          <div style={{marginBottom:20}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:6}}>Categoria</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["referência","ref"],["concorrente","search"],["campanha","megaphone"],["estilo","sparkle"],["produto","box"]].map(([k,ic])=>{const icons={ref:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M3 20c0-3.87 3.13-7 7-7h1"/><path d="M21 12l-3 3-3-3"/></svg>,search:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,megaphone:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>,sparkle:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>,box:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>};return <button key={k} onClick={()=>setMbCat(k)} style={{padding:"6px 14px",borderRadius:10,border:mbCat===k?"1.5px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:mbCat===k?B.accent+"15":"transparent",fontSize:11,fontWeight:mbCat===k?700:500,color:mbCat===k?B.accent:B.muted,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>{icons[ic]} {k}</button>;})}</div></div>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setShowMoodboardModal(false)} style={{flex:1,padding:"13px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
-            <button onClick={addMoodboardItem} style={{flex:1,padding:"13px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:800,color:"#0D0D0D"}}>Salvar referência</button>
-          </div>
-        </div>
-      </div>
-    </div>}
-
-    {/* FAB - Express Content Request (component level) */}
-    {tab === "home" && isDesktop && <div onClick={()=>setShowExpressReq(true)} style={{position:"fixed",bottom:100,right:32,width:56,height:56,borderRadius:"50%",background:B.accent,boxShadow:"0 4px 20px rgba(200,255,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:900,transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>}
-
-    {/* NPS + Express modals (component level so they render above everything) */}
-    {showNPS && !npsSent && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowNPS(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{width:440,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"28px 28px 24px",color:"#fff",textAlign:"center"}}><span style={{fontSize:36,display:"block",marginBottom:8}}>💬</span><p style={{fontSize:18,fontWeight:800}}>Como está sua experiência?</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Sua opinião nos ajuda a melhorar</p></div>
-        <div style={{padding:"24px 28px"}}>
-          <p style={{fontSize:12,fontWeight:700,color:B.muted,textAlign:"center",marginBottom:12}}>De 0 a 10, o quanto você recomendaria nosso trabalho?</p>
-          <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:20}}>{[0,1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setNpsScore(n)} style={{width:36,height:36,borderRadius:10,border:npsScore===n?"2px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:npsScore===n?B.accent+"15":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:npsScore===n?800:500,color:npsScore===n?B.accent:B.text}}>{n}</button>)}</div>
-          {npsScore!==null&&<div style={{marginBottom:16}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>{npsScore>=9?"O que você mais gosta?":npsScore>=7?"O que podemos melhorar?":"O que te decepcionou?"}</label><textarea value={npsFeedback} onChange={e=>setNpsFeedback(e.target.value)} className="tinput" placeholder="Seu feedback é muito valioso..." style={{width:"100%",fontSize:13,minHeight:60,resize:"vertical"}}/></div>}
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>{setShowNPS(false);localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));}} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.muted}}>Agora não</button>
-            {npsScore!==null&&<button onClick={async()=>{try{const cid=resolvedClient?.supaId||resolvedClient?.id;await supabase.from("app_settings").upsert({key:"nps_"+cid+"_"+new Date().toISOString().slice(0,7),value:JSON.stringify({score:npsScore,feedback:npsFeedback,client:resolvedClient?.name,date:new Date().toISOString()})},{onConflict:"key"});localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));setNpsSent(true);showToast("Obrigado pelo feedback! ❤️");setTimeout(()=>setShowNPS(false),2000);supaCreateNotificationForAll("system","⭐ NPS: "+npsScore+"/10 — "+(resolvedClient?.name||"Cliente"),(npsFeedback||"Sem comentário").substring(0,100),"💬");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar avaliação</button>}
-          </div>
-        </div>
-      </div>
-    </div>}
-
-    {showExpressReq && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowExpressReq(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{width:480,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"24px 28px",color:"#fff"}}><p style={{fontSize:11,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.35)",textTransform:"uppercase"}}>Solicitação express</p><p style={{fontSize:20,fontWeight:800,marginTop:4}}>Preciso de um conteúdo</p></div>
-        <div style={{padding:"24px 28px"}}>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>O que você precisa?</label><select value={exprType} onChange={e=>setExprType(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="feed">Post para Feed</option><option value="reels">Reels / Vídeo</option><option value="stories">Stories</option><option value="carrossel">Carrossel</option><option value="campanha">Campanha completa</option><option value="briefing">Briefing detalhado</option><option value="outro">Outro</option></select></div>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>{exprType==="briefing"?"Objetivo da campanha":"Descreva brevemente"}</label><textarea value={exprDesc} onChange={e=>setExprDesc(e.target.value)} className="tinput" placeholder={exprType==="briefing"?"Ex: Aumentar vendas no Dia das Mães com promoção especial...":"Ex: Preciso de um post sobre promoção de Páscoa..."} style={{width:"100%",fontSize:13,minHeight:exprType==="briefing"?60:80,resize:"vertical"}}/></div>
-          {exprType==="briefing"&&<><div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Público-alvo</label><input value={exprRef} onChange={e=>setExprRef(e.target.value)} className="tinput" placeholder="Ex: Mulheres 25-45 anos, classe B/C" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div><div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Tom de voz desejado</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["Formal","Descontraído","Inspirador","Urgente","Divertido","Educativo"].map(t=><button key={t} onClick={()=>setExprUrg(p=>p===t?"normal":t)} style={{padding:"6px 12px",borderRadius:8,border:exprUrg===t?"1.5px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:exprUrg===t?B.accent+"15":"transparent",fontSize:11,fontWeight:exprUrg===t?700:500,color:exprUrg===t?B.accent:B.muted,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>)}</div></div></>}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Urgência</label><select value={exprUrg} onChange={e=>setExprUrg(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="normal">Normal</option><option value="urgente">Urgente (24h)</option><option value="super">Super urgente (hoje)</option></select></div><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Data ideal</label><input type="date" value={exprDate} onChange={e=>setExprDate(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div></div>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Referência (opcional)</label><input value={exprRef} onChange={e=>setExprRef(e.target.value)} className="tinput" placeholder="Link de um post, imagem ou perfil..." style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setShowExpressReq(false)} style={{flex:1,padding:"13px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
-            <button onClick={async()=>{if(!exprDesc.trim()){showToast("Descreva o que precisa");return;}const fm={feed:"Feed",reels:"Reels",stories:"Stories",carrossel:"Carrossel",campanha:"Campanha",briefing:"Campanha",outro:"Feed"};const um={normal:"normal",urgente:"alta",super:"alta"};const cid=resolvedClient?.supaId||resolvedClient?.id;if(!cid){showToast("Cliente não vinculado");return;}const desc="[SOLICITAÇÃO EXPRESS - "+exprUrg.toUpperCase()+"]\n\n"+exprDesc.trim()+(exprRef?"\n\nReferência: "+exprRef:"")+(exprDate?"\n\nData ideal: "+exprDate:"");const nd={type:"social",client_id:cid,title:exprDesc.trim().substring(0,50),description:desc,format:fm[exprType]||"Feed",stage:"idea",priority:um[exprUrg]||"normal",networks:["Instagram"],scheduling:exprDate?{date:exprDate,time:"18:00"}:null,steps:{idea:{by:user?.name||"Cliente",date:new Date().toLocaleDateString("pt-BR"),source:"express_request"}}};try{const{error}=await supabase.from("demands").insert(nd);if(error)throw error;showToast("✅ Solicitação enviada!");setShowExpressReq(false);setExprDesc("");setExprRef("");setExprDate("");setExprType("feed");setExprUrg("normal");supaCreateNotificationForAll("demand_created","📋 Solicitação express: "+nd.title,(resolvedClient?.name||"")+" solicitou conteúdo "+(exprUrg==="super"?"SUPER URGENTE":exprUrg==="urgente"?"URGENTE":""),"🚀");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"13px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar solicitação</button>
-          </div>
-        </div>
-      </div>
-    </div>}
-
     {/* Navbar - always visible on desktop, hidden on mobile when sub-page is active */}
     {(!hasSub || isDesktop) && <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
@@ -28549,21 +28286,6 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
   return (
     <div style={{ display:"flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
-    {/* EXPRESS REQUEST ALERT BANNER */}
-    {(() => {
-      const [exA, setExA] = React.useState([]);
-      const [exD, setExD] = React.useState(() => { try { return JSON.parse(sessionStorage.getItem("uh_ex_dismissed")||"[]"); } catch { return []; } });
-      React.useEffect(() => { if (!supabase) return; supabase.from("demands").select("id,title,description,created_at,client_id,priority,clients(name)").eq("stage","idea").order("created_at",{ascending:false}).limit(20).then(({data}) => { setExA((data||[]).filter(d => d.description?.includes("[SOLICITA") && !exD.includes(d.id))); }); }, []);
-      if (exA.length === 0) return null;
-      return <div style={{position:"fixed",top:16,right:16,zIndex:9999,display:"flex",flexDirection:"column",gap:8,maxWidth:380}}>
-        {exA.slice(0,3).map(a => { const isU = a.description?.includes("URGENTE"); return <div key={a.id} onClick={()=>{window.location.hash="#/content";setTimeout(()=>{try{const el=document.querySelector('[data-demand-id="'+a.id+'"]');if(el){el.click();el.scrollIntoView({behavior:"smooth",block:"center"});}else{const cards=document.querySelectorAll('[class*="demand"],div[draggable]');cards.forEach(c=>{if(c.textContent?.includes(a.title?.slice(0,20)))c.click();});}}catch{}},800);const nd=[...exD,a.id];setExD(nd);sessionStorage.setItem("uh_ex_dismissed",JSON.stringify(nd));setExA(p=>p.filter(x=>x.id!==a.id));}} style={{padding:"14px 18px",borderRadius:16,background:isU?"linear-gradient(135deg,#EF4444,#DC2626)":"linear-gradient(135deg,#F59E0B,#D97706)",color:"#fff",boxShadow:"0 8px 30px rgba(0,0,0,0.3)",animation:"slideInRight .4s ease",display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"transform .15s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.02)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
-          <span style={{fontSize:24}}>{isU?"🚨":"⚡"}</span>
-          <div style={{flex:1}}><p style={{fontSize:12,fontWeight:800,margin:0}}>{isU?"SOLICITAÇÃO URGENTE":"SOLICITAÇÃO EXPRESS"}</p><p style={{fontSize:11,opacity:0.9,marginTop:2}}>{a.clients?.name ? a.clients.name+" — ":""}{a.title?.slice(0,40)}</p><p style={{fontSize:9,opacity:0.7,marginTop:2}}>{a.created_at?new Date(a.created_at).toLocaleString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):""}</p></div>
-          <button onClick={()=>{const nd=[...exD,a.id];setExD(nd);sessionStorage.setItem("uh_ex_dismissed",JSON.stringify(nd));setExA(p=>p.filter(x=>x.id!==a.id));}} style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,255,255,0.2)",border:"none",cursor:"pointer",color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-        </div>; })}
-        <style dangerouslySetInnerHTML={{__html:"@keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}"}} />
-      </div>;
-    })()}
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
       {ToastEl}
       {/* ── NEWS TO POST: CLIENT PICKER ── */}
@@ -29440,4 +29162,3 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
   );
 }
 // Thu Mar  5 16:39:54 UTC 2026
-// rebuild 1775098400
