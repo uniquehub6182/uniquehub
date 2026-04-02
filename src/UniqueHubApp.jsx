@@ -18098,7 +18098,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
           <div style={{ flex:1, display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
             {/* Toolbar: search + view toggle + upload btn */}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ flex:1, position:"relative" }}>
+              <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cliente..." style={{ width:"100%", padding:"10px 12px 10px 38px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, fontFamily:"inherit", fontSize:13, outline:"none" }} />
               </div>
@@ -22755,7 +22755,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
       return <div style={style}>{lines.map((line,i)=><div key={i} style={{marginBottom:lines.length>1?6:0}}>{line}</div>)}</div>;
     };
     return (
-      <div style={{ width:"100%", height:fs?"100%":"auto", aspectRatio:fs?"unset":(d?"16/9":"4/3"), background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 8vw":(d?"48px 64px":"32px 24px"), position:fs?"absolute":"relative", inset:fs?0:"auto", overflow:"hidden", boxSizing:"border-box" }}>
+      <div style={{ flex:fs?1:"none", width:"100%", height:fs?"100%":"auto", aspectRatio:fs?"unset":(d?"16/9":"4/3"), background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 8vw":(d?"48px 64px":"32px 24px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
         {/* Decorative glows */}
         <div style={{ position:"absolute", top:"-10%", right:"-5%", width:"35%", height:"50%", borderRadius:"50%", background:`${LIME}06`, filter:"blur(80px)", pointerEvents:"none" }} />
         <div style={{ position:"absolute", bottom:"-10%", left:"-5%", width:"25%", height:"40%", borderRadius:"50%", background:`${LIME}04`, filter:"blur(60px)", pointerEvents:"none" }} />
@@ -22827,7 +22827,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
             </div>
             {/* Main: slide + controls */}
             <div style={{ flex:1, display:"flex", flexDirection:"column", gap:12 }}>
-              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0a0a", borderRadius:16, overflow:"hidden", position:"relative" }}>
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0a0a", borderRadius:16, overflow:"hidden" }}>
                 {renderSlide(slide, slideIdx, slides.length)}
               </div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
