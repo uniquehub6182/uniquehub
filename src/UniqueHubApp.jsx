@@ -24773,7 +24773,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
       {ToastEl}
       {BuyOverlay}
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"12px 16px 120px" }}>
+      <div className="content" style={{ padding:"0 16px 120px" }}>
         {/* Tabs + actions row */}
         <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
           <div style={{ flex:1, display:"flex", gap:0, background:B.bgCard, borderRadius:14, padding:3, border:"1px solid "+B.border }}>
@@ -26373,7 +26373,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     if (finView === "plans") return (
       <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
-        <div className="content" style={{ padding:"12px 16px 120px" }}>
+        <div className="content" style={{ padding:"0 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
             const isCurrent = k === myClient.plan;
             return <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
@@ -26484,7 +26484,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return (
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
-      <div className="content" style={{ padding:"12px 16px 120px" }}>
+      <div className="content" style={{ padding:"0 16px 120px" }}>
         <div style={{ borderRadius:20, overflow:"hidden", border:"none" }}>
           <div style={{ background:"#0D0D0D", padding:"20px 20px 18px", borderRadius:"20px 20px 0 0" }}>
             <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
