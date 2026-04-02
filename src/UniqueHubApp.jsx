@@ -13873,9 +13873,8 @@ function NotifsPage({ onBack, user, navigate }) {
   const typeLabel = { post_created:"Posts Criados", post_approved:"Posts Aprovados", post_rejected:"Posts Rejeitados", post_for_approval:"Aprovação Pendente", post_published:"Posts Publicados", publish_failed:"Falha na Publicação", token_health:"Tokens de Rede Social", demand_created:"Demandas", demand_updated:"Demandas Atualizadas", member_joined:"Equipe", member_approved:"Equipe", calendar_reminder:"Calendário", checkin:"Check-in", system:"Sistema", news_created:"Notícias" };
 
   return (
-    <div className="" style={isNotifDesktop ? { background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 } : {}}>
+    <div className={isNotifDesktop ? "content-wide" : "pg"} style={isNotifDesktop ? { paddingTop:TOP, minHeight:"100%" } : {}}>
       {ToastEl}
-      <div style={isNotifDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>} label="Central" title={`Notificações${unreadCount > 0 ? ` (${unreadCount})` : ""}`} onBack={onBack} />
       <div style={{ marginTop:20 }}>
       {/* Stats bar */}
@@ -13940,7 +13939,6 @@ function NotifsPage({ onBack, user, navigate }) {
           </Card>
         ))
       ))}
-      </div>
       </div>
     </div>
   );
