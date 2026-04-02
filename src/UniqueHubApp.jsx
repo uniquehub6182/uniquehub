@@ -1118,6 +1118,28 @@ const separateMedia = (files) => {
   return { vids, imgs, videoUrl: vids[0]?.url||null, coverUrl: cover?.url || imgs[0]?.url||null, allUrls: all.map(f=>f.url) };
 };
 
+/* ── Proxy Supabase Storage URLs to R2 CDN (required for Instagram API) ── */
+const proxyUrlToR2 = async (url) => {
+  if (!url || !SUPA_URL) return url;
+  if (url.includes("r2.dev") || url.includes("r2.cloudflarestorage")) return url; /* Already on R2 */
+  if (!url.includes("supabase.co/storage")) return url; /* Not a Supabase URL */
+  try {
+    const filename = url.split("/").pop() || `file_${Date.now()}`;
+    const ext = (filename.split(".").pop() || "bin").toLowerCase();
+    const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "application/octet-stream";
+    const res = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: filename, contentType: ct, sourceUrl: url }),
+    });
+    const data = await res.json();
+    if (data.publicUrl) { console.log(`[R2 Proxy] ${filename} → R2 OK`); return data.publicUrl; }
+    console.warn("[R2 Proxy] Failed:", data.error);
+    return url; /* Fallback — Edge Function will retry at publish time */
+  } catch (e) { console.warn("[R2 Proxy] Error:", e.message); return url; }
+};
+const proxyUrlsToR2 = async (urls) => Promise.all((urls || []).map(u => proxyUrlToR2(u)));
+
 const publishToInstagram = async (clientId, imageUrls, caption, mediaType = "FEED", scheduledTime = null, coverUrl = null) => {
   if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
   try {
@@ -9139,9 +9161,13 @@ REGRAS TÉCNICAS:
         const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
         const media = separateMedia(imgFiles);
         const isReels = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video");
-        const imgUrls = isReels && media.videoUrl ? [media.videoUrl] : media.allUrls;
-        const coverUrl = isReels ? media.coverUrl : null;
+        let imgUrls = isReels && media.videoUrl ? [media.videoUrl] : media.allUrls;
+        let coverUrl = isReels ? media.coverUrl : null;
         if (imgUrls.length === 0) { showToast("Sem mídia para publicar — adicione imagens/vídeo primeiro"); return; }
+        /* ── Proxy ALL Supabase URLs to R2 CDN before scheduling (Instagram requires R2/public CDN URLs) ── */
+        showToast("⏳ Preparando mídia para agendamento...");
+        imgUrls = await proxyUrlsToR2(imgUrls);
+        if (coverUrl) coverUrl = await proxyUrlToR2(coverUrl);
         const fullCaption = (d.steps?.caption?.text||"") + (d.steps?.caption?.hashtags ? "\n\n"+d.steps.caption.hashtags : "");
         const clientObj = CDATA.find(c => (c.supaId||c.id) === cId);
         const hasFB = clientObj?.socials?.facebook?.oauth;
@@ -10505,9 +10531,10 @@ REGRAS TÉCNICAS:
                     showToast(`Agendando ${type}...`);
                     try {
                       const schedDate = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
+                      const r2Urls = await proxyUrlsToR2(imgUrls);
                       const { error: insErr } = await supabase.from("scheduled_posts").insert({
                         client_id: clientId, platform, media_type: type,
-                        image_urls: imgUrls, caption: fullCaption,
+                        image_urls: r2Urls, caption: fullCaption,
                         scheduled_at: schedDate.toISOString(),
                         demand_id: sel.supaId || sel.id,
                         created_by: user?.id
@@ -10708,10 +10735,11 @@ REGRAS TÉCNICAS:
                         if (hasFB) platforms2.push("facebook");
                         console.log("[Programar] Scheduling for:", platforms2.join(", "), "type:", type, "urls:", schedImgUrls.length, "cover:", mediaInfo.coverUrl ? "yes" : "no");
                         try {
+                          const r2Urls = await proxyUrlsToR2(schedImgUrls);
                           for (const plat of platforms2) {
                             const { error: insErr } = await supabase.from("scheduled_posts").insert({
                               client_id: clientId2, platform: plat, media_type: type,
-                              image_urls: schedImgUrls, caption: fullCaption2,
+                              image_urls: r2Urls, caption: fullCaption2,
                               scheduled_at: schedDate2.toISOString(),
                               demand_id: sel.supaId || sel.id, created_by: user?.id
                             });
@@ -10915,9 +10943,10 @@ REGRAS TÉCNICAS:
                   showToast(`Agendando ${type}...`);
                   try {
                     const schedDate = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
+                    const r2Urls = await proxyUrlsToR2(imgUrls);
                     const { error: insErr } = await supabase.from("scheduled_posts").insert({
                       client_id: clientId, platform, media_type: type,
-                      image_urls: imgUrls, caption: fullCaption,
+                      image_urls: r2Urls, caption: fullCaption,
                       scheduled_at: schedDate.toISOString(),
                       demand_id: sel.supaId || sel.id, created_by: user?.id
                     });
@@ -26213,10 +26242,11 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
               const platforms = [];
               if (networks.some(n => n.includes("instagram"))) platforms.push("instagram");
               if (networks.some(n => n.includes("facebook"))) platforms.push("facebook");
+              const r2Urls = await proxyUrlsToR2(imgUrls);
               for (const plat of platforms) {
                 await supabase.from("scheduled_posts").insert({
                   client_id: clientId, platform: plat, media_type: mediaType,
-                  image_urls: imgUrls, caption: fullCaption,
+                  image_urls: r2Urls, caption: fullCaption,
                   scheduled_at: schedDateISO,
                   demand_id: demand.id, created_by: demand.created_by || null
                 });

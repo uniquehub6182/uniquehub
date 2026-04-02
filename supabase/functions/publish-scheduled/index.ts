@@ -10,37 +10,37 @@ const json = (d: unknown, s = 200) =>
   new Response(JSON.stringify(d), { headers: { ...H, "Content-Type": "application/json" }, status: s });
 
 async function waitReady(id: string, token: string, isVideo = false) {
-  const maxAttempts = isVideo ? 60 : 15;
-  const baseDelay = isVideo ? 2000 : 300;
+  /* Reduced timeouts for Edge Function: max ~16s for video, ~5s for images */
+  const maxAttempts = isVideo ? 8 : 10;
+  const baseDelay = isVideo ? 2000 : 500;
   for (let i = 0; i < maxAttempts; i++) {
     const r = await fetch(`https://graph.facebook.com/v21.0/${id}?fields=status_code&access_token=${token}`);
     const d = await r.json();
     if (d.status_code === "FINISHED") return;
     if (d.status_code === "ERROR") throw new Error("Instagram processing error: " + (d.status || "unknown"));
-    await new Promise(r => setTimeout(r, i < 3 ? baseDelay : (isVideo ? 3000 : 500)));
+    await new Promise(r => setTimeout(r, baseDelay));
   }
-  throw new Error("Instagram processing timeout — video may still be processing");
+  throw new Error("processing timeout — will retry next cycle");
 }
 
 async function proxyToR2IfNeeded(fileUrl: string, sb: any): Promise<string> {
   if (fileUrl.includes("r2.dev") || fileUrl.includes("r2.cloudflarestorage")) return fileUrl;
   if (fileUrl.includes("supabase.co/storage")) {
-    try {
-      const filename = fileUrl.split("/").pop() || `file_${Date.now()}`;
-      const ext = filename.split(".").pop()?.toLowerCase() || "bin";
-      const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "application/octet-stream";
-      const r2Res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/r2-upload`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: filename, contentType: ct, sourceUrl: fileUrl }),
-      });
-      const r2Data = await r2Res.json();
-      if (r2Data.publicUrl) {
-        console.log(`[R2 Proxy] ${filename} → ${r2Data.publicUrl}`);
-        return r2Data.publicUrl;
-      }
-      console.warn("[R2 Proxy] Failed, using original URL:", r2Data.error);
-    } catch (e) { console.warn("[R2 Proxy] Error:", (e as Error).message); }
+    const filename = fileUrl.split("/").pop() || `file_${Date.now()}`;
+    const ext = filename.split(".").pop()?.toLowerCase() || "bin";
+    const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "application/octet-stream";
+    const r2Res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/r2-upload`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: filename, contentType: ct, sourceUrl: fileUrl }),
+    });
+    const r2Data = await r2Res.json();
+    if (r2Data.publicUrl) {
+      console.log(`[R2 Proxy] ${filename} → ${r2Data.publicUrl}`);
+      return r2Data.publicUrl;
+    }
+    /* FAIL LOUD — do NOT silently return original URL */
+    throw new Error(`R2 proxy failed for ${filename}: ${r2Data.error || 'unknown error'} — original URL not accepted by Instagram`);
   }
   return fileUrl;
 }
@@ -168,6 +168,28 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   try {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    
+    /* ── Admin reset mode ── */
+    let body: any = {};
+    try { body = await req.json(); } catch {}
+    if (body?.action === "reset_all") {
+      const r1 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "publishing").select("id");
+      const r2 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "failed").ilike("error", "%Only photo or video%").select("id");
+      const r3 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "failed").ilike("error", "%Invalid image format%").select("id");
+      /* Reset demands with failed/pending scheduled_posts back to scheduled */
+      const { data: badDemands } = await sb.from("scheduled_posts").select("demand_id").in("status", ["pending","failed"]).not("demand_id","is",null);
+      const uniqueDemandIds = [...new Set((badDemands||[]).map(d => d.demand_id))];
+      let demandsReset = 0;
+      for (const did of uniqueDemandIds) {
+        const { data: dem } = await sb.from("demands").select("stage").eq("id", did).single();
+        if (dem?.stage === "published") {
+          await sb.from("demands").update({ stage: "scheduled" }).eq("id", did);
+          demandsReset++;
+        }
+      }
+      return json({ reset: true, stuck: r1.data?.length||0, r2_fix: r2.data?.length||0, img_fix: r3.data?.length||0, demands_reset: demandsReset });
+    }
+
     const now = new Date();
     const nowISO = now.toISOString();
 
@@ -199,15 +221,20 @@ serve(async (req) => {
       }
     }
 
-    /* Find posts that are due */
-    const { data: posts, error } = await sb
+    /* Find posts that are due — images first, videos last (videos take longer) */
+    const { data: allDue, error } = await sb
       .from("scheduled_posts").select("*").eq("status", "pending")
-      .lte("scheduled_at", nowISO).order("scheduled_at", { ascending: true }).limit(3);
+      .lte("scheduled_at", nowISO).order("scheduled_at", { ascending: true }).limit(10);
 
     if (error) throw new Error(`DB error: ${error.message}`);
-    if (!posts || posts.length === 0) return json({ message: "No posts due", count: 0, recovered: stuck?.length || 0 });
+    if (!allDue || allDue.length === 0) return json({ message: "No posts due", count: 0, recovered: (stuck?.length||0) + (r2Fixable?.length||0) });
 
-    console.log(`[Scheduler] Found ${posts.length} posts to publish`);
+    /* Sort: FEED/images first, REELS/videos last. Limit to 3 images + 1 video max */
+    const images = allDue.filter(p => p.media_type !== "REELS");
+    const videos = allDue.filter(p => p.media_type === "REELS");
+    const posts = [...images.slice(0, 3), ...videos.slice(0, 1)];
+
+    console.log(`[Scheduler] Found ${allDue.length} due (processing ${images.length > 3 ? 3 : images.length} images + ${videos.length > 0 ? 1 : 0} video)`);
     const results = [];
 
     for (const post of posts) {
@@ -242,7 +269,7 @@ serve(async (req) => {
         }
       } catch (e: any) {
         console.error(`[Scheduler] Failed post ${post.id}:`, e.message);
-        const isTransient = e.message?.includes("processing error") || e.message?.includes("timeout") || e.message?.includes("transient");
+        const isTransient = e.message?.includes("processing") || e.message?.includes("timeout") || e.message?.includes("transient") || e.message?.includes("retry");
         const alreadyRetried = (post.error || "").includes("Retry");
         if (isTransient && !alreadyRetried) {
           const retryAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
