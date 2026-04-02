@@ -29,14 +29,14 @@ async function getIGToken(sb: any, clientId: string) {
   return { uid, at };
 }
 
-/* ── Wait for IG container to be ready (images only, fast) ── */
+/* ── Wait for IG container to be ready (images only) ── */
 async function waitReady(id: string, token: string) {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     const r = await fetch(`https://graph.facebook.com/v21.0/${id}?fields=status_code&access_token=${token}`);
     const d = await r.json();
     if (d.status_code === "FINISHED") return "FINISHED";
     if (d.status_code === "ERROR") throw new Error("IG processing error: " + (d.status || "unknown"));
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 1000));
   }
   throw new Error("Image processing timeout");
 }
