@@ -22755,7 +22755,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
       return <div style={style}>{lines.map((line,i)=><div key={i} style={{marginBottom:lines.length>1?6:0}}>{line}</div>)}</div>;
     };
     return (
-      <div style={{ flex:fs?1:"none", width:"100%", height:fs?"100%":"auto", aspectRatio:fs?"unset":(d?"16/9":"4/3"), background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 8vw":(d?"48px 64px":"32px 24px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
+      <div style={{ flex:(fs||d)?1:"none", width:"100%", height:(fs||d)?"100%":"auto", aspectRatio:(fs||d)?"unset":"4/3", background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 8vw":(d?"48px 64px":"32px 24px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
         {/* Decorative glows */}
         <div style={{ position:"absolute", top:"-10%", right:"-5%", width:"35%", height:"50%", borderRadius:"50%", background:`${LIME}06`, filter:"blur(80px)", pointerEvents:"none" }} />
         <div style={{ position:"absolute", bottom:"-10%", left:"-5%", width:"25%", height:"40%", borderRadius:"50%", background:`${LIME}04`, filter:"blur(60px)", pointerEvents:"none" }} />
