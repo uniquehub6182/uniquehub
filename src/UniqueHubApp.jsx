@@ -13821,12 +13821,21 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
 
 
 /* ═══════════════════════ NOTIFICATIONS ═══════════════════════ */
-function NotifsPage({ onBack, user, navigate }) {
+function NotifsPage({ onBack, user, navigate, clientFilter }) {
   const isNotifDesktop = useIsDesktop();
   const [notifs, setNotifs] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const { showToast, ToastEl } = useToast();
-  useEffect(() => { if (!loaded && user?.id) { supaLoadNotifications(user.id, 50).then(d => { setNotifs(d); setLoaded(true); }); } }, [loaded, user?.id]);
+  useEffect(() => { if (!loaded && user?.id) { supaLoadNotifications(user.id, 50).then(d => { 
+    if (clientFilter) {
+      const filtered = d.filter(n => {
+        const msg = (n.title||"")+" "+(n.body||"");
+        return msg.toLowerCase().includes(clientFilter.toLowerCase()) || 
+               ["post_approved","post_rejected","post_for_approval","post_published","publish_failed","demand_created","demand_updated"].includes(n.type);
+      });
+      setNotifs(filtered);
+    } else { setNotifs(d); }
+    setLoaded(true); }); } }, [loaded, user?.id]);
   const unreadCount = notifs.filter(n => !n.read).length;
   const markRead = async (id) => { await supaMarkNotificationRead(id); setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n)); };
   const markAll = async () => { if (!user?.id) return; await supaMarkAllNotificationsRead(user.id); setNotifs(p => p.map(n => ({ ...n, read: true }))); showToast("Todas marcadas como lidas"); };
@@ -20161,12 +20170,14 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile, isClientVi
     supaLoadIdeas().then(rows => {
       if (rows) {
         if (rows.length > 0) {
-          setIdeas(rows.map(r => ({
+          let mapped = rows.map(r => ({
             id: r.id, supaId: r.id, title: r.title, desc: r.description || "",
             author: r.author || "Matheus", date: new Date(r.created_at).toLocaleDateString("pt-BR"),
             votes: r.votes || 0, status: r.status || "pending",
             client: r.client_name || "Todos", tags: r.tags || [], comments: r.comments || [],
-          })));
+          }));
+          if (clientFilter) mapped = mapped.filter(i => i.client.toLowerCase() === clientFilter.toLowerCase() || i.client === "Todos");
+          setIdeas(mapped);
         } else {
           setIdeas([]);
         }
@@ -27745,7 +27756,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients} user={user} isClientView /> :
       sub === "reports" ? <ReportsPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients.slice(0,1)} team={team} isClientView /> :
       sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_ui_prefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_ui_prefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
-      sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
+      sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} clientFilter={resolvedClient?.name} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
       null
@@ -27764,7 +27775,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       ` }} />
 
       <div className="content" ref={scrollRef} onScroll={null}>
-        <div style={{ padding:isDesktop?0:"14px 16px 0" }}>
+        <div style={{ padding:isDesktop?0:"0 16px 0" }}>
           {tab === "home" && renderHome()}
           {tab !== "home" && <div style={isDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
             {tab !== "chat" && tab !== "calendar" && <CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} />}
