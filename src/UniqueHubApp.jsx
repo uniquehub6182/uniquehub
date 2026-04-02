@@ -22623,11 +22623,14 @@ function PresentationsPage({ onBack, clients, user, demands }) {
   };
 
   const handleGenerate = async () => {
+    console.log("[PRES] handleGenerate called", { selClient: selClient?.name, mode, pdfText: pdfText?.length });
     if (!selClient) { showToast("Selecione um cliente", "error"); return; }
-    if (mode === "campaigns" && !pdfText) { showToast("Faça upload do PDF", "error"); return; }
+    if (mode === "campaigns" && !pdfText) { showToast("Faça upload do PDF de campanhas", "error"); return; }
     setGenerating(true);
     try {
+      console.log("[PRES] Fetching claude_key...");
       const aiKey = await supaGetSetting("claude_key");
+      console.log("[PRES] Got key:", aiKey ? "YES ("+aiKey.slice(0,10)+"...)" : "NULL");
       if (!aiKey) { showToast("Configure a chave da API Claude nas configurações", "error"); setGenerating(false); return; }
       const metrics = mode === "metrics" ? gatherMetrics() : null;
       const systemPrompt = `Você é um estrategista sênior de marketing digital e especialista em apresentações para clientes.\nSua função é transformar dados e planejamentos em apresentações claras, visuais, estratégicas e envolventes.\n\nRegras obrigatórias:\n- Max 6 linhas por slide, frases curtas, números em destaque\n- Linguagem simples, direta, tom positivo\n- Narrativa de aprendizado mesmo em cenários negativos\n- Títulos estratégicos e não genéricos\n- Responda APENAS com JSON array: [{ "title": "...", "body": "...", "type": "text|metrics|highlight|cta" }]\n- Use "\\n" para quebras. Sem markdown. Gere 8-14 slides. NADA além do JSON.`;
@@ -22637,11 +22640,14 @@ function PresentationsPage({ onBack, clients, user, demands }) {
       } else {
         userPrompt = `Apresentação CAMPANHAS para "${selClient.name}" - ${formatMonth(selMonth)}.\nConteúdo do PDF:\n${pdfText}\nEstrutura: Abertura → Visão estratégica → Campanhas detalhadas → Calendário resumido → Investimento → Próximos passos → Encerramento`;
       }
+      console.log("[PRES] Calling Anthropic API...");
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST", headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] })
       });
+      console.log("[PRES] API response status:", resp.status);
       const data = await resp.json();
+      console.log("[PRES] API response data:", JSON.stringify(data).slice(0, 300));
       const text = (data.content || []).map(c => c.text || "").join("");
       let slides;
       try { slides = JSON.parse(text.replace(/```json|```/g, "").trim()); }
@@ -22654,7 +22660,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
       setPresentations(prev => [saved, ...prev]);
       setCurrentPres(saved); setSlideIdx(0); setView("viewer");
       showToast(`Apresentação gerada com ${slides.length} slides!`);
-    } catch (err) { console.error(err); showToast(err.message || "Erro ao gerar", "error"); }
+    } catch (err) { console.error("[PRES] Generate error:", err); showToast(err.message || "Erro ao gerar", "error"); }
     finally { setGenerating(false); setSaving(false); }
   };
 
