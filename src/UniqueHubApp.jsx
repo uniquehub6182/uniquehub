@@ -22630,12 +22630,79 @@ function PresentationsPage({ onBack, clients, user, demands }) {
       const aiKey = await supaGetSetting("claude_key");
       if (!aiKey) { showToast("Configure a chave da API Claude nas configurações", "error"); setGenerating(false); return; }
       const metrics = mode === "metrics" ? gatherMetrics() : null;
-      const systemPrompt = `Você é um estrategista sênior de marketing digital e especialista em apresentações para clientes.\nSua função é transformar dados e planejamentos em apresentações claras, visuais, estratégicas e envolventes.\n\nRegras obrigatórias:\n- Max 6 linhas por slide, frases curtas, números em destaque\n- Linguagem simples, direta, tom positivo\n- Narrativa de aprendizado mesmo em cenários negativos\n- Títulos estratégicos e não genéricos\n- Responda APENAS com JSON array: [{ "title": "...", "body": "...", "type": "text|metrics|highlight|cta" }]\n- Use "\\n" para quebras. Sem markdown. Gere 8-14 slides. NADA além do JSON.`;
+      const systemPrompt = `Você é Alice, estrategista sênior de marketing digital da agência Unique Marketing.
+Sua função é criar apresentações IMPRESSIONANTES para reuniões mensais com clientes.
+
+REGRAS DE OURO:
+- Cada slide deve ter um TÍTULO CRIATIVO e ESTRATÉGICO (nunca genérico como "Visão Geral" ou "Resultados")
+- O body de cada slide deve ter 3-6 bullet points curtos e IMPACTANTES
+- Use números reais, dados concretos e comparações sempre que possível
+- Cada bullet point deve ter no máximo 8-10 palavras
+- Tom: confiante, estratégico, como uma agência premium apresentando para um CEO
+- Use emojis estratégicos (📈 🎯 🔥 💡 ✅ 🚀) para dar vida aos slides
+- NUNCA use frases genéricas como "resultados positivos" ou "bom desempenho"
+- Cada slide deve contar uma HISTÓRIA que conecta com o próximo
+- Personalize com o nome do cliente em slides-chave
+
+TIPOS DE SLIDE:
+- "cover": Slide de abertura (título impactante + subtítulo)
+- "metrics": Dados e números (use bullet points com valores)
+- "highlight": Destaque especial (conquista, top post, insight)
+- "strategy": Análise e direcionamento estratégico
+- "cta": Encerramento com próximos passos
+
+FORMATO DE RESPOSTA:
+JSON array PURO, sem markdown, sem explicações:
+[{ "title": "...", "body": "...", "type": "cover|metrics|highlight|strategy|cta" }]
+Use "\\n" para separar bullet points no body. Gere 10-14 slides.`;
       let userPrompt;
       if (mode === "metrics") {
-        userPrompt = `Apresentação RESULTADOS MENSAIS para "${metrics.clientName}" - ${metrics.month}.\nDados: ${metrics.published} publicados, ${metrics.approved} aprovados, ${metrics.pending} pendentes, ${metrics.totalDemands} total, mês anterior: ${metrics.prevPublished}, crescimento: ${metrics.growth}%.\nTipos: ${JSON.stringify(metrics.types)}. Top: ${JSON.stringify(metrics.topPosts)}.\nEstrutura: Abertura → Visão geral → Crescimento → Conteúdos → Top posts → Análise → Próximos passos → Encerramento`;
+        userPrompt = `Crie uma apresentação de RESULTADOS MENSAIS para o cliente "${metrics.clientName}" referente a ${metrics.month}.
+
+DADOS REAIS DO MÊS:
+📊 Posts publicados: ${metrics.published} (mês anterior: ${metrics.prevPublished})
+📈 Crescimento: ${metrics.growth}%
+✅ Aprovados: ${metrics.approved} | ⏳ Pendentes: ${metrics.pending}
+📋 Total de demandas: ${metrics.totalDemands}
+📱 Tipos de conteúdo: ${JSON.stringify(metrics.types)}
+🏆 Top posts: ${JSON.stringify(metrics.topPosts)}
+
+ESTRUTURA OBRIGATÓRIA (nesta ordem):
+1. COVER: Slide de abertura com nome do cliente + mês (tipo "cover")
+2. PANORAMA: Resumo executivo dos números-chave do mês (tipo "metrics")
+3. CRESCIMENTO: Comparativo com mês anterior, destaque de evolução (tipo "metrics")
+4. PRODUÇÃO: Breakdown por tipo de conteúdo produzido (tipo "metrics")
+5. DESTAQUES: Top 2-3 posts que mais performaram (tipo "highlight")
+6. INSIGHTS: O que funcionou e por quê (tipo "strategy")
+7. OPORTUNIDADES: O que pode melhorar no próximo mês (tipo "strategy")
+8. ESTRATÉGIA: Direcionamento para o próximo período (tipo "strategy")
+9. PRÓXIMOS PASSOS: Ações concretas planejadas (tipo "cta")
+10. ENCERRAMENTO: Agradecimento + CTA de próxima reunião (tipo "cta")
+
+Adicione 2-4 slides extras se os dados justificarem.
+IMPORTANTE: Use os números REAIS fornecidos acima. Não invente dados.`;
       } else {
-        userPrompt = `Apresentação CAMPANHAS para "${selClient.name}" - ${formatMonth(selMonth)}.\nConteúdo do PDF:\n${pdfText}\nEstrutura: Abertura → Visão estratégica → Campanhas detalhadas → Calendário resumido → Investimento → Próximos passos → Encerramento`;
+        userPrompt = `Crie uma apresentação de PLANEJAMENTO DE CAMPANHAS para o cliente "${selClient.name}" referente a ${formatMonth(selMonth)}.
+
+CONTEÚDO EXTRAÍDO DO CALENDÁRIO DE CAMPANHAS:
+${pdfText}
+
+ESTRUTURA OBRIGATÓRIA:
+1. COVER: Abertura com nome do cliente + "Planejamento ${formatMonth(selMonth)}" (tipo "cover")
+2. VISÃO ESTRATÉGICA: Objetivo geral do mês, posicionamento (tipo "strategy")
+3-7. CAMPANHAS: Um slide para CADA campanha identificada no PDF. Para cada uma:
+   - Título criativo da campanha
+   - Objetivo específico
+   - Mecânica / formato
+   - Datas-chave
+   - Resultado esperado
+   (tipo "highlight" para cada)
+8. CALENDÁRIO VISUAL: Resumo cronológico de todas as ações (tipo "metrics")
+9. INVESTIMENTO: Sugestão de budget se mencionado no PDF (tipo "metrics")
+10. PRÓXIMOS PASSOS: O que o cliente precisa aprovar/fornecer (tipo "cta")
+11. ENCERRAMENTO: Motivação + próxima reunião (tipo "cta")
+
+IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que não existem no documento.`;
       }
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST", headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
@@ -22673,8 +22740,11 @@ function PresentationsPage({ onBack, clients, user, demands }) {
   };
 
   const renderSlide = (slide, idx, total) => {
-    const isMetric = slide.type === "metrics" || slide.type === "highlight";
+    const isMetric = slide.type === "metrics";
     const isCta = slide.type === "cta";
+    const isCover = slide.type === "cover" || idx === 0;
+    const isHighlight = slide.type === "highlight";
+    const isStrategy = slide.type === "strategy";
     const fs = fullscreen; // fullscreen mode
     const sz = (d, m, s) => fs ? Math.round(d * 1.15) : (isPDesktop ? d : s || m); // font size helper
     return (
@@ -22683,7 +22753,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
         <div style={{ position:"absolute", bottom:-50, left:-50, width:fs?400:200, height:fs?400:200, borderRadius:"50%", background:`${LIME}05`, filter:"blur(60px)" }} />
         <div style={{ position:"absolute", top:fs?32:isPDesktop?24:16, right:fs?40:isPDesktop?32:20, fontSize:fs?16:12, color:"rgba(255,255,255,0.3)", fontWeight:600 }}>{idx+1}/{total}</div>
         <div style={{ position:"absolute", bottom:fs?32:isPDesktop?24:16, left:fs?40:isPDesktop?32:20, fontSize:fs?14:10, color:"rgba(255,255,255,0.15)", fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>UniqueHub</div>
-        {idx === 0 ? (<>
+        {isCover ? (<>
           <div style={{ fontSize:sz(14,11), fontWeight:700, color:LIME, letterSpacing:2, textTransform:"uppercase", marginBottom:fs?24:16 }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || "Cliente"}</div>
           <div style={{ fontSize:sz(36,24), fontWeight:900, color:"#fff", textAlign:"center", lineHeight:1.2, marginBottom:fs?20:12 }}>{slide.title}</div>
           <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.6)", textAlign:"center", lineHeight:1.5, maxWidth:fs?700:600, whiteSpace:"pre-line" }}>{slide.body}</div>
@@ -22693,7 +22763,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
         </>) : (<>
           <div style={{ alignSelf:"flex-start", marginBottom:fs?40:isPDesktop?32:20, width:"100%" }}>
             <div style={{ display:"inline-block", background:`${LIME}15`, borderRadius:8, padding:fs?"8px 18px":"6px 14px", marginBottom:fs?16:12 }}>
-              <span style={{ fontSize:fs?14:11, fontWeight:700, color:LIME, letterSpacing:1, textTransform:"uppercase" }}>{isMetric ? "Dados" : "Estratégia"}</span>
+              <span style={{ fontSize:fs?14:11, fontWeight:700, color:LIME, letterSpacing:1, textTransform:"uppercase" }}>{isMetric ? "📊 Dados" : isHighlight ? "🏆 Destaque" : "💡 Estratégia"}</span>
             </div>
             <div style={{ fontSize:sz(28,20), fontWeight:800, color:"#fff", lineHeight:1.2 }}>{slide.title}</div>
           </div>
@@ -22709,7 +22779,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     const slide = slides[slideIdx] || {};
     return (
       <div style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column" }}>
-        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>{renderSlide(slide, slideIdx, slides.length)}</div>
+        <div style={{ flex:1, display:"flex", alignItems:"stretch", justifyContent:"stretch" }}>{renderSlide(slide, slideIdx, slides.length)}</div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:16, padding:"16px 0", background:"rgba(0,0,0,0.9)" }}>
           <button disabled={slideIdx<=0} onClick={()=>setSlideIdx(i=>i-1)} style={{ width:44, height:44, borderRadius:12, border:"none", background:slideIdx>0?LIME:"rgba(255,255,255,0.1)", color:slideIdx>0?"#000":"rgba(255,255,255,0.3)", cursor:slideIdx>0?"pointer":"default", fontFamily:"inherit", fontSize:18, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
           <span style={{ color:"rgba(255,255,255,0.5)", fontSize:13, fontWeight:600, minWidth:60, textAlign:"center" }}>{slideIdx+1} / {slides.length}</span>
